@@ -1,0 +1,139 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maze Coder — Admin</title>
+<style>
+  body { margin: 0; font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    background: #1b1e2b; color: #e8e8f0; padding: 24px; max-width: 520px; margin: 0 auto; }
+  h1 { font-size: 24px; }
+  label { display: block; font-size: 14px; color: #9aa0b4; margin: 14px 0 4px; }
+  input { font-size: 16px; padding: 9px; border-radius: 8px; border: 1px solid #3a3f55;
+    background: #23273a; color: #fff; width: 100px; }
+  .card { background: #23273a; border-radius: 10px; padding: 16px; margin: 14px 0; }
+  button { font-size: 15px; padding: 10px 16px; border: 0; border-radius: 8px;
+    background: #4363d8; color: #fff; cursor: pointer; font-weight: 600; margin-top: 8px; }
+  button:hover { background: #5877e8; }
+  button.danger { background: #a02040; }
+  button.danger:hover { background: #c02a50; }
+  #msg { margin-top: 14px; min-height: 22px; color: #bfef45; font-size: 15px; }
+  .row { display: flex; gap: 10px; align-items: center; }
+  select { font-size: 15px; padding: 8px; border-radius: 8px; border: 1px solid #3a3f55;
+    background: #23273a; color: #fff; }
+  button.small { padding: 7px 12px; font-size: 14px; margin: 0; }
+  .prow { display: flex; gap: 10px; align-items: center; justify-content: space-between;
+    padding: 8px 0; border-top: 1px solid #2c3145; }
+  .prow:first-child { border-top: 0; }
+  .pname { font-weight: 600; }
+  .pmeta { font-size: 13px; color: #9aa0b4; }
+  .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%;
+    margin-right: 7px; vertical-align: middle; }
+</style>
+
+<h1>🛠 Maze Coder — Admin</h1>
+
+<div class="card">
+  <b>Project these on the big screen:</b><br>
+  <a href="/screen" target="_blank" style="color:#7da0ff">🖥 Live game + student code</a> &nbsp;·&nbsp;
+  <a href="/leaderboard" target="_blank" style="color:#7da0ff">🏆 Leaderboard</a>
+</div>
+
+<label>Admin key (shown in your terminal)</label>
+<input id="key" placeholder="1234">
+
+<div class="card">
+  <b>Send everyone to a maze</b>
+  <div class="row">
+    <label style="margin:0">Maze #</label>
+    <input id="maze" type="number" min="1" value="1" style="width:70px">
+    <button onclick="act('goto')">Go</button>
+  </div>
+</div>
+
+<div class="card">
+  <b>Unlock levels</b> — let students jump ahead without solving first (handy for
+  latecomers catching up).
+  <div class="row" style="margin-top:8px">
+    <label style="margin:0">Unlock everyone up to maze #</label>
+    <input id="unlockAll" type="number" min="1" value="1" style="width:70px">
+    <button onclick="act('unlock_all', {maze: uv('unlockAll')})">Unlock all</button>
+  </div>
+  <div id="roster" style="margin-top:12px"></div>
+</div>
+
+<div class="card">
+  <b>Reset all scores</b> — keeps players, sends everyone back to maze 1.
+  <br><button onclick="act('reset_scores')">Reset scores</button>
+</div>
+
+<div class="card">
+  <b>Remove all players</b> — clears the board completely.
+  <br><button class="danger" onclick="act('clear')">Remove everyone</button>
+</div>
+
+<div id="msg"></div>
+
+<script>
+const uv = id => document.getElementById(id).value;   // read an input's value
+
+async function act(action, extra = {}) {
+  const key = document.getElementById("key").value.trim();
+  const maze = document.getElementById("maze").value;
+  const r = await fetch("/admin", {method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({key, action, maze, ...extra})});
+  const res = await r.json();
+  const m = document.getElementById("msg");
+  m.textContent = res.ok || res.error || "Done.";
+  m.style.color = res.error ? "#ff6b6b" : "#bfef45";
+  refreshRoster();
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, c =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+}
+
+let mazeCount = 1;
+
+async function refreshRoster() {
+  let data;
+  try { data = await (await fetch("/overview")).json(); }
+  catch (e) { return; }
+  mazeCount = data.maze_count;
+  const roster = document.getElementById("roster");
+  // Remember any maze # the teacher already picked, so a background refresh
+  // doesn't reset their selection.
+  const picked = {};
+  roster.querySelectorAll("select[data-pid]").forEach(s => picked[s.dataset.pid] = s.value);
+
+  if (!data.players.length) { roster.innerHTML =
+    '<div class="pmeta">No students have joined yet.</div>'; return; }
+
+  const opts = n => Array.from({length: mazeCount}, (_, i) =>
+    `<option value="${i+1}">${i+1}</option>`).join("");
+
+  roster.innerHTML = data.players.map(p => {
+    const sel = picked[p.id] || String(p.maze_num);
+    return `<div class="prow">
+      <div><span class="dot" style="background:${esc(p.color)}"></span>
+        <span class="pname">${esc(p.name)}</span>
+        <span class="pmeta">· on maze ${p.maze_num} · solved ${p.solved}</span></div>
+      <div class="row">
+        <select data-pid="${esc(p.id)}">${opts()}</select>
+        <button class="small" onclick="unlockOne('${esc(p.id)}')">Unlock</button>
+      </div></div>`;
+  }).join("");
+
+  // Restore selections (default each to the student's current maze).
+  roster.querySelectorAll("select[data-pid]").forEach(s => {
+    const p = data.players.find(x => x.id === s.dataset.pid);
+    s.value = picked[s.dataset.pid] || String(p.maze_num);
+  });
+}
+
+function unlockOne(pid) {
+  const sel = document.querySelector(`select[data-pid="${pid}"]`);
+  act("unlock_player", {pid, maze: sel.value});
+}
+
+refreshRoster();
+setInterval(refreshRoster, 3000);
+</script>

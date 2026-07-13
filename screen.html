@@ -1,0 +1,112 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maze Coder — Big Screen</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    background: #12141f; color: #e8e8f0; padding: 20px; }
+  header { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
+    margin-bottom: 16px; }
+  h1 { font-size: 28px; margin: 0; }
+  .online { color: #9aa0b4; font-size: 18px; }
+  .layout { display: flex; gap: 20px; align-items: flex-start; }
+  .students { flex: 1; display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .board { width: 300px; flex-shrink: 0; background: #1b1e2b; border-radius: 12px;
+    padding: 14px; position: sticky; top: 20px; }
+  .board h2 { font-size: 20px; margin: 0 0 10px; }
+  .card { background: #1b1e2b; border-radius: 12px; padding: 12px;
+    border: 2px solid transparent; }
+  .card.solved { border-color: #3cb44b; }
+  .card .top { display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px; }
+  .who { font-weight: 700; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .mazetag { font-size: 12px; color: #9aa0b4; }
+  .mini { display: grid; gap: 1px; background: #0d0f17; padding: 4px; border-radius: 6px;
+    width: fit-content; margin: 0 auto 8px; }
+  .mc { width: 12px; height: 12px; border-radius: 2px; }
+  .wall { background: #3a3f55; }
+  .open { background: #232842; }
+  .goal { background: #2d5b3a; }
+  .arrow { display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 900; line-height: 1; }
+  pre.code { background: #0d0f17; border-radius: 6px; padding: 8px; margin: 0;
+    font-family: Menlo, Consolas, monospace; font-size: 12px; min-height: 44px;
+    max-height: 130px; overflow: auto; white-space: pre-wrap; color: #ffd479; }
+  pre.code.empty { color: #575d78; }
+  .row { display: flex; justify-content: space-between; font-size: 12px;
+    color: #9aa0b4; margin-top: 6px; }
+  .lb { font-size: 15px; margin: 6px 0; display: flex; gap: 8px; align-items: center; }
+  .lb .r { width: 26px; text-align: center; }
+  .lb .n { flex: 1; }
+  .lb .s { color: #bfef45; }
+  .empty-msg { color: #9aa0b4; font-size: 20px; text-align: center; margin-top: 60px; }
+</style>
+
+<header>
+  <h1>🧩 Maze Coder — Live</h1>
+  <span class="online" id="online"></span>
+</header>
+
+<div class="layout">
+  <div class="students" id="students"></div>
+  <div class="board">
+    <h2>🏆 Leaderboard</h2>
+    <div id="lb"></div>
+  </div>
+</div>
+<div class="empty-msg" id="emptymsg" style="display:none">Waiting for students to join…</div>
+
+<script>
+const ARROWS = ["▲","▶","▼","◀"];
+const MEDALS = ["🥇","🥈","🥉"];
+
+function miniMaze(maze, p) {
+  const cols = maze[0].length;
+  let html = `<div class="mini" style="grid-template-columns:repeat(${cols},12px)">`;
+  for (let r = 0; r < maze.length; r++) {
+    for (let c = 0; c < cols; c++) {
+      const ch = maze[r][c];
+      const cls = ch === "#" ? "wall" : ch === "G" ? "goal" : "open";
+      if (r === p.row && c === p.col) {
+        html += `<div class="mc open arrow" style="color:${p.color}">${ARROWS[p.dir]}</div>`;
+      } else {
+        html += `<div class="mc ${cls}"></div>`;
+      }
+    }
+  }
+  return html + "</div>";
+}
+
+async function tick() {
+  const s = await (await fetch("/overview")).json();
+  const players = s.players || [];
+  document.getElementById("online").textContent =
+    players.length + (players.length === 1 ? " player" : " players") + " online";
+  document.getElementById("emptymsg").style.display = players.length ? "none" : "block";
+
+  document.getElementById("students").innerHTML = players.map(p => {
+    const maze = s.mazes[p.maze];
+    const done = p.solved >= s.maze_count;
+    const codeEmpty = !p.code.trim();
+    return `<div class="card ${done ? "solved" : ""}">
+      <div class="top">
+        <span class="who"><span class="dot" style="background:${p.color}"></span>${esc(p.name)}</span>
+        <span class="mazetag">Maze ${p.maze_num}/${s.maze_count}</span>
+      </div>
+      ${miniMaze(maze, p)}
+      <pre class="code ${codeEmpty ? "empty" : ""}">${codeEmpty ? "(not typing yet)" : esc(p.code)}</pre>
+      <div class="row"><span>Solved: ${p.solved}</span><span>Lines: ${p.lines}</span></div>
+    </div>`;
+  }).join("");
+
+  document.getElementById("lb").innerHTML = s.scoreboard.map((p, i) =>
+    `<div class="lb"><span class="r">${MEDALS[i] || (i + 1)}</span>
+      <span class="dot" style="background:${p.color}"></span>
+      <span class="n">${esc(p.name)}</span>
+      <span class="s">${p.solved}</span>
+      <span style="color:#9aa0b4">${p.lines}L</span></div>`).join("");
+}
+function esc(t){return String(t).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+tick(); setInterval(tick, 800);
+</script>

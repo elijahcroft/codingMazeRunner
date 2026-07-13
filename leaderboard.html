@@ -1,0 +1,46 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maze Coder — Leaderboard</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    background: #12141f; color: #fff; padding: 30px; }
+  h1 { text-align: center; font-size: 42px; margin: 0 0 6px; }
+  .sub { text-align: center; color: #9aa0b4; font-size: 20px; margin-bottom: 24px; }
+  table { width: 100%; max-width: 900px; margin: 0 auto; border-collapse: collapse; }
+  th { text-align: left; color: #9aa0b4; font-size: 18px; padding: 8px 14px; }
+  td { padding: 12px 14px; font-size: 26px; border-top: 1px solid #262b40; }
+  tr:nth-child(1) td { font-size: 34px; }
+  .rank { width: 70px; text-align: center; }
+  .dot { display: inline-block; width: 20px; height: 20px; border-radius: 50%;
+    margin-right: 12px; vertical-align: middle; }
+  .num { text-align: center; font-variant-numeric: tabular-nums; }
+  .muted { color: #9aa0b4; }
+  .empty { text-align: center; color: #9aa0b4; font-size: 24px; margin-top: 60px; }
+</style>
+
+<h1>🏆 Maze Coder Leaderboard</h1>
+<div class="sub">Most mazes solved wins — ties broken by <b>fewest lines of code</b></div>
+<table id="tbl"></table>
+<div id="empty" class="empty" style="display:none">Waiting for players to join…</div>
+
+<script>
+const MEDALS = ["🥇", "🥈", "🥉"];
+async function tick() {
+  const s = await (await fetch("/scores")).json();
+  const rows = s.scoreboard || [];
+  document.getElementById("empty").style.display = rows.length ? "none" : "block";
+  const head = rows.length
+    ? `<tr><th class="rank"></th><th>Player</th><th class="num">Solved</th>
+       <th class="num">Lines</th><th class="num">Maze</th></tr>` : "";
+  document.getElementById("tbl").innerHTML = head + rows.map((p, i) =>
+    `<tr>
+       <td class="rank">${MEDALS[i] || (i + 1)}</td>
+       <td><span class="dot" style="background:${p.color}"></span>${esc(p.name)}</td>
+       <td class="num">${p.solved}</td>
+       <td class="num muted">${p.lines}</td>
+       <td class="num muted">${p.maze} / ${s.maze_count}</td>
+     </tr>`).join("");
+}
+function esc(t){return String(t).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+tick(); setInterval(tick, 1000);
+</script>

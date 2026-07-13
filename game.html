@@ -1,0 +1,539 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maze Coder</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    background: #151821; color: #e8e8f0; padding: 16px;
+  }
+  h1 { margin: 0 0 4px; font-size: 22px; letter-spacing: 0; }
+  .sub { color: #9aa0b4; font-size: 13px; margin-bottom: 14px; }
+  #join { max-width: 340px; margin: 60px auto; text-align: center; }
+  #join input { font-size: 18px; padding: 10px; width: 100%; border-radius: 8px;
+    border: 1px solid #3a3f55; background: #23273a; color: #fff; margin: 10px 0; }
+  button {
+    font-size: 15px; padding: 10px 16px; border: 0; border-radius: 8px;
+    background: #4363d8; color: #fff; cursor: pointer; font-weight: 600;
+  }
+  button:hover { background: #5877e8; }
+  #game { max-width: 1180px; margin: 0 auto; }
+  .topline { display: flex; align-items: end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .wrap { display: grid; grid-template-columns: minmax(320px, 1fr) minmax(380px, 480px); gap: 18px; align-items: start; }
+  .left, .right { min-width: 0; }
+  .right {
+    display: flex; flex-direction: column; gap: 10px; position: sticky; top: 12px;
+  }
+  #maze { display: grid; gap: 2px; background: #11131d; padding: 8px;
+    border-radius: 8px; width: fit-content; max-width: 100%; overflow: auto; }
+  .cell { width: 34px; height: 34px; display: flex; align-items: center;
+    justify-content: center; border-radius: 4px; font-size: 20px; position: relative; }
+  .wall { background: #3a3f55; }
+  .open { background: #262b40; }
+  .goal { background: #2d5b3a; }
+  .goal::after { content: "🚩"; }
+  .me { font-weight: 800; text-shadow: 0 0 4px #000; }
+  .tag { position: absolute; bottom: -2px; font-size: 8px; color: #cbd0e0;
+    background: rgba(0,0,0,.5); padding: 0 3px; border-radius: 3px; }
+  textarea { width: 100%; min-height: clamp(280px, 42vh, 520px); font-family: Menlo, Consolas, monospace;
+    font-size: 15px; line-height: 1.45; padding: 12px; border-radius: 8px; border: 1px solid #4c5571;
+    background: #10131d; color: #fff; resize: vertical; outline: none; }
+  textarea:focus { border-color: #6f89ff; box-shadow: 0 0 0 3px rgba(67, 99, 216, .22); }
+  #log { background: #11131d; border-radius: 8px; padding: 10px; min-height: 112px; max-height: 190px;
+    overflow-y: auto; font-family: Menlo, Consolas, monospace; font-size: 13px; }
+  #log div { margin: 2px 0; }
+  .hint { font-size: 13px; color: #aeb5c8; background: #202431; padding: 10px 12px;
+    border: 1px solid #30374b; border-radius: 8px; margin-bottom: 14px; }
+  .command-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .command-label { color: #e8e8f0; font-weight: 700; margin-right: 2px; }
+  .hint code {
+    color: #ffd479; background: #121621; border: 1px solid #343b50;
+    border-radius: 6px; padding: 3px 6px; white-space: nowrap;
+  }
+  .rules { color: #c6ccdc; margin: 8px 0 0; line-height: 1.35; }
+  .examples { margin-top: 8px; }
+  .examples summary { cursor: pointer; color: #d5dbed; font-weight: 700; width: fit-content; }
+  .detail-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; }
+  .detail-row details { min-width: 180px; }
+  .example-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+  .example {
+    margin: 0; padding: 9px; background: #11131d; border: 1px solid #30374b;
+    border-radius: 8px; color: #e8e8f0; font-family: Menlo, Consolas, monospace;
+    font-size: 12px; line-height: 1.45; overflow-x: auto;
+  }
+  .keyword-grid { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .keyword-note { margin: 8px 0 0; color: #c6ccdc; line-height: 1.35; max-width: 560px; }
+  #board div { font-size: 13px; margin: 3px 0; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+  .status { font-size: 14px; margin: 8px 0; color: #bfef45; }
+  #levels { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 12px; }
+  .chip { font-size: 14px; font-weight: 700; padding: 6px 10px; min-width: 34px;
+    border-radius: 8px; background: #23273a; color: #cbd0e0; border: 1px solid #3a3f55; cursor: pointer; }
+  .chip:hover { background: #2d3350; }
+  .chip.solved { color: #bfef45; border-color: #3cb44b; }
+  .chip.cur { background: #4363d8; color: #fff; border-color: #4363d8; }
+  .chip.locked { opacity: .45; cursor: not-allowed; color: #8b90a4; }
+  .chip.locked:hover { background: #23273a; }
+  .navarrow { font-size: 14px; padding: 6px 10px; background: #3a3f55; }
+  .navarrow:disabled { opacity: .35; cursor: default; }
+  .counter { font-family: Menlo, Consolas, monospace; font-size: 13px; color: #9aa0b4;
+    margin: 6px 0; }
+  .counter.good { color: #bfef45; font-weight: 700; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .secondary { background: #3a3f55; }
+  .secondary:hover { background: #48506b; }
+  .langs { display: flex; gap: 6px; align-items: center; }
+  .langbtn { background: #23273a; color: #cbd0e0; border: 1px solid #3a3f55;
+    padding: 8px 12px; font-size: 14px; }
+  .langbtn:hover { background: #2d3350; }
+  .langbtn.on { background: #4363d8; color: #fff; border-color: #4363d8; }
+  .score-title { margin: 6px 0 0; font-size: 16px; }
+
+  @media (max-width: 860px) {
+    body { padding: 12px; }
+    .wrap { grid-template-columns: 1fr; }
+    .right { position: static; }
+    textarea { min-height: 300px; }
+    .example-grid { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div id="join">
+  <h1>🧩 Maze Coder</h1>
+  <div class="sub">Type Python or C++ to guide your character to the 🚩</div>
+  <input id="name" placeholder="Type your name" maxlength="20" autofocus>
+  <button onclick="join()">Start playing</button>
+</div>
+
+<div id="game" style="display:none">
+  <div class="topline">
+    <div>
+      <h1>🧩 Maze Coder</h1>
+      <div class="sub">Playing as <b id="whoami"></b></div>
+    </div>
+    <div class="langs">
+      <span class="command-label">Language</span>
+      <button class="langbtn" id="langPy" onclick="setLang('python')">🐍 Python</button>
+      <button class="langbtn" id="langCpp" onclick="setLang('cpp')">⚡ C++</button>
+    </div>
+  </div>
+
+  <div class="hint" id="hintPy">
+    <div class="command-row">
+      <span class="command-label">Commands</span>
+      <code>move()</code>
+      <code>move(3)</code>
+      <code>turn_left()</code>
+      <code>turn_right()</code>
+      <code>turn_around()</code>
+      <code>wall_ahead()</code>
+      <code>can_move()</code>
+      <code>at_goal()</code>
+    </div>
+    <div class="rules">Each Run restarts at the entrance. Write the whole solution. Fewer non-blank lines = higher score.</div>
+    <div class="detail-row">
+      <details class="examples">
+        <summary>Examples</summary>
+        <div class="example-grid">
+          <pre class="example">for i in range(4):
+    move()
+    turn_right()</pre>
+          <pre class="example">while not wall_ahead():
+    move()</pre>
+          <pre class="example">steps = 3
+move(steps * 2)</pre>
+          <pre class="example">def zigzag():
+    move()
+    turn_right()
+
+for i in range(4):
+    zigzag()</pre>
+        </div>
+      </details>
+      <details class="examples">
+        <summary>Python basics</summary>
+        <div class="keyword-grid">
+          <code>if</code>
+          <code>elif</code>
+          <code>else</code>
+          <code>for</code>
+          <code>while</code>
+          <code>not</code>
+          <code>and</code>
+          <code>or</code>
+          <code>True</code>
+          <code>False</code>
+          <code>range()</code>
+          <code>x = 3</code>
+          <code>x += 1</code>
+          <code>+ - * // %</code>
+          <code>&lt; &gt; == !=</code>
+          <code>def</code>
+          <code>return</code>
+          <code>break</code>
+        </div>
+        <p class="keyword-note">Make your own <b>variables</b> (<code>steps = 3</code>) and do math with them. Write your own commands with <b>def</b> and reuse them to cut your line count. Use a colon after <b>if / elif / else / for / while / def</b>, and indent what belongs inside.</p>
+      </details>
+    </div>
+  </div>
+
+  <div class="hint" id="hintCpp" style="display:none">
+    <div class="command-row">
+      <span class="command-label">Commands</span>
+      <code>move();</code>
+      <code>move(3);</code>
+      <code>turn_left();</code>
+      <code>turn_right();</code>
+      <code>turn_around();</code>
+      <code>wall_ahead()</code>
+      <code>can_move()</code>
+      <code>at_goal()</code>
+    </div>
+    <div class="rules">Each Run restarts at the entrance. Write the whole solution. Fewer lines = higher score — lines with only braces don't count.</div>
+    <div class="detail-row">
+      <details class="examples">
+        <summary>Examples</summary>
+        <div class="example-grid">
+          <pre class="example">for (int i = 0; i &lt; 4; i++) {
+    move();
+    turn_right();
+}</pre>
+          <pre class="example">while (!wall_ahead()) {
+    move();
+}</pre>
+          <pre class="example">int steps = 3;
+move(steps * 2);</pre>
+          <pre class="example">void zigzag() {
+    move();
+    turn_right();
+}
+
+for (int i = 0; i &lt; 4; i++) {
+    zigzag();
+}</pre>
+        </div>
+      </details>
+      <details class="examples">
+        <summary>C++ basics</summary>
+        <div class="keyword-grid">
+          <code>if</code>
+          <code>else</code>
+          <code>for</code>
+          <code>while</code>
+          <code>!</code>
+          <code>&amp;&amp;</code>
+          <code>||</code>
+          <code>true</code>
+          <code>false</code>
+          <code>int x = 3;</code>
+          <code>x += 1;</code>
+          <code>x++;</code>
+          <code>+ - * / %</code>
+          <code>&lt; &gt; == !=</code>
+          <code>void</code>
+          <code>return</code>
+          <code>break</code>
+        </div>
+        <p class="keyword-note">End every command with a <b>semicolon ;</b> and wrap what belongs inside <b>if / for / while</b> in curly braces <code>{ }</code>. Make <b>variables</b> with <code>int</code>, and write your own commands with <b>void</b> to cut your line count. Comments start with <code>//</code>.</p>
+      </details>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="left">
+      <div class="status" id="status"></div>
+      <div id="levels"></div>
+      <div id="maze"></div>
+    </div>
+    <div class="right">
+      <textarea id="code" placeholder="move()&#10;turn_right()&#10;move(2)"></textarea>
+      <div class="counter" id="counter"></div>
+      <div class="actions">
+        <button onclick="run()">▶ Run</button>
+        <button class="secondary" onclick="runInstant()">⏩ Instant</button>
+        <button class="secondary" onclick="clearCode()">Clear</button>
+      </div>
+      <div id="log"></div>
+      <h3 class="score-title" id="levelTitle">🥇 This level — shortest solutions</h3>
+      <div id="levelboard"></div>
+      <h3 class="score-title">🏆 Overall</h3>
+      <div id="board"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const ARROWS = ["▲","▶","▼","◀"];
+let me = null;
+
+// Which language this student writes in. Saved per device, sent with each Run.
+let lang = localStorage.getItem("mazeLang") === "cpp" ? "cpp" : "python";
+function setLang(l) {
+  lang = l;
+  localStorage.setItem("mazeLang", l);
+  document.getElementById("hintPy").style.display = l === "python" ? "" : "none";
+  document.getElementById("hintCpp").style.display = l === "cpp" ? "" : "none";
+  document.getElementById("langPy").classList.toggle("on", l === "python");
+  document.getElementById("langCpp").classList.toggle("on", l === "cpp");
+  document.getElementById("code").placeholder = l === "cpp"
+    ? "move();\nturn_right();\nmove(2);" : "move()\nturn_right()\nmove(2)";
+  updateCounter();
+}
+
+async function post(url, data) {
+  const r = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(data)});
+  return r.json();
+}
+
+let polling = false;
+function enterGame(id, name, color) {
+  me = id;
+  localStorage.setItem("mazeId", me);
+  document.getElementById("whoami").textContent = name;
+  document.getElementById("whoami").style.color = color;
+  document.getElementById("join").style.display = "none";
+  document.getElementById("game").style.display = "block";
+  poll();
+  if (!polling) { setInterval(poll, 700); polling = true; }
+}
+
+async function join() {
+  const name = document.getElementById("name").value.trim();
+  if (!name) { document.getElementById("name").focus(); return; }
+  const res = await post("/join", {name});
+  enterGame(res.id, res.name, res.color);
+}
+
+// On reload, slip straight back into the game as the same player instead of
+// dumping the student back to the name screen and losing their progress.
+async function tryResume() {
+  const id = localStorage.getItem("mazeId");
+  if (!id) return;
+  try {
+    const s = await (await fetch("/state?id=" + id)).json();
+    if (!s.error) enterGame(id, s.you_name, s.you_color);
+  } catch (e) { /* offline — just show the join screen */ }
+}
+tryResume();
+setLang(lang);   // restore this device's language choice into the UI
+
+function showLog(lines) {
+  const log = document.getElementById("log");
+  log.innerHTML = lines.map(l => "<div>" + escapeHtml(l) + "</div>").join("");
+  log.scrollTop = log.scrollHeight;
+}
+
+let animating = false, animTimer = null;
+
+function cancelAnimation() {
+  if (animTimer) { clearTimeout(animTimer); animTimer = null; }
+  animating = false;
+}
+
+// Replay the server's step-by-step trace so the character visibly walks the
+// path instead of jumping straight to where it ends up.
+function animate(trace, onDone) {
+  cancelAnimation();
+  if (!lastState || !trace.length) { onDone(); return; }
+  animating = true;
+  let i = 0;
+  const step = () => {
+    const frame = {...lastState, players: lastState.players.map(p =>
+      p.id === me ? {...p, row: trace[i].row, col: trace[i].col, dir: trace[i].dir} : p)};
+    render(frame);
+    i++;
+    if (i < trace.length) {
+      animTimer = setTimeout(step, 110);
+    } else {
+      animTimer = null;
+      animating = false;
+      onDone();
+    }
+  };
+  step();
+}
+
+async function run() {
+  const code = document.getElementById("code").value;
+  const res = await post("/run", {id: me, code, lang});
+  if (res.error) { location.reload(); return; }
+  showLog(res.log);
+  animate(res.trace, poll);
+}
+
+async function runInstant() {
+  const code = document.getElementById("code").value;
+  const res = await post("/run", {id: me, code, lang});
+  if (res.error) { location.reload(); return; }
+  showLog(res.log);
+  cancelAnimation();
+  poll();
+}
+
+async function goto(i) {
+  cancelAnimation();
+  const res = await post("/goto", {id: me, maze: i});
+  if (res.error) {
+    if (res.error === "join") { location.reload(); return; }
+    showLog([res.error]);
+    return;
+  }
+  document.getElementById("code").value = "";
+  document.getElementById("log").innerHTML = "";
+  post("/typing", {id: me, code: ""});
+  updateCounter();
+  poll();
+}
+
+function clearCode() {
+  document.getElementById("code").value = "";
+  updateCounter();
+}
+
+// Count lines the exact way the server scores them: non-blank, non-comment —
+// and in C++ mode, lines holding only braces/semicolons are free.
+function scoreLines(code) {
+  if (lang === "cpp") {
+    code = code.replace(/\/\*[\s\S]*?\*\//g, "");
+    return code.split("\n").filter(l => {
+      const t = l.trim();
+      return t && !t.startsWith("//") && !/^[{};]+$/.test(t.replace(/\s/g, ""));
+    }).length;
+  }
+  return code.split("\n").filter(l => l.trim() && !l.trim().startsWith("#")).length;
+}
+
+let curBest = null;  // your fewest lines on the maze you're looking at
+function updateCounter() {
+  const code = document.getElementById("code").value;
+  const lines = scoreLines(code), chars = code.length;
+  const c = document.getElementById("counter");
+  const beat = curBest != null && lines > 0 && lines <= curBest;
+  c.className = "counter" + (beat ? " good" : "");
+  c.textContent = `${lines} line${lines === 1 ? "" : "s"} · ${chars} chars` +
+    (curBest != null ? ` · best here: ${curBest}` : "") +
+    (beat && lines < curBest ? "  ⬇ new record pace!" : "");
+}
+
+async function poll() {
+  if (animating) return;
+  const r = await fetch("/state?id=" + me);
+  const s = await r.json();
+  if (s.error) { location.reload(); return; }
+  render(s);
+}
+
+let lastState = null;
+function render(s) {
+  lastState = s;
+  document.getElementById("status").textContent =
+    `Maze ${s.maze_index + 1} of ${s.maze_count}`;
+
+  // Level bar: ◀  chips (✓ = solved, 🔒 = not unlocked yet)  ▶
+  const best = s.best || {};
+  const unlocked = s.unlocked ?? s.maze_index;  // highest maze you may enter
+  curBest = (s.maze_index in best) ? best[s.maze_index] : null;
+  updateCounter();
+  const nextLocked = s.maze_index + 1 > unlocked;
+  let bar = `<button class="navarrow" onclick="goto(${s.maze_index - 1})" ` +
+    `${s.maze_index === 0 ? "disabled" : ""}>◀</button>`;
+  for (let i = 0; i < s.maze_count; i++) {
+    const solved = i in best;
+    const locked = i > unlocked;
+    const cls = "chip" + (i === s.maze_index ? " cur" : "") +
+      (solved ? " solved" : "") + (locked ? " locked" : "");
+    const label = locked ? `🔒${i + 1}` : (i + 1) + (solved ? ` ✓${best[i]}` : "");
+    const title = locked ? "Solve the earlier levels to unlock this"
+      : solved ? "your best: " + best[i] + " lines" : "not solved yet";
+    bar += `<button class="${cls}" ${locked ? "disabled" : `onclick="goto(${i})"`} ` +
+      `title="${title}">${label}</button>`;
+  }
+  bar += `<button class="navarrow" onclick="goto(${s.maze_index + 1})" ` +
+    `${s.maze_index === s.maze_count - 1 || nextLocked ? "disabled" : ""}>▶</button>`;
+  document.getElementById("levels").innerHTML = bar;
+
+  const rows = s.maze.length, cols = s.maze[0].length;
+  const grid = document.getElementById("maze");
+  grid.style.gridTemplateColumns = `repeat(${cols}, 34px)`;
+
+  // where is each player
+  const byCell = {};
+  for (const p of s.players) (byCell[p.row + "," + p.col] ||= []).push(p);
+
+  let html = "";
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const ch = s.maze[r][c];
+      let cls = "cell " + (ch === "#" ? "wall" : ch === "G" ? "goal" : "open");
+      let inner = "";
+      const occ = byCell[r + "," + c];
+      if (occ) {
+        // draw the current player if present, else the first one
+        const p = occ.find(x => x.id === me) || occ[0];
+        const isMe = p.id === me;
+        inner = `<span class="${isMe ? 'me' : ''}" style="color:${p.color}">${ARROWS[p.dir]}</span>`;
+        if (occ.length > 1) inner += `<span class="tag">${occ.length}</span>`;
+        else if (!isMe) inner += `<span class="tag">${escapeHtml(p.name)}</span>`;
+      }
+      html += `<div class="${cls}">${inner}</div>`;
+    }
+  }
+  grid.innerHTML = html;
+
+  // Per-level code-golf board: top 5 shortest solutions for this maze.
+  const medals = ["🥇", "🥈", "🥉"];
+  document.getElementById("levelTitle").textContent =
+    `🥇 Level ${s.maze_index + 1} — shortest solutions`;
+  const lb = s.level_board || [];
+  document.getElementById("levelboard").innerHTML = lb.length
+    ? lb.map((p, i) =>
+        `<div><span class="dot" style="background:${p.color}"></span>` +
+        `${medals[i] || (i + 1) + "."} ${escapeHtml(p.name)} — ` +
+        `<b>${p.lines}</b> line${p.lines === 1 ? "" : "s"}</div>`).join("")
+    : "<div style='color:#8b90a4'>Nobody's solved this level yet — be first!</div>";
+
+  document.getElementById("board").innerHTML = s.scoreboard.map((p, i) =>
+    `<div><span class="dot" style="background:${p.color}"></span>` +
+    `${i + 1}. ${escapeHtml(p.name)} — ${p.solved} solved, ${p.lines} lines</div>`).join("");
+}
+
+// Forgiving typing: Tab indents, and Enter keeps your indentation — adding an
+// extra level automatically after a line that ends in ':' (Python) or '{' (C++).
+document.getElementById("code").addEventListener("keydown", e => {
+  const t = e.target, s = t.selectionStart, en = t.selectionEnd;
+  if (e.key === "Tab") {
+    e.preventDefault();
+    t.value = t.value.slice(0, s) + "    " + t.value.slice(en);
+    t.selectionStart = t.selectionEnd = s + 4;
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    const lineStart = t.value.lastIndexOf("\n", s - 1) + 1;
+    const line = t.value.slice(lineStart, s);
+    let indent = (line.match(/^\s*/) || [""])[0];
+    const end = line.trimEnd();
+    if (end.endsWith(":") || end.endsWith("{")) indent += "    ";
+    const insert = "\n" + indent;
+    t.value = t.value.slice(0, s) + insert + t.value.slice(en);
+    t.selectionStart = t.selectionEnd = s + insert.length;
+  } else { return; }
+  updateCounter();
+});
+
+// Send what they're typing to the teacher's big screen (debounced).
+let typingTimer = null;
+document.getElementById("code").addEventListener("input", () => {
+  updateCounter();
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(() => {
+    if (me) post("/typing", {id: me, code: document.getElementById("code").value});
+  }, 700);
+});
+
+function escapeHtml(t) {
+  return String(t).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+}
+
+document.getElementById("name").addEventListener("keydown", e => {
+  if (e.key === "Enter") join();
+});
+</script>
