@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bot Rally — Python Quest</title>
+<style>
+  /* Same palette and building blocks as Python Quest (studio.html), so moving
+     from the missions to the rally feels like one app. */
+  :root {
+    color-scheme: dark;
+    --void: #080c16;
+    --chrome: #0d1322;
+    --panel: #121a2a;
+    --panel-2: #172237;
+    --line: #2a3852;
+    --text: #e8eef8;
+    --muted: #8fa0ba;
+    --cyan: #55dfd2;
+    --amber: #f4c95d;
+    --red: #ff6577;
+    --green: #72e09d;
+    --blue: #69a8ff;
+    --editor: ui-monospace, "SFMono-Regular", "Cascadia Code", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { min-height: 100%; }
+  body { margin: 0; background: var(--void); color: var(--text); font-family: Inter, "Segoe UI", Arial, sans-serif; }
+  button, textarea, input { font: inherit; }
+  button { cursor: pointer; }
+  button:focus-visible, textarea:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--cyan); outline-offset: 2px;
+  }
+
+  .join {
+    min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(360px, .8fr);
+    background:
+      radial-gradient(circle at 18% 20%, rgba(244,201,93,.12), transparent 25%),
+      linear-gradient(135deg, #080c16 0 55%, #0e192a 55%);
+  }
+  .join-story { padding: clamp(40px, 8vw, 110px); display: flex; flex-direction: column; justify-content: center; }
+  .bootline { color: var(--amber); font: 14px var(--editor); margin-bottom: 22px; }
+  .join h1 { font-size: clamp(54px, 8vw, 104px); line-height: .88; letter-spacing: -.065em; margin: 0; }
+  .join-story p { color: var(--muted); font-size: clamp(18px, 2vw, 23px); line-height: 1.5; max-width: 680px; margin-top: 28px; }
+  .join-console { margin: clamp(24px, 6vw, 76px); align-self: center; background: var(--chrome); border: 1px solid var(--line); box-shadow: 18px 18px 0 rgba(0,0,0,.35); }
+  .window-bar { height: 40px; display: flex; align-items: center; gap: 7px; border-bottom: 1px solid var(--line); padding: 0 13px; color: var(--muted); font: 12px var(--editor); }
+  .window-dot { width: 9px; height: 9px; border-radius: 50%; background: #45536b; }
+  .join-form { padding: clamp(26px, 5vw, 54px); }
+  .join-form h2 { margin: 0 0 8px; font-size: 25px; }
+  .join-form p { color: var(--muted); line-height: 1.5; margin: 0 0 28px; }
+  .join-form label { display: block; color: var(--cyan); font: 13px var(--editor); margin-bottom: 8px; }
+  .join-form input { width: 100%; border: 1px solid var(--line); background: #090e19; color: var(--text); padding: 13px; font-size: 18px; }
+  .join-form button { width: 100%; margin-top: 13px; }
+
+  .btn { border: 1px solid #397f7a; background: #173d40; color: #dffffb; padding: 9px 14px; font-weight: 700; }
+  .btn:hover { background: #205157; }
+  .btn.primary { background: var(--cyan); color: #062b2c; border-color: var(--cyan); }
+  .btn.primary:hover { background: #79eee4; }
+  .btn.ghost { background: transparent; color: var(--muted); border-color: var(--line); }
+  .btn.ghost:hover { color: var(--text); background: var(--panel-2); }
+  .btn:disabled { opacity: .55; cursor: wait; }
+
+  .ide { display: none; height: 100vh; grid-template-rows: 48px minmax(0, 1fr) 24px; }
+  .titlebar { background: #080d18; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 0 16px; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; }
+  .logo-mark { color: var(--void); background: var(--amber); font: 900 13px var(--editor); padding: 5px 7px; }
+  .title-meta { color: var(--muted); font: 12px var(--editor); white-space: nowrap; }
+  .title-actions { display: flex; align-items: center; gap: 8px; }
+  .title-actions a, .title-actions button { color: var(--muted); background: none; border: 0; font-size: 13px; padding: 7px; text-decoration: none; }
+  .title-actions a:hover, .title-actions button:hover { color: var(--text); }
+
+  .workspace { min-height: 0; display: grid; grid-template-columns: 225px minmax(360px, 1fr) minmax(420px, 520px); }
+
+  /* Left: the five trials, then the live pit board. */
+  .sidebar { min-width: 0; min-height: 0; overflow: auto; background: var(--chrome); border-right: 1px solid var(--line); }
+  .side-heading { height: 42px; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; color: var(--muted); font: 11px var(--editor); letter-spacing: .08em; border-bottom: 1px solid var(--line); }
+  .league-list { padding: 8px 10px; display: grid; gap: 6px; }
+  .league { width: 100%; text-align: left; border: 1px solid var(--line); background: #0f1727; color: var(--muted); padding: 8px 10px; display: grid; gap: 2px; }
+  .league b { color: var(--text); font-size: 13px; }
+  .league small { font: 10px var(--editor); }
+  .league:hover:not(:disabled) { border-color: #47627f; }
+  .league.current { border-color: var(--amber); background: #1d1c1a; }
+  .league.gold small { color: var(--amber); }
+  .league:disabled { opacity: .5; cursor: not-allowed; }
+  .trial-list { padding: 8px 0; }
+  .trial {
+    width: 100%; border: 0; border-left: 3px solid transparent; background: transparent; color: var(--muted);
+    text-align: left; padding: 11px 14px 11px 16px; display: grid; grid-template-columns: 26px 1fr; gap: 9px;
+  }
+  .trial:hover:not(:disabled) { background: #131d2f; color: var(--text); }
+  .trial.current { background: #18263c; color: var(--text); border-left-color: var(--cyan); }
+  .trial:disabled { cursor: default; }
+  .trial-num { font: 12px var(--editor); padding-top: 2px; }
+  .trial-copy b { display: block; font-size: 13px; line-height: 1.25; }
+  .trial-copy small { font-size: 11px; color: var(--muted); }
+  .trial.pass .trial-num, .trial.pass small { color: var(--green); }
+  .trial.miss .trial-num, .trial.miss small { color: var(--red); }
+  .board { padding: 4px 14px 14px; }
+  .leader-row { display: grid; grid-template-columns: 18px 9px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid #1b2840; font-size: 12px; }
+  .leader-row:last-child { border-bottom: 0; }
+  .leader-row.you { color: var(--cyan); }
+  .leader-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rank { font: 11px var(--editor); color: var(--muted); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .leader-score { text-align: right; font: 11px var(--editor); }
+  .leader-score small { display: block; color: var(--muted); font-size: 10px; }
+  .leader-empty { padding: 14px 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+
+  /* Middle: the briefing, one big track replay, and the score bar. */
+  .rally-view { min-width: 0; min-height: 0; background: #0b111e; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; border-right: 1px solid var(--line); }
+  .brief { padding: 18px 22px 15px; border-bottom: 1px solid var(--line); background: linear-gradient(90deg, #101a2b, #0c1321); }
+  .chapter { color: var(--amber); font: 11px var(--editor); margin-bottom: 7px; }
+  .brief h1 { font-size: clamp(26px, 2.6vw, 38px); line-height: 1; letter-spacing: -.035em; margin: 0 0 9px; }
+  .brief p { color: #b6c2d5; line-height: 1.45; margin: 0; max-width: 720px; font-size: 14px; }
+  .map-stage { min-height: 0; overflow: auto; display: grid; place-items: center; padding: 18px; position: relative; }
+  .stage-head { position: absolute; top: 12px; left: 16px; right: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font: 12px var(--editor); color: var(--muted); }
+  .stage-head b { color: var(--text); }
+  .stage-head .ok { color: var(--green); }
+  .stage-head .no { color: var(--red); }
+  .replay-controls { display: flex; gap: 6px; }
+  .replay-controls .btn { font-size: 11px; padding: 5px 9px; }
+  .sealed { text-align: center; max-width: 360px; color: var(--muted); line-height: 1.5; font-size: 14px; }
+  .sealed strong { display: block; color: var(--text); font-size: 22px; margin-bottom: 8px; }
+  .sealed .lock { font: 34px var(--editor); color: #3b4a64; margin-bottom: 10px; }
+  #maze { --cell: 34px; display: grid; gap: 2px; padding: 8px; width: fit-content; background: #050912; border: 1px solid #31405b; box-shadow: 0 18px 60px rgba(0,0,0,.28); }
+  .cell { width: var(--cell); height: var(--cell); display: grid; place-items: center; position: relative; font: 800 calc(var(--cell) * .58) var(--editor); }
+  .wall { background: #26334a; box-shadow: inset 0 0 0 1px #34445f; }
+  .open { background: #111b2d; }
+  .goal { background: #2d593f; }
+  .goal::after { content: "◆"; color: var(--green); text-shadow: 0 0 10px var(--green); }
+  .trail::before { content: ""; position: absolute; width: 6px; height: 6px; border-radius: 50%; background: rgba(244,201,93,.55); }
+  .bot { color: var(--cyan); text-shadow: 0 0 9px rgba(85,223,210,.8); z-index: 2; }
+  .scorebar { padding: 12px 20px; border-top: 1px solid var(--line); display: flex; gap: 14px; align-items: center; flex-wrap: wrap; background: #0e1625; min-height: 62px; }
+  .score-main b { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; font-weight: 700; }
+  .score-main span { font-size: 14px; }
+  .new-best { color: var(--amber); font: 700 11px var(--editor); border: 1px solid #7b6735; padding: 3px 6px; }
+  .badges { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+  .badge { font: 11px var(--editor); color: #56647c; border: 1px solid #222f45; padding: 4px 7px; }
+  .badge.earned { color: var(--amber); border-color: #7b6735; background: #282315; }
+
+  /* Right: the editor, toolbar, drawers and output — same as the missions. */
+  .code-column { min-width: 0; min-height: 0; background: var(--panel); display: grid; grid-template-rows: 42px minmax(160px, 1fr) auto minmax(130px, .5fr); }
+  .file-tabs { background: #0b111e; border-bottom: 1px solid var(--line); display: flex; align-items: end; }
+  .file-tab { height: 41px; padding: 0 17px; display: flex; align-items: center; gap: 8px; color: var(--text); background: var(--panel); border-right: 1px solid var(--line); border-top: 2px solid var(--amber); font: 12px var(--editor); }
+  .py-icon { color: var(--amber); font-weight: 900; }
+  .editor-shell { min-height: 0; display: grid; grid-template-columns: auto 1fr; overflow: hidden; background: #0c1220; }
+  .lines { min-width: 44px; padding: 14px 10px 60px 8px; color: #4f607a; background: #0a101c; border-right: 1px solid #18243a; text-align: right; white-space: pre; overflow: hidden; font: 14px/1.55 var(--editor); user-select: none; }
+  textarea { width: 100%; height: 100%; resize: none; border: 0; outline: 0; padding: 14px 16px 60px; background: #0c1220; color: #dce7f6; caret-color: var(--cyan); font: 14px/1.55 var(--editor); tab-size: 4; white-space: pre; overflow: auto; }
+  .toolbar { min-height: 52px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: #0f1727; flex-wrap: wrap; }
+  .toolbar .btn { font-size: 12px; padding: 8px 11px; }
+  .run { min-width: 128px; }
+  .code-count { margin-left: auto; color: var(--muted); font: 11px var(--editor); text-align: right; }
+  .drawer { border-bottom: 1px solid var(--line); }
+  .drawer summary { color: var(--muted); font: 11px var(--editor); padding: 9px 12px; cursor: pointer; }
+  .api-body { padding: 0 12px 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .drawer code { color: #a9f7ef; border: 1px solid #273b4e; padding: 4px 6px; font: 11px var(--editor); }
+  .clues { padding: 0 12px 10px; font-size: 13px; line-height: 1.45; color: #b6c2d5; }
+  .clues p { margin: 0 0 9px; }
+  .clues b { color: var(--amber); font: 11px var(--editor); display: block; margin-bottom: 2px; }
+  .clues pre { margin: 4px 0 0; padding: 7px 9px; background: #0a101c; border: 1px solid #1d2a40; color: #dce7f6; font: 12px/1.5 var(--editor); }
+  .clues p code { padding: 1px 4px; }
+  .clues .btn { font-size: 12px; padding: 6px 10px; }
+  .hint-note { color: var(--muted); font-size: 12px; }
+  .sensor-list { padding: 0 12px 12px; display: grid; gap: 6px; font-size: 12px; color: #b6c2d5; line-height: 1.45; }
+  .sensor-list b { color: var(--amber); font: 10px var(--editor); letter-spacing: .04em; }
+  .unlock-note { flex-basis: 100%; color: var(--amber); font-size: 13px; }
+  .console { min-height: 0; display: grid; grid-template-rows: 34px minmax(0, 1fr); background: #080d17; }
+  .console-head { display: flex; align-items: center; justify-content: space-between; padding: 0 12px; color: var(--muted); font: 11px var(--editor); border-bottom: 1px solid #18243a; }
+  #log { overflow: auto; max-height: 35vh; padding: 10px 13px 18px; font: 12px/1.5 var(--editor); color: #b9c7db; }
+  #log div { margin: 1px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  #log .good { color: var(--green); }
+  #log .bad { color: var(--red); }
+  #log .head { color: var(--amber); }
+  .statusbar { background: #13585b; color: #dcfffb; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 0 10px; font: 10px var(--editor); }
+  .announce { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+  @media (max-width: 1100px) {
+    .workspace { grid-template-columns: 185px minmax(320px, 1fr) minmax(360px, 440px); }
+  }
+  @media (max-width: 900px) {
+    .ide { height: auto; min-height: 100vh; grid-template-rows: 48px auto 24px; }
+    .workspace { grid-template-columns: 1fr; }
+    .sidebar { border-right: 0; border-bottom: 1px solid var(--line); overflow: visible; }
+    .league-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .trial-list { display: flex; overflow-x: auto; padding: 0; }
+    .trial { min-width: 160px; border-left: 0; border-bottom: 3px solid transparent; }
+    .trial.current { border-left: 0; border-bottom-color: var(--cyan); }
+    .board-heading, .board { display: none; }
+    .rally-view { border-right: 0; }
+    .map-stage { min-height: 420px; padding-top: 48px; }
+    .code-column { min-height: 720px; }
+  }
+  @media (max-width: 600px) {
+    .join { grid-template-columns: 1fr; }
+    .join-story { padding: 46px 24px 20px; }
+    .join h1 { font-size: 58px; }
+    .join-console { margin: 20px 18px 50px; }
+    .title-meta, .title-actions a { display: none; }
+    .brief { padding: 16px 14px; }
+    .map-stage { min-height: 360px; padding: 48px 12px 12px; }
+    .badges { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+<section class="join" id="join">
+  <div class="join-story">
+    <div class="bootline">bot_rally.start() → 5 tracks loaded</div>
+    <h1>Bot<br>Rally</h1>
+    <p>Build one Python brain. We drop the exact same program onto five different tracks and see what it can handle.</p>
+  </div>
+  <div class="join-console">
+    <div class="window-bar"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span><span style="margin-left:7px">driver_login.py</span></div>
+    <div class="join-form">
+      <h2>Enter the pit</h2>
+      <p>Use the same name as in Python Quest to keep your progress together.</p>
+      <label for="name">driver_name =</label>
+      <input id="name" maxlength="20" autocomplete="nickname" placeholder="Type your name" autofocus>
+      <button class="btn primary" id="joinButton">Start the rally</button>
+    </div>
+  </div>
+</section>
+
+<main class="ide" id="ide">
+  <header class="titlebar">
+    <div class="logo"><span class="logo-mark">BOT</span><span>Bot Rally</span><span class="title-meta">/ python_quest</span></div>
+    <div class="title-actions"><span class="title-meta" id="driver"></span><a href="/">Missions</a><button id="switchButton">Switch driver</button></div>
+  </header>
+
+  <div class="workspace">
+    <aside class="sidebar">
+      <div class="side-heading">LEAGUES</div>
+      <div class="league-list" id="leagues"></div>
+      <div class="side-heading">TRIALS</div>
+      <div class="trial-list" id="trials"></div>
+      <div class="side-heading board-heading"><span>PIT BOARD</span><span>live</span></div>
+      <div class="board" id="leaderboard"></div>
+    </aside>
+
+    <section class="rally-view">
+      <header class="brief">
+        <div class="chapter">BOT RALLY / 5 tracks · 1 program</div>
+        <h1 id="leagueTitle">Rookie League</h1>
+        <p><span id="leagueBlurb"></span> Your exact same program runs on every track. Predict how many you'll clear, then run.</p>
+      </header>
+      <div class="map-stage" id="stage">
+        <div class="sealed" id="sealed">
+          <div class="lock">[ ? ]</div>
+          <strong>Tracks sealed</strong>
+          Write your bot, predict how many tracks it will clear, then press Run. All five tracks are revealed at once.
+        </div>
+        <div class="stage-head" id="stageHead" hidden>
+          <span id="stageTitle"></span>
+          <span class="replay-controls">
+            <button class="btn ghost" id="stopButton" hidden>■ Stop</button>
+            <button class="btn ghost" id="replayButton" hidden>↻ Replay</button>
+          </span>
+        </div>
+        <div id="maze" aria-label="Track replay" hidden></div>
+      </div>
+      <div class="scorebar">
+        <div class="score-main"><b id="scoreLabel">PERSONAL BEST</b><span id="scoreText">No rally run yet.</span></div>
+        <span class="new-best" id="newBest" hidden>NEW BEST</span>
+        <div class="badges" id="badges"></div>
+        <div class="unlock-note" id="unlockNote" hidden></div>
+      </div>
+    </section>
+
+    <section class="code-column">
+      <div class="file-tabs"><div class="file-tab"><span class="py-icon">Py</span> rally_bot.py</div></div>
+      <div class="editor-shell">
+        <div class="lines" id="lines">1</div>
+        <textarea id="code" aria-label="Python editor" spellcheck="false" placeholder="# Give your bot a brain…"></textarea>
+      </div>
+      <div>
+        <div class="toolbar">
+          <button class="btn primary run" id="runButton">▶ Run all 5 <span style="opacity:.65">F5</span></button>
+          <button class="btn" id="starterButton">Load rookie bot</button>
+          <button class="btn ghost" id="clearButton">Clear file</button>
+          <div class="code-count" id="codeCount">0 chars · 0 lines</div>
+        </div>
+        <details class="drawer">
+          <summary>Game API and Python examples</summary>
+          <div class="api-body">
+            <code>move()</code><code>move(3)</code><code>turn_left()</code><code>turn_right()</code><code>turn_around()</code>
+            <code>wall_ahead()</code><code>can_move()</code><code>at_goal()</code><code>print("note")</code>
+          </div>
+          <div class="sensor-list">
+            <b>RALLY SENSORS · free, they don't cost actions</b>
+            <div><code>wall_left()</code> <code>wall_right()</code> Is there a wall beside me? No turning needed.</div>
+            <div><code>goal_ahead()</code> True if the goal is somewhere in front of me.</div>
+            <div><code>goal_left()</code> <code>goal_right()</code> True if the goal is somewhere to that side.</div>
+            <div><code>distance_to_goal()</code> Squares to the goal, ignoring walls: a number.</div>
+            <div><code>visited_ahead()</code> Have I already stood on the square in front of me this run?</div>
+          </div>
+        </details>
+        <details class="drawer" id="hintDrawer">
+          <summary id="hintSummary">Hints</summary>
+          <div class="clues">
+            <div id="hintList"></div>
+            <p class="hint-note" id="hintNote"></p>
+            <button class="btn" id="hintButton">Open next hint</button>
+          </div>
+        </details>
+      </div>
+      <div class="console">
+        <div class="console-head"><span>OUTPUT</span><span id="consoleState">ready</span></div>
+        <div id="log"><div>Ready. Run your bot to test it on all five tracks.</div></div>
+      </div>
+    </section>
+  </div>
+  <footer class="statusbar"><span>Python 3 · safe classroom sandbox</span><span>Spaces: 4 · UTF-8 · <span id="position">Ln 1, Col 1</span></span></footer>
+  <div class="announce" id="announce" aria-live="polite"></div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const ARROWS = ["▲", "▶", "▼", "◀"];
+let me = null, myName = "", running = false;
+let league = "rookie", leagues = [], trackCount = 5, hintCount = 3;
+let rally = null, selected = 0, animationTimer = null;
+
+function esc(value) {
+  return String(value).replace(/[&<>\"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
+}
+async function post(url, data) {
+  const response = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(data)});
+  return response.json();
+}
+async function fetchLeague(key) {
+  return (await fetch(`/arena/state?id=${encodeURIComponent(me)}&league=${encodeURIComponent(key)}`)).json();
+}
+function store(key, value) { try { localStorage.setItem(key, value); } catch (_) {} }
+function recall(key) { try { return localStorage.getItem(key); } catch (_) { return null; } }
+function codeKey() { return `rallyCode:${me}:${league}`; }
+function saveCode() { if (me) store(codeKey(), $("code").value); }
+function savedCode() {
+  // Drafts saved before leagues existed belong to the Rookie League.
+  return recall(codeKey()) ?? (league === "rookie" ? recall(`rallyCode:${me}`) : null);
+}
+
+async function join() {
+  const name = $("name").value.trim();
+  if (!name) { $("name").focus(); return; }
+  const player = await post("/join", {name});
+  localStorage.setItem("mazeId", player.id);
+  await enter(player.id, player.name, player.color);
+}
+async function resume() {
+  const id = localStorage.getItem("mazeId");
+  if (!id) return;
+  try {
+    const state = await (await fetch("/arena/state?id=" + encodeURIComponent(id))).json();
+    if (state.you) await enter(id, state.you.name, state.you.color);
+  } catch (_) { /* leave the join screen visible */ }
+}
+async function enter(id, name, color) {
+  me = id; myName = name;
+  $("driver").textContent = name;
+  $("driver").style.color = color;
+  $("join").style.display = "none";
+  $("ide").style.display = "grid";
+  await loadLeague(recall(`rallyLeague:${me}`) || "rookie");
+}
+async function loadLeague(key, carried = "") {
+  let state = await fetchLeague(key);
+  const info = (state.leagues || []).find(l => l.key === key);
+  if (state.error || !info || !info.unlocked) { key = "rookie"; state = await fetchLeague(key); }
+  league = key; leagues = state.leagues; trackCount = state.trial_count; hintCount = state.hint_count;
+  store(`rallyLeague:${me}`, key);
+  stopReplay();
+  rally = null; selected = 0;
+  $("sealed").hidden = false; $("stageHead").hidden = true; $("maze").hidden = true;
+  $("unlockNote").hidden = true;
+  const current = leagues.find(l => l.key === key);
+  $("leagueTitle").textContent = current.name;
+  $("leagueBlurb").textContent = current.blurb;
+  // A league you've never coded in starts from the bot you brought with you.
+  $("code").value = savedCode() ?? (state.code || carried);
+  $("log").innerHTML = `<div>${esc(current.name)} loaded. Run your bot to test it on all ${trackCount} tracks.</div>`;
+  $("consoleState").textContent = "ready";
+  updateEditor();
+  renderLeagues();
+  renderTrials();
+  renderBest(state.best);
+  renderHints(state.hints, state.hint_count);
+  renderLeaderboard(state.leaderboard || []);
+}
+async function switchLeague(key) {
+  if (running || key === league) return;
+  saveCode();
+  await loadLeague(key, $("code").value);
+}
+
+// ---- Left column ---------------------------------------------------------
+function renderLeagues() {
+  $("leagues").innerHTML = leagues.map((l, i) => {
+    const best = l.best, gold = best && best.solved === l.tracks;
+    const status = !l.unlocked ? `🔒 Gold in ${esc(leagues[i - 1].name)}`
+      : gold ? `GOLD · ★ ${best.stars}/${l.tracks}`
+      : best ? `${best.solved}/${l.tracks} cleared` : "not raced yet";
+    return `<button class="league${l.key === league ? " current" : ""}${gold ? " gold" : ""}" ${l.unlocked ? "" : "disabled"} onclick="switchLeague('${l.key}')">
+      <b>${esc(l.name)}</b><small>${status}</small></button>`;
+  }).join("");
+}
+function renderTrials() {
+  $("trials").innerHTML = Array.from({length: trackCount}, (_, i) => {
+    const r = rally && rally.results[i];
+    const cls = r ? (r.solved ? " pass" : " miss") : "";
+    const status = !r ? "sealed" : !r.solved ? `MISS · par ${r.par}`
+      : `${r.star ? "★ " : ""}${r.actions} actions · par ${r.par}`;
+    return `<button class="trial${cls}${r && i === selected ? " current" : ""}" ${r ? "" : "disabled"} onclick="selectTrial(${i})">
+      <span class="trial-num">${r ? (r.solved ? "✓" : "✗") : String(i + 1).padStart(2, "0")}</span>
+      <span class="trial-copy"><b>${r ? esc(r.name) : `Trial ${i + 1}`}</b><small>${status}</small></span>
+    </button>`;
+  }).join("");
+}
+function renderLeaderboard(rows) {
+  $("leaderboard").innerHTML = rows.length ? rows.map((row, i) => `
+    <div class="leader-row${row.name === myName ? " you" : ""}">
+      <span class="rank">${i + 1}</span>
+      <span class="dot" style="background:${esc(row.color)}"></span>
+      <span class="leader-name">${esc(row.name)}${row.no_hints ? " ✦" : ""}</span>
+      <span class="leader-score">${row.solved}/${row.total} ★${row.stars}<small>${row.actions}a · ${row.chars}c</small></span>
+    </div>`).join("") : '<div class="leader-empty">No scores in this league yet. Your bot can set the first one.</div>';
+}
+
+// ---- Middle column -------------------------------------------------------
+function renderBest(best, latest = null, isNew = false) {
+  const shown = latest || best;
+  $("scoreLabel").textContent = latest ? "THIS RUN" : "PERSONAL BEST";
+  $("scoreText").textContent = shown
+    ? `${shown.solved}/${trackCount} tracks · ★ ${shown.stars || 0} under par · ${shown.actions} actions · ${shown.chars} chars` +
+      (latest && best && !isNew ? `  (best ${best.solved}/${trackCount} ★${best.stars || 0})` : "")
+    : "No run in this league yet.";
+  $("newBest").hidden = !isNew;
+  const b = best || {solved: 0, stars: 0};
+  const gold = b.solved === trackCount;
+  const badges = [
+    ["GOLD", "Clear every track with one program — unlocks the next league", gold],
+    [`★ ${b.stars || 0}/${trackCount}`, "Tracks finished at or under par (fewest actions + 25%)", b.stars === trackCount],
+    ["✦ no hints", "Gold without opening any hints in this league", gold && !b.hints],
+  ];
+  $("badges").innerHTML = badges.map(([label, goal, earned]) =>
+    `<span class="badge${earned ? " earned" : ""}" title="${goal}">${label}</span>`).join("");
+}
+
+function drawTrack(result, frame) {
+  const maze = result.maze, rows = maze.length, cols = maze[0].length;
+  // Fit the biggest square that lets the whole track show in the stage.
+  const stage = $("stage");
+  const fit = Math.min((stage.clientWidth - 40) / cols, (stage.clientHeight - 80) / rows);
+  $("maze").style.setProperty("--cell", `${Math.max(12, Math.min(34, Math.floor(fit) - 2))}px`);
+  const trail = new Set();
+  // A syntax error never moves the bot, so its trace can be empty.
+  for (let i = 0; i <= frame && i < result.trace.length; i++) trail.add(`${result.trace[i][0]},${result.trace[i][1]}`);
+  const [br, bc, bd] = result.trace[frame] || [result.final.row, result.final.col, 1];
+  let html = "";
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const ch = maze[r][c];
+    let cls = ch === "#" ? "wall" : ch === "G" ? "goal" : "open";
+    if (ch !== "#" && trail.has(`${r},${c}`)) cls += " trail";
+    const bot = r === br && c === bc ? `<span class="bot">${ARROWS[bd]}</span>` : "";
+    html += `<div class="cell ${cls}">${bot}</div>`;
+  }
+  $("maze").style.gridTemplateColumns = `repeat(${cols}, var(--cell))`;
+  $("maze").innerHTML = html;
+}
+function stopReplay() {
+  if (animationTimer) clearTimeout(animationTimer);
+  animationTimer = null;
+  $("stopButton").hidden = true;
+  $("replayButton").hidden = !rally;
+}
+function replay() {
+  stopReplay();
+  const result = rally.results[selected];
+  const last = Math.max(0, result.trace.length - 1);
+  // Keep long runs watchable: a 2,000-step spin still replays in ~30 s.
+  const delay = Math.max(15, Math.min(90, 6000 / Math.max(1, last)));
+  let frame = 0;
+  $("stopButton").hidden = last === 0;
+  $("replayButton").hidden = true;
+  const tick = () => {
+    drawTrack(result, frame);
+    if (frame++ < last) animationTimer = setTimeout(tick, delay);
+    else stopReplay();
+  };
+  tick();
+}
+function skipReplay() {
+  const result = rally.results[selected];
+  stopReplay();
+  drawTrack(result, Math.max(0, result.trace.length - 1));
+}
+function selectTrial(i) {
+  if (!rally) return;
+  selected = i;
+  const r = rally.results[i];
+  const verdict = !r.solved ? `<span class="no">MISS</span>`
+    : `<span class="ok">PASS${r.star ? " ★" : ""}</span>`;
+  $("stageTitle").innerHTML = `<b>${i + 1}. ${esc(r.name)}</b> · ${verdict} · ${r.actions} actions · par ${r.par}`;
+  renderTrials();
+  showTrialLog();
+  replay();
+}
+
+// ---- Right column --------------------------------------------------------
+function logLine(line) {
+  const cls = /^[🎉✅]/.test(line) ? "good" : /^[❌⚠⏹🧱🔒]/.test(line) ? "bad" : "";
+  return `<div class="${cls}">${esc(line)}</div>`;
+}
+function showTrialLog() {
+  const results = rally.results;
+  // A syntax error is identical on every track — say it once, not five times.
+  if (results.every(r => r.log.some(line => line.startsWith("❌")))) {
+    $("log").innerHTML = results[0].log.map(logLine).join("");
+    return;
+  }
+  const r = results[selected];
+  const lines = r.log.filter(line => !line.startsWith("🔄"));
+  if (!r.solved && !lines.some(line => /^[⚠🧱⏹]/.test(line)))
+    lines.push("⏹ The program ended before reaching the goal.");
+  $("log").innerHTML = `<div class="head">— Trial ${selected + 1}: ${esc(r.name)} —</div>` + lines.map(logLine).join("");
+  $("log").scrollTop = $("log").scrollHeight;
+}
+
+function renderHints(hints, count) {
+  $("hintSummary").textContent = `Hints — ${hints.length} of ${count} opened`;
+  $("hintList").innerHTML = hints.map((text, i) => {
+    // Prose first, then any code after a blank line.
+    const [words, ...code] = text.split("\n\n");
+    const body = words.includes("\n") ? `<pre>${esc(words)}</pre>` : esc(words);
+    return `<p><b>HINT ${i + 1}</b>${body}${code.map(c => `<pre>${esc(c)}</pre>`).join("")}</p>`;
+  }).join("");
+  $("hintButton").hidden = hints.length >= count;
+  $("hintButton").textContent = `Open hint ${hints.length + 1}`;
+  $("hintNote").textContent = hints.length >= count ? "That's every hint for this league."
+    : hints.length ? "Try the hints you have before opening the next one."
+    : "Stuck? Hints are fine to use — they just remove the ✦ no-hints mark for this league.";
+}
+async function openHint() {
+  const data = await post("/arena/hint", {id: me, league});
+  if (data.hints) renderHints(data.hints, hintCount);
+}
+
+async function runTrials() {
+  if (running) return;
+  running = true;
+  saveCode();
+  $("runButton").disabled = true;
+  $("consoleState").textContent = `testing ${trackCount} tracks…`;
+  try {
+    const data = await post("/arena/run", {id: me, code: $("code").value, league});
+    if (data.error === "join") { localStorage.removeItem("mazeId"); location.reload(); return; }
+    if (data.error) { $("log").innerHTML = logLine(data.error); $("consoleState").textContent = "locked"; return; }
+    const wasOpen = leagues.map(l => l.unlocked);
+    rally = data; leagues = data.leagues;
+    $("sealed").hidden = true;
+    $("stageHead").hidden = false;
+    $("maze").hidden = false;
+    renderBest(data.best, data.score, data.new_best);
+    renderLeaderboard(data.leaderboard);
+    renderLeagues();
+    const opened = leagues.find((l, i) => l.unlocked && !wasOpen[i]);
+    $("unlockNote").hidden = !opened;
+    if (opened) $("unlockNote").textContent = `🔓 ${opened.name} unlocked! Pick it on the left when you're ready.`;
+    // Open the track with something to learn from: the first miss, else the
+    // first one over par.
+    const firstMiss = data.results.findIndex(r => !r.solved);
+    const firstOverPar = data.results.findIndex(r => !r.star);
+    selectTrial(firstMiss !== -1 ? firstMiss : Math.max(0, firstOverPar));
+    $("consoleState").textContent = `${data.score.solved}/${trackCount} cleared`;
+    $("announce").textContent = `Rally finished. ${data.score.solved} of ${trackCount} tracks cleared.`;
+  } catch (_) {
+    $("consoleState").textContent = "no response";
+    $("log").innerHTML = logLine("⚠️ The rally server did not respond. Ask your teacher to check it is still running.");
+  } finally {
+    running = false;
+    $("runButton").disabled = false;
+  }
+}
+
+const ROOKIE = `# Rookie bot: good on easy tracks. Make it adapt!\nfor step in range(100):\n    if wall_ahead():\n        turn_right()\n    move()`;
+function loadRookie() {
+  if ($("code").value.trim() && !confirm("Replace your bot with the rookie bot?")) return;
+  $("code").value = ROOKIE;
+  updateEditor(); $("code").focus();
+}
+
+function updateEditor() {
+  const code = $("code").value;
+  const count = Math.max(1, code.split("\n").length);
+  $("lines").textContent = Array.from({length: count}, (_, i) => i + 1).join("\n");
+  // Same counting rule as the server: comments and whitespace are free.
+  const clean = code.split("\n").filter(line => !line.trim().startsWith("#")).join("").replace(/\s/g, "");
+  const lines = code.split("\n").filter(line => line.trim() && !line.trim().startsWith("#")).length;
+  $("codeCount").textContent = `${clean.length} chars · ${lines} line${lines === 1 ? "" : "s"}`;
+  updatePosition();
+  saveCode();
+}
+function updatePosition() {
+  const t = $("code"), before = t.value.slice(0, t.selectionStart).split("\n");
+  $("position").textContent = `Ln ${before.length}, Col ${before[before.length - 1].length + 1}`;
+}
+function editorKey(event) {
+  const t = event.target, start = t.selectionStart, end = t.selectionEnd;
+  if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+    event.preventDefault(); runTrials(); return;
+  }
+  if (event.key === "Tab") {
+    event.preventDefault(); t.value = t.value.slice(0, start) + "    " + t.value.slice(end); t.selectionStart = t.selectionEnd = start + 4;
+  } else if (event.key === "Enter") {
+    event.preventDefault();
+    const lineStart = t.value.lastIndexOf("\n", start - 1) + 1;
+    const line = t.value.slice(lineStart, start);
+    let indent = (line.match(/^\s*/) || [""])[0];
+    if (line.trimEnd().endsWith(":")) indent += "    ";
+    const addition = "\n" + indent;
+    t.value = t.value.slice(0, start) + addition + t.value.slice(end); t.selectionStart = t.selectionEnd = start + addition.length;
+  } else return;
+  updateEditor();
+}
+
+$("joinButton").addEventListener("click", join);
+$("name").addEventListener("keydown", e => { if (e.key === "Enter") join(); });
+$("switchButton").addEventListener("click", () => { localStorage.removeItem("mazeId"); location.reload(); });
+$("runButton").addEventListener("click", runTrials);
+$("starterButton").addEventListener("click", loadRookie);
+$("clearButton").addEventListener("click", () => { $("code").value = ""; updateEditor(); $("code").focus(); });
+$("stopButton").addEventListener("click", skipReplay);
+$("replayButton").addEventListener("click", replay);
+$("hintButton").addEventListener("click", openHint);
+$("code").addEventListener("input", updateEditor);
+$("code").addEventListener("click", updatePosition);
+$("code").addEventListener("keyup", updatePosition);
+$("code").addEventListener("scroll", () => { $("lines").scrollTop = $("code").scrollTop; });
+$("code").addEventListener("keydown", editorKey);
+document.addEventListener("keydown", e => { if (e.key === "F5" && me) { e.preventDefault(); runTrials(); } });
+
+renderTrials();
+renderBest(null);
+resume();
+setInterval(async () => {
+  if (!me || running) return;
+  try { renderLeaderboard((await fetchLeague(league)).leaderboard || []); } catch (_) {}
+}, 4000);
+</script>
+</body>
+</html>

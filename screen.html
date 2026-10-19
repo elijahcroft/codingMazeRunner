@@ -28,6 +28,8 @@
   .wall { background: #3a3f55; }
   .open { background: #232842; }
   .goal { background: #2d5b3a; }
+  /* Blackout worlds: each card only shows the squares that student has lit. */
+  .fog { background: #0b0d14; }
   .arrow { display: flex; align-items: center; justify-content: center;
     font-size: 10px; font-weight: 900; line-height: 1; }
   pre.code { background: #0d0f17; border-radius: 6px; padding: 8px; margin: 0;
@@ -67,7 +69,7 @@ function miniMaze(maze, p) {
   for (let r = 0; r < maze.length; r++) {
     for (let c = 0; c < cols; c++) {
       const ch = maze[r][c];
-      const cls = ch === "#" ? "wall" : ch === "G" ? "goal" : "open";
+      const cls = ch === "?" ? "fog" : ch === "#" ? "wall" : ch === "G" ? "goal" : "open";
       if (r === p.row && c === p.col) {
         html += `<div class="mc open arrow" style="color:${p.color}">${ARROWS[p.dir]}</div>`;
       } else {
@@ -86,17 +88,17 @@ async function tick() {
   document.getElementById("emptymsg").style.display = players.length ? "none" : "block";
 
   document.getElementById("students").innerHTML = players.map(p => {
-    const maze = s.mazes[p.maze];
-    const done = p.solved >= s.maze_count;
+    const maze = p.maze_view || s.worlds[p.world].mazes[p.maze];
+    const done = p.maze_num >= p.maze_count && p.cleared;
     const codeEmpty = !p.code.trim();
     return `<div class="card ${done ? "solved" : ""}">
       <div class="top">
         <span class="who"><span class="dot" style="background:${p.color}"></span>${esc(p.name)}</span>
-        <span class="mazetag">Maze ${p.maze_num}/${s.maze_count}</span>
+        <span class="mazetag">W${p.world + 1} · maze ${p.maze_num}/${p.maze_count}</span>
       </div>
       ${miniMaze(maze, p)}
       <pre class="code ${codeEmpty ? "empty" : ""}">${codeEmpty ? "(not typing yet)" : esc(p.code)}</pre>
-      <div class="row"><span>Solved: ${p.solved}</span><span>Lines: ${p.lines}</span></div>
+      <div class="row"><span>Solved: ${p.solved}</span><span>${p.chars} chars · ${p.lines}L</span></div>
     </div>`;
   }).join("");
 
@@ -105,7 +107,7 @@ async function tick() {
       <span class="dot" style="background:${p.color}"></span>
       <span class="n">${esc(p.name)}</span>
       <span class="s">${p.solved}</span>
-      <span style="color:#9aa0b4">${p.lines}L</span></div>`).join("");
+      <span style="color:#9aa0b4">${p.chars}c</span></div>`).join("");
 }
 function esc(t){return String(t).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
 tick(); setInterval(tick, 800);

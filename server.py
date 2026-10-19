@@ -1,5 +1,11 @@
 """
-Maze Coder — a classroom game.
+Python Quest — a classroom coding game.
+
+The main experience is a four-mission, Python-only workspace at `/`.  It uses
+an IDE-style editor, a real output console, and a progression from functions to
+general algorithms to debugging and exploration.  Bot Rally at `/arena` tests
+one program on five tracks.  The original maze ladders remain at `/classic` as
+optional drills.
 
 Students connect from their browsers to your laptop and drive a little
 character through a maze by typing Python:
@@ -47,8 +53,15 @@ the same maze commands in real C++ syntax instead:
     }
 
 Braces, semicolons, int/bool variables, void functions, && || !, if/else,
-while, break/continue all work. Lines holding only braces don't count toward
-the score, so Python and C++ solutions golf fairly against each other.
+while, break/continue all work. Scoring counts characters rather than lines
+(whitespace and comments are free), so Python and C++ solutions golf fairly
+against each other — a C++ one-liner wins nothing on line count alone.
+
+World 5 turns the lights off. Its mazes arrive blank and a student only ever
+sees the squares their character has walked past — the server never sends the
+rest, so there's no map on the page to read, screenshot, or paste into a chatbot
+for an answer. The only way through is to write code that explores in the dark,
+look at what it uncovered (it stays uncovered), and plan the route from that.
 
 It stays safe by interpreting a whitelist of the parse tree ourselves — no
 imports, attribute access, or builtins — so students never run real Python on
@@ -69,25 +82,37 @@ No installing anything — this uses only the Python standard library.
 
 import ast
 import json
+import math
 import os
 import random
 import re
 import socket
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs, urlsplit
 
-PORT = 8000
+PORT = int(os.environ.get("MAZE_PORT", "8000"))
 
 # Where the leaderboard and everyone's progress is saved, so it survives a
 # restart and kids can keep playing day to day.
-STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scores.json")
+STATE_FILE = os.environ.get(
+    "MAZE_STATE_FILE",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "scores.json"),
+)
+# Placeholder character score for levels solved before scoring counted
+# characters — higher than any real solution, so re-running always beats it.
+LEGACY_CHARS = 400
 
 # ---------------------------------------------------------------------------
 # Mazes.  '#' = wall, '.' = open, 'S' = start, 'G' = goal (the exit).
 # Characters start on S facing right (East). Add or edit mazes freely —
 # just keep every row the same width and make sure a path S -> G exists.
+#
+# Mazes are grouped into WORLDS (see below). Each world is its own ladder of
+# levels with its own progress, so a class can start fresh in a new world
+# without losing what they did in an old one.
 # ---------------------------------------------------------------------------
-MAZES = [
+WORLD1_MAZES = [
     # 1 — straight shot. Discover move(10) instead of ten move()s.
     [
         "#############",
@@ -271,6 +296,991 @@ MAZES = [
     ],
 ]
 
+# ---------------------------------------------------------------------------
+# World 2 — The Deep Labyrinth.  Same commands, bigger and twistier: the early
+# levels are longer versions of the World 1 patterns (corridor, staircase,
+# comb, spiral) so a beginner can still start here, then it turns into real
+# dead-end labyrinths that only wall-following solves.
+# ---------------------------------------------------------------------------
+WORLD2_MAZES = [
+    # 1 — long U corridor. move(n), turn, move(n) — a gentle warm-up.
+    [
+        "#############",
+        "#S..........#",
+        "###########.#",
+        "#G..........#",
+        "#############",
+    ],
+    # 2 — long staircase. One step repeats six times: a for-loop.
+    [
+        "############",
+        "#S.#########",
+        "##..########",
+        "###..#######",
+        "####..######",
+        "#####..#####",
+        "######..####",
+        "#######...G#",
+        "############",
+    ],
+    # 3 — the comb. Up-across-down repeats; loop it, or write a def.
+    [
+        "#############",
+        "#S#...#...#G#",
+        "#.#.#.#.#.#.#",
+        "#.#.#.#.#.#.#",
+        "#.#.#.#.#.#.#",
+        "#.#.#.#.#.#.#",
+        "#...#...#...#",
+        "#############",
+    ],
+    # 4 — the great spiral. Counting each arm is misery; walk until a wall,
+    #     turn, repeat:
+    #         while not at_goal():
+    #             while not wall_ahead():
+    #                 move()
+    #             turn_right()
+    [
+        "#############",
+        "#S..........#",
+        "###########.#",
+        "#.........#.#",
+        "#.#######.#.#",
+        "#.#.....#.#.#",
+        "#.#.###.#.#.#",
+        "#.#.#G..#.#.#",
+        "#.#.#####.#.#",
+        "#.#.......#.#",
+        "#.#########.#",
+        "#...........#",
+        "#############",
+    ],
+    # 5 — the wide comb. Uneven teeth, so counting breaks down — the
+    #     wall-following loop from maze 4 walks it without changes.
+    [
+        "#################",
+        "#S..#...#...#...#",
+        "###.#.#.#.#.#.#.#",
+        "#...#.#.#.#.#.#.#",
+        "#.###.#.#.#.#.#.#",
+        "#.....#...#...#G#",
+        "#################",
+    ],
+    # 6 — the big staircase. Two across, two down, five times over. Teach the
+    #     character one step with def, then loop it.
+    [
+        "#############",
+        "#S..#########",
+        "###.#########",
+        "###...#######",
+        "#####.#######",
+        "#####...#####",
+        "#######.#####",
+        "#######...###",
+        "#########.###",
+        "#########...#",
+        "###########.#",
+        "###########G#",
+        "#############",
+    ],
+    # 7 — the long snake. Straight-lining this takes forever; a loop does it
+    #     in a handful of lines.
+    [
+        "###############",
+        "#S............#",
+        "#############.#",
+        "#.............#",
+        "#.#############",
+        "#.............#",
+        "#############.#",
+        "#.............#",
+        "#.#############",
+        "#.............#",
+        "#############.#",
+        "#G............#",
+        "###############",
+    ],
+    # 8 — the mirror spiral. Winds the other way, so turn_left() where maze 4
+    #     used turn_right(). You start facing a wall — turn first.
+    [
+        "###############",
+        "#S#...........#",
+        "#.#.#########.#",
+        "#.#.#.......#.#",
+        "#.#.#.#####.#.#",
+        "#.#.#.#...#.#.#",
+        "#.#.#.#.#.#.#.#",
+        "#.#.#.#G#.#.#.#",
+        "#.#.#.###.#.#.#",
+        "#.#.#.....#.#.#",
+        "#.#.#######.#.#",
+        "#.#.........#.#",
+        "#.###########.#",
+        "#.............#",
+        "###############",
+    ],
+    # 9 — first true labyrinth. Dead ends everywhere, so counting is hopeless.
+    #     Keep your left hand on the wall and you always find the exit:
+    #         while not at_goal():
+    #             turn_left()
+    #             while wall_ahead():
+    #                 turn_right()
+    #             move()
+    [
+        "###########",
+        "#S#.......#",
+        "#.#.###.###",
+        "#.#...#...#",
+        "#.###.###.#",
+        "#...#...#.#",
+        "###.#.###.#",
+        "#...#.#...#",
+        "#.#####.#.#",
+        "#.......#G#",
+        "###########",
+    ],
+    # 10 — wider labyrinth. The same left-hand lines from maze 9 walk it.
+    [
+        "#############",
+        "#S#...#.....#",
+        "#.#.#.#.#.###",
+        "#.#.#.#.#...#",
+        "#.#.###.###.#",
+        "#.#.......#.#",
+        "#.#.#######.#",
+        "#.#.#...#...#",
+        "#.###.#.#.#.#",
+        "#.....#...#G#",
+        "#############",
+    ],
+    # 11 — taller labyrinth. Try to shorten yesterday's solution instead of
+    #      rewriting it.
+    [
+        "#############",
+        "#S..#.......#",
+        "###.###.###.#",
+        "#.#.#...#.#.#",
+        "#.#.#.###.#.#",
+        "#...#.#.....#",
+        "#.###.#######",
+        "#.#...#.....#",
+        "#.#.###.###.#",
+        "#.#.....#...#",
+        "#.#######.#.#",
+        "#.........#G#",
+        "#############",
+    ],
+    # 12 — long corridors, more forks.
+    [
+        "###############",
+        "#S#...........#",
+        "#.#.###.#######",
+        "#.#.#.#.......#",
+        "#.#.#.#######.#",
+        "#.#.#.....#...#",
+        "#.#.###.#.#.###",
+        "#.#.....#.#...#",
+        "#.#######.###.#",
+        "#.#...#...#...#",
+        "#.#.#.#####.#.#",
+        "#...#.......#G#",
+        "###############",
+    ],
+    # 13 — the deep labyrinth.
+    [
+        "###############",
+        "#S#.......#...#",
+        "#.#.###.###.#.#",
+        "#.#...#.#...#.#",
+        "#.#.#.###.###.#",
+        "#.#.#...#.#...#",
+        "#.#.###.#.#.#.#",
+        "#.#...#...#.#.#",
+        "#.###.#####.###",
+        "#.#...#...#...#",
+        "#.###.#.#.###.#",
+        "#...#...#.#...#",
+        "###.#######.#.#",
+        "#...........#G#",
+        "###############",
+    ],
+    # 14 — the grand finale. The biggest labyrinth in the game; the same few
+    #      wall-following lines walk the whole thing to the exit.
+    [
+        "#################",
+        "#S#.............#",
+        "#.#.#######.###.#",
+        "#.#...#...#...#.#",
+        "#.###.#.#.#####.#",
+        "#...#.#.#.....#.#",
+        "###.#.#.#####.#.#",
+        "#...#.#...#.....#",
+        "#.#####.#.#######",
+        "#.....#.#.......#",
+        "#####.#.#######.#",
+        "#.....#.....#...#",
+        "#.###########.#.#",
+        "#.............#G#",
+        "#################",
+    ],
+]
+
+# ---------------------------------------------------------------------------
+# World 3 — Lost in the Dark.  The hard world: no friendly patterns left to
+# count, just real labyrinths that grow level by level.  Every one of these is
+# loop-free, so the left-hand rule from World 2 walks all of them — the work is
+# writing it once, shortening it, and trusting it on a maze you can't eyeball:
+#         while not at_goal():
+#             turn_left()
+#             while wall_ahead():
+#                 turn_right()
+#             move()
+# ---------------------------------------------------------------------------
+WORLD3_MAZES = [
+    # 1 — the way in. Dead ends from the first step; nothing to count.
+    [
+        "#############",
+        "#S..#...#...#",
+        "###.#.#.#.#.#",
+        "#...#.#...#.#",
+        "#.###.#####.#",
+        "#.#...#...#.#",
+        "#.#.###.#.#.#",
+        "#.#.#...#G#.#",
+        "#.#.#.#####.#",
+        "#...#.......#",
+        "#############",
+    ],
+    # 2 — the goal is buried in the middle now, not out on an edge.
+    [
+        "###############",
+        "#S#...#...#...#",
+        "#.#.#.#.#.#.#.#",
+        "#...#.#.#G#.#.#",
+        "#####.#.###.#.#",
+        "#.....#.#...#.#",
+        "#.#####.#.###.#",
+        "#.#...#.....#.#",
+        "#.#.#.#######.#",
+        "#...#.........#",
+        "###############",
+    ],
+    # 3 — taller. Same few lines; try to shorten them instead of adding more.
+    [
+        "###############",
+        "#S#.......#...#",
+        "#.#.#####.#.#.#",
+        "#...#.....#.#.#",
+        "#####.#####.#.#",
+        "#...#.#.....#.#",
+        "#.#.#.#.#####.#",
+        "#G#.#.#...#...#",
+        "###.#.###.#.###",
+        "#...#.....#...#",
+        "#.###########.#",
+        "#.............#",
+        "###############",
+    ],
+    # 4 — wider, and the exit sits behind a long detour.
+    [
+        "#################",
+        "#S#.....#.......#",
+        "#.#.###.#.#####.#",
+        "#.#.#G..#...#...#",
+        "#.#.#######.#.#.#",
+        "#.#.......#.#.#.#",
+        "#.#######.#.#.#.#",
+        "#...#...#...#.#.#",
+        "###.#.#.#####.###",
+        "#...#.#.#...#...#",
+        "#.###.#.#.#.###.#",
+        "#.....#...#.....#",
+        "#################",
+    ],
+    # 5 — halfway. Roughly a hundred steps of maze between you and the flag.
+    [
+        "#################",
+        "#S#...#.....#...#",
+        "#.#.#.#.###.#.#.#",
+        "#.#.#...#...#.#.#",
+        "#.#.#####.###.#.#",
+        "#.#.#.....#...#.#",
+        "#.#.#.###.#.###.#",
+        "#.#G#...#.#...#.#",
+        "#.###.#.#####.#.#",
+        "#...#.#.....#.#.#",
+        "###.#####.###.#.#",
+        "#...#...#.....#.#",
+        "#.###.#.#######.#",
+        "#.....#.........#",
+        "#################",
+    ],
+    # 6 — the wide one. Twenty-one columns; you may have to scroll to see it.
+    [
+        "#####################",
+        "#S#....G#...#.......#",
+        "#.#.#####.#.#.#####.#",
+        "#.#.#.....#.....#...#",
+        "#.#.#.###########.###",
+        "#.#.#...#.......#...#",
+        "#.#.###.#.#####.###.#",
+        "#.#.....#.#...#...#.#",
+        "#.#.#####.#.#.###.#.#",
+        "#.#.#...#.#.#.....#.#",
+        "#.###.#.#.#.#######.#",
+        "#.....#...#.........#",
+        "#####################",
+    ],
+    # 7 — the exit is three cells from the start, and nowhere near it.
+    [
+        "###################",
+        "#S#...#.....#.....#",
+        "#.#.#.#.###.#.###.#",
+        "#.#G#.#.#...#.#.#.#",
+        "#.###.#.#.###.#.#.#",
+        "#...#...#.......#.#",
+        "###.#############.#",
+        "#...#...........#.#",
+        "#.###.#########.#.#",
+        "#.....#...#.....#.#",
+        "#######.#.#.#####.#",
+        "#.#.....#...#...#.#",
+        "#.#.#########.#.#.#",
+        "#.............#...#",
+        "###################",
+    ],
+    # 8 — a hundred and thirty steps. Watch your run: it's a long walk.
+    [
+        "###################",
+        "#S....#.......#G..#",
+        "#####.#.#####.###.#",
+        "#...#...#...#.#...#",
+        "#.#.#####.#.#.#.###",
+        "#.#.......#.#.#...#",
+        "#.#######.###.###.#",
+        "#.#.#.....#...#...#",
+        "#.#.#.#####.###.###",
+        "#...#.....#...#...#",
+        "###.#####.###.#.#.#",
+        "#.#.#...#.#...#.#.#",
+        "#.#.#.#.#.#.#####.#",
+        "#...#.#.#...#...#.#",
+        "#.###.#.#####.#.#.#",
+        "#.....#.......#...#",
+        "###################",
+    ],
+    # 9 — the long straight at the top is the only easy part.
+    [
+        "#####################",
+        "#S..................#",
+        "###################.#",
+        "#.#.........#.......#",
+        "#.#.#######.#.#######",
+        "#...#.#...#.#.#.....#",
+        "#.###.#.#.#.#.###.#.#",
+        "#.....#.#...#...#.#G#",
+        "#####.#.#######.#.###",
+        "#.....#.#.......#...#",
+        "#.#####.#.#########.#",
+        "#.#...#...#...#...#.#",
+        "#.#.#.#####.#.#.#.#.#",
+        "#...#.......#...#...#",
+        "#####################",
+    ],
+    # 10 — Lost in the Dark. The biggest labyrinth in the game, and the same
+    #      four lines that beat level 1 walk every step of it.
+    [
+        "#####################",
+        "#S..#.......#.......#",
+        "###.#.#####.#.#####.#",
+        "#...#.#...#...#.....#",
+        "#.###.#.#.#####.#####",
+        "#...#...#.....#...#.#",
+        "###.#####.###.###.#.#",
+        "#.#.#...#.#...#.....#",
+        "#.#.#.#.###.#######.#",
+        "#.#.#.#...#.......#.#",
+        "#.#.#.###.#######.#.#",
+        "#.#.#.#.........#.#G#",
+        "#.#.#.#########.#.###",
+        "#...#.......#...#...#",
+        "#.#########.#.#####.#",
+        "#...........#.......#",
+        "#####################",
+    ],
+]
+
+# World 4 breaks the one-size-fits-all solution. In every maze above, the exit
+# touches a wall that connects — however indirectly — to the wall beside your
+# start, which is exactly why the left-hand rule walks the whole thing. Here the
+# exit is locked in a little wall box standing free in an open courtyard, with
+# nothing joining it to the rest of the maze. A hand-on-the-wall bot can circle
+# forever and never once touch that box. There is no shortcut left: read the
+# map, work out the route to the doorway, and drive yourself there.
+WORLD4_MAZES = [
+    # 1 — the vault. Your old wall-following lines still run; watch them loop
+    #     past the box without ever going in. Now steer there on purpose.
+    [
+        "#############",
+        "#S#...#.....#",
+        "#.#.#.#.###.#",
+        "#...#.#.#...#",
+        "#####.#.#.###",
+        "#...#...#.#.#",
+        "#.#.#####.#.#",
+        "#.#.........#",
+        "#.###..###..#",
+        "#.#.....G#..#",
+        "#.#.##.###.##",
+        "#.#.........#",
+        "#############",
+    ],
+    # 2 — find the doorway first, then plan backwards from it.
+    [
+        "###############",
+        "#S....#.......#",
+        "#####.#.#####.#",
+        "#.#...#...#.#.#",
+        "#.#.#####.#.#.#",
+        "#.#.#...#...#.#",
+        "#.#.#.#.#.....#",
+        "#.#...#.#.###.#",
+        "#.#####.#..G#.#",
+        "#.#...#.#.###.#",
+        "#.#.#.#.#.....#",
+        "#...#.....#...#",
+        "###############",
+    ],
+    # 3 — the box is tucked low. Count your way down before you count across.
+    [
+        "###############",
+        "#S....#.#.....#",
+        "#####.#.#.###.#",
+        "#.....#...#...#",
+        "#.#######.#.#.#",
+        "#.#.....#.#.#.#",
+        "#.###.#.#.#.#.#",
+        "#.....#.#.#.#.#",
+        "#######.#.#.#.#",
+        "#...#.......#.#",
+        "###.#.#.###.#.#",
+        "#...#...#G#.#.#",
+        "#.#####.#.#.#.#",
+        "#.............#",
+        "###############",
+    ],
+    # 4 — sixty-five steps of maze, and the doorway faces away from you.
+    [
+        "#################",
+        "#S....#.#.....#.#",
+        "#####.#.#.#.....#",
+        "#.#...#...#.###.#",
+        "#.#.###.###.#G..#",
+        "#.#...#...#.###.#",
+        "#.###.###.#.....#",
+        "#...#.#...#.....#",
+        "#.#.#.#.###.#####",
+        "#.#...#.#.#.....#",
+        "#.#####.#.#####.#",
+        "#...#.....#...#.#",
+        "###.#######.#.#.#",
+        "#...........#...#",
+        "#################",
+    ],
+    # 5 — a wide courtyard. Open floor is where wall-following gives up
+    #     completely: with no wall to hold, it just spins on the spot.
+    [
+        "###################",
+        "#S#.#...........#.#",
+        "#.#.#.#.......#.#.#",
+        "#.#.#.#.......#.#.#",
+        "#.#.#.#..###..#.#.#",
+        "#.#...#..#G.....#.#",
+        "#.###.#..###..###.#",
+        "#...#.#...........#",
+        "###.#.#.......###.#",
+        "#.#.#...#.......#.#",
+        "#.#.#####.#####.#.#",
+        "#.#.....#.....#.#.#",
+        "#.#####.#######.#.#",
+        "#...............#.#",
+        "###################",
+    ],
+    # 6 — the courtyard is down in the corner this time.
+    [
+        "###################",
+        "#S..#.....#.......#",
+        "###.###.###.#####.#",
+        "#.#...#.....#.....#",
+        "#.###.#####.#.#####",
+        "#...#.....#.#.....#",
+        "#.#######.#####.#.#",
+        "#.......#.....#.#.#",
+        "#.......#####.#.#.#",
+        "#...........#.#.#.#",
+        "#..###..#####.#.#.#",
+        "#..#G...#.....#.#.#",
+        "#..###..#.#####.#.#",
+        "#.......#.#.....#.#",
+        "#.......#.#######.#",
+        "#...#.............#",
+        "###################",
+    ],
+    # 7 — twenty-one columns. The box is early, but the way in is not.
+    [
+        "#####################",
+        "#S..#...............#",
+        "###.#.###.......###.#",
+        "#...#.#....###......#",
+        "#.###.#.#..#G...###.#",
+        "#.#.....#..###....#.#",
+        "#.#######.......#.#.#",
+        "#.....#...........#.#",
+        "#####.#.###.#######.#",
+        "#.....#.#...#.......#",
+        "#.#####.#.#.#.#######",
+        "#.#.....#.#.#.......#",
+        "#.#.#####.#.#######.#",
+        "#.#.#...#.#.#.......#",
+        "#.#.#.#.#.#.#.#######",
+        "#...#.#...#.........#",
+        "#####################",
+    ],
+    # 8 — dead centre, and the only door is on the far side of the box.
+    [
+        "#####################",
+        "#S....#.....#.......#",
+        "#####.#.###.#.#####.#",
+        "#.#...#...........#.#",
+        "#.#.#####.......###.#",
+        "#...#...#..###..#...#",
+        "#.###.#.#..#G#..#.###",
+        "#.#...#....#.#..#...#",
+        "#.#.#####.......#.#.#",
+        "#.#.#...........#.#.#",
+        "#.#.###.#######.#.#.#",
+        "#.#...#.........#.#.#",
+        "#.###.#.###########.#",
+        "#.#...#.....#.......#",
+        "#.#.#######.#.#####.#",
+        "#...#.........#.....#",
+        "#####################",
+    ],
+    # 9 — sixty-one steps. Break it up: get to the courtyard, then to the door.
+    [
+        "#####################",
+        "#S#...#.....#.......#",
+        "#.#.#.#.#.#.#.###.###",
+        "#...#.#.#.#.#...#...#",
+        "#####.###.#.#######.#",
+        "#...#.....#.........#",
+        "#.#.###############.#",
+        "#.#.....#.........#.#",
+        "#.#######.###.###.#.#",
+        "#.#...........#...#.#",
+        "#.#.##.......##.###.#",
+        "#...#...#.#...#.#.#.#",
+        "#.###...#G#...#.#.#.#",
+        "#.#.....###...#...#.#",
+        "#.###.........#####.#",
+        "#...................#",
+        "#####################",
+    ],
+    # 10 — the Sealed Vault. Longest route in the game to a door two cells wide
+    #      of nothing. Nobody pastes their way through this one.
+    [
+        "#####################",
+        "#S#.........#...#...#",
+        "#.###.#####.#.#.#.#.#",
+        "#...#.....#...#...#.#",
+        "###.###############.#",
+        "#.#.............#...#",
+        "#.#############.#.###",
+        "#.............#.#...#",
+        "#.#.......###.#.###.#",
+        "#.#..#.#......#.#...#",
+        "#.#..#G#..###.#.#.#.#",
+        "#....###....#.#...#.#",
+        "#.#.......#.#.#####.#",
+        "#...........#.#...#.#",
+        "#####.#.#######.#.#.#",
+        "#.....#.........#...#",
+        "#####################",
+    ],
+]
+
+# World 5 turns the lights off. The map arrives blank: you only ever see the
+# squares your character has actually stood next to, and what you uncover stays
+# uncovered between runs. Nobody can hand this maze to someone else — or to a
+# chatbot — because nobody can see it until they walk it. The loop the world
+# teaches is EXPLORE, LOOK, then SOLVE: run something that gropes around in the
+# dark, study the strip of map it lit up, and write the real route from that.
+#
+# The three stages of the world:
+#   1-3  ordinary labyrinths. Your wall-following lines never needed eyes, so
+#        they still walk these blind — a satisfying first win in the dark.
+#   4-6  the corridors join back on themselves now. A hand on the wall goes
+#        round and round forever, so it maps the maze but never finishes it.
+#        Send it in to draw you a map, then drive the route yourself.
+#   7-10 the vault returns, unlit. Wall-following can't reach it and you can't
+#        see it — the only way through is to explore, read what you uncovered,
+#        and plan the way in.
+WORLD5_MAZES = [
+    # 1 — first steps in the dark. A plain labyrinth: the wall-following lines
+    #     from World 2 walk it without seeing a thing.
+    [
+        "#############",
+        "#S#...#.....#",
+        "#.#.#.#.#.###",
+        "#.#G#...#...#",
+        "#.#####.###.#",
+        "#.....#...#.#",
+        "#####.#####.#",
+        "#...........#",
+        "#############",
+    ],
+    # 2 — bigger, still fair. Notice how much of the map one run lights up.
+    [
+        "#############",
+        "#S....#.....#",
+        "#####.#####.#",
+        "#...#.......#",
+        "###.#######.#",
+        "#.......#...#",
+        "#.#####.#.###",
+        "#.#...#G#...#",
+        "#.#.#.#####.#",
+        "#...#.......#",
+        "#############",
+    ],
+    # 3 — sixty-two steps of pitch black. Last one your old lines beat on their
+    #     own; from here they only draw the map.
+    [
+        "###############",
+        "#S#...#...#G..#",
+        "#.#.#.#.#.###.#",
+        "#...#.#.#...#.#",
+        "#####.#.###.#.#",
+        "#.....#.#...#.#",
+        "#.#####.#.###.#",
+        "#...#...#.#...#",
+        "###.#.###.#.#.#",
+        "#.....#.....#.#",
+        "###############",
+    ],
+    # 4 — the corridors loop. Run your wall-follower and watch it circle until
+    #     it runs out of steps — but look what it uncovered on the way.
+    [
+        "###############",
+        "#S..#.........#",
+        "###.#.###.##..#",
+        "#.#.#.#...#...#",
+        "#.#.#.#.#.#.###",
+        "#...#.#.#.....#",
+        "#.###.#.#####.#",
+        "#...#.#.#G..#.#",
+        "###.#.#.#.#.#.#",
+        "#...#.#.#.....#",
+        "#.###.#.#.#####",
+        "#.....#.......#",
+        "###############",
+    ],
+    # 5 — more loops. Two runs light up most of it: one to explore, one to win.
+    [
+        "#################",
+        "#S..#.....#.....#",
+        "###.#.#.#.#.#...#",
+        "#.#.#.#.#.#.#.#.#",
+        "#.#.#.#.#.#.#.###",
+        "#.#.#..G#...#...#",
+        "#...#.###.###.#.#",
+        "#.#.#.......#...#",
+        "#.#.###.#####.#.#",
+        "#.#...#.#...#.#.#",
+        "#.##..###.#.#.#.#",
+        "#.........#...#.#",
+        "#################",
+    ],
+    # 6 — wide open in places, which is worse: a hand on the wall wanders the
+    #     rooms and comes back where it started.
+    [
+        "#################",
+        "#S....#.........#",
+        "#####.###.#.#.#.#",
+        "#.....#...#..G#.#",
+        "#.#####.#.#####.#",
+        "#.....#.#.......#",
+        "#.#.#.#.#.#######",
+        "#.....#.........#",
+        "#.###########.#.#",
+        "#...#...........#",
+        "###.###.###.#.#.#",
+        "#.#...#...#...#.#",
+        "#.###.##..#####.#",
+        "#.........#.....#",
+        "#################",
+    ],
+    # 7 — the vault, unlit. It's boxed off in a courtyard you haven't found yet.
+    #     Explore first; there is nothing to solve until you've seen it.
+    [
+        "###################",
+        "#S......#.......#.#",
+        "#######.###.###.#.#",
+        "#.....#...#...#.#.#",
+        "#.#.#####.#.#...#.#",
+        "#.#.#.....#.#.#.#.#",
+        "#.#...#######.#.#.#",
+        "#.#...#...........#",
+        "#.#####.###.......#",
+        "#.#...#.#....###..#",
+        "#.#.#.#.###..#G...#",
+        "#...#.#.#....###..#",
+        "#####.#.#.#.......#",
+        "#.......#.........#",
+        "###################",
+    ],
+    # 8 — find the courtyard, then find the one doorway in the box.
+    [
+        "###################",
+        "#S....#...#.......#",
+        "#####.###.#.#.###.#",
+        "#.....#...#.#.#...#",
+        "#.#.#.#.###...###.#",
+        "#.#...#.....#...#.#",
+        "#.###.#########.#.#",
+        "#...#...#.......#.#",
+        "#.#.###.#.#######.#",
+        "#.#.#...#.#.......#",
+        "#.###.###.#.......#",
+        "#.#...#...#..###..#",
+        "#....##.###..#G...#",
+        "#.#...#.#.#..###..#",
+        "#.###.#.#.#.......#",
+        "#.......#.........#",
+        "###################",
+    ],
+    # 9 — eighty-eight steps, none of them visible when you start.
+    [
+        "#####################",
+        "#S#.......#.........#",
+        "#.#.#####.#######.#.#",
+        "#.#...#...#.....#.#.#",
+        "#.###.#.###.###.#.#.#",
+        "#.#...#.....#.#...#.#",
+        "#.#.#########.###.#.#",
+        "#.#.......#.....#...#",
+        "#.###.#.#.#.#..##.#.#",
+        "#...#...#.#.#.......#",
+        "###.#####.#.#.......#",
+        "#...#...#.#.#..###..#",
+        "#.###.#.#.#.#...G#..#",
+        "#.....#.#.#.#..###..#",
+        "#####.#.#.#.#.......#",
+        "#.........#.........#",
+        "#####################",
+    ],
+    # 10 — the Black Vault. Ninety-six steps in the dark to a door you have to
+    #      discover before you can aim at it. The last maze in the game.
+    [
+        "#####################",
+        "#S#...#.........#...#",
+        "#.#.#.###.#####.#.#.#",
+        "#.#.#.....#...#.....#",
+        "#.#.#######..######.#",
+        "#...#.....#...#...#.#",
+        "#####.#.#.#.#.#.#.#.#",
+        "#...#.#.....#...#...#",
+        "#.###.###############",
+        "#.....#...#.........#",
+        "#.#####.#.#.#.......#",
+        "#.....#.#...#..#.#..#",
+        "#####.###.#.#..#G#..#",
+        "#...#...#......###..#",
+        "#.###.#.####........#",
+        "#...................#",
+        "#####################",
+    ],
+]
+
+# The worlds a student can play. Each is an independent ladder of levels with
+# its own progress, unlocks and per-level leaderboards.
+QUEST_LEVELS = [
+    {
+        "title": "Pattern Foundry",
+        "chapter": "Mission 01",
+        "brief": "The assembly line repeats one metal tooth three times. Teach the bot that shape once, then call it in a loop.",
+        "objective": "Reach the uplink using a helper function and a for loop.",
+        "concepts": ["def", "for", "decomposition"],
+        "starter": "def tooth():\n    # Program one repeating section.\n    pass\n\nfor repeat in range(3):\n    tooth()",
+    },
+    {
+        "title": "Search Protocol",
+        "chapter": "Mission 02",
+        "brief": "A long rescue grid has forks and dead ends. Move counts will not survive it; the bot needs a rule it can repeat at every junction.",
+        "objective": "Write a sensor-driven algorithm that navigates the whole labyrinth.",
+        "concepts": ["while", "if", "sensors"],
+        "starter": "while not at_goal():\n    # Sense the walls, decide, then move.\n    pass",
+    },
+    {
+        "title": "The Sealed Archive",
+        "chapter": "Mission 03",
+        "brief": "The uplink sits inside a freestanding vault. A simple wall follower circles forever, so split the job into phases and plan the doorway approach.",
+        "objective": "Combine a reusable exploration function with a precise vault entry plan.",
+        "concepts": ["functions", "state", "debugging"],
+        "starter": "def reach_courtyard():\n    # Write a reusable exploration phase.\n    pass\n\ndef enter_vault():\n    # Add the precise final approach.\n    pass\n\nreach_courtyard()\nenter_vault()",
+    },
+    {
+        "title": "Blackout Protocol",
+        "chapter": "Mission 04",
+        "brief": "No map. One lamp. The vault is somewhere in the dark, and every run keeps the squares you discover. Explore, inspect the evidence, then revise.",
+        "objective": "Use code to explore an unknown system, then refine it into a complete solution.",
+        "concepts": ["experimentation", "algorithms", "refinement"],
+        "starter": "# Start with an exploration algorithm.\n# Use print() to leave yourself debugging notes.\nwhile not at_goal():\n    pass",
+    },
+]
+
+QUEST_MAZES = [
+    WORLD1_MAZES[9],   # a repeating battlement pattern
+    WORLD2_MAZES[13],  # the deep labyrinth finale
+    WORLD4_MAZES[0],   # a goal inside a freestanding vault
+    WORLD5_MAZES[9],   # the same idea, large and dark
+]
+
+WORLDS = [
+    {"name": "World 1 — Maze Basics",
+     "blurb": "Loops, functions and your first sensors.",
+     "mazes": WORLD1_MAZES},
+    {"name": "World 2 — The Deep Labyrinth",
+     "blurb": "Bigger mazes, real dead ends, wall-following.",
+     "mazes": WORLD2_MAZES},
+    {"name": "World 3 — Lost in the Dark",
+     "blurb": "Hard: no patterns to count, only true labyrinths.",
+     "mazes": WORLD3_MAZES},
+    {"name": "World 4 — The Sealed Vault",
+     "blurb": "Hardest: the exit is walled off. Wall-following never gets in.",
+     "mazes": WORLD4_MAZES},
+    {"name": "World 5 — Blackout",
+     "blurb": "The map starts blank. Explore it with code before you can solve it.",
+     "mazes": WORLD5_MAZES,
+     "fog": True},
+    {"name": "Python Quest — Mission Control",
+     "blurb": "Four substantial missions: build, generalize, debug, and explore.",
+     "mazes": QUEST_MAZES,
+     "levels": QUEST_LEVELS,
+     "fog_levels": {3}},
+]
+
+QUEST_WORLD = len(WORLDS) - 1
+
+# ---------------------------------------------------------------------------
+# Bot Rally — one program, five different tracks, three leagues.
+#
+# This is deliberately separate from the normal world ladder. A route made of
+# hard-coded move counts may win one trial, but only a real navigation
+# algorithm can clear a whole league. Each league is built to defeat the
+# previous league's easy answer (checked by test_server.py):
+#   Rookie  — any sensor loop clears it; the plain wall follower does.
+#   Pro     — the plain wall follower still clears it but earns no par stars;
+#             mirrored tracks punish always using the same hand.
+#   Expert  — the goal sits inside a vault: every wall follower circles
+#             forever, and simply walking toward the goal gets stuck.
+# Clearing every track in a league (Gold) unlocks the next one.
+# ---------------------------------------------------------------------------
+def mirror(maze):
+    return [row[::-1] for row in maze]
+
+
+def rally_track(name, maze, mirrored=False):
+    # A mirrored track also starts facing West, so it's an exact mirror image:
+    # whatever the right hand does on the original, the left does here.
+    return {"name": name, "maze": mirror(maze) if mirrored else maze,
+            "dir": 3 if mirrored else 1}
+
+
+RALLY_LEAGUES = [
+    {"key": "rookie", "name": "Rookie League",
+     "blurb": "Five short tracks. Any loop that uses sensors can clear them.",
+     "tracks": [
+         rally_track("Corner Dash", WORLD1_MAZES[1]),
+         rally_track("Switchback", WORLD1_MAZES[2]),
+         rally_track("Spiral Run", WORLD1_MAZES[6]),
+         rally_track("Branch Lab", WORLD1_MAZES[7]),
+         rally_track("Final Circuit", WORLD1_MAZES[11]),
+     ],
+     "hints": [
+         "Numbers only work on one route you already know. Sensors let your "
+         "bot decide for itself. Try an if with wall_ahead().",
+         "Your bot should repeat its decision until it arrives. A useful "
+         "outer shape is:  while not at_goal():",
+         "Pretend the bot keeps its right hand on the wall: check right first, "
+         "turn away from walls, then move.\n\nwhile not at_goal():\n"
+         "    if not wall_right():\n        turn_right()\n    ...",
+     ]},
+    {"key": "pro", "name": "Pro League",
+     "blurb": "Bigger labyrinths, two of them mirrored. Clearing them is "
+              "the easy part — beat par for the stars.",
+     "tracks": [
+         rally_track("Twin Forks", WORLD2_MAZES[9]),
+         rally_track("Looking Glass", WORLD2_MAZES[11], mirrored=True),
+         rally_track("Long Hall", WORLD2_MAZES[13]),
+         rally_track("Long Hall, Mirrored", WORLD2_MAZES[13], mirrored=True),
+         rally_track("Back Alley", WORLD3_MAZES[1], mirrored=True),
+     ],
+     "hints": [
+         "Turning just to look at a wall costs an action. wall_right() and "
+         "wall_left() check without turning.",
+         "The right hand is perfect on some tracks and terrible on their "
+         "mirror image. Could the bot choose which hand to use before it "
+         "starts, using a goal sensor?",
+         "Decide once, then follow that hand:\n\nuse_right = goal_right()\n"
+         "while not at_goal():\n    if use_right:\n        ...\n    else:\n"
+         "        ...",
+     ]},
+    {"key": "expert", "name": "Expert League",
+     "blurb": "Each goal is locked in a vault in the middle. Wall followers "
+              "circle it forever. You'll need a new idea.",
+     "tracks": [
+         rally_track("Vault Door", WORLD4_MAZES[5]),
+         rally_track("Mirror Vault", WORLD4_MAZES[6], mirrored=True),
+         rally_track("Courtyard", WORLD4_MAZES[8]),
+         rally_track("Night Garden", WORLD5_MAZES[6]),
+         rally_track("Deep Mirror", WORLD5_MAZES[7], mirrored=True),
+     ],
+     "hints": [
+         "A wall follower never leaves the outer wall, so it never reaches a "
+         "vault in the middle. What else could the bot pay attention to?",
+         "Robots use the Bug algorithm: head toward the goal "
+         "(goal_ahead/left/right). When blocked, follow the wall until "
+         "distance_to_goal() is smaller than when you got stuck, then head "
+         "for the goal again.",
+         "while not at_goal():\n    if goal_ahead() and not wall_ahead():\n"
+         "        move()\n    # ...turn toward the goal if you can...\n"
+         "    else:\n        stuck_at = distance_to_goal()\n"
+         "        # follow the wall while distance_to_goal() >= stuck_at",
+     ]},
+]
+# Par is the fewest moves + turns that reach the goal, plus this much slack.
+PAR_SLACK = 1.25
+
+# Everyone joining today starts here (0 = World 1, 1 = World 2, …).
+DEFAULT_WORLD = QUEST_WORLD
+
+
+def mazes_of(p):
+    """The maze list of the world this player is currently in."""
+    # Rally runners use a tiny throw-away player with one injected maze. That
+    # lets the battle-tested safe interpreter run tournament code without
+    # changing the student's campaign position or scores.
+    if "_arena_maze" in p:
+        return [p["_arena_maze"]]
+    return WORLDS[p["world"]]["mazes"]
+
+
+def bkey(wi, mi):
+    """Key used in a player's `best` dict — progress is tracked per world."""
+    return f"{wi}:{mi}"
+
+
 # Direction vectors, indexed 0=North,1=East,2=South,3=West.
 DIRS = [(-1, 0), (0, 1), (1, 0), (0, -1)]
 DIR_ARROWS = ["▲", "▶", "▼", "◀"]
@@ -281,7 +1291,19 @@ COLORS = [
     "#9a6324", "#800000", "#808000", "#000075", "#e6beff",
 ]
 
-MAX_STEPS = 500  # cap per Run so a runaway loop can't freeze the game
+# Cap per Run so a runaway loop can't freeze the game. Every move AND every
+# loop iteration counts, so wall-following the biggest World 2 labyrinth burns
+# roughly 700 — keep plenty of headroom above that.
+MAX_STEPS = 2000
+MAX_INT = 10 ** 9      # biggest number math may produce
+
+# Fog of war (World 5). The character carries a lamp: standing anywhere lights
+# the eight squares touching it, and shines down the corridor it faces until
+# something blocks the beam. What's been lit stays lit — a run that crashes into
+# a wall or spins until the step limit still leaves its map behind, so groping
+# around in the dark is never wasted.
+FOG_BEAM = 6           # how far the lamp reaches along the way you're facing
+FOG_HIDDEN = "?"       # what an unlit square looks like to the browser
 
 ADMIN_KEY = str(random.randint(1000, 9999))
 
@@ -320,6 +1342,88 @@ def find_start(maze):
     return 1, 1
 
 
+def min_actions(maze, start_dir):
+    """Fewest moves + turns from the start to the goal (a turn_around() is one
+    action, like in the replay)."""
+    start = (find_start(maze), start_dir)
+    dist = {start: 0}
+    queue = [start]
+    for (r, c), d in queue:
+        if maze[r][c] == "G":
+            return dist[((r, c), d)]
+        dr, dc = DIRS[d]
+        steps = [((r, c), (d + t) % 4) for t in (1, 2, 3)]
+        if maze[r + dr][c + dc] != "#":
+            steps.append(((r + dr, c + dc), d))
+        for nxt in steps:
+            if nxt not in dist:
+                dist[nxt] = dist[((r, c), d)] + 1
+                queue.append(nxt)
+    return None
+
+
+for _league in RALLY_LEAGUES:
+    for _track in _league["tracks"]:
+        _track["par"] = math.ceil(min_actions(_track["maze"], _track["dir"])
+                                  * PAR_SLACK)
+
+
+def is_fogged(wi, mi=None):
+    world = WORLDS[wi]
+    return bool(world.get("fog") or
+                (mi is not None and mi in world.get("fog_levels", set())))
+
+
+def seen_set(p, wi, mi):
+    """The squares this player has lit in one maze, as {(row, col)}. On disk
+    they're "r,c" strings, because the player dict is saved to scores.json."""
+    cells = p.setdefault("seen", {}).get(bkey(wi, mi), [])
+    out = set()
+    for cell in cells:
+        r, _, c = str(cell).partition(",")
+        if r.isdigit() and c.isdigit():
+            out.add((int(r), int(c)))
+    return out
+
+
+def light_up(p, maze, seen):
+    """Shine the lamp from where p is standing. Adds to `seen` and returns the
+    squares newly lit, as (row, col, character) for the browser to paint in."""
+    fresh = []
+
+    def light(r, c):
+        if 0 <= r < len(maze) and 0 <= c < len(maze[0]) and (r, c) not in seen:
+            seen.add((r, c))
+            fresh.append([r, c, maze[r][c]])
+
+    for dr in (-1, 0, 1):           # everything you can touch
+        for dc in (-1, 0, 1):
+            light(p["row"] + dr, p["col"] + dc)
+    dr, dc = DIRS[p["dir"]]         # plus the beam, until a wall stops it
+    r, c = p["row"], p["col"]
+    for _ in range(FOG_BEAM):
+        r, c = r + dr, c + dc
+        if not (0 <= r < len(maze) and 0 <= c < len(maze[0])):
+            break
+        light(r, c)
+        if maze[r][c] == "#":
+            break
+    return fresh
+
+
+def save_seen(p, wi, mi, seen):
+    p.setdefault("seen", {})[bkey(wi, mi)] = [f"{r},{c}" for r, c in seen]
+
+
+def fog_maze(maze, seen):
+    """The maze as this player has actually seen it — everything else blank.
+    The goal always shows through the dark, so groping around has a direction
+    to grope in; only the way there is hidden."""
+    return ["".join(ch if ch == "G" or (r, c) in seen else FOG_HIDDEN
+                    for c, ch in enumerate(row))
+            for r, row in enumerate(maze)]
+
+
 # ---------------------------------------------------------------------------
 # Shared game state (guarded by a lock because requests run on threads).
 # ---------------------------------------------------------------------------
@@ -351,9 +1455,27 @@ def load_state():
     except Exception:
         return
     for pid, p in data.get("players", {}).items():
-        # JSON turns the `best` dict's integer maze-keys into strings; undo that.
-        p["best"] = {int(k): v for k, v in p.get("best", {}).items()}
-        p.setdefault("unlocked", 0)  # older saves predate teacher unlocks
+        # Saves from before worlds existed keyed `best` by maze number alone
+        # and had a single `unlocked` number; fold those into World 1.
+        best = p.get("best", {})
+        p["best"] = {(k if ":" in str(k) else bkey(0, int(k))): v
+                     for k, v in best.items()}
+        p.setdefault("world", 0)
+        unlocked = p.get("unlocked", 0)
+        p["unlocked"] = unlocked if isinstance(unlocked, dict) else {"0": unlocked}
+        p.setdefault("seen", {})   # fogged worlds arrived after some saves did
+        # Bot Rally had a single track set before leagues; that set is now the
+        # Rookie League, so carry its best run and code over.
+        if "arena_best" in p or "arena_code" in p:
+            p.setdefault("rally", {}).setdefault("rookie", {
+                "best": p.pop("arena_best", None),
+                "code": p.pop("arena_code", ""), "hints": 0})
+        # Character scores arrived after some saves did. Levels solved before
+        # then get a flat placeholder bigger than any real solution, so those
+        # solves still count — and the first re-run of the level always
+        # replaces it with the student's real character count.
+        chars = p.get("chars", {})
+        p["chars"] = {k: chars.get(k, LEGACY_CHARS) for k in p["best"]}
         players[pid] = p
     next_player_num[0] = data.get("next", len(players))
     # Reuse the same admin key across restarts so an open admin page keeps
@@ -365,17 +1487,20 @@ def new_player(name):
     pid = f"p{next_player_num[0]}"
     next_player_num[0] += 1
     color = COLORS[len(players) % len(COLORS)]
-    sr, sc = find_start(MAZES[0])
+    sr, sc = find_start(WORLDS[DEFAULT_WORLD]["mazes"][0])
     players[pid] = {
         "id": pid,
         "name": name[:20] or f"Player{pid}",
         "color": color,
+        "world": DEFAULT_WORLD,
         "maze": 0,
         "row": sr,
         "col": sc,
         "dir": 1,          # facing East
-        "best": {},        # maze index -> fewest lines that solved it
-        "unlocked": 0,     # highest maze index the teacher has unlocked by hand
+        "best": {},        # "world:maze" -> lines of their shortest solution
+        "chars": {},       # "world:maze" -> fewest characters that solved it
+        "unlocked": {},    # "world" -> highest maze the teacher unlocked by hand
+        "seen": {},        # "world:maze" -> squares lit so far in a fogged maze
         "code": "",        # what they're currently typing (for the big screen)
     }
     return players[pid]
@@ -401,13 +1526,23 @@ def total_lines(p):
     return sum(p["best"].values())
 
 
+def total_chars(p):
+    return sum(p["chars"].values())
+
+
 def cleared(p):
-    return p["maze"] in p["best"]
+    return bkey(p["world"], p["maze"]) in p["best"]
+
+
+def solved_in_world(p, wi):
+    prefix = f"{wi}:"
+    return sum(1 for k in p["best"] if str(k).startswith(prefix))
 
 
 def reset_to_start(p):
-    sr, sc = find_start(MAZES[p["maze"]])
-    p["row"], p["col"], p["dir"] = sr, sc, 1
+    sr, sc = find_start(mazes_of(p)[p["maze"]])
+    # Mirrored rally tracks start facing West so they're a true mirror image.
+    p["row"], p["col"], p["dir"] = sr, sc, p.get("_arena_dir", 1)
 
 
 # ---------------------------------------------------------------------------
@@ -451,6 +1586,20 @@ def count_lines(code, lang):
                     and not set(l.strip()) <= set("{};")])
     return len([l for l in code.splitlines()
                 if l.strip() and not l.strip().startswith("#")])
+
+
+def count_chars(code, lang):
+    """Score a program by size: non-whitespace characters, comments free.
+    Lines mean little in C++ (a whole solution fits on one), so this is what
+    the leaderboard actually ranks on. Whitespace is free in both languages so
+    Python indentation and readable spacing never cost anything."""
+    if lang == "cpp":
+        code = CPP_BLOCK_COMMENT.sub("", code)
+        code = "\n".join(l.split("//")[0] for l in code.splitlines())
+    else:
+        code = "\n".join(l for l in code.splitlines()
+                         if not l.strip().startswith("#"))
+    return len(re.sub(r"\s", "", code))
 
 
 def cpp_tokenize(code):
@@ -786,6 +1935,7 @@ class CppParser:
 def run_code(p, code, lang="python"):
     log = []
     n_lines = count_lines(code, lang)
+    n_chars = count_chars(code, lang)
 
     if lang == "cpp":
         try:
@@ -807,15 +1957,27 @@ def run_code(p, code, lang="python"):
     reset_to_start(p)
     if n_lines:
         log.append("🔄 Back to the start — running your whole program…")
-    maze = MAZES[p["maze"]]
+    maze = mazes_of(p)[p["maze"]]
     steps = [0]
+
+    # In a fogged world the lamp lights squares as the character walks, and each
+    # frame carries the ones it just lit so the browser can uncover them live.
+    fog = is_fogged(p["world"], p["maze"])
+    seen = seen_set(p, p["world"], p["maze"]) if fog else set()
+    lit_before = len(seen)
+
+    def lamp():
+        return light_up(p, maze, seen) if fog else []
 
     # Snapshot of position/facing after every move/turn, so the frontend can
     # animate the character walking the path instead of jumping to the end.
-    trace = [{"row": p["row"], "col": p["col"], "dir": p["dir"]}]
+    trace = [{"row": p["row"], "col": p["col"], "dir": p["dir"], "lit": lamp()}]
+    visited = {(p["row"], p["col"])}   # squares stood on this run
 
     def snapshot():
-        trace.append({"row": p["row"], "col": p["col"], "dir": p["dir"]})
+        trace.append({"row": p["row"], "col": p["col"], "dir": p["dir"],
+                      "lit": lamp()})
+        visited.add((p["row"], p["col"]))
 
     class Solved(Exception):
         pass
@@ -829,20 +1991,36 @@ def run_code(p, code, lang="python"):
             raise StepLimit()
 
     def solve():
-        idx = p["maze"]
-        prev = p["best"].get(idx)
-        p["best"][idx] = n_lines if prev is None else min(prev, n_lines)
+        idx = bkey(p["world"], p["maze"])
+        prev = p["chars"].get(idx)
+        if prev is None or n_chars < prev:
+            p["chars"][idx] = n_chars
+            p["best"][idx] = n_lines   # the lines that came with the record run
+        if "_arena_maze" in p:
+            # The rally page shows actions and par itself.
+            log.append("🎉 Reached the goal!")
+            return
+        quest = p["world"] == QUEST_WORLD
         if prev is None:
-            log.append(f"🎉 You reached the exit in {n_lines} line(s)!")
-            log.append("   Press ▶ Next Maze to move on — or shorten your "
+            log.append(f"🎉 {'Mission complete' if quest else 'You reached the exit'} "
+                       f"in {n_chars} characters ({n_lines} line(s))!")
+            log.append("   Review what worked, then open the next mission."
+                       if quest else
+                       "   Press ▶ Next Maze to move on — or shorten your "
                        "code first to climb the leaderboard.")
-        elif n_lines < prev:
-            log.append(f"✅ New best: {n_lines} line(s) (was {prev})! Nice optimizing.")
-            log.append("   Press ▶ Next Maze when you're happy with it.")
+        elif n_chars < prev:
+            log.append(f"✅ New best: {n_chars} characters (was {prev})! "
+                       "Nice optimizing.")
+            log.append("   Your mission is still complete; keep refining or move on."
+                       if quest else
+                       "   Press ▶ Next Maze when you're happy with it.")
         else:
-            log.append(f"🎉 Reached the exit in {n_lines} line(s). "
-                       f"Your best here is {p['best'][idx]}.")
-            log.append("   Press ▶ Next Maze to continue, or keep shortening.")
+            log.append(f"🎉 {'Mission complete' if quest else 'Reached the exit'} "
+                       f"in {n_chars} characters. "
+                       f"Your best here is {p['chars'][idx]}.")
+            log.append("   Open the next mission, or keep experimenting here."
+                       if quest else
+                       "   Press ▶ Next Maze to continue, or keep shortening.")
 
     def do_move(n):
         for _ in range(n):
@@ -861,7 +2039,10 @@ def run_code(p, code, lang="python"):
     def do_turn(delta, word):
         p["dir"] = (p["dir"] + delta) % 4
         snapshot()
-        log.append(f"{word} Now facing {DIR_ARROWS[p['dir']]}.")
+        # The missions and the rally replay every turn on the map, so only the
+        # classic maze library spells them out in the log.
+        if p["world"] != QUEST_WORLD and "_arena_maze" not in p:
+            log.append(f"{word} Now facing {DIR_ARROWS[p['dir']]}.")
 
     # Sensors — yes/no questions students ask inside if / while conditions.
     def wall_ahead():
@@ -873,6 +2054,37 @@ def run_code(p, code, lang="python"):
         "at_goal": lambda: maze[p["row"]][p["col"]] == "G",
         "can_move": lambda: not wall_ahead(),
     }
+
+    if "_arena_maze" in p:
+        # Bot Rally gets extra sensors so students can invent their own
+        # algorithms. The missions keep the three above.
+        goal = next((r, c) for r, row in enumerate(maze)
+                    for c, ch in enumerate(row) if ch == "G")
+
+        def wall_on(turn):
+            dr, dc = DIRS[(p["dir"] + turn) % 4]
+            return maze[p["row"] + dr][p["col"] + dc] == "#"
+
+        def goal_side(turn):
+            # Positive when the goal lies some distance that way (0 = ahead,
+            # 1 = right, -1 = left) from where the bot stands and faces.
+            dr, dc = DIRS[(p["dir"] + turn) % 4]
+            return (goal[0] - p["row"]) * dr + (goal[1] - p["col"]) * dc > 0
+
+        def visited_ahead():
+            dr, dc = DIRS[p["dir"]]
+            return (p["row"] + dr, p["col"] + dc) in visited
+
+        SENSORS.update({
+            "wall_left": lambda: wall_on(-1),
+            "wall_right": lambda: wall_on(1),
+            "goal_ahead": lambda: goal_side(0),
+            "goal_left": lambda: goal_side(-1),
+            "goal_right": lambda: goal_side(1),
+            "distance_to_goal": lambda: (abs(goal[0] - p["row"])
+                                         + abs(goal[1] - p["col"])),
+            "visited_ahead": visited_ahead,
+        })
 
     class ReturnValue(Exception):
         def __init__(self, value):
@@ -898,7 +2110,14 @@ def run_code(p, code, lang="python"):
         return v
 
     def int_binop(op, a, b, what):
-        a, b = require_int(a, what), require_int(b, what)
+        result = raw_binop(op, require_int(a, what), require_int(b, what))
+        # Huge numbers get slow to multiply, and this runs while holding the
+        # lock — so  x *= x  in a loop would freeze the whole class.
+        if abs(result) > MAX_INT:
+            raise MazeError("That number got too big. Keep math under a billion.")
+        return result
+
+    def raw_binop(op, a, b):
         if isinstance(op, ast.Add):
             return a + b
         if isinstance(op, ast.Sub):
@@ -918,18 +2137,21 @@ def run_code(p, code, lang="python"):
         raise MazeError("That kind of math isn't allowed here.")
 
     def compare(op, a, b):
-        if isinstance(op, ast.Eq):
-            return a == b
-        if isinstance(op, ast.NotEq):
-            return a != b
-        if isinstance(op, ast.Lt):
-            return a < b
-        if isinstance(op, ast.LtE):
-            return a <= b
-        if isinstance(op, ast.Gt):
-            return a > b
-        if isinstance(op, ast.GtE):
-            return a >= b
+        try:
+            if isinstance(op, ast.Eq):
+                return a == b
+            if isinstance(op, ast.NotEq):
+                return a != b
+            if isinstance(op, ast.Lt):
+                return a < b
+            if isinstance(op, ast.LtE):
+                return a <= b
+            if isinstance(op, ast.Gt):
+                return a > b
+            if isinstance(op, ast.GtE):
+                return a >= b
+        except TypeError:
+            raise MazeError("Compare like with like: numbers with numbers or text with text.")
         raise MazeError("That comparison isn't allowed. Use  <  <=  >  >=  ==  !=")
 
     def eval_expr(node, scope):
@@ -937,7 +2159,9 @@ def run_code(p, code, lang="python"):
         if isinstance(node, ast.Constant):
             if isinstance(node.value, (int, bool)):
                 return node.value
-            raise MazeError("Only whole numbers and True/False are allowed.")
+            if isinstance(node.value, str) and len(node.value) <= 200:
+                return node.value
+            raise MazeError("Use whole numbers, short text, or True/False here.")
         if isinstance(node, ast.Name):
             return scope.get(node.id)
         if isinstance(node, ast.UnaryOp):
@@ -1010,6 +2234,11 @@ def run_code(p, code, lang="python"):
             raise MazeError("Commands don't take name=value arguments here.")
         name = call.func.id
         args = [eval_expr(a, scope) for a in call.args]
+        if name == "print":
+            if len(args) > 4:
+                raise MazeError("print() can show up to four things at once.")
+            log.append("› " + " ".join(str(value) for value in args))
+            return None
         if name == "move":
             do_move(require_int(args[0], "move()") if args else 1)
             return None
@@ -1034,7 +2263,7 @@ def run_code(p, code, lang="python"):
                             "like:  for i in range(4):")
         if name in funcs:
             return call_user(funcs[name], args)
-        raise MazeError(f"I don't know the command '{name}'. Try move(), "
+        raise MazeError(f"I don't know the command '{name}'. Try move(), print(), "
                         "turn_left(), turn_right(), turn_around(), or a "
                         "function you made with "
                         + ("void." if lang == "cpp" else "def."))
@@ -1115,50 +2344,227 @@ def run_code(p, code, lang="python"):
             else:
                 raise MazeError("That line isn't something I can run here.")
 
+    def done(solved=False):
+        """Hand back the run — and in a fogged world keep whatever the lamp lit,
+        even if the program crashed or looped forever. Exploring always pays."""
+        if fog:
+            save_seen(p, p["world"], p["maze"], seen)
+            fresh = len(seen) - lit_before
+            if not solved:
+                log.append(f"🔦 Lit {fresh} new square(s) — {len(seen)} of the "
+                           f"map uncovered so far. What you found stays found."
+                           if fresh else
+                           "🔦 Nothing new in the dark that time — try steering "
+                           "somewhere you haven't been.")
+        return {"log": log, "trace": trace}
+
     try:
         exec_block(body, global_scope)
     except Solved:
-        return {"log": log, "trace": trace}
+        return done(solved=True)
     except StepLimit:
         log.append("⏹ That ran too long — did a loop repeat too many times?")
-        return {"log": log, "trace": trace}
+        return done()
     except (BreakLoop, ContinueLoop):
         log.append("⚠️ break and continue only work inside a loop.")
     except ReturnValue:
         log.append("⚠️ return only works inside a function you made with def.")
     except MazeError as e:
         log.append("⚠️ " + str(e))
+    except RecursionError:
+        log.append("⚠️ That line is too deeply nested for me to follow — "
+                   "try splitting it up.")
 
     if not log:
         log.append("Type a command and press Run!")
-    return {"log": log, "trace": trace}
+    return done()
 
 
 def scoreboard():
-    # Fewer lines is better, so we rank by mazes solved (desc) then lines (asc).
+    # Shorter code is better, so we rank by mazes solved (desc) then total
+    # characters (asc). Lines come along for display only — in C++ everything
+    # fits on one line, so they can't decide anything.
     return sorted(
         ({"name": q["name"], "color": q["color"], "solved": solved_count(q),
-          "lines": total_lines(q), "maze": q["maze"] + 1} for q in players.values()),
-        key=lambda x: (-x["solved"], x["lines"], x["name"].lower()),
+          "chars": total_chars(q), "lines": total_lines(q), "maze": q["maze"] + 1,
+          "world": q["world"] + 1} for q in players.values()),
+        key=lambda x: (-x["solved"], x["chars"], x["name"].lower()),
     )
 
 
-def unlocked_frontier(p):
-    """Highest maze index this player may enter: the first one they haven't
-    solved yet, OR further if the teacher unlocked ahead from the admin page.
-    So mazes 0..frontier are open, everything past it is locked until they beat
-    the level in front of it (or a teacher unlocks it for them)."""
+def _arena_rank(score):
+    """Lower tuple wins: clear more tracks, then earn more par stars, then use
+    fewer actions and chars."""
+    return (-score["solved"], -score.get("stars", 0), score["actions"],
+            score["chars"], score.get("lines", 0))
+
+
+def rally_league(key):
+    return next((lg for lg in RALLY_LEAGUES if lg["key"] == key), None)
+
+
+def rally_entry(p, key):
+    """This player's saved code, best run and opened hints for one league."""
+    return p.setdefault("rally", {}).setdefault(
+        key, {"best": None, "code": "", "hints": 0})
+
+
+def rally_gold(p, key):
+    best = rally_entry(p, key)["best"]
+    return bool(best) and best["solved"] == len(rally_league(key)["tracks"])
+
+
+def rally_unlocked(p, index):
+    """Rookie is always open. Each later league opens with Gold in the one
+    before it, or when the teacher unlocks it from the admin page."""
+    return (index == 0 or index <= p.get("rally_unlocked", 0)
+            or rally_gold(p, RALLY_LEAGUES[index - 1]["key"]))
+
+
+def rally_hints_used(p):
+    return sum(entry.get("hints", 0) for entry in p.get("rally", {}).values())
+
+
+def arena_scoreboard(key="rookie", limit=12):
+    total = len(rally_league(key)["tracks"])
+    rows = []
+    for p in players.values():
+        best = p.get("rally", {}).get(key, {}).get("best")
+        if best:
+            rows.append({
+                "name": p["name"], "color": p["color"],
+                "solved": best["solved"], "total": total,
+                "stars": best.get("stars", 0),
+                "actions": best["actions"], "chars": best["chars"],
+                "lines": best.get("lines", 0),
+                # Gold reached without opening a single hint in this league.
+                "no_hints": best["solved"] == total and best.get("hints", 0) == 0,
+            })
+    rows.sort(key=lambda x: (_arena_rank(x), x["name"].lower()))
+    return rows[:limit]
+
+
+def run_arena(p, code, key="rookie"):
+    """Test one Python program on every track of a league without touching
+    the campaign.
+
+    A student's best result per league is persistent. Ranking is
+    lexicographic: cleared tracks first, then par stars, then actions taken
+    on the cleared tracks, then program size. That gives beginners credit for
+    partial progress and gives experts a real efficiency contest at 5/5.
+    """
+    league = rally_league(key)
+    code = str(code)[:4000]
+    entry = rally_entry(p, key)
+    results = []
+    solved_actions = 0
+
+    for track in league["tracks"]:
+        maze = track["maze"]
+        sr, sc = find_start(maze)
+        runner = {
+            "id": "arena", "name": p["name"], "color": p["color"],
+            "world": 0, "maze": 0, "row": sr, "col": sc, "dir": track["dir"],
+            "best": {}, "chars": {}, "unlocked": {}, "seen": {},
+            "code": code, "_arena_maze": maze, "_arena_dir": track["dir"],
+        }
+        out = run_code(runner, code, "python")
+        solved = bkey(0, 0) in runner["best"]
+        actions = max(0, len(out["trace"]) - 1)
+        # The rally UI replays every track. Send each frame as a bare
+        # [row, col, dir] so a 2,000-step trace stays small on classroom Wi-Fi.
+        trace = [[f["row"], f["col"], f["dir"]] for f in out["trace"]]
+        last = (out["trace"][-1] if out["trace"] else
+                {"row": runner["row"], "col": runner["col"]})
+        if solved:
+            solved_actions += actions
+        results.append({
+            "name": track["name"], "maze": maze, "solved": solved,
+            "actions": actions, "par": track["par"],
+            "star": solved and actions <= track["par"], "trace": trace,
+            "final": {"row": last["row"], "col": last["col"]},
+            # Keep the student's print() lines (up to 40) so debugging notes
+            # aren't pushed out by moves, plus the last lines of the run.
+            "log": ([line for line in out["log"][:-12] if line.startswith("› ")][-40:]
+                    + out["log"][-12:]),
+        })
+
+    candidate = {
+        "solved": sum(1 for r in results if r["solved"]),
+        "stars": sum(1 for r in results if r["star"]),
+        "actions": solved_actions,
+        "chars": count_chars(code, "python"),
+        "lines": count_lines(code, "python"),
+        "hints": entry["hints"],
+        "code": code,
+    }
+    previous = entry["best"]
+    is_best = previous is None or _arena_rank(candidate) < _arena_rank(previous)
+    if is_best:
+        entry["best"] = candidate
+    entry["code"] = code
+
+    return {
+        "results": results, "score": candidate,
+        "best": entry["best"], "new_best": is_best,
+        "leaderboard": arena_scoreboard(key),
+        "leagues": rally_summary(p),
+    }
+
+
+def rally_summary(p):
+    """Every league as this player sees it: open or locked, and their best."""
+    return [{"key": lg["key"], "name": lg["name"], "blurb": lg["blurb"],
+             "tracks": len(lg["tracks"]), "unlocked": rally_unlocked(p, i),
+             "best": rally_entry(p, lg["key"])["best"]}
+            for i, lg in enumerate(RALLY_LEAGUES)]
+
+
+def rally_state(p, key):
+    """What the rally page needs for one league. Track names stay sealed until
+    the player's first run there; hints are only sent once opened."""
+    league = rally_league(key)
+    entry = rally_entry(p, key)
+    return {
+        "you": {"name": p["name"], "color": p["color"]},
+        "league": key,
+        "leagues": rally_summary(p),
+        "code": entry["code"],
+        "best": entry["best"],
+        "hints": league["hints"][:entry["hints"]],
+        "hint_count": len(league["hints"]),
+        "leaderboard": arena_scoreboard(key),
+        "trial_count": len(league["tracks"]),
+    }
+
+
+def open_rally_hint(p, key):
+    league = rally_league(key)
+    entry = rally_entry(p, key)
+    entry["hints"] = min(len(league["hints"]), entry["hints"] + 1)
+    return league["hints"][:entry["hints"]]
+
+
+def unlocked_frontier(p, wi=None):
+    """Highest maze index this player may enter in world `wi`: the first one
+    they haven't solved yet, OR further if the teacher unlocked ahead from the
+    admin page. So mazes 0..frontier are open, everything past it is locked
+    until they beat the level in front of it (or a teacher unlocks it)."""
+    if wi is None:
+        wi = p["world"]
     i = 0
-    while i in p["best"]:
+    while bkey(wi, i) in p["best"]:
         i += 1
-    return max(i, p.get("unlocked", 0))
+    return max(i, p.get("unlocked", {}).get(str(wi), 0))
 
 
-def level_scores(mi, limit=5):
-    """Code-golf ranking for one maze: who solved it in the fewest lines."""
-    rows = [{"name": q["name"], "color": q["color"], "lines": q["best"][mi]}
-            for q in players.values() if mi in q["best"]]
-    rows.sort(key=lambda x: (x["lines"], x["name"].lower()))
+def level_scores(wi, mi, limit=5):
+    """Code-golf ranking for one maze: who solved it in the fewest characters."""
+    k = bkey(wi, mi)
+    rows = [{"name": q["name"], "color": q["color"], "chars": q["chars"][k],
+             "lines": q["best"][k]}
+            for q in players.values() if k in q["best"]]
+    rows.sort(key=lambda x: (x["chars"], x["name"].lower()))
     return rows[:limit]
 
 
@@ -1166,39 +2572,105 @@ def overview():
     """Everything the teacher's big screen needs: every student, live."""
     people = []
     for q in players.values():
+        # In a fogged world the big screen shows each student only the squares
+        # their own lamp has found. Otherwise the projector hands the whole
+        # blackout map to everyone in the room.
+        view = None
+        if is_fogged(q["world"], q["maze"]):
+            seen = seen_set(q, q["world"], q["maze"])
+            seen.add((q["row"], q["col"]))
+            view = fog_maze(mazes_of(q)[q["maze"]], seen)
         people.append({
+            "maze_view": view,
             "id": q["id"], "name": q["name"], "color": q["color"],
+            "world": q["world"], "world_name": WORLDS[q["world"]]["name"],
             "maze": q["maze"], "maze_num": q["maze"] + 1,
+            "maze_count": len(mazes_of(q)),
             "row": q["row"], "col": q["col"], "dir": q["dir"],
-            "solved": solved_count(q), "lines": total_lines(q),
+            "solved": solved_count(q), "chars": total_chars(q),
+            "lines": total_lines(q),
             "cleared": cleared(q), "code": q["code"],
+            "rally": [{"name": lg["name"], "unlocked": lg["unlocked"],
+                       "solved": (lg["best"] or {}).get("solved", 0),
+                       "stars": (lg["best"] or {}).get("stars", 0),
+                       "tracks": lg["tracks"]}
+                      for lg in rally_summary(q)],
+            "rally_hints": rally_hints_used(q),
         })
-    people.sort(key=lambda x: x["name"].lower())
-    return {"mazes": MAZES, "maze_count": len(MAZES),
+    people.sort(key=lambda x: (x["world"], x["name"].lower()))
+    # A fogged world's mazes are sent blanked out — the screen draws those from
+    # each student's own `maze_view` instead, and nobody can read the map out of
+    # this response.
+    return {"worlds": [{"name": w["name"],
+                        "mazes": [fog_maze(m, set()) for m in w["mazes"]]
+                                 if w.get("fog") else w["mazes"]}
+                       for w in WORLDS],
+            "maze_count": len(WORLDS[DEFAULT_WORLD]["mazes"]),
             "players": people, "scoreboard": scoreboard()}
 
 
+def world_summaries(p):
+    """One line per world for the player's world switcher."""
+    return [{"index": i, "name": w["name"], "blurb": w["blurb"],
+             "count": len(w["mazes"]), "solved": solved_in_world(p, i),
+             "frontier": unlocked_frontier(p, i)}
+            for i, w in enumerate(WORLDS)]
+
+
 def state_for(p):
-    """World as seen by player p: their maze + everyone on that same maze."""
-    mi = p["maze"]
+    """The game as seen by player p: their maze + everyone on that same maze."""
+    wi, mi = p["world"], p["maze"]
+    mazes = mazes_of(p)
     here = [
         {"id": q["id"], "name": q["name"], "color": q["color"],
          "row": q["row"], "col": q["col"], "dir": q["dir"]}
-        for q in players.values() if q["maze"] == mi
+        for q in players.values() if q["world"] == wi and q["maze"] == mi
+    ]
+    # In a fogged world the browser is only ever told the part of the map this
+    # player has lit — the rest genuinely isn't in the page, so there's nothing
+    # to peek at, and no map to paste anywhere. Classmates standing in the dark
+    # are hidden too, or you could read the maze off where they're walking.
+    fog = is_fogged(wi, mi)
+    view = mazes[mi]
+    if fog:
+        seen = seen_set(p, wi, mi)
+        seen.add((p["row"], p["col"]))
+        view = fog_maze(view, seen)
+        here = [q for q in here if (q["row"], q["col"]) in seen]
+    # `best` is handed over already narrowed to this world, keyed by maze index,
+    # so the level bar can look levels up directly.
+    best_here = {i: p["best"][bkey(wi, i)]
+                 for i in range(len(mazes)) if bkey(wi, i) in p["best"]}
+    chars_here = {i: p["chars"][bkey(wi, i)]
+                  for i in range(len(mazes)) if bkey(wi, i) in p["chars"]}
+    level_infos = WORLDS[wi].get("levels") or [
+        {"title": f"Maze {i + 1}", "chapter": f"Level {i + 1}",
+         "brief": WORLDS[wi]["blurb"], "objective": "Reach the exit.",
+         "concepts": [], "starter": ""}
+        for i in range(len(mazes))
     ]
     return {
-        "maze": MAZES[mi],
+        "maze": view,
+        "fog": fog,
         "maze_index": mi,
-        "maze_count": len(MAZES),
+        "maze_count": len(mazes),
+        "world_index": wi,
+        "world_name": WORLDS[wi]["name"],
+        "quest_world_index": QUEST_WORLD,
+        "is_quest": wi == QUEST_WORLD,
+        "level_info": level_infos[mi],
+        "level_infos": level_infos,
+        "worlds": world_summaries(p),
         "players": here,
         "you": p["id"],
         "you_name": p["name"],     # so a reloaded page can restore its header
         "you_color": p["color"],
         "cleared": cleared(p),
-        "is_last": mi + 1 >= len(MAZES),
-        "best": p["best"],       # this player's fewest lines per maze solved
+        "is_last": mi + 1 >= len(mazes),
+        "best": best_here,       # lines of this player's record run per maze
+        "chars": chars_here,     # this player's fewest characters per maze
         "unlocked": unlocked_frontier(p),   # highest maze index they may enter
-        "level_board": level_scores(mi),    # top 5 shortest solutions here
+        "level_board": level_scores(wi, mi),  # top 5 shortest solutions here
         "scoreboard": scoreboard(),
     }
 
@@ -1209,34 +2681,57 @@ def state_for(p):
 def admin_action(data):
     action = data.get("action")
     maze_num = int(data.get("maze", 1) or 1)
+    wi = max(0, min(len(WORLDS) - 1, int(data.get("world", 1) or 1) - 1))
+    name = WORLDS[wi]["name"]
+    clamp = lambda n: max(0, min(len(WORLDS[wi]["mazes"]) - 1, n - 1))
+
+    def unlock(q, idx):
+        q.setdefault("unlocked", {})[str(wi)] = max(
+            q["unlocked"].get(str(wi), 0), idx)
+
     if action == "reset_scores":
         for q in players.values():
+            q["world"] = wi
             q["maze"] = 0
             q["best"] = {}
-            q["unlocked"] = 0
+            q["unlocked"] = {}
+            q["seen"] = {}      # fogged worlds go dark again too
             reset_to_start(q)
-        return "All scores reset — everyone back to maze 1."
+        return f"All scores reset — everyone starts at {name}, maze 1."
     if action == "clear":
         players.clear()
         return "All players removed."
     if action == "goto":
-        idx = max(0, min(len(MAZES) - 1, maze_num - 1))
+        idx = clamp(maze_num)
         for q in players.values():
+            q["world"] = wi
             q["maze"] = idx
             reset_to_start(q)
-        return f"Everyone sent to maze {idx + 1}."
+        return f"Everyone sent to {name}, maze {idx + 1}."
     if action == "unlock_player":
         q = players.get(data.get("pid"))
         if not q:
             return "No such player."
-        idx = max(0, min(len(MAZES) - 1, maze_num - 1))
-        q["unlocked"] = max(q.get("unlocked", 0), idx)
-        return f"Unlocked maze {idx + 1} for {q['name']}."
+        # A single student is unlocked inside whichever world they're in.
+        wi, name = q["world"], WORLDS[q["world"]]["name"]
+        idx = clamp(maze_num)
+        unlock(q, idx)
+        return f"Unlocked {name} maze {idx + 1} for {q['name']}."
+    if action == "rally_unlock":
+        q = players.get(data.get("pid"))
+        if not q:
+            return "No such player."
+        locked = [i for i in range(len(RALLY_LEAGUES)) if not rally_unlocked(q, i)]
+        if not locked:
+            return f"{q['name']} already has every Bot Rally league."
+        q["rally_unlocked"] = locked[0]
+        return (f"Unlocked Bot Rally {RALLY_LEAGUES[locked[0]]['name']} "
+                f"for {q['name']}.")
     if action == "unlock_all":
-        idx = max(0, min(len(MAZES) - 1, maze_num - 1))
+        idx = clamp(maze_num)
         for q in players.values():
-            q["unlocked"] = max(q.get("unlocked", 0), idx)
-        return f"Unlocked everyone up to maze {idx + 1}."
+            unlock(q, idx)
+        return f"Unlocked everyone up to {name} maze {idx + 1}."
     return "Unknown action."
 
 
@@ -1249,7 +2744,9 @@ def load(path):
 
 
 PAGES = {
-    "/": ("game.html", "text/html; charset=utf-8"),
+    "/": ("studio.html", "text/html; charset=utf-8"),
+    "/classic": ("game.html", "text/html; charset=utf-8"),
+    "/arena": ("arena.html", "text/html; charset=utf-8"),
     "/leaderboard": ("leaderboard.html", "text/html; charset=utf-8"),
     "/screen": ("screen.html", "text/html; charset=utf-8"),
     "/admin": ("admin.html", "text/html; charset=utf-8"),
@@ -1296,11 +2793,26 @@ class Handler(BaseHTTPRequestHandler):
             with lock:
                 self._send(200, {"scoreboard": scoreboard(),
                                  "online": len(players),
-                                 "maze_count": len(MAZES)})
+                                 "worlds": [{"name": w["name"],
+                                             "count": len(w["mazes"])}
+                                            for w in WORLDS]})
             return
         if path == "/overview":
             with lock:
                 self._send(200, overview())
+            return
+        if path == "/arena/state":
+            query = parse_qs(urlsplit(self.path).query)
+            pid = query.get("id", [""])[0]
+            key = query.get("league", ["rookie"])[0]
+            with lock:
+                p = players.get(pid)
+                if not p:
+                    self._send(200, {"you": None})
+                elif not rally_league(key):
+                    self._send(200, {"error": "No such league."})
+                else:
+                    self._send(200, rally_state(p, key))
             return
         self._send(404, {"error": "not found"})
 
@@ -1327,6 +2839,37 @@ class Handler(BaseHTTPRequestHandler):
                 save_state()  # persist any new best score and final position
                 self._send(200, out)
             return
+        if self.path == "/arena/run":
+            with lock:
+                p = players.get(data.get("id"))
+                if not p:
+                    self._send(200, {"error": "join"})
+                    return
+                key = str(data.get("league", "rookie"))
+                index = next((i for i, lg in enumerate(RALLY_LEAGUES)
+                              if lg["key"] == key), None)
+                if index is None or not rally_unlocked(p, index):
+                    self._send(200, {"error": "🔒 Get Gold in the league "
+                                     "before this one to unlock it."})
+                    return
+                out = run_arena(p, data.get("code", ""), key)
+                save_state()
+                self._send(200, out)
+            return
+        if self.path == "/arena/hint":
+            with lock:
+                p = players.get(data.get("id"))
+                key = str(data.get("league", ""))
+                if not p:
+                    self._send(200, {"error": "join"})
+                    return
+                if not rally_league(key):
+                    self._send(200, {"error": "No such league."})
+                    return
+                hints = open_rally_hint(p, key)
+                save_state()
+                self._send(200, {"hints": hints})
+            return
         if self.path == "/typing":
             with lock:
                 p = players.get(data.get("id"))
@@ -1342,11 +2885,19 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 if not cleared(p):
                     self._send(200, {"error": "Solve this maze first!"})
-                elif p["maze"] + 1 < len(MAZES):
+                elif p["maze"] + 1 < len(mazes_of(p)):
                     p["maze"] += 1
                     reset_to_start(p)
                     save_state()
                     self._send(200, {"ok": True, "maze_index": p["maze"]})
+                elif p["world"] + 1 < len(WORLDS):
+                    # Finished a world — roll straight into the next one.
+                    p["world"] += 1
+                    p["maze"] = 0
+                    reset_to_start(p)
+                    save_state()
+                    self._send(200, {"ok": True, "maze_index": 0,
+                                     "world_index": p["world"]})
                 else:
                     self._send(200, {"ok": True, "done": True})
             return
@@ -1359,16 +2910,21 @@ class Handler(BaseHTTPRequestHandler):
                     self._send(200, {"error": "join"})
                     return
                 idx = data.get("maze")
-                if not (isinstance(idx, int) and 0 <= idx < len(MAZES)):
+                wi = data.get("world", p["world"])
+                if not (isinstance(wi, int) and 0 <= wi < len(WORLDS)):
+                    self._send(200, {"error": "No such world."})
+                elif not (isinstance(idx, int)
+                          and 0 <= idx < len(WORLDS[wi]["mazes"])):
                     self._send(200, {"error": "No such maze."})
-                elif idx > unlocked_frontier(p):
+                elif idx > unlocked_frontier(p, wi):
                     self._send(200, {"error": "🔒 Solve the earlier levels "
                                      "first to unlock this one."})
                 else:
-                    p["maze"] = idx
+                    p["world"], p["maze"] = wi, idx
                     reset_to_start(p)
                     save_state()
-                    self._send(200, {"ok": True, "maze_index": idx})
+                    self._send(200, {"ok": True, "maze_index": idx,
+                                     "world_index": wi})
             return
         if self.path == "/admin":
             if str(data.get("key", "")) != ADMIN_KEY:
@@ -1399,15 +2955,20 @@ def main():
     server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     banner = "\n".join([
         "=" * 52,
-        "  MAZE CODER is running!",
+        "  PYTHON QUEST is running!",
         "=" * 52,
-        f"  Students:     http://{ip}:{PORT}",
+        f"  Python Quest: http://{ip}:{PORT}                 (students start here)",
         f"  On laptop:    http://localhost:{PORT}",
         "",
+        f"  Bot Rally:    http://{ip}:{PORT}/arena          (one program, 5 trials)",
+        f"  Maze library: http://{ip}:{PORT}/classic        (optional practice)",
         f"  Big screen:   http://localhost:{PORT}/screen        (project this)",
         f"  Leaderboard:  http://localhost:{PORT}/leaderboard",
         f"  Admin panel:  http://localhost:{PORT}/admin",
         f"  Admin key:    {ADMIN_KEY}",
+        "=" * 52,
+        f"  New students start in: {WORLDS[DEFAULT_WORLD]['name']} "
+        f"({len(WORLDS[DEFAULT_WORLD]['mazes'])} levels)",
         "=" * 52,
         "  Students must be on the same Wi-Fi. Ctrl+C to stop.",
     ])

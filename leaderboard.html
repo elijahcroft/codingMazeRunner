@@ -19,7 +19,7 @@
 </style>
 
 <h1>🏆 Maze Coder Leaderboard</h1>
-<div class="sub">Most mazes solved wins — ties broken by <b>fewest lines of code</b></div>
+<div class="sub">Most mazes solved wins — ties broken by <b>fewest characters of code</b></div>
 <table id="tbl"></table>
 <div id="empty" class="empty" style="display:none">Waiting for players to join…</div>
 
@@ -29,16 +29,19 @@ async function tick() {
   const s = await (await fetch("/scores")).json();
   const rows = s.scoreboard || [];
   document.getElementById("empty").style.display = rows.length ? "none" : "block";
+  const worlds = s.worlds || [];
   const head = rows.length
     ? `<tr><th class="rank"></th><th>Player</th><th class="num">Solved</th>
-       <th class="num">Lines</th><th class="num">Maze</th></tr>` : "";
+       <th class="num">Chars</th><th class="num">Lines</th>
+       <th class="num">Maze</th></tr>` : "";
   document.getElementById("tbl").innerHTML = head + rows.map((p, i) =>
     `<tr>
        <td class="rank">${MEDALS[i] || (i + 1)}</td>
        <td><span class="dot" style="background:${p.color}"></span>${esc(p.name)}</td>
        <td class="num">${p.solved}</td>
+       <td class="num">${p.chars}</td>
        <td class="num muted">${p.lines}</td>
-       <td class="num muted">${p.maze} / ${s.maze_count}</td>
+       <td class="num muted">W${p.world} · ${p.maze} / ${(worlds[p.world - 1] || {}).count || "?"}</td>
      </tr>`).join("");
 }
 function esc(t){return String(t).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}

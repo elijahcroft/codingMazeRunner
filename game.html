@@ -31,6 +31,20 @@
   .open { background: #262b40; }
   .goal { background: #2d5b3a; }
   .goal::after { content: "🚩"; }
+  /* Fog of war: squares the lamp hasn't reached yet. Nearly black, and the
+     server never sends what's under them, so there's nothing to peek at. */
+  .fog { background: #0b0d14; box-shadow: inset 0 0 6px #05060a; }
+  /* In the dark the goal is the one thing you can always see — a beacon to
+     steer towards, even before the lamp has found a way there. */
+  @keyframes beacon {
+    from { box-shadow: 0 0 4px 1px rgba(126, 231, 155, .45); }
+    to   { box-shadow: 0 0 14px 4px rgba(126, 231, 155, .9); }
+  }
+  .beacon { background: #35754a; animation: beacon 1.2s ease-in-out infinite alternate; }
+  /* A square lit during this run flickers on, so you can see the dark peel back
+     as the character walks instead of the map just appearing. */
+  @keyframes flare { from { background: #6f89ff; } }
+  .lit { animation: flare .45s ease-out; }
   .me { font-weight: 800; text-shadow: 0 0 4px #000; }
   .tag { position: absolute; bottom: -2px; font-size: 8px; color: #cbd0e0;
     background: rgba(0,0,0,.5); padding: 0 3px; border-radius: 3px; }
@@ -65,6 +79,12 @@
   #board div { font-size: 13px; margin: 3px 0; }
   .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
   .status { font-size: 14px; margin: 8px 0; color: #bfef45; }
+  #worlds { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 4px; }
+  .world { font-size: 14px; font-weight: 700; padding: 8px 12px; border-radius: 8px;
+    background: #23273a; color: #cbd0e0; border: 1px solid #3a3f55; cursor: pointer; }
+  .world:hover { background: #2d3350; }
+  .world.cur { background: #911eb4; color: #fff; border-color: #911eb4; }
+  .world small { display: block; font-weight: 500; font-size: 11px; opacity: .8; }
   #levels { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 12px; }
   .chip { font-size: 14px; font-weight: 700; padding: 6px 10px; min-width: 34px;
     border-radius: 8px; background: #23273a; color: #cbd0e0; border: 1px solid #3a3f55; cursor: pointer; }
@@ -87,6 +107,13 @@
   .langbtn:hover { background: #2d3350; }
   .langbtn.on { background: #4363d8; color: #fff; border-color: #4363d8; }
   .score-title { margin: 6px 0 0; font-size: 16px; }
+  .linkbtn { background: none; color: #9aa0b4; font-size: 12px; font-weight: 600;
+    padding: 2px 6px; text-decoration: underline; }
+  .linkbtn:hover { background: none; color: #fff; }
+  .arena-link { display: inline-block; color: #101526; background: #ffdf3f;
+    border: 2px solid #101526; border-radius: 4px; padding: 7px 10px;
+    font-size: 13px; font-weight: 800; text-decoration: none; box-shadow: 2px 2px 0 #101526; }
+  .arena-link:hover { transform: translate(1px, 1px); box-shadow: 1px 1px 0 #101526; }
 
   @media (max-width: 860px) {
     body { padding: 12px; }
@@ -108,9 +135,11 @@
   <div class="topline">
     <div>
       <h1>🧩 Maze Coder</h1>
-      <div class="sub">Playing as <b id="whoami"></b></div>
+      <div class="sub">Playing as <b id="whoami"></b>
+        <button class="linkbtn" onclick="switchPlayer()">Not you?</button></div>
     </div>
     <div class="langs">
+      <a class="arena-link" href="/arena">🤖 Try Bot Rally</a>
       <span class="command-label">Language</span>
       <button class="langbtn" id="langPy" onclick="setLang('python')">🐍 Python</button>
       <button class="langbtn" id="langCpp" onclick="setLang('cpp')">⚡ C++</button>
@@ -129,7 +158,7 @@
       <code>can_move()</code>
       <code>at_goal()</code>
     </div>
-    <div class="rules">Each Run restarts at the entrance. Write the whole solution. Fewer non-blank lines = higher score.</div>
+    <div class="rules">Each Run restarts at the entrance. Write the whole solution. Fewer characters = higher score — spaces, indentation and comments are free.</div>
     <div class="detail-row">
       <details class="examples">
         <summary>Examples</summary>
@@ -188,7 +217,7 @@ for i in range(4):
       <code>can_move()</code>
       <code>at_goal()</code>
     </div>
-    <div class="rules">Each Run restarts at the entrance. Write the whole solution. Fewer lines = higher score — lines with only braces don't count.</div>
+    <div class="rules">Each Run restarts at the entrance. Write the whole solution. Fewer characters = higher score — spaces, newlines and comments are free, so squashing it onto one line wins nothing.</div>
     <div class="detail-row">
       <details class="examples">
         <summary>Examples</summary>
@@ -241,6 +270,7 @@ for (int i = 0; i &lt; 4; i++) {
   <div class="wrap">
     <div class="left">
       <div class="status" id="status"></div>
+      <div id="worlds"></div>
       <div id="levels"></div>
       <div id="maze"></div>
     </div>
@@ -314,8 +344,6 @@ async function tryResume() {
     if (!s.error) enterGame(id, s.you_name, s.you_color);
   } catch (e) { /* offline — just show the join screen */ }
 }
-tryResume();
-setLang(lang);   // restore this device's language choice into the UI
 
 function showLog(lines) {
   const log = document.getElementById("log");
@@ -328,6 +356,7 @@ let animating = false, animTimer = null;
 function cancelAnimation() {
   if (animTimer) { clearTimeout(animTimer); animTimer = null; }
   animating = false;
+  justLit = new Set();
 }
 
 // Replay the server's step-by-step trace so the character visibly walks the
@@ -337,8 +366,16 @@ function animate(trace, onDone) {
   if (!lastState || !trace.length) { onDone(); return; }
   animating = true;
   let i = 0;
+  // In a fogged maze each frame carries the squares the lamp just lit, so we
+  // uncover them into a working copy of the map as the walk plays out.
+  const maze = lastState.maze.slice();
   const step = () => {
-    const frame = {...lastState, players: lastState.players.map(p =>
+    justLit = new Set();
+    for (const [r, c, ch] of trace[i].lit || []) {
+      maze[r] = maze[r].slice(0, c) + ch + maze[r].slice(c + 1);
+      justLit.add(r + "," + c);
+    }
+    const frame = {...lastState, maze, players: lastState.players.map(p =>
       p.id === me ? {...p, row: trace[i].row, col: trace[i].col, dir: trace[i].dir} : p)};
     render(frame);
     i++;
@@ -347,6 +384,7 @@ function animate(trace, onDone) {
     } else {
       animTimer = null;
       animating = false;
+      justLit = new Set();
       onDone();
     }
   };
@@ -370,9 +408,11 @@ async function runInstant() {
   poll();
 }
 
-async function goto(i) {
+async function goto(i, world) {
   cancelAnimation();
-  const res = await post("/goto", {id: me, maze: i});
+  const body = {id: me, maze: i};
+  if (world != null) body.world = world;
+  const res = await post("/goto", body);
   if (res.error) {
     if (res.error === "join") { location.reload(); return; }
     showLog([res.error]);
@@ -403,16 +443,28 @@ function scoreLines(code) {
   return code.split("\n").filter(l => l.trim() && !l.trim().startsWith("#")).length;
 }
 
-let curBest = null;  // your fewest lines on the maze you're looking at
+// Count characters the exact way the server scores them: comments stripped,
+// then every whitespace character thrown away.
+function scoreChars(code) {
+  if (lang === "cpp") {
+    code = code.replace(/\/\*[\s\S]*?\*\//g, "")
+               .split("\n").map(l => l.split("//")[0]).join("\n");
+  } else {
+    code = code.split("\n").filter(l => !l.trim().startsWith("#")).join("\n");
+  }
+  return code.replace(/\s/g, "").length;
+}
+
+let curBest = null;  // your fewest chars on the maze you're looking at
 function updateCounter() {
   const code = document.getElementById("code").value;
-  const lines = scoreLines(code), chars = code.length;
+  const chars = scoreChars(code), lines = scoreLines(code);
   const c = document.getElementById("counter");
-  const beat = curBest != null && lines > 0 && lines <= curBest;
+  const beat = curBest != null && chars > 0 && chars <= curBest;
   c.className = "counter" + (beat ? " good" : "");
-  c.textContent = `${lines} line${lines === 1 ? "" : "s"} · ${chars} chars` +
-    (curBest != null ? ` · best here: ${curBest}` : "") +
-    (beat && lines < curBest ? "  ⬇ new record pace!" : "");
+  c.textContent = `${chars} chars · ${lines} line${lines === 1 ? "" : "s"}` +
+    (curBest != null ? ` · best here: ${curBest} chars` : "") +
+    (beat && chars < curBest ? "  ⬇ new record pace!" : "");
 }
 
 async function poll() {
@@ -424,15 +476,26 @@ async function poll() {
 }
 
 let lastState = null;
+let justLit = new Set();   // squares the lamp lit on this animation frame
 function render(s) {
   lastState = s;
   document.getElementById("status").textContent =
-    `Maze ${s.maze_index + 1} of ${s.maze_count}`;
+    `${s.world_name} — maze ${s.maze_index + 1} of ${s.maze_count}` +
+    (s.fog ? " — 🔦 lights out: you only see where you've been (the 🚩 glows in the dark)" : "");
+
+  // World bar: each world is its own ladder of levels, with its own progress.
+  // Jumping in drops you at the furthest level you've unlocked there.
+  document.getElementById("worlds").innerHTML = (s.worlds || []).map(w =>
+    `<button class="world${w.index === s.world_index ? " cur" : ""}" ` +
+    `onclick="goto(${Math.min(w.frontier, w.count - 1)}, ${w.index})">` +
+    `${escapeHtml(w.name)}` +
+    `<small>${w.solved} / ${w.count} solved</small></button>`).join("");
 
   // Level bar: ◀  chips (✓ = solved, 🔒 = not unlocked yet)  ▶
   const best = s.best || {};
+  const chars = s.chars || {};
   const unlocked = s.unlocked ?? s.maze_index;  // highest maze you may enter
-  curBest = (s.maze_index in best) ? best[s.maze_index] : null;
+  curBest = (s.maze_index in chars) ? chars[s.maze_index] : null;
   updateCounter();
   const nextLocked = s.maze_index + 1 > unlocked;
   let bar = `<button class="navarrow" onclick="goto(${s.maze_index - 1})" ` +
@@ -442,9 +505,10 @@ function render(s) {
     const locked = i > unlocked;
     const cls = "chip" + (i === s.maze_index ? " cur" : "") +
       (solved ? " solved" : "") + (locked ? " locked" : "");
-    const label = locked ? `🔒${i + 1}` : (i + 1) + (solved ? ` ✓${best[i]}` : "");
+    const label = locked ? `🔒${i + 1}` : (i + 1) + (solved ? ` ✓${chars[i]}` : "");
     const title = locked ? "Solve the earlier levels to unlock this"
-      : solved ? "your best: " + best[i] + " lines" : "not solved yet";
+      : solved ? `your best: ${chars[i]} chars (${best[i]} lines)`
+      : "not solved yet";
     bar += `<button class="${cls}" ${locked ? "disabled" : `onclick="goto(${i})"`} ` +
       `title="${title}">${label}</button>`;
   }
@@ -464,10 +528,12 @@ function render(s) {
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const ch = s.maze[r][c];
-      let cls = "cell " + (ch === "#" ? "wall" : ch === "G" ? "goal" : "open");
+      let cls = "cell " + (ch === "?" ? "fog" : ch === "#" ? "wall"
+        : ch === "G" ? (s.fog ? "goal beacon" : "goal") : "open");
+      if (justLit.has(r + "," + c)) cls += " lit";
       let inner = "";
       const occ = byCell[r + "," + c];
-      if (occ) {
+      if (occ && ch !== "?") {
         // draw the current player if present, else the first one
         const p = occ.find(x => x.id === me) || occ[0];
         const isMe = p.id === me;
@@ -489,12 +555,12 @@ function render(s) {
     ? lb.map((p, i) =>
         `<div><span class="dot" style="background:${p.color}"></span>` +
         `${medals[i] || (i + 1) + "."} ${escapeHtml(p.name)} — ` +
-        `<b>${p.lines}</b> line${p.lines === 1 ? "" : "s"}</div>`).join("")
+        `<b>${p.chars}</b> chars <span style="color:#8b90a4">· ${p.lines}L</span></div>`).join("")
     : "<div style='color:#8b90a4'>Nobody's solved this level yet — be first!</div>";
 
   document.getElementById("board").innerHTML = s.scoreboard.map((p, i) =>
     `<div><span class="dot" style="background:${p.color}"></span>` +
-    `${i + 1}. ${escapeHtml(p.name)} — ${p.solved} solved, ${p.lines} lines</div>`).join("");
+    `${i + 1}. ${escapeHtml(p.name)} — ${p.solved} solved, ${p.chars} chars</div>`).join("");
 }
 
 // Forgiving typing: Tab indents, and Enter keeps your indentation — adding an
@@ -536,4 +602,15 @@ function escapeHtml(t) {
 document.getElementById("name").addEventListener("keydown", e => {
   if (e.key === "Enter") join();
 });
+
+// Forget this device's saved player so someone else can type their own name.
+function switchPlayer() {
+  cancelAnimation();
+  localStorage.removeItem("mazeId");
+  location.reload();
+}
+
+// Startup — these run last so every variable above them is initialized.
+setLang(lang);   // restore this device's language choice into the UI
+tryResume();
 </script>

@@ -31,12 +31,21 @@
 
 <div class="card">
   <b>Project these on the big screen:</b><br>
+  <a href="/" target="_blank" style="color:#55dfd2">⌨ Python Quest</a> &nbsp;·&nbsp;
   <a href="/screen" target="_blank" style="color:#7da0ff">🖥 Live game + student code</a> &nbsp;·&nbsp;
-  <a href="/leaderboard" target="_blank" style="color:#7da0ff">🏆 Leaderboard</a>
+  <a href="/leaderboard" target="_blank" style="color:#7da0ff">🏆 Leaderboard</a> &nbsp;·&nbsp;
+  <a href="/arena" target="_blank" style="color:#ffdf3f">🤖 Bot Rally</a>
 </div>
 
 <label>Admin key (shown in your terminal)</label>
 <input id="key" placeholder="1234">
+
+<div class="card">
+  <b>World</b> — which world the buttons below act on.
+  <div class="row" style="margin-top:8px">
+    <select id="world"></select>
+  </div>
+</div>
 
 <div class="card">
   <b>Send everyone to a maze</b>
@@ -59,7 +68,15 @@
 </div>
 
 <div class="card">
-  <b>Reset all scores</b> — keeps players, sends everyone back to maze 1.
+  <b>🤖 Bot Rally leagues</b> — each student's progress (tracks cleared · ★ under
+  par) and how many hints they've opened. A league opens with Gold in the one
+  before it, or unlock the next one here.
+  <div id="rallyRoster" style="margin-top:12px"></div>
+</div>
+
+<div class="card">
+  <b>Start a fresh session</b> — keeps players and their names, wipes all
+  progress and drops everyone on maze 1 of the world selected above.
   <br><button onclick="act('reset_scores')">Reset scores</button>
 </div>
 
@@ -76,9 +93,10 @@ const uv = id => document.getElementById(id).value;   // read an input's value
 async function act(action, extra = {}) {
   const key = document.getElementById("key").value.trim();
   const maze = document.getElementById("maze").value;
+  const world = document.getElementById("world").value;
   const r = await fetch("/admin", {method: "POST",
     headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({key, action, maze, ...extra})});
+    body: JSON.stringify({key, action, maze, world, ...extra})});
   const res = await r.json();
   const m = document.getElementById("msg");
   m.textContent = res.ok || res.error || "Done.";
@@ -91,13 +109,20 @@ function esc(s) {
     ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 }
 
-let mazeCount = 1;
+// The world dropdown, filled once — it's what every action below applies to.
+function fillWorlds(worlds) {
+  const sel = document.getElementById("world");
+  if (sel.options.length === worlds.length) return;
+  sel.innerHTML = worlds.map((w, i) =>
+    `<option value="${i + 1}">${esc(w.name)} (${w.mazes.length} levels)</option>`).join("");
+  sel.value = String(worlds.length);   // default to the newest world
+}
 
 async function refreshRoster() {
   let data;
   try { data = await (await fetch("/overview")).json(); }
   catch (e) { return; }
-  mazeCount = data.maze_count;
+  fillWorlds(data.worlds);
   const roster = document.getElementById("roster");
   // Remember any maze # the teacher already picked, so a background refresh
   // doesn't reset their selection.
@@ -107,7 +132,8 @@ async function refreshRoster() {
   if (!data.players.length) { roster.innerHTML =
     '<div class="pmeta">No students have joined yet.</div>'; return; }
 
-  const opts = n => Array.from({length: mazeCount}, (_, i) =>
+  // Each student's dropdown lists the levels of the world they're actually in.
+  const opts = n => Array.from({length: n}, (_, i) =>
     `<option value="${i+1}">${i+1}</option>`).join("");
 
   roster.innerHTML = data.players.map(p => {
@@ -115,11 +141,25 @@ async function refreshRoster() {
     return `<div class="prow">
       <div><span class="dot" style="background:${esc(p.color)}"></span>
         <span class="pname">${esc(p.name)}</span>
-        <span class="pmeta">· on maze ${p.maze_num} · solved ${p.solved}</span></div>
+        <span class="pmeta">· ${esc(p.world_name)} · maze ${p.maze_num} ·
+          solved ${p.solved}</span></div>
       <div class="row">
-        <select data-pid="${esc(p.id)}">${opts()}</select>
+        <select data-pid="${esc(p.id)}">${opts(p.maze_count)}</select>
         <button class="small" onclick="unlockOne('${esc(p.id)}')">Unlock</button>
       </div></div>`;
+  }).join("");
+
+  document.getElementById("rallyRoster").innerHTML = data.players.map(p => {
+    const leagues = p.rally.map(l => l.unlocked
+      ? `${esc(l.name.replace(" League", ""))} ${l.solved}/${l.tracks} ★${l.stars}`
+      : `${esc(l.name.replace(" League", ""))} 🔒`).join(" · ");
+    const allOpen = p.rally.every(l => l.unlocked);
+    return `<div class="prow">
+      <div><span class="dot" style="background:${esc(p.color)}"></span>
+        <span class="pname">${esc(p.name)}</span>
+        <div class="pmeta">${leagues} · hints ${p.rally_hints}</div></div>
+      ${allOpen ? "" : `<button class="small" onclick="act('rally_unlock', {pid: '${esc(p.id)}'})">Unlock next</button>`}
+    </div>`;
   }).join("");
 
   // Restore selections (default each to the student's current maze).

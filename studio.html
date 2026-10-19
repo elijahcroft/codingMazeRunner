@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Python Quest — Mission Control</title>
+<style>
+  :root {
+    --void: #080c16;
+    --chrome: #0d1322;
+    --panel: #121a2a;
+    --panel-2: #172237;
+    --line: #2a3852;
+    --text: #e8eef8;
+    --muted: #8fa0ba;
+    --cyan: #55dfd2;
+    --cyan-dark: #164b50;
+    --amber: #f4c95d;
+    --red: #ff6577;
+    --green: #72e09d;
+    --blue: #69a8ff;
+    --editor: ui-monospace, "SFMono-Regular", "Cascadia Code", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { min-height: 100%; }
+  body { margin: 0; background: var(--void); color: var(--text); font-family: Inter, "Segoe UI", Arial, sans-serif; }
+  button, textarea, input { font: inherit; }
+  button { cursor: pointer; }
+  button:focus-visible, textarea:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--cyan); outline-offset: 2px;
+  }
+
+  .join {
+    min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(360px, .8fr);
+    background:
+      radial-gradient(circle at 18% 20%, rgba(85,223,210,.13), transparent 25%),
+      linear-gradient(135deg, #080c16 0 55%, #0e192a 55%);
+  }
+  .join-story { padding: clamp(40px, 8vw, 110px); display: flex; flex-direction: column; justify-content: center; }
+  .bootline { color: var(--cyan); font: 14px var(--editor); margin-bottom: 22px; }
+  .join h1 { font-size: clamp(54px, 8vw, 104px); line-height: .88; letter-spacing: -.065em; margin: 0; max-width: 760px; }
+  .join-story p { color: var(--muted); font-size: clamp(18px, 2vw, 23px); line-height: 1.5; max-width: 680px; margin-top: 28px; }
+  .join-console { margin: clamp(24px, 6vw, 76px); align-self: center; background: var(--chrome); border: 1px solid var(--line); box-shadow: 18px 18px 0 rgba(0,0,0,.35); }
+  .window-bar { height: 40px; display: flex; align-items: center; gap: 7px; border-bottom: 1px solid var(--line); padding: 0 13px; color: var(--muted); font: 12px var(--editor); }
+  .window-dot { width: 9px; height: 9px; border-radius: 50%; background: #45536b; }
+  .join-form { padding: clamp(26px, 5vw, 54px); }
+  .join-form h2 { margin: 0 0 8px; font-size: 25px; }
+  .join-form p { color: var(--muted); line-height: 1.5; margin: 0 0 28px; }
+  .join-form label { display: block; color: var(--cyan); font: 13px var(--editor); margin-bottom: 8px; }
+  .join-form input { width: 100%; border: 1px solid var(--line); background: #090e19; color: var(--text); padding: 13px; font-size: 18px; }
+  .join-form button { width: 100%; margin-top: 13px; }
+
+  .btn { border: 1px solid #397f7a; background: #173d40; color: #dffffb; padding: 9px 14px; font-weight: 700; }
+  .btn:hover { background: #205157; }
+  .btn.primary { background: var(--cyan); color: #062b2c; border-color: var(--cyan); }
+  .btn.primary:hover { background: #79eee4; }
+  .btn.ghost { background: transparent; color: var(--muted); border-color: var(--line); }
+  .btn.ghost:hover { color: var(--text); background: var(--panel-2); }
+  .btn:disabled { opacity: .55; cursor: wait; }
+
+  .ide { display: none; min-height: 100vh; grid-template-rows: 48px 1fr 24px; }
+  .titlebar { background: #080d18; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 0 16px; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; }
+  .logo-mark { color: var(--void); background: var(--cyan); font: 900 13px var(--editor); padding: 5px 7px; }
+  .title-meta { color: var(--muted); font: 12px var(--editor); white-space: nowrap; }
+  .title-actions { display: flex; align-items: center; gap: 8px; }
+  .title-actions a, .title-actions button { color: var(--muted); background: none; border: 0; font-size: 13px; padding: 7px; text-decoration: none; }
+  .title-actions a:hover, .title-actions button:hover { color: var(--text); }
+
+  .workspace { min-height: 0; display: grid; grid-template-columns: 225px minmax(360px, 1fr) minmax(420px, 520px); }
+  .sidebar { min-width: 0; background: var(--chrome); border-right: 1px solid var(--line); display: flex; flex-direction: column; }
+  .side-heading { height: 42px; display: flex; align-items: center; padding: 0 14px; color: var(--muted); font: 11px var(--editor); letter-spacing: .08em; border-bottom: 1px solid var(--line); }
+  .mission-list { padding: 8px 0; }
+  .mission {
+    width: 100%; border: 0; border-left: 3px solid transparent; background: transparent; color: var(--muted);
+    text-align: left; padding: 12px 14px 12px 16px; display: grid; grid-template-columns: 26px 1fr; gap: 9px;
+  }
+  .mission:hover:not(:disabled) { background: #131d2f; color: var(--text); }
+  .mission.current { background: #18263c; color: var(--text); border-left-color: var(--cyan); }
+  .mission:disabled { cursor: not-allowed; opacity: .48; }
+  .mission-num { font: 12px var(--editor); padding-top: 2px; }
+  .mission-copy b { display: block; font-size: 13px; line-height: 1.25; }
+  .mission-copy small { color: var(--muted); font-size: 11px; }
+  .mission.done .mission-num { color: var(--green); }
+  .sidebar-foot { margin-top: auto; border-top: 1px solid var(--line); padding: 14px; }
+  .sidebar-foot p { color: var(--muted); font-size: 12px; line-height: 1.45; margin: 0 0 10px; }
+  .rally-link { display: block; border: 1px solid #7b6735; color: var(--amber); padding: 10px; text-decoration: none; font-size: 13px; font-weight: 700; }
+  .rally-link:hover { background: #282315; }
+
+  .mission-view { min-width: 0; background: #0b111e; display: grid; grid-template-rows: auto minmax(360px, 1fr) auto; border-right: 1px solid var(--line); }
+  .brief { padding: 20px 22px 17px; border-bottom: 1px solid var(--line); background: linear-gradient(90deg, #101a2b, #0c1321); }
+  .chapter { color: var(--cyan); font: 11px var(--editor); margin-bottom: 7px; }
+  .brief h1 { font-size: clamp(28px, 3vw, 44px); line-height: 1; letter-spacing: -.035em; margin: 0 0 10px; }
+  .brief p { color: #b6c2d5; line-height: 1.45; margin: 0; max-width: 720px; }
+  .concepts { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 13px; }
+  .concept { color: #b9fff8; border: 1px solid #285e60; background: #102c31; font: 11px var(--editor); padding: 4px 7px; }
+  .map-stage { min-height: 0; overflow: auto; display: grid; place-items: center; padding: 22px; position: relative; }
+  .maze-wrap { position: relative; }
+  #maze { --cell: 24px; display: grid; gap: 2px; padding: 8px; width: fit-content; background: #050912; border: 1px solid #31405b; box-shadow: 0 18px 60px rgba(0,0,0,.28); }
+  .cell { width: var(--cell); height: var(--cell); display: grid; place-items: center; position: relative; font: 800 16px var(--editor); }
+  .wall { background: #26334a; box-shadow: inset 0 0 0 1px #34445f; }
+  .open { background: #111b2d; }
+  .goal { background: #2d593f; }
+  .goal::after { content: "◆"; color: var(--green); text-shadow: 0 0 10px var(--green); }
+  .fog { background: #050812; box-shadow: inset 0 0 7px #000; }
+  .beacon { background: #183425; }
+  .beacon::after { content: "◆"; color: var(--green); text-shadow: 0 0 12px var(--green); }
+  .me { color: var(--cyan); text-shadow: 0 0 9px rgba(85,223,210,.8); z-index: 2; }
+  .other { color: var(--blue); }
+  .tag { position: absolute; bottom: -8px; background: #050912; color: var(--muted); padding: 1px 3px; font-size: 8px; z-index: 3; }
+  .map-legend { position: absolute; right: 10px; bottom: 8px; color: var(--muted); font: 10px var(--editor); }
+  .objective { padding: 14px 20px; border-top: 1px solid var(--line); display: flex; gap: 12px; align-items: center; background: #0e1625; }
+  .objective-mark { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid #47627f; color: var(--cyan); font: 14px var(--editor); }
+  .objective b { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+  .objective span { font-size: 13px; }
+  .success { display: none; margin-left: auto; align-items: center; gap: 10px; color: var(--green); font-size: 13px; font-weight: 700; }
+  .success.show { display: flex; }
+
+  .code-column { min-width: 0; background: var(--panel); display: grid; grid-template-rows: 42px minmax(300px, 1fr) auto minmax(150px, .42fr); }
+  .file-tabs { background: #0b111e; border-bottom: 1px solid var(--line); display: flex; align-items: end; }
+  .file-tab { height: 41px; padding: 0 17px; display: flex; align-items: center; gap: 8px; color: var(--text); background: var(--panel); border-right: 1px solid var(--line); border-top: 2px solid var(--cyan); font: 12px var(--editor); }
+  .py-icon { color: var(--amber); font-weight: 900; }
+  .editor-shell { min-height: 0; display: grid; grid-template-columns: auto 1fr; overflow: hidden; background: #0c1220; }
+  .lines { min-width: 44px; padding: 14px 10px 60px 8px; color: #4f607a; background: #0a101c; border-right: 1px solid #18243a; text-align: right; white-space: pre; overflow: hidden; font: 14px/1.55 var(--editor); user-select: none; }
+  textarea { width: 100%; min-height: 100%; resize: none; border: 0; outline: 0; padding: 14px 16px 60px; background: #0c1220; color: #dce7f6; caret-color: var(--cyan); font: 14px/1.55 var(--editor); tab-size: 4; white-space: pre; overflow: auto; }
+  .toolbar { min-height: 52px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: #0f1727; }
+  .toolbar .btn { font-size: 12px; padding: 8px 11px; }
+  .run { min-width: 112px; }
+  .best { margin-left: auto; color: var(--muted); font: 11px var(--editor); text-align: right; }
+  .console { min-height: 0; display: grid; grid-template-rows: 34px 1fr; background: #080d17; }
+  .console-head { display: flex; align-items: center; justify-content: space-between; padding: 0 12px; color: var(--muted); font: 11px var(--editor); border-bottom: 1px solid #18243a; }
+  #log { overflow: auto; max-height: 35vh; padding: 10px 13px 18px; font: 12px/1.5 var(--editor); color: #b9c7db; }
+  #log div { margin: 1px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  #log .good { color: var(--green); }
+  #log .bad { color: var(--red); }
+  .api { border-top: 1px solid var(--line); }
+  .api summary { color: var(--muted); font: 11px var(--editor); padding: 9px 12px; cursor: pointer; }
+  .api-body { padding: 0 12px 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .api code { color: #a9f7ef; border: 1px solid #273b4e; padding: 4px 6px; font: 11px var(--editor); }
+  .statusbar { background: #13585b; color: #dcfffb; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 0 10px; font: 10px var(--editor); }
+
+  @media (max-width: 1100px) {
+    .workspace { grid-template-columns: 185px minmax(340px, 1fr) minmax(360px, 440px); }
+    #maze { --cell: 20px; }
+  }
+  @media (max-width: 900px) {
+    .ide { grid-template-rows: 48px auto 24px; }
+    .workspace { display: grid; grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
+    .sidebar { border-right: 0; border-bottom: 1px solid var(--line); }
+    .side-heading, .sidebar-foot { display: none; }
+    .mission-list { display: flex; overflow-x: auto; padding: 0; }
+    .mission { min-width: 175px; border-left: 0; border-bottom: 3px solid transparent; }
+    .mission.current { border-left: 0; border-bottom-color: var(--cyan); }
+    .mission-view { border-right: 0; }
+    .map-stage { min-height: 420px; }
+    .code-column { min-height: 720px; }
+  }
+  @media (max-width: 600px) {
+    .join { grid-template-columns: 1fr; }
+    .join-story { padding: 46px 24px 20px; }
+    .join h1 { font-size: 58px; }
+    .join-console { margin: 20px 18px 50px; }
+    .title-meta, .title-actions a { display: none; }
+    .brief { padding: 18px 14px; }
+    .map-stage { min-height: 350px; padding: 12px; place-items: start center; }
+    #maze { --cell: 16px; }
+    .cell { font-size: 11px; }
+    .objective { align-items: flex-start; padding: 12px; }
+    .success { margin-left: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; }
+  }
+</style>
+</head>
+<body>
+<section class="join" id="join">
+  <div class="join-story">
+    <div class="bootline">mission_control.boot() → ready</div>
+    <h1>Python<br>Quest</h1>
+    <p>Four missions. Real Python decisions. Build one program at a time, inspect what happened, and make the robot smarter.</p>
+  </div>
+  <div class="join-console">
+    <div class="window-bar"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span><span style="margin-left:7px">student_login.py</span></div>
+    <div class="join-form">
+      <h2>Open your workspace</h2>
+      <p>Your missions and best solutions are saved on this computer.</p>
+      <label for="name">driver_name =</label>
+      <input id="name" maxlength="20" autocomplete="nickname" placeholder="Type your name" autofocus>
+      <button class="btn primary" id="joinButton">Start coding</button>
+    </div>
+  </div>
+</section>
+
+<main class="ide" id="ide">
+  <header class="titlebar">
+    <div class="logo"><span class="logo-mark">PY</span><span>Python Quest</span><span class="title-meta">/ mission_control</span></div>
+    <div class="title-actions"><span class="title-meta" id="driver"></span><a href="/classic">Practice library</a><button id="switchButton">Switch driver</button></div>
+  </header>
+
+  <div class="workspace">
+    <aside class="sidebar">
+      <div class="side-heading">MISSIONS</div>
+      <div class="mission-list" id="missions"></div>
+      <div class="sidebar-foot">
+        <p>Finished the campaign? Test one algorithm against five tracks.</p>
+        <a class="rally-link" href="/arena">Open Bot Rally →</a>
+      </div>
+    </aside>
+
+    <section class="mission-view">
+      <header class="brief">
+        <div class="chapter" id="chapter"></div>
+        <h1 id="missionTitle"></h1>
+        <p id="missionBrief"></p>
+        <div class="concepts" id="concepts"></div>
+      </header>
+      <div class="map-stage">
+        <div class="maze-wrap"><div id="maze" aria-label="Mission map"></div></div>
+        <div class="map-legend">◆ uplink</div>
+      </div>
+      <div class="objective">
+        <div class="objective-mark">◎</div>
+        <div><b>MISSION OBJECTIVE</b><span id="objectiveText"></span></div>
+        <div class="success" id="success"><span>✓ Mission complete</span><button class="btn" id="nextButton">Next mission</button></div>
+      </div>
+    </section>
+
+    <section class="code-column">
+      <div class="file-tabs"><div class="file-tab"><span class="py-icon">Py</span> main.py</div></div>
+      <div class="editor-shell">
+        <div class="lines" id="lines">1</div>
+        <textarea id="code" aria-label="Python editor" spellcheck="false" placeholder="# Write your solution here"></textarea>
+      </div>
+      <div>
+        <div class="toolbar">
+          <button class="btn primary run" id="runButton">▶ Run <span style="opacity:.65">F5</span></button>
+          <button class="btn" id="stopButton" hidden>■ Stop</button>
+          <button class="btn" id="starterButton">Load starter</button>
+          <button class="btn ghost" id="clearButton">Clear file</button>
+          <div class="best" id="best"></div>
+        </div>
+        <details class="api">
+          <summary>Game API and Python examples</summary>
+          <div class="api-body">
+            <code>move()</code><code>move(3)</code><code>turn_left()</code><code>turn_right()</code>
+            <code>wall_ahead()</code><code>can_move()</code><code>at_goal()</code><code>print("note")</code>
+          </div>
+        </details>
+      </div>
+      <div class="console">
+        <div class="console-head"><span>OUTPUT</span><span id="consoleState">ready</span></div>
+        <div id="log"><div>Ready. Run main.py to test the complete program.</div></div>
+      </div>
+    </section>
+  </div>
+  <footer class="statusbar"><span>Python 3 · safe classroom sandbox</span><span>Spaces: 4 · UTF-8 · <span id="position">Ln 1, Col 1</span></span></footer>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const ARROWS = ["▲", "▶", "▼", "◀"];
+let me = null, state = null, animating = false, animationTimer = null;
+let currentMission = -1, justLit = new Set();
+
+function esc(value) {
+  return String(value).replace(/[&<>\"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
+}
+async function post(url, data) {
+  const response = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(data)});
+  return response.json();
+}
+function codeKey(index) { return `pythonQuestCode:${me}:${index}`; }
+function saveCode() { if (me && currentMission >= 0) localStorage.setItem(codeKey(currentMission), $("code").value); }
+function loadCode(index) { $("code").value = localStorage.getItem(codeKey(index)) || ""; updateEditor(); }
+
+async function join() {
+  const name = $("name").value.trim();
+  if (!name) { $("name").focus(); return; }
+  const player = await post("/join", {name});
+  localStorage.setItem("mazeId", player.id);
+  await enter(player.id, player.name, player.color);
+}
+async function resume() {
+  const id = localStorage.getItem("mazeId");
+  if (!id) return;
+  try {
+    const s = await (await fetch("/state?id=" + encodeURIComponent(id))).json();
+    if (!s.error) await enter(id, s.you_name, s.you_color);
+  } catch (_) {}
+}
+async function enter(id, name, color) {
+  me = id;
+  $("driver").textContent = name;
+  $("driver").style.color = color;
+  $("join").style.display = "none";
+  $("ide").style.display = "grid";
+  let s = await fetchState();
+  if (!s.is_quest) {
+    await post("/goto", {id:me, world:s.quest_world_index, maze:0});
+    s = await fetchState();
+  }
+  render(s, true);
+}
+async function fetchState() {
+  return (await (await fetch("/state?id=" + encodeURIComponent(me))).json());
+}
+async function poll(loadEditor=false) {
+  if (animating) return;
+  const s = await fetchState();
+  if (s.error) { localStorage.removeItem("mazeId"); location.reload(); return; }
+  render(s, loadEditor);
+}
+
+function render(s, loadEditor=false) {
+  const changed = currentMission !== s.maze_index;
+  state = s;
+  currentMission = s.maze_index;
+  if (changed || loadEditor) loadCode(currentMission);
+  renderMissionNav();
+  const info = s.level_info;
+  $("chapter").textContent = `${info.chapter} / ${s.level_infos.length}`;
+  $("missionTitle").textContent = info.title;
+  $("missionBrief").textContent = info.brief;
+  $("objectiveText").textContent = info.objective;
+  $("concepts").innerHTML = info.concepts.map(c => `<span class="concept">${esc(c)}</span>`).join("");
+  const solved = s.maze_index in s.best;
+  $("success").classList.toggle("show", solved);
+  $("nextButton").textContent = s.maze_index + 1 < s.maze_count ? "Next mission" : "Open Bot Rally";
+  $("best").textContent = solved ? `best: ${s.chars[s.maze_index]} chars\n${s.best[s.maze_index]} lines` : "not solved yet";
+  renderMaze(s);
+}
+
+function renderMissionNav() {
+  $("missions").innerHTML = state.level_infos.map((info, i) => {
+    const solved = i in state.best, locked = i > state.unlocked;
+    return `<button class="mission${i === state.maze_index ? " current" : ""}${solved ? " done" : ""}" ${locked ? "disabled" : ""} onclick="gotoMission(${i})">
+      <span class="mission-num">${solved ? "✓" : locked ? "·" : String(i + 1).padStart(2,"0")}</span>
+      <span class="mission-copy"><b>${esc(info.title)}</b><small>${locked ? "locked" : solved ? "complete" : esc(info.chapter)}</small></span>
+    </button>`;
+  }).join("");
+}
+
+function renderMaze(s) {
+  const rows = s.maze.length, cols = s.maze[0].length;
+  const grid = $("maze");
+  grid.style.gridTemplateColumns = `repeat(${cols}, var(--cell))`;
+  const occupants = {};
+  for (const p of s.players) (occupants[`${p.row},${p.col}`] ||= []).push(p);
+  let html = "";
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const ch = s.maze[r][c];
+    let cls = ch === "?" ? "fog" : ch === "#" ? "wall" : ch === "G" ? (s.fog ? "beacon" : "goal") : "open";
+    const here = occupants[`${r},${c}`];
+    let inside = "";
+    if (here && ch !== "?") {
+      const p = here.find(x => x.id === me) || here[0];
+      inside = `<span class="${p.id === me ? "me" : "other"}">${ARROWS[p.dir]}</span>`;
+      if (p.id !== me) inside += `<span class="tag">${esc(p.name)}</span>`;
+    }
+    html += `<div class="cell ${cls}">${inside}</div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function showLog(lines) {
+  $("log").innerHTML = lines.map(line => {
+    const cls = /^[🎉✅]/.test(line) ? "good" : /^[❌⚠⏹]/.test(line) ? "bad" : "";
+    return `<div class="${cls}">${esc(line)}</div>`;
+  }).join("");
+  $("log").scrollTop = $("log").scrollHeight;
+}
+function cancelAnimation() {
+  if (animationTimer) clearTimeout(animationTimer);
+  animationTimer = null; animating = false; justLit = new Set();
+}
+function animate(trace, done) {
+  cancelAnimation();
+  if (!state || !trace.length) { done(); return; }
+  animating = true;
+  const maze = state.maze.slice();
+  let i = 0;
+  const frame = () => {
+    for (const [r,c,ch] of trace[i].lit || []) maze[r] = maze[r].slice(0,c) + ch + maze[r].slice(c+1);
+    const view = {...state, maze, players:state.players.map(p => p.id === me ? {...p,row:trace[i].row,col:trace[i].col,dir:trace[i].dir} : p)};
+    renderMaze(view);
+    i++;
+    if (i < trace.length) animationTimer = setTimeout(frame, 70);
+    else { animating = false; animationTimer = null; done(); }
+  };
+  frame();
+}
+
+async function runCode() {
+  if (animating) return;
+  saveCode();
+  $("runButton").disabled = true;
+  $("consoleState").textContent = "running…";
+  const out = await post("/run", {id:me, code:$("code").value, lang:"python"});
+  if (out.error) { location.reload(); return; }
+  showLog(out.log);
+  $("stopButton").hidden = false;
+  animate(out.trace, async () => {
+    finishRun("finished");
+    await poll(false);
+  });
+}
+function finishRun(label) {
+  $("runButton").disabled = false;
+  $("stopButton").hidden = true;
+  $("consoleState").textContent = label;
+}
+// The program already ran on the server; Stop skips the rest of the replay
+// and shows where the robot ended up.
+function stopRun() {
+  if (!animating) return;
+  cancelAnimation();
+  finishRun("stopped");
+  poll(false);
+}
+async function gotoMission(index) {
+  if (!state || index > state.unlocked) return;
+  saveCode(); cancelAnimation();
+  await post("/goto", {id:me, world:state.quest_world_index, maze:index});
+  $("log").innerHTML = "<div>Workspace switched. Run main.py when ready.</div>";
+  finishRun("ready");
+  await poll(true);
+}
+function nextMission() {
+  if (state.maze_index + 1 < state.maze_count) gotoMission(state.maze_index + 1);
+  else location.href = "/arena";
+}
+function loadStarter() {
+  if ($("code").value.trim() && !confirm("Replace the current file with the mission starter?")) return;
+  $("code").value = state.level_info.starter;
+  saveCode(); updateEditor(); $("code").focus();
+}
+
+function updateEditor() {
+  const value = $("code").value;
+  const count = Math.max(1, value.split("\n").length);
+  $("lines").textContent = Array.from({length:count}, (_,i) => i+1).join("\n");
+  updatePosition();
+  saveCode();
+}
+function updatePosition() {
+  const t = $("code"), before = t.value.slice(0, t.selectionStart).split("\n");
+  $("position").textContent = `Ln ${before.length}, Col ${before[before.length-1].length + 1}`;
+}
+function editorKey(event) {
+  const t = event.target, start = t.selectionStart, end = t.selectionEnd;
+  if (event.key === "F5" || (event.key === "Enter" && (event.ctrlKey || event.metaKey))) {
+    event.preventDefault(); runCode(); return;
+  }
+  if (event.key === "Tab") {
+    event.preventDefault(); t.value = t.value.slice(0,start) + "    " + t.value.slice(end); t.selectionStart = t.selectionEnd = start + 4;
+  } else if (event.key === "Enter") {
+    event.preventDefault();
+    const lineStart = t.value.lastIndexOf("\n", start - 1) + 1;
+    const line = t.value.slice(lineStart,start);
+    let indent = (line.match(/^\s*/) || [""])[0];
+    if (line.trimEnd().endsWith(":")) indent += "    ";
+    const addition = "\n" + indent;
+    t.value = t.value.slice(0,start) + addition + t.value.slice(end); t.selectionStart = t.selectionEnd = start + addition.length;
+  } else return;
+  updateEditor();
+}
+
+$("joinButton").addEventListener("click", join);
+$("name").addEventListener("keydown", e => { if (e.key === "Enter") join(); });
+$("switchButton").addEventListener("click", () => { localStorage.removeItem("mazeId"); location.reload(); });
+$("runButton").addEventListener("click", runCode);
+$("stopButton").addEventListener("click", stopRun);
+$("starterButton").addEventListener("click", loadStarter);
+$("clearButton").addEventListener("click", () => { $("code").value = ""; updateEditor(); $("code").focus(); });
+$("nextButton").addEventListener("click", nextMission);
+$("code").addEventListener("input", updateEditor);
+$("code").addEventListener("click", updatePosition);
+$("code").addEventListener("keyup", updatePosition);
+$("code").addEventListener("scroll", () => { $("lines").scrollTop = $("code").scrollTop; });
+$("code").addEventListener("keydown", editorKey);
+
+resume();
+</script>
+</body>
+</html>
