@@ -1,0 +1,6 @@
+# Live classroom data: student names, their code, and the admin key.
+scores.json
+scores.json.*
+
+__pycache__/
+.playwright-mcp/
