@@ -39,6 +39,7 @@ STEER_BUDGET = 500     # operations for each steer() call (real bots use ~5-150)
 # everyone still riding sharing the finish. Normal battles use a small part.
 MATCH_BUDGET = 1_000_000
 MAX_INT = 10 ** 9
+MAX_CODE = 4000        # characters in one program
 MAX_PRINTS = 80        # print() lines kept per cycle per match: the LAST ones,
                        # because the lines just before a crash matter most
 
@@ -54,7 +55,13 @@ class BotError(Exception):
 
 class _TooLong(BotError):
     """Out of operations. The loop it's stuck in is the line to look at."""
-    in_loop = False
+    in_loop = None   # "while" or "for", once we know which loop it was stuck in
+
+    def __str__(self):
+        hint = {"while": "is a while loop stuck going round forever?",
+                "for": "does a for loop go round too many times?",
+                None: "it does too much work in one go. Make it simpler."}
+        return f"{super().__str__()} — {hint[self.in_loop]}"
 
 
 # Python's own wording for the commonest beginner slips, in plain words.
@@ -149,6 +156,10 @@ class Brain:
         self.ops = 0
         self.budget = SETUP_BUDGET
         self.depth = 0
+        if len(code) > MAX_CODE:
+            raise BotError(f"Your program is too long: the limit is {MAX_CODE} "
+                           f"characters (about 100 lines). Delete some comments "
+                           f"or lines you don't need.")
         try:
             tree = ast.parse(code)
         except SyntaxError as e:
@@ -181,11 +192,9 @@ class Brain:
     def tick(self):
         self.ops += 1
         if self.ops > self.budget:
-            raise _TooLong("steer() took too long to decide — is a while loop "
-                           "stuck going round forever?"
+            raise _TooLong("steer() took too long to decide"
                            if self.budget == STEER_BUDGET else
-                           "The top of your program ran too long — is a loop "
-                           "stuck going round forever?")
+                           "The top of your program ran too long")
 
     def lookup(self, name, frame):
         if not frame.module and name not in frame.global_names:
@@ -415,7 +424,8 @@ class Brain:
                 # Point at the innermost line, or for a stuck loop, the loop.
                 if isinstance(e, _TooLong) and not e.in_loop and \
                         isinstance(node, (ast.While, ast.For)):
-                    e.line, e.in_loop = node.lineno, True
+                    e.line = node.lineno
+                    e.in_loop = "while" if isinstance(node, ast.While) else "for"
                 elif e.line is None:
                     e.line = node.lineno
                 raise

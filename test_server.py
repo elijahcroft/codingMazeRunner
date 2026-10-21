@@ -502,7 +502,14 @@ class CyclesTests(unittest.TestCase):
             ('def Steer():\n    return "left"\n', "Your def is called Steer(), but the game asks  steer()"),
             ('', "Your program needs a  def steer():"),
             ('# my bot\n', "Your program needs a  def steer():"),
-            (s + '    while True:\n        x = 1\n', "Line 2: steer() took too long"),
+            (s + '    while True:\n        x = 1\n', "Line 2: steer() took too long to "
+             "decide — is a while loop stuck going round forever?"),
+            (s + '    for i in range(100000):\n        x = i\n    return "left"\n',
+             "Line 2: steer() took too long to decide — does a for loop go round"),
+            ('x = 0\nwhile True:\n    x += 1\n' + s + '    return "left"\n',
+             "Line 2: The top of your program ran too long — is a while loop stuck"),
+            ("# " + "x" * 4000 + "\n" + s + '    return "left"\n',
+             "Your program is too long: the limit is 4000 characters"),
             (s + '    n = 0\n    while n < 5:\n        x = 1\n', "Line 3: steer() took too long"),
             (s + '    return steer()\n', "called itself too many times"),
             (s + '    x = "left" * 2\n    return "left"\n', "You can't do math with text"),
@@ -613,10 +620,12 @@ class CyclesTests(unittest.TestCase):
     def test_worst_case_battle_and_test_drive_stay_quick(self):
         # Every bot fills its whole budget every turn with the slowest kind
         # of work (sensor calls) and still rides well, so the match lasts.
-        burn = "    x = max(" + ",".join(["space_ahead()", "space_left()",
-                                          "space_right()"] * 60) + ")\n"
-        code = SWEEP.replace("    a = space_ahead()\n",
-                             "    a = space_ahead()\n" + burn * 2)
+        # A helper keeps it under the program size limit, as a student's must be.
+        burn = "def burn():\n    return max(" + ",".join(
+            ["space_ahead()", "space_left()", "space_right()"] * 40) + ")\n"
+        code = burn + SWEEP.replace("    a = space_ahead()\n",
+                                    "    a = space_ahead()\n" + "    burn()\n" * 3)
+        self.assertLessEqual(len(code), cycles.MAX_CODE)
         grid, starts = cycles.royale_arena(35, seed=1)
         entries = [{"key": str(i), "name": str(i), "color": "#fff",
                     "code": code} for i in range(35)]
@@ -633,6 +642,7 @@ class CyclesTests(unittest.TestCase):
         _, cause, _ = cycle_cause(f"def steer():\n    x = {line}\n"
                                   "    return \"left\"\n")
         self.assertIn("took too long", cause)
+        self.assertIn("too much work in one go", cause)   # there's no loop to blame
 
     def test_server_accepts_a_whole_class_connecting_at_once(self):
         self.assertGreaterEqual(server.ClassroomServer.request_queue_size, 64)
@@ -669,7 +679,8 @@ class CyclesTests(unittest.TestCase):
             state = server.cycles_state(p)
             self.assertEqual(state["code"], broken)   # the editor keeps the draft
             self.assertTrue(state["entry"]["kept_previous"])
-            for code in ("x = 1\n", "def steer():\n    return 1 // 0\n" + "x = 1 // 0\n"):
+            for code in ("x = 1\n", "def steer():\n    return 1 // 0\n" + "x = 1 // 0\n",
+                         "# " + "x" * 5000 + "\n" + SWEEP):
                 self.assertTrue(server.cycles_test(p, code)["entry"]["kept_previous"])
             bike = server.cycles_battle()["replay"]["bikes"][0]
             self.assertNotIn("code error", bike["cause"])   # raced the kept bot

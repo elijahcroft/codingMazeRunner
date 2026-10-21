@@ -2613,7 +2613,7 @@ def cycles_test(p, code, heats=None):
     """Race the student's bot against the house bots in every practice heat.
     The code they test is the bot they'll enter in the next battle. The
     server races the heats before taking the lock and passes them in."""
-    code = str(code)[:4000]
+    code = str(code)[:cycles.MAX_CODE + 1]   # one more, so it can say "too long"
     entry = cycles_entry(p)
     heats = heats or cycles.practice(code, p["name"], cycles_color(p))
     # Code that can't even start (a syntax error, a crash at the top, no
@@ -3067,7 +3067,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"error": "join"})
                 return
             # Race the heats without the lock: other students keep working.
-            code = str(data.get("code", ""))[:4000]
+            code = str(data.get("code", ""))[:cycles.MAX_CODE + 1]
             heats = cycles.practice(code, name, color)
             with lock:
                 body = json.dumps(cycles_test(p, code, heats)).encode()
