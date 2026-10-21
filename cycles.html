@@ -917,6 +917,14 @@ function editorKey(event) {
     if (line.trimEnd().endsWith(":")) indent += "    ";
     const addition = "\n" + indent;
     t.value = t.value.slice(0, start) + addition + t.value.slice(end); t.selectionStart = t.selectionEnd = start + addition.length;
+  } else if (event.key === "Backspace" && start === end) {
+    // In the spaces at the start of a line, go back a whole level (4 spaces)
+    // so the indentation always lines up.
+    const before = t.value.slice(t.value.lastIndexOf("\n", start - 1) + 1, start);
+    if (!before || /[^ ]/.test(before)) return;
+    event.preventDefault();
+    const back = (before.length - 1) % 4 + 1;
+    t.value = t.value.slice(0, start - back) + t.value.slice(end); t.selectionStart = t.selectionEnd = start - back;
   } else return;
   updateEditor();
 }
