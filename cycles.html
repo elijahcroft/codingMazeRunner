@@ -109,7 +109,9 @@
   .stage-head { position: absolute; top: 12px; left: 16px; right: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font: 12px var(--editor); color: var(--muted); }
   .stage-head b { color: var(--text); }
   .replay-controls { display: flex; gap: 6px; }
+  .replay-controls { align-items: center; }
   .replay-controls .btn { font-size: 11px; padding: 5px 9px; }
+  .turn-now { color: var(--text); white-space: nowrap; margin-right: 2px; }
   .sealed { text-align: center; max-width: 380px; color: var(--muted); line-height: 1.5; font-size: 14px; }
   .sealed strong { display: block; color: var(--text); font-size: 22px; margin-bottom: 8px; }
   .sealed .lock { font: 34px var(--editor); color: #3b4a64; margin-bottom: 10px; }
@@ -175,6 +177,7 @@
   #log .good { color: var(--green); }
   #log .bad { color: var(--red); }
   #log .head { color: var(--amber); }
+  #log .now { background: #1d2a40; outline: 1px solid #397f7a; color: var(--text); }
   .statusbar { background: #13585b; color: #dcfffb; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 0 10px; font: 10px var(--editor); }
   /* How it works: three steps on the first visit, and from the ? button. */
   .intro { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; background: rgba(4,7,14,.78); overflow: auto; }
@@ -288,6 +291,10 @@
         <div class="stage-head" id="stageHead" hidden>
           <span id="stageTitle"></span>
           <span class="replay-controls">
+            <span class="turn-now" id="turnNow" title="The board as your steer() saw it on this turn. Pause to light up that turn's print() lines in the output."></span>
+            <button class="btn ghost" id="backButton" title="One turn back" aria-label="One turn back">−1</button>
+            <button class="btn ghost" id="pauseButton" title="Pause" aria-label="Pause or play">⏸</button>
+            <button class="btn ghost" id="nextButton" title="One turn forward" aria-label="One turn forward">+1</button>
             <button class="btn ghost" id="stopButton" hidden>▸▸ Skip</button>
             <button class="btn ghost" id="replayButton" hidden>↻ Replay</button>
           </span>
@@ -615,6 +622,7 @@ function drawHead(ctx, r, c, size, d, color) {
 }
 function draw(match, t) {
   drawn = t;
+  $("turnNow").textContent = `turn ${turnShown()} of ${match.turns}`;
   const isMine = b => b.key === "you" || b.key === me;
   const outAt = b => b.died !== null && b.died <= t;
   // A whole-class battle names only you here; the big screen has everyone.
@@ -656,28 +664,58 @@ function draw(match, t) {
     }
   }
 }
+// ---- Replay controls: play, pause, and step one turn at a time ----------
+let delay = 50;
+function controls() {
+  const playing = !!animationTimer;
+  $("stopButton").hidden = !playing;
+  $("replayButton").hidden = playing || drawn < shown.turns;
+  $("pauseButton").textContent = playing ? "⏸" : "▶︎";
+  $("pauseButton").title = playing ? "Pause" : "Play from here";
+}
+function tick() {
+  draw(shown, frame);
+  if (frame++ < shown.turns) animationTimer = setTimeout(tick, delay);
+  else { animationTimer = null; controls(); }
+}
 function stopReplay() {
   if (animationTimer) clearTimeout(animationTimer);
   animationTimer = null;
-  $("stopButton").hidden = true;
-  $("replayButton").hidden = !shown;
+  if (shown) controls();
 }
 function replay() {
   stopReplay();
-  const last = shown.turns;
+  markTurn(false);
   // Short heats play slowly enough to follow; a long battle still ends in ~20 s.
-  const delay = Math.max(25, Math.min(70, 20000 / Math.max(1, last)));
+  delay = Math.max(25, Math.min(70, 20000 / Math.max(1, shown.turns)));
   frame = 0;
-  $("stopButton").hidden = last === 0;
-  $("replayButton").hidden = true;
-  const tick = () => {
-    draw(shown, frame);
-    if (frame++ < last) animationTimer = setTimeout(tick, delay);
-    else stopReplay();
-  };
-  tick();
+  tick(); controls();
 }
-function skipReplay() { stopReplay(); draw(shown, shown.turns); }
+function skipReplay() { stopReplay(); draw(shown, shown.turns); markTurn(false); controls(); }
+function togglePause() {
+  if (animationTimer) { stopReplay(); markTurn(true); return; }
+  markTurn(false);
+  frame = drawn >= shown.turns ? 0 : drawn + 1;
+  tick(); controls();
+}
+function stepTurn(k) {
+  stopReplay();
+  draw(shown, Math.max(0, Math.min(shown.turns, drawn + k)));
+  markTurn(true); controls();
+}
+// The turn steer() is deciding on the board you can see.
+function turnShown() { return Math.max(1, Math.min(drawn + 1, shown.turns)); }
+// Paused: light up this turn's print() lines, so you can read what your bot
+// was thinking right next to where it was.
+function markTurn(on) {
+  let first = null;
+  for (const div of $("log").children) {
+    const now = on && div.textContent.startsWith(`turn ${turnShown()} `);
+    div.classList.toggle("now", now);
+    if (now && !first) first = div;
+  }
+  if (first) first.scrollIntoView({block: "nearest"});
+}
 function show(match, title, lines) {
   shown = match;
   $("sealed").hidden = true;
@@ -850,6 +888,9 @@ $("runButton").addEventListener("click", testDrive);
 $("starterButton").addEventListener("click", loadStarter);
 $("clearButton").addEventListener("click", () => { $("code").value = ""; updateEditor(); $("code").focus(); });
 $("stopButton").addEventListener("click", skipReplay);
+$("pauseButton").addEventListener("click", togglePause);
+$("backButton").addEventListener("click", () => stepTurn(-1));
+$("nextButton").addEventListener("click", () => stepTurn(1));
 $("replayButton").addEventListener("click", replay);
 $("code").addEventListener("input", updateEditor);
 $("code").addEventListener("click", updatePosition);
