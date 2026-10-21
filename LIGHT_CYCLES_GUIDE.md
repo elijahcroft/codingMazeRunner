@@ -47,7 +47,7 @@ the cycle's, not the screen's**. This script is built around those two.
 | 0–3 | Hook | Project `/cycles/show`. Rules in one breath. | Join `/cycles`. Read the 3-step "How it works" card. |
 | 3–6 | Warm-up | *Be the cycle* (above). | Shout return values. |
 | 6–10 | **Predict** | "Load starter. Don't run it yet. What will it do? Who calls `steer()`?" | Write a one-line prediction. |
-| 10–12 | **Run** | "Test drive." | The starter rides into a wall in every heat (4th, 4th, 4th). |
+| 10–12 | **Run** | "Test drive." | The starter crashes in every heat (4th, 4th, 4th): into a trail or the wall. |
 | 12–18 | **Investigate** | Point at the arrow on each head and the left/right key under the replay. "When it faces right, which way is its left?" (Up the screen.) | Watch the replay. Tick *show on the map*. Read the crash cause in the output. |
 | 18–25 | **Modify** | "Add `if wall_ahead(): return "left"`." Then: "Why might it still crash?" (It can turn left into a wall.) | Goal: **SURVIVOR** (PODIUM comes with it). |
 | 25–28 | **Round 1** | Start a round now, even with weak bots. | Watch, cheer, find their own cycle. |
@@ -70,6 +70,8 @@ the cycle's, not the screen's**. This script is built around those two.
   minute. Start Round 1 before bots are good: it's the hook.
 - **A student's entry** is their last test drive **whose code loaded**. If a
   later test drive has a code error, the previous working bot stays entered.
+  (Until a student has one that loads, their broken bot is entered and
+  crashes on the start line.)
   Their page says which, under the Test drive button ("✅ Entered for the
   next battle", or "⚠️ This code has an error. Your previous working bot is
   still entered"). Clicking that line shows the entered code.
@@ -174,7 +176,7 @@ Testing against three bots isn't testing against everyone.
 
 | Problem | Fix |
 |---|---|
-| A student isn't in the battle | They must **Test drive** once with code that loads. The projector lists everyone entered before you press Start. |
+| A student isn't in the battle | They must **Test drive** once. The projector lists everyone entered before you press Start. |
 | "had a code error" on the projector | Their entered bot can't run. They read their own output, fix it, and test drive again. |
 | Wrong admin key | It's in the terminal banner, and stays the same after a restart. |
 | "A round is already running" | Wait for it to finish: one round at a time. |
