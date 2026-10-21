@@ -68,6 +68,9 @@ the cycle's, not the screen's**. This script is built around those two.
 
 - Run them **often**: around minutes 25, 42 and 53. Each takes under half a
   minute. Start Round 1 before bots are good: it's the hook.
+- One round has some luck: every round shuffles where riders start, and
+  starting near a wall helps a little. **Season points** over 3+ rounds
+  are the fair score, so crown the season leader, not one round's winner.
 - **A student's entry** is their last test drive **whose code loaded**. If a
   later test drive has a code error, the previous working bot stays entered.
   (Until a student has one that loads, their broken bot is entered and
