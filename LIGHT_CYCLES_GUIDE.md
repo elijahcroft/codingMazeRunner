@@ -96,6 +96,10 @@ the cycle's, not the screen's**. This script is built around those two.
 Hints are free and each one opens the next. Every hint skeleton was tested
 on the real game.
 
+To pick who to visit, open **`/admin`** on your own screen. Its *Light Cycles*
+list puts students who need a hand first: not entered yet, then a broken
+entered bot, then the fewest badges.
+
 ## Misconceptions → what to say
 
 | You see | Say |
