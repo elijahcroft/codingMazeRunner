@@ -497,9 +497,12 @@ function saveCode() { if (me) store(codeKey(), $("code").value); }
 async function join() {
   const name = $("name").value.trim();
   if (!name) { $("name").focus(); return; }
-  const player = await post("/join", {name});
-  store("mazeId", player.id);
-  await enter(player.id);
+  try {
+    const player = await post("/join", {name});
+    store("mazeId", player.id);
+    if (await enter(player.id)) return;
+  } catch (_) {}
+  $("joinButton").textContent = "No answer from the game. Try again";
 }
 async function resume() {
   const id = recall("mazeId");
@@ -524,6 +527,7 @@ async function enter(id) {
   renderHeats();
   renderBattle();
   if (recall("cyclesIntroSeen") !== "1") openIntro();
+  return true;
 }
 function openIntro() { $("intro").hidden = false; $("introClose").focus(); }
 function closeIntro() { $("intro").hidden = true; store("cyclesIntroSeen", "1"); $("code").focus(); }
@@ -755,7 +759,9 @@ function selectHeat(i) {
 }
 async function selectBattle() {
   if (!battleRound) return;
-  const data = await (await fetch("/cycles/last?id=" + encodeURIComponent(me))).json();
+  let data;
+  try { data = await (await fetch("/cycles/last?id=" + encodeURIComponent(me))).json(); }
+  catch (_) { $("consoleState").textContent = "no response"; return; }
   if (!data.replay) return;
   lastBattle = data.replay; battleRound = data.replay.round;
   board = data.board; renderBoard();
