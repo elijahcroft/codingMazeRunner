@@ -541,6 +541,22 @@ class CyclesTests(unittest.TestCase):
              "Make each def at the top level"),
             (s + '    space_ahead = 3\n    return "left"\n', "'space_ahead' is already a command"),
             (s + '    for i in space_ahead():\n        x = i\n', "A for loop must look like"),
+            (s + '    retrun "left"\n', "line 2: did you mean  return ?"),
+            (s + '    if wall_ahead():\n        return "left"\n    esle:\n        return "right"\n',
+             "line 4: did you mean  else ?"),
+            (s + '    whlie wall_ahead():\n        return "left"\n', "did you mean  while ?"),
+            ('deff steer():\n    return "left"\n', "did you mean  def ?"),
+            ('def steer:\n    return "left"\n', "a def needs brackets, like  def steer():"),
+            (s + '    if wall_ahead():\n        return "left"\n    else if wall_left():\n'
+                 '        return "right"\n', "line 4: write  elif  for 'else if'"),
+            (s + '    if wall_ahead() && wall_left():\n        return "left"\n', "write  and  (not  &&)"),
+            (s + '    if !wall_ahead():\n        return "left"\n', "write the word  not  instead of  !"),
+            (s + '    if space_ahead() => 2:\n        return "left"\n', "write  >=  (not  =>)"),
+            (s + '    if wall ahead():\n        return "left"\n', "sensor names have an underscore"),
+            (s + '    if wall_ahead() & wall_left():\n        return "left"\n    return "straight"\n',
+             "Line 2: Use the word  and  to join two checks"),
+            (s + '    if wall_ahead() is True:\n        return "left"\n    return "straight"\n',
+             "use  ==  or  !=  instead of  is"),
         ]
         self.assertGreaterEqual(len(cases), 40)
         for code, expected in cases:
@@ -552,7 +568,12 @@ class CyclesTests(unittest.TestCase):
         for code in ('x = space_ahead()\n' + s + '    return "straight"\n',
                      s + '    n = 0\n    for i in range(space_ahead()):\n        n += 1\n'
                          '    return "straight"\n',
-                     s + '    """My bot."""\n    return "straight"\n'):
+                     s + '    """My bot."""\n    return "straight"\n',
+                     s + '    return "straight" if space_ahead() > 0 else "left"\n',
+                     # Text that only looks like a slip from another language.
+                     s + '    note = "a && b => !"\n    return "straight"\n',
+                     'turns = 0\n' + s + '    global turns\n    turns += 1\n'
+                     '    return "straight"\n'):
             heat = cycles.practice(code, "T", "#fff")[0]["bikes"][0]
             self.assertFalse(heat["error"], heat["cause"])
             self.assertEqual(heat["prints"], [])

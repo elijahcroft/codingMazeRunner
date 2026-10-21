@@ -29,6 +29,7 @@ import difflib
 import keyword
 import math
 import random
+import re
 
 DIRS = [(-1, 0), (0, 1), (1, 0), (0, -1)]   # N E S W, same order as the mazes
 TURNS = {"straight": 0, "right": 1, "left": -1}
@@ -91,12 +92,40 @@ SYNTAX_HINTS = [
 ]
 
 
+# Habits from other languages, spotted in the line itself (outside any text).
+LINE_HINTS = [
+    (r"&&", "write  and  (not  &&)"),
+    (r"\|\|", "write  or  (not  ||)"),
+    (r"!(?!=)", "write the word  not  instead of  !  — like:  if not wall_ahead():"),
+    (r"=<", "write  <=  (not  =<)"),
+    (r"=>", "write  >=  (not  =>)"),
+    (r"\b(wall|space) (ahead|left|right)\b", "sensor names have an underscore "
+                                            "in the middle, like  wall_ahead()"),
+]
+KEYWORDS = ["return", "if", "elif", "else", "while", "for", "def", "print", "global"]
+
+
 def syntax_message(e):
     """A friendly sentence for a SyntaxError, pointing at its line."""
     msg, text = e.msg or "", (e.text or "").strip()
-    hint = next((h for key, h in SYNTAX_HINTS if key in msg), None)
-    first = text.replace("(", " ").replace(":", " ").split(" ")[0] if text else ""
-    if hint is None and first in ("elif", "else"):
+    code = re.sub(r"\"[^\"]*\"|'[^']*'", '""', text)   # ignore what's inside text
+    words = code.replace("(", " ").replace(":", " ").split()
+    first = words[0] if words else ""
+    # A misspelt Python word starting the line, like  retrun "left"  or  esle:
+    typo = re.match(r"(\w+)(\s+[\w\"'(]|\s*:)", code)
+    near = difflib.get_close_matches(first.lower(), KEYWORDS, 1, 0.75) \
+        if typo and first.lower() not in keyword.kwlist else []
+    if words[:2] == ["else", "if"] or first in ("elseif", "elsif"):
+        hint = "write  elif  for 'else if'"
+    elif first == "def" and "(" not in code:
+        hint = "a def needs brackets, like  def steer():"
+    else:
+        hint = next((h for key, h in LINE_HINTS if re.search(key, code)), None)
+    if hint is None:
+        hint = next((h for key, h in SYNTAX_HINTS if key in msg), None)
+    if hint is None and near:
+        hint = f"did you mean  {near[0]} ?  Check the spelling of  {first}"
+    elif hint is None and first in ("elif", "else"):
         hint = f"{first} needs an  if  just above it, lined up with it"
     elif hint is None and first.lower() in keyword.kwlist and first != first.lower():
         hint = f"Python words use small letters: write  {first.lower()}  not  {first}"
@@ -239,6 +268,10 @@ class Brain:
         return value
 
     def math(self, op, a, b):
+        if isinstance(op, (ast.BitAnd, ast.BitOr)):
+            word = "and" if isinstance(op, ast.BitAnd) else "or"
+            raise BotError(f"Use the word  {word}  to join two checks, like:  "
+                           f"if wall_ahead() {word} wall_left():")
         if isinstance(op, ast.Add) and isinstance(a, str) and isinstance(b, str):
             if len(a) + len(b) > 200:
                 raise BotError("That text got too long.")
@@ -282,6 +315,8 @@ class Brain:
         except TypeError:
             raise BotError("Compare like with like: numbers with numbers, "
                            "text with text.")
+        if isinstance(op, (ast.Is, ast.IsNot)):
+            raise BotError("To compare, use  ==  or  !=  instead of  is.")
         raise BotError("That comparison isn't allowed. Use  < <= > >= == !=")
 
     def eval(self, node, frame):
@@ -325,6 +360,9 @@ class Brain:
             return True
         if isinstance(node, ast.Call):
             return self.call(node, frame)
+        if isinstance(node, ast.IfExp):   # "left" if wall_right() else "right"
+            branch = node.body if self.eval(node.test, frame) else node.orelse
+            return self.eval(branch, frame)
         if isinstance(node, (ast.List, ast.Tuple, ast.Dict, ast.Set, ast.ListComp,
                              ast.Subscript)):
             raise BotError("Lists and [ ] aren't part of Light Cycles — use a "

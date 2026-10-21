@@ -124,6 +124,8 @@ Errors inside `steer()` start with the line number, e.g. `Line 3: …`.
 | A `while` loop that never stops | `steer() took too long to decide — is a while loop stuck going round forever?` |
 | Missing `:` | `Syntax error on line N: a line that starts with def, if, elif, else, while or for has to end with a  :` |
 | `print "hi"` | `Syntax error on line N: print needs brackets, like  print("hi")` |
+| A misspelt Python word (`retrun`, `esle:`, `whlie`) | `Syntax error on line N: did you mean  return ?  Check the spelling of  retrun.` |
+| `else if` | `Syntax error on line N: write  elif  for 'else if'.` |
 | `if space_ahead() = 0:` | `Syntax error on line N: to compare two things use  ==  (two equals signs)…` |
 | No `def steer():` | `Your program needs a  def steer():  that returns "left", "right" or "straight".` |
 
