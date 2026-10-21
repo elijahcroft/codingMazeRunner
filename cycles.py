@@ -397,7 +397,8 @@ class Brain:
         if name in self.funcs:
             return self.call_user(self.funcs[name], args)
         if name == "print":
-            self.prints.append(" ".join(str(a) for a in args[:4]))
+            line = " ".join(str(a) for a in args)
+            self.prints.append(line if len(line) <= 200 else line[:199] + "…")
             return None
         if name in ("max", "min"):
             if len(args) < 2:

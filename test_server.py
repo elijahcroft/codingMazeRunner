@@ -578,6 +578,14 @@ class CyclesTests(unittest.TestCase):
             self.assertFalse(heat["error"], heat["cause"])
             self.assertEqual(heat["prints"], [])
 
+    def test_print_shows_every_value_on_a_short_line(self):
+        _, _, prints = cycle_cause('def steer():\n    print("a", 1, "l", 2, "r", 3)\n'
+                                   '    print("' + "y" * 150 + '", "' + "z" * 150 + '")\n'
+                                   '    return "straight"\n')
+        self.assertEqual(prints[0], "turn 1 › a 1 l 2 r 3")
+        self.assertEqual(len(prints[1]), len("turn 1 › ") + 200)
+        self.assertTrue(prints[1].endswith("…"))
+
     def test_globals_need_the_global_keyword_like_real_python(self):
         _, cause, _ = cycle_cause("n = 0\ndef steer():\n    n += 1\n"
                                   "    return \"straight\"\n")
