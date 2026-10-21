@@ -2905,11 +2905,18 @@ def admin_action(data):
             unlock(q, idx)
         return f"Unlocked everyone up to {name} maze {idx + 1}."
     if action == "cycles_reset":
+        # A new season (or a new class) starts with nobody entered, so last
+        # class's bots and ej's own test bot don't ride in its battles. Each
+        # student keeps their code and best test drive, and enters again
+        # with their next Test drive.
         for q in players.values():
             entry = cycles_entry(q)
             entry["points"] = entry["rounds"] = entry["wins"] = 0
+            entry.update(code="", entered_at=None, ok=True, error=None,
+                         kept_previous=False)
         cycles_round["number"], cycles_round["last"] = 0, None
-        return "Light Cycles season reset — everyone is back to 0 points."
+        return ("Light Cycles season reset — everyone is back to 0 points and "
+                "enters again with their next Test drive.")
     return "Unknown action."
 
 

@@ -323,7 +323,7 @@ async function start() {
 async function resetSeason() {
   const key = $("key").value.trim();
   if (!key) { $("msg").textContent = "Type the admin key first."; $("key").focus(); return; }
-  if (!confirm("Set every student's Light Cycles points back to 0?")) return;
+  if (!confirm("Start a new season? Every student's points go back to 0, and each bot enters again with its next Test drive.")) return;
   const data = await (await fetch("/admin", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({key, action: "cycles_reset"})})).json();
   $("msg").textContent = data.error || "";
   if (!data.error) { match = null; $("arena").hidden = true; $("banner").hidden = true; $("waiting").hidden = false; await refresh(); }

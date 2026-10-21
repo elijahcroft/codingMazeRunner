@@ -16,7 +16,8 @@ the cycle's, not the screen's**. This script is built around those two.
 - [ ] On a student laptop, open `/cycles`, join as "Test", **Load starter**,
       **Test drive**. You should see 3 heats and a replay.
 - [ ] Start one round on the projector to check it plays (3-2-1, then up to
-      about 20 s). Then **Reset season** so the class starts at 0.
+      about 20 s). Then **Reset season**: points go back to 0 and nobody
+      (including "Test") is entered until they test drive again.
 - [ ] Print the cheat sheet: the link under the join form on `/cycles`
       (or 🖨 in the *Sensors* drawer). One A4 page, one per pair.
 - [ ] Clear a space at the front for the warm-up.
@@ -192,4 +193,4 @@ Testing against three bots isn't testing against everyone.
 | "A round is already running" | Wait for it to finish: one round at a time. |
 | Server restarted mid-lesson | Points, the round number and the last replay are saved. Students reload the page. |
 | The "How it works" card keeps coming back | That browser blocks storage (e.g. a private window). Close it with the button. Harmless. |
-| New class, fresh scores | **Reset season** on the projector page. |
+| New class, fresh scores | **Reset season** on the projector page. The last class's bots stop riding; each student enters again with one Test drive. |

@@ -846,7 +846,16 @@ class CyclesTests(unittest.TestCase):
             self.assertEqual(sum(points.values()),
                              sum(b["outlasted"] for b in bikes))
             server.admin_action({"action": "cycles_reset"})
-            self.assertTrue(all(row["points"] == 0 for row in server.cycles_board()))
+            # Nobody is entered in the new season until they test drive again,
+            # but they keep their code and their best test drive.
+            self.assertEqual(server.cycles_board(), [])
+            ada = server.players["t0"]
+            self.assertFalse(server.cycles_state(ada)["entry"]["code"])
+            self.assertTrue(server.cycles_state(ada)["code"])
+            self.assertEqual(server.cycles_state(ada)["best"]["wins"], 3)
+            self.assertIn("No bots entered", server.cycles_battle()["error"])
+            server.cycles_test(ada, SWEEP)
+            self.assertEqual([r["name"] for r in server.cycles_board()], ["Ada"])
         finally:
             server.players.clear()
             server.players.update(original)
