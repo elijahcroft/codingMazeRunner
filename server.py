@@ -89,6 +89,7 @@ import random
 import re
 import socket
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
@@ -2558,8 +2559,20 @@ cycles_battle_lock = threading.Lock()
 
 
 def cycles_entry(p):
-    return p.setdefault("cycles", {"code": "", "best": None, "points": 0,
-                                   "rounds": 0, "wins": 0})
+    entry = p.setdefault("cycles", {"code": "", "best": None, "points": 0,
+                                    "rounds": 0, "wins": 0})
+    # "code" is the bot entered for the next battle; "tested" is whatever
+    # the student test-drove last (it goes back in their editor). Saves from
+    # before this kept only "code", which was always entered.
+    for key, value in (("tested", entry["code"]), ("entered_at", None),
+                       ("ok", True), ("error", None), ("kept_previous", False)):
+        entry.setdefault(key, value)
+    return entry
+
+
+def cycles_entry_status(entry):
+    return {k: entry[k] for k in ("code", "entered_at", "ok", "error",
+                                  "kept_previous")}
 
 
 def cycles_board():
@@ -2576,8 +2589,18 @@ def cycles_test(p, code, heats=None):
     server races the heats before taking the lock and passes them in."""
     code = str(code)[:4000]
     entry = cycles_entry(p)
-    entry["code"] = code
     heats = heats or cycles.practice(code, p["name"], p["color"])
+    # Code that can't even start (a syntax error, a crash at the top, no
+    # steer()) never replaces a bot that works: breaking your code just
+    # before a round shouldn't enter a cycle that crashes on the start line.
+    error = next((h["bikes"][0]["cause"].replace("💥 code error: ", "")
+                  for h in heats if h["bikes"][0]["died"] == 0), None)
+    entry["tested"] = code
+    if error and entry["ok"] and entry["code"].strip():
+        entry.update(error=error, kept_previous=True)
+    else:
+        entry.update(code=code, entered_at=int(time.time()), ok=error is None,
+                     error=error, kept_previous=False)
     places = [h["bikes"][0]["place"] for h in heats]
     lasted = [h["turns"] if h["bikes"][0]["died"] is None
               else h["bikes"][0]["died"] for h in heats]
@@ -2592,7 +2615,8 @@ def cycles_test(p, code, heats=None):
         for bike in h["bikes"][1:]:
             bike["prints"] = []   # the house bots' notes are just noise
     return {"heats": heats, "score": score, "best": entry["best"],
-            "new_best": new_best, "board": cycles_board()}
+            "new_best": new_best, "board": cycles_board(),
+            "entry": cycles_entry_status(entry)}
 
 
 def cycles_battle():
@@ -2641,9 +2665,10 @@ def cycles_replay(p):
 def cycles_state(p):
     entry = cycles_entry(p)
     return {"you": {"name": p["name"], "color": p["color"]},
-            "code": entry["code"], "best": entry["best"],
+            "code": entry["tested"], "best": entry["best"],
             "points": entry["points"], "board": cycles_board(),
-            "round": cycles_round["number"]}
+            "round": cycles_round["number"],
+            "entry": cycles_entry_status(entry)}
 
 
 def unlocked_frontier(p, wi=None):

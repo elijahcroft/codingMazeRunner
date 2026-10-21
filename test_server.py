@@ -519,6 +519,53 @@ class CyclesTests(unittest.TestCase):
         finally:
             server.cycles_battle_lock.release()
 
+    def test_broken_code_never_replaces_a_working_entry(self):
+        original = dict(server.players)
+        broken = 'def steer()\n    return "left"\n'
+        try:
+            server.players.clear()
+            p = fake_player("Ada")
+            server.players[p["id"]] = p
+            entry = server.cycles_test(p, broken)["entry"]   # first try: broken
+            self.assertEqual((entry["code"], entry["ok"], entry["kept_previous"]),
+                             (broken, False, False))
+            self.assertIn("Syntax error on line 1", entry["error"])
+            entry = server.cycles_test(p, STRAIGHT)["entry"]   # now it works
+            self.assertEqual((entry["code"], entry["ok"], entry["error"]),
+                             (STRAIGHT, True, None))
+            self.assertIsInstance(entry["entered_at"], int)
+            entry = server.cycles_test(p, SWEEP)["entry"]      # working again
+            self.assertEqual(entry["code"], SWEEP)
+            entered_at = entry["entered_at"]
+            entry = server.cycles_test(p, broken)["entry"]     # broken again
+            self.assertEqual((entry["code"], entry["ok"], entry["kept_previous"],
+                              entry["entered_at"]), (SWEEP, True, True, entered_at))
+            self.assertIn("Syntax error", entry["error"])
+            state = server.cycles_state(p)
+            self.assertEqual(state["code"], broken)   # the editor keeps the draft
+            self.assertTrue(state["entry"]["kept_previous"])
+            for code in ("x = 1\n", "def steer():\n    return 1 // 0\n" + "x = 1 // 0\n"):
+                self.assertTrue(server.cycles_test(p, code)["entry"]["kept_previous"])
+            bike = server.cycles_battle()["replay"]["bikes"][0]
+            self.assertNotIn("code error", bike["cause"])   # raced the kept bot
+            # A steer() that only crashes once it's running is still entered.
+            crashy = 'def steer():\n    return 1 // 0\n'
+            self.assertEqual(server.cycles_test(p, crashy)["entry"]["code"], crashy)
+        finally:
+            server.players.clear()
+            server.players.update(original)
+            server.cycles_round.update(number=0, last=None)
+
+    def test_old_cycles_entries_still_load(self):
+        p = fake_player()
+        p["cycles"] = {"code": STRAIGHT, "best": None, "points": 3,
+                       "rounds": 1, "wins": 0}
+        state = server.cycles_state(p)
+        self.assertEqual(state["code"], STRAIGHT)
+        self.assertEqual(state["entry"], {"code": STRAIGHT, "entered_at": None,
+                                          "ok": True, "error": None,
+                                          "kept_previous": False})
+
     def test_battle_scores_points_and_hides_other_prints(self):
         original = dict(server.players)
         try:
