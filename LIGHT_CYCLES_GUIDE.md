@@ -11,7 +11,8 @@ the cycle's, not the screen's**. This script is built around those two.
 - [ ] `python3 server.py`. Note the **admin key** and the student address in
       the banner (`http://<ip>:8000/cycles`).
 - [ ] Project **`http://localhost:8000/cycles/show`** and type the admin key
-      once (it's remembered). The header shows the student address.
+      once (it's remembered). Before each round it shows the student address
+      in big letters.
 - [ ] On a student laptop, open `/cycles`, join as "Test", **Load starter**,
       **Test drive**. You should see 3 heats and a replay.
 - [ ] Start one round on the projector to check it plays (3-2-1, then up to
