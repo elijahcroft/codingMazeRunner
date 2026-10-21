@@ -119,6 +119,16 @@
   .legend .out { opacity: .45; text-decoration: line-through; }
   .legend .me { color: var(--text); font-weight: 700; }
   .stage-inner { display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 100%; }
+  /* Your cycle's own left / straight / right, as seen on the screen right now. */
+  .turnkey { display: flex; align-items: center; gap: 14px; margin-top: 10px; font: 11px var(--editor); color: var(--muted); }
+  .compass { display: grid; grid-template-columns: repeat(3, 58px); grid-template-rows: repeat(3, 15px); align-items: center; text-align: center; border: 1px solid var(--line); background: #0a101c; padding: 3px 0; }
+  .compass .c { color: var(--text); font-size: 13px; }
+  .compass .L { color: var(--cyan); font-weight: 700; }
+  .compass .R { color: var(--amber); font-weight: 700; }
+  .compass .S { color: var(--text); }
+  .turnkey p { margin: 0; max-width: 190px; line-height: 1.4; }
+  .turnkey label { display: flex; gap: 5px; align-items: center; cursor: pointer; margin-top: 4px; }
+  .turnkey.out .compass { opacity: .35; }
   .scorebar { padding: 12px 20px; border-top: 1px solid var(--line); display: flex; gap: 14px; align-items: center; flex-wrap: wrap; background: #0e1625; min-height: 62px; }
   .score-main b { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; font-weight: 700; }
   .score-main span { font-size: 14px; }
@@ -234,6 +244,10 @@
         </div>
         <div class="stage-inner" id="stageInner" hidden>
           <canvas id="arena" aria-label="Arena replay"></canvas>
+          <div class="turnkey" id="turnkey" hidden>
+            <div class="compass" id="compass" aria-hidden="true"></div>
+            <div><p id="turnkeyText"></p><label><input type="checkbox" id="markers"> show on the map</label></div>
+          </div>
           <div class="legend" id="legend"></div>
         </div>
       </div>
@@ -305,7 +319,7 @@ def steer():
 const $ = id => document.getElementById(id);
 const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]];
 let me = null, myName = "", running = false;
-let heats = null, lastBattle = null, shown = null, frame = 0, animationTimer = null;
+let heats = null, lastBattle = null, shown = null, frame = 0, drawn = 0, animationTimer = null;
 let selected = null;   // 0..2 for a heat, "battle" for the class battle
 let board = [], battleRound = 0;
 
@@ -394,8 +408,40 @@ function renderBoard() {
 function cellSize(match) {
   const stage = $("stage");
   const rows = match.grid.length, cols = match.grid[0].length;
-  const fit = Math.min((stage.clientWidth - 40) / cols, (stage.clientHeight - 110) / rows);
+  // Leave room for whatever sits under the canvas (the key and the legend).
+  const below = $("stageInner").offsetHeight - $("arena").offsetHeight;
+  const fit = Math.min((stage.clientWidth - 40) / cols, (stage.clientHeight - 68 - below) / rows);
   return Math.max(4, Math.min(24, Math.floor(fit)));
+}
+const ARROWS = ["▲", "▶", "▼", "◀"], SCREEN = ["up", "right", "down", "left"];
+const AROUND = [1, 5, 7, 3];   // compass cells above, right of, below, left of the middle
+// Shows which way on the screen is YOUR cycle's left, straight and right.
+function renderTurnKey(b, t) {
+  $("turnkey").hidden = !b;
+  if (!b) return;
+  const out = b.died !== null && b.died <= t;
+  const d = heading(b, Math.min(t, b.path.length - 1));
+  const cells = Array(9).fill("");
+  cells[4] = `<span class="c">${ARROWS[d]}</span>`;
+  cells[AROUND[d]] = '<span class="S">straight</span>';
+  cells[AROUND[(d + 3) % 4]] = '<span class="L">left</span>';
+  cells[AROUND[(d + 1) % 4]] = '<span class="R">right</span>';
+  $("compass").innerHTML = cells.map(c => `<span>${c}</span>`).join("");
+  $("turnkey").classList.toggle("out", out);
+  $("turnkeyText").innerHTML = out ? "Your cycle is out."
+    : `Your cycle faces <b>${SCREEN[d]}</b>. Now "left" goes ${SCREEN[(d + 3) % 4]} and "right" goes ${SCREEN[(d + 1) % 4]}.`;
+}
+// Faint L / S / R letters on the squares around your own head.
+function drawMarkers(ctx, r, c, size, d) {
+  ctx.font = `700 ${Math.max(8, Math.round(size * .7))}px ${getComputedStyle(document.body).fontFamily}`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.globalAlpha = .9;
+  [[3, "L", "#55dfd2"], [0, "S", "#e8eef8"], [1, "R", "#f4c95d"]].forEach(([turn, letter, color]) => {
+    const [dr, dc] = DIRS[(d + turn) % 4];
+    ctx.fillStyle = color;
+    ctx.fillText(letter, (c + dc + .5) * size, (r + dr + .5) * size);
+  });
+  ctx.globalAlpha = 1;
 }
 // Which way a cycle faces after `steps` moves: 0 up, 1 right, 2 down, 3 left.
 // Newer servers send "dirs"; otherwise its last step tells us, or its start.
@@ -420,6 +466,11 @@ function drawHead(ctx, r, c, size, d, color) {
   ctx.fill();
 }
 function draw(match, t) {
+  drawn = t;
+  const isMine = b => b.key === "you" || b.key === me;
+  const outAt = b => b.died !== null && b.died <= t;
+  $("legend").innerHTML = match.bikes.map(b => `<span class="${outAt(b) ? "out" : ""}${isMine(b) ? " me" : ""}"><span class="dot" style="background:${esc(b.color)}"></span>${esc(b.name)}${isMine(b) ? " (you)" : ""}</span>`).join("");
+  renderTurnKey(match.bikes.find(isMine), t);
   const canvas = $("arena"), size = cellSize(match);
   const rows = match.grid.length, cols = match.grid[0].length;
   canvas.width = cols * size; canvas.height = rows * size;
@@ -427,9 +478,8 @@ function draw(match, t) {
   ctx.fillStyle = "#0b111e"; ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "#26334a";
   match.grid.forEach((line, r) => { for (let c = 0; c < cols; c++) if (line[c] === "#") ctx.fillRect(c * size, r * size, size, size); });
-  const legend = [];
   for (const b of match.bikes) {
-    const out = b.died !== null && b.died <= t;
+    const out = outAt(b);
     const steps = Math.min(t, b.path.length - 1);
     ctx.globalAlpha = out ? .35 : .8;
     ctx.fillStyle = b.color;
@@ -446,15 +496,13 @@ function draw(match, t) {
       ctx.stroke();
     } else {
       drawHead(ctx, hr, hc, size, heading(b, steps), b.color);
-      if (b.key === "you" || b.key === me) {
+      if (isMine(b)) {
         ctx.strokeStyle = b.color; ctx.lineWidth = 2;
         ctx.strokeRect(hc * size - 3, hr * size - 3, size + 6, size + 6);
+        if ($("markers").checked) drawMarkers(ctx, hr, hc, size, heading(b, steps));
       }
     }
-    const mine = b.key === "you" || b.key === me;
-    legend.push(`<span class="${out ? "out" : ""}${mine ? " me" : ""}"><span class="dot" style="background:${esc(b.color)}"></span>${esc(b.name)}${mine ? " (you)" : ""}</span>`);
   }
-  $("legend").innerHTML = legend.join("");
 }
 function stopReplay() {
   if (animationTimer) clearTimeout(animationTimer);
@@ -630,7 +678,12 @@ $("code").addEventListener("keyup", updatePosition);
 $("code").addEventListener("scroll", () => { $("lines").scrollTop = $("code").scrollTop; });
 $("code").addEventListener("keydown", editorKey);
 document.addEventListener("keydown", e => { if (e.key === "F5" && me) { e.preventDefault(); testDrive(); } });
-window.addEventListener("resize", () => { if (shown && !animationTimer) draw(shown, shown.turns); });
+window.addEventListener("resize", () => { if (shown && !animationTimer) draw(shown, drawn); });
+$("markers").checked = recall("cyclesMarkers") === "1";
+$("markers").addEventListener("change", () => {
+  store("cyclesMarkers", $("markers").checked ? "1" : "0");
+  if (shown && !animationTimer) draw(shown, drawn);
+});
 renderHeats();
 renderBattle();
 renderBest(null);
