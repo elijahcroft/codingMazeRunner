@@ -91,6 +91,8 @@ SYNTAX_HINTS = [
     ("U+2018", "it has curly quotes ‘ ’ — type plain quotes ' instead"),
     ("U+2019", "it has curly quotes ‘ ’ — type plain quotes ' instead"),
     ("was never closed", "a bracket  (  is never closed with  )"),
+    ("non-printable character", "it has an invisible character (often from "
+                                "copying). Type the line again with the keyboard"),
     ("unmatched ')'", "there's a  )  with no  (  before it"),
 ]
 
@@ -126,6 +128,10 @@ def syntax_message(e):
         hint = next((h for key, h in LINE_HINTS if re.search(key, code)), None)
     if hint is None:
         hint = next((h for key, h in SYNTAX_HINTS if key in msg), None)
+    odd = re.match(r"invalid character '(.)'", msg)   # like a long dash – from copying
+    if hint is None and odd:
+        hint = f"Python doesn't know the character  {odd[1]}  — type it again " \
+               f"with the keyboard"
     if hint is None and near:
         hint = f"did you mean  {near[0]} ?  Check the spelling of  {first}"
     elif hint is None and first in ("elif", "else"):
@@ -193,6 +199,8 @@ class Brain:
             raise BotError(f"Your program is too long: the limit is {MAX_CODE} "
                            f"characters (about 100 lines). Delete some comments "
                            f"or lines you don't need.")
+        # Invisible characters that come with copied code read as spaces.
+        code = code.replace("\u00a0", " ").replace("\u200b", "").replace("\ufeff", "")
         try:
             tree = ast.parse(code)
         except SyntaxError as e:

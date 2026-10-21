@@ -557,6 +557,9 @@ class CyclesTests(unittest.TestCase):
              "Line 2: Use the word  and  to join two checks"),
             (s + '    if wall_ahead() is True:\n        return "left"\n    return "straight"\n',
              "use  ==  or  !=  instead of  is"),
+            (s + '    if space_ahead() \u2013 1 > 2:\n        return "left"\n',
+             "line 2: Python doesn't know the character  \u2013  — type it again"),
+            (s + '    return "left"\u200c\n', "line 2: it has an invisible character"),
         ]
         self.assertGreaterEqual(len(cases), 40)
         for code, expected in cases:
@@ -572,6 +575,8 @@ class CyclesTests(unittest.TestCase):
                      s + '    return "straight" if space_ahead() > 0 else "left"\n',
                      # Text that only looks like a slip from another language.
                      s + '    note = "a && b => !"\n    return "straight"\n',
+                     # Pasted code: non-breaking spaces, a zero-width space, a BOM.
+                     '\ufeff' + s + '\u00a0\u00a0\u00a0\u00a0return "straight"\u200b\n',
                      'turns = 0\n' + s + '    global turns\n    turns += 1\n'
                      '    return "straight"\n'):
             heat = cycles.practice(code, "T", "#fff")[0]["bikes"][0]
