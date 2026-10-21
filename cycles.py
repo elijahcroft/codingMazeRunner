@@ -514,8 +514,8 @@ def run_match(entries, grid, starts):
     bikes = []
     for i, (entry, (r, c, d)) in enumerate(zip(entries, starts)):
         bike = {"entry": entry, "r": r, "c": c, "d": d, "path": [[r, c]],
-                "died": None, "cause": "", "crash": None, "prints": [],
-                "dropped": 0, "warned": False}
+                "dirs": [d], "died": None, "cause": "", "crash": None,
+                "error": False, "prints": [], "dropped": 0, "warned": False}
         owner[(r, c)] = i
         bikes.append(bike)
 
@@ -553,6 +553,7 @@ def run_match(entries, grid, starts):
             bike["died"], bike["cause"] = 0, f"💥 code error: {e}"
         except RecursionError:
             bike["died"], bike["cause"] = 0, "💥 code error: that line is too deeply nested."
+        bike["error"] = bike["died"] == 0
 
     def tag(prints, turn, start):
         # Mark which turn each new print() line came from.
@@ -583,9 +584,11 @@ def run_match(entries, grid, starts):
                 choice = b["brain"].steer()
             except BotError as e:
                 b["died"], b["cause"] = turn, f"💥 error in steer(): {e}"
+                b["error"] = True
                 continue
             except RecursionError:
                 b["died"], b["cause"] = turn, "💥 error in steer(): too deeply nested."
+                b["error"] = True
                 continue
             finally:
                 tag(b["prints"], turn, before)
@@ -624,11 +627,13 @@ def run_match(entries, grid, starts):
             else:
                 continue
             b["died"], b["crash"] = turn, [r, c]
+            b["dirs"][-1] = b["d"]   # it turned to face what it hit
         for b in moving:
             if b["died"] is None:
                 b["r"], b["c"] = b["next"]
                 owner[b["next"]] = bikes.index(b)
                 b["path"].append([b["r"], b["c"]])
+                b["dirs"].append(b["d"])
 
     def lasted(b):
         return math.inf if b["died"] is None else b["died"]
@@ -639,7 +644,9 @@ def run_match(entries, grid, starts):
         out.append({
             "key": entry["key"], "name": entry["name"], "color": entry["color"],
             "dir": starts[bikes.index(b)][2], "path": b["path"],
+            "dirs": b["dirs"],   # which way it faces at each square of path
             "died": b["died"], "cause": b["cause"], "crash": b["crash"],
+            "error": b["error"],   # crashed because of a code error
             "place": 1 + sum(lasted(o) > lasted(b) for o in bikes),
             "outlasted": sum(lasted(o) < lasted(b) for o in bikes),
             "prints": ([f"… {b['dropped']} earlier lines not shown"]

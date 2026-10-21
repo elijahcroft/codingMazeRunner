@@ -465,6 +465,28 @@ class CyclesTests(unittest.TestCase):
             died, cause, _ = cycle_cause(code)
             self.assertIn("💥", cause, code)
 
+    def test_bikes_say_which_way_they_face_and_if_code_broke(self):
+        grid = cycles.box(6, 8)
+        bots = [{"key": "a", "name": "a", "color": "#fff",
+                 "code": 'def steer():\n    if wall_ahead():\n'
+                         '        return "right"\n    return "straight"\n'},
+                {"key": "b", "name": "b", "color": "#fff",
+                 "code": "def steer():\n    return 1 // 0\n"},
+                {"key": "c", "name": "c", "color": "#fff", "code": "steer"}]
+        a, b, c = cycles.run_match(bots, grid, [(1, 1, 1), (4, 1, 1), (4, 4, 0)])["bikes"]
+        self.assertEqual(len(a["dirs"]), len(a["path"]))
+        self.assertEqual(a["dirs"][:2], [1, 1])
+        # Each square's heading matches the step taken to reach it.
+        for (r0, c0), (r1, c1), d in zip(a["path"], a["path"][1:], a["dirs"][1:]):
+            self.assertEqual(cycles.DIRS[d], (r1 - r0, c1 - c0))
+        self.assertEqual((a["error"], b["error"], c["error"]), (False, True, True))
+        self.assertEqual((b["dirs"], c["dirs"]), ([1], [0]))
+        # A cycle that turns into a wall faces the wall on its last frame.
+        turner = [{"key": "t", "name": "t", "color": "#fff",
+                   "code": 'def steer():\n    return "left"\n'}]
+        t = cycles.run_match(turner, grid, [(1, 3, 1)])["bikes"][0]
+        self.assertEqual((t["path"], t["dirs"], t["crash"]), ([[1, 3]], [0], [0, 3]))
+
     def test_head_on_crash_is_a_tie(self):
         grid = cycles.box(5, 12)
         bots = [{"key": k, "name": k, "color": "#fff", "code": STRAIGHT}
