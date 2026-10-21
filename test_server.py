@@ -471,6 +471,37 @@ class CyclesTests(unittest.TestCase):
         self.assertLess(time.time() - start, 2)
         self.assertEqual(sum(b["place"] == 1 for b in result["bikes"]) >= 1, True)
 
+    def test_worst_case_battle_and_test_drive_stay_quick(self):
+        # Every bot fills its whole budget every turn with the slowest kind
+        # of work (sensor calls) and still rides well, so the match lasts.
+        burn = "    x = max(" + ",".join(["space_ahead()", "space_left()",
+                                          "space_right()"] * 60) + ")\n"
+        code = SWEEP.replace("    a = space_ahead()\n",
+                             "    a = space_ahead()\n" + burn * 2)
+        grid, starts = cycles.royale_arena(35, seed=1)
+        entries = [{"key": str(i), "name": str(i), "color": "#fff",
+                    "code": code} for i in range(35)]
+        start = time.time()
+        result = cycles.run_match(entries, grid, starts)
+        self.assertLess(time.time() - start, 3)   # ~1 s on ej's laptop
+        self.assertFalse(any("too long" in b["cause"] for b in result["bikes"]))
+        start = time.time()
+        cycles.practice(code, "T", "#fff")
+        self.assertLess(time.time() - start, 0.5)
+
+    def test_one_long_line_counts_as_lots_of_work(self):
+        line = " and ".join(["1"] * 600)
+        _, cause, _ = cycle_cause(f"def steer():\n    x = {line}\n"
+                                  "    return \"left\"\n")
+        self.assertIn("took too long", cause)
+
+    def test_only_one_battle_runs_at_a_time(self):
+        self.assertTrue(server.cycles_battle_lock.acquire(blocking=False))
+        try:
+            self.assertIn("already running", server.cycles_battle()["error"])
+        finally:
+            server.cycles_battle_lock.release()
+
     def test_battle_scores_points_and_hides_other_prints(self):
         original = dict(server.players)
         try:

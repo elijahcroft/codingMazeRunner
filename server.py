@@ -2554,6 +2554,7 @@ def open_rally_hint(p, key):
 # saved bots, practice heats against the house bots, and season points.
 # ---------------------------------------------------------------------------
 cycles_round = {"number": 0, "last": None}   # the last battle, for replays
+cycles_battle_lock = threading.Lock()
 
 
 def cycles_entry(p):
@@ -2569,13 +2570,14 @@ def cycles_board():
             for row in rows]
 
 
-def cycles_test(p, code):
+def cycles_test(p, code, heats=None):
     """Race the student's bot against the house bots in every practice heat.
-    The code they test is the bot they'll enter in the next battle."""
+    The code they test is the bot they'll enter in the next battle. The
+    server races the heats before taking the lock and passes them in."""
     code = str(code)[:4000]
     entry = cycles_entry(p)
     entry["code"] = code
-    heats = cycles.practice(code, p["name"], p["color"])
+    heats = heats or cycles.practice(code, p["name"], p["color"])
     places = [h["bikes"][0]["place"] for h in heats]
     lasted = [h["turns"] if h["bikes"][0]["died"] is None
               else h["bikes"][0]["died"] for h in heats]
@@ -2595,25 +2597,35 @@ def cycles_test(p, code):
 
 def cycles_battle():
     """Every student with a saved bot, one arena, last cycle riding wins.
-    Each student scores a point for every cycle they outlast."""
-    racers = [p for p in players.values() if cycles_entry(p)["code"].strip()]
-    if not racers:
-        return {"error": "No bots entered yet. Students enter by pressing "
-                         "Test drive on /cycles."}
-    grid, starts = cycles.royale_arena(len(racers), random.randrange(10 ** 6))
-    result = cycles.run_match(
-        [{"key": p["id"], "name": p["name"], "color": p["color"],
-          "code": cycles_entry(p)["code"]} for p in racers], grid, starts)
-    for p, bike in zip(racers, result["bikes"]):
-        entry = cycles_entry(p)
-        entry["points"] += bike["outlasted"]
-        entry["rounds"] += 1
-        if bike["place"] == 1 and len(racers) > 1:
-            entry["wins"] += 1
-    cycles_round["number"] += 1
-    result["round"] = cycles_round["number"]
-    cycles_round["last"] = result
-    return cycles_replay(None)
+    Each student scores a point for every cycle they outlast. The race runs
+    outside `lock` so the rest of the class isn't frozen while it does, and
+    only one battle runs at a time."""
+    if not cycles_battle_lock.acquire(blocking=False):
+        return {"error": "A round is already running — wait for it to finish."}
+    try:
+        with lock:
+            racers = [p for p in players.values()
+                      if cycles_entry(p)["code"].strip()]
+            entries = [{"key": p["id"], "name": p["name"], "color": p["color"],
+                        "code": cycles_entry(p)["code"]} for p in racers]
+        if not racers:
+            return {"error": "No bots entered yet. Students enter by pressing "
+                             "Test drive on /cycles."}
+        grid, starts = cycles.royale_arena(len(racers), random.randrange(10 ** 6))
+        result = cycles.run_match(entries, grid, starts)
+        with lock:
+            for p, bike in zip(racers, result["bikes"]):
+                entry = cycles_entry(p)
+                entry["points"] += bike["outlasted"]
+                entry["rounds"] += 1
+                if bike["place"] == 1 and len(racers) > 1:
+                    entry["wins"] += 1
+            cycles_round["number"] += 1
+            result["round"] = cycles_round["number"]
+            cycles_round["last"] = result
+            return cycles_replay(None)
+    finally:
+        cycles_battle_lock.release()
 
 
 def cycles_replay(p):
@@ -2911,20 +2923,25 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     self._send(200, rally_state(p, key))
             return
+        # Light Cycles replies are built under the lock but sent after it, so
+        # a slow Wi-Fi connection never holds up the rest of the class.
         if path in ("/cycles/state", "/cycles/last"):
             pid = parse_qs(urlsplit(self.path).query).get("id", [""])[0]
             with lock:
                 p = players.get(pid)
                 if path == "/cycles/last":
-                    self._send(200, cycles_replay(p))
+                    body = json.dumps(cycles_replay(p)).encode()
                 else:
-                    self._send(200, cycles_state(p) if p else {"you": None})
+                    body = json.dumps(cycles_state(p) if p else {"you": None}).encode()
+            self._send(200, body)
             return
         if path == "/cycles/board":
+            address = f"http://{get_lan_ip()}:{PORT}/cycles"
             with lock:
-                self._send(200, {"board": cycles_board(),
-                                 "round": cycles_round["number"],
-                                 "address": f"http://{get_lan_ip()}:{PORT}/cycles"})
+                body = json.dumps({"board": cycles_board(),
+                                   "round": cycles_round["number"],
+                                   "address": address}).encode()
+            self._send(200, body)
             return
         self._send(404, {"error": "not found"})
 
@@ -2985,21 +3002,28 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/cycles/test":
             with lock:
                 p = players.get(data.get("id"))
-                if not p:
-                    self._send(200, {"error": "join"})
-                    return
-                out = cycles_test(p, data.get("code", ""))
+                if p:
+                    name, color = p["name"], p["color"]
+            if not p:
+                self._send(200, {"error": "join"})
+                return
+            # Race the heats without the lock: other students keep working.
+            code = str(data.get("code", ""))[:4000]
+            heats = cycles.practice(code, name, color)
+            with lock:
+                body = json.dumps(cycles_test(p, code, heats)).encode()
                 save_state()
-                self._send(200, out)
+            self._send(200, body)
             return
         if self.path == "/cycles/battle":
             if str(data.get("key", "")) != ADMIN_KEY:
                 self._send(200, {"error": "Wrong admin key."})
                 return
+            out = cycles_battle()   # takes the lock itself, only when it must
             with lock:
-                out = cycles_battle()
+                body = json.dumps(out).encode()
                 save_state()
-                self._send(200, out)
+            self._send(200, body)
             return
         if self.path == "/typing":
             with lock:

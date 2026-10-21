@@ -31,7 +31,11 @@ import random
 DIRS = [(-1, 0), (0, 1), (1, 0), (0, -1)]   # N E S W, same order as the mazes
 TURNS = {"straight": 0, "right": 1, "left": -1}
 SETUP_BUDGET = 2000    # operations for the top of the program
-STEER_BUDGET = 1000    # operations for each steer() call
+STEER_BUDGET = 500     # operations for each steer() call (real bots use ~5-150)
+# Safety net for the whole class: all steer() calls in one match together may
+# use this many operations (about 1 s on a laptop), then the match ends with
+# everyone still riding sharing the finish. Normal battles use a small part.
+MATCH_BUDGET = 1_000_000
 MAX_INT = 10 ** 9
 MAX_PRINTS = 80        # print() lines kept per cycle per match
 
@@ -198,6 +202,7 @@ class Brain:
         raise BotError("That comparison isn't allowed. Use  < <= > >= == !=")
 
     def eval(self, node, frame):
+        self.tick()   # every piece of an expression is work, not just each line
         if isinstance(node, ast.Constant):
             v = node.value
             if v is None or isinstance(v, (int, bool)):
@@ -523,12 +528,16 @@ def run_match(entries, grid, starts):
             return solid(bike["r"] + dr, bike["c"] + dc)
 
         def space(turn):
-            dr, dc = look(turn)
-            r, c, n = bike["r"] + dr, bike["c"] + dc, 0
-            while not solid(r, c):
-                n += 1
-                r, c = r + dr, c + dc
-            return n
+            # The board can't change while bots decide, so count each way
+            # once per turn: asking again is cheap, however often a bot asks.
+            if turn not in bike["looks"]:
+                dr, dc = look(turn)
+                r, c, n = bike["r"] + dr, bike["c"] + dc, 0
+                while not solid(r, c):
+                    n += 1
+                    r, c = r + dr, c + dc
+                bike["looks"][turn] = n
+            return bike["looks"][turn]
 
         return {
             "wall_ahead": lambda: wall(0), "wall_left": lambda: wall(-1),
@@ -550,15 +559,17 @@ def run_match(entries, grid, starts):
         for k in range(start, len(prints)):
             prints[k] = f"turn {turn} › {prints[k]}"
 
-    turn = 0
+    turn = spent = 0
     stop_at = 0 if len(bikes) == 1 else 1
     free = sum(row.count(".") for row in grid)
-    while sum(b["died"] is None for b in bikes) > stop_at and turn < free:
+    while sum(b["died"] is None for b in bikes) > stop_at and turn < free \
+            and spent < MATCH_BUDGET:
         turn += 1
         alive = [b for b in bikes if b["died"] is None]
         # Everyone decides from the same picture of the board, then all move.
         for b in alive:
             before = len(b["prints"])
+            b["looks"] = {}
             try:
                 choice = b["brain"].steer()
             except BotError as e:
@@ -569,6 +580,7 @@ def run_match(entries, grid, starts):
                 continue
             finally:
                 tag(b["prints"], turn, before)
+                spent += b["brain"].ops
             if choice not in TURNS:
                 if not b["warned"] and len(b["prints"]) < MAX_PRINTS:
                     b["prints"].append(
