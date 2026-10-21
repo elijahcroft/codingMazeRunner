@@ -433,6 +433,23 @@ class CyclesTests(unittest.TestCase):
         died, cause, _ = cycle_cause("def steer():\n    return left\n")
         self.assertIn('return "left"', cause)
 
+    def test_print_keeps_the_last_lines_before_a_crash(self):
+        code = ("n = 0\ndef steer():\n    global n\n    n += 1\n"
+                "    for i in range(5):\n        print(i, n)\n"
+                "    return \"straight\"\n")
+        died, _, prints = cycle_cause(code)
+        self.assertEqual(len(prints), cycles.MAX_PRINTS + 1)
+        self.assertEqual(prints[0], f"… {5 * died - cycles.MAX_PRINTS} "
+                                    "earlier lines not shown")
+        self.assertEqual(prints[-1], f"turn {died} › 4 {died}")
+        _, _, prints = cycle_cause("def steer():\n    print(1)\n"
+                                   "    return \"straight\"\n")
+        self.assertEqual(prints[0], "turn 1 › 1")   # short logs are untouched
+        _, _, prints = cycle_cause("for i in range(200):\n    print(i)\n"
+                                   "def steer():\n    return 1\n")
+        self.assertEqual(len(prints), cycles.MAX_PRINTS + 1)
+        self.assertIn("returned 1", prints[-1])
+
     def test_globals_need_the_global_keyword_like_real_python(self):
         _, cause, _ = cycle_cause("n = 0\ndef steer():\n    n += 1\n"
                                   "    return \"straight\"\n")

@@ -37,7 +37,8 @@ STEER_BUDGET = 500     # operations for each steer() call (real bots use ~5-150)
 # everyone still riding sharing the finish. Normal battles use a small part.
 MATCH_BUDGET = 1_000_000
 MAX_INT = 10 ** 9
-MAX_PRINTS = 80        # print() lines kept per cycle per match
+MAX_PRINTS = 80        # print() lines kept per cycle per match: the LAST ones,
+                       # because the lines just before a crash matter most
 
 
 class BotError(Exception):
@@ -259,8 +260,7 @@ class Brain:
         if name in self.funcs:
             return self.call_user(self.funcs[name], args)
         if name == "print":
-            if len(self.prints) < MAX_PRINTS:
-                self.prints.append(" ".join(str(a) for a in args[:4]))
+            self.prints.append(" ".join(str(a) for a in args[:4]))
             return None
         if name in ("max", "min"):
             if len(args) < 2:
@@ -515,7 +515,7 @@ def run_match(entries, grid, starts):
     for i, (entry, (r, c, d)) in enumerate(zip(entries, starts)):
         bike = {"entry": entry, "r": r, "c": c, "d": d, "path": [[r, c]],
                 "died": None, "cause": "", "crash": None, "prints": [],
-                "warned": False}
+                "dropped": 0, "warned": False}
         owner[(r, c)] = i
         bikes.append(bike)
 
@@ -559,6 +559,15 @@ def run_match(entries, grid, starts):
         for k in range(start, len(prints)):
             prints[k] = f"turn {turn} › {prints[k]}"
 
+    def keep_last(b):
+        extra = len(b["prints"]) - MAX_PRINTS
+        if extra > 0:
+            b["dropped"] += extra
+            del b["prints"][:extra]
+
+    for b in bikes:
+        keep_last(b)   # the top of the program may print too
+
     turn = spent = 0
     stop_at = 0 if len(bikes) == 1 else 1
     free = sum(row.count(".") for row in grid)
@@ -580,12 +589,14 @@ def run_match(entries, grid, starts):
                 continue
             finally:
                 tag(b["prints"], turn, before)
+                keep_last(b)
                 spent += b["brain"].ops
             if choice not in TURNS:
-                if not b["warned"] and len(b["prints"]) < MAX_PRINTS:
+                if not b["warned"]:
                     b["prints"].append(
                         f"turn {turn} ⚠️ steer() returned {choice!r}. Return "
                         f'"left", "right" or "straight" — going straight.')
+                    keep_last(b)
                 b["warned"] = True
                 choice = "straight"
             b["d"] = (b["d"] + TURNS[choice]) % 4
@@ -631,7 +642,8 @@ def run_match(entries, grid, starts):
             "died": b["died"], "cause": b["cause"], "crash": b["crash"],
             "place": 1 + sum(lasted(o) > lasted(b) for o in bikes),
             "outlasted": sum(lasted(o) < lasted(b) for o in bikes),
-            "prints": b["prints"],
+            "prints": ([f"… {b['dropped']} earlier lines not shown"]
+                       if b["dropped"] else []) + b["prints"],
         })
     return {"grid": ["".join(row) for row in grid], "turns": turn, "bikes": out}
 
