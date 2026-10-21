@@ -155,6 +155,12 @@
   .sensor-list { padding: 0 12px 12px; display: grid; gap: 6px; font-size: 12px; color: #b6c2d5; line-height: 1.45; }
   .sensor-list b { color: var(--amber); font: 10px var(--editor); letter-spacing: .04em; margin-top: 4px; }
   .sensor-list pre { margin: 2px 0 0; padding: 7px 9px; background: #0a101c; border: 1px solid #1d2a40; color: #dce7f6; font: 12px/1.5 var(--editor); }
+  .drawer[open] > .sensor-list { max-height: 30vh; overflow: auto; }
+  .hint-note { color: var(--muted); }
+  .hint { margin-top: 5px; }
+  .hint summary { color: var(--cyan); font: 11px var(--editor); cursor: pointer; padding: 2px 0; }
+  .hint p { margin: 3px 0 4px; }
+  .hint .hint { margin-left: 12px; }
   .console { min-height: 0; display: grid; grid-template-rows: 34px minmax(0, 1fr); background: #080d17; }
   .console-head { display: flex; align-items: center; justify-content: space-between; padding: 0 12px; color: var(--muted); font: 11px var(--editor); border-bottom: 1px solid #18243a; }
   #log { overflow: auto; max-height: 35vh; padding: 10px 13px 18px; font: 12px/1.5 var(--editor); color: #b9c7db; }
@@ -310,11 +316,46 @@ def steer():
         </details>
         <details class="drawer">
           <summary>Challenges</summary>
-          <div class="sensor-list">
-            <div><b>1 · SURVIVOR</b><br>The starter rides straight into a wall. Last 30 turns in every heat.</div>
-            <div><b>2 · PODIUM</b><br>Finish in the top 2 of a heat. Hint: a cycle that turns left should check that the left is clear.</div>
-            <div><b>3 · CHAMPION</b><br>Beat all three house bots in one heat. Use the number sensors to choose the side with more room.</div>
-            <div><b>4 · SWEEP</b><br>Win all three heats with one program. Then get ready for the class battle: other students' bots are smarter than Rex.</div>
+          <div class="sensor-list challenges">
+            <div class="hint-note">Stuck? Open a hint. Hints are free, and each one opens the next.</div>
+            <div><b>1 · SURVIVOR</b><br>Last 30 turns in every heat.
+              <details class="hint"><summary>Hint 1</summary><p>Predict first: the starter always says <code>"straight"</code>. What happens when a wall is right in front of it? Which sensor could warn you?</p>
+                <details class="hint"><summary>Hint 2</summary><p>Use an <code>if</code>. When <code>wall_ahead()</code> is True, return a turn. Otherwise return <code>"straight"</code>.</p>
+                  <details class="hint"><summary>Hint 3 · fill the blanks</summary><pre>def steer():
+    if ____():
+        return "____"
+    return "straight"</pre><p>A sensor name, then a direction. Left or right both work.</p></details></details></details></div>
+            <div><b>2 · PODIUM</b><br>Finish in the top 2 of a heat.
+              <details class="hint"><summary>Hint 1</summary><p>Your Survivor bot might already have it: check your places on the left. If not, watch where your cycle crashes. Look at the arrow on its head.</p>
+                <details class="hint"><summary>Hint 2</summary><p>Before you turn left, check the left is clear. If <code>wall_left()</code> is True, turn right instead. That's an <code>if</code> inside an <code>if</code>.</p>
+                  <details class="hint"><summary>Hint 3 · fill the blank</summary><pre>def steer():
+    if wall_ahead():
+        if ____():
+            return "right"
+        return "left"
+    return "straight"</pre></details></details></details></div>
+            <div><b>3 · CHAMPION</b><br>Beat all three house bots in one heat.
+              <details class="hint"><summary>Hint 1</summary><p><code>wall_ahead()</code> only says yes or no. The number sensors say <em>how much</em> room there is: <code>space_left()</code>, <code>space_right()</code>, <code>space_ahead()</code>.</p>
+                <details class="hint"><summary>Hint 2</summary><p>When you have to turn, turn to the side with more room. Compare <code>space_left()</code> with <code>space_right()</code>.</p>
+                  <details class="hint"><summary>Hint 3 · fill the blanks</summary><pre>def steer():
+    if wall_ahead():
+        if space_left() ____ space_right():
+            return "left"
+        return "____"
+    return "straight"</pre><p>A comparison sign, then a direction.</p></details></details></details></div>
+            <div><b>4 · SWEEP</b><br>Win all three heats with one program.
+              <details class="hint"><summary>Hint 1</summary><p>Replay the heat you lose. Do you trap yourself in a small space? Turning every time one side looks a bit bigger makes you zigzag into a corner.</p>
+                <details class="hint"><summary>Hint 2</summary><p>Keep going straight while there's lots of room ahead (more than about 8 squares). Only when it gets tight, pick the side with the most room.</p>
+                  <details class="hint"><summary>Hint 3 · fill the blanks</summary><pre>def steer():
+    a = space_ahead()
+    l = space_left()
+    r = space_right()
+    if a > ____ or (a > 0 and a >= ____(l, r)):
+        return "straight"
+    if l >= r:
+        return "left"
+    return "right"</pre><p>A number (try 8), then the command that gives the bigger of two numbers.</p></details></details></details></div>
+            <div>Then get ready for the class battle: your classmates' bots are trickier than Rex.</div>
           </div>
         </details>
       </div>
