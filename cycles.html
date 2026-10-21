@@ -658,7 +658,9 @@ function draw(match, t) {
   for (const b of match.bikes) {
     const out = outAt(b);
     const steps = Math.min(t, b.path.length - 1);
-    ctx.globalAlpha = out ? .35 : .8;
+    // In a class battle everyone else fades, so your own cycle stands out.
+    const faded = big && !isMine(b);
+    ctx.globalAlpha = isMine(b) && big ? 1 : out ? (faded ? .2 : .35) : (faded ? .45 : .8);
     ctx.fillStyle = b.color;
     const gap = size >= 8 ? 1 : 0;   // tiny cells look like dotted lines with gaps
     for (let k = 0; k <= steps; k++) ctx.fillRect(b.path[k][1] * size + gap, b.path[k][0] * size + gap, size - 2 * gap, size - 2 * gap);
@@ -673,7 +675,9 @@ function draw(match, t) {
       ctx.moveTo((xc + 1) * size - 2, xr * size + 2); ctx.lineTo(xc * size + 2, (xr + 1) * size - 2);
       ctx.stroke();
     } else {
+      ctx.globalAlpha = faded ? .55 : 1;
       drawHead(ctx, hr, hc, size, heading(b, steps), b.color);
+      ctx.globalAlpha = 1;
       if (isMine(b)) {
         ctx.strokeStyle = b.color; ctx.lineWidth = 2;
         ctx.strokeRect(hc * size - 3, hr * size - 3, size + 6, size + 6);
