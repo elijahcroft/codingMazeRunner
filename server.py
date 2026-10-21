@@ -2557,6 +2557,17 @@ def open_rally_hint(p, key):
 cycles_round = {"number": 0, "last": None}   # the last battle, for replays
 cycles_battle_lock = threading.Lock()
 
+# Light Cycles has its own colours: bright on the dark arena (#0b111e, every
+# one at least 5:1 contrast) and as different from each other and from the
+# house bots as 24 colours can be (closest pair ~14 CIEDE2000). The first
+# ones differ most, so small classes get the clearest set.
+CYCLE_COLORS = [
+    "#34b26f", "#cb3dff", "#d46c11", "#2be1ee", "#f9b8f9", "#94ff1a",
+    "#ffc2b2", "#c4eec4", "#99b234", "#3499b2", "#d369a9", "#9988dd",
+    "#c4ccee", "#ff291a", "#b29034", "#1affa3", "#ffad66", "#f4e2be",
+    "#b8e4f9", "#e5e600", "#34b2a9", "#eea0b5", "#1ac2ff", "#ff8566",
+]
+
 
 def cycles_entry(p):
     entry = p.setdefault("cycles", {"code": "", "best": None, "points": 0,
@@ -2570,13 +2581,24 @@ def cycles_entry(p):
     return entry
 
 
+def cycles_color(p):
+    """The student's own Light Cycles colour: the first one nobody has yet."""
+    entry = cycles_entry(p)
+    if "color" not in entry:
+        used = [q["cycles"]["color"] for q in players.values()
+                if "color" in q.get("cycles", {})]
+        entry["color"] = next((c for c in CYCLE_COLORS if c not in used),
+                              CYCLE_COLORS[len(used) % len(CYCLE_COLORS)])
+    return entry["color"]
+
+
 def cycles_entry_status(entry):
     return {k: entry[k] for k in ("code", "entered_at", "ok", "error",
                                   "kept_previous")}
 
 
 def cycles_board():
-    rows = [{"name": p["name"], "color": p["color"], **cycles_entry(p)}
+    rows = [{**cycles_entry(p), "name": p["name"], "color": cycles_color(p)}
             for p in players.values() if cycles_entry(p)["code"].strip()]
     rows.sort(key=lambda x: (-x["points"], -x["wins"], x["name"].lower()))
     return [{k: row[k] for k in ("name", "color", "points", "rounds", "wins")}
@@ -2589,7 +2611,7 @@ def cycles_test(p, code, heats=None):
     server races the heats before taking the lock and passes them in."""
     code = str(code)[:4000]
     entry = cycles_entry(p)
-    heats = heats or cycles.practice(code, p["name"], p["color"])
+    heats = heats or cycles.practice(code, p["name"], cycles_color(p))
     # Code that can't even start (a syntax error, a crash at the top, no
     # steer()) never replaces a bot that works: breaking your code just
     # before a round shouldn't enter a cycle that crashes on the start line.
@@ -2630,8 +2652,16 @@ def cycles_battle():
         with lock:
             racers = [p for p in players.values()
                       if cycles_entry(p)["code"].strip()]
-            entries = [{"key": p["id"], "name": p["name"], "color": p["color"],
-                        "code": cycles_entry(p)["code"]} for p in racers]
+            entries = []
+            for p in racers:
+                # Keep everyone's own colour, unless someone in this race
+                # already has it: then the first colour still free.
+                taken = [e["color"] for e in entries]
+                color = cycles_color(p)
+                if color in taken:
+                    color = next((c for c in CYCLE_COLORS if c not in taken), color)
+                entries.append({"key": p["id"], "name": p["name"], "color": color,
+                                "code": cycles_entry(p)["code"]})
         if not racers:
             return {"error": "No bots entered yet. Students enter by pressing "
                              "Test drive on /cycles."}
@@ -2664,7 +2694,7 @@ def cycles_replay(p):
 
 def cycles_state(p):
     entry = cycles_entry(p)
-    return {"you": {"name": p["name"], "color": p["color"]},
+    return {"you": {"name": p["name"], "color": cycles_color(p)},
             "code": entry["tested"], "best": entry["best"],
             "points": entry["points"], "board": cycles_board(),
             "round": cycles_round["number"],
@@ -3028,7 +3058,7 @@ class Handler(BaseHTTPRequestHandler):
             with lock:
                 p = players.get(data.get("id"))
                 if p:
-                    name, color = p["name"], p["color"]
+                    name, color = p["name"], cycles_color(p)
             if not p:
                 self._send(200, {"error": "join"})
                 return

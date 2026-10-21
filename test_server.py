@@ -578,6 +578,41 @@ class CyclesTests(unittest.TestCase):
             server.players.update(original)
             server.cycles_round.update(number=0, last=None)
 
+    def test_cycle_colors_are_bright_and_never_shared_in_a_battle(self):
+        def luminance(color):
+            rgb = [int(color[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+            r, g, b = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+                       for c in rgb]
+            return 0.2126 * r + 0.7152 * g + 0.0722 * b
+        arena = luminance("#0b111e")
+        self.assertGreaterEqual(len(set(server.CYCLE_COLORS)), 24)
+        for color in server.CYCLE_COLORS:   # WCAG contrast ratio on the arena
+            self.assertGreaterEqual((luminance(color) + 0.05) / (arena + 0.05), 4.5)
+        original = dict(server.players)
+        try:
+            server.players.clear()
+            for i in range(30):
+                p = fake_player(f"Kid{i}")
+                p["id"] = f"k{i}"
+                server.players[p["id"]] = p
+            kids = list(server.players.values())
+            colors = [server.cycles_color(p) for p in kids]
+            self.assertEqual(len(set(colors[:24])), 24)
+            self.assertEqual(server.cycles_state(kids[3])["you"]["color"], colors[3])
+            # Kid 24 repeats kid 0's colour; a battle of 24 with both of them
+            # still gives every rider a different colour.
+            self.assertEqual(colors[24], colors[0])
+            for p in kids[:23] + [kids[24]]:
+                server.cycles_entry(p)["code"] = STRAIGHT
+            bikes = server.cycles_battle()["replay"]["bikes"]
+            self.assertEqual(len(bikes), 24)
+            self.assertEqual(len({b["color"] for b in bikes}), 24)
+            self.assertEqual(bikes[0]["color"], colors[0])   # own colour kept
+        finally:
+            server.players.clear()
+            server.players.update(original)
+            server.cycles_round.update(number=0, last=None)
+
     def test_old_cycles_entries_still_load(self):
         p = fake_player()
         p["cycles"] = {"code": STRAIGHT, "best": None, "points": 3,
