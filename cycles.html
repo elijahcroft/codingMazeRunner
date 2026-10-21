@@ -148,6 +148,7 @@
   .file-tab { height: 41px; padding: 0 17px; display: flex; align-items: center; gap: 8px; color: var(--text); background: var(--panel); border-right: 1px solid var(--line); border-top: 2px solid var(--cyan); font: 12px var(--editor); }
   .py-icon { color: var(--amber); font-weight: 900; }
   .editor-shell { min-height: 0; display: grid; grid-template-columns: auto 1fr; overflow: hidden; background: #0c1220; }
+  .lines .err { color: var(--red); font-weight: 700; }
   .lines { min-width: 44px; padding: 14px 10px 60px 8px; color: #4f607a; background: #0a101c; border-right: 1px solid #18243a; text-align: right; white-space: pre; overflow: hidden; font: 14px/1.55 var(--editor); user-select: none; }
   textarea { width: 100%; height: 100%; resize: none; border: 0; outline: 0; padding: 14px 16px 60px; background: #0c1220; color: #dce7f6; caret-color: var(--cyan); font: 14px/1.55 var(--editor); tab-size: 4; white-space: pre; overflow: auto; }
   .toolbar { min-height: 52px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: #0f1727; flex-wrap: wrap; }
@@ -485,6 +486,7 @@ let heats = null, lastBattle = null, shown = null, frame = 0, drawn = 0, animati
 let selected = null;   // 0..2 for a heat, "battle" for the class battle
 let board = [], battleRound = 0;
 let entry = null;   // the bot entered for the next battle, if the server reports it
+let errorLine = 0;  // the line the last test drive's code error points at, marked in the gutter
 
 function esc(value) {
   return String(value).replace(/[&<>\"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
@@ -742,10 +744,12 @@ function show(match, title, lines) {
   $("log").scrollTop = $("log").scrollHeight;   // the end: where it crashed
   replay();
 }
+// A full stop, unless the cause already ends a sentence or with code.
+function sentence(text) { return /[.?!:)"]$/.test(text) ? text : text + "."; }
 function outcome(b, total) {
   if (b.place === 1 && b.died === null) return `🏆 Last cycle riding! You won (1st of ${total}).`;
-  if (b.place === 1) return `🏆 Tied for 1st of ${total}. You went out on turn ${b.died}: ${b.cause}.`;
-  return `${b.died === 0 ? "" : "⚠️ "}You finished ${ordinal(b.place)} of ${total}. Out on turn ${b.died}: ${b.cause}.`;
+  if (b.place === 1) return `🏆 Tied for 1st of ${total}. You went out on turn ${b.died}: ${sentence(b.cause)}`;
+  return `${b.died === 0 ? "" : "⚠️ "}You finished ${ordinal(b.place)} of ${total}. Out on turn ${b.died}: ${sentence(b.cause)}`;
 }
 function bikeLines(b, total) {
   const lines = [outcome(b, total)];
@@ -753,7 +757,7 @@ function bikeLines(b, total) {
   if (b.prints.length) {
     lines.push("— your print() output —", ...b.prints);
     // The log opens scrolled to the end, so say how it ended down there too.
-    if (b.died) lines.push(`⚠️ Then, on turn ${b.died}: ${b.cause}.`);
+    if (b.died) lines.push(`⚠️ Then, on turn ${b.died}: ${sentence(b.cause)}`);
   } else if (b.died !== 0) lines.push("Tip: add print() inside steer() to see what your bot is thinking each turn.");
   return lines;
 }
@@ -852,6 +856,9 @@ async function testDrive() {
     const data = await post("/cycles/test", {id: me, code: $("code").value});
     if (data.error === "join") { localStorage.removeItem("mazeId"); location.reload(); return; }
     heats = data.heats;
+    const crash = heats.map(h => /^💥.*?\b[Ll]ine (\d+)/.exec(h.bikes[0].cause)).find(Boolean);
+    errorLine = crash ? Number(crash[1]) : 0;
+    updateEditor();
     board = data.board; renderBoard();
     renderBest(data.best, data.score, data.new_best);
     renderCompare(data.score);
@@ -883,7 +890,8 @@ function loadStarter() {
 function updateEditor() {
   const code = $("code").value;
   const count = Math.max(1, code.split("\n").length);
-  $("lines").textContent = Array.from({length: count}, (_, i) => i + 1).join("\n");
+  $("lines").innerHTML = Array.from({length: count}, (_, i) =>
+    i + 1 === errorLine ? `<span class="err" title="The error is on this line">▸${i + 1}</span>` : i + 1).join("\n");
   const lines = code.split("\n").filter(line => line.trim() && !line.trim().startsWith("#")).length;
   $("codeCount").textContent = `${lines} line${lines === 1 ? "" : "s"} of code`;
   updatePosition();
