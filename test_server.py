@@ -613,6 +613,37 @@ class CyclesTests(unittest.TestCase):
             server.players.update(original)
             server.cycles_round.update(number=0, last=None)
 
+    def test_round_and_last_replay_survive_a_restart(self):
+        import json, os, tempfile
+        original, original_file = dict(server.players), server.STATE_FILE
+        original_next = server.next_player_num[0]
+        with tempfile.TemporaryDirectory() as folder:
+            server.STATE_FILE = os.path.join(folder, "scores.json")
+            try:
+                server.players.clear()
+                p = fake_player("Ada")
+                server.players[p["id"]] = p
+                server.cycles_test(p, SWEEP)
+                server.cycles_battle()
+                server.cycles_battle()
+                server.save_state()
+                server.cycles_round.update(number=0, last=None)   # a restart
+                server.players.clear()
+                server.load_state()
+                self.assertEqual(server.cycles_state(server.players["test"])["round"], 2)
+                self.assertEqual(server.cycles_replay(None)["replay"]["round"], 2)
+                # Saves from before Light Cycles rounds were kept still load.
+                with open(server.STATE_FILE, "w") as f:
+                    json.dump({"players": {}, "next": 0}, f)
+                server.load_state()
+                self.assertEqual(server.cycles_round, {"number": 0, "last": None})
+            finally:
+                server.STATE_FILE = original_file
+                server.next_player_num[0] = original_next
+                server.players.clear()
+                server.players.update(original)
+                server.cycles_round.update(number=0, last=None)
+
     def test_old_cycles_entries_still_load(self):
         p = fake_player()
         p["cycles"] = {"code": STRAIGHT, "best": None, "points": 3,

@@ -1442,7 +1442,7 @@ def save_state():
         tmp = STATE_FILE + ".tmp"
         with open(tmp, "w") as f:
             json.dump({"players": players, "next": next_player_num[0],
-                       "admin_key": ADMIN_KEY}, f)
+                       "admin_key": ADMIN_KEY, "cycles_round": cycles_round}, f)
         os.replace(tmp, STATE_FILE)  # atomic: never leaves a half-written file
     except Exception:
         pass
@@ -1482,6 +1482,10 @@ def load_state():
         p["chars"] = {k: chars.get(k, LEGACY_CHARS) for k in p["best"]}
         players[pid] = p
     next_player_num[0] = data.get("next", len(players))
+    # The Light Cycles round number and last replay arrived after some saves.
+    saved_round = data.get("cycles_round") or {}
+    cycles_round["number"] = int(saved_round.get("number", 0) or 0)
+    cycles_round["last"] = saved_round.get("last") or None
     # Reuse the same admin key across restarts so an open admin page keeps
     # working; fall back to this run's freshly generated one if none was saved.
     ADMIN_KEY = data.get("admin_key") or ADMIN_KEY
