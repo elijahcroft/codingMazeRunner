@@ -487,6 +487,7 @@ let selected = null;   // 0..2 for a heat, "battle" for the class battle
 let board = [], battleRound = 0;
 let entry = null;   // the bot entered for the next battle, if the server reports it
 let errorLine = 0;  // the line the last test drive's code error points at, marked in the gutter
+let errorCount = 0; // how many lines the code had then: adding or removing lines clears the mark
 
 function esc(value) {
   return String(value).replace(/[&<>\"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
@@ -862,6 +863,7 @@ async function testDrive() {
     heats = data.heats;
     const crash = heats.map(h => /^💥.*?\b[Ll]ine (\d+)/.exec(h.bikes[0].cause)).find(Boolean);
     errorLine = crash ? Number(crash[1]) : 0;
+    errorCount = Math.max(1, $("code").value.split("\n").length);
     updateEditor();
     board = data.board; renderBoard();
     renderBest(data.best, data.score, data.new_best);
@@ -894,6 +896,7 @@ function loadStarter() {
 function updateEditor() {
   const code = $("code").value;
   const count = Math.max(1, code.split("\n").length);
+  if (count !== errorCount) errorLine = 0;
   $("lines").innerHTML = Array.from({length: count}, (_, i) =>
     i + 1 === errorLine ? `<span class="err" title="The error is on this line">▸${i + 1}</span>` : i + 1).join("\n");
   const lines = code.split("\n").filter(line => line.trim() && !line.trim().startsWith("#")).length;
