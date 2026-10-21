@@ -4,8 +4,9 @@ Python Quest — a classroom coding game.
 The main experience is a four-mission, Python-only workspace at `/`.  It uses
 an IDE-style editor, a real output console, and a progression from functions to
 general algorithms to debugging and exploration.  Bot Rally at `/arena` tests
-one program on five tracks.  The original maze ladders remain at `/classic` as
-optional drills.
+one program on five tracks.  Light Cycles at `/cycles` is a battle royale where
+every student's steer() function rides against the class (cycles.py).  The
+original maze ladders remain at `/classic` as optional drills.
 
 Students connect from their browsers to your laptop and drive a little
 character through a maze by typing Python:
@@ -90,6 +91,8 @@ import socket
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
+
+import cycles
 
 PORT = int(os.environ.get("MAZE_PORT", "8000"))
 
@@ -2545,6 +2548,92 @@ def open_rally_hint(p, key):
     return league["hints"][:entry["hints"]]
 
 
+# ---------------------------------------------------------------------------
+# Light Cycles (/cycles): every student's steer() in one Tron-style battle
+# royale. The game itself lives in cycles.py; this is the classroom side —
+# saved bots, practice heats against the house bots, and season points.
+# ---------------------------------------------------------------------------
+cycles_round = {"number": 0, "last": None}   # the last battle, for replays
+
+
+def cycles_entry(p):
+    return p.setdefault("cycles", {"code": "", "best": None, "points": 0,
+                                   "rounds": 0, "wins": 0})
+
+
+def cycles_board():
+    rows = [{"name": p["name"], "color": p["color"], **cycles_entry(p)}
+            for p in players.values() if cycles_entry(p)["code"].strip()]
+    rows.sort(key=lambda x: (-x["points"], -x["wins"], x["name"].lower()))
+    return [{k: row[k] for k in ("name", "color", "points", "rounds", "wins")}
+            for row in rows]
+
+
+def cycles_test(p, code):
+    """Race the student's bot against the house bots in every practice heat.
+    The code they test is the bot they'll enter in the next battle."""
+    code = str(code)[:4000]
+    entry = cycles_entry(p)
+    entry["code"] = code
+    heats = cycles.practice(code, p["name"], p["color"])
+    places = [h["bikes"][0]["place"] for h in heats]
+    lasted = [h["turns"] if h["bikes"][0]["died"] is None
+              else h["bikes"][0]["died"] for h in heats]
+    score = {"wins": places.count(1), "places": places, "lasted": lasted,
+             "turns": sum(lasted)}
+    best = entry["best"]
+    new_best = best is None or (score["wins"], -sum(places), score["turns"]) > \
+        (best["wins"], -sum(best["places"]), best["turns"])
+    if new_best:
+        entry["best"] = score
+    for h in heats:
+        for bike in h["bikes"][1:]:
+            bike["prints"] = []   # the house bots' notes are just noise
+    return {"heats": heats, "score": score, "best": entry["best"],
+            "new_best": new_best, "board": cycles_board()}
+
+
+def cycles_battle():
+    """Every student with a saved bot, one arena, last cycle riding wins.
+    Each student scores a point for every cycle they outlast."""
+    racers = [p for p in players.values() if cycles_entry(p)["code"].strip()]
+    if not racers:
+        return {"error": "No bots entered yet. Students enter by pressing "
+                         "Test drive on /cycles."}
+    grid, starts = cycles.royale_arena(len(racers), random.randrange(10 ** 6))
+    result = cycles.run_match(
+        [{"key": p["id"], "name": p["name"], "color": p["color"],
+          "code": cycles_entry(p)["code"]} for p in racers], grid, starts)
+    for p, bike in zip(racers, result["bikes"]):
+        entry = cycles_entry(p)
+        entry["points"] += bike["outlasted"]
+        entry["rounds"] += 1
+        if bike["place"] == 1 and len(racers) > 1:
+            entry["wins"] += 1
+    cycles_round["number"] += 1
+    result["round"] = cycles_round["number"]
+    cycles_round["last"] = result
+    return cycles_replay(None)
+
+
+def cycles_replay(p):
+    """The last battle, with only this student's own print() output."""
+    last = cycles_round["last"]
+    if not last:
+        return {"replay": None, "board": cycles_board()}
+    bikes = [dict(b, prints=b["prints"] if p and b["key"] == p["id"] else [])
+             for b in last["bikes"]]
+    return {"replay": dict(last, bikes=bikes), "board": cycles_board()}
+
+
+def cycles_state(p):
+    entry = cycles_entry(p)
+    return {"you": {"name": p["name"], "color": p["color"]},
+            "code": entry["code"], "best": entry["best"],
+            "points": entry["points"], "board": cycles_board(),
+            "round": cycles_round["number"]}
+
+
 def unlocked_frontier(p, wi=None):
     """Highest maze index this player may enter in world `wi`: the first one
     they haven't solved yet, OR further if the teacher unlocked ahead from the
@@ -2732,6 +2821,12 @@ def admin_action(data):
         for q in players.values():
             unlock(q, idx)
         return f"Unlocked everyone up to {name} maze {idx + 1}."
+    if action == "cycles_reset":
+        for q in players.values():
+            entry = cycles_entry(q)
+            entry["points"] = entry["rounds"] = entry["wins"] = 0
+        cycles_round["number"], cycles_round["last"] = 0, None
+        return "Light Cycles season reset — everyone is back to 0 points."
     return "Unknown action."
 
 
@@ -2747,6 +2842,8 @@ PAGES = {
     "/": ("studio.html", "text/html; charset=utf-8"),
     "/classic": ("game.html", "text/html; charset=utf-8"),
     "/arena": ("arena.html", "text/html; charset=utf-8"),
+    "/cycles": ("cycles.html", "text/html; charset=utf-8"),
+    "/cycles/show": ("cycles_show.html", "text/html; charset=utf-8"),
     "/leaderboard": ("leaderboard.html", "text/html; charset=utf-8"),
     "/screen": ("screen.html", "text/html; charset=utf-8"),
     "/admin": ("admin.html", "text/html; charset=utf-8"),
@@ -2814,6 +2911,21 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     self._send(200, rally_state(p, key))
             return
+        if path in ("/cycles/state", "/cycles/last"):
+            pid = parse_qs(urlsplit(self.path).query).get("id", [""])[0]
+            with lock:
+                p = players.get(pid)
+                if path == "/cycles/last":
+                    self._send(200, cycles_replay(p))
+                else:
+                    self._send(200, cycles_state(p) if p else {"you": None})
+            return
+        if path == "/cycles/board":
+            with lock:
+                self._send(200, {"board": cycles_board(),
+                                 "round": cycles_round["number"],
+                                 "address": f"http://{get_lan_ip()}:{PORT}/cycles"})
+            return
         self._send(404, {"error": "not found"})
 
     def do_POST(self):
@@ -2869,6 +2981,25 @@ class Handler(BaseHTTPRequestHandler):
                 hints = open_rally_hint(p, key)
                 save_state()
                 self._send(200, {"hints": hints})
+            return
+        if self.path == "/cycles/test":
+            with lock:
+                p = players.get(data.get("id"))
+                if not p:
+                    self._send(200, {"error": "join"})
+                    return
+                out = cycles_test(p, data.get("code", ""))
+                save_state()
+                self._send(200, out)
+            return
+        if self.path == "/cycles/battle":
+            if str(data.get("key", "")) != ADMIN_KEY:
+                self._send(200, {"error": "Wrong admin key."})
+                return
+            with lock:
+                out = cycles_battle()
+                save_state()
+                self._send(200, out)
             return
         if self.path == "/typing":
             with lock:
@@ -2961,6 +3092,8 @@ def main():
         f"  On laptop:    http://localhost:{PORT}",
         "",
         f"  Bot Rally:    http://{ip}:{PORT}/arena          (one program, 5 trials)",
+        f"  Light Cycles: http://{ip}:{PORT}/cycles         (battle royale bots)",
+        f"  Cycles show:  http://localhost:{PORT}/cycles/show   (project the battles)",
         f"  Maze library: http://{ip}:{PORT}/classic        (optional practice)",
         f"  Big screen:   http://localhost:{PORT}/screen        (project this)",
         f"  Leaderboard:  http://localhost:{PORT}/leaderboard",

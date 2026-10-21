@@ -2,6 +2,7 @@ import time
 import unittest
 from collections import deque
 
+import cycles
 import server
 
 
@@ -369,6 +370,132 @@ for repeat in range(3):
         player = self.quest_player()
         server.run_code(player, code)
         self.assertIn(server.bkey(server.QUEST_WORLD, 0), player["best"])
+
+
+STRAIGHT = 'def steer():\n    return "straight"\n'
+
+SWEEP = """def steer():
+    a = space_ahead()
+    l = space_left()
+    r = space_right()
+    if a > 8 or (a > 0 and a >= max(l, r)):
+        return "straight"
+    if l >= r:
+        return "left"
+    return "right"
+"""
+
+
+def cycle_places(code):
+    return [h["bikes"][0]["place"] for h in cycles.practice(code, "T", "#fff")]
+
+
+def cycle_cause(code):
+    heat = cycles.practice(code, "T", "#fff")[0]["bikes"][0]
+    return heat["died"], heat["cause"], heat["prints"]
+
+
+class CyclesTests(unittest.TestCase):
+    def test_starter_loses_every_heat(self):
+        self.assertEqual(cycle_places(STRAIGHT), [4, 4, 4])
+
+    def test_challenge_ladder_is_reachable(self):
+        podium = ('def steer():\n    if wall_ahead():\n        if wall_left():\n'
+                  '            return "right"\n        return "left"\n'
+                  '    return "straight"\n')
+        self.assertEqual(min(cycle_places(podium)), 2)
+        self.assertIn(1, cycle_places(cycles.HOUSE_BOTS[1]["code"]))
+        self.assertEqual(cycle_places(SWEEP), [1, 1, 1])
+
+    def test_practice_starts_are_open_and_distinct(self):
+        for arena in cycles.PRACTICE:
+            starts = [(r, c) for r, c, _ in arena["starts"]]
+            self.assertEqual(len(set(starts)), 4, arena["name"])
+            self.assertTrue(all(arena["grid"][r][c] == "." for r, c in starts))
+
+    def test_missing_return_warns_once_and_goes_straight(self):
+        died, cause, prints = cycle_cause("def steer():\n    pass\n")
+        self.assertEqual(cycle_places("def steer():\n    pass\n"), [4, 4, 4])
+        warnings = [line for line in prints if "returned None" in line]
+        self.assertEqual(len(warnings), 1)
+
+    def test_code_errors_crash_with_friendly_messages(self):
+        died, cause, _ = cycle_cause('def steer()\n    return "left"\n')
+        self.assertEqual(died, 0)
+        self.assertIn("Syntax error on line 1", cause)
+        died, cause, _ = cycle_cause("x = 1\n")
+        self.assertIn("def steer():", cause)
+        died, cause, _ = cycle_cause("def steer():\n    while True:\n        pass\n")
+        self.assertEqual(died, 1)
+        self.assertIn("took too long", cause)
+        died, cause, _ = cycle_cause("def steer():\n    turn_left()\n")
+        self.assertIn("no turn_left()", cause)
+        died, cause, _ = cycle_cause("def steer():\n    return left\n")
+        self.assertIn('return "left"', cause)
+
+    def test_globals_need_the_global_keyword_like_real_python(self):
+        _, cause, _ = cycle_cause("n = 0\ndef steer():\n    n += 1\n"
+                                  "    return \"straight\"\n")
+        self.assertIn("global n", cause)
+        _, _, prints = cycle_cause("n = 0\ndef steer():\n    global n\n    n += 1\n"
+                                   "    print(n)\n    return \"straight\"\n")
+        self.assertEqual(prints[:3], ["turn 1 › 1", "turn 2 › 2", "turn 3 › 3"])
+
+    def test_unsafe_python_is_rejected(self):
+        for code in ('import os\ndef steer():\n    return "left"\n',
+                     'def steer():\n    return "".join("a")\n',
+                     'def steer():\n    return open("x")\n'):
+            died, cause, _ = cycle_cause(code)
+            self.assertIn("💥", cause, code)
+
+    def test_head_on_crash_is_a_tie(self):
+        grid = cycles.box(5, 12)
+        bots = [{"key": k, "name": k, "color": "#fff", "code": STRAIGHT}
+                for k in ("a", "b")]
+        result = cycles.run_match(bots, grid, [(2, 2, 1), (2, 9, 3)])
+        a, b = result["bikes"]
+        self.assertEqual(a["died"], b["died"])
+        self.assertEqual((a["place"], b["place"]), (1, 1))
+        self.assertIn("head-on", a["cause"])
+
+    def test_royale_fits_a_whole_class_quickly(self):
+        for n in (1, 2, 12, 40):
+            grid, starts = cycles.royale_arena(n, seed=n)
+            self.assertEqual(len({(r, c) for r, c, _ in starts}), n)
+            self.assertTrue(all(grid[r][c] == "." for r, c, _ in starts))
+        entries = [{"key": str(i), "name": str(i), "color": "#fff",
+                    "code": SWEEP if i % 2 else cycles.HOUSE_BOTS[i % 3]["code"]}
+                   for i in range(40)]
+        start = time.time()
+        result = cycles.run_match(entries, grid, starts)
+        self.assertLess(time.time() - start, 2)
+        self.assertEqual(sum(b["place"] == 1 for b in result["bikes"]) >= 1, True)
+
+    def test_battle_scores_points_and_hides_other_prints(self):
+        original = dict(server.players)
+        try:
+            server.players.clear()
+            for i, name in enumerate(("Ada", "Ben", "Cy")):
+                p = fake_player(name)
+                p["id"] = f"t{i}"
+                server.players[p["id"]] = p
+                server.cycles_test(p, SWEEP.replace("    a = ", "    print(\"hi\")\n    a = ")
+                                   if name == "Ada" else STRAIGHT)
+            out = server.cycles_battle()
+            bikes = out["replay"]["bikes"]
+            self.assertEqual(len(bikes), 3)
+            self.assertTrue(all(b["prints"] == [] for b in bikes))
+            mine = server.cycles_replay(server.players["t0"])["replay"]["bikes"]
+            self.assertTrue(next(b for b in mine if b["key"] == "t0")["prints"])
+            points = {row["name"]: row["points"] for row in out["board"]}
+            self.assertEqual(sum(points.values()),
+                             sum(b["outlasted"] for b in bikes))
+            server.admin_action({"action": "cycles_reset"})
+            self.assertTrue(all(row["points"] == 0 for row in server.cycles_board()))
+        finally:
+            server.players.clear()
+            server.players.update(original)
+            server.cycles_round.update(number=0, last=None)
 
 
 if __name__ == "__main__":

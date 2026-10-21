@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Light Cycles — Big Screen</title>
+<style>
+  /* Projector view: big arena, readable names, nothing to type but the key. */
+  :root {
+    color-scheme: dark;
+    --void: #080c16;
+    --chrome: #0d1322;
+    --line: #2a3852;
+    --text: #e8eef8;
+    --muted: #8fa0ba;
+    --cyan: #55dfd2;
+    --amber: #f4c95d;
+    --red: #ff6577;
+    --green: #72e09d;
+    --editor: ui-monospace, "SFMono-Regular", "Cascadia Code", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--void); color: var(--text); font-family: Inter, "Segoe UI", Arial, sans-serif; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+  button, input { font: inherit; }
+  button { cursor: pointer; }
+  header { display: flex; align-items: center; gap: 18px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: #080d18; flex-wrap: wrap; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 22px; }
+  .logo-mark { color: var(--void); background: var(--cyan); font: 900 15px var(--editor); padding: 5px 8px; }
+  .round { font: 700 18px var(--editor); color: var(--amber); }
+  .address { color: var(--muted); font: 15px var(--editor); }
+  .address b { color: var(--cyan); }
+  .controls { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .controls input { width: 90px; border: 1px solid var(--line); background: #090e19; color: var(--text); padding: 8px 10px; }
+  .btn { border: 1px solid #397f7a; background: #173d40; color: #dffffb; padding: 9px 14px; font-weight: 700; }
+  .btn:hover { background: #205157; }
+  .btn.primary { background: var(--cyan); color: #062b2c; border-color: var(--cyan); }
+  .btn.ghost { background: transparent; color: var(--muted); border-color: var(--line); }
+  .btn:disabled { opacity: .55; cursor: wait; }
+  .msg { color: var(--red); font: 13px var(--editor); }
+
+  main { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 380px; }
+  .stage { position: relative; min-width: 0; min-height: 0; display: grid; place-items: center; padding: 16px; background: #0b111e; }
+  canvas { display: block; background: #050912; border: 1px solid #31405b; }
+  .waiting { text-align: center; max-width: 900px; }
+  .waiting h1 { font-size: clamp(44px, 6vw, 90px); letter-spacing: -.05em; margin: 0 0 12px; }
+  .waiting p { color: var(--muted); font-size: 22px; margin: 0 0 22px; }
+  .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 16px; font-size: 20px; }
+  .chips span, .rider { display: inline-flex; align-items: center; gap: 8px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+  .banner { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(8,12,22,.92); border: 2px solid var(--amber); padding: 26px 46px; text-align: center; box-shadow: 0 20px 80px rgba(0,0,0,.6); }
+  .banner small { display: block; color: var(--amber); font: 700 16px var(--editor); letter-spacing: .1em; margin-bottom: 8px; }
+  .banner b { display: block; font-size: clamp(36px, 5vw, 72px); letter-spacing: -.04em; }
+  .banner span { color: var(--muted); font-size: 18px; }
+
+  aside { min-height: 0; overflow: auto; border-left: 1px solid var(--line); background: var(--chrome); }
+  .heading { padding: 12px 16px; color: var(--muted); font: 12px var(--editor); letter-spacing: .08em; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; }
+  .list { padding: 8px 16px 14px; display: grid; gap: 6px; font-size: 17px; }
+  .rider.out { opacity: .4; text-decoration: line-through; }
+  .rider small { margin-left: auto; color: var(--muted); font: 12px var(--editor); text-decoration: none; }
+  .feed { padding: 8px 16px 14px; display: grid; gap: 6px; font-size: 15px; line-height: 1.35; max-height: 34vh; overflow: auto; }
+  .feed div b { font-weight: 800; }
+  .feed .turn { color: var(--muted); font: 11px var(--editor); }
+  .season-row { display: grid; grid-template-columns: 26px 12px minmax(0, 1fr) auto; gap: 9px; align-items: center; font-size: 16px; }
+  .season-row .rank { color: var(--muted); font: 13px var(--editor); }
+  .season-row .pts { font: 700 15px var(--editor); }
+  .season-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .empty { color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><span class="logo-mark">LC</span>Light Cycles</div>
+  <div class="round" id="round">Round 0</div>
+  <div class="address">Students: <b id="address"></b></div>
+  <div class="controls">
+    <span class="msg" id="msg"></span>
+    <input id="key" type="password" placeholder="admin key" aria-label="Admin key">
+    <button class="btn primary" id="startButton">▶ Start round</button>
+    <button class="btn ghost" id="skipButton" hidden>▸▸ Skip</button>
+    <button class="btn ghost" id="resetButton">Reset season</button>
+  </div>
+</header>
+<main>
+  <section class="stage" id="stage">
+    <div class="waiting" id="waiting">
+      <h1>Bots on the grid</h1>
+      <p id="waitingText">Waiting for riders. Each student's latest test drive is their entry.</p>
+      <div class="chips" id="chips"></div>
+    </div>
+    <canvas id="arena" hidden></canvas>
+    <div class="banner" id="banner" hidden></div>
+  </section>
+  <aside>
+    <div class="heading"><span>RIDERS</span><span id="aliveCount"></span></div>
+    <div class="list" id="riders"><div class="empty">The riders appear when a round starts.</div></div>
+    <div class="heading"><span>CRASH FEED</span></div>
+    <div class="feed" id="feed"><div class="empty">Nothing yet.</div></div>
+    <div class="heading"><span>SEASON POINTS</span><span>1 per rider outlasted</span></div>
+    <div class="list" id="season"></div>
+  </aside>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let match = null, frame = 0, timer = null, board = [];
+
+function esc(value) {
+  return String(value).replace(/[&<>\"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
+}
+function store(key, value) { try { localStorage.setItem(key, value); } catch (_) {} }
+function recall(key) { try { return localStorage.getItem(key); } catch (_) { return null; } }
+function who(b) { return `<b style="color:${esc(b.color)}">${esc(b.name)}</b>`; }
+
+function renderSeason() {
+  $("season").innerHTML = board.length ? board.map((row, i) => `
+    <div class="season-row"><span class="rank">${i + 1}</span><span class="dot" style="background:${esc(row.color)}"></span>
+      <span class="name">${esc(row.name)}</span><span class="pts">${row.points}</span></div>`).join("")
+    : '<div class="empty">No points yet.</div>';
+  if (!match) {
+    $("waitingText").textContent = board.length
+      ? `${board.length} bot${board.length === 1 ? "" : "s"} entered. Students keep improving until you press Start.`
+      : "Waiting for riders. Each student's latest test drive is their entry.";
+    $("chips").innerHTML = board.map(row => `<span><span class="dot" style="background:${esc(row.color)}"></span>${esc(row.name)}</span>`).join("");
+  }
+}
+async function refresh() {
+  if (timer) return;
+  try {
+    const data = await (await fetch("/cycles/board")).json();
+    board = data.board;
+    $("address").textContent = data.address.replace(/^http:\/\//, "");
+    $("round").textContent = `Round ${data.round}`;
+    renderSeason();
+  } catch (_) {}
+}
+
+function draw(t) {
+  const canvas = $("arena"), stage = $("stage");
+  const rows = match.grid.length, cols = match.grid[0].length;
+  const size = Math.max(4, Math.floor(Math.min((stage.clientWidth - 32) / cols, (stage.clientHeight - 32) / rows)));
+  canvas.width = cols * size; canvas.height = rows * size;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#0b111e"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#26334a";
+  match.grid.forEach((line, r) => { for (let c = 0; c < cols; c++) if (line[c] === "#") ctx.fillRect(c * size, r * size, size, size); });
+  const heads = [];
+  for (const b of match.bikes) {
+    const out = b.died !== null && b.died <= t;
+    const steps = Math.min(t, b.path.length - 1);
+    ctx.globalAlpha = out ? .3 : .85;
+    ctx.fillStyle = b.color;
+    for (let k = 0; k <= steps; k++) ctx.fillRect(b.path[k][1] * size + 1, b.path[k][0] * size + 1, size - 2, size - 2);
+    ctx.globalAlpha = 1;
+    const [hr, hc] = b.path[steps];
+    if (out) {
+      const [xr, xc] = b.crash || [hr, hc];
+      ctx.strokeStyle = "#ff6577"; ctx.lineWidth = Math.max(2, size / 4);
+      ctx.beginPath();
+      ctx.moveTo(xc * size + 1, xr * size + 1); ctx.lineTo((xc + 1) * size - 1, (xr + 1) * size - 1);
+      ctx.moveTo((xc + 1) * size - 1, xr * size + 1); ctx.lineTo(xc * size + 1, (xr + 1) * size - 1);
+      ctx.stroke();
+    } else {
+      ctx.shadowColor = b.color; ctx.shadowBlur = size * 1.5;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(hc * size, hr * size, size, size);
+      ctx.shadowBlur = 0;
+      heads.push([b, hr, hc]);
+    }
+  }
+  // Name tags over the riders still in, so the room can cheer for someone.
+  ctx.font = `700 ${Math.max(11, Math.min(16, size))}px Inter, Arial, sans-serif`;
+  ctx.textAlign = "center";
+  for (const [b, hr, hc] of heads) {
+    const x = hc * size + size / 2, y = hr * size - 4;
+    ctx.lineWidth = 4; ctx.strokeStyle = "#050912"; ctx.strokeText(b.name, x, y);
+    ctx.fillStyle = b.color; ctx.fillText(b.name, x, y);
+  }
+}
+function renderRiders(t) {
+  const lasted = b => b.died === null || b.died > t ? Infinity : b.died;
+  const order = [...match.bikes].sort((a, b) => lasted(b) - lasted(a) || a.name.localeCompare(b.name));
+  const alive = order.filter(b => lasted(b) === Infinity).length;
+  $("aliveCount").textContent = `${alive} of ${match.bikes.length} riding`;
+  $("riders").innerHTML = order.map(b => {
+    const out = lasted(b) !== Infinity;
+    return `<div class="rider${out ? " out" : ""}"><span class="dot" style="background:${esc(b.color)}"></span>${esc(b.name)}${out ? `<small>turn ${b.died}</small>` : ""}</div>`;
+  }).join("");
+}
+function addCrashes(t) {
+  const crashed = match.bikes.filter(b => b.died === t);
+  if (!crashed.length) return;
+  if ($("feed").querySelector(".empty")) $("feed").innerHTML = "";
+  const html = crashed.map(b => `<div><span class="turn">turn ${t}</span> ${who(b)} ${esc(b.cause)}</div>`).join("");
+  $("feed").insertAdjacentHTML("afterbegin", html);
+}
+function finish() {
+  clearTimeout(timer); timer = null;
+  $("skipButton").hidden = true;
+  $("startButton").disabled = false;
+  draw(match.turns); renderRiders(match.turns);
+  const winners = match.bikes.filter(b => b.place === 1);
+  const names = winners.map(who).join(" & ");
+  $("banner").innerHTML = `<small>ROUND ${match.round}</small><b>🏆 ${names}</b>` +
+    `<span>${winners.length > 1 ? "tie — they went out on the same turn" : winners[0].died === null ? "last cycle riding" : "lasted longest"} · ${match.turns} turns</span>`;
+  $("banner").hidden = false;
+  renderSeason();
+}
+function play() {
+  $("waiting").hidden = true;
+  $("arena").hidden = false;
+  $("banner").hidden = true;
+  $("feed").innerHTML = '<div class="empty">Nothing yet.</div>';
+  $("skipButton").hidden = false;
+  frame = 0;
+  // Long enough to cheer, short enough to run lots of rounds: about 20 s.
+  const delay = Math.max(30, Math.min(110, 20000 / Math.max(1, match.turns)));
+  const tick = () => {
+    draw(frame); renderRiders(frame); addCrashes(frame);
+    if (frame++ < match.turns) timer = setTimeout(tick, delay);
+    else finish();
+  };
+  tick();
+}
+function skip() {
+  for (let t = frame; t <= match.turns; t++) addCrashes(t);
+  frame = match.turns + 1;
+  finish();
+}
+async function start() {
+  const key = $("key").value.trim();
+  if (!key) { $("msg").textContent = "Type the admin key first."; $("key").focus(); return; }
+  store("cyclesKey", key);
+  $("msg").textContent = "";
+  $("startButton").disabled = true;
+  try {
+    const response = await fetch("/cycles/battle", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({key})});
+    const data = await response.json();
+    if (data.error) { $("msg").textContent = data.error; $("startButton").disabled = false; return; }
+    match = data.replay; board = data.board;
+    $("round").textContent = `Round ${match.round}`;
+    play();
+  } catch (_) {
+    $("msg").textContent = "The server did not respond.";
+    $("startButton").disabled = false;
+  }
+}
+async function resetSeason() {
+  const key = $("key").value.trim();
+  if (!key) { $("msg").textContent = "Type the admin key first."; $("key").focus(); return; }
+  if (!confirm("Set every student's Light Cycles points back to 0?")) return;
+  const data = await (await fetch("/admin", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({key, action: "cycles_reset"})})).json();
+  $("msg").textContent = data.error || "";
+  if (!data.error) { match = null; $("arena").hidden = true; $("banner").hidden = true; $("waiting").hidden = false; await refresh(); }
+}
+
+$("key").value = recall("cyclesKey") || "";
+$("startButton").addEventListener("click", start);
+$("skipButton").addEventListener("click", skip);
+$("resetButton").addEventListener("click", resetSeason);
+window.addEventListener("resize", () => { if (match && !timer) draw(match.turns); });
+refresh();
+setInterval(refresh, 3000);
+</script>
+</body>
+</html>

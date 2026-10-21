@@ -34,6 +34,8 @@ of waiting for each other.
 4. Open the same address on the projector for the first demo.
 5. Keep these optional pages handy:
    - `/arena` — Bot Rally, three leagues of five tracks
+   - `/cycles` — Light Cycles battle royale (project `/cycles/show`; see
+     `LIGHT_CYCLES_GUIDE.md`)
    - `/screen` — live overview of student maps and code
    - `/admin` — unlock a later mission for one advanced student
    - `/classic` — the old maze practice library
