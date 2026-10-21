@@ -551,7 +551,10 @@ function draw(match, t) {
   drawn = t;
   const isMine = b => b.key === "you" || b.key === me;
   const outAt = b => b.died !== null && b.died <= t;
-  $("legend").innerHTML = match.bikes.map(b => `<span class="${outAt(b) ? "out" : ""}${isMine(b) ? " me" : ""}"><span class="dot" style="background:${esc(b.color)}"></span>${esc(b.name)}${isMine(b) ? " (you)" : ""}</span>`).join("");
+  // A whole-class battle names only you here; the big screen has everyone.
+  const big = match.bikes.length > 8;
+  $("legend").innerHTML = match.bikes.filter(b => !big || isMine(b)).map(b => `<span class="${outAt(b) ? "out" : ""}${isMine(b) ? " me" : ""}"><span class="dot" style="background:${esc(b.color)}"></span>${esc(b.name)}${isMine(b) ? " (you)" : ""}</span>`).join("")
+    + (big ? `<span>${match.bikes.filter(b => !outAt(b)).length} of ${match.bikes.length} riding</span>` : "");
   renderTurnKey(match.bikes.find(isMine), t);
   const canvas = $("arena"), size = cellSize(match);
   const rows = match.grid.length, cols = match.grid[0].length;
@@ -565,7 +568,8 @@ function draw(match, t) {
     const steps = Math.min(t, b.path.length - 1);
     ctx.globalAlpha = out ? .35 : .8;
     ctx.fillStyle = b.color;
-    for (let k = 0; k <= steps; k++) ctx.fillRect(b.path[k][1] * size + 1, b.path[k][0] * size + 1, size - 2, size - 2);
+    const gap = size >= 8 ? 1 : 0;   // tiny cells look like dotted lines with gaps
+    for (let k = 0; k <= steps; k++) ctx.fillRect(b.path[k][1] * size + gap, b.path[k][0] * size + gap, size - 2 * gap, size - 2 * gap);
     ctx.globalAlpha = 1;
     const [hr, hc] = b.path[steps];
     if (out) {
@@ -615,7 +619,7 @@ function show(match, title, lines) {
   $("stageInner").hidden = false;
   $("stageTitle").innerHTML = title;
   $("log").innerHTML = lines.map(logLine).join("");
-  $("log").scrollTop = 0;
+  $("log").scrollTop = $("log").scrollHeight;   // the end: where it crashed
   replay();
 }
 function outcome(b, total) {
@@ -626,8 +630,11 @@ function outcome(b, total) {
 function bikeLines(b, total) {
   const lines = [outcome(b, total)];
   if (b.died === 1 && /steer\(\)/.test(b.cause)) lines.push("   It crashed on the very first call to steer() — read the message above.");
-  if (b.prints.length) lines.push("— your print() output —", ...b.prints);
-  else if (b.died !== 0) lines.push("Tip: add print() inside steer() to see what your bot is thinking each turn.");
+  if (b.prints.length) {
+    lines.push("— your print() output —", ...b.prints);
+    // The log opens scrolled to the end, so say how it ended down there too.
+    if (b.died) lines.push(`⚠️ Then, on turn ${b.died}: ${b.cause}.`);
+  } else if (b.died !== 0) lines.push("Tip: add print() inside steer() to see what your bot is thinking each turn.");
   return lines;
 }
 function selectHeat(i) {

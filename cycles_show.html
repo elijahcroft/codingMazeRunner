@@ -183,7 +183,8 @@ function draw(t) {
     const steps = Math.min(t, b.path.length - 1);
     ctx.globalAlpha = out ? .3 : .85;
     ctx.fillStyle = b.color;
-    for (let k = 0; k <= steps; k++) ctx.fillRect(b.path[k][1] * size + 1, b.path[k][0] * size + 1, size - 2, size - 2);
+    const gap = size >= 8 ? 1 : 0;   // tiny cells look like dotted lines with gaps
+    for (let k = 0; k <= steps; k++) ctx.fillRect(b.path[k][1] * size + gap, b.path[k][0] * size + gap, size - 2 * gap, size - 2 * gap);
     ctx.globalAlpha = 1;
     const [hr, hc] = b.path[steps];
     if (out) {
