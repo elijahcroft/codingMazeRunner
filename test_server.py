@@ -416,7 +416,7 @@ class CyclesTests(unittest.TestCase):
     def test_missing_return_warns_once_and_goes_straight(self):
         died, cause, prints = cycle_cause("def steer():\n    pass\n")
         self.assertEqual(cycle_places("def steer():\n    pass\n"), [4, 4, 4])
-        warnings = [line for line in prints if "returned None" in line]
+        warnings = [line for line in prints if "didn't return anything" in line]
         self.assertEqual(len(warnings), 1)
 
     def test_code_errors_crash_with_friendly_messages(self):
@@ -449,6 +449,86 @@ class CyclesTests(unittest.TestCase):
                                    "def steer():\n    return 1\n")
         self.assertEqual(len(prints), cycles.MAX_PRINTS + 1)
         self.assertIn("returned 1", prints[-1])
+
+    def test_beginner_mistakes_get_friendly_accurate_messages(self):
+        s = "def steer():\n"
+        cases = [   # (program, what the student must see in the cause/warning)
+            ('def steer()\n    return "left"\n', "line 1: a line that starts with def"),
+            (s + '    if wall_ahead()\n        return "left"\n', "line 2: a line that starts"),
+            (s + 'return "left"\n', "line 2: the lines inside it need pushing in"),
+            (s + '    x = 1\n        return "left"\n', "line 3: this line is pushed in further"),
+            (s + '    if wall_ahead():\n        return "left"\n      return "x"\n',
+             "line 4: this line doesn't line up"),
+            (s + '\tif wall_ahead():\n        return "left"\n', "mixes tabs and spaces"),
+            ('return "left"\n', "Line 1: return only works inside a function"),
+            (s + '    return left\n', 'Line 2: Put quotes round words, in small letters:  return "left"'),
+            (s + '    return Left\n', 'return "left"'),
+            (s + '    return "Left"\n', 'Use small letters and no spaces: "left"'),
+            (s + "    return 'left '\n", 'Use small letters and no spaces: "left"'),
+            (s + '    return "forward"\n', "returned 'forward'. Return \"left\", \"right\" or"),
+            (s + '    return True\n', "returned True."),
+            (s + '    return 1\n', "returned 1."),
+            (s + '    return\n', "steer() didn't return anything"),
+            (s + '    if wall_ahead():\n        "left"\n    "straight"\n', "didn't return anything"),
+            (s + '    print "hi"\n    return "left"\n', 'line 2: print needs brackets'),
+            (s + '    if space_left() = 3:\n        return "left"\n', "use  ==  (two equals signs)"),
+            (s + '    if wall_ahead:\n        return "left"\n    return "straight"\n',
+             "Line 2: wall_ahead is a command — put  ( )  after it"),
+            (s + '    x = space_ahead\n    return "left"\n', "space_ahead is a command"),
+            (s + '    elif wall_ahead():\n        return "left"\n', "elif needs an  if  just above it"),
+            (s + '    else:\n        return "left"\n', "else needs an  if  just above it"),
+            ('def steer(direction):\n    return "left"\n', "steer() shouldn't take anything"),
+            (s + '    return "left"\n' + s + '    return "right"\n', "Line 3: There are two  def steer():"),
+            ('def Steer():\n    return "left"\n', "Your def is called Steer(), but the game asks  steer()"),
+            ('', "Your program needs a  def steer():"),
+            ('# my bot\n', "Your program needs a  def steer():"),
+            (s + '    while True:\n        x = 1\n', "Line 2: steer() took too long"),
+            (s + '    n = 0\n    while n < 5:\n        x = 1\n', "Line 3: steer() took too long"),
+            (s + '    return steer()\n', "called itself too many times"),
+            (s + '    x = "left" * 2\n    return "left"\n', "You can't do math with text"),
+            (s + '    print("room " + space_ahead())\n    return "left"\n', 'use a comma:  print("room", 5)'),
+            (s + '    move()\n', "There's no move() in Light Cycles"),
+            (s + '    turn_left()\n', "There's no turn_left() in Light Cycles"),
+            (s + '    if space_left() > "3":\n        return "left"\n', "Compare like with like"),
+            ('turns = 0\n' + s + '    turns = turns + 1\n    return "left"\n', "put  global turns"),
+            ('global turns\n' + s + '    return "left"\n', "Line 1: global only goes inside a function"),
+            (s + '    if space_ahaed() > 2:\n        return "left"\n', "Did you mean  space_ahead() ?"),
+            (s + '    if wall_infront():\n        return "left"\n', "I don't know the command 'wall_infront'"),
+            (s + '    if space_ahead(1) > 2:\n        return "left"\n', "space_ahead() doesn't take anything"),
+            ('turns = 0\n' + s + '    if trns > 2:\n        return "left"\n', "Did you mean  turns ?"),
+            (s + '    return "left\n', "missing its closing quote"),
+            (s + '    if (space_ahead() > 2:\n        return "left"\n', "a bracket  (  isn't closed"),
+            (s + '    return “left”\n', "curly quotes"),
+            (s + '    Return "left"\n', "write  return  not  Return"),
+            (s + '    If wall_ahead():\n        return "left"\n', "write  if  not  If"),
+            (s + '    if wall_ahead() == true:\n        return "left"\n', "Write True with a capital letter"),
+            (s + '    ways = ["left", "right"]\n    return "left"\n', "Lists and [ ] aren't part"),
+            ('import random\n' + s + '    return "left"\n', "Line 1: import isn't allowed"),
+            (s + '    return random.choice("lr")\n', "random.choice() isn't part of Light Cycles"),
+            (s + '    if wall_ahead():\n        way = "left"\n    return way\n',
+             "Line 4: You used 'way' before giving it a value"),
+            (s + '    x = space_ahead() / 2\n    return "left"\n', "Use // for whole-number division"),
+            (s + '    print("room", str(space_ahead()))\n    return "left"\n', "str() isn't needed"),
+            (s + '    print(f"room {space_ahead()}")\n    return "left"\n', "f-strings aren't part"),
+            (s + '    def helper():\n        return "left"\n    return helper()\n',
+             "Make each def at the top level"),
+            (s + '    space_ahead = 3\n    return "left"\n', "'space_ahead' is already a command"),
+            (s + '    for i in space_ahead():\n        x = i\n', "A for loop must look like"),
+        ]
+        self.assertGreaterEqual(len(cases), 40)
+        for code, expected in cases:
+            heat = cycles.practice(code, "T", "#fff")[0]["bikes"][0]
+            seen = heat["cause"] + " ".join(heat["prints"])
+            self.assertIn(expected, seen, code)
+            self.assertNotIn("Traceback", seen)
+        # These are fine Python and must just work: no crash, no warning.
+        for code in ('x = space_ahead()\n' + s + '    return "straight"\n',
+                     s + '    n = 0\n    for i in range(space_ahead()):\n        n += 1\n'
+                         '    return "straight"\n',
+                     s + '    """My bot."""\n    return "straight"\n'):
+            heat = cycles.practice(code, "T", "#fff")[0]["bikes"][0]
+            self.assertFalse(heat["error"], heat["cause"])
+            self.assertEqual(heat["prints"], [])
 
     def test_globals_need_the_global_keyword_like_real_python(self):
         _, cause, _ = cycle_cause("n = 0\ndef steer():\n    n += 1\n"

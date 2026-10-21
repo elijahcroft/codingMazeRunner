@@ -25,6 +25,8 @@ imports, attribute access, or real builtins ever run on the teacher's laptop.
 """
 
 import ast
+import difflib
+import keyword
 import math
 import random
 
@@ -43,6 +45,61 @@ MAX_PRINTS = 80        # print() lines kept per cycle per match: the LAST ones,
 
 class BotError(Exception):
     """A friendly, student-facing problem with their code. It crashes the cycle."""
+    line = None   # the line it happened on, once known
+
+    def __str__(self):
+        text = super().__str__()
+        return f"Line {self.line}: {text}" if self.line else text
+
+
+class _TooLong(BotError):
+    """Out of operations. The loop it's stuck in is the line to look at."""
+    in_loop = False
+
+
+# Python's own wording for the commonest beginner slips, in plain words.
+SYNTAX_HINTS = [
+    ("expected ':'", "a line that starts with def, if, elif, else, while or "
+                     "for has to end with a  :"),
+    ("expected an indented block", "the lines inside it need pushing in "
+                                   "(indenting) with spaces"),
+    ("unexpected indent", "this line is pushed in further than the line above it"),
+    ("unindent does not match", "this line doesn't line up with the lines "
+                                "above it — check its spaces"),
+    ("inconsistent use of tabs", "it mixes tabs and spaces — use spaces only"),
+    ("Missing parentheses in call to 'print'", 'print needs brackets, like  '
+                                               'print("hi")'),
+    ("instead of '='", "to compare two things use  ==  (two equals signs). "
+                       "One  =  stores a value"),
+    ("cannot assign to", "to compare two things use  ==  (two equals signs). "
+                         "One  =  stores a value"),
+    ("unterminated string", 'some text is missing its closing quote  "'),
+    ("unterminated triple-quoted", 'some text is missing its closing quotes  """'),
+    ("U+201C", 'it has curly quotes “ ” — type plain quotes " instead'),
+    ("U+201D", 'it has curly quotes “ ” — type plain quotes " instead'),
+    ("U+2018", "it has curly quotes ‘ ’ — type plain quotes ' instead"),
+    ("U+2019", "it has curly quotes ‘ ’ — type plain quotes ' instead"),
+    ("was never closed", "a bracket  (  is never closed with  )"),
+    ("unmatched ')'", "there's a  )  with no  (  before it"),
+]
+
+
+def syntax_message(e):
+    """A friendly sentence for a SyntaxError, pointing at its line."""
+    msg, text = e.msg or "", (e.text or "").strip()
+    hint = next((h for key, h in SYNTAX_HINTS if key in msg), None)
+    first = text.replace("(", " ").replace(":", " ").split(" ")[0] if text else ""
+    if hint is None and first in ("elif", "else"):
+        hint = f"{first} needs an  if  just above it, lined up with it"
+    elif hint is None and first.lower() in keyword.kwlist and first != first.lower():
+        hint = f"Python words use small letters: write  {first.lower()}  not  {first}"
+    elif hint is None and text.count("(") != text.count(")"):
+        hint = "a bracket  (  isn't closed with  )  on this line"
+    elif hint is None:
+        hint = "Python couldn't read it. Check for a missing  :  or  ( )  " \
+               "and the indentation"
+    return f"Syntax error on line {e.lineno or '?'}: {hint}" + \
+        ("" if hint[-1] in ':)"' else ".")
 
 
 class _Return(Exception):
@@ -95,17 +152,20 @@ class Brain:
         try:
             tree = ast.parse(code)
         except SyntaxError as e:
-            raise BotError(f"Syntax error on line {e.lineno or '?'}: {e.msg}. "
-                           "Check for a missing  :  or ( ) and your indentation.")
+            raise BotError(syntax_message(e))
         try:
             self.run_block(tree.body, self.globals)
-        except _Return:
-            raise BotError("return only works inside a function you made with def.")
         except (_Break, _Continue):
             raise BotError("break and continue only work inside a loop.")
         steer = self.funcs.get("steer")
         if steer is None:
-            raise BotError('Your program needs a  def steer():  that returns '
+            near = difflib.get_close_matches("steer", [n.lower() for n in self.funcs],
+                                             1, 0.6)
+            name = next((n for n in self.funcs if near and n.lower() == near[0]), None)
+            raise BotError(f"Your def is called {name}(), but the game asks  "
+                           f"steer()  — spell it exactly like that."
+                           if name else
+                           'Your program needs a  def steer():  that returns '
                            '"left", "right" or "straight".')
         if steer.args.args:
             raise BotError("steer() shouldn't take anything in the ( ) — "
@@ -121,7 +181,7 @@ class Brain:
     def tick(self):
         self.ops += 1
         if self.ops > self.budget:
-            raise BotError("steer() took too long to decide — is a while loop "
+            raise _TooLong("steer() took too long to decide — is a while loop "
                            "stuck going round forever?"
                            if self.budget == STEER_BUDGET else
                            "The top of your program ran too long — is a loop "
@@ -140,9 +200,19 @@ class Brain:
                 raise BotError(f"You used '{name}' before giving it a value.")
         if name in self.globals.vars:
             return self.globals.vars[name]
-        if name in TURNS:
-            raise BotError(f'Put quotes round words:  return "{name}"')
-        raise BotError(f"I don't know the variable '{name}'. Did you set it "
+        if name in self.sensors or name in self.funcs:
+            raise BotError(f"{name} is a command — put  ( )  after it to use it, "
+                           f"like  {name}()")
+        if name.lower() in TURNS:
+            raise BotError(f'Put quotes round words, in small letters:  '
+                           f'return "{name.lower()}"')
+        if name in ("true", "false", "none"):
+            raise BotError(f"Write {name.capitalize()} with a capital letter.")
+        known = list(self.globals.vars) + list(frame.vars) + list(self.sensors)
+        near = difflib.get_close_matches(name, known, 1, 0.75)
+        raise BotError(f"I don't know '{name}'. Did you mean  {near[0]}"
+                       f"{'()' if near[0] in self.sensors else ''} ?" if near else
+                       f"I don't know the variable '{name}'. Did you set it "
                        f"first, like:  {name} = 0")
 
     def assign(self, name, value, frame):
@@ -164,6 +234,9 @@ class Brain:
             if len(a) + len(b) > 200:
                 raise BotError("That text got too long.")
             return a + b
+        if isinstance(a, str) or isinstance(b, str):
+            raise BotError("You can't do math with text. To print words and a "
+                           'number together use a comma:  print("room", 5)')
         a, b = self.number(a, "Math"), self.number(b, "Math")
         if isinstance(op, ast.Add):
             result = a + b
@@ -243,10 +316,23 @@ class Brain:
             return True
         if isinstance(node, ast.Call):
             return self.call(node, frame)
+        if isinstance(node, (ast.List, ast.Tuple, ast.Dict, ast.Set, ast.ListComp,
+                             ast.Subscript)):
+            raise BotError("Lists and [ ] aren't part of Light Cycles — use a "
+                           "few separate variables instead.")
+        if isinstance(node, ast.JoinedStr):
+            raise BotError("f-strings aren't part of Light Cycles. To print words "
+                           'and a number use a comma:  print("room", space_ahead())')
+        if isinstance(node, ast.Attribute):
+            raise BotError("Dots like  random.choice  aren't part of Light Cycles "
+                           "— use the sensors, or make a command with def.")
         raise BotError("I can't understand that. Use numbers, text, variables, "
                        "sensors, + - * // % and comparisons.")
 
     def call(self, node, frame):
+        if isinstance(node.func, ast.Attribute):
+            raise BotError(f"{ast.unparse(node.func)}() isn't part of Light Cycles "
+                           f"— use the sensors, or make a command with def.")
         if not isinstance(node.func, ast.Name):
             raise BotError("I can only call plain commands, like  space_ahead()")
         if node.keywords:
@@ -279,7 +365,14 @@ class Brain:
             raise BotError(f"There's no {name}() in Light Cycles. Your cycle "
                            f'always moves — steer() picks a way by returning '
                            f'"left", "right" or "straight".')
-        raise BotError(f"I don't know the command '{name}'. Check the sensor "
+        if name in ("str", "int"):
+            raise BotError(f"{name}() isn't needed here. To print words and a "
+                           f'number use a comma:  print("room", space_ahead())')
+        known = list(self.sensors) + list(self.funcs) + ["print", "max", "min", "abs"]
+        near = difflib.get_close_matches(name.lower(), known, 1, 0.75)
+        raise BotError(f"I don't know the command '{name}'. Did you mean  "
+                       f"{near[0]}() ?" if near else
+                       f"I don't know the command '{name}'. Check the sensor "
                        f"list, or make it with def.")
 
     def call_user(self, fn, args):
@@ -316,80 +409,101 @@ class Brain:
 
     def run_block(self, stmts, frame):
         for node in stmts:
-            self.tick()
-            if isinstance(node, ast.FunctionDef):
-                if not frame.module:
-                    raise BotError("Make each def at the top level, not inside "
-                                   "another function.")
-                a = node.args
-                if (a.vararg or a.kwarg or a.kwonlyargs or a.defaults
-                        or a.posonlyargs or node.decorator_list):
-                    raise BotError("Keep functions simple:  def name(a, b):  "
-                                   "with no defaults or * arguments.")
-                if node.name in self.sensors:
-                    raise BotError(f"{node.name}() is already a sensor — "
-                                   f"pick another name.")
-                node._names = _function_names(node)
-                self.funcs[node.name] = node
-            elif isinstance(node, ast.Return):
-                raise _Return(None if node.value is None
-                              else self.eval(node.value, frame))
-            elif isinstance(node, ast.If):
-                branch = node.body if self.eval(node.test, frame) else node.orelse
-                self.run_block(branch, frame)
-            elif isinstance(node, ast.While):
-                while self.eval(node.test, frame):
-                    self.tick()
-                    if not self.run_loop_body(node.body, frame):
-                        break
-            elif isinstance(node, ast.For):
-                it = node.iter
-                if not (isinstance(it, ast.Call) and isinstance(it.func, ast.Name)
-                        and it.func.id == "range" and not it.keywords
-                        and isinstance(node.target, ast.Name)):
-                    raise BotError("A for loop must look like:  "
-                                   "for i in range(4):")
-                nums = [self.number(self.eval(a, frame), "range()")
-                        for a in it.args]
-                if not 1 <= len(nums) <= 3 or (len(nums) == 3 and nums[2] == 0):
-                    raise BotError("range() takes 1 to 3 numbers, and the "
-                                   "step can't be 0.")
-                for value in range(*nums):
-                    self.tick()
-                    self.assign(node.target.id, value, frame)
-                    if not self.run_loop_body(node.body, frame):
-                        break
-            elif isinstance(node, ast.Assign):
-                if any(not isinstance(t, ast.Name) for t in node.targets):
-                    raise BotError("Assign to a simple name, like:  turns = 0")
-                value = self.eval(node.value, frame)
-                for t in node.targets:
-                    self.assign(t.id, value, frame)
-            elif isinstance(node, ast.AugAssign):
-                if not isinstance(node.target, ast.Name):
-                    raise BotError("Assign to a simple name, like:  turns += 1")
-                name = node.target.id
-                value = self.math(node.op, self.lookup(name, frame),
-                                  self.eval(node.value, frame))
-                self.assign(name, value, frame)
-            elif isinstance(node, ast.Global):
-                if frame.module:
-                    raise BotError("global only goes inside a function.")
-            elif isinstance(node, ast.Expr):
-                if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
-                    continue   # a docstring
-                if not isinstance(node.value, ast.Call):
-                    raise BotError("That line doesn't do anything. Did you mean "
-                                   "to return it?")
-                self.call(node.value, frame)
-            elif isinstance(node, ast.Pass):
-                pass
-            elif isinstance(node, ast.Break):
-                raise _Break()
-            elif isinstance(node, ast.Continue):
-                raise _Continue()
-            else:
-                raise BotError("That line isn't something I can run here.")
+            try:
+                self.run_statement(node, frame)
+            except BotError as e:
+                # Point at the innermost line, or for a stuck loop, the loop.
+                if isinstance(e, _TooLong) and not e.in_loop and \
+                        isinstance(node, (ast.While, ast.For)):
+                    e.line, e.in_loop = node.lineno, True
+                elif e.line is None:
+                    e.line = node.lineno
+                raise
+
+    def run_statement(self, node, frame):
+        self.tick()
+        if isinstance(node, ast.FunctionDef):
+            if not frame.module:
+                raise BotError("Make each def at the top level, not inside "
+                               "another function.")
+            a = node.args
+            if (a.vararg or a.kwarg or a.kwonlyargs or a.defaults
+                    or a.posonlyargs or node.decorator_list):
+                raise BotError("Keep functions simple:  def name(a, b):  "
+                               "with no defaults or * arguments.")
+            if node.name in self.sensors:
+                raise BotError(f"{node.name}() is already a sensor — "
+                               f"pick another name.")
+            if node.name in self.funcs and self.funcs[node.name] is not node:
+                raise BotError(f"There are two  def {node.name}():  — keep "
+                               f"just one.")
+            node._names = _function_names(node)
+            self.funcs[node.name] = node
+        elif isinstance(node, ast.Return) and frame.module:
+            raise BotError("return only works inside a function you made "
+                           "with def.")
+        elif isinstance(node, ast.Return):
+            raise _Return(None if node.value is None
+                          else self.eval(node.value, frame))
+        elif isinstance(node, ast.If):
+            branch = node.body if self.eval(node.test, frame) else node.orelse
+            self.run_block(branch, frame)
+        elif isinstance(node, ast.While):
+            while self.eval(node.test, frame):
+                self.tick()
+                if not self.run_loop_body(node.body, frame):
+                    break
+        elif isinstance(node, ast.For):
+            it = node.iter
+            if not (isinstance(it, ast.Call) and isinstance(it.func, ast.Name)
+                    and it.func.id == "range" and not it.keywords
+                    and isinstance(node.target, ast.Name)):
+                raise BotError("A for loop must look like:  "
+                               "for i in range(4):")
+            nums = [self.number(self.eval(a, frame), "range()")
+                    for a in it.args]
+            if not 1 <= len(nums) <= 3 or (len(nums) == 3 and nums[2] == 0):
+                raise BotError("range() takes 1 to 3 numbers, and the "
+                               "step can't be 0.")
+            for value in range(*nums):
+                self.tick()
+                self.assign(node.target.id, value, frame)
+                if not self.run_loop_body(node.body, frame):
+                    break
+        elif isinstance(node, ast.Assign):
+            if any(not isinstance(t, ast.Name) for t in node.targets):
+                raise BotError("Assign to a simple name, like:  turns = 0")
+            value = self.eval(node.value, frame)
+            for t in node.targets:
+                self.assign(t.id, value, frame)
+        elif isinstance(node, ast.AugAssign):
+            if not isinstance(node.target, ast.Name):
+                raise BotError("Assign to a simple name, like:  turns += 1")
+            name = node.target.id
+            value = self.math(node.op, self.lookup(name, frame),
+                              self.eval(node.value, frame))
+            self.assign(name, value, frame)
+        elif isinstance(node, ast.Global):
+            if frame.module:
+                raise BotError("global only goes inside a function.")
+        elif isinstance(node, ast.Expr):
+            if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+                return   # a docstring
+            if not isinstance(node.value, ast.Call):
+                raise BotError("That line doesn't do anything. Did you mean "
+                               "to return it?")
+            self.call(node.value, frame)
+        elif isinstance(node, ast.Pass):
+            pass
+        elif isinstance(node, ast.Break):
+            raise _Break()
+        elif isinstance(node, ast.Continue):
+            raise _Continue()
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            raise BotError("import isn't allowed in Light Cycles — "
+                           "everything you need is already here.")
+        else:
+            raise BotError("That line isn't something I can run here.")
 
 
 # ---- arenas ----------------------------------------------------------------
@@ -497,6 +611,18 @@ def royale_arena(n, seed):
 
 # ---- a match ---------------------------------------------------------------
 
+def bad_return(choice):
+    """The one-time warning when steer() answers something that isn't a way."""
+    if choice is None:
+        return ("steer() didn't return anything. End it with  return \"left\", "
+                "\"right\" or \"straight\"  — going straight for now.")
+    if isinstance(choice, str) and choice.strip().lower() in TURNS:
+        return (f"steer() returned {choice!r}. Use small letters and no spaces: "
+                f"\"{choice.strip().lower()}\"  — going straight for now.")
+    return (f"steer() returned {choice!r}. Return \"left\", \"right\" or "
+            f"\"straight\"  — going straight for now.")
+
+
 def run_match(entries, grid, starts):
     """Race every entry until at most one is left (or none, if alone).
 
@@ -515,7 +641,8 @@ def run_match(entries, grid, starts):
     for i, (entry, (r, c, d)) in enumerate(zip(entries, starts)):
         bike = {"entry": entry, "r": r, "c": c, "d": d, "path": [[r, c]],
                 "dirs": [d], "died": None, "cause": "", "crash": None,
-                "error": False, "prints": [], "dropped": 0, "warned": False}
+                "error": False, "prints": [], "dropped": 0, "warned": False,
+                "looks": {}}
         owner[(r, c)] = i
         bikes.append(bike)
 
@@ -596,9 +723,7 @@ def run_match(entries, grid, starts):
                 spent += b["brain"].ops
             if choice not in TURNS:
                 if not b["warned"]:
-                    b["prints"].append(
-                        f"turn {turn} ⚠️ steer() returned {choice!r}. Return "
-                        f'"left", "right" or "straight" — going straight.')
+                    b["prints"].append(f"turn {turn} ⚠️ {bad_return(choice)}")
                     keep_last(b)
                 b["warned"] = True
                 choice = "straight"
