@@ -188,6 +188,30 @@
   .steps code, .steps pre { color: #a9f7ef; font-family: var(--editor); }
   .steps pre { margin: 6px 0 0; padding: 7px 10px; background: #0a101c; border: 1px solid #1d2a40; font-size: 13px; white-space: pre-wrap; }
   .title-actions #helpButton { width: 26px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 50%; font-weight: 700; }
+  /* The cheat sheet only exists on paper: one A4 page, black on white. */
+  .cheat { display: none; }
+  .print-link { display: block; margin-top: 18px; background: none; border: 0; padding: 0; color: var(--muted); font: 13px var(--editor); text-decoration: underline; }
+  @media print {
+    @page { size: A4; margin: 12mm; }
+    html, body { background: #fff !important; color: #000; min-height: 0; }
+    body > *:not(.cheat) { display: none !important; }
+    .cheat { display: block; font: 11.5pt/1.4 Arial, sans-serif; color: #000; }
+    .cheat h1 { font-size: 20pt; margin: 0 0 2mm; letter-spacing: -.02em; }
+    .cheat h2 { font-size: 12pt; margin: 4mm 0 1.5mm; border-bottom: 1.5px solid #000; padding-bottom: .8mm; }
+    .cheat p, .cheat ul { margin: 0 0 1.5mm; }
+    .cheat ul { padding-left: 5mm; }
+    .cheat code, .cheat pre { font: 11pt "Courier New", monospace; }
+    .cheat pre { margin: 1mm 0 0; padding: 2mm 3mm; border: 1px solid #000; background: #fff; white-space: pre; }
+    .cheat table { border-collapse: collapse; width: 100%; }
+    .cheat td { border: 1px solid #000; padding: 1mm 2mm; vertical-align: top; }
+    .cheat .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
+    .cheat .words { display: flex; gap: 4mm; font: 700 14pt "Courier New", monospace; margin: 1mm 0 1.5mm; }
+    .cheat .words span { border: 2px solid #000; padding: 1mm 3mm; }
+    .cheat .pics { display: flex; gap: 8mm; align-items: center; }
+    .cheat .pic { display: grid; grid-template-columns: repeat(3, 20mm); grid-template-rows: repeat(3, 8mm); align-items: center; text-align: center; border: 1px solid #000; font: 9.5pt "Courier New", monospace; }
+    .cheat .pic b { font-size: 16pt; }
+    .cheat .pic-caption { font-size: 9.5pt; text-align: center; margin-top: 1mm; }
+  }
   .announce { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   @media (max-width: 1100px) {
     .workspace { grid-template-columns: 185px minmax(320px, 1fr) minmax(360px, 440px); }
@@ -231,6 +255,7 @@
       <label for="name">rider_name =</label>
       <input id="name" maxlength="20" autocomplete="nickname" placeholder="Type your name" autofocus>
       <button class="btn primary" id="joinButton">Start riding</button>
+      <button class="print-link" onclick="window.print()">Teacher? Print the cheat sheet</button>
     </div>
   </div>
 </section>
@@ -299,6 +324,7 @@
         <details class="drawer">
           <summary>Sensors and Python examples</summary>
           <div class="sensor-list">
+            <div><button class="btn ghost" onclick="window.print()">🖨 Print cheat sheet</button></div>
             <b>RETURN ONE OF THESE FROM steer()</b>
             <div><code>"left"</code> <code>"right"</code> <code>"straight"</code> Left and right are from your cycle's point of view.</div>
             <b>YES / NO SENSORS · True or False</b>
@@ -376,6 +402,46 @@ def steer():
   <footer class="statusbar"><span>Python 3 · safe classroom sandbox</span><span>Spaces: 4 · UTF-8 · <span id="position">Ln 1, Col 1</span></span></footer>
   <div class="announce" id="announce" aria-live="polite"></div>
 </main>
+<section class="cheat" aria-hidden="true">
+  <h1>Light Cycles · cheat sheet</h1>
+  <ul>
+    <li>Your cycle <b>never stops</b>. Every turn it moves one square and leaves a wall of light behind it.</li>
+    <li><b>Walls and every trail are solid</b>, even your own. Two cycles meeting head-on are both out.</li>
+    <li><b>Last cycle riding wins.</b> In a class battle you get 1 point for every rider you outlast.</li>
+  </ul>
+  <h2>How your code runs</h2>
+  <p>Every turn the game calls your <code>steer()</code> and asks "Which way?" Your function answers with <b>return</b>. You never call <code>steer()</code> yourself. <code>print()</code> only talks to you: the game never hears it.</p>
+  <div class="words"><span>"left"</span><span>"straight"</span><span>"right"</span></div>
+  <p>Always in quotes, always lowercase.</p>
+  <h2>Left and right turn with your cycle</h2>
+  <div class="pics">
+    <div><div class="pic"><span></span><span>straight</span><span></span><span>left</span><b>▲</b><span>right</span><span></span><span></span><span></span></div><div class="pic-caption">facing up the screen</div></div>
+    <div><div class="pic"><span></span><span>left</span><span></span><span></span><b>▶</b><span>straight</span><span></span><span>right</span><span></span></div><div class="pic-caption">facing right: left is UP the screen!</div></div>
+    <p style="max-width:60mm">Pretend you are riding the cycle. Look at the arrow on its head: "left" means <b>its</b> left, not yours and not the screen's.</p>
+  </div>
+  <h2>The 6 sensors</h2>
+  <table>
+    <tr><td><code>wall_ahead()</code></td><td>True if the very next square ahead is solid (a wall or a trail).</td></tr>
+    <tr><td><code>wall_left()</code></td><td>True if the next square to your cycle's left is solid.</td></tr>
+    <tr><td><code>wall_right()</code></td><td>True if the next square to your cycle's right is solid.</td></tr>
+    <tr><td><code>space_ahead()</code></td><td>How many free squares in a straight line ahead: 0, 1, 2…</td></tr>
+    <tr><td><code>space_left()</code></td><td>How many free squares in a straight line to the left.</td></tr>
+    <tr><td><code>space_right()</code></td><td>How many free squares in a straight line to the right.</td></tr>
+  </table>
+  <h2>Two tiny examples</h2>
+  <div class="cols">
+    <div><b>Turn before the wall</b><pre>def steer():
+    if wall_ahead():
+        return "left"
+    return "straight"</pre></div>
+    <div><b>Use a number sensor, and print to see it</b><pre>def steer():
+    print("room ahead:", space_ahead())
+    if space_ahead() < 3:
+        return "right"
+    return "straight"</pre></div>
+  </div>
+  <p style="margin-top:3mm">Stuck? Read why your cycle crashed in the output, add <code>print()</code> inside <code>steer()</code>, and open a hint in <b>Challenges</b>.</p>
+</section>
 <div class="intro" id="intro" hidden role="dialog" aria-modal="true" aria-labelledby="introTitle">
   <div class="intro-card">
     <div class="window-bar"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span><span style="margin-left:7px">how_it_works.py</span></div>
