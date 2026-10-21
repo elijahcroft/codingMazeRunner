@@ -307,6 +307,7 @@
             <button class="btn ghost" id="backButton" title="One turn back" aria-label="One turn back">−1</button>
             <button class="btn ghost" id="pauseButton" title="Pause" aria-label="Pause or play">⏸</button>
             <button class="btn ghost" id="nextButton" title="One turn forward" aria-label="One turn forward">+1</button>
+            <button class="btn ghost" id="crashButton" hidden title="Jump to the turn just before your cycle crashed">✕ Crash</button>
             <button class="btn ghost" id="stopButton" hidden>▸▸ Skip</button>
             <button class="btn ghost" id="replayButton" hidden>↻ Replay</button>
           </span>
@@ -690,8 +691,9 @@ function draw(match, t) {
 // ---- Replay controls: play, pause, and step one turn at a time ----------
 let delay = 50;
 function controls() {
-  const playing = !!animationTimer;
+  const playing = !!animationTimer, mine = myBike(shown);
   $("stopButton").hidden = !playing;
+  $("crashButton").hidden = playing || !(mine && mine.died > 0);
   $("replayButton").hidden = playing || drawn < shown.turns;
   $("pauseButton").textContent = playing ? "⏸" : "▶︎";
   $("pauseButton").title = playing ? "Pause" : "Play from here";
@@ -738,6 +740,14 @@ function markTurn(on) {
     if (now && !first) first = div;
   }
   if (first) first.scrollIntoView({block: "nearest"});
+}
+// The turn just before your cycle crashed, paused, with that turn's print()
+// lines lit: the decision that went wrong.
+function myBike(match) { return match.bikes.find(b => b.key === "you" || b.key === me); }
+function jumpToCrash() {
+  stopReplay();
+  draw(shown, Math.max(0, myBike(shown).died - 1));
+  markTurn(true); controls();
 }
 function show(match, title, lines) {
   shown = match;
@@ -949,6 +959,7 @@ $("pauseButton").addEventListener("click", togglePause);
 $("backButton").addEventListener("click", () => stepTurn(-1));
 $("nextButton").addEventListener("click", () => stepTurn(1));
 $("replayButton").addEventListener("click", replay);
+$("crashButton").addEventListener("click", jumpToCrash);
 $("code").addEventListener("input", updateEditor);
 $("code").addEventListener("click", updatePosition);
 $("code").addEventListener("keyup", updatePosition);
