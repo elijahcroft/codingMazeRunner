@@ -2696,6 +2696,17 @@ def cycles_replay(p):
     return {"replay": dict(last, bikes=bikes), "board": cycles_board()}
 
 
+def cycles_summary(p):
+    """For the admin page: the student's best test drive and whether the bot
+    entered for the next battle works. None until their first test drive."""
+    entry = p.get("cycles")   # read only: don't start an entry for them
+    if not entry or not entry["code"].strip():
+        return None
+    return {"best": entry["best"], "points": entry["points"],
+            "color": entry.get("color"), "ok": entry.get("ok", True),
+            "kept_previous": entry.get("kept_previous", False)}
+
+
 def cycles_state(p):
     entry = cycles_entry(p)
     return {"you": {"name": p["name"], "color": cycles_color(p)},
@@ -2756,6 +2767,7 @@ def overview():
                        "tracks": lg["tracks"]}
                       for lg in rally_summary(q)],
             "rally_hints": rally_hints_used(q),
+            "cycles": cycles_summary(q),
         })
     people.sort(key=lambda x: (x["world"], x["name"].lower()))
     # A fogged world's mazes are sent blanked out — the screen draws those from

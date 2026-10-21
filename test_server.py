@@ -668,6 +668,22 @@ class CyclesTests(unittest.TestCase):
     def test_server_accepts_a_whole_class_connecting_at_once(self):
         self.assertGreaterEqual(server.ClassroomServer.request_queue_size, 64)
 
+    def test_admin_overview_shows_each_light_cycles_entry(self):
+        original = dict(server.players)
+        try:
+            server.players.clear()
+            ada, bo = fake_player("Ada"), dict(fake_player("Bo"), id="bo")
+            server.players.update({ada["id"]: ada, bo["id"]: bo})
+            server.cycles_test(ada, SWEEP)
+            server.cycles_test(ada, 'def steer()\n    return "left"\n')
+            rows = {r["name"]: r["cycles"] for r in server.overview()["players"]}
+            self.assertIsNone(rows["Bo"])
+            self.assertEqual((rows["Ada"]["ok"], rows["Ada"]["kept_previous"],
+                              rows["Ada"]["best"]["wins"]), (True, True, 3))
+        finally:
+            server.players.clear()
+            server.players.update(original)
+
     def test_only_one_battle_runs_at_a_time(self):
         self.assertTrue(server.cycles_battle_lock.acquire(blocking=False))
         try:

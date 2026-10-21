@@ -34,7 +34,8 @@
   <a href="/" target="_blank" style="color:#55dfd2">⌨ Python Quest</a> &nbsp;·&nbsp;
   <a href="/screen" target="_blank" style="color:#7da0ff">🖥 Live game + student code</a> &nbsp;·&nbsp;
   <a href="/leaderboard" target="_blank" style="color:#7da0ff">🏆 Leaderboard</a> &nbsp;·&nbsp;
-  <a href="/arena" target="_blank" style="color:#ffdf3f">🤖 Bot Rally</a>
+  <a href="/arena" target="_blank" style="color:#ffdf3f">🤖 Bot Rally</a> &nbsp;·&nbsp;
+  <a href="/cycles/show" target="_blank" style="color:#2be1ee">🏁 Light Cycles battles</a>
 </div>
 
 <label>Admin key (shown in your terminal)</label>
@@ -72,6 +73,12 @@
   par) and how many hints they've opened. A league opens with Gold in the one
   before it, or unlock the next one here.
   <div id="rallyRoster" style="margin-top:12px"></div>
+</div>
+
+<div class="card">
+  <b>🏁 Light Cycles</b> — each student's best test drive badges, and whether the
+  bot entered for the next battle works. Students who need a hand come first.
+  <div id="cyclesRoster" style="margin-top:12px"></div>
 </div>
 
 <div class="card">
@@ -159,6 +166,30 @@ async function refreshRoster() {
         <span class="pname">${esc(p.name)}</span>
         <div class="pmeta">${leagues} · hints ${p.rally_hints}</div></div>
       ${allOpen ? "" : `<button class="small" onclick="act('rally_unlock', {pid: '${esc(p.id)}'})">Unlock next</button>`}
+    </div>`;
+  }).join("");
+
+  // Light Cycles, most in need of help first: no entry, a broken entry, then
+  // fewest badges. The badges are the same as on the student's page.
+  const badges = b => !b ? [] : [
+    ["SURVIVOR", b.lasted.length === 3 && b.lasted.every(n => n >= 30)],
+    ["PODIUM", b.places.some(n => n <= 2)],
+    ["CHAMPION", b.wins >= 1], ["SWEEP", b.wins === 3],
+  ].filter(([, earned]) => earned).map(([label]) => label);
+  const need = c => !c ? 0 : !c.ok ? 1 : c.kept_previous ? 2 : 3 + badges(c.best).length;
+  const cyclers = [...data.players].sort((a, b) =>
+    need(a.cycles) - need(b.cycles) || a.name.localeCompare(b.name));
+  document.getElementById("cyclesRoster").innerHTML = cyclers.map(p => {
+    const c = p.cycles;
+    const status = !c ? "not entered yet: needs one Test drive"
+      : !c.ok ? "⚠️ the entered bot has a code error"
+      : c.kept_previous ? "⚠️ newest code has an error (last working bot is entered)"
+      : "✅ entered";
+    const got = c ? badges(c.best) : [];
+    return `<div class="prow">
+      <div><span class="dot" style="background:${esc((c && c.color) || p.color)}"></span>
+        <span class="pname">${esc(p.name)}</span>
+        <div class="pmeta">${status}${c ? ` · ${got.length ? got.join(" ") : "no badges yet"} · ${c.points} pts` : ""}</div></div>
     </div>`;
   }).join("");
 
