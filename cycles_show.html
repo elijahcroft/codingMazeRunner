@@ -324,9 +324,17 @@ async function resetSeason() {
   const key = $("key").value.trim();
   if (!key) { $("msg").textContent = "Type the admin key first."; $("key").focus(); return; }
   if (!confirm("Start a new season? Every student's points go back to 0, and each bot enters again with its next Test drive.")) return;
-  const data = await (await fetch("/admin", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({key, action: "cycles_reset"})})).json();
+  let data;
+  try { data = await (await fetch("/admin", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({key, action: "cycles_reset"})})).json(); }
+  catch (_) { $("msg").textContent = "The server did not respond."; return; }
   $("msg").textContent = data.error || "";
-  if (!data.error) { match = null; $("arena").hidden = true; $("banner").hidden = true; $("waiting").hidden = false; await refresh(); }
+  if (data.error) return;
+  // Stop a round that's still playing, so Start works again straight away.
+  clearTimeout(timer); timer = null; match = null;
+  for (const id of ["arena", "banner", "final", "countdown", "skipButton"]) $(id).hidden = true;
+  $("startButton").disabled = false;
+  $("waiting").hidden = false;
+  await refresh();
 }
 
 $("key").value = recall("cyclesKey") || "";
