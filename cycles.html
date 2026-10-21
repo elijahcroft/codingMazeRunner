@@ -155,6 +155,13 @@
   .sensor-list { padding: 0 12px 12px; display: grid; gap: 6px; font-size: 12px; color: #b6c2d5; line-height: 1.45; }
   .sensor-list b { color: var(--amber); font: 10px var(--editor); letter-spacing: .04em; margin-top: 4px; }
   .sensor-list pre { margin: 2px 0 0; padding: 7px 9px; background: #0a101c; border: 1px solid #1d2a40; color: #dce7f6; font: 12px/1.5 var(--editor); }
+  /* What is entered for the next class battle (newer servers say so). */
+  .entry { border-bottom: 1px solid var(--line); background: #0d1524; font-size: 12px; }
+  .entry summary { padding: 7px 12px; cursor: pointer; color: #b6c2d5; line-height: 1.4; }
+  .entry summary small { color: var(--muted); font: 11px var(--editor); }
+  .entry.ok summary b { color: var(--green); }
+  .entry.bad summary b { color: var(--amber); }
+  .entry pre { margin: 0 12px 10px; padding: 7px 9px; max-height: 22vh; overflow: auto; background: #0a101c; border: 1px solid #1d2a40; color: #dce7f6; font: 12px/1.5 var(--editor); }
   .drawer[open] > .sensor-list { max-height: 30vh; overflow: auto; }
   .hint-note { color: var(--muted); }
   .hint { margin-top: 5px; }
@@ -288,6 +295,7 @@
           <button class="btn ghost" id="clearButton">Clear file</button>
           <div class="code-count" id="codeCount">0 lines</div>
         </div>
+        <details class="entry" id="entry" hidden><summary id="entryText"></summary><pre id="entryCode"></pre></details>
         <details class="drawer">
           <summary>Sensors and Python examples</summary>
           <div class="sensor-list">
@@ -391,6 +399,7 @@ let me = null, myName = "", running = false;
 let heats = null, lastBattle = null, shown = null, frame = 0, drawn = 0, animationTimer = null;
 let selected = null;   // 0..2 for a heat, "battle" for the class battle
 let board = [], battleRound = 0;
+let entry = null;   // the bot entered for the next battle, if the server reports it
 
 function esc(value) {
   return String(value).replace(/[&<>\"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
@@ -432,6 +441,7 @@ async function enter(id) {
   $("code").value = recall(codeKey()) ?? state.code ?? "";
   updateEditor();
   renderBest(state.best);
+  entry = state.entry || null; renderEntry();
   board = state.board; battleRound = state.round;
   renderBoard();
   renderHeats();
@@ -665,6 +675,25 @@ function renderBest(best, latest = null, isNew = false) {
 }
 
 // ---- Right column --------------------------------------------------------
+function ago(seconds) {
+  const s = Math.max(0, Date.now() / 1000 - seconds);
+  return s < 60 ? "just now" : s < 3600 ? `${Math.floor(s / 60)} min ago` : `${Math.floor(s / 3600)} h ago`;
+}
+// One line under the toolbar: is my bot entered, and is it the one I'm editing?
+function renderEntry() {
+  $("entry").hidden = !entry;
+  if (!entry) return;
+  const has = !!(entry.code || "").trim();
+  const edited = has && $("code").value.trim() !== entry.code.trim();
+  const tested = entry.entered_at ? ` <small>· tested ${ago(entry.entered_at)}</small>` : "";
+  $("entry").className = "entry " + (has && entry.ok ? "ok" : "bad");
+  $("entryText").innerHTML = !has ? "<b>Not entered yet.</b> Press Test drive to enter your bot in the next battle."
+    : entry.kept_previous ? `<b>⚠️ This code has an error.</b> Your previous working bot is still entered${entry.entered_at ? ` <small>(tested ${ago(entry.entered_at)})</small>` : ""}.`
+    : !entry.ok ? "<b>⚠️ Your entered bot has a code error.</b> It will crash at the start. Fix it and test drive again."
+    : `<b>✅ Entered for the next battle</b>${tested}${edited ? " <small>· your edits aren't entered until you test drive</small>" : ""}`;
+  $("entryCode").textContent = has ? entry.code : "";
+  $("entry").querySelector("summary").title = has ? "Show the code that is entered" : "";
+}
 function logLine(line) {
   const cls = /^[🏆✅]/.test(line) ? "good" : /^(⚠|💥|turn \d+ ⚠)/.test(line) || /💥/.test(line) ? "bad" : /^—/.test(line) ? "head" : "";
   return `<div class="${cls}">${esc(line)}</div>`;
@@ -684,7 +713,8 @@ async function testDrive() {
     // Open the heat with the most to learn from: the worst finish.
     const places = heats.map(h => h.bikes[0].place);
     selectHeat(places.indexOf(Math.max(...places)));
-    $("consoleState").textContent = `${data.score.wins}/3 heats won · bot entered`;
+    entry = data.entry || null; renderEntry();
+    $("consoleState").textContent = `${data.score.wins}/3 heats won${entry ? "" : " · bot entered"}`;
     $("announce").textContent = `Test drive finished. You won ${data.score.wins} of 3 heats.`;
   } catch (_) {
     $("consoleState").textContent = "no response";
@@ -713,6 +743,7 @@ function updateEditor() {
   $("codeCount").textContent = `${lines} line${lines === 1 ? "" : "s"} of code`;
   updatePosition();
   saveCode();
+  if (entry) renderEntry();
 }
 function updatePosition() {
   const t = $("code"), before = t.value.slice(0, t.selectionStart).split("\n");
@@ -770,6 +801,7 @@ setInterval(async () => {
     const state = await (await fetch("/cycles/state?id=" + encodeURIComponent(me))).json();
     if (!state.you) return;
     board = state.board; renderBoard();
+    if (state.entry) { entry = state.entry; renderEntry(); }
     if (state.round !== battleRound) { battleRound = state.round; lastBattle = null; renderBattle(); }
   } catch (_) {}
 }, 4000);
