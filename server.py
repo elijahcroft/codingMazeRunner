@@ -3152,6 +3152,12 @@ class Handler(BaseHTTPRequestHandler):
         self._send(404, {"error": "not found"})
 
 
+class ClassroomServer(ThreadingHTTPServer):
+    # Python waits for only 5 connections by default; a whole class pressing
+    # Run at once overflowed that, so some got "connection reset".
+    request_queue_size = 128
+
+
 def get_lan_ip():
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -3166,7 +3172,7 @@ def get_lan_ip():
 def main():
     load_state()  # bring back the leaderboard and everyone's progress
     ip = get_lan_ip()
-    server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+    server = ClassroomServer(("0.0.0.0", PORT), Handler)
     banner = "\n".join([
         "=" * 52,
         "  PYTHON QUEST is running!",

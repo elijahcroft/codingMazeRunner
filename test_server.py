@@ -634,6 +634,9 @@ class CyclesTests(unittest.TestCase):
                                   "    return \"left\"\n")
         self.assertIn("took too long", cause)
 
+    def test_server_accepts_a_whole_class_connecting_at_once(self):
+        self.assertGreaterEqual(server.ClassroomServer.request_queue_size, 64)
+
     def test_only_one_battle_runs_at_a_time(self):
         self.assertTrue(server.cycles_battle_lock.acquire(blocking=False))
         try:
