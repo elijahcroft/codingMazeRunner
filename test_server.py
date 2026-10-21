@@ -413,6 +413,26 @@ class CyclesTests(unittest.TestCase):
             self.assertEqual(len(set(starts)), 4, arena["name"])
             self.assertTrue(all(arena["grid"][r][c] == "." for r, c in starts))
 
+    def test_every_royale_start_has_room_ahead(self):
+        for n in range(1, 41):
+            for seed in range(25):
+                grid, starts = cycles.royale_arena(n, seed)
+                taken = {(r, c) for r, c, _ in starts}
+                for r, c, d in starts:
+                    dr, dc = cycles.DIRS[d]
+                    ahead = [(r + dr * k, c + dc * k) for k in range(1, 6)]
+                    self.assertTrue(all(grid[y][x] == "." and (y, x) not in taken
+                                        for y, x in ahead), (n, seed, r, c))
+
+    def test_no_practice_heat_is_decided_in_the_first_ten_turns(self):
+        for code in (cycles.HOUSE_BOTS[1]["code"], SWEEP,
+                     'def steer():\n    if wall_ahead():\n        return "left"\n'
+                     '    return "straight"\n'):
+            for heat in cycles.practice(code, "T", "#fff"):
+                for bike in heat["bikes"]:
+                    self.assertTrue(bike["died"] is None or bike["died"] > 10,
+                                    (heat["name"], bike["name"]))
+
     def test_missing_return_warns_once_and_goes_straight(self):
         died, cause, prints = cycle_cause("def steer():\n    pass\n")
         self.assertEqual(cycle_places("def steer():\n    pass\n"), [4, 4, 4])

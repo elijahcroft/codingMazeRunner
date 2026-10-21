@@ -601,10 +601,16 @@ def royale_arena(n, seed):
         dr, dc = rows / 2 - r, cols / 2 - c
         d = (2 if dr > 0 else 0) if abs(dr) > abs(dc) else (1 if dc > 0 else 3)
         starts.append((r, c, d))
-    taken = {(r, c) for r, c, _ in starts}
+    # Pillars, but none near a start or in the first squares ahead of one,
+    # so nobody's round is decided by where they happened to start.
+    clear = set()
+    for r, c, d in starts:
+        dr, dc = DIRS[d]
+        clear.update((r + i, c + j) for i in range(-3, 4) for j in range(-3, 4))
+        clear.update((r + dr * k, c + dc * k) for k in range(1, 7))
     for _ in range(n // 3 + 3):
         r, c = rng.randrange(2, rows - 3), rng.randrange(2, cols - 3)
-        if all(abs(r - sr) > 3 or abs(c - sc) > 3 for sr, sc in taken):
+        if not {(r, c), (r + 1, c), (r, c + 1), (r + 1, c + 1)} & clear:
             fill(grid, r, c, 2, 2)
     return grid, starts
 
