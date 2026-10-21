@@ -103,6 +103,7 @@
 </main>
 <script>
 const $ = id => document.getElementById(id);
+const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]];   // up, right, down, left
 let match = null, frame = 0, timer = null, board = [];
 
 function esc(value) {
@@ -135,6 +136,28 @@ async function refresh() {
   } catch (_) {}
 }
 
+// Which way a cycle faces after `steps` moves: 0 up, 1 right, 2 down, 3 left.
+// Newer servers send "dirs"; otherwise its last step tells us, or its start.
+function heading(b, steps) {
+  if (b.dirs && b.dirs[steps] != null) return b.dirs[steps];
+  if (steps === 0) return b.dir;
+  const [r0, c0] = b.path[steps - 1], [r1, c1] = b.path[steps];
+  return DIRS.findIndex(([dr, dc]) => dr === r1 - r0 && dc === c1 - c0);
+}
+// A white head with a dark arrow pointing the way the cycle is going.
+function drawHead(ctx, r, c, size, d, color) {
+  ctx.shadowColor = color; ctx.shadowBlur = size * 1.5;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(c * size, r * size, size, size);
+  ctx.shadowBlur = 0;
+  const [dr, dc] = DIRS[d], x = (c + .5) * size, y = (r + .5) * size, k = size * .4;
+  ctx.fillStyle = "#050912";
+  ctx.beginPath();
+  ctx.moveTo(x + dc * k, y + dr * k);
+  ctx.lineTo(x - dc * k * .6 + dr * k, y - dr * k * .6 - dc * k);
+  ctx.lineTo(x - dc * k * .6 - dr * k, y - dr * k * .6 + dc * k);
+  ctx.fill();
+}
 function draw(t) {
   const canvas = $("arena"), stage = $("stage");
   const rows = match.grid.length, cols = match.grid[0].length;
@@ -161,10 +184,7 @@ function draw(t) {
       ctx.moveTo((xc + 1) * size - 1, xr * size + 1); ctx.lineTo(xc * size + 1, (xr + 1) * size - 1);
       ctx.stroke();
     } else {
-      ctx.shadowColor = b.color; ctx.shadowBlur = size * 1.5;
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(hc * size, hr * size, size, size);
-      ctx.shadowBlur = 0;
+      drawHead(ctx, hr, hc, size, heading(b, steps), b.color);
       heads.push([b, hr, hc]);
     }
   }

@@ -397,6 +397,28 @@ function cellSize(match) {
   const fit = Math.min((stage.clientWidth - 40) / cols, (stage.clientHeight - 110) / rows);
   return Math.max(4, Math.min(24, Math.floor(fit)));
 }
+// Which way a cycle faces after `steps` moves: 0 up, 1 right, 2 down, 3 left.
+// Newer servers send "dirs"; otherwise its last step tells us, or its start.
+function heading(b, steps) {
+  if (b.dirs && b.dirs[steps] != null) return b.dirs[steps];
+  if (steps === 0) return b.dir;
+  const [r0, c0] = b.path[steps - 1], [r1, c1] = b.path[steps];
+  return DIRS.findIndex(([dr, dc]) => dr === r1 - r0 && dc === c1 - c0);
+}
+// A white head with a dark arrow pointing the way the cycle is going.
+function drawHead(ctx, r, c, size, d, color) {
+  ctx.shadowColor = color; ctx.shadowBlur = size;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(c * size, r * size, size, size);
+  ctx.shadowBlur = 0;
+  const [dr, dc] = DIRS[d], x = (c + .5) * size, y = (r + .5) * size, k = size * .4;
+  ctx.fillStyle = "#050912";
+  ctx.beginPath();
+  ctx.moveTo(x + dc * k, y + dr * k);
+  ctx.lineTo(x - dc * k * .6 + dr * k, y - dr * k * .6 - dc * k);
+  ctx.lineTo(x - dc * k * .6 - dr * k, y - dr * k * .6 + dc * k);
+  ctx.fill();
+}
 function draw(match, t) {
   const canvas = $("arena"), size = cellSize(match);
   const rows = match.grid.length, cols = match.grid[0].length;
@@ -423,10 +445,7 @@ function draw(match, t) {
       ctx.moveTo((xc + 1) * size - 2, xr * size + 2); ctx.lineTo(xc * size + 2, (xr + 1) * size - 2);
       ctx.stroke();
     } else {
-      ctx.shadowColor = b.color; ctx.shadowBlur = size;
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(hc * size, hr * size, size, size);
-      ctx.shadowBlur = 0;
+      drawHead(ctx, hr, hc, size, heading(b, steps), b.color);
       if (b.key === "you" || b.key === me) {
         ctx.strokeStyle = b.color; ctx.lineWidth = 2;
         ctx.strokeRect(hc * size - 3, hr * size - 3, size + 6, size + 6);
