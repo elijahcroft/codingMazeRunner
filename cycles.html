@@ -135,6 +135,9 @@
   .score-main b { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; font-weight: 700; }
   .score-main span { font-size: 14px; }
   .new-best { color: var(--amber); font: 700 11px var(--editor); border: 1px solid #7b6735; padding: 3px 6px; }
+  .compare { flex-basis: 100%; margin-top: -6px; font: 11px var(--editor); color: var(--muted); }
+  .compare b { color: var(--green); font-weight: 400; }
+  .compare i { color: var(--red); font-style: normal; }
   .badges { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
   .badge { font: 11px var(--editor); color: #56647c; border: 1px solid #222f45; padding: 4px 7px; }
   .badge.earned { color: var(--amber); border-color: #7b6735; background: #282315; }
@@ -312,6 +315,7 @@
         <div class="score-main"><b id="scoreLabel">BEST TEST DRIVE</b><span id="scoreText">No test drive yet.</span></div>
         <span class="new-best" id="newBest" hidden>NEW BEST</span>
         <div class="badges" id="badges"></div>
+        <div class="compare" id="compare" hidden></div>
       </div>
     </section>
     <section class="code-column">
@@ -785,6 +789,21 @@ function renderBest(best, latest = null, isNew = false) {
     `<span class="badge${earned ? " earned" : ""}" title="${goal}">${label}</span>`).join("");
 }
 
+// This test drive against the one before it, heat by heat (place first,
+// then how long you lasted). Kept in this browser only.
+function renderCompare(score) {
+  let prev = null;
+  try { prev = JSON.parse(recall(`cyclesLast:${me}`)); } catch (_) {}
+  store(`cyclesLast:${me}`, JSON.stringify(score));
+  $("compare").hidden = !(prev && prev.places && prev.lasted);
+  if ($("compare").hidden) return;
+  const diff = score.places.map((p, i) => Math.sign(prev.places[i] - p) || Math.sign(score.lasted[i] - prev.lasted[i]));
+  const better = diff.filter(d => d > 0).length, worse = diff.filter(d => d < 0).length;
+  const heats = n => `${n} heat${n === 1 ? "" : "s"}`;
+  $("compare").innerHTML = "vs your last bot: " + ([better && `<b>better in ${heats(better)}</b>`, worse && `<i>worse in ${heats(worse)}</i>`]
+    .filter(Boolean).join(", ") || "the same in every heat");
+}
+
 // ---- Right column --------------------------------------------------------
 function ago(seconds) {
   const s = Math.max(0, Date.now() / 1000 - seconds);
@@ -821,6 +840,7 @@ async function testDrive() {
     heats = data.heats;
     board = data.board; renderBoard();
     renderBest(data.best, data.score, data.new_best);
+    renderCompare(data.score);
     // Open the heat with the most to learn from: the worst finish.
     const places = heats.map(h => h.bikes[0].place);
     selectHeat(places.indexOf(Math.max(...places)));
