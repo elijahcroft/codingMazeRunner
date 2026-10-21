@@ -51,9 +51,9 @@ the cycle's, not the screen's**. This script is built around those two.
 | 12–18 | **Investigate** | Point at the arrow on each head and the left/right key under the replay. "When it faces right, which way is its left?" (Up the screen.) | Watch the replay. Tick *show on the map*. Read the crash cause in the output. |
 | 18–25 | **Modify** | "Add `if wall_ahead(): return "left"`." Then: "Why might it still crash?" (It can turn left into a wall.) | Goal: **SURVIVOR** (PODIUM comes with it). |
 | 25–28 | **Round 1** | Start a round now, even with weak bots. | Watch, cheer, find their own cycle. |
-| 28–42 | **Make** | Number sensors: compare `space_left()` with `space_right()`. Show `print()` for debugging. | Goals: **CHAMPION**, then **SWEEP**. Hints in *Challenges*. |
+| 28–42 | **Make** | Number sensors: compare `space_left()` with `space_right()`. Show `print()` for debugging: pause the replay (⏸, then −1 / +1) and that turn's print lines light up. | Goals: **CHAMPION**, then **SWEEP**. Hints in *Challenges*. |
 | 42–45 | **Round 2** | Before you start: "What did you change, and why should it help?" | Watch, then open *Round 2 replay* on their own page. |
-| 45–53 | Improve | Lanes (below). | Predict → test → read the replay. |
+| 45–53 | Improve | Lanes (below). | Predict → test → read the replay. The line under the badges says if the new bot beat their last one. |
 | 53–56 | **Final round** | 1–2 rounds. | |
 | 56–60 | Debrief | The winner and one "most improved" explain one decision in their code. | Exit sentence: "`return` sends back… The game calls my function because…" |
 
