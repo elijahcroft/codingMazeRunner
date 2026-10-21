@@ -79,7 +79,7 @@
 <body>
 <header>
   <div class="logo"><span class="logo-mark">LC</span>Light Cycles</div>
-  <div class="round" id="round">Round 0</div>
+  <div class="round" id="round"></div>
   <div class="address">Students: <b id="address"></b></div>
   <div class="controls">
     <span class="msg" id="msg"></span>
@@ -141,7 +141,8 @@ async function refresh() {
     const data = await (await fetch("/cycles/board")).json();
     board = data.board;
     $("address").textContent = data.address.replace(/^http:\/\//, "");
-    $("round").textContent = `Round ${data.round}`;
+    // The round on screen, or in the lobby the one Start will run.
+    $("round").textContent = match ? `Round ${match.round}` : `Next: round ${data.round + 1}`;
     renderSeason();
   } catch (_) {}
 }
