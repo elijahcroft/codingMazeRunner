@@ -34,7 +34,10 @@ import re
 DIRS = [(-1, 0), (0, 1), (1, 0), (0, -1)]   # N E S W, same order as the mazes
 TURNS = {"straight": 0, "right": 1, "left": -1}
 SETUP_BUDGET = 2000    # operations for the top of the program
-STEER_BUDGET = 500     # operations for each steer() call (real bots use ~5-150)
+STEER_BUDGET = 500     # operations for each steer() call (real bots use ~5-150),
+ARENA_BUDGET = 10      # plus this many per square of the arena's longer side, so
+                       # a loop over space_ahead() that works in a test drive
+                       # still fits in the big class battle arena
 # Safety net for the whole class: all steer() calls in one match together may
 # use this many operations (about 1 s on a laptop), then the match ends with
 # everyone still riding sharing the finish. Normal battles use a small part.
@@ -184,6 +187,7 @@ class Brain:
         self.funcs = {}
         self.ops = 0
         self.budget = SETUP_BUDGET
+        self.steering = False   # running the top of the program, not steer()
         self.depth = 0
         if len(code) > MAX_CODE:
             raise BotError(f"Your program is too long: the limit is {MAX_CODE} "
@@ -211,9 +215,10 @@ class Brain:
             raise BotError("steer() shouldn't take anything in the ( ) — "
                            "write  def steer():")
 
-    def steer(self):
+    def steer(self, budget=STEER_BUDGET):
         self.ops = 0
-        self.budget = STEER_BUDGET
+        self.budget = budget
+        self.steering = True
         return self.call_user(self.funcs["steer"], [])
 
     # ---- the interpreter ---------------------------------------------------
@@ -221,9 +226,8 @@ class Brain:
     def tick(self):
         self.ops += 1
         if self.ops > self.budget:
-            raise _TooLong("steer() took too long to decide"
-                           if self.budget == STEER_BUDGET else
-                           "The top of your program ran too long")
+            raise _TooLong("steer() took too long to decide" if self.steering
+                           else "The top of your program ran too long")
 
     def lookup(self, name, frame):
         if not frame.module and name not in frame.global_names:
@@ -751,6 +755,7 @@ def run_match(entries, grid, starts):
         keep_last(b)   # the top of the program may print too
 
     turn = spent = 0
+    budget = STEER_BUDGET + ARENA_BUDGET * max(rows, cols)
     stop_at = 0 if len(bikes) == 1 else 1
     free = sum(row.count(".") for row in grid)
     while sum(b["died"] is None for b in bikes) > stop_at and turn < free \
@@ -762,7 +767,7 @@ def run_match(entries, grid, starts):
             before = len(b["prints"])
             b["looks"] = {}
             try:
-                choice = b["brain"].steer()
+                choice = b["brain"].steer(budget)
             except BotError as e:
                 b["died"], b["cause"] = turn, f"💥 error in steer(): {e}"
                 b["error"] = True

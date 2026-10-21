@@ -658,8 +658,21 @@ class CyclesTests(unittest.TestCase):
         cycles.practice(code, "T", "#fff")
         self.assertLess(time.time() - start, 0.5)
 
+    def test_a_loop_over_the_room_ahead_fits_in_the_biggest_battle(self):
+        # Practice arenas are 30 wide, a 35-rider battle about 100: a loop
+        # that passed the test drive mustn't run out of time in the battle.
+        loop = ("    n = space_ahead()\n    while n > 0:\n        if n % 2 == 0:\n"
+                "            n -= 1\n        n -= 1\n")
+        code = SWEEP.replace("    a = space_ahead()\n", "    a = space_ahead()\n" + loop)
+        self.assertFalse(any(h["bikes"][0]["error"] for h in cycles.practice(code, "T", "#fff")))
+        grid, starts = cycles.royale_arena(35, seed=3)
+        entries = [{"key": str(i), "name": str(i), "color": "#fff", "code": code}
+                   for i in range(35)]
+        result = cycles.run_match(entries, grid, starts)
+        self.assertFalse([b["cause"] for b in result["bikes"] if b["error"]])
+
     def test_one_long_line_counts_as_lots_of_work(self):
-        line = " and ".join(["1"] * 600)
+        line = "<=".join(["1"] * 1200)   # ~2400 operations, under the size limit
         _, cause, _ = cycle_cause(f"def steer():\n    x = {line}\n"
                                   "    return \"left\"\n")
         self.assertIn("took too long", cause)
