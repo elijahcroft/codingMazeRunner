@@ -53,11 +53,18 @@
   .banner small { display: block; color: var(--amber); font: 700 16px var(--editor); letter-spacing: .1em; margin-bottom: 8px; }
   .banner b { display: block; font-size: clamp(36px, 5vw, 72px); letter-spacing: -.04em; }
   .banner span { color: var(--muted); font-size: 18px; }
+  .countdown { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; font: 900 clamp(120px, 22vw, 260px) var(--editor); color: var(--amber); text-shadow: 0 0 40px rgba(0,0,0,.9), 0 8px 0 rgba(0,0,0,.6); }
+  .final { position: absolute; top: 22px; left: 50%; transform: translateX(-50%); background: rgba(8,12,22,.9); border: 2px solid var(--amber); padding: 8px 22px; font-size: 26px; font-weight: 800; white-space: nowrap; }
+  .final small { color: var(--amber); font: 700 14px var(--editor); letter-spacing: .1em; margin-right: 10px; }
 
   aside { min-height: 0; overflow: auto; border-left: 1px solid var(--line); background: var(--chrome); }
   .heading { padding: 12px 16px; color: var(--muted); font: 12px var(--editor); letter-spacing: .08em; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; }
   .list { padding: 8px 16px 14px; display: grid; gap: 6px; font-size: 17px; }
+  .rider { min-width: 0; white-space: nowrap; overflow: hidden; }
   .rider.out { opacity: .4; text-decoration: line-through; }
+  /* A big class: two columns so the whole list fits on the screen. */
+  .list.many { grid-template-columns: 1fr 1fr; gap: 4px 12px; font-size: 15px; }
+  .list.many .season-row { font-size: 14px; grid-template-columns: 20px 10px minmax(0, 1fr) auto; gap: 6px; }
   .rider small { margin-left: auto; color: var(--muted); font: 12px var(--editor); text-decoration: none; }
   .feed { padding: 8px 16px 14px; display: grid; gap: 6px; font-size: 15px; line-height: 1.35; max-height: 34vh; overflow: auto; }
   .feed div b { font-weight: 800; }
@@ -91,6 +98,8 @@
     </div>
     <canvas id="arena" hidden></canvas>
     <div class="banner" id="banner" hidden></div>
+    <div class="countdown" id="countdown" hidden></div>
+    <div class="final" id="final" hidden></div>
   </section>
   <aside>
     <div class="heading"><span>RIDERS</span><span id="aliveCount"></span></div>
@@ -103,6 +112,7 @@
 </main>
 <script>
 const $ = id => document.getElementById(id);
+const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]];   // up, right, down, left
 let match = null, frame = 0, timer = null, board = [];
 
 function esc(value) {
@@ -113,6 +123,7 @@ function recall(key) { try { return localStorage.getItem(key); } catch (_) { ret
 function who(b) { return `<b style="color:${esc(b.color)}">${esc(b.name)}</b>`; }
 
 function renderSeason() {
+  $("season").classList.toggle("many", board.length > 14);
   $("season").innerHTML = board.length ? board.map((row, i) => `
     <div class="season-row"><span class="rank">${i + 1}</span><span class="dot" style="background:${esc(row.color)}"></span>
       <span class="name">${esc(row.name)}</span><span class="pts">${row.points}</span></div>`).join("")
@@ -135,6 +146,28 @@ async function refresh() {
   } catch (_) {}
 }
 
+// Which way a cycle faces after `steps` moves: 0 up, 1 right, 2 down, 3 left.
+// Newer servers send "dirs"; otherwise its last step tells us, or its start.
+function heading(b, steps) {
+  if (b.dirs && b.dirs[steps] != null) return b.dirs[steps];
+  if (steps === 0) return b.dir;
+  const [r0, c0] = b.path[steps - 1], [r1, c1] = b.path[steps];
+  return DIRS.findIndex(([dr, dc]) => dr === r1 - r0 && dc === c1 - c0);
+}
+// A white head with a dark arrow pointing the way the cycle is going.
+function drawHead(ctx, r, c, size, d, color) {
+  ctx.shadowColor = color; ctx.shadowBlur = size * 1.5;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(c * size, r * size, size, size);
+  ctx.shadowBlur = 0;
+  const [dr, dc] = DIRS[d], x = (c + .5) * size, y = (r + .5) * size, k = size * .4;
+  ctx.fillStyle = "#050912";
+  ctx.beginPath();
+  ctx.moveTo(x + dc * k, y + dr * k);
+  ctx.lineTo(x - dc * k * .6 + dr * k, y - dr * k * .6 - dc * k);
+  ctx.lineTo(x - dc * k * .6 - dr * k, y - dr * k * .6 + dc * k);
+  ctx.fill();
+}
 function draw(t) {
   const canvas = $("arena"), stage = $("stage");
   const rows = match.grid.length, cols = match.grid[0].length;
@@ -150,7 +183,8 @@ function draw(t) {
     const steps = Math.min(t, b.path.length - 1);
     ctx.globalAlpha = out ? .3 : .85;
     ctx.fillStyle = b.color;
-    for (let k = 0; k <= steps; k++) ctx.fillRect(b.path[k][1] * size + 1, b.path[k][0] * size + 1, size - 2, size - 2);
+    const gap = size >= 8 ? 1 : 0;   // tiny cells look like dotted lines with gaps
+    for (let k = 0; k <= steps; k++) ctx.fillRect(b.path[k][1] * size + gap, b.path[k][0] * size + gap, size - 2 * gap, size - 2 * gap);
     ctx.globalAlpha = 1;
     const [hr, hc] = b.path[steps];
     if (out) {
@@ -161,27 +195,49 @@ function draw(t) {
       ctx.moveTo((xc + 1) * size - 1, xr * size + 1); ctx.lineTo(xc * size + 1, (xr + 1) * size - 1);
       ctx.stroke();
     } else {
-      ctx.shadowColor = b.color; ctx.shadowBlur = size * 1.5;
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(hc * size, hr * size, size, size);
-      ctx.shadowBlur = 0;
+      drawHead(ctx, hr, hc, size, heading(b, steps), b.color);
       heads.push([b, hr, hc]);
     }
   }
   // Name tags over the riders still in, so the room can cheer for someone.
-  ctx.font = `700 ${Math.max(11, Math.min(16, size))}px Inter, Arial, sans-serif`;
+  // Tiny cells with lots of riders would be mush, so tags wait until the
+  // field thins out, and a tag that would cover another one is skipped.
+  const final = finalTwo(t);
+  if (final) for (const [b, hr, hc] of heads) {
+    const pulse = 1 + .5 * Math.abs(Math.sin(t / 3));
+    ctx.strokeStyle = "#f4c95d"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc((hc + .5) * size, (hr + .5) * size, size * (1.1 + pulse), 0, 2 * Math.PI); ctx.stroke();
+  }
+  if (size < 10 && heads.length > 12) return;
+  const px = final ? 26 : Math.max(15, Math.min(22, Math.round(size * 1.1)));
+  ctx.font = `700 ${px}px Inter, Arial, sans-serif`;
   ctx.textAlign = "center";
+  const placed = [];
   for (const [b, hr, hc] of heads) {
-    const x = hc * size + size / 2, y = hr * size - 4;
-    ctx.lineWidth = 4; ctx.strokeStyle = "#050912"; ctx.strokeText(b.name, x, y);
+    const x = hc * size + size / 2, y = Math.max(px, hr * size - 4);
+    const w = ctx.measureText(b.name).width + 6, box = [x - w / 2, y - px, x + w / 2, y + 2];
+    if (placed.some(o => box[0] < o[2] && o[0] < box[2] && box[1] < o[3] && o[1] < box[3])) continue;
+    placed.push(box);
+    ctx.lineWidth = 5; ctx.strokeStyle = "#050912"; ctx.strokeText(b.name, x, y);
     ctx.fillStyle = b.color; ctx.fillText(b.name, x, y);
   }
+}
+const isOut = (b, t) => b.died !== null && b.died <= t;
+// The last two riders of a bigger round, or null.
+function finalTwo(t) {
+  const left = match.bikes.filter(b => !isOut(b, t));
+  return match.bikes.length > 2 && left.length === 2 ? left : null;
+}
+// Code errors stay private: the student's own page has the details.
+function crashText(b) {
+  return b.error || /^💥/.test(b.cause) ? "had a code error. Check your console!" : esc(b.cause);
 }
 function renderRiders(t) {
   const lasted = b => b.died === null || b.died > t ? Infinity : b.died;
   const order = [...match.bikes].sort((a, b) => lasted(b) - lasted(a) || a.name.localeCompare(b.name));
   const alive = order.filter(b => lasted(b) === Infinity).length;
   $("aliveCount").textContent = `${alive} of ${match.bikes.length} riding`;
+  $("riders").classList.toggle("many", match.bikes.length > 14);
   $("riders").innerHTML = order.map(b => {
     const out = lasted(b) !== Infinity;
     return `<div class="rider${out ? " out" : ""}"><span class="dot" style="background:${esc(b.color)}"></span>${esc(b.name)}${out ? `<small>turn ${b.died}</small>` : ""}</div>`;
@@ -191,18 +247,21 @@ function addCrashes(t) {
   const crashed = match.bikes.filter(b => b.died === t);
   if (!crashed.length) return;
   if ($("feed").querySelector(".empty")) $("feed").innerHTML = "";
-  const html = crashed.map(b => `<div><span class="turn">turn ${t}</span> ${who(b)} ${esc(b.cause)}</div>`).join("");
+  const html = crashed.map(b => `<div><span class="turn">turn ${t}</span> ${who(b)} ${crashText(b)}</div>`).join("");
   $("feed").insertAdjacentHTML("afterbegin", html);
 }
 function finish() {
   clearTimeout(timer); timer = null;
   $("skipButton").hidden = true;
+  $("countdown").hidden = true;
+  $("final").hidden = true;
   $("startButton").disabled = false;
   draw(match.turns); renderRiders(match.turns);
   const winners = match.bikes.filter(b => b.place === 1);
   const names = winners.map(who).join(" & ");
-  $("banner").innerHTML = `<small>ROUND ${match.round}</small><b>🏆 ${names}</b>` +
-    `<span>${winners.length > 1 ? "tie — they went out on the same turn" : winners[0].died === null ? "last cycle riding" : "lasted longest"} · ${match.turns} turns</span>`;
+  const how = winners.length === 1 ? (winners[0].died === null ? "last cycle riding" : "lasted longest")
+    : winners.every(b => b.died === null) ? "time's up: they share the win" : "tie: they went out on the same turn";
+  $("banner").innerHTML = `<small>ROUND ${match.round}</small><b>🏆 ${names}</b><span>${how} · ${match.turns} turns</span>`;
   $("banner").hidden = false;
   renderSeason();
 }
@@ -213,14 +272,26 @@ function play() {
   $("feed").innerHTML = '<div class="empty">Nothing yet.</div>';
   $("skipButton").hidden = false;
   frame = 0;
+  draw(0); renderRiders(0);
   // Long enough to cheer, short enough to run lots of rounds: about 20 s.
+  // Two careful bots can circle for ages, so the final two go 4x faster.
   const delay = Math.max(30, Math.min(110, 20000 / Math.max(1, match.turns)));
   const tick = () => {
     draw(frame); renderRiders(frame); addCrashes(frame);
-    if (frame++ < match.turns) timer = setTimeout(tick, delay);
+    const final = finalTwo(frame);
+    $("final").hidden = !final;
+    if (final) $("final").innerHTML = `<small>FINAL TWO</small>${who(final[0])} vs ${who(final[1])}`;
+    if (frame++ < match.turns) timer = setTimeout(tick, final ? Math.max(10, delay / 4) : delay);
     else finish();
   };
-  tick();
+  // 3, 2, 1 over the starting grid, so everyone finds their cycle first.
+  let count = 3;
+  const countdown = () => {
+    $("countdown").hidden = count === 0;
+    $("countdown").textContent = count;
+    timer = setTimeout(count-- ? countdown : tick, count >= 0 ? 800 : 0);
+  };
+  countdown();
 }
 function skip() {
   for (let t = frame; t <= match.turns; t++) addCrashes(t);

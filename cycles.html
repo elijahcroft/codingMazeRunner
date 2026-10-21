@@ -109,7 +109,9 @@
   .stage-head { position: absolute; top: 12px; left: 16px; right: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font: 12px var(--editor); color: var(--muted); }
   .stage-head b { color: var(--text); }
   .replay-controls { display: flex; gap: 6px; }
+  .replay-controls { align-items: center; }
   .replay-controls .btn { font-size: 11px; padding: 5px 9px; }
+  .turn-now { color: var(--text); white-space: nowrap; margin-right: 2px; }
   .sealed { text-align: center; max-width: 380px; color: var(--muted); line-height: 1.5; font-size: 14px; }
   .sealed strong { display: block; color: var(--text); font-size: 22px; margin-bottom: 8px; }
   .sealed .lock { font: 34px var(--editor); color: #3b4a64; margin-bottom: 10px; }
@@ -119,10 +121,23 @@
   .legend .out { opacity: .45; text-decoration: line-through; }
   .legend .me { color: var(--text); font-weight: 700; }
   .stage-inner { display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 100%; }
+  /* Your cycle's own left / straight / right, as seen on the screen right now. */
+  .turnkey { display: flex; align-items: center; gap: 14px; margin-top: 10px; font: 11px var(--editor); color: var(--muted); }
+  .compass { display: grid; grid-template-columns: repeat(3, 58px); grid-template-rows: repeat(3, 15px); align-items: center; text-align: center; border: 1px solid var(--line); background: #0a101c; padding: 3px 0; }
+  .compass .c { color: var(--text); font-size: 13px; }
+  .compass .L { color: var(--cyan); font-weight: 700; }
+  .compass .R { color: var(--amber); font-weight: 700; }
+  .compass .S { color: var(--text); }
+  .turnkey p { margin: 0; max-width: 190px; line-height: 1.4; }
+  .turnkey label { display: flex; gap: 5px; align-items: center; cursor: pointer; margin-top: 4px; }
+  .turnkey.out .compass { opacity: .35; }
   .scorebar { padding: 12px 20px; border-top: 1px solid var(--line); display: flex; gap: 14px; align-items: center; flex-wrap: wrap; background: #0e1625; min-height: 62px; }
   .score-main b { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; font-weight: 700; }
   .score-main span { font-size: 14px; }
   .new-best { color: var(--amber); font: 700 11px var(--editor); border: 1px solid #7b6735; padding: 3px 6px; }
+  .compare { flex-basis: 100%; margin-top: -6px; font: 11px var(--editor); color: var(--muted); }
+  .compare b { color: var(--green); font-weight: 400; }
+  .compare i { color: var(--red); font-style: normal; }
   .badges { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
   .badge { font: 11px var(--editor); color: #56647c; border: 1px solid #222f45; padding: 4px 7px; }
   .badge.earned { color: var(--amber); border-color: #7b6735; background: #282315; }
@@ -145,6 +160,19 @@
   .sensor-list { padding: 0 12px 12px; display: grid; gap: 6px; font-size: 12px; color: #b6c2d5; line-height: 1.45; }
   .sensor-list b { color: var(--amber); font: 10px var(--editor); letter-spacing: .04em; margin-top: 4px; }
   .sensor-list pre { margin: 2px 0 0; padding: 7px 9px; background: #0a101c; border: 1px solid #1d2a40; color: #dce7f6; font: 12px/1.5 var(--editor); }
+  /* What is entered for the next class battle (newer servers say so). */
+  .entry { border-bottom: 1px solid var(--line); background: #0d1524; font-size: 12px; }
+  .entry summary { padding: 7px 12px; cursor: pointer; color: #b6c2d5; line-height: 1.4; }
+  .entry summary small { color: var(--muted); font: 11px var(--editor); }
+  .entry.ok summary b { color: var(--green); }
+  .entry.bad summary b { color: var(--amber); }
+  .entry pre { margin: 0 12px 10px; padding: 7px 9px; max-height: 22vh; overflow: auto; background: #0a101c; border: 1px solid #1d2a40; color: #dce7f6; font: 12px/1.5 var(--editor); }
+  .drawer[open] > .sensor-list { max-height: 30vh; overflow: auto; }
+  .hint-note { color: var(--muted); }
+  .hint { margin-top: 5px; }
+  .hint summary { color: var(--cyan); font: 11px var(--editor); cursor: pointer; padding: 2px 0; }
+  .hint p { margin: 3px 0 4px; }
+  .hint .hint { margin-left: 12px; }
   .console { min-height: 0; display: grid; grid-template-rows: 34px minmax(0, 1fr); background: #080d17; }
   .console-head { display: flex; align-items: center; justify-content: space-between; padding: 0 12px; color: var(--muted); font: 11px var(--editor); border-bottom: 1px solid #18243a; }
   #log { overflow: auto; max-height: 35vh; padding: 10px 13px 18px; font: 12px/1.5 var(--editor); color: #b9c7db; }
@@ -152,7 +180,44 @@
   #log .good { color: var(--green); }
   #log .bad { color: var(--red); }
   #log .head { color: var(--amber); }
+  #log .now { background: #1d2a40; outline: 1px solid #397f7a; color: var(--text); }
   .statusbar { background: #13585b; color: #dcfffb; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 0 10px; font: 10px var(--editor); }
+  /* How it works: three steps on the first visit, and from the ? button. */
+  .intro { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; background: rgba(4,7,14,.78); overflow: auto; }
+  .intro-card { width: min(640px, 100%); background: var(--chrome); border: 1px solid var(--line); box-shadow: 18px 18px 0 rgba(0,0,0,.35); }
+  .intro-body { padding: 22px 26px 24px; }
+  .intro h2 { margin: 0 0 14px; font-size: 24px; }
+  .steps { margin: 0 0 18px; padding: 0; list-style: none; display: grid; gap: 12px; counter-reset: step; }
+  .steps li { display: grid; grid-template-columns: 34px 1fr; gap: 12px; color: #b6c2d5; line-height: 1.45; font-size: 15px; }
+  .steps li::before { counter-increment: step; content: counter(step); display: grid; place-items: center; width: 30px; height: 30px; background: var(--cyan); color: var(--void); font: 900 15px var(--editor); }
+  .steps b { color: var(--text); display: block; font-size: 16px; }
+  .steps code, .steps pre { color: #a9f7ef; font-family: var(--editor); }
+  .steps pre { margin: 6px 0 0; padding: 7px 10px; background: #0a101c; border: 1px solid #1d2a40; font-size: 13px; white-space: pre-wrap; }
+  .title-actions #helpButton { width: 26px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 50%; font-weight: 700; }
+  /* The cheat sheet only exists on paper: one A4 page, black on white. */
+  .cheat { display: none; }
+  .print-link { display: block; margin-top: 18px; background: none; border: 0; padding: 0; color: var(--muted); font: 13px var(--editor); text-decoration: underline; }
+  @media print {
+    @page { size: A4; margin: 12mm; }
+    html, body { background: #fff !important; color: #000; min-height: 0; }
+    body > *:not(.cheat) { display: none !important; }
+    .cheat { display: block; font: 11.5pt/1.4 Arial, sans-serif; color: #000; }
+    .cheat h1 { font-size: 20pt; margin: 0 0 2mm; letter-spacing: -.02em; }
+    .cheat h2 { font-size: 12pt; margin: 4mm 0 1.5mm; border-bottom: 1.5px solid #000; padding-bottom: .8mm; }
+    .cheat p, .cheat ul { margin: 0 0 1.5mm; }
+    .cheat ul { padding-left: 5mm; }
+    .cheat code, .cheat pre { font: 11pt "Courier New", monospace; }
+    .cheat pre { margin: 1mm 0 0; padding: 2mm 3mm; border: 1px solid #000; background: #fff; white-space: pre; }
+    .cheat table { border-collapse: collapse; width: 100%; }
+    .cheat td { border: 1px solid #000; padding: 1mm 2mm; vertical-align: top; }
+    .cheat .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
+    .cheat .words { display: flex; gap: 4mm; font: 700 14pt "Courier New", monospace; margin: 1mm 0 1.5mm; }
+    .cheat .words span { border: 2px solid #000; padding: 1mm 3mm; }
+    .cheat .pics { display: flex; gap: 8mm; align-items: center; }
+    .cheat .pic { display: grid; grid-template-columns: repeat(3, 20mm); grid-template-rows: repeat(3, 8mm); align-items: center; text-align: center; border: 1px solid #000; font: 9.5pt "Courier New", monospace; }
+    .cheat .pic b { font-size: 16pt; }
+    .cheat .pic-caption { font-size: 9.5pt; text-align: center; margin-top: 1mm; }
+  }
   .announce { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   @media (max-width: 1100px) {
     .workspace { grid-template-columns: 185px minmax(320px, 1fr) minmax(360px, 440px); }
@@ -196,13 +261,14 @@
       <label for="name">rider_name =</label>
       <input id="name" maxlength="20" autocomplete="nickname" placeholder="Type your name" autofocus>
       <button class="btn primary" id="joinButton">Start riding</button>
+      <button class="print-link" onclick="window.print()">Teacher? Print the cheat sheet</button>
     </div>
   </div>
 </section>
 <main class="ide" id="ide">
   <header class="titlebar">
     <div class="logo"><span class="logo-mark">LC</span><span>Light Cycles</span><span class="title-meta">/ python_quest</span></div>
-    <div class="title-actions"><span class="title-meta" id="driver"></span><a href="/arena">Bot Rally</a><a href="/">Missions</a><button id="switchButton">Switch rider</button></div>
+    <div class="title-actions"><span class="title-meta" id="driver"></span><button id="helpButton" title="How Light Cycles works" aria-label="How Light Cycles works">?</button><a href="/arena">Bot Rally</a><a href="/">Missions</a><button id="switchButton">Switch rider</button></div>
   </header>
   <div class="workspace">
     <aside class="sidebar">
@@ -228,12 +294,20 @@
         <div class="stage-head" id="stageHead" hidden>
           <span id="stageTitle"></span>
           <span class="replay-controls">
+            <span class="turn-now" id="turnNow" title="The board as your steer() saw it on this turn. Pause to light up that turn's print() lines in the output."></span>
+            <button class="btn ghost" id="backButton" title="One turn back" aria-label="One turn back">−1</button>
+            <button class="btn ghost" id="pauseButton" title="Pause" aria-label="Pause or play">⏸</button>
+            <button class="btn ghost" id="nextButton" title="One turn forward" aria-label="One turn forward">+1</button>
             <button class="btn ghost" id="stopButton" hidden>▸▸ Skip</button>
             <button class="btn ghost" id="replayButton" hidden>↻ Replay</button>
           </span>
         </div>
         <div class="stage-inner" id="stageInner" hidden>
           <canvas id="arena" aria-label="Arena replay"></canvas>
+          <div class="turnkey" id="turnkey" hidden>
+            <div class="compass" id="compass" aria-hidden="true"></div>
+            <div><p id="turnkeyText"></p><label><input type="checkbox" id="markers"> show on the map</label></div>
+          </div>
           <div class="legend" id="legend"></div>
         </div>
       </div>
@@ -241,6 +315,7 @@
         <div class="score-main"><b id="scoreLabel">BEST TEST DRIVE</b><span id="scoreText">No test drive yet.</span></div>
         <span class="new-best" id="newBest" hidden>NEW BEST</span>
         <div class="badges" id="badges"></div>
+        <div class="compare" id="compare" hidden></div>
       </div>
     </section>
     <section class="code-column">
@@ -256,9 +331,11 @@
           <button class="btn ghost" id="clearButton">Clear file</button>
           <div class="code-count" id="codeCount">0 lines</div>
         </div>
+        <details class="entry" id="entry" hidden><summary id="entryText"></summary><pre id="entryCode"></pre></details>
         <details class="drawer">
           <summary>Sensors and Python examples</summary>
           <div class="sensor-list">
+            <div><button class="btn ghost" onclick="window.print()">🖨 Print cheat sheet</button></div>
             <b>RETURN ONE OF THESE FROM steer()</b>
             <div><code>"left"</code> <code>"right"</code> <code>"straight"</code> Left and right are from your cycle's point of view.</div>
             <b>YES / NO SENSORS · True or False</b>
@@ -284,11 +361,46 @@ def steer():
         </details>
         <details class="drawer">
           <summary>Challenges</summary>
-          <div class="sensor-list">
-            <div><b>1 · SURVIVOR</b><br>The starter rides straight into a wall. Last 30 turns in every heat.</div>
-            <div><b>2 · PODIUM</b><br>Finish in the top 2 of a heat. Hint: a cycle that turns left should check that the left is clear.</div>
-            <div><b>3 · CHAMPION</b><br>Beat all three house bots in one heat. Use the number sensors to choose the side with more room.</div>
-            <div><b>4 · SWEEP</b><br>Win all three heats with one program. Then get ready for the class battle: other students' bots are smarter than Rex.</div>
+          <div class="sensor-list challenges">
+            <div class="hint-note">Stuck? Open a hint. Hints are free, and each one opens the next.</div>
+            <div><b>1 · SURVIVOR</b><br>Last 30 turns in every heat.
+              <details class="hint"><summary>Hint 1</summary><p>Predict first: the starter always says <code>"straight"</code>. What happens when a wall is right in front of it? Which sensor could warn you?</p>
+                <details class="hint"><summary>Hint 2</summary><p>Use an <code>if</code>. When <code>wall_ahead()</code> is True, return a turn. Otherwise return <code>"straight"</code>.</p>
+                  <details class="hint"><summary>Hint 3 · fill the blanks</summary><pre>def steer():
+    if ____():
+        return "____"
+    return "straight"</pre><p>A sensor name, then a direction. Left or right both work.</p></details></details></details></div>
+            <div><b>2 · PODIUM</b><br>Finish in the top 2 of a heat.
+              <details class="hint"><summary>Hint 1</summary><p>Your Survivor bot might already have it: check your places on the left. If not, watch where your cycle crashes. Look at the arrow on its head.</p>
+                <details class="hint"><summary>Hint 2</summary><p>Before you turn left, check the left is clear. If <code>wall_left()</code> is True, turn right instead. That's an <code>if</code> inside an <code>if</code>.</p>
+                  <details class="hint"><summary>Hint 3 · fill the blank</summary><pre>def steer():
+    if wall_ahead():
+        if ____():
+            return "right"
+        return "left"
+    return "straight"</pre></details></details></details></div>
+            <div><b>3 · CHAMPION</b><br>Beat all three house bots in one heat.
+              <details class="hint"><summary>Hint 1</summary><p><code>wall_ahead()</code> only says yes or no. The number sensors say <em>how much</em> room there is: <code>space_left()</code>, <code>space_right()</code>, <code>space_ahead()</code>.</p>
+                <details class="hint"><summary>Hint 2</summary><p>When you have to turn, turn to the side with more room. Compare <code>space_left()</code> with <code>space_right()</code>.</p>
+                  <details class="hint"><summary>Hint 3 · fill the blanks</summary><pre>def steer():
+    if wall_ahead():
+        if space_left() ____ space_right():
+            return "left"
+        return "____"
+    return "straight"</pre><p>A comparison sign, then a direction.</p></details></details></details></div>
+            <div><b>4 · SWEEP</b><br>Win all three heats with one program.
+              <details class="hint"><summary>Hint 1</summary><p>Replay the heat you lose. Do you trap yourself in a small space? Turning every time one side looks a bit bigger makes you zigzag into a corner.</p>
+                <details class="hint"><summary>Hint 2</summary><p>Keep going straight while there's lots of room ahead (more than about 8 squares). Only when it gets tight, pick the side with the most room.</p>
+                  <details class="hint"><summary>Hint 3 · fill the blanks</summary><pre>def steer():
+    a = space_ahead()
+    l = space_left()
+    r = space_right()
+    if a > ____ or (a > 0 and a >= ____(l, r)):
+        return "straight"
+    if l >= r:
+        return "left"
+    return "right"</pre><p>A number (try 8), then the command that gives the bigger of two numbers.</p></details></details></details></div>
+            <div>Then get ready for the class battle: your classmates' bots are trickier than Rex.</div>
           </div>
         </details>
       </div>
@@ -301,13 +413,70 @@ def steer():
   <footer class="statusbar"><span>Python 3 · safe classroom sandbox</span><span>Spaces: 4 · UTF-8 · <span id="position">Ln 1, Col 1</span></span></footer>
   <div class="announce" id="announce" aria-live="polite"></div>
 </main>
+<section class="cheat" aria-hidden="true">
+  <h1>Light Cycles · cheat sheet</h1>
+  <ul>
+    <li>Your cycle <b>never stops</b>. Every turn it moves one square and leaves a wall of light behind it.</li>
+    <li><b>Walls and every trail are solid</b>, even your own. Two cycles meeting head-on are both out.</li>
+    <li><b>Last cycle riding wins.</b> In a class battle you get 1 point for every rider you outlast.</li>
+  </ul>
+  <h2>How your code runs</h2>
+  <p>Every turn the game calls your <code>steer()</code> and asks "Which way?" Your function answers with <b>return</b>. You never call <code>steer()</code> yourself. <code>print()</code> only talks to you: the game never hears it.</p>
+  <div class="words"><span>"left"</span><span>"straight"</span><span>"right"</span></div>
+  <p>Always in quotes, always lowercase.</p>
+  <h2>Left and right turn with your cycle</h2>
+  <div class="pics">
+    <div><div class="pic"><span></span><span>straight</span><span></span><span>left</span><b>▲</b><span>right</span><span></span><span></span><span></span></div><div class="pic-caption">facing up the screen</div></div>
+    <div><div class="pic"><span></span><span>left</span><span></span><span></span><b>▶</b><span>straight</span><span></span><span>right</span><span></span></div><div class="pic-caption">facing right: left is UP the screen!</div></div>
+    <p style="max-width:60mm">Pretend you are riding the cycle. Look at the arrow on its head: "left" means <b>its</b> left, not yours and not the screen's.</p>
+  </div>
+  <h2>The 6 sensors</h2>
+  <table>
+    <tr><td><code>wall_ahead()</code></td><td>True if the very next square ahead is solid (a wall or a trail).</td></tr>
+    <tr><td><code>wall_left()</code></td><td>True if the next square to your cycle's left is solid.</td></tr>
+    <tr><td><code>wall_right()</code></td><td>True if the next square to your cycle's right is solid.</td></tr>
+    <tr><td><code>space_ahead()</code></td><td>How many free squares in a straight line ahead: 0, 1, 2…</td></tr>
+    <tr><td><code>space_left()</code></td><td>How many free squares in a straight line to the left.</td></tr>
+    <tr><td><code>space_right()</code></td><td>How many free squares in a straight line to the right.</td></tr>
+  </table>
+  <h2>Two tiny examples</h2>
+  <div class="cols">
+    <div><b>Turn before the wall</b><pre>def steer():
+    if wall_ahead():
+        return "left"
+    return "straight"</pre></div>
+    <div><b>Use a number sensor, and print to see it</b><pre>def steer():
+    print("room ahead:", space_ahead())
+    if space_ahead() < 3:
+        return "right"
+    return "straight"</pre></div>
+  </div>
+  <p style="margin-top:3mm">Stuck? Read why your cycle crashed in the output, add <code>print()</code> inside <code>steer()</code>, and open a hint in <b>Challenges</b>.</p>
+</section>
+<div class="intro" id="intro" hidden role="dialog" aria-modal="true" aria-labelledby="introTitle">
+  <div class="intro-card">
+    <div class="window-bar"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span><span style="margin-left:7px">how_it_works.py</span></div>
+    <div class="intro-body">
+      <h2 id="introTitle">How Light Cycles works</h2>
+      <ol class="steps">
+        <li><div><b>Your cycle never stops.</b>It moves one square every turn and leaves a wall of light behind it. Walls and every trail, even your own, are solid. Hit one and you're out. Last cycle riding wins.</div></li>
+        <li><div><b>Every turn, the game calls your <code>steer()</code>.</b>The game is like a driving instructor: every turn it asks your <code>steer()</code> "Which way?" You never call <code>steer()</code> yourself. The game does.</div></li>
+        <li><div><b>You answer with <code>return</code>.</b>Your function says its answer out loud with one of these:
+          <pre>return "left"     return "straight"     return "right"</pre>
+          Left and right are your <em>cycle's</em> left and right, not yours. Watch the arrow on its head. <code>print()</code> is talking to yourself: the game never hears it.</div></li>
+      </ol>
+      <button class="btn primary" id="introClose">Got it, let's ride</button>
+    </div>
+  </div>
+</div>
 <script>
 const $ = id => document.getElementById(id);
 const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]];
 let me = null, myName = "", running = false;
-let heats = null, lastBattle = null, shown = null, frame = 0, animationTimer = null;
+let heats = null, lastBattle = null, shown = null, frame = 0, drawn = 0, animationTimer = null;
 let selected = null;   // 0..2 for a heat, "battle" for the class battle
 let board = [], battleRound = 0;
+let entry = null;   // the bot entered for the next battle, if the server reports it
 
 function esc(value) {
   return String(value).replace(/[&<>\"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
@@ -349,11 +518,15 @@ async function enter(id) {
   $("code").value = recall(codeKey()) ?? state.code ?? "";
   updateEditor();
   renderBest(state.best);
+  entry = state.entry || null; renderEntry();
   board = state.board; battleRound = state.round;
   renderBoard();
   renderHeats();
   renderBattle();
+  if (recall("cyclesIntroSeen") !== "1") openIntro();
 }
+function openIntro() { $("intro").hidden = false; $("introClose").focus(); }
+function closeIntro() { $("intro").hidden = true; store("cyclesIntroSeen", "1"); $("code").focus(); }
 
 // ---- Left column ---------------------------------------------------------
 function heatClass(place) { return place === 1 ? " pass" : place === 2 ? " mid" : " miss"; }
@@ -394,10 +567,73 @@ function renderBoard() {
 function cellSize(match) {
   const stage = $("stage");
   const rows = match.grid.length, cols = match.grid[0].length;
-  const fit = Math.min((stage.clientWidth - 40) / cols, (stage.clientHeight - 110) / rows);
+  // Leave room for whatever sits under the canvas (the key and the legend).
+  const below = $("stageInner").offsetHeight - $("arena").offsetHeight;
+  const fit = Math.min((stage.clientWidth - 40) / cols, (stage.clientHeight - 68 - below) / rows);
   return Math.max(4, Math.min(24, Math.floor(fit)));
 }
+const ARROWS = ["▲", "▶", "▼", "◀"], SCREEN = ["up", "right", "down", "left"];
+const AROUND = [1, 5, 7, 3];   // compass cells above, right of, below, left of the middle
+// Shows which way on the screen is YOUR cycle's left, straight and right.
+function renderTurnKey(b, t) {
+  $("turnkey").hidden = !b;
+  if (!b) return;
+  const out = b.died !== null && b.died <= t;
+  const d = heading(b, Math.min(t, b.path.length - 1));
+  const cells = Array(9).fill("");
+  cells[4] = `<span class="c">${ARROWS[d]}</span>`;
+  cells[AROUND[d]] = '<span class="S">straight</span>';
+  cells[AROUND[(d + 3) % 4]] = '<span class="L">left</span>';
+  cells[AROUND[(d + 1) % 4]] = '<span class="R">right</span>';
+  $("compass").innerHTML = cells.map(c => `<span>${c}</span>`).join("");
+  $("turnkey").classList.toggle("out", out);
+  $("turnkeyText").innerHTML = out ? "Your cycle is out."
+    : `Your cycle faces <b>${SCREEN[d]}</b>. Now "left" goes ${SCREEN[(d + 3) % 4]} and "right" goes ${SCREEN[(d + 1) % 4]}.`;
+}
+// Faint L / S / R letters on the squares around your own head.
+function drawMarkers(ctx, r, c, size, d) {
+  ctx.font = `700 ${Math.max(8, Math.round(size * .7))}px ${getComputedStyle(document.body).fontFamily}`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.globalAlpha = .9;
+  [[3, "L", "#55dfd2"], [0, "S", "#e8eef8"], [1, "R", "#f4c95d"]].forEach(([turn, letter, color]) => {
+    const [dr, dc] = DIRS[(d + turn) % 4];
+    ctx.fillStyle = color;
+    ctx.fillText(letter, (c + dc + .5) * size, (r + dr + .5) * size);
+  });
+  ctx.globalAlpha = 1;
+}
+// Which way a cycle faces after `steps` moves: 0 up, 1 right, 2 down, 3 left.
+// Newer servers send "dirs"; otherwise its last step tells us, or its start.
+function heading(b, steps) {
+  if (b.dirs && b.dirs[steps] != null) return b.dirs[steps];
+  if (steps === 0) return b.dir;
+  const [r0, c0] = b.path[steps - 1], [r1, c1] = b.path[steps];
+  return DIRS.findIndex(([dr, dc]) => dr === r1 - r0 && dc === c1 - c0);
+}
+// A white head with a dark arrow pointing the way the cycle is going.
+function drawHead(ctx, r, c, size, d, color) {
+  ctx.shadowColor = color; ctx.shadowBlur = size;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(c * size, r * size, size, size);
+  ctx.shadowBlur = 0;
+  const [dr, dc] = DIRS[d], x = (c + .5) * size, y = (r + .5) * size, k = size * .4;
+  ctx.fillStyle = "#050912";
+  ctx.beginPath();
+  ctx.moveTo(x + dc * k, y + dr * k);
+  ctx.lineTo(x - dc * k * .6 + dr * k, y - dr * k * .6 - dc * k);
+  ctx.lineTo(x - dc * k * .6 - dr * k, y - dr * k * .6 + dc * k);
+  ctx.fill();
+}
 function draw(match, t) {
+  drawn = t;
+  $("turnNow").textContent = `turn ${turnShown()} of ${match.turns}`;
+  const isMine = b => b.key === "you" || b.key === me;
+  const outAt = b => b.died !== null && b.died <= t;
+  // A whole-class battle names only you here; the big screen has everyone.
+  const big = match.bikes.length > 8;
+  $("legend").innerHTML = match.bikes.filter(b => !big || isMine(b)).map(b => `<span class="${outAt(b) ? "out" : ""}${isMine(b) ? " me" : ""}"><span class="dot" style="background:${esc(b.color)}"></span>${esc(b.name)}${isMine(b) ? " (you)" : ""}</span>`).join("")
+    + (big ? `<span>${match.bikes.filter(b => !outAt(b)).length} of ${match.bikes.length} riding</span>` : "");
+  renderTurnKey(match.bikes.find(isMine), t);
   const canvas = $("arena"), size = cellSize(match);
   const rows = match.grid.length, cols = match.grid[0].length;
   canvas.width = cols * size; canvas.height = rows * size;
@@ -405,13 +641,13 @@ function draw(match, t) {
   ctx.fillStyle = "#0b111e"; ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "#26334a";
   match.grid.forEach((line, r) => { for (let c = 0; c < cols; c++) if (line[c] === "#") ctx.fillRect(c * size, r * size, size, size); });
-  const legend = [];
   for (const b of match.bikes) {
-    const out = b.died !== null && b.died <= t;
+    const out = outAt(b);
     const steps = Math.min(t, b.path.length - 1);
     ctx.globalAlpha = out ? .35 : .8;
     ctx.fillStyle = b.color;
-    for (let k = 0; k <= steps; k++) ctx.fillRect(b.path[k][1] * size + 1, b.path[k][0] * size + 1, size - 2, size - 2);
+    const gap = size >= 8 ? 1 : 0;   // tiny cells look like dotted lines with gaps
+    for (let k = 0; k <= steps; k++) ctx.fillRect(b.path[k][1] * size + gap, b.path[k][0] * size + gap, size - 2 * gap, size - 2 * gap);
     ctx.globalAlpha = 1;
     const [hr, hc] = b.path[steps];
     if (out) {
@@ -423,42 +659,67 @@ function draw(match, t) {
       ctx.moveTo((xc + 1) * size - 2, xr * size + 2); ctx.lineTo(xc * size + 2, (xr + 1) * size - 2);
       ctx.stroke();
     } else {
-      ctx.shadowColor = b.color; ctx.shadowBlur = size;
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(hc * size, hr * size, size, size);
-      ctx.shadowBlur = 0;
-      if (b.key === "you" || b.key === me) {
+      drawHead(ctx, hr, hc, size, heading(b, steps), b.color);
+      if (isMine(b)) {
         ctx.strokeStyle = b.color; ctx.lineWidth = 2;
         ctx.strokeRect(hc * size - 3, hr * size - 3, size + 6, size + 6);
+        if ($("markers").checked) drawMarkers(ctx, hr, hc, size, heading(b, steps));
       }
     }
-    const mine = b.key === "you" || b.key === me;
-    legend.push(`<span class="${out ? "out" : ""}${mine ? " me" : ""}"><span class="dot" style="background:${esc(b.color)}"></span>${esc(b.name)}${mine ? " (you)" : ""}</span>`);
   }
-  $("legend").innerHTML = legend.join("");
+}
+// ---- Replay controls: play, pause, and step one turn at a time ----------
+let delay = 50;
+function controls() {
+  const playing = !!animationTimer;
+  $("stopButton").hidden = !playing;
+  $("replayButton").hidden = playing || drawn < shown.turns;
+  $("pauseButton").textContent = playing ? "⏸" : "▶︎";
+  $("pauseButton").title = playing ? "Pause" : "Play from here";
+}
+function tick() {
+  draw(shown, frame);
+  if (frame++ < shown.turns) animationTimer = setTimeout(tick, delay);
+  else { animationTimer = null; controls(); }
 }
 function stopReplay() {
   if (animationTimer) clearTimeout(animationTimer);
   animationTimer = null;
-  $("stopButton").hidden = true;
-  $("replayButton").hidden = !shown;
+  if (shown) controls();
 }
 function replay() {
   stopReplay();
-  const last = shown.turns;
+  markTurn(false);
   // Short heats play slowly enough to follow; a long battle still ends in ~20 s.
-  const delay = Math.max(25, Math.min(70, 20000 / Math.max(1, last)));
+  delay = Math.max(25, Math.min(70, 20000 / Math.max(1, shown.turns)));
   frame = 0;
-  $("stopButton").hidden = last === 0;
-  $("replayButton").hidden = true;
-  const tick = () => {
-    draw(shown, frame);
-    if (frame++ < last) animationTimer = setTimeout(tick, delay);
-    else stopReplay();
-  };
-  tick();
+  tick(); controls();
 }
-function skipReplay() { stopReplay(); draw(shown, shown.turns); }
+function skipReplay() { stopReplay(); draw(shown, shown.turns); markTurn(false); controls(); }
+function togglePause() {
+  if (animationTimer) { stopReplay(); markTurn(true); return; }
+  markTurn(false);
+  frame = drawn >= shown.turns ? 0 : drawn + 1;
+  tick(); controls();
+}
+function stepTurn(k) {
+  stopReplay();
+  draw(shown, Math.max(0, Math.min(shown.turns, drawn + k)));
+  markTurn(true); controls();
+}
+// The turn steer() is deciding on the board you can see.
+function turnShown() { return Math.max(1, Math.min(drawn + 1, shown.turns)); }
+// Paused: light up this turn's print() lines, so you can read what your bot
+// was thinking right next to where it was.
+function markTurn(on) {
+  let first = null;
+  for (const div of $("log").children) {
+    const now = on && div.textContent.startsWith(`turn ${turnShown()} `);
+    div.classList.toggle("now", now);
+    if (now && !first) first = div;
+  }
+  if (first) first.scrollIntoView({block: "nearest"});
+}
 function show(match, title, lines) {
   shown = match;
   $("sealed").hidden = true;
@@ -466,7 +727,7 @@ function show(match, title, lines) {
   $("stageInner").hidden = false;
   $("stageTitle").innerHTML = title;
   $("log").innerHTML = lines.map(logLine).join("");
-  $("log").scrollTop = 0;
+  $("log").scrollTop = $("log").scrollHeight;   // the end: where it crashed
   replay();
 }
 function outcome(b, total) {
@@ -477,8 +738,11 @@ function outcome(b, total) {
 function bikeLines(b, total) {
   const lines = [outcome(b, total)];
   if (b.died === 1 && /steer\(\)/.test(b.cause)) lines.push("   It crashed on the very first call to steer() — read the message above.");
-  if (b.prints.length) lines.push("— your print() output —", ...b.prints);
-  else if (b.died !== 0) lines.push("Tip: add print() inside steer() to see what your bot is thinking each turn.");
+  if (b.prints.length) {
+    lines.push("— your print() output —", ...b.prints);
+    // The log opens scrolled to the end, so say how it ended down there too.
+    if (b.died) lines.push(`⚠️ Then, on turn ${b.died}: ${b.cause}.`);
+  } else if (b.died !== 0) lines.push("Tip: add print() inside steer() to see what your bot is thinking each turn.");
   return lines;
 }
 function selectHeat(i) {
@@ -525,7 +789,41 @@ function renderBest(best, latest = null, isNew = false) {
     `<span class="badge${earned ? " earned" : ""}" title="${goal}">${label}</span>`).join("");
 }
 
+// This test drive against the one before it, heat by heat (place first,
+// then how long you lasted). Kept in this browser only.
+function renderCompare(score) {
+  let prev = null;
+  try { prev = JSON.parse(recall(`cyclesLast:${me}`)); } catch (_) {}
+  store(`cyclesLast:${me}`, JSON.stringify(score));
+  $("compare").hidden = !(prev && prev.places && prev.lasted);
+  if ($("compare").hidden) return;
+  const diff = score.places.map((p, i) => Math.sign(prev.places[i] - p) || Math.sign(score.lasted[i] - prev.lasted[i]));
+  const better = diff.filter(d => d > 0).length, worse = diff.filter(d => d < 0).length;
+  const heats = n => `${n} heat${n === 1 ? "" : "s"}`;
+  $("compare").innerHTML = "vs your last bot: " + ([better && `<b>better in ${heats(better)}</b>`, worse && `<i>worse in ${heats(worse)}</i>`]
+    .filter(Boolean).join(", ") || "the same in every heat");
+}
+
 // ---- Right column --------------------------------------------------------
+function ago(seconds) {
+  const s = Math.max(0, Date.now() / 1000 - seconds);
+  return s < 60 ? "just now" : s < 3600 ? `${Math.floor(s / 60)} min ago` : `${Math.floor(s / 3600)} h ago`;
+}
+// One line under the toolbar: is my bot entered, and is it the one I'm editing?
+function renderEntry() {
+  $("entry").hidden = !entry;
+  if (!entry) return;
+  const has = !!(entry.code || "").trim();
+  const edited = has && $("code").value.trim() !== entry.code.trim();
+  const tested = entry.entered_at ? ` <small>· tested ${ago(entry.entered_at)}</small>` : "";
+  $("entry").className = "entry " + (has && entry.ok ? "ok" : "bad");
+  $("entryText").innerHTML = !has ? "<b>Not entered yet.</b> Press Test drive to enter your bot in the next battle."
+    : entry.kept_previous ? `<b>⚠️ This code has an error.</b> Your previous working bot is still entered${entry.entered_at ? ` <small>(tested ${ago(entry.entered_at)})</small>` : ""}.`
+    : !entry.ok ? "<b>⚠️ Your entered bot has a code error.</b> It will crash at the start. Fix it and test drive again."
+    : `<b>✅ Entered for the next battle</b>${tested}${edited ? " <small>· your edits aren't entered until you test drive</small>" : ""}`;
+  $("entryCode").textContent = has ? entry.code : "";
+  $("entry").querySelector("summary").title = has ? "Show the code that is entered" : "";
+}
 function logLine(line) {
   const cls = /^[🏆✅]/.test(line) ? "good" : /^(⚠|💥|turn \d+ ⚠)/.test(line) || /💥/.test(line) ? "bad" : /^—/.test(line) ? "head" : "";
   return `<div class="${cls}">${esc(line)}</div>`;
@@ -542,10 +840,12 @@ async function testDrive() {
     heats = data.heats;
     board = data.board; renderBoard();
     renderBest(data.best, data.score, data.new_best);
+    renderCompare(data.score);
     // Open the heat with the most to learn from: the worst finish.
     const places = heats.map(h => h.bikes[0].place);
     selectHeat(places.indexOf(Math.max(...places)));
-    $("consoleState").textContent = `${data.score.wins}/3 heats won · bot entered`;
+    entry = data.entry || null; renderEntry();
+    $("consoleState").textContent = `${data.score.wins}/3 heats won${entry ? "" : " · bot entered"}`;
     $("announce").textContent = `Test drive finished. You won ${data.score.wins} of 3 heats.`;
   } catch (_) {
     $("consoleState").textContent = "no response";
@@ -574,6 +874,7 @@ function updateEditor() {
   $("codeCount").textContent = `${lines} line${lines === 1 ? "" : "s"} of code`;
   updatePosition();
   saveCode();
+  if (entry) renderEntry();
 }
 function updatePosition() {
   const t = $("code"), before = t.value.slice(0, t.selectionStart).split("\n");
@@ -600,10 +901,16 @@ function editorKey(event) {
 $("joinButton").addEventListener("click", join);
 $("name").addEventListener("keydown", e => { if (e.key === "Enter") join(); });
 $("switchButton").addEventListener("click", () => { localStorage.removeItem("mazeId"); location.reload(); });
+$("helpButton").addEventListener("click", openIntro);
+$("introClose").addEventListener("click", closeIntro);
+$("intro").addEventListener("keydown", e => { if (e.key === "Escape") closeIntro(); });
 $("runButton").addEventListener("click", testDrive);
 $("starterButton").addEventListener("click", loadStarter);
 $("clearButton").addEventListener("click", () => { $("code").value = ""; updateEditor(); $("code").focus(); });
 $("stopButton").addEventListener("click", skipReplay);
+$("pauseButton").addEventListener("click", togglePause);
+$("backButton").addEventListener("click", () => stepTurn(-1));
+$("nextButton").addEventListener("click", () => stepTurn(1));
 $("replayButton").addEventListener("click", replay);
 $("code").addEventListener("input", updateEditor);
 $("code").addEventListener("click", updatePosition);
@@ -611,7 +918,12 @@ $("code").addEventListener("keyup", updatePosition);
 $("code").addEventListener("scroll", () => { $("lines").scrollTop = $("code").scrollTop; });
 $("code").addEventListener("keydown", editorKey);
 document.addEventListener("keydown", e => { if (e.key === "F5" && me) { e.preventDefault(); testDrive(); } });
-window.addEventListener("resize", () => { if (shown && !animationTimer) draw(shown, shown.turns); });
+window.addEventListener("resize", () => { if (shown && !animationTimer) draw(shown, drawn); });
+$("markers").checked = recall("cyclesMarkers") === "1";
+$("markers").addEventListener("change", () => {
+  store("cyclesMarkers", $("markers").checked ? "1" : "0");
+  if (shown && !animationTimer) draw(shown, drawn);
+});
 renderHeats();
 renderBattle();
 renderBest(null);
@@ -623,6 +935,7 @@ setInterval(async () => {
     const state = await (await fetch("/cycles/state?id=" + encodeURIComponent(me))).json();
     if (!state.you) return;
     board = state.board; renderBoard();
+    if (state.entry) { entry = state.entry; renderEntry(); }
     if (state.round !== battleRound) { battleRound = state.round; lastBattle = null; renderBattle(); }
   } catch (_) {}
 }, 4000);
