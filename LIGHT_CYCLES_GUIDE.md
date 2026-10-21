@@ -105,17 +105,24 @@ on the real game.
 
 ## What the game says (in the student's output)
 
+Errors inside `steer()` start with the line number, e.g. `Line 3: …`.
+
 | Student writes | The game says |
 |---|---|
-| No `return`, or one only inside an `if` | `⚠️ steer() returned None. Return "left", "right" or "straight" — going straight.` (once, then it goes straight) |
-| `return left` | `Put quotes round words:  return "left"` |
-| `return "Left"` | `⚠️ steer() returned 'Left'. …going straight.` |
+| No `return`, or one only inside an `if` | `⚠️ steer() didn't return anything. End it with  return "left", "right" or "straight"  — going straight for now.` (once) |
+| `return left` | `Put quotes round words, in small letters:  return "left"` |
+| `return "Left"` | `⚠️ steer() returned 'Left'. Use small letters and no spaces: "left"  — going straight for now.` |
+| `if wall_ahead:` (no brackets) | `wall_ahead is a command — put  ( )  after it to use it, like  wall_ahead()` |
+| Misspelled sensor (`space_ahaed()`) | `I don't know the command 'space_ahaed'. Did you mean  space_ahead() ?` |
 | `turn_left()` | `There's no turn_left() in Light Cycles. Your cycle always moves…` |
 | `count += 1` in `steer()` without `global` | `'count' is a variable from the top of your program… put  global count  as the function's first line.` |
 | A `while` loop that never stops | `steer() took too long to decide — is a while loop stuck going round forever?` |
-| Missing `:`, bad indent, `print "hi"` | `Syntax error on line N: …` The cycle never starts (out on turn 0). |
-| Misspelled sensor (`space_ahaed()`) | `I don't know the command 'space_ahaed'. Check the sensor list…` |
+| Missing `:` | `Syntax error on line N: a line that starts with def, if, elif, else, while or for has to end with a  :` |
+| `print "hi"` | `Syntax error on line N: print needs brackets, like  print("hi")` |
+| `if space_ahead() = 0:` | `Syntax error on line N: to compare two things use  ==  (two equals signs)…` |
 | No `def steer():` | `Your program needs a  def steer():  that returns "left", "right" or "straight".` |
+
+A syntax error means the cycle never starts (out on turn 0).
 
 ## Answer keys (checked on the real game)
 
