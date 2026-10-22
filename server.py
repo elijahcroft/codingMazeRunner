@@ -2720,16 +2720,78 @@ def cycles_state(p):
 
 # ---------------------------------------------------------------------------
 # Strange Planet (/planet): every zone hides one physics rule. The planets live
-# in planet.py; this is the classroom side — progress, hints, field journals,
-# and the teacher's overview at /planet/class.
+# in planet.py; this is the classroom side — progress, stars, badges, the rover
+# garage, class records and the class star meter, hints and field journals,
+# and the teacher's overview at /planet/teacher.
+#
+# Every reward is for coding: stars for reaching, for a site's challenge and
+# for compact code; badges for first loops, functions, fixed bugs and grit.
+# Nothing is random and nothing is taken away.
 # ---------------------------------------------------------------------------
 JOURNAL_MAX = 140   # characters in one field journal note
+SCOUT_MAX = 60      # hand-driven moves in one scouting trip
+planet_feed = []    # the class's recent moments, newest last, for the projector
+
+# Badges: (icon, name, how to earn it). Zone masters are added below.
+PLANET_BADGES = {
+    "first": ("🛰", "First Contact", "Reach your first beacon"),
+    "loop": ("🔁", "Loop Pilot", "Reach a beacon using a for loop"),
+    "while": ("👀", "Sensor Driver", "Reach a beacon using a while loop"),
+    "if": ("🔀", "Decision Maker", "Reach a beacon using an if"),
+    "def": ("🧩", "Architect", "Reach a beacon using a function you made"),
+    "print": ("🔬", "Scientist", "Reach a beacon with print() in your code"),
+    "fixer": ("🐛", "Bug Squasher", "Fix a code error, then reach the beacon"),
+    "grit": ("💪", "Never Give Up", "Reach a beacon after 5 runs that didn't"),
+    "triple": ("🌟", "Triple Star", "Earn all three stars in one run"),
+    "compact": ("✂️", "Minimalist", "Earn the compact star on 5 sites"),
+    "crystals": ("💎", "Crystal Hunter", "Collect every crystal on 4 sites"),
+    "discover": ("📡", "Discoverer", "Spot 3 anomalies"),
+    "record": ("🏆", "Record Breaker", "Beat a class record"),
+    "hopper": ("🪐", "Planet Hopper", "Reach all 5 Uncharted planets in one run"),
+}
+for _zone in planet.ZONES[:-1]:
+    PLANET_BADGES["master_" + _zone["key"]] = (
+        "🏅", f"{_zone['name']} Master", f"Earn all 9 stars in {_zone['name']}")
+
+# The first time a zone's hidden rule shows up in a student's run, it's an
+# anomaly: the page celebrates spotting it without saying what it is.
+ANOMALIES = {"ice": "⛸", "wind": "💨 gust pushed", "crumble": "💥 cracked",
+             "solar": "🔋", "portals": "✨"}
+
+# The rover garage. Paint, toppers and trails unlock with your stars; the
+# class unlocks the last paints together on the class star meter.
+GARAGE = [
+    {"slot": "paint", "key": "bone", "name": "Moonstone", "stars": 0},
+    {"slot": "paint", "key": "coral", "name": "Coral", "stars": 3},
+    {"slot": "paint", "key": "mint", "name": "Mint", "stars": 8},
+    {"slot": "paint", "key": "sky", "name": "Sky", "stars": 15},
+    {"slot": "paint", "key": "gold", "name": "Gold", "stars": 30},
+    {"slot": "paint", "key": "aurora", "name": "Aurora", "class": 30},
+    {"slot": "paint", "key": "nebula", "name": "Nebula", "class": 90},
+    {"slot": "paint", "key": "supernova", "name": "Supernova", "class": 180},
+    {"slot": "topper", "key": "none", "name": "Antenna", "stars": 0},
+    {"slot": "topper", "key": "flag", "name": "Flag", "stars": 5},
+    {"slot": "topper", "key": "dish", "name": "Radar dish", "stars": 12},
+    {"slot": "topper", "key": "light", "name": "Beacon light", "stars": 20},
+    {"slot": "topper", "key": "crown", "name": "Crown", "stars": 40},
+    {"slot": "trail", "key": "tracks", "name": "Tracks", "stars": 0},
+    {"slot": "trail", "key": "dust", "name": "Dust", "stars": 10},
+    {"slot": "trail", "key": "sparkle", "name": "Sparkle", "stars": 25},
+    {"slot": "trail", "key": "rainbow", "name": "Rainbow", "stars": 45},
+]
+CLASS_GOALS = sorted({item["class"] for item in GARAGE if "class" in item})
 
 
 def planet_entry(p):
-    return p.setdefault("planet", {"solved": {}, "code": {}, "runs": {},
-                                   "hints": {}, "journal": {}, "unlocked": 0,
-                                   "uncharted": None, "active": None})
+    entry = p.setdefault("planet", {"solved": {}, "code": {}, "runs": {},
+                                    "hints": {}, "journal": {}, "unlocked": 0,
+                                    "uncharted": None, "active": None})
+    # Stars, badges and the garage arrived after some saves did.
+    for key, value in (("stars", {}), ("badges", []), ("anomalies", []),
+                       ("misses", {}), ("errored", {}),
+                       ("look", {"paint": "bone", "topper": "none", "trail": "tracks"})):
+        entry.setdefault(key, value)
+    return entry
 
 
 def planet_frontier(p):
@@ -2751,9 +2813,38 @@ def planet_variant(p, key):
     return s["variants"][planet.variant_index(p["id"], s)]
 
 
+def star_count(entry):
+    return sum(sum(v) for v in entry["stars"].values())
+
+
+def class_stars():
+    return sum(star_count(planet_entry(q)) for q in players.values() if q.get("planet"))
+
+
+def garage_for(entry):
+    mine, ours = star_count(entry), class_stars()
+    return [dict(item, open=(mine >= item["stars"]) if "stars" in item
+                 else ours >= item["class"]) for item in GARAGE]
+
+
+def class_record(key):
+    """The fewest ticks anyone has reached this site's beacon in, and who."""
+    best = None
+    for q in players.values():
+        ticks = (q.get("planet") or {}).get("solved", {}).get(key)
+        if ticks is not None and (best is None or ticks < best["ticks"]):
+            best = {"ticks": ticks, "name": q["name"]}
+    return best
+
+
+def feed(text):
+    planet_feed.append({"at": int(time.time()), "text": text})
+    del planet_feed[:-40]
+
+
 def planet_state(p):
-    """The student's map of the planet: every zone and site, with what
-    they've solved, what's open, their hints and journal notes."""
+    """The student's map of the planet: every zone and site, with stars,
+    what's open, hints, journal notes, badges and the garage."""
     entry = planet_entry(p)
     frontier = planet_frontier(p)
     zones = []
@@ -2765,65 +2856,195 @@ def planet_state(p):
             "journal": entry["journal"].get(zone["key"], ""),
             "sites": [{"key": s["key"], "name": s["name"],
                        "solved": entry["solved"].get(s["key"]),
+                       "stars": entry["stars"].get(s["key"], [False] * 3),
                        "open": planet.SITE_ORDER.index(s["key"]) <= frontier}
                       for s in zone["sites"]]})
     return {"you": {"name": p["name"]}, "zones": zones,
             "current": planet.SITE_ORDER[frontier],
-            "uncharted": entry["uncharted"]}
+            "uncharted": entry["uncharted"],
+            "total_stars": star_count(entry),
+            "max_stars": 3 * len(planet.SITE_ORDER),
+            "badges": [{"key": k, "icon": b[0], "name": b[1], "how": b[2],
+                        "earned": k in entry["badges"]}
+                       for k, b in PLANET_BADGES.items()],
+            "look": entry["look"], "garage": garage_for(entry),
+            "class": {"stars": class_stars(), "goals": CLASS_GOALS}}
 
 
 def planet_site(p, key):
-    """One site as the student sees it before running: the map, but none of
-    the hidden rules (wind, sunlight timing, portal wiring)."""
+    """One site as the student sees it before running: the map, its three
+    goals and crystals, but none of the hidden rules (wind, sunlight timing,
+    portal wiring)."""
     zi, zone, s = planet.find_site(key)
     entry = planet_entry(p)
     view = {"key": key, "name": s["name"], "brief": s["brief"],
             "zone": zone["name"], "sensors": planet.sensors_for(zi),
             "code": entry["code"].get(key, ""),
-            "solved": entry["solved"].get(key)}
-    if key != planet.UNCHARTED["key"]:
+            "solved": entry["solved"].get(key),
+            "stars": entry["stars"].get(key, [False] * 3),
+            "record": class_record(key)}
+    if key == planet.UNCHARTED["key"]:
+        view["goals"] = ["🪐 Reach 1 planet", "🪐 Reach 3 planets in one run",
+                         "🪐 Reach all 5 in one run"]
+    else:
         v = planet_variant(p, key)
         view.update(map=v["map"], dir=v.get("dir", 1),
-                    battery="battery" in zone["rules"])
+                    battery="battery" in zone["rules"],
+                    crystals=v.get("crystals", []), goals=planet.goals(s, v))
     return view
 
 
+def code_features(code):
+    """Which Python a program uses, for the coding badges."""
+    try:
+        nodes = list(ast.walk(ast.parse(code)))
+    except SyntaxError:
+        return set()
+    found = set()
+    for n in nodes:
+        if isinstance(n, ast.For):
+            found.add("loop")
+        elif isinstance(n, ast.While):
+            found.add("while")
+        elif isinstance(n, ast.If):
+            found.add("if")
+        elif isinstance(n, ast.FunctionDef):
+            found.add("def")
+        elif isinstance(n, ast.Call) and getattr(n.func, "id", None) == "print":
+            found.add("print")
+    return found
+
+
 def planet_record(p, key, code, results):
-    """Save a run: the code, the run count, and a new best if it got there."""
+    """Save a run and work out everything it earned: stars, badges, a class
+    record, the first sighting of the zone's hidden rule, garage unlocks."""
     entry = planet_entry(p)
+    zi, zone, s = planet.find_site(key)
     entry["code"][key] = code
     entry["runs"][key] = entry["runs"].get(key, 0) + 1
     entry["active"] = int(time.time())
+    before_open = {i["key"] for i in garage_for(entry) if i["open"]}
+    before_stars = star_count(entry)
+    earned = []
+    record = None
+
+    def badge(key_):
+        if key_ not in entry["badges"]:
+            entry["badges"].append(key_)
+            icon, name, how = PLANET_BADGES[key_]
+            earned.append({"icon": icon, "name": name, "how": how})
+            feed(f"{icon} {p['name']} earned {name}")
+
     if key == planet.UNCHARTED["key"]:
-        score = {"reached": sum(r["reached"] for r in results),
+        reached = sum(r["reached"] for r in results)
+        score = {"reached": reached,
                  "ticks": sum(r["ticks"] for r in results if r["reached"])}
         best = entry["uncharted"]
         if best is None or (score["reached"], -score["ticks"]) > \
                 (best["reached"], -best["ticks"]):
             entry["uncharted"] = score
-        if score["reached"]:
+        if reached:
             entry["solved"].setdefault(key, score["ticks"])
-        return
-    run = results[0]
-    if run["reached"]:
-        best = entry["solved"].get(key)
-        entry["solved"][key] = run["ticks"] if best is None else min(best, run["ticks"])
+        run_stars = [reached >= 1, reached >= 3, reached == len(results)]
+        if reached == len(results):
+            badge("hopper")
+        reached_any = reached > 0
+    else:
+        run = results[0]
+        v = planet_variant(p, key)
+        run_stars = planet.stars(s, v, run, code)
+        reached_any = run["reached"]
+        if run["reached"]:
+            previous = class_record(key)
+            best = entry["solved"].get(key)
+            entry["solved"][key] = run["ticks"] if best is None else min(best, run["ticks"])
+            if previous is None:
+                record = {"ticks": run["ticks"], "name": p["name"], "first": True}
+                feed(f"🚩 {p['name']} was first to reach {s['name']}")
+            elif run["ticks"] < previous["ticks"]:
+                record = {"ticks": run["ticks"], "name": p["name"], "first": False}
+                feed(f"🏆 {p['name']} set a class record on {s['name']}: "
+                     f"{run['ticks']} ticks")
+                badge("record")
+    stars = [a or b for a, b in zip(entry["stars"].get(key, [False] * 3), run_stars)]
+    entry["stars"][key] = stars
+    new_stars = star_count(entry) - before_stars
+
+    # Coding badges, for runs that got there.
+    if reached_any:
+        badge("first")
+        for feature in sorted(code_features(code)):
+            badge(feature)
+        if entry["errored"].get(key):
+            badge("fixer")
+        if entry["misses"].get(key, 0) >= 5:
+            badge("grit")
+        entry["misses"][key] = 0
+    else:
+        entry["misses"][key] = entry["misses"].get(key, 0) + 1
+    entry["errored"][key] = any(r.get("error") for r in results)
+    if all(run_stars):
+        badge("triple")
+        if key != planet.UNCHARTED["key"]:
+            feed(f"🌟 {p['name']} earned all three stars on {s['name']}")
+    if sum(v[2] for k, v in entry["stars"].items() if k != planet.UNCHARTED["key"]) >= 5:
+        badge("compact")
+    crystal_sites = [k for k, c in planet.CHALLENGES.items() if c["bonus"]["kind"] == "crystals"]
+    if all(entry["stars"].get(k, [0, 0, 0])[1] for k in crystal_sites):
+        badge("crystals")
+    for z in planet.ZONES[:-1]:
+        if all(all(entry["stars"].get(x["key"], [False])) for x in z["sites"]):
+            badge("master_" + z["key"])
+
+    # The zone's hidden rule, the first time it shows up.
+    anomaly = None
+    mark = ANOMALIES.get(zone["key"])
+    if mark and zone["key"] not in entry["anomalies"] and key != planet.UNCHARTED["key"]:
+        line = next((l for l in results[0]["log"] if mark in l), None)
+        if line:
+            entry["anomalies"].append(zone["key"])
+            anomaly = {"zone": zone["name"], "tick": int(line.split(":")[0][5:])}
+            if len(entry["anomalies"]) >= 3:
+                badge("discover")
+
+    unlocked = [i for i in garage_for(entry) if i["open"] and i["key"] not in before_open]
+    return {"stars": run_stars, "best": stars, "new_stars": new_stars,
+            "badges": earned, "record": record, "anomaly": anomaly,
+            "unlocked": [{"slot": i["slot"], "key": i["key"], "name": i["name"]}
+                         for i in unlocked],
+            "total_stars": star_count(entry)}
+
+
+def planet_set_look(p, data):
+    """Fit the rover with garage items the student has unlocked."""
+    entry = planet_entry(p)
+    open_items = {(i["slot"], i["key"]) for i in garage_for(entry) if i["open"]}
+    for slot in ("paint", "topper", "trail"):
+        choice = str(data.get(slot, entry["look"].get(slot, "")))
+        if (slot, choice) in open_items:
+            entry["look"][slot] = choice
+    return entry["look"]
 
 
 def planet_class():
-    """The teacher's overview: where everyone is, how stuck they are, and
-    what they think each zone's hidden rule is."""
+    """The teacher's overview and the projector's class view: where everyone
+    is, how stuck they are, their stars, what they think each zone's hidden
+    rule is, and the class's recent moments."""
     rows = []
     for q in players.values():
         entry = q.get("planet")   # read only: don't start an entry for them
         if not entry:
             continue
+        entry = planet_entry(q)
         frontier = planet_frontier(q)
         key = planet.SITE_ORDER[frontier]
         zi, zone, s = planet.find_site(key)
         rows.append({"id": q["id"], "name": q["name"], "site": key,
                      "site_name": s["name"], "zone": zone["name"],
                      "solved": len(entry["solved"]),
+                     "stars": star_count(entry),
+                     "badges": len(entry["badges"]),
+                     "look": entry["look"],
                      "runs_here": entry["runs"].get(key, 0),
                      "hints": sum(entry["hints"].values()),
                      "journal": {z["name"]: entry["journal"][z["key"]]
@@ -2832,7 +3053,10 @@ def planet_class():
                      "active": entry["active"]})
     rows.sort(key=lambda x: (x["solved"], -x["runs_here"], x["name"].lower()))
     return {"students": rows, "sites": len(planet.SITE_ORDER),
-            "zones": [z["name"] for z in planet.ZONES]}
+            "zones": [z["name"] for z in planet.ZONES],
+            "class": {"stars": class_stars(), "goals": CLASS_GOALS,
+                      "max": 3 * len(planet.SITE_ORDER) * max(1, len(rows))},
+            "feed": planet_feed[-12:]}
 
 
 def unlocked_frontier(p, wi=None):
@@ -3066,6 +3290,7 @@ PAGES = {
     "/cycles/show": ("cycles_show.html", "text/html; charset=utf-8"),
     "/planet": ("planet.html", "text/html; charset=utf-8"),
     "/planet/teacher": ("planet_teacher.html", "text/html; charset=utf-8"),
+    "/planet/show": ("planet_show.html", "text/html; charset=utf-8"),
     "/leaderboard": ("leaderboard.html", "text/html; charset=utf-8"),
     "/screen": ("screen.html", "text/html; charset=utf-8"),
     "/admin": ("admin.html", "text/html; charset=utf-8"),
@@ -3146,13 +3371,14 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, body)
             return
         if path in ("/planet/state", "/planet/site", "/planet/overview"):
+            address = f"http://{get_lan_ip()}:{PORT}/planet" if path == "/planet/overview" else ""
             query = parse_qs(urlsplit(self.path).query)
             pid = query.get("id", [""])[0]
             key = query.get("site", [""])[0]
             with lock:
                 p = players.get(pid)
                 if path == "/planet/overview":
-                    body = planet_class()
+                    body = dict(planet_class(), address=address)
                 elif not p:
                     body = {"you": None}
                 elif path == "/planet/state":
@@ -3269,10 +3495,40 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 runs = [planet.drive(code, variant, zone["rules"], zi)]
             with lock:
-                planet_record(p, key, code[:planet.MAX_CODE], runs)
+                rewards = planet_record(p, key, code[:planet.MAX_CODE], runs)
                 save_state()
-                body = json.dumps({"runs": runs, "state": planet_state(p)}).encode()
+                body = json.dumps({"runs": runs, "rewards": rewards,
+                                   "state": planet_state(p)}).encode()
             self._send(200, body)
+            return
+        if self.path == "/planet/scout":
+            # Driving by hand, to feel the planet: nothing is saved, and the
+            # beacon only counts when code gets there.
+            key = str(data.get("site", ""))
+            moves = data.get("moves")
+            with lock:
+                p = players.get(data.get("id"))
+                ok = p and planet_open(p, key) and key != planet.UNCHARTED["key"]
+                if ok:
+                    zi, zone, s = planet.find_site(key)
+                    variant = planet_variant(p, key)
+            if not ok or not isinstance(moves, list) or \
+                    any(m not in planet.COMMANDS for m in moves):
+                self._send(200, {"error": "Scouting isn't available here."})
+                return
+            code = "".join(f"{m}()\n" for m in moves[:SCOUT_MAX])
+            self._send(200, {"run": planet.drive(code, variant, zone["rules"], zi),
+                             "left": SCOUT_MAX - min(len(moves), SCOUT_MAX)})
+            return
+        if self.path == "/planet/look":
+            with lock:
+                p = players.get(data.get("id"))
+                if not p:
+                    self._send(200, {"error": "join"})
+                    return
+                look = planet_set_look(p, data)
+                save_state()
+                self._send(200, {"look": look})
             return
         if self.path in ("/planet/hint", "/planet/journal"):
             with lock:
@@ -3406,6 +3662,7 @@ def main():
         f"  Cycles show:  http://localhost:{PORT}/cycles/show   (project the battles)",
         f"  Strange Planet: http://{ip}:{PORT}/planet       (hidden-rule rover zones)",
         f"  Planet class: http://localhost:{PORT}/planet/teacher (who's stuck, journals)",
+        f"  Planet show:  http://localhost:{PORT}/planet/show    (project the class star meter)",
         f"  Maze library: http://{ip}:{PORT}/classic        (optional practice)",
         f"  Big screen:   http://localhost:{PORT}/screen        (project this)",
         f"  Leaderboard:  http://localhost:{PORT}/leaderboard",

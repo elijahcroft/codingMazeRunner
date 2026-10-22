@@ -23,6 +23,12 @@ Map squares:
     #  rock          .  ground        S  start (ground)   G  beacon (the goal)
     ~  ice           O  crater        *  sample           +  sunny ground
     P  portal pad
+
+Crystals are bonus pick-ups listed beside the map (a variant's "crystals"),
+lying on top of whatever square they're on, so a crystal on ice is still ice.
+
+Every site has three stars: reach the beacon, the site's bonus challenge, and
+compact code (that many lines or fewer). Re-running to earn them is the practice.
 """
 
 import ast
@@ -179,6 +185,8 @@ class World:
         self.battery = variant.get("battery", BATTERY_MAX)
         self.cracked = set()
         self.crack = None    # the square that just cracked, for the next frame
+        self.crystals = {tuple(p) for p in variant.get("crystals", [])}
+        self.bumps = self.pushes = 0
         self.samples = {(r, c) for r, row in enumerate(self.grid)
                         for c, ch in enumerate(row) if ch == "*"}
         self.links = {}
@@ -293,6 +301,9 @@ class World:
         if ch == "O":
             self.frames.append(self.frame())
             self.finish("fell", "💥 fell into a crater")
+        if (r, c) in self.crystals:
+            self.crystals.discard((r, c))
+            self.say("💎 crystal collected")
         if (r, c) in self.samples:
             self.samples.discard((r, c))
             self.say(f"🧪 sample collected, {len(self.samples)} left")
@@ -328,6 +339,7 @@ class World:
     def drive(self):
         r, c = self.ahead()
         if self.at(r, c) == "#":
+            self.bumps += 1
             self.say("🧱 bumped into rock")
             self.frames.append(self.frame("bump"))
             return
@@ -361,6 +373,7 @@ class World:
         if self.at(r, c) == "#":
             self.say("💨 gust, but a rock sheltered the rover")
             return
+        self.pushes += 1
         self.say("💨 gust pushed the rover east")
         self.enter(r, c, "gust")
 
@@ -395,7 +408,11 @@ def drive(code, variant, rules, zone):
             "ticks": world.t, "error": error, "line": line,
             "frames": world.frames, "log": world.log, "prints": world.prints,
             "cracked": sorted(world.cracked),
-            "sun_width": (variant.get("sun") or {}).get("width", 0)}
+            "sun_width": (variant.get("sun") or {}).get("width", 0),
+            "crystals": [len(variant.get("crystals", [])) - len(world.crystals),
+                         len(variant.get("crystals", []))],
+            "bumps": world.bumps, "pushes": world.pushes,
+            "battery": world.battery if "battery" in rules else None}
 
 
 # ---- building planets --------------------------------------------------------
@@ -515,12 +532,16 @@ FROZEN_LAKES = [
 ]
 
 
-def site(key, name, brief, variants, per_student=False, reference=""):
+def site(key, name, brief, variants, per_student=False, reference="",
+         bonus=None, compact=99):
     """One site. Every variant is a dict with a "map" and the hidden details
     (wind, sun, portal pairs, battery). `per_student` sites give each student
-    their own variant; `reference` is a program that clears every variant."""
+    their own variant; `reference` is a program that clears every variant.
+    `bonus` is the site's challenge star and `compact` the most lines of code
+    for the compact star; a variant may set its own of either."""
     return {"key": key, "name": name, "brief": brief, "variants": variants,
-            "per_student": per_student, "reference": reference}
+            "per_student": per_student, "reference": reference,
+            "bonus": bonus or {"kind": "no_bump"}, "compact": compact}
 
 
 ZONES = [
@@ -539,7 +560,7 @@ ZONES = [
               "Drive to the beacon. Count the squares before each turn.",
               [{"map": ["###########",
                         "#S...######",
-                        "####.######",
+                        "#.##.######",
                         "####.....G#",
                         "###########"]}],
               reference="move(3)\nturn_right()\nmove(2)\nturn_left()\nmove(5)\n"),
@@ -784,6 +805,89 @@ ZONES.append(
                    ([(A2, B1), (B2, C1)], [(C2, D1), (A1, C1)]))],
               per_student=True),
      ]})
+
+
+# Each site's challenge star and compact-code star. Crystals sit on a fixed
+# site's only planet; on the per-student lakes and portal mazes the compact
+# target follows that student's own shortest route.
+CHALLENGES = {
+    "1a": {"bonus": {"kind": "crystals"}, "compact": 5, "crystals": [(2, 1)]},
+    "1b": {"bonus": {"kind": "def"}, "compact": 6},
+    "1c": {"bonus": {"kind": "no_bump"}, "compact": 9},
+    "2a": {"bonus": {"kind": "crystals"}, "compact": 6, "crystals": [(1, 8)]},
+    "2b": {"bonus": {"kind": "crystals"}, "compact": 12, "crystals": [(1, 7)]},
+    "2c": {"bonus": {"kind": "no_bump"}, "compact": [14, 15, 14, 16]},
+    "3a": {"bonus": {"kind": "ticks", "max": 14}, "compact": 5},
+    "3b": {"bonus": {"kind": "no_push"}, "compact": 16},
+    "3c": {"bonus": {"kind": "no_push"}, "compact": 17},
+    "4a": {"bonus": {"kind": "ticks", "max": 18}, "compact": 9},
+    "4b": {"bonus": {"kind": "ticks", "max": 47}, "compact": 12},
+    "4c": {"bonus": {"kind": "no_bump"}, "compact": 5},
+    "5a": {"bonus": {"kind": "battery", "min": 20}, "compact": 4},
+    "5b": {"bonus": {"kind": "ticks", "max": 80}, "compact": 16},
+    "5c": {"bonus": {"kind": "battery", "min": 30}, "compact": 5},
+    "6a": {"bonus": {"kind": "crystals"}, "compact": 7, "crystals": [(4, 1)]},
+    "6b": {"bonus": {"kind": "ticks", "max": 13}, "compact": 8},
+    "6c": {"bonus": {"kind": "no_bump"}, "compact": [14, 14, 11, 8]},
+}
+for _zone in ZONES:
+    for _s in _zone["sites"]:
+        _c = CHALLENGES[_s["key"]]
+        _s["bonus"] = _c["bonus"]
+        if isinstance(_c["compact"], list):
+            for _v, _n in zip(_s["variants"], _c["compact"]):
+                _v["compact"] = _n
+        else:
+            _s["compact"] = _c["compact"]
+        if "crystals" in _c:
+            _s["variants"][0]["crystals"] = _c["crystals"]
+
+
+def code_lines(code):
+    """Lines that do something: not blank, not only a comment."""
+    return sum(1 for line in str(code).split("\n")
+               if line.strip() and not line.strip().startswith("#"))
+
+
+def bonus_label(bonus):
+    kind = bonus["kind"]
+    return {"crystals": "💎 Grab every crystal",
+            "def": "🧩 Use a function you made with def",
+            "no_bump": "🧱 Never bump into rock",
+            "no_push": "💨 Never get blown off course",
+            "ticks": f"⚡ Reach the beacon in {bonus.get('max')} ticks or fewer",
+            "battery": f"🔋 Finish with {bonus.get('min')} battery or more"}[kind]
+
+
+def goals(s, variant):
+    """The three stars a site offers, as the student sees them."""
+    compact = variant.get("compact", s["compact"])
+    return ["🛰 Reach the beacon", bonus_label(variant.get("bonus", s["bonus"])),
+            f"✂️ {compact} lines of code or fewer"]
+
+
+def stars(s, variant, run, code):
+    """Which of the site's three stars this run earned."""
+    if not run["reached"]:
+        return [False, False, False]
+    bonus = variant.get("bonus", s["bonus"])
+    kind = bonus["kind"]
+    if kind == "crystals":
+        met = run["crystals"][0] == run["crystals"][1]
+    elif kind == "def":
+        try:
+            met = any(isinstance(n, ast.FunctionDef) for n in ast.walk(ast.parse(code)))
+        except SyntaxError:
+            met = False
+    elif kind == "no_bump":
+        met = run["bumps"] == 0
+    elif kind == "no_push":
+        met = run["pushes"] == 0
+    elif kind == "ticks":
+        met = run["ticks"] <= bonus["max"]
+    else:
+        met = (run["battery"] or 0) >= bonus["min"]
+    return [True, met, code_lines(code) <= variant.get("compact", s["compact"])]
 
 
 # ---- Zone 7: random planets ----------------------------------------------------

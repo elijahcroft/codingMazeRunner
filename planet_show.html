@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strange Planet — Class Expedition</title>
+<style>
+  /* For the projector: the class's stars filling one meter together, the
+     moments as they happen, and everyone's rover. Big, calm, readable. */
+  :root {
+    color-scheme: dark;
+    --sky: #1b1733; --dusk: #231d3f; --panel: #2c2550; --edge: #463c78;
+    --bone: #f2eadb; --haze: #a89ec8; --mint: #8cf2c6; --amber: #ffb547; --violet: #b9a3ff;
+    --ui: system-ui, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    --mono: ui-monospace, "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: radial-gradient(ellipse at 70% -10%, #4a2f63, var(--sky) 60%); color: var(--bone); font: 18px/1.4 var(--ui); padding: clamp(16px, 3vw, 40px); }
+  h1 { margin: 0; font-size: clamp(34px, 5vw, 64px); font-weight: 850; letter-spacing: -.04em; line-height: 1; }
+  header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 28px; }
+  header p { margin: 0; color: var(--haze); font-size: clamp(16px, 1.6vw, 22px); }
+  header b { color: var(--bone); font-family: var(--mono); }
+  .meter { position: relative; height: 34px; border-radius: 17px; background: var(--dusk); box-shadow: inset 0 0 0 1px var(--edge); margin: 0 0 54px; }
+  .fill { position: absolute; inset: 0 auto 0 0; border-radius: 17px; background: linear-gradient(90deg, #ffb547, #ff8a7a 50%, #b9a3ff); transition: width 1s cubic-bezier(.2,.8,.2,1); }
+  .goal { position: absolute; top: -6px; bottom: -6px; width: 3px; background: var(--bone); border-radius: 2px; }
+  .goal span { position: absolute; top: 46px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 15px; color: var(--haze); }
+  .goal.done span { color: var(--mint); }
+  .count { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font: 700 18px var(--mono); color: #1b1733; mix-blend-mode: normal; }
+  main { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr); gap: 28px; }
+  h2 { margin: 0 0 12px; font-size: 20px; color: var(--haze); font-weight: 650; }
+  .fleet { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .ship { background: rgba(35,29,63,.8); border-radius: 16px; padding: 12px; display: grid; grid-template-columns: 54px 1fr; gap: 10px; align-items: center; }
+  .ship canvas { width: 54px; height: 54px; }
+  .ship b { display: block; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ship small { color: var(--amber); font: 600 15px var(--mono); }
+  .moments { display: grid; gap: 8px; }
+  .moment { background: rgba(35,29,63,.8); border-radius: 12px; padding: 10px 14px; font-size: 18px; }
+  .moment.fresh { box-shadow: inset 0 0 0 2px var(--mint); }
+  .moment time { display: block; color: var(--haze); font-size: 13px; }
+  .empty { color: var(--haze); }
+  @media (max-width: 760px) { main { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { .fill { transition: none; } }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Class expedition</h1></div>
+  <p>Every star anyone earns fills the meter. Join at <b id="address"></b></p>
+</header>
+<div class="meter" id="meter"><div class="fill" id="fill"></div><span class="count" id="count"></span></div>
+<main>
+  <section><h2>The fleet</h2><div class="fleet" id="fleet"></div></section>
+  <section><h2>Just now</h2><div class="moments" id="moments"></div></section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const PAINT = {bone: "#f2eadb", coral: "#ff8a7a", mint: "#8cf2c6", sky: "#8fc8ff", gold: "#ffd36b",
+               aurora: "#7ff0d6", nebula: "#c69bff", supernova: "#ffe08a"};
+const UNLOCKS = {30: "Aurora paint", 90: "Nebula paint", 180: "Supernova paint"};
+function esc(v) { return String(v).replace(/[&<>"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch])); }
+function ago(at) {
+  const s = Math.max(0, Date.now() / 1000 - at);
+  return s < 60 ? "just now" : s < 3600 ? `${Math.floor(s / 60)} min ago` : `${Math.floor(s / 3600)} h ago`;
+}
+// A little rover from above, in the student's own paint.
+function rover(cv, paint) {
+  const dpr = devicePixelRatio || 1, s = 54;
+  cv.width = s * dpr; cv.height = s * dpr;
+  const g = cv.getContext("2d"); g.scale(dpr, dpr);
+  g.translate(s / 2, s / 2); g.rotate(-Math.PI / 2);
+  g.fillStyle = "#26212f";
+  for (const x of [-12, 0, 12]) for (const y of [-15, 11]) g.fillRect(x - 4, y, 8, 5);
+  g.fillStyle = PAINT[paint] || PAINT.bone; g.fillRect(-15, -10, 29, 20);
+  g.fillStyle = "#3f5f96"; g.fillRect(-13, -8, 13, 16);
+  g.fillStyle = "#8cf2c6"; g.beginPath(); g.arc(9, 0, 3, 0, 7); g.fill();
+}
+let seen = new Set();
+async function refresh() {
+  let data;
+  try { data = await (await fetch("/planet/overview")).json(); } catch (_) { return; }
+  $("address").textContent = data.address.replace(/^http:\/\//, "");
+  const total = data.class.stars, top = Math.max(data.class.goals[data.class.goals.length - 1] * 1.15, total * 1.05, 1);
+  $("fill").style.width = Math.min(100, total / top * 100) + "%";
+  $("count").textContent = `${total} ★`;
+  $("meter").querySelectorAll(".goal").forEach(g => g.remove());
+  for (const goal of data.class.goals) {
+    const el = document.createElement("div");
+    el.className = "goal" + (total >= goal ? " done" : "");
+    el.style.left = goal / top * 100 + "%";
+    el.innerHTML = `<span>${total >= goal ? "✓ " : ""}${goal} ★ · ${UNLOCKS[goal] || "unlock"}</span>`;
+    $("meter").appendChild(el);
+  }
+  const ships = [...data.students].sort((a, b) => b.stars - a.stars || a.name.localeCompare(b.name));
+  $("fleet").innerHTML = ships.length ? ships.map(s => `<div class="ship"><canvas data-paint="${esc(s.look.paint)}"></canvas><div><b>${esc(s.name)}</b><small>${s.stars} ★</small></div></div>`).join("")
+    : '<p class="empty">Nobody has landed yet.</p>';
+  $("fleet").querySelectorAll("canvas").forEach(cv => rover(cv, cv.dataset.paint));
+  $("moments").innerHTML = data.feed.length ? [...data.feed].reverse().map(m => {
+    const key = m.at + m.text, fresh = !seen.has(key);
+    seen.add(key);
+    return `<div class="moment${fresh && seen.size > data.feed.length ? " fresh" : ""}">${esc(m.text)}<time>${ago(m.at)}</time></div>`;
+  }).join("") : '<p class="empty">First beacons, records and three-star runs appear here.</p>';
+}
+refresh();
+setInterval(refresh, 4000);
+</script>
+</body>
+</html>

@@ -68,6 +68,75 @@ def wind_program(gust):
             f"turn_left()\ngo(3)\nturn_right()\ngo(7)\n")
 
 
+# Programs that earn a bonus star the reference program doesn't.
+BONUS_PROGRAMS = {
+    "1a": "turn_right()\nmove()\nturn_right()\nturn_right()\nmove()\nturn_right()\n"
+          "move(3)\nturn_right()\nmove(2)\nturn_left()\nmove(5)\n",
+    "1b": "def step():\n    move()\n    turn_right()\n    move()\n    turn_left()\n\n"
+          "for i in range(7):\n    step()\nmove()\n",
+    "2a": "move()\nmove()\nturn_right()\nmove(3)\nturn_right()\nmove(4)\n"
+          "turn_right()\nmove()\n",
+    "2b": "turn_left()\nmove()\nturn_right()\nmove()\nturn_right()\nmove()\n"
+          "turn_left()\nmove()\nturn_left()\nmove()\nturn_right()\nturn_right()\n"
+          "move()\nturn_right()\nmove()\n",
+    "5a": "move(2)\nfor i in range(30):\n    wait()\nmove(27)\n",
+    "6a": "move()\nturn_right()\nmove(3)\nturn_right()\nmove()\nturn_right()\n"
+          "turn_right()\nmove(2)\nturn_left()\nmove()\nturn_right()\nmove(2)\n"
+          "turn_left()\nmove(2)\n",
+}
+
+
+def as_code(route):
+    """A solver route as code, runs of move() joined into move(n)."""
+    lines = []
+    for a in route:
+        if a == "move()" and lines and lines[-1].startswith("move("):
+            n = int(lines[-1][5:-1] or 1)
+            lines[-1] = f"move({n + 1})"
+        else:
+            lines.append(a)
+    return "\n".join(lines) + "\n"
+
+
+class StarTests(unittest.TestCase):
+    def earn(self, key, code, i):
+        zi, zone, s = site(key)
+        v = s["variants"][i]
+        return planet.stars(s, v, planet.drive(code, v, zone["rules"], zi), code)
+
+    def test_every_star_on_every_planet_can_be_earned(self):
+        for zi, zone, s in sites():
+            for i, v in enumerate(s["variants"]):
+                if s["reference"]:
+                    programs = [s["reference"]]
+                elif s["key"] == "3c":
+                    programs = [wind_program(v["wind"])]
+                else:
+                    programs = [as_code(solve(s["key"], i))]
+                if s["key"] in BONUS_PROGRAMS:
+                    programs.append(BONUS_PROGRAMS[s["key"]])
+                earned = [any(star) for star in zip(*(self.earn(s["key"], p, i)
+                                                      for p in programs))]
+                self.assertEqual(earned, [True, True, True], (s["key"], i))
+
+    def test_the_bonus_takes_something_extra(self):
+        # The plain answer misses these bonuses: they need a detour, a def,
+        # or banking battery.
+        for key in BONUS_PROGRAMS:
+            self.assertFalse(self.earn(key, site(key)[2]["reference"], 0)[1], key)
+
+    def test_no_stars_without_the_beacon(self):
+        self.assertEqual(self.earn("1a", "move()\n", 0), [False, False, False])
+
+    def test_compact_counts_lines_that_do_something(self):
+        self.assertEqual(planet.code_lines("# plan\nmove(3)\n\n   \nturn_left()  # go\n"), 2)
+
+    def test_every_site_shows_three_goals(self):
+        for _, _, s in sites():
+            for v in s["variants"]:
+                self.assertEqual(len(planet.goals(s, v)), 3)
+
+
 class SiteClaims(unittest.TestCase):
     def test_maps_are_rectangles_with_one_start_and_beacon(self):
         for _, _, s in sites():
@@ -280,7 +349,7 @@ class ClassroomTests(unittest.TestCase):
         return self.post("/join", {"name": name})["id"]
 
     def test_pages_are_served(self):
-        for path in ("/planet", "/planet/teacher"):
+        for path in ("/planet", "/planet/teacher", "/planet/show"):
             with urlopen(self.base + path) as response:
                 self.assertIn(b"Strange Planet", response.read())
 
@@ -363,6 +432,81 @@ class ClassroomTests(unittest.TestCase):
                                   "pid": pid})
         self.assertIn("1B", ok["ok"])
         self.assertEqual(self.get(f"/planet/state?id={pid}")["current"], "1b")
+
+    def transmit(self, pid, key, code):
+        return self.post("/planet/run", {"id": pid, "site": key, "code": code})
+
+    def test_a_run_earns_stars_and_coding_badges(self):
+        pid = self.join()
+        out = self.transmit(pid, "1a", site("1a")[2]["reference"])
+        self.assertEqual(out["rewards"]["stars"], [True, False, True])
+        self.assertEqual(out["rewards"]["new_stars"], 2)
+        self.assertEqual([b["name"] for b in out["rewards"]["badges"]], ["First Contact"])
+        # Stars add up across runs: the crystal run brings the third.
+        out = self.transmit(pid, "1a", BONUS_PROGRAMS["1a"])
+        self.assertEqual(out["rewards"]["best"], [True, True, True])
+        self.assertEqual(out["rewards"]["new_stars"], 1)
+        out = self.transmit(pid, "1b", BONUS_PROGRAMS["1b"])
+        names = {b["name"] for b in out["rewards"]["badges"]}
+        self.assertEqual(names, {"Loop Pilot", "Architect"})
+        self.assertEqual(out["state"]["total_stars"], 5)
+
+    def test_fixing_a_bug_and_grit_earn_badges(self):
+        pid = self.join()
+        self.transmit(pid, "1a", "move(\n")
+        out = self.transmit(pid, "1a", site("1a")[2]["reference"])
+        self.assertIn("Bug Squasher", [b["name"] for b in out["rewards"]["badges"]])
+        server.planet_entry(server.players[pid])["unlocked"] = 1
+        for _ in range(5):
+            self.transmit(pid, "1b", "move()\n")
+        out = self.transmit(pid, "1b", site("1b")[2]["reference"])
+        self.assertIn("Never Give Up", [b["name"] for b in out["rewards"]["badges"]])
+
+    def test_the_first_sighting_of_a_hidden_rule_is_an_anomaly(self):
+        pid = self.join()
+        server.planet_entry(server.players[pid])["unlocked"] = 3
+        out = self.transmit(pid, "2a", "move(4)\n")
+        self.assertEqual(out["rewards"]["anomaly"], {"zone": "Ice Field", "tick": 1})
+        self.assertIsNone(self.transmit(pid, "2a", "move(4)\n")["rewards"]["anomaly"])
+
+    def test_class_records_and_the_feed(self):
+        ada, bo = self.join("Ada"), self.join("Bo")
+        slow = "move(3)\nturn_left()\nturn_right()\nturn_right()\nmove(2)\nturn_left()\nmove(5)\n"
+        first = self.transmit(ada, "1a", slow)["rewards"]["record"]
+        self.assertEqual((first["name"], first["first"]), ("Ada", True))
+        beat = self.transmit(bo, "1a", site("1a")[2]["reference"])["rewards"]
+        self.assertEqual((beat["record"]["ticks"], beat["record"]["first"]), (12, False))
+        self.assertIn("Record Breaker", [b["name"] for b in beat["badges"]])
+        self.assertEqual(self.get(f"/planet/site?id={ada}&site=1a")["record"],
+                         {"ticks": 12, "name": "Bo"})
+        overview = self.get("/planet/overview")
+        self.assertTrue(any("class record" in m["text"] for m in overview["feed"]))
+        self.assertEqual(overview["class"]["stars"], 3)   # Ada's slow run isn't compact
+        self.assertTrue(overview["address"].endswith("/planet"))
+
+    def test_the_garage_only_fits_what_you_have_unlocked(self):
+        pid = self.join()
+        self.assertEqual(self.post("/planet/look", {"id": pid, "paint": "gold"})["look"]["paint"],
+                         "bone")
+        self.assertEqual(self.transmit(pid, "1a", site("1a")[2]["reference"])
+                         ["rewards"]["unlocked"], [])   # 2 stars: not yet
+        out = self.transmit(pid, "1a", BONUS_PROGRAMS["1a"])   # the third star
+        self.assertEqual(out["rewards"]["unlocked"], [{"slot": "paint", "key": "coral", "name": "Coral"}])
+        self.assertEqual(self.post("/planet/look", {"id": pid, "paint": "coral"})["look"]["paint"],
+                         "coral")
+
+    def test_scouting_drives_by_hand_but_saves_nothing(self):
+        pid = self.join()
+        out = self.post("/planet/scout", {"id": pid, "site": "1a",
+                                          "moves": ["move", "move", "move", "turn_right"]})
+        self.assertEqual(out["run"]["frames"][-1]["c"], 4)
+        self.assertEqual(out["left"], server.SCOUT_MAX - 4)
+        self.assertIn("error", self.post("/planet/scout", {"id": pid, "site": "1a",
+                                                           "moves": ["import os"]}))
+        self.assertIn("error", self.post("/planet/scout", {"id": pid, "site": "1b",
+                                                           "moves": ["move"]}))
+        state = self.get(f"/planet/state?id={pid}")
+        self.assertEqual((state["total_stars"], state["current"]), (0, "1a"))
 
     def test_progress_survives_a_restart(self):
         pid = self.join()
