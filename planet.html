@@ -1,0 +1,841 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strange Planet — Python Quest</title>
+<style>
+  /* Same palette and building blocks as Python Quest and Light Cycles. */
+  :root {
+    color-scheme: dark;
+    --void: #080c16;
+    --chrome: #0d1322;
+    --panel: #121a2a;
+    --panel-2: #172237;
+    --line: #2a3852;
+    --text: #e8eef8;
+    --muted: #8fa0ba;
+    --cyan: #55dfd2;
+    --amber: #f4c95d;
+    --red: #ff6577;
+    --green: #72e09d;
+    --blue: #69a8ff;
+    --violet: #b48cff;
+    --editor: ui-monospace, "SFMono-Regular", "Cascadia Code", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { min-height: 100%; }
+  body { margin: 0; background: var(--void); color: var(--text); font-family: Inter, "Segoe UI", Arial, sans-serif; }
+  button, textarea, input { font: inherit; }
+  button { cursor: pointer; }
+  button:focus-visible, textarea:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--cyan); outline-offset: 2px;
+  }
+
+  .join {
+    min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(360px, .8fr);
+    background:
+      radial-gradient(circle at 18% 20%, rgba(180,140,255,.14), transparent 25%),
+      linear-gradient(135deg, #080c16 0 55%, #0e192a 55%);
+  }
+  .join-story { padding: clamp(40px, 8vw, 110px); display: flex; flex-direction: column; justify-content: center; }
+  .bootline { color: var(--violet); font: 14px var(--editor); margin-bottom: 22px; }
+  .join h1 { font-size: clamp(54px, 8vw, 104px); line-height: .88; letter-spacing: -.065em; margin: 0; }
+  .join-story p { color: var(--muted); font-size: clamp(18px, 2vw, 23px); line-height: 1.5; max-width: 680px; margin-top: 28px; }
+  .join-console { margin: clamp(24px, 6vw, 76px); align-self: center; background: var(--chrome); border: 1px solid var(--line); box-shadow: 18px 18px 0 rgba(0,0,0,.35); }
+  .window-bar { height: 40px; display: flex; align-items: center; gap: 7px; border-bottom: 1px solid var(--line); padding: 0 13px; color: var(--muted); font: 12px var(--editor); }
+  .window-dot { width: 9px; height: 9px; border-radius: 50%; background: #45536b; }
+  .join-form { padding: clamp(26px, 5vw, 54px); }
+  .join-form h2 { margin: 0 0 8px; font-size: 25px; }
+  .join-form p { color: var(--muted); line-height: 1.5; margin: 0 0 28px; }
+  .join-form label { display: block; color: var(--cyan); font: 13px var(--editor); margin-bottom: 8px; }
+  .join-form input { width: 100%; border: 1px solid var(--line); background: #090e19; color: var(--text); padding: 13px; font-size: 18px; }
+  .join-form button { width: 100%; margin-top: 13px; }
+
+  .btn { border: 1px solid #397f7a; background: #173d40; color: #dffffb; padding: 9px 14px; font-weight: 700; }
+  .btn:hover { background: #205157; }
+  .btn.primary { background: var(--cyan); color: #062b2c; border-color: var(--cyan); }
+  .btn.primary:hover { background: #79eee4; }
+  .btn.ghost { background: transparent; color: var(--muted); border-color: var(--line); }
+  .btn.ghost:hover { color: var(--text); background: var(--panel-2); }
+  .btn:disabled { opacity: .55; cursor: wait; }
+
+  .ide { display: none; height: 100vh; grid-template-rows: 48px minmax(0, 1fr) 24px; }
+  .titlebar { background: #080d18; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 0 16px; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; }
+  .logo-mark { color: var(--void); background: var(--violet); font: 900 13px var(--editor); padding: 5px 7px; }
+  .title-meta { color: var(--muted); font: 12px var(--editor); white-space: nowrap; }
+  .title-actions { display: flex; align-items: center; gap: 8px; }
+  .title-actions a, .title-actions button { color: var(--muted); background: none; border: 0; font-size: 13px; padding: 7px; text-decoration: none; }
+  .title-actions a:hover, .title-actions button:hover { color: var(--text); }
+  .title-actions #helpButton { width: 26px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 50%; font-weight: 700; }
+
+  .workspace { min-height: 0; display: grid; grid-template-columns: 225px minmax(360px, 1fr) minmax(420px, 520px); }
+
+  /* Left: every zone and its three sites. */
+  .sidebar { min-width: 0; min-height: 0; overflow: auto; background: var(--chrome); border-right: 1px solid var(--line); }
+  .side-heading { height: 34px; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; color: var(--muted); font: 11px var(--editor); letter-spacing: .08em; border-bottom: 1px solid var(--line); border-top: 1px solid var(--line); background: #0b111e; }
+  .side-heading:first-child { border-top: 0; }
+  .trial-list { padding: 4px 0; }
+  .trial {
+    width: 100%; border: 0; border-left: 3px solid transparent; background: transparent; color: var(--muted);
+    text-align: left; padding: 8px 14px 8px 16px; display: grid; grid-template-columns: 26px 1fr; gap: 9px;
+  }
+  .trial:hover:not(:disabled) { background: #131d2f; color: var(--text); }
+  .trial.current { background: #18263c; color: var(--text); border-left-color: var(--violet); }
+  .trial:disabled { cursor: default; opacity: .5; }
+  .trial-num { font: 12px var(--editor); padding-top: 2px; }
+  .trial-copy b { display: block; font-size: 13px; line-height: 1.25; }
+  .trial-copy small { font-size: 11px; color: var(--muted); }
+  .trial.pass .trial-num, .trial.pass small { color: var(--green); }
+
+  /* Middle: the briefing, the planet replay, and the result. */
+  .rally-view { min-width: 0; min-height: 0; background: #0b111e; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; border-right: 1px solid var(--line); }
+  .brief { padding: 18px 22px 15px; border-bottom: 1px solid var(--line); background: linear-gradient(90deg, #13132b, #0c1321); }
+  .chapter { color: var(--violet); font: 11px var(--editor); margin-bottom: 7px; }
+  .brief h1 { font-size: clamp(26px, 2.6vw, 38px); line-height: 1; letter-spacing: -.035em; margin: 0 0 9px; }
+  .brief p { color: #b6c2d5; line-height: 1.45; margin: 0; max-width: 720px; font-size: 14px; }
+  .map-stage { min-height: 0; overflow: hidden; display: grid; place-items: center; padding: 46px 18px 18px; position: relative; }
+  .stage-head { position: absolute; top: 12px; left: 16px; right: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font: 12px var(--editor); color: var(--muted); flex-wrap: wrap; }
+  .stage-head b { color: var(--text); }
+  .replay-controls { display: flex; gap: 6px; align-items: center; }
+  .replay-controls .btn { font-size: 11px; padding: 5px 9px; }
+  .tick-now { color: var(--text); white-space: nowrap; margin-right: 2px; }
+  .gauge { white-space: nowrap; }
+  .gauge.low { color: var(--red); }
+  .planets { display: flex; gap: 4px; }
+  .planets .btn { font-size: 11px; padding: 4px 8px; }
+  .planets .btn.on { border-color: var(--violet); color: var(--text); }
+  .stage-inner { display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 100%; }
+  canvas { display: block; background: #050912; border: 1px solid #31405b; box-shadow: 0 18px 60px rgba(0,0,0,.28); max-width: 100%; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 12px; justify-content: center; margin-top: 10px; font: 11px var(--editor); color: var(--muted); max-width: 100%; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .swatch { width: 11px; height: 11px; display: inline-block; border: 1px solid #31405b; }
+  .where { margin-top: 6px; min-height: 16px; font: 11px var(--editor); color: var(--muted); }
+  .scorebar { padding: 12px 20px; border-top: 1px solid var(--line); display: flex; gap: 14px; align-items: center; flex-wrap: wrap; background: #0e1625; min-height: 62px; }
+  .score-main b { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; font-weight: 700; }
+  .score-main span { font-size: 14px; }
+  .score-main .good { color: var(--green); }
+  .score-main .bad { color: var(--red); }
+  .best { margin-left: auto; font: 11px var(--editor); color: var(--muted); text-align: right; }
+  .best b { color: var(--green); font-weight: 400; }
+
+  /* Right: the editor, toolbar, drawers and output — same as the missions. */
+  .code-column { min-width: 0; min-height: 0; background: var(--panel); display: grid; grid-template-rows: 42px minmax(160px, 1fr) auto minmax(130px, .5fr); }
+  .file-tabs { background: #0b111e; border-bottom: 1px solid var(--line); display: flex; align-items: end; }
+  .file-tab { height: 41px; padding: 0 17px; display: flex; align-items: center; gap: 8px; color: var(--text); background: var(--panel); border-right: 1px solid var(--line); border-top: 2px solid var(--violet); font: 12px var(--editor); }
+  .py-icon { color: var(--amber); font-weight: 900; }
+  .editor-shell { min-height: 0; display: grid; grid-template-columns: auto 1fr; overflow: hidden; background: #0c1220; }
+  .lines { min-width: 44px; padding: 14px 10px 60px 8px; color: #4f607a; background: #0a101c; border-right: 1px solid #18243a; text-align: right; white-space: pre; overflow: hidden; font: 14px/1.55 var(--editor); user-select: none; }
+  .lines .err { color: var(--red); font-weight: 700; }
+  textarea#code { width: 100%; height: 100%; resize: none; border: 0; outline: 0; padding: 14px 16px 60px; background: #0c1220; color: #dce7f6; caret-color: var(--cyan); font: 14px/1.55 var(--editor); tab-size: 4; white-space: pre; overflow: auto; }
+  .toolbar { min-height: 52px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: #0f1727; flex-wrap: wrap; }
+  .toolbar .btn { font-size: 12px; padding: 8px 11px; }
+  .run { min-width: 128px; }
+  .code-count { margin-left: auto; color: var(--muted); font: 11px var(--editor); text-align: right; }
+  .drawer { border-bottom: 1px solid var(--line); }
+  .drawer summary { color: var(--muted); font: 11px var(--editor); padding: 9px 12px; cursor: pointer; }
+  .drawer code { color: #a9f7ef; border: 1px solid #273b4e; padding: 2px 5px; font: 11px var(--editor); }
+  .sensor-list { padding: 0 12px 12px; display: grid; gap: 6px; font-size: 12px; color: #b6c2d5; line-height: 1.45; }
+  .drawer[open] > .sensor-list { max-height: 30vh; overflow: auto; }
+  .sensor-list b { color: var(--amber); font: 10px var(--editor); letter-spacing: .04em; margin-top: 4px; }
+  .sensor-list pre { margin: 2px 0 0; padding: 7px 9px; background: #0a101c; border: 1px solid #1d2a40; color: #dce7f6; font: 12px/1.5 var(--editor); white-space: pre-wrap; }
+  .sensor-list .new { color: var(--violet); font: 10px var(--editor); }
+  .journal textarea { width: 100%; min-height: 54px; resize: vertical; border: 1px solid var(--line); background: #090e19; color: var(--text); padding: 8px; font: 13px/1.4 Inter, "Segoe UI", Arial, sans-serif; }
+  .journal-row { display: flex; align-items: center; gap: 8px; }
+  .journal-row small { color: var(--muted); font: 11px var(--editor); }
+  .console { min-height: 0; display: grid; grid-template-rows: 34px minmax(0, 1fr); background: #080d17; }
+  .console-head { display: flex; align-items: center; justify-content: space-between; padding: 0 12px; color: var(--muted); font: 11px var(--editor); border-bottom: 1px solid #18243a; }
+  #log { overflow: auto; max-height: 35vh; padding: 10px 13px 18px; font: 12px/1.5 var(--editor); color: #b9c7db; }
+  #log div { margin: 1px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  #log .good { color: var(--green); }
+  #log .bad { color: var(--red); }
+  #log .head { color: var(--amber); }
+  #log .print { color: #dce7f6; }
+  #log .now { background: #1d2a40; outline: 1px solid #397f7a; color: var(--text); }
+  .statusbar { background: #3d2f6b; color: #efe7ff; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 0 10px; font: 10px var(--editor); }
+
+  /* How it works: three steps on the first visit, and from the ? button. */
+  .intro { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; background: rgba(4,7,14,.78); overflow: auto; }
+  .intro-card { width: min(640px, 100%); background: var(--chrome); border: 1px solid var(--line); box-shadow: 18px 18px 0 rgba(0,0,0,.35); }
+  .intro-body { padding: 22px 26px 24px; }
+  .intro h2 { margin: 0 0 14px; font-size: 24px; }
+  .steps { margin: 0 0 18px; padding: 0; list-style: none; display: grid; gap: 12px; counter-reset: step; }
+  .steps li { display: grid; grid-template-columns: 34px 1fr; gap: 12px; color: #b6c2d5; line-height: 1.45; font-size: 15px; }
+  .steps li::before { counter-increment: step; content: counter(step); display: grid; place-items: center; width: 30px; height: 30px; background: var(--violet); color: var(--void); font: 900 15px var(--editor); }
+  .steps b { color: var(--text); display: block; font-size: 16px; }
+  .steps code, .steps pre { color: #a9f7ef; font-family: var(--editor); }
+  .steps pre { margin: 6px 0 0; padding: 7px 10px; background: #0a101c; border: 1px solid #1d2a40; font-size: 13px; white-space: pre-wrap; }
+  .announce { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+  @media (max-width: 1100px) {
+    .workspace { grid-template-columns: 185px minmax(320px, 1fr) minmax(360px, 440px); }
+  }
+  /* Short screens (a Chromebook once the browser's own bars are in) give the
+     height to the replay. The full briefing is also in "How it works". */
+  @media (min-width: 901px) and (max-height: 760px) {
+    .brief { padding: 10px 22px; }
+    .chapter { display: none; }
+    .brief h1 { font-size: 22px; margin-bottom: 4px; }
+    .brief p { font-size: 13px; }
+    .scorebar { padding: 8px 20px; min-height: 0; }
+  }
+  @media (max-width: 900px) {
+    .ide { height: auto; min-height: 100vh; grid-template-rows: 48px auto 24px; }
+    .workspace { grid-template-columns: 1fr; }
+    .sidebar { border-right: 0; border-bottom: 1px solid var(--line); max-height: 260px; }
+    .rally-view { border-right: 0; }
+    .map-stage { min-height: 420px; }
+    .code-column { min-height: 720px; }
+  }
+  @media (max-width: 600px) {
+    .join { grid-template-columns: 1fr; }
+    .join-story { padding: 46px 24px 20px; }
+    .join h1 { font-size: 58px; }
+    .join-console { margin: 20px 18px 50px; }
+    .title-meta, .title-actions a { display: none; }
+    .brief { padding: 16px 14px; }
+    .map-stage { min-height: 360px; padding: 70px 12px 12px; }
+  }
+</style>
+</head>
+<body>
+<section class="join" id="join">
+  <div class="join-story">
+    <div class="bootline">rover.boot() → signal from the surface</div>
+    <h1>Strange<br>Planet</h1>
+    <p>Your rover has landed somewhere nobody has explored. Every region follows a rule of its own, and nobody is going to tell you what it is. Drive, watch, experiment, and work it out.</p>
+  </div>
+  <div class="join-console">
+    <div class="window-bar"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span><span style="margin-left:7px">mission_control.py</span></div>
+    <div class="join-form">
+      <h2>Sign in to mission control</h2>
+      <p>Use the same name as in Python Quest to keep your progress together.</p>
+      <label for="name">explorer_name =</label>
+      <input id="name" maxlength="20" autocomplete="nickname" placeholder="Type your name" autofocus>
+      <button class="btn primary" id="joinButton">Land the rover</button>
+    </div>
+  </div>
+</section>
+
+<main class="ide" id="ide">
+  <header class="titlebar">
+    <div class="logo"><span class="logo-mark">SP</span><span>Strange Planet</span><span class="title-meta">/ python_quest</span></div>
+    <div class="title-actions"><span class="title-meta" id="driver"></span><button id="helpButton" title="How Strange Planet works" aria-label="How Strange Planet works">?</button><a href="/">Missions</a><button id="switchButton">Switch explorer</button></div>
+  </header>
+  <div class="workspace">
+    <aside class="sidebar" id="zones"></aside>
+
+    <section class="rally-view">
+      <header class="brief">
+        <div class="chapter" id="chapter"></div>
+        <h1 id="siteName">Loading…</h1>
+        <p id="siteBrief"></p>
+      </header>
+      <div class="map-stage" id="stage">
+        <div class="stage-head">
+          <span id="stageTitle"></span>
+          <span class="planets" id="planets" hidden></span>
+          <span class="replay-controls">
+            <span class="gauge" id="gauge" hidden></span>
+            <span class="tick-now" id="tickNow"></span>
+            <button class="btn ghost" id="backButton" title="One step back" aria-label="One step back">−1</button>
+            <button class="btn ghost" id="pauseButton" title="Play" aria-label="Pause or play">▶︎</button>
+            <button class="btn ghost" id="nextButton" title="One step forward" aria-label="One step forward">+1</button>
+            <button class="btn ghost" id="skipButton" hidden>▸▸ Skip</button>
+          </span>
+        </div>
+        <div class="stage-inner">
+          <canvas id="map" aria-label="The planet surface"></canvas>
+          <div class="where" id="where">Point at a square to see its row and col.</div>
+          <div class="legend" id="legend"></div>
+        </div>
+      </div>
+      <div class="scorebar">
+        <div class="score-main"><b id="scoreLabel">THIS SITE</b><span id="scoreText">Not run yet.</span></div>
+        <button class="btn primary" id="nextSiteButton" hidden>Next site ▶</button>
+        <div class="best" id="best"></div>
+      </div>
+    </section>
+
+    <section class="code-column">
+      <div class="file-tabs"><div class="file-tab"><span class="py-icon">Py</span> <span id="fileName">rover.py</span></div></div>
+      <div class="editor-shell">
+        <div class="lines" id="lines">1</div>
+        <textarea id="code" aria-label="Python editor" spellcheck="false" placeholder="# move(), turn_left(), turn_right(), wait()…"></textarea>
+      </div>
+      <div>
+        <div class="toolbar">
+          <button class="btn primary run" id="runButton">▶ Run <span style="opacity:.65">F5</span></button>
+          <button class="btn ghost" id="clearButton">Clear file</button>
+          <div class="code-count" id="codeCount">0 lines</div>
+        </div>
+        <details class="drawer">
+          <summary>Commands and sensors</summary>
+          <div class="sensor-list" id="sensors"></div>
+        </details>
+        <details class="drawer">
+          <summary id="hintsTitle">Hints</summary>
+          <div class="sensor-list" id="hints"></div>
+        </details>
+        <details class="drawer journal" id="journalDrawer">
+          <summary id="journalTitle">Field journal</summary>
+          <div class="sensor-list">
+            <label for="journal">What do you think this zone's hidden rule is? Which run showed you?</label>
+            <textarea id="journal" maxlength="140" placeholder="I think… because when I…"></textarea>
+            <div class="journal-row"><button class="btn" id="journalSave">Save note</button><small id="journalState"></small></div>
+          </div>
+        </details>
+      </div>
+      <div class="console">
+        <div class="console-head"><span>OUTPUT</span><span id="consoleState">ready</span></div>
+        <div id="log"><div>Ready.</div></div>
+      </div>
+    </section>
+  </div>
+  <footer class="statusbar"><span>Python 3 · safe classroom sandbox</span><span>Spaces: 4 · UTF-8 · <span id="position">Ln 1, Col 1</span></span></footer>
+  <div class="announce" id="announce" aria-live="polite"></div>
+</main>
+
+<div class="intro" id="intro" hidden role="dialog" aria-modal="true" aria-labelledby="introTitle">
+  <div class="intro-card">
+    <div class="window-bar"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span><span style="margin-left:7px">how_it_works.py</span></div>
+    <div class="intro-body">
+      <h2 id="introTitle">How Strange Planet works</h2>
+      <ol class="steps">
+        <li><div><b>Your program drives the rover.</b>Commands run in order, top to bottom. Every command takes one <em>tick</em> of planet time.
+          <pre>move(3)        turn_left()
+turn_right()   wait()</pre></div></li>
+        <li><div><b>Every zone has a hidden rule.</b>Nobody will tell you what it is. The first site of each zone is where you notice it. Your code from the last site is loaded, so predict first: will it still work here?</div></li>
+        <li><div><b>Experiment like a scientist.</b>Run, watch the replay, step through it one tick at a time, and read the output. <code>print()</code> shows you numbers as the rover drives. Write your best guess in the <strong>Field journal</strong>.</div></li>
+      </ol>
+      <button class="btn primary" id="introClose">Got it, let's explore</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]];
+let me = null, running = false;
+let state = null;     // every zone and site, from the server
+let site = null;      // the site on screen, as the student sees it
+let runs = null;      // the last run's results (five for Uncharted)
+let shown = null;     // the run on the canvas: {map, dir, frames, ...}
+let planetIndex = 0;  // which Uncharted planet is on screen
+let drawn = 0, timer = null, delay = 120;
+let errorLine = 0, errorCount = 0;
+
+// What each command and sensor does, shown in the drawer for the current zone.
+const HELP = {
+  move: ["COMMAND", "move()  move(3)", "Drive forward one square, or 3."],
+  turn_left: ["COMMAND", "turn_left()", "Turn on the spot, to the rover's left."],
+  turn_right: ["COMMAND", "turn_right()", "Turn on the spot, to the rover's right."],
+  wait: ["COMMAND", "wait()", "Stay put for one tick."],
+  wall_ahead: ["YES / NO", "wall_ahead()", "Is the next square ahead rock?"],
+  wall_left: ["YES / NO", "wall_left()", "Is the square to the rover's left rock?"],
+  wall_right: ["YES / NO", "wall_right()", "Is the square to the rover's right rock?"],
+  at_goal: ["YES / NO", "at_goal()", "Is the rover on the beacon?"],
+  tick: ["NUMBER", "tick()", "How many ticks have gone by: one for every command."],
+  crater_ahead: ["YES / NO", "crater_ahead()", "Is the next square ahead a crater?"],
+  cracked_ahead: ["YES / NO", "cracked_ahead()", "Is the next square ahead cracked?"],
+  samples_left: ["NUMBER", "samples_left()", "How many samples are still to collect."],
+  battery: ["NUMBER", "battery()", "How much charge is left, from 0 to 100."],
+  in_sun: ["YES / NO", "in_sun()", "Is the rover standing in sunlight?"],
+  gust_in: ["NUMBER", "gust_in()", "How many ticks until the next gust of wind."],
+};
+const COMMANDS = ["move", "turn_left", "turn_right", "wait"];
+// What each kind of square looks like: its name, its floor on the canvas,
+// and its colour in the legend (the thing drawn on it, if anything).
+const TILES = {
+  "#": ["rock", "#26334a"], ".": ["ground", "#151f31"], "S": ["lander", "#151f31"],
+  "~": ["ice", "#2b6a8a"], "O": ["crater", "#020307", "#7a3b44"], "*": ["sample", "#151f31", "#72e09d"],
+  "+": ["sunny ground", "#4a3f17"], "P": ["pad", "#151f31", "#b48cff"], "G": ["beacon", "#151f31", "#55dfd2"],
+};
+
+function esc(value) {
+  return String(value).replace(/[&<>\"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
+}
+async function post(url, data) {
+  const response = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(data)});
+  return response.json();
+}
+async function get(url) { return (await fetch(url)).json(); }
+function store(key, value) { try { localStorage.setItem(key, value); } catch (_) {} }
+function recall(key) { try { return localStorage.getItem(key); } catch (_) { return null; } }
+function codeKey(key) { return `planetCode:${me}:${key}`; }
+function saveCode() { if (me && site) store(codeKey(site.key), $("code").value); }
+
+// ---- Joining ---------------------------------------------------------------
+async function join() {
+  const name = $("name").value.trim();
+  if (!name) { $("name").focus(); return; }
+  try {
+    const player = await post("/join", {name});
+    store("mazeId", player.id);
+    if (await enter(player.id)) return;
+  } catch (_) {}
+  $("joinButton").textContent = "No answer from the game. Try again";
+}
+async function resume() {
+  const id = recall("mazeId");
+  if (id) await enter(id);
+}
+async function enter(id) {
+  let data;
+  try { data = await get("/planet/state?id=" + encodeURIComponent(id)); }
+  catch (_) { return; }
+  if (!data.you) return;   // unknown id: stay on the join screen
+  me = id; state = data;
+  $("driver").textContent = data.you.name;
+  $("join").style.display = "none";
+  $("ide").style.display = "grid";
+  renderZones();
+  const last = recall(`planetSite:${me}`);
+  await openSite(siteOpen(last) ? last : data.current);
+  if (recall("planetIntroSeen") !== "1") openIntro();
+  return true;
+}
+function openIntro() { $("intro").hidden = false; $("introClose").focus(); }
+function closeIntro() { $("intro").hidden = true; store("planetIntroSeen", "1"); $("code").focus(); }
+
+// ---- Left column: zones and sites --------------------------------------------
+function allSites() { return state.zones.flatMap(z => z.sites.map(s => ({...s, zone: z}))); }
+function siteOpen(key) { return allSites().some(s => s.key === key && s.open); }
+function zoneOf(key) { return state.zones.find(z => z.sites.some(s => s.key === key)); }
+function renderZones() {
+  $("zones").innerHTML = state.zones.map((z, zi) => `
+    <div class="side-heading"><span>${zi + 1 < state.zones.length ? `ZONE ${zi + 1}` : "FINALE"} · ${esc(z.name.toUpperCase())}</span></div>
+    <div class="trial-list">${z.sites.map(s => {
+      const label = s.key === "7" ? "∞" : s.key.toUpperCase();
+      const status = s.key === "7" && state.uncharted ? `best ${state.uncharted.reached}/5 planets`
+        : s.solved != null ? `✓ beacon in ${s.solved} ticks` : s.open ? "not reached yet" : "🔒 locked";
+      return `<button class="trial${s.solved != null ? " pass" : ""}${site && site.key === s.key ? " current" : ""}" ${s.open ? "" : "disabled"} onclick="openSite('${s.key}')">
+        <span class="trial-num">${s.solved != null ? "✓" : label}</span>
+        <span class="trial-copy"><b>${esc(s.name)}</b><small>${status}</small></span>
+      </button>`;
+    }).join("")}</div>`).join("");
+}
+
+// ---- Opening a site -----------------------------------------------------------
+async function openSite(key) {
+  if (running) return;
+  let view;
+  try { view = await get(`/planet/site?id=${encodeURIComponent(me)}&site=${encodeURIComponent(key)}`); }
+  catch (_) { $("consoleState").textContent = "no response"; return; }
+  if (view.error) { $("log").innerHTML = logLine(view.error, "bad"); return; }
+  saveCode();
+  site = view; runs = null; planetIndex = 0;
+  store(`planetSite:${me}`, key);
+  const zone = zoneOf(key), zi = state.zones.indexOf(zone);
+  $("chapter").textContent = key === "7" ? "FINALE / UNCHARTED"
+    : `ZONE ${zi + 1} · ${zone.name.toUpperCase()} / SITE ${key.toUpperCase()}`;
+  $("siteName").textContent = view.name;
+  $("siteBrief").textContent = view.brief;
+  $("fileName").textContent = `site_${key}.py`;
+  // Code: this browser's draft, else what was last run here, else the code
+  // from the site before. Running the old code on a new site is how students
+  // notice each hidden rule.
+  let code = recall(codeKey(key)), note = null;
+  if (code == null && view.code) code = view.code;
+  if (code == null) {
+    const order = allSites().map(s => s.key), prev = order[order.indexOf(key) - 1];
+    code = prev ? recall(codeKey(prev)) : null;
+    if (code) note = "📋 Your code from the last site is loaded. Predict first: will it work here?";
+    else if (key === "1a") code = "# Drive the rover to the beacon.\n# Count the squares on the map first.\nmove(3)\n";
+  }
+  $("code").value = code || "";
+  errorLine = 0;
+  updateEditor();
+  renderSensors(zi);
+  renderHints(zone);
+  renderJournal(zone);
+  renderZones();
+  $("scoreText").textContent = "Not run yet."; $("scoreText").className = "";
+  $("scoreLabel").textContent = "THIS SITE";
+  $("nextSiteButton").hidden = view.solved == null || !nextSite();
+  renderBest();
+  $("planets").hidden = true;
+  if (view.map) {
+    shown = {map: view.map, dir: view.dir, frames: [{r: 0, c: 0, d: view.dir, t: 0}], log: [], prints: []};
+    const [sr, sc] = findStart(view.map);
+    shown.frames[0].r = sr; shown.frames[0].c = sc;
+    stopReplay(); draw(0); controls();
+  } else {
+    shown = null; stopReplay(); clearCanvas();
+    $("tickNow").textContent = ""; $("gauge").hidden = true; $("legend").innerHTML = "";
+  }
+  $("log").innerHTML = [note ? logLine(note, "head") : "",
+    logLine(key === "7" ? "Each run lands on 5 new random planets. Press Run when your rover is ready."
+                        : "Press Run to drive. Then step through the replay one tick at a time.")].join("");
+}
+function findStart(map) {
+  for (let r = 0; r < map.length; r++) { const c = map[r].indexOf("S"); if (c >= 0) return [r, c]; }
+  return [0, 0];
+}
+function nextSite() {
+  const order = allSites(), i = order.findIndex(s => s.key === site.key);
+  return order[i + 1] && order[i + 1].open ? order[i + 1].key : null;
+}
+function renderBest() {
+  const s = allSites().find(x => x.key === site.key);
+  $("best").innerHTML = site.key === "7"
+    ? (state.uncharted ? `best: <b>${state.uncharted.reached}/5 planets</b> · ${state.uncharted.ticks} ticks` : "")
+    : s && s.solved != null ? `your best: <b>${s.solved} ticks</b>` : "";
+}
+
+// ---- Right column: drawers ------------------------------------------------------
+function renderSensors(zi) {
+  const prev = zi > 0 ? (zoneSensors[zi - 1] || []) : [];
+  const names = [...COMMANDS, ...site.sensors];
+  zoneSensors[zi] = site.sensors;
+  let group = null, html = "";
+  for (const name of names) {
+    const [kind, code, text] = HELP[name] || ["SENSOR", name + "()", ""];
+    if (kind !== group) { html += `<b>${kind === "COMMAND" ? "COMMANDS · each takes one tick" : kind === "NUMBER" ? "NUMBER SENSORS" : "YES / NO SENSORS · True or False"}</b>`; group = kind; }
+    const fresh = zi > 0 && !COMMANDS.includes(name) && !prev.includes(name) && prev.length ? ' <span class="new">NEW</span>' : "";
+    html += `<div><code>${esc(code)}</code> ${esc(text)}${fresh}</div>`;
+  }
+  html += `<b>ALSO WORKS</b><div><code>for i in range(4):</code> <code>while</code> <code>if</code>/<code>elif</code>/<code>else</code>, <code>and</code> <code>or</code> <code>not</code>, variables, <code>% //</code>, your own <code>def</code> functions, and <code>print("note", at_goal())</code>.</div>`;
+  $("sensors").innerHTML = html;
+}
+const zoneSensors = {};
+function renderHints(zone) {
+  $("hintsTitle").textContent = `Hints for ${zone.name} (${zone.hints.length}/${zone.hint_count} open)`;
+  const more = zone.hints.length < zone.hint_count;
+  $("hints").innerHTML = (zone.hints.length ? zone.hints.map((h, i) => `<b>HINT ${i + 1}</b><pre>${esc(h)}</pre>`).join("")
+      : '<div>Try a few experiments first. Hints are free: each one says a little more.</div>')
+    + (more ? `<div><button class="btn ghost" onclick="openHint('${zone.key}')">Open hint ${zone.hints.length + 1}</button></div>` : "");
+}
+async function openHint(zoneKey) {
+  try { state = await post("/planet/hint", {id: me, zone: zoneKey}); } catch (_) { return; }
+  renderHints(state.zones.find(z => z.key === zoneKey));
+}
+function renderJournal(zone) {
+  $("journalDrawer").hidden = zone.key === "uncharted";
+  $("journalTitle").textContent = `Field journal: ${zone.name}${zone.journal ? " ✎" : ""}`;
+  $("journal").value = zone.journal || "";
+  $("journalState").textContent = zone.journal ? "saved" : "";
+}
+async function saveJournal() {
+  const zone = zoneOf(site.key);
+  try { state = await post("/planet/journal", {id: me, zone: zone.key, text: $("journal").value}); }
+  catch (_) { $("journalState").textContent = "not saved: no answer"; return; }
+  renderJournal(zoneOf(site.key));
+  $("journalState").textContent = "saved ✓ your teacher can see it";
+}
+
+// ---- Middle column: drawing the planet ------------------------------------------
+function cellSize(map) {
+  const stage = $("stage");
+  const below = 70;   // the legend and the row/col line
+  const fit = Math.min((stage.clientWidth - 40) / map[0].length, (stage.clientHeight - 60 - below) / map.length);
+  return Math.max(8, Math.min(40, Math.floor(fit)));
+}
+function clearCanvas() { const c = $("map"); c.width = 1; c.height = 1; }
+function draw(k) {
+  if (!shown) return;
+  drawn = k;
+  const map = shown.map, frames = shown.frames, f = frames[k];
+  const size = cellSize(map), rows = map.length, cols = map[0].length;
+  const canvas = $("map");
+  canvas.width = cols * size; canvas.height = rows * size;
+  const ctx = canvas.getContext("2d");
+  // What the replay has changed by this step: cracks, samples picked up.
+  const cracked = new Set(), visited = new Set();
+  for (let i = 0; i <= k; i++) {
+    if (frames[i].x) cracked.add(frames[i].x.join(","));
+    visited.add(frames[i].r + "," + frames[i].c);
+  }
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const ch = map[r][c], x = c * size, y = r * size;
+    ctx.fillStyle = (TILES[ch] || TILES["."])[1];
+    ctx.fillRect(x, y, size, size);
+    if (ch !== "#") { ctx.strokeStyle = "#0b111e"; ctx.lineWidth = 1; ctx.strokeRect(x + .5, y + .5, size - 1, size - 1); }
+    if (ch === "~") {   // a little shine
+      ctx.strokeStyle = "rgba(210,240,255,.45)"; ctx.lineWidth = Math.max(1, size / 14);
+      ctx.beginPath(); ctx.moveTo(x + size * .25, y + size * .7); ctx.lineTo(x + size * .55, y + size * .3); ctx.stroke();
+    } else if (ch === "O") {
+      ctx.strokeStyle = "#7a3b44"; ctx.lineWidth = Math.max(1, size / 10);
+      ctx.beginPath(); ctx.arc(x + size / 2, y + size / 2, size * .36, 0, 7); ctx.stroke();
+    } else if (ch === "*" && !visited.has(r + "," + c)) {
+      ctx.fillStyle = "#72e09d";
+      ctx.beginPath(); ctx.moveTo(x + size / 2, y + size * .2); ctx.lineTo(x + size * .8, y + size / 2);
+      ctx.lineTo(x + size / 2, y + size * .8); ctx.lineTo(x + size * .2, y + size / 2); ctx.fill();
+    } else if (ch === "P") {
+      ctx.strokeStyle = "#b48cff"; ctx.lineWidth = Math.max(2, size / 8);
+      ctx.beginPath(); ctx.arc(x + size / 2, y + size / 2, size * .32, 0, 7); ctx.stroke();
+    } else if (ch === "G") {
+      ctx.shadowColor = "#55dfd2"; ctx.shadowBlur = size / 2;
+      ctx.fillStyle = "#55dfd2";
+      ctx.beginPath(); ctx.arc(x + size / 2, y + size / 2, size * .22, 0, 7); ctx.fill();
+      ctx.shadowBlur = 0;
+    } else if (ch === "S") {
+      ctx.strokeStyle = "#45536b"; ctx.lineWidth = 1;
+      ctx.strokeRect(x + size * .2, y + size * .2, size * .6, size * .6);
+    }
+    if (cracked.has(r + "," + c)) {
+      ctx.fillStyle = "rgba(10,8,6,.55)"; ctx.fillRect(x, y, size, size);
+      ctx.strokeStyle = "#a0714f"; ctx.lineWidth = Math.max(1, size / 14);
+      ctx.beginPath(); ctx.moveTo(x + size * .15, y + size * .3); ctx.lineTo(x + size * .45, y + size * .5);
+      ctx.lineTo(x + size * .35, y + size * .85); ctx.moveTo(x + size * .45, y + size * .5); ctx.lineTo(x + size * .85, y + size * .4); ctx.stroke();
+    }
+  }
+  // Moving sunlight: a band of lit columns.
+  if (f.sun != null) {
+    ctx.fillStyle = "rgba(244,201,93,.2)";
+    for (let i = 0; i < (shown.sunWidth || 0); i++) ctx.fillRect(((f.sun + i) % cols) * size, 0, size, rows * size);
+  }
+  // The rover's trail, then the rover.
+  ctx.strokeStyle = "rgba(180,140,255,.45)"; ctx.lineWidth = Math.max(2, size / 8);
+  ctx.beginPath();
+  for (let i = 0; i <= k; i++) {
+    const p = frames[i], px = (p.c + .5) * size, py = (p.r + .5) * size;
+    const jump = i > 0 && (frames[i].e === "portal" || Math.abs(p.r - frames[i - 1].r) + Math.abs(p.c - frames[i - 1].c) > 1);
+    if (i === 0 || jump) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+  const x = f.c * size, y = f.r * size;
+  if (f.e === "fell") {
+    ctx.strokeStyle = "#ff6577"; ctx.lineWidth = Math.max(2, size / 5);
+    ctx.beginPath(); ctx.moveTo(x + 3, y + 3); ctx.lineTo(x + size - 3, y + size - 3);
+    ctx.moveTo(x + size - 3, y + 3); ctx.lineTo(x + 3, y + size - 3); ctx.stroke();
+  } else {
+    ctx.shadowColor = f.e === "portal" ? "#b48cff" : f.e === "gust" ? "#69a8ff" : "#ffffff";
+    ctx.shadowBlur = f.e ? size : size / 3;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(x + size * .12, y + size * .12, size * .76, size * .76);
+    ctx.shadowBlur = 0;
+    const [dr, dc] = DIRS[f.d], cx = x + size / 2, cy = y + size / 2, a = size * .32;
+    ctx.fillStyle = "#050912";
+    ctx.beginPath();
+    ctx.moveTo(cx + dc * a, cy + dr * a);
+    ctx.lineTo(cx - dc * a * .6 + dr * a, cy - dr * a * .6 - dc * a);
+    ctx.lineTo(cx - dc * a * .6 - dr * a, cy - dr * a * .6 + dc * a);
+    ctx.fill();
+  }
+  if (f.e === "gust" || f.e === "bump" || f.e === "wait") {
+    ctx.font = `${Math.round(size * .6)}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(f.e === "gust" ? "💨" : f.e === "bump" ? "💥" : "⏳", x + size / 2, y - size * .35 < 0 ? y + size * 1.3 : y - size * .35);
+  }
+  // Header: the tick and the battery gauge.
+  $("tickNow").textContent = `tick ${f.t} of ${frames[frames.length - 1].t}`;
+  $("gauge").hidden = f.b == null;
+  if (f.b != null) {
+    $("gauge").textContent = `🔋 ${f.b}`;
+    $("gauge").classList.toggle("low", f.b <= 5);
+  }
+  // Legend: only what's on this map.
+  const present = new Set(map.join(""));
+  $("legend").innerHTML = Object.entries(TILES).filter(([ch]) => present.has(ch) && ch !== "." && ch !== "S")
+    .map(([, [name, floor, mark]]) => `<span><span class="swatch" style="background:${mark || floor}"></span>${name}</span>`).join("")
+    + (cracked.size ? '<span><span class="swatch" style="background:#3a2a20"></span>cracked</span>' : "")
+    + (f.sun != null ? '<span><span class="swatch" style="background:#5c4f22"></span>sunlight</span>' : "");
+}
+
+// ---- Replay controls ------------------------------------------------------------
+function controls() {
+  const playing = !!timer, last = shown ? shown.frames.length - 1 : 0;
+  $("skipButton").hidden = !playing;
+  $("pauseButton").textContent = playing ? "⏸" : "▶︎";
+  $("pauseButton").title = playing ? "Pause" : drawn >= last ? "Replay from the start" : "Play from here";
+  for (const b of ["backButton", "pauseButton", "nextButton"]) $(b).disabled = !shown || last === 0;
+}
+function step() {
+  draw(drawn);
+  if (drawn < shown.frames.length - 1) { timer = setTimeout(() => { drawn++; step(); }, delay); }
+  else { timer = null; controls(); markTick(true); }
+}
+function stopReplay() { if (timer) clearTimeout(timer); timer = null; }
+function play(from = 0) {
+  stopReplay(); markTick(false);
+  // Short runs play slowly enough to follow; a long one still ends in ~25 s.
+  delay = Math.max(25, Math.min(160, 25000 / Math.max(1, shown.frames.length)));
+  drawn = from; step(); controls();
+}
+function togglePause() {
+  if (!shown) return;
+  if (timer) { stopReplay(); markTick(true); controls(); return; }
+  play(drawn >= shown.frames.length - 1 ? 0 : drawn + 1);
+}
+function stepBy(k) {
+  if (!shown) return;
+  stopReplay();
+  draw(Math.max(0, Math.min(shown.frames.length - 1, drawn + k)));
+  markTick(true); controls();
+}
+function skip() { stopReplay(); draw(shown.frames.length - 1); markTick(true); controls(); }
+// Paused: light up the output lines from the tick on screen.
+function markTick(on) {
+  if (!shown) return;
+  const t = shown.frames[drawn].t;
+  let first = null;
+  for (const div of $("log").children) {
+    const now = on && div.dataset.t === String(t);
+    div.classList.toggle("now", now);
+    if (now && !first) first = div;
+  }
+  if (first) first.scrollIntoView({block: "nearest"});
+}
+$("map").addEventListener("mousemove", e => {
+  if (!shown) return;
+  const rect = $("map").getBoundingClientRect(), size = rect.width / shown.map[0].length;
+  const c = Math.floor((e.clientX - rect.left) / size), r = Math.floor((e.clientY - rect.top) / size);
+  const ch = shown.map[r] && shown.map[r][c];
+  if (ch) $("where").textContent = `row ${r}, col ${c} · ${(TILES[ch] || TILES["."])[0]}`;
+});
+
+// ---- Running ---------------------------------------------------------------------
+function logLine(text, cls = "", t = null) {
+  return `<div class="${cls}"${t != null ? ` data-t="${t}"` : ""}>${esc(text)}</div>`;
+}
+const ENDINGS = {
+  goal: ["good", t => `🎉 Reached the beacon in ${t} ticks.`],
+  fell: ["bad", t => `💥 The rover was lost after ${t} ticks.`],
+  battery: ["bad", t => `🔋 The battery ran flat after ${t} ticks.`],
+  ticks: ["bad", t => `⏱ Out of time after ${t} ticks.`],
+  stopped: ["bad", t => `🏁 Your program finished after ${t} ticks, but not at the beacon.`],
+  error: ["bad", () => "⚠️ Your code stopped with an error."],
+};
+// The run's events and print() output, in tick order.
+function runLines(run) {
+  const events = run.log.map(line => {
+    const m = /^tick (\d+): (.*)$/.exec(line);
+    return {t: m ? Number(m[1]) : 0, text: line, cls: /🎉/.test(line) ? "good" : /💥|🔋|⏱/.test(line) ? "bad" : ""};
+  });
+  const prints = run.prints.map(p => ({t: p.t, text: `tick ${p.t} │ ${p.text}`, cls: "print"}));
+  const merged = [...events, ...prints].map((x, i) => ({...x, i})).sort((a, b) => a.t - b.t || (a.cls === "print") - (b.cls === "print") || a.i - b.i);
+  const lines = merged.map(x => logLine(x.text, x.cls, x.t));
+  if (run.error) lines.push(logLine(`💥 ${run.error}`, "bad"));
+  if (!run.prints.length && run.end !== "goal" && !run.error) lines.push(logLine("Tip: add print() between commands, like print(\"turned\", at_goal()), to see what the rover sees."));
+  return lines;
+}
+function showRun(run, title) {
+  shown = {map: run.map || site.map, frames: run.frames, log: run.log, prints: run.prints, sunWidth: run.sun_width};
+  $("stageTitle").innerHTML = title;
+  const [cls, say] = ENDINGS[run.end];
+  $("log").innerHTML = logLine(`— ${say(run.ticks)} —`, "head") + runLines(run).join("");
+  $("log").scrollTop = 0;
+  play(0);
+}
+async function runCode() {
+  if (running || !me || !site) return;
+  running = true;
+  saveCode();
+  $("runButton").disabled = true;
+  $("consoleState").textContent = site.key === "7" ? "landing on 5 planets…" : "driving…";
+  try {
+    const data = await post("/planet/run", {id: me, site: site.key, code: $("code").value});
+    if (data.error === "join") { localStorage.removeItem("mazeId"); location.reload(); return; }
+    if (data.error) { $("log").innerHTML = logLine(data.error, "bad"); return; }
+    runs = data.runs; state = data.state;
+    const run = runs[0];
+    errorLine = run.line || 0;
+    errorCount = Math.max(1, $("code").value.split("\n").length);
+    updateEditor();
+    renderZones(); renderBest();
+    if (site.key === "7") {
+      const reached = runs.filter(r => r.reached).length;
+      $("scoreLabel").textContent = "THIS RUN";
+      $("scoreText").textContent = `${reached} of 5 planets reached`;
+      $("scoreText").className = reached ? "good" : "bad";
+      // Open the first planet that went wrong: the one with most to learn.
+      const worst = runs.findIndex(r => !r.reached);
+      selectPlanet(worst >= 0 ? worst : 0);
+      $("consoleState").textContent = `${reached}/5 planets`;
+      $("announce").textContent = `Run finished. ${reached} of 5 planets reached.`;
+    } else {
+      const [cls, say] = ENDINGS[run.end];
+      $("scoreLabel").textContent = "THIS RUN";
+      $("scoreText").textContent = say(run.ticks);
+      $("scoreText").className = cls;
+      $("planets").hidden = true;
+      showRun(run, `<b>${esc(site.name)}</b>`);
+      $("nextSiteButton").hidden = !(run.reached && nextSite());
+      $("consoleState").textContent = run.reached ? "beacon reached" : run.end;
+      $("announce").textContent = say(run.ticks);
+    }
+  } catch (_) {
+    $("consoleState").textContent = "no response";
+    $("log").innerHTML = logLine("⚠️ The game server did not respond. Ask your teacher to check it is still running.", "bad");
+  } finally {
+    running = false;
+    $("runButton").disabled = false;
+  }
+}
+function selectPlanet(i) {
+  planetIndex = i;
+  $("planets").hidden = false;
+  $("planets").innerHTML = runs.map((r, j) => `<button class="btn ghost${j === i ? " on" : ""}" onclick="selectPlanet(${j})" title="Planet ${j + 1}: ${r.reached ? "reached" : r.end}">${j + 1} ${r.reached ? "✓" : "✗"}</button>`).join("");
+  showRun(runs[i], `<b>Planet ${i + 1}</b>`);
+}
+
+// ---- Editor ----------------------------------------------------------------------
+function updateEditor() {
+  const code = $("code").value;
+  const count = Math.max(1, code.split("\n").length);
+  if (count !== errorCount) errorLine = 0;
+  $("lines").innerHTML = Array.from({length: count}, (_, i) =>
+    i + 1 === errorLine ? `<span class="err" title="The error is on this line">▸${i + 1}</span>` : i + 1).join("\n");
+  const lines = code.split("\n").filter(line => line.trim() && !line.trim().startsWith("#")).length;
+  $("codeCount").textContent = `${lines} line${lines === 1 ? "" : "s"} of code`;
+  updatePosition();
+  saveCode();
+}
+function updatePosition() {
+  const t = $("code"), before = t.value.slice(0, t.selectionStart).split("\n");
+  $("position").textContent = `Ln ${before.length}, Col ${before[before.length - 1].length + 1}`;
+}
+function editorKey(event) {
+  const t = event.target, start = t.selectionStart, end = t.selectionEnd;
+  if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+    event.preventDefault(); runCode(); return;
+  }
+  if (event.key === "Tab") {
+    event.preventDefault(); t.value = t.value.slice(0, start) + "    " + t.value.slice(end); t.selectionStart = t.selectionEnd = start + 4;
+  } else if (event.key === "Enter") {
+    event.preventDefault();
+    const lineStart = t.value.lastIndexOf("\n", start - 1) + 1;
+    const line = t.value.slice(lineStart, start);
+    let indent = (line.match(/^\s*/) || [""])[0];
+    if (line.trimEnd().endsWith(":")) indent += "    ";
+    const addition = "\n" + indent;
+    t.value = t.value.slice(0, start) + addition + t.value.slice(end); t.selectionStart = t.selectionEnd = start + addition.length;
+  } else if (event.key === "Backspace" && start === end) {
+    // In the spaces at the start of a line, go back a whole level (4 spaces)
+    // so the indentation always lines up.
+    const before = t.value.slice(t.value.lastIndexOf("\n", start - 1) + 1, start);
+    if (!before || /[^ ]/.test(before)) return;
+    event.preventDefault();
+    const back = (before.length - 1) % 4 + 1;
+    t.value = t.value.slice(0, start - back) + t.value.slice(end); t.selectionStart = t.selectionEnd = start - back;
+  } else return;
+  updateEditor();
+}
+
+$("joinButton").addEventListener("click", join);
+$("name").addEventListener("keydown", e => { if (e.key === "Enter") join(); });
+$("switchButton").addEventListener("click", () => { localStorage.removeItem("mazeId"); location.reload(); });
+$("helpButton").addEventListener("click", openIntro);
+$("introClose").addEventListener("click", closeIntro);
+$("intro").addEventListener("keydown", e => { if (e.key === "Escape") closeIntro(); });
+$("runButton").addEventListener("click", runCode);
+$("clearButton").addEventListener("click", () => { $("code").value = ""; updateEditor(); $("code").focus(); });
+$("nextSiteButton").addEventListener("click", () => { const k = nextSite(); if (k) openSite(k); });
+$("journalSave").addEventListener("click", saveJournal);
+$("pauseButton").addEventListener("click", togglePause);
+$("backButton").addEventListener("click", () => stepBy(-1));
+$("nextButton").addEventListener("click", () => stepBy(1));
+$("skipButton").addEventListener("click", skip);
+$("code").addEventListener("input", updateEditor);
+$("code").addEventListener("click", updatePosition);
+$("code").addEventListener("keyup", updatePosition);
+$("code").addEventListener("scroll", () => { $("lines").scrollTop = $("code").scrollTop; });
+$("code").addEventListener("keydown", editorKey);
+document.addEventListener("keydown", e => { if (e.key === "F5" && me) { e.preventDefault(); runCode(); } });
+window.addEventListener("resize", () => { if (shown && !timer) draw(drawn); });
+resume();
+</script>
+</body>
+</html>

@@ -1,12 +1,18 @@
+import json
+import os
+import tempfile
+import threading
 import unittest
 from collections import deque
+from urllib.request import Request, urlopen
 
 import planet
+import server
 
 
 def sites():
     for zi, zone in enumerate(planet.ZONES):
-        for s in zone["sites"]:
+        for s in zone["sites"] if zone["key"] != "uncharted" else ():
             yield zi, zone, s
 
 
@@ -238,6 +244,133 @@ class RoverTests(unittest.TestCase):
     def test_prints_keep_the_tick(self):
         out = run("3a", "move()\nprint('here', tick())\n")
         self.assertEqual(out["prints"], [{"t": 1, "text": "here 1"}])
+
+
+class ClassroomTests(unittest.TestCase):
+    """The whole flow over HTTP, on a real server with its own save file."""
+
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.saved = dict(server.players), server.STATE_FILE
+        server.players.clear()
+        server.STATE_FILE = os.path.join(self.folder.name, "scores.json")
+        self.httpd = server.ClassroomServer(("127.0.0.1", 0), server.Handler)
+        threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
+        self.base = f"http://127.0.0.1:{self.httpd.server_address[1]}"
+
+    def tearDown(self):
+        self.httpd.shutdown()
+        self.httpd.server_close()
+        server.players.clear()
+        server.players.update(self.saved[0])
+        server.STATE_FILE = self.saved[1]
+        self.folder.cleanup()
+
+    def get(self, path):
+        with urlopen(self.base + path) as response:
+            return json.loads(response.read())
+
+    def post(self, path, data):
+        request = Request(self.base + path, json.dumps(data).encode(),
+                          {"Content-Type": "application/json"})
+        with urlopen(request) as response:
+            return json.loads(response.read())
+
+    def join(self, name="Ada"):
+        return self.post("/join", {"name": name})["id"]
+
+    def test_pages_are_served(self):
+        for path in ("/planet", "/planet/teacher"):
+            with urlopen(self.base + path) as response:
+                self.assertIn(b"Strange Planet", response.read())
+
+    def test_sites_open_one_at_a_time(self):
+        pid = self.join()
+        state = self.get(f"/planet/state?id={pid}")
+        self.assertEqual(state["current"], "1a")
+        self.assertIn("error", self.get(f"/planet/site?id={pid}&site=1b"))
+        self.assertIn("error", self.post("/planet/run", {"id": pid, "site": "1b",
+                                                         "code": "move()"}))
+        out = self.post("/planet/run", {"id": pid, "site": "1a",
+                                        "code": site("1a")[2]["reference"]})
+        self.assertTrue(out["runs"][0]["reached"])
+        self.assertEqual(out["state"]["current"], "1b")
+        view = self.get(f"/planet/site?id={pid}&site=1b")
+        self.assertEqual(view["name"], "Ridge Steps")
+
+    def test_a_site_never_shows_its_hidden_rule(self):
+        pid = self.join()
+        server.planet_entry(server.players[pid])["unlocked"] = len(planet.SITE_ORDER)
+        for key in ("3c", "5c", "6c"):
+            view = self.get(f"/planet/site?id={pid}&site={key}")
+            text = json.dumps(view)
+            for secret in ("wind", "sun", "pairs", "oneway", "start", "every"):
+                self.assertNotIn(f'"{secret}"', text, (key, secret))
+
+    def test_each_student_keeps_their_own_variant(self):
+        ids = [self.join(f"Student{i}") for i in range(12)]
+        s = site("2c")[2]
+        picks = {planet.variant_index(pid, s) for pid in ids}
+        self.assertGreater(len(picks), 1)
+        for pid in ids[:3]:
+            server.planet_entry(server.players[pid])["unlocked"] = 5
+            first = self.get(f"/planet/site?id={pid}&site=2c")["map"]
+            self.assertEqual(first, self.get(f"/planet/site?id={pid}&site=2c")["map"])
+
+    def test_a_run_saves_the_code_and_a_better_best(self):
+        pid = self.join()
+        slow = "move(3)\nturn_left()\nturn_right()\nturn_right()\nmove(2)\n" \
+               "turn_left()\nmove(5)\n"
+        self.post("/planet/run", {"id": pid, "site": "1a", "code": slow})
+        self.post("/planet/run", {"id": pid, "site": "1a",
+                                  "code": site("1a")[2]["reference"]})
+        self.post("/planet/run", {"id": pid, "site": "1a", "code": slow})
+        view = self.get(f"/planet/site?id={pid}&site=1a")
+        self.assertEqual(view["solved"], 12)
+        self.assertEqual(view["code"], slow)
+
+    def test_uncharted_runs_five_planets_and_keeps_the_best(self):
+        pid = self.join()
+        server.planet_entry(server.players[pid])["unlocked"] = len(planet.SITE_ORDER)
+        out = self.post("/planet/run", {"id": pid, "site": "7",
+                                        "code": planet.UNCHARTED_REFERENCE})
+        self.assertEqual(len(out["runs"]), planet.PLANETS_PER_RUN)
+        self.assertTrue(all(r["reached"] for r in out["runs"]))
+        self.assertTrue(all("map" in r for r in out["runs"]))
+        self.post("/planet/run", {"id": pid, "site": "7", "code": "move()"})
+        self.assertEqual(self.get(f"/planet/state?id={pid}")["uncharted"]["reached"], 5)
+
+    def test_hints_journal_and_the_teacher_overview(self):
+        pid = self.join()
+        for _ in range(5):
+            state = self.post("/planet/hint", {"id": pid, "zone": "ice"})
+        ice = next(z for z in state["zones"] if z["key"] == "ice")
+        self.assertEqual(len(ice["hints"]), 3)
+        self.post("/planet/journal", {"id": pid, "zone": "ice",
+                                      "text": "one move slides " + "x" * 300})
+        for _ in range(3):
+            self.post("/planet/run", {"id": pid, "site": "1a", "code": "move()"})
+        row = self.get("/planet/overview")["students"][0]
+        self.assertEqual((row["name"], row["site"], row["runs_here"], row["hints"]),
+                         ("Ada", "1a", 3, 3))
+        self.assertEqual(len(row["journal"]["Ice Field"]), server.JOURNAL_MAX)
+
+    def test_teacher_can_unlock_the_next_site(self):
+        pid = self.join()
+        bad = self.post("/admin", {"key": "nope", "action": "planet_unlock", "pid": pid})
+        self.assertIn("error", bad)
+        ok = self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_unlock",
+                                  "pid": pid})
+        self.assertIn("1B", ok["ok"])
+        self.assertEqual(self.get(f"/planet/state?id={pid}")["current"], "1b")
+
+    def test_progress_survives_a_restart(self):
+        pid = self.join()
+        self.post("/planet/run", {"id": pid, "site": "1a",
+                                  "code": site("1a")[2]["reference"]})
+        server.players.clear()
+        server.load_state()
+        self.assertEqual(self.get(f"/planet/state?id={pid}")["current"], "1b")
 
 
 if __name__ == "__main__":

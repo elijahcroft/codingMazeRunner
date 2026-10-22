@@ -178,6 +178,7 @@ class World:
         self.t = 0
         self.battery = variant.get("battery", BATTERY_MAX)
         self.cracked = set()
+        self.crack = None    # the square that just cracked, for the next frame
         self.samples = {(r, c) for r, row in enumerate(self.grid)
                         for c, ch in enumerate(row) if ch == "*"}
         self.links = {}
@@ -253,6 +254,9 @@ class World:
             f["b"] = self.battery
         if self.v.get("sun"):
             f["sun"] = self.sun_at(self.t)
+        if self.crack:
+            f["x"] = self.crack
+            self.crack = None
         if event:
             f["e"] = event
         return f
@@ -276,6 +280,7 @@ class World:
         """The rover is about to leave its square: on crumbling ground it cracks."""
         if "crumble" in self.rules and self.at(self.r, self.c) in ".S*+":
             self.cracked.add((self.r, self.c))
+            self.crack = [self.r, self.c]
 
     def enter(self, r, c, how="move"):
         """Put the rover on (r, c) and deal with whatever is there."""
@@ -393,7 +398,8 @@ def drive(code, variant, rules, zone):
     return {"reached": world.end == "goal", "end": "error" if error else world.end,
             "ticks": world.t, "error": error, "line": line,
             "frames": world.frames, "log": world.log, "prints": world.prints,
-            "cracked": sorted(world.cracked)}
+            "cracked": sorted(world.cracked),
+            "sun_width": (variant.get("sun") or {}).get("width", 0)}
 
 
 # ---- building planets --------------------------------------------------------
@@ -895,3 +901,44 @@ def uncharted_planets(seed):
 
 
 ZONE_NAMES = [z["name"] for z in ZONES] + ["Uncharted"]
+
+
+# ---- for the classroom side ------------------------------------------------------
+
+UNCHARTED = {"key": "7", "name": "Uncharted",
+             "brief": f"Every run lands on {PLANETS_PER_RUN} new random planets: "
+                      f"ice, craters, wind and sunlight, all at once. Only a "
+                      f"program that reads its sensors gets through."}
+ZONES.append({"key": "uncharted", "name": "Uncharted", "rules": UNCHARTED_RULES,
+              "blurb": "Random planets. Everything you've learnt, at once.",
+              "hints": [
+                  "Start from a wall follower: keep your right hand on the "
+                  "rock and you'll find the beacon in any maze.",
+                  "Treat craters like rock: write  def blocked():  that "
+                  "returns  wall_ahead() or crater_ahead().  gust_in() says "
+                  "how many ticks until the next gust.",
+                  "Before each move:  if gust_in() == 1: wait().  When the "
+                  "battery is low and you're in the sun, charge up first.",
+              ],
+              "sites": [UNCHARTED]})
+SITE_ORDER = [s["key"] for z in ZONES for s in z["sites"]]
+
+
+def find_site(key):
+    """(zone index, zone, site) for a site key, or None."""
+    for zi, zone in enumerate(ZONES):
+        for s in zone["sites"]:
+            if s["key"] == key:
+                return zi, zone, s
+    return None
+
+
+def variant_index(student, s):
+    """Which variant a student gets: their own, the same every time."""
+    if not s.get("per_student"):
+        return 0
+    return zlib.crc32(f"{student}:{s['key']}".encode()) % len(s["variants"])
+
+
+def sensors_for(zi):
+    return [name for name, z in SENSOR_ZONE.items() if z <= zi]

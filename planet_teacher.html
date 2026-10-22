@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strange Planet — Class</title>
+<style>
+  /* The teacher's overview: who's where, who's stuck, and what they think
+     each zone's hidden rule is. Same palette as the student page. */
+  :root {
+    color-scheme: dark;
+    --void: #080c16;
+    --chrome: #0d1322;
+    --line: #2a3852;
+    --text: #e8eef8;
+    --muted: #8fa0ba;
+    --cyan: #55dfd2;
+    --amber: #f4c95d;
+    --red: #ff6577;
+    --green: #72e09d;
+    --violet: #b48cff;
+    --editor: ui-monospace, "SFMono-Regular", "Cascadia Code", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--void); color: var(--text); font-family: Inter, "Segoe UI", Arial, sans-serif; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 18px 24px; border-bottom: 1px solid var(--line); background: var(--chrome); }
+  h1 { margin: 0; font-size: 26px; letter-spacing: -.03em; }
+  h1 small { color: var(--violet); font: 13px var(--editor); margin-left: 10px; }
+  .controls { display: flex; align-items: center; gap: 8px; font: 12px var(--editor); color: var(--muted); }
+  input { font: 13px var(--editor); padding: 7px 9px; border: 1px solid var(--line); background: #090e19; color: var(--text); width: 120px; }
+  button { font: 700 12px Inter, "Segoe UI", Arial, sans-serif; border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 6px 10px; cursor: pointer; }
+  button:hover { color: var(--text); background: #172237; }
+  #msg { color: var(--green); }
+  main { padding: 18px 24px 40px; }
+  .summary { display: flex; gap: 28px; flex-wrap: wrap; margin-bottom: 18px; font: 13px var(--editor); color: var(--muted); }
+  .summary b { display: block; color: var(--text); font: 800 28px Inter, "Segoe UI", Arial, sans-serif; }
+  .zones { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
+  .zone-count { border: 1px solid var(--line); padding: 6px 10px; font: 12px var(--editor); color: var(--muted); }
+  .zone-count b { color: var(--text); margin-left: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font: 11px var(--editor); color: var(--muted); letter-spacing: .06em; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  td { padding: 10px; border-bottom: 1px solid #1b2840; vertical-align: top; }
+  td.num { font-family: var(--editor); white-space: nowrap; }
+  .name { font-weight: 700; }
+  .site small { display: block; color: var(--muted); font-size: 12px; }
+  .stuck { color: var(--amber); font-weight: 700; }
+  .very-stuck { color: var(--red); font-weight: 700; }
+  .notes { display: grid; gap: 4px; max-width: 520px; }
+  .note { font-size: 13px; line-height: 1.4; color: #c9d4e6; }
+  .note b { color: var(--violet); font: 11px var(--editor); margin-right: 6px; }
+  .empty { color: var(--muted); padding: 30px 0; }
+  .bar { height: 6px; background: #1b2840; width: 120px; margin-top: 5px; }
+  .bar span { display: block; height: 100%; background: var(--green); }
+  @media (max-width: 760px) {
+    header, main { padding-left: 16px; padding-right: 16px; }
+    table, tbody, tr, td { display: block; }
+    thead { display: none; }
+    tr { border-bottom: 1px solid var(--line); padding: 8px 0; }
+    td { border: 0; padding: 4px 0; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>🪐 Strange Planet <small>class overview · live</small></h1>
+  <div class="controls">
+    <label for="key">admin key</label><input id="key" type="password" placeholder="for unlocking">
+    <span id="msg"></span>
+  </div>
+</header>
+<main>
+  <div class="summary" id="summary"></div>
+  <div class="zones" id="zones"></div>
+  <table>
+    <thead><tr><th>STUDENT</th><th>WORKING ON</th><th>RUNS HERE</th><th>HINTS</th><th>LAST RUN</th><th>FIELD JOURNAL · THEIR GUESS AT EACH RULE</th><th></th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div class="empty" id="empty" hidden>Nobody has opened Strange Planet yet. Students go to <b>/planet</b> on the same address as Python Quest.</div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+function esc(value) {
+  return String(value).replace(/[&<>\"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
+}
+function store(key, value) { try { localStorage.setItem(key, value); } catch (_) {} }
+function recall(key) { try { return localStorage.getItem(key); } catch (_) { return null; } }
+function ago(seconds) {
+  if (!seconds) return "—";
+  const s = Math.max(0, Date.now() / 1000 - seconds);
+  return s < 60 ? "just now" : s < 3600 ? `${Math.floor(s / 60)} min ago` : `${Math.floor(s / 3600)} h ago`;
+}
+// Many runs on one site with no progress: worth a visit. The list already
+// puts the students with least done and most runs first.
+function stuckClass(n) { return n >= 15 ? "very-stuck" : n >= 8 ? "stuck" : ""; }
+async function refresh() {
+  let data;
+  try { data = await (await fetch("/planet/overview")).json(); } catch (_) { return; }
+  const students = data.students;
+  $("empty").hidden = students.length > 0;
+  const stuck = students.filter(s => s.runs_here >= 8 && s.solved < data.sites).length;
+  const notes = students.reduce((n, s) => n + Object.keys(s.journal).length, 0);
+  $("summary").innerHTML = `<div><b>${students.length}</b>explorers</div><div><b>${stuck}</b>stuck (8+ runs on one site)</div><div><b>${notes}</b>journal notes</div>`;
+  const byZone = {};
+  for (const s of students) byZone[s.zone] = (byZone[s.zone] || 0) + 1;
+  $("zones").innerHTML = data.zones.map(z => `<span class="zone-count">${esc(z)}<b>${byZone[z] || 0}</b></span>`).join("");
+  $("rows").innerHTML = students.map(s => `<tr>
+    <td class="name">${esc(s.name)}<div class="bar" title="${s.solved} of ${data.sites} sites"><span style="width:${100 * s.solved / data.sites}%"></span></div></td>
+    <td class="site">${s.site === "7" ? "Uncharted" : `${esc(s.site.toUpperCase())} · ${esc(s.site_name)}`}<small>${s.site === "7" ? (s.uncharted ? `best ${s.uncharted.reached}/5 planets` : "no run yet") : esc(s.zone)}</small></td>
+    <td class="num ${stuckClass(s.runs_here)}">${s.runs_here}</td>
+    <td class="num">${s.hints}</td>
+    <td class="num">${ago(s.active)}</td>
+    <td><div class="notes">${Object.entries(s.journal).map(([zone, text]) => `<div class="note"><b>${esc(zone)}</b>${esc(text)}</div>`).join("") || '<span class="note" style="color:var(--muted)">—</span>'}</div></td>
+    <td>${s.site !== "7" ? `<button onclick="unlock('${esc(s.id)}')" title="Open the next site for this student">Unlock next</button>` : ""}</td>
+  </tr>`).join("");
+}
+async function unlock(pid) {
+  const key = $("key").value.trim();
+  if (!key) { $("msg").textContent = "Type the admin key first."; $("key").focus(); return; }
+  store("planetKey", key);
+  try {
+    const data = await (await fetch("/admin", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({key, action: "planet_unlock", pid})})).json();
+    $("msg").textContent = data.ok || data.error;
+  } catch (_) { $("msg").textContent = "No answer from the server."; }
+  refresh();
+}
+$("key").value = recall("planetKey") || "";
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>

@@ -38,7 +38,7 @@ rules (wind, sun) run on ticks.
 
 *Why not a per-turn function like Light Cycles' `steer()`?* For students
 who have never coded, commands in order are much easier to start with, and
-planning a route is where these puzzles get their depth. (Open question 1.)
+planning a route is where these puzzles get their depth. (Decided: commands in order.)
 
 ## The zones
 
@@ -135,19 +135,41 @@ A `/screen`-style page listing each student's zone and site, the number of
 runs since their last progress (so stuck students stand out), and hints
 opened. Optional: a one-line **field journal** box where each student types
 their guess at the hidden rule, shown on the overview so the teacher can see
-the thinking, not only the score. (Open question 4.)
+the thinking, not only the score. (Decided: yes.)
 
 ## Build shape (detail comes in the build plan)
 A new `planet.py` engine and `/planet` page that reuse the existing safe
 interpreter style, plus tests that prove every site's claim before any UI
 work starts.
 
-## Open questions for ej
-1. **Commands in order** (recommended) **or a per-turn function** like Light Cycles?
-2. **Different rules for each student on C sites** (recommended): this blocks
-   copying and makes experimenting necessary. Any concerns?
-3. **Lists and dicts:** neither interpreter supports them. Recommendation:
-   leave them out of v1 and use functions for the portal routes. Adding them
-   is possible later but means new safety limits.
-4. **Field journal box:** yes or no?
-5. **Zones:** any rule you'd swap out, or a zone you'd cut to fit the time?
+## Decisions (ej: "go with your recommendations")
+1. **Commands in order**, like Python Quest. Every command is one tick.
+2. **Per-student details on every C site** (variant picked from the student's id,
+   the same every time).
+3. **No lists or dicts.** Portal routes are functions.
+4. **Field journal: yes.** One note per zone, shown on `/planet/teacher`.
+5. **All seven zones kept.**
+
+## What changed while building (each one forced by a test)
+- **2C** is a per-student ice puzzle (4 lakes, 7–8 slides each) instead of
+  mixed ice and ground: a general sensor program for mixed ice turned out
+  to be either trivial or impossible.
+- **3C** gust intervals are 4, 6, 7 and 9: no interval divides another (an
+  "every 4" program accidentally survived "every 8"), and 5 is left out so
+  3B's answer can't be reused. The "hop from shelter to shelter" strategy was
+  dropped. Rock still shelters, but the sites are built around timing.
+- **Wind only catches a rover that is driving**, so `wait()` is the counter.
+- **4A**: a right-hand wall follower solves it by looping through the
+  two-wide pit. That counts as a good answer, not a bug.
+- **4B** is three pits solved with one `pit()` function in a loop, rather than a
+  plan-the-order puzzle.
+- **Solar**: waiting is free, so charging always works, and sunlight
+  adds 2 per tick. In 5C one charge stop is never enough: the rover has to
+  ride the moving light. A replayed plan still fits some other planets, so
+  the test claims only that **no hard-coded plan works on every planet**.
+- **6C** pads sit in different places in each field, so one wiring's
+  moves can't happen to fit another.
+- **Uncharted** mixes ice, craters, wind and sunlight. Crumbling ground and
+  portals are left out because a wall follower must backtrack. It adds the
+  `gust_in()` sensor, and every random planet is checked solvable before it's used.
+- **No par stars and no fog** in v1. Each site keeps the student's best ticks.

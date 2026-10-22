@@ -36,6 +36,8 @@ of waiting for each other.
    - `/arena` — Bot Rally, three leagues of five tracks
    - `/cycles` — Light Cycles battle royale (project `/cycles/show`; see
      `LIGHT_CYCLES_GUIDE.md`)
+   - `/planet` — Strange Planet, a rover in zones with hidden physics rules
+     (teacher view `/planet/teacher`; see `STRANGE_PLANET_GUIDE.md`)
    - `/screen` — live overview of student maps and code
    - `/admin` — unlock a later mission for one advanced student
    - `/classic` — the old maze practice library

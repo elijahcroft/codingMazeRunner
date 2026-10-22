@@ -5,8 +5,9 @@ The main experience is a four-mission, Python-only workspace at `/`.  It uses
 an IDE-style editor, a real output console, and a progression from functions to
 general algorithms to debugging and exploration.  Bot Rally at `/arena` tests
 one program on five tracks.  Light Cycles at `/cycles` is a battle royale where
-every student's steer() function rides against the class (cycles.py).  The
-original maze ladders remain at `/classic` as optional drills.
+every student's steer() function rides against the class (cycles.py).  Strange
+Planet at `/planet` is a rover in zones that each hide a physics rule
+(planet.py).  The original maze ladders remain at `/classic` as optional drills.
 
 Students connect from their browsers to your laptop and drive a little
 character through a maze by typing Python:
@@ -94,6 +95,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
 import cycles
+import planet
 
 PORT = int(os.environ.get("MAZE_PORT", "8000"))
 
@@ -2716,6 +2718,123 @@ def cycles_state(p):
             "entry": cycles_entry_status(entry)}
 
 
+# ---------------------------------------------------------------------------
+# Strange Planet (/planet): every zone hides one physics rule. The planets live
+# in planet.py; this is the classroom side — progress, hints, field journals,
+# and the teacher's overview at /planet/class.
+# ---------------------------------------------------------------------------
+JOURNAL_MAX = 140   # characters in one field journal note
+
+
+def planet_entry(p):
+    return p.setdefault("planet", {"solved": {}, "code": {}, "runs": {},
+                                   "hints": {}, "journal": {}, "unlocked": 0,
+                                   "uncharted": None, "active": None})
+
+
+def planet_frontier(p):
+    """Index in planet.SITE_ORDER of the furthest site this student may open:
+    the first one they haven't solved, or further if the teacher unlocked it."""
+    entry = planet_entry(p)
+    first = next((i for i, key in enumerate(planet.SITE_ORDER)
+                  if key not in entry["solved"]), len(planet.SITE_ORDER) - 1)
+    return max(first, min(entry["unlocked"], len(planet.SITE_ORDER) - 1))
+
+
+def planet_open(p, key):
+    return key in planet.SITE_ORDER and \
+        planet.SITE_ORDER.index(key) <= planet_frontier(p)
+
+
+def planet_variant(p, key):
+    zi, zone, s = planet.find_site(key)
+    return s["variants"][planet.variant_index(p["id"], s)]
+
+
+def planet_state(p):
+    """The student's map of the planet: every zone and site, with what
+    they've solved, what's open, their hints and journal notes."""
+    entry = planet_entry(p)
+    frontier = planet_frontier(p)
+    zones = []
+    for zone in planet.ZONES:
+        zones.append({
+            "key": zone["key"], "name": zone["name"], "blurb": zone["blurb"],
+            "hints": zone["hints"][:entry["hints"].get(zone["key"], 0)],
+            "hint_count": len(zone["hints"]),
+            "journal": entry["journal"].get(zone["key"], ""),
+            "sites": [{"key": s["key"], "name": s["name"],
+                       "solved": entry["solved"].get(s["key"]),
+                       "open": planet.SITE_ORDER.index(s["key"]) <= frontier}
+                      for s in zone["sites"]]})
+    return {"you": {"name": p["name"]}, "zones": zones,
+            "current": planet.SITE_ORDER[frontier],
+            "uncharted": entry["uncharted"]}
+
+
+def planet_site(p, key):
+    """One site as the student sees it before running: the map, but none of
+    the hidden rules (wind, sunlight timing, portal wiring)."""
+    zi, zone, s = planet.find_site(key)
+    entry = planet_entry(p)
+    view = {"key": key, "name": s["name"], "brief": s["brief"],
+            "zone": zone["name"], "sensors": planet.sensors_for(zi),
+            "code": entry["code"].get(key, ""),
+            "solved": entry["solved"].get(key)}
+    if key != planet.UNCHARTED["key"]:
+        v = planet_variant(p, key)
+        view.update(map=v["map"], dir=v.get("dir", 1),
+                    battery="battery" in zone["rules"])
+    return view
+
+
+def planet_record(p, key, code, results):
+    """Save a run: the code, the run count, and a new best if it got there."""
+    entry = planet_entry(p)
+    entry["code"][key] = code
+    entry["runs"][key] = entry["runs"].get(key, 0) + 1
+    entry["active"] = int(time.time())
+    if key == planet.UNCHARTED["key"]:
+        score = {"reached": sum(r["reached"] for r in results),
+                 "ticks": sum(r["ticks"] for r in results if r["reached"])}
+        best = entry["uncharted"]
+        if best is None or (score["reached"], -score["ticks"]) > \
+                (best["reached"], -best["ticks"]):
+            entry["uncharted"] = score
+        if score["reached"]:
+            entry["solved"].setdefault(key, score["ticks"])
+        return
+    run = results[0]
+    if run["reached"]:
+        best = entry["solved"].get(key)
+        entry["solved"][key] = run["ticks"] if best is None else min(best, run["ticks"])
+
+
+def planet_class():
+    """The teacher's overview: where everyone is, how stuck they are, and
+    what they think each zone's hidden rule is."""
+    rows = []
+    for q in players.values():
+        entry = q.get("planet")   # read only: don't start an entry for them
+        if not entry:
+            continue
+        frontier = planet_frontier(q)
+        key = planet.SITE_ORDER[frontier]
+        zi, zone, s = planet.find_site(key)
+        rows.append({"id": q["id"], "name": q["name"], "site": key,
+                     "site_name": s["name"], "zone": zone["name"],
+                     "solved": len(entry["solved"]),
+                     "runs_here": entry["runs"].get(key, 0),
+                     "hints": sum(entry["hints"].values()),
+                     "journal": {z["name"]: entry["journal"][z["key"]]
+                                 for z in planet.ZONES if entry["journal"].get(z["key"])},
+                     "uncharted": entry["uncharted"],
+                     "active": entry["active"]})
+    rows.sort(key=lambda x: (x["solved"], -x["runs_here"], x["name"].lower()))
+    return {"students": rows, "sites": len(planet.SITE_ORDER),
+            "zones": [z["name"] for z in planet.ZONES]}
+
+
 def unlocked_frontier(p, wi=None):
     """Highest maze index this player may enter in world `wi`: the first one
     they haven't solved yet, OR further if the teacher unlocked ahead from the
@@ -2904,6 +3023,17 @@ def admin_action(data):
         for q in players.values():
             unlock(q, idx)
         return f"Unlocked everyone up to {name} maze {idx + 1}."
+    if action == "planet_unlock":
+        q = players.get(data.get("pid"))
+        if not q:
+            return "No such player."
+        frontier = planet_frontier(q)
+        if frontier + 1 >= len(planet.SITE_ORDER):
+            return f"{q['name']} already has every Strange Planet site."
+        planet_entry(q)["unlocked"] = frontier + 1
+        key = planet.SITE_ORDER[frontier + 1]
+        return (f"Unlocked Strange Planet site {key.upper()} "
+                f"({planet.find_site(key)[2]['name']}) for {q['name']}.")
     if action == "cycles_reset":
         # A new season (or a new class) starts with nobody entered, so last
         # class's bots and ej's own test bot don't ride in its battles. Each
@@ -2934,6 +3064,8 @@ PAGES = {
     "/arena": ("arena.html", "text/html; charset=utf-8"),
     "/cycles": ("cycles.html", "text/html; charset=utf-8"),
     "/cycles/show": ("cycles_show.html", "text/html; charset=utf-8"),
+    "/planet": ("planet.html", "text/html; charset=utf-8"),
+    "/planet/teacher": ("planet_teacher.html", "text/html; charset=utf-8"),
     "/leaderboard": ("leaderboard.html", "text/html; charset=utf-8"),
     "/screen": ("screen.html", "text/html; charset=utf-8"),
     "/admin": ("admin.html", "text/html; charset=utf-8"),
@@ -3011,6 +3143,26 @@ class Handler(BaseHTTPRequestHandler):
                     body = json.dumps(cycles_replay(p)).encode()
                 else:
                     body = json.dumps(cycles_state(p) if p else {"you": None}).encode()
+            self._send(200, body)
+            return
+        if path in ("/planet/state", "/planet/site", "/planet/overview"):
+            query = parse_qs(urlsplit(self.path).query)
+            pid = query.get("id", [""])[0]
+            key = query.get("site", [""])[0]
+            with lock:
+                p = players.get(pid)
+                if path == "/planet/overview":
+                    body = planet_class()
+                elif not p:
+                    body = {"you": None}
+                elif path == "/planet/state":
+                    body = planet_state(p)
+                elif not planet_open(p, key):
+                    body = {"error": "🔒 Reach the beacon on the site before "
+                                     "this one to open it."}
+                else:
+                    body = planet_site(p, key)
+                body = json.dumps(body).encode()
             self._send(200, body)
             return
         if path == "/cycles/board":
@@ -3092,6 +3244,56 @@ class Handler(BaseHTTPRequestHandler):
                 body = json.dumps(cycles_test(p, code, heats)).encode()
                 save_state()
             self._send(200, body)
+            return
+        if self.path == "/planet/run":
+            key = str(data.get("site", ""))
+            with lock:
+                p = players.get(data.get("id"))
+                if p and planet_open(p, key):
+                    zi, zone, s = planet.find_site(key)
+                    uncharted = key == planet.UNCHARTED["key"]
+                    variant = None if uncharted else planet_variant(p, key)
+            if not p:
+                self._send(200, {"error": "join"})
+                return
+            if not planet_open(p, key):
+                self._send(200, {"error": "🔒 Reach the beacon on the site "
+                                          "before this one to open it."})
+                return
+            # Drive without the lock: other students keep working.
+            code = str(data.get("code", ""))[:planet.MAX_CODE + 1]
+            if uncharted:
+                worlds = planet.uncharted_planets(random.randrange(10 ** 9))
+                runs = [dict(planet.drive(code, w, zone["rules"], zi),
+                             map=w["map"], dir=w.get("dir", 1)) for w in worlds]
+            else:
+                runs = [planet.drive(code, variant, zone["rules"], zi)]
+            with lock:
+                planet_record(p, key, code[:planet.MAX_CODE], runs)
+                save_state()
+                body = json.dumps({"runs": runs, "state": planet_state(p)}).encode()
+            self._send(200, body)
+            return
+        if self.path in ("/planet/hint", "/planet/journal"):
+            with lock:
+                p = players.get(data.get("id"))
+                zone = next((z for z in planet.ZONES
+                             if z["key"] == data.get("zone")), None)
+                if not p:
+                    self._send(200, {"error": "join"})
+                    return
+                if not zone:
+                    self._send(200, {"error": "No such zone."})
+                    return
+                entry = planet_entry(p)
+                if self.path == "/planet/hint":
+                    opened = entry["hints"].get(zone["key"], 0)
+                    entry["hints"][zone["key"]] = min(opened + 1, len(zone["hints"]))
+                else:
+                    entry["journal"][zone["key"]] = \
+                        str(data.get("text", "")).strip()[:JOURNAL_MAX]
+                save_state()
+                self._send(200, planet_state(p))
             return
         if self.path == "/cycles/battle":
             if str(data.get("key", "")) != ADMIN_KEY:
@@ -3202,6 +3404,8 @@ def main():
         f"  Bot Rally:    http://{ip}:{PORT}/arena          (one program, 5 trials)",
         f"  Light Cycles: http://{ip}:{PORT}/cycles         (battle royale bots)",
         f"  Cycles show:  http://localhost:{PORT}/cycles/show   (project the battles)",
+        f"  Strange Planet: http://{ip}:{PORT}/planet       (hidden-rule rover zones)",
+        f"  Planet class: http://localhost:{PORT}/planet/teacher (who's stuck, journals)",
         f"  Maze library: http://{ip}:{PORT}/classic        (optional practice)",
         f"  Big screen:   http://localhost:{PORT}/screen        (project this)",
         f"  Leaderboard:  http://localhost:{PORT}/leaderboard",
