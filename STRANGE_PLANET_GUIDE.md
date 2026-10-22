@@ -20,10 +20,72 @@ command or sensor under the editor types it in, and a dot marks the sensors
 that are new in the zone. The route along the top shows every site as a
 waypoint.
 
+## What keeps them coding
+
+Every reward is for writing better code. Nothing is random, and nothing can be
+lost.
+
+- **Three stars per site**: 🛰 reach the beacon, a **challenge** that changes
+  from site to site (see the table below), and ✂️ **compact code** (that many
+  lines or fewer, which means loops and functions). Stars add up across runs,
+  so one run can grab the crystal and another can be compact. Going back for
+  the missing star *is* the practice. The line counter above the editor turns
+  gold when the code is short enough.
+- **The celebration**: the stars pop in one by one, with confetti for a
+  perfect run or a class record.
+- **Badges** for coding habits: first `for` loop, first `while`, first `if`,
+  first function, using `print()`, **fixing a code error**, reaching a beacon
+  after 5 tries that didn't (**Never Give Up**), class records, all crystals,
+  zone masters. They're all listed, with how to earn them, in the garage.
+- **📡 Anomalies**: the first time a zone's hidden rule shows up, the replay
+  stops at that moment and asks *"What was it?"*, with a button to write a
+  guess in the journal. It celebrates noticing without giving the rule away.
+- **The garage** (★ at the top): stars unlock rover paint, toppers and
+  trails. The last three paints unlock **for the whole class together** when
+  the class star meter reaches 30, 90 and 180.
+- **Class records**: the fewest ticks on each site, with the holder's name, in
+  the corner of the map. Beating one is a big moment.
+- **🕹 Scouting**: drive by hand with the arrow keys (or the on-screen
+  buttons) to *feel* the strange physics. Nothing is saved, and only code opens
+  the beacon. Students who are stuck on "what is the rule?" should scout.
+- **Sound**: every event has a synthesized sound effect, quiet by default. 🔇
+  at the top mutes it (each browser remembers). Headphones are best in a
+  full room.
+
+**Project `/planet/show`**: the class star meter with its shared unlocks,
+everyone's rover in their own paint, and a live feed of first beacons,
+records and three-star runs. It's a great thing to have on the board while
+they work.
+
+| Site | Challenge star | Compact star |
+|---|---|---|
+| 1A Touchdown | 💎 grab the crystal (a side pocket) | 5 lines |
+| 1B Ridge Steps | 🧩 use a function you made with `def` | 6 lines |
+| 1C Long Corridors | 🧱 never bump into rock | 9 lines |
+| 2A First Frost | 💎 crystal at the end of the slide | 6 lines |
+| 2B Glacier | 💎 crystal in a far corner (one extra slide) | 12 lines |
+| 2C Frozen Lake | 🧱 never bump into rock | the student's shortest route + 1 |
+| 3A Canyon Floor | ⚡ beacon in 14 ticks | 5 lines |
+| 3B The Ledge | 💨 never get blown off course | 16 lines |
+| 3C Gale Ridge | 💨 never get blown off course | 17 lines |
+| 4A Thin Crust | ⚡ beacon in 18 ticks | 9 lines |
+| 4B Three Pits | ⚡ beacon in 47 ticks | 12 lines |
+| 4C Sample Field | 🧱 never bump into rock | 5 lines |
+| 5A First Light | 🔋 finish with 20 battery | 4 lines |
+| 5B Shadow Steps | ⚡ beacon in 80 ticks | 16 lines |
+| 5C Moving Shadows | 🔋 finish with 30 battery | 5 lines |
+| 6A The Pads | 💎 crystal behind a decoy pad | 7 lines |
+| 6B Relay | ⚡ beacon in 13 ticks | 8 lines |
+| 6C Portal Maze | 🧱 never bump into rock | the student's shortest route + 1 |
+| Uncharted | 1, then 3, then all 5 planets in one run | |
+
+`test_planet.py` checks that every star on every planet can be earned.
+
 ## Pre-class checklist (5 minutes)
 
 - [ ] `python3 server.py`. Note the **admin key** in the banner.
 - [ ] Students go to **`http://<ip>:8000/planet`** (the banner prints it).
+- [ ] Put **`http://localhost:8000/planet/show`** on the projector.
 - [ ] Open **`http://localhost:8000/planet/teacher`** on your laptop. It
       lists every student, the site they're on, **runs on that site**
       (amber at 8+, red at 15+: go and visit), hints opened, and their

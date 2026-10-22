@@ -10,7 +10,7 @@
   :root {
     color-scheme: dark;
     --sky: #1b1733; --dusk: #231d3f; --panel: #2c2550; --edge: #463c78;
-    --bone: #f2eadb; --haze: #a89ec8; --mint: #8cf2c6; --amber: #ffb547; --violet: #b9a3ff;
+    --bone: #f2eadb; --haze: #a89ec8; --mint: #8cf2c6; --amber: #ffb547; --gold: #ffd36b; --violet: #b9a3ff;
     --ui: system-ui, "Segoe UI", Roboto, "Noto Sans", sans-serif;
     --mono: ui-monospace, "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
   }
@@ -25,7 +25,9 @@
   .goal { position: absolute; top: -6px; bottom: -6px; width: 3px; background: var(--bone); border-radius: 2px; }
   .goal span { position: absolute; top: 46px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 15px; color: var(--haze); }
   .goal.done span { color: var(--mint); }
-  .count { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font: 700 18px var(--mono); color: #1b1733; mix-blend-mode: normal; }
+  header p { margin-top: 10px; }
+  .total { text-align: right; font: 800 clamp(44px, 6vw, 80px)/1 var(--ui); color: var(--gold); letter-spacing: -.03em; }
+  .total small { display: block; font: 500 16px var(--ui); color: var(--haze); letter-spacing: 0; margin-top: 4px; }
   main { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr); gap: 28px; }
   h2 { margin: 0 0 12px; font-size: 20px; color: var(--haze); font-weight: 650; }
   .fleet { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
@@ -44,10 +46,10 @@
 </head>
 <body>
 <header>
-  <div><h1>Class expedition</h1></div>
-  <p>Every star anyone earns fills the meter. Join at <b id="address"></b></p>
+  <div><h1>Class expedition</h1><p>Every star anyone earns fills the meter. Join at <b id="address"></b></p></div>
+  <div class="total"><span id="count">0</span> ★<small>earned together</small></div>
 </header>
-<div class="meter" id="meter"><div class="fill" id="fill"></div><span class="count" id="count"></span></div>
+<div class="meter" id="meter"><div class="fill" id="fill"></div></div>
 <main>
   <section><h2>The fleet</h2><div class="fleet" id="fleet"></div></section>
   <section><h2>Just now</h2><div class="moments" id="moments"></div></section>
@@ -62,17 +64,19 @@ function ago(at) {
   const s = Math.max(0, Date.now() / 1000 - at);
   return s < 60 ? "just now" : s < 3600 ? `${Math.floor(s / 60)} min ago` : `${Math.floor(s / 3600)} h ago`;
 }
-// A little rover from above, in the student's own paint.
+// A little rover from above, in the student's own paint, heading out.
 function rover(cv, paint) {
   const dpr = devicePixelRatio || 1, s = 54;
   cv.width = s * dpr; cv.height = s * dpr;
   const g = cv.getContext("2d"); g.scale(dpr, dpr);
-  g.translate(s / 2, s / 2); g.rotate(-Math.PI / 2);
+  g.translate(s / 2, s / 2); g.rotate(-.35);
   g.fillStyle = "#26212f";
-  for (const x of [-12, 0, 12]) for (const y of [-15, 11]) g.fillRect(x - 4, y, 8, 5);
-  g.fillStyle = PAINT[paint] || PAINT.bone; g.fillRect(-15, -10, 29, 20);
-  g.fillStyle = "#3f5f96"; g.fillRect(-13, -8, 13, 16);
-  g.fillStyle = "#8cf2c6"; g.beginPath(); g.arc(9, 0, 3, 0, 7); g.fill();
+  for (const x of [-14, 0, 14]) for (const y of [-19, 13]) { g.beginPath(); g.roundRect(x - 5, y, 10, 6, 2); g.fill(); }
+  g.fillStyle = PAINT[paint] || PAINT.bone; g.strokeStyle = "#6e6290"; g.lineWidth = 1.5;
+  g.beginPath(); g.roundRect(-18, -13, 34, 26, 5); g.fill(); g.stroke();
+  g.fillStyle = "#3f5f96"; g.beginPath(); g.roundRect(-16, -10, 17, 20, 2); g.fill();
+  g.fillStyle = "#e6dccb"; g.beginPath(); g.arc(9, 0, 6, 0, 7); g.fill(); g.stroke();
+  g.fillStyle = "#8cf2c6"; g.beginPath(); g.arc(13, 0, 2, 0, 7); g.fill();
 }
 let seen = new Set();
 async function refresh() {
@@ -81,13 +85,13 @@ async function refresh() {
   $("address").textContent = data.address.replace(/^http:\/\//, "");
   const total = data.class.stars, top = Math.max(data.class.goals[data.class.goals.length - 1] * 1.15, total * 1.05, 1);
   $("fill").style.width = Math.min(100, total / top * 100) + "%";
-  $("count").textContent = `${total} ★`;
+  $("count").textContent = total;
   $("meter").querySelectorAll(".goal").forEach(g => g.remove());
   for (const goal of data.class.goals) {
     const el = document.createElement("div");
     el.className = "goal" + (total >= goal ? " done" : "");
     el.style.left = goal / top * 100 + "%";
-    el.innerHTML = `<span>${total >= goal ? "✓ " : ""}${goal} ★ · ${UNLOCKS[goal] || "unlock"}</span>`;
+    el.innerHTML = `<span>${total >= goal ? "✓ " : ""}${goal} ★ unlocks ${UNLOCKS[goal] || "a surprise"}</span>`;
     $("meter").appendChild(el);
   }
   const ships = [...data.students].sort((a, b) => b.stars - a.stars || a.name.localeCompare(b.name));

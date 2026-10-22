@@ -19,19 +19,20 @@
     --dim: #6f6596;
     --mint: #8cf2c6;
     --amber: #ffb547;
+    --gold: #ffd36b;
     --coral: #ff6f61;
     --violet: #b9a3ff;
     --ui: system-ui, "Segoe UI", Roboto, "Noto Sans", sans-serif;
     --mono: ui-monospace, "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
   }
   * { box-sizing: border-box; }
+  * { scrollbar-width: thin; scrollbar-color: var(--edge) transparent; }
   [hidden] { display: none !important; }
   html, body { height: 100%; }
   body { margin: 0; background: var(--sky); color: var(--bone); font: 15px/1.45 var(--ui); }
   button, textarea, input { font: inherit; color: inherit; }
   button { cursor: pointer; }
   :focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
-  * { scrollbar-width: thin; scrollbar-color: var(--edge) transparent; }
 
   /* ---- Join: a dusk horizon and a rover ------------------------------------- */
   .join { position: fixed; inset: 0; overflow: hidden; }
@@ -52,12 +53,16 @@
 
   /* ---- The app ----------------------------------------------------------------- */
   .app { height: 100%; display: grid; grid-template-rows: 58px minmax(0, 1fr); }
-  .bar { display: flex; align-items: center; gap: 18px; padding: 0 16px; background: var(--dusk); border-bottom: 1px solid var(--edge); min-width: 0; }
+  .bar { display: flex; align-items: center; gap: 16px; padding: 0 16px; background: var(--dusk); border-bottom: 1px solid var(--edge); min-width: 0; }
   .brand { display: flex; align-items: center; gap: 9px; font-weight: 850; letter-spacing: -.02em; white-space: nowrap; font-size: 17px; }
   .brand svg { width: 30px; height: 30px; }
   .who { margin-left: auto; display: flex; align-items: center; gap: 8px; white-space: nowrap; color: var(--haze); }
   .who b { color: var(--bone); font-weight: 650; }
   .round { width: 32px; height: 32px; border-radius: 50%; padding: 0; display: grid; place-items: center; }
+  .stars-button { display: flex; align-items: center; gap: 6px; border: 0; border-radius: 99px; padding: 6px 12px 6px 10px; background: var(--panel); color: var(--gold); font: 700 15px var(--mono); }
+  .stars-button:hover { background: var(--panel-2); }
+  .stars-button.bump { animation: bump .5s; }
+  @keyframes bump { 40% { transform: scale(1.25); background: #5a4a20; } }
 
   /* The route: every zone a stretch of trail, every site a waypoint on it. */
   .route { display: flex; align-items: center; gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: none; padding: 6px 2px; }
@@ -72,7 +77,10 @@
   .wp + .wp.reach::before { background: var(--haze); }
   .wp span { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--haze); background: var(--dusk); transition: transform .15s; }
   .wp.done span { background: var(--mint); border-color: var(--mint); }
-  .wp.now span { width: 14px; height: 14px; border-color: var(--amber); background: var(--amber); box-shadow: 0 0 0 4px rgba(255,181,71,.22); }
+  .wp.gold span { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 8px rgba(255,211,107,.6); }
+  .wp.now span { width: 14px; height: 14px; border-color: var(--amber); background: var(--dusk); box-shadow: 0 0 0 4px rgba(255,181,71,.22); }
+  .wp.now.done span { background: var(--mint); }
+  .wp.now.gold span { background: var(--gold); }
   .wp.locked { cursor: default; }
   .wp.locked span { border-color: var(--dim); background: transparent; width: 7px; height: 7px; }
   .wp:not(.locked):hover span { transform: scale(1.25); }
@@ -81,10 +89,18 @@
 
   /* ---- The planet view ---------------------------------------------------------- */
   .view { min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: var(--sky); }
-  .site-head { display: flex; align-items: baseline; gap: 14px; padding: 12px 20px 10px; flex-wrap: wrap; }
+  .site-head { padding: 10px 20px 10px; }
+  .title-row { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
   .site-head h1 { margin: 0; font-size: 28px; line-height: 1.1; font-weight: 850; letter-spacing: -.03em; }
   .site-head p { margin: 0; color: var(--haze); font-size: 16px; }
+  .goals { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .goal { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 6px; border-radius: 99px; background: var(--dusk); color: var(--haze); font-size: 13px; }
+  .goal i { font-style: normal; color: var(--dim); font-size: 15px; line-height: 1; }
+  .goal.got { color: var(--bone); background: #3a3218; }
+  .goal.got i { color: var(--gold); }
   .scope { position: relative; min-height: 0; margin: 0 16px; border-radius: 18px; overflow: hidden; background: #120e22; box-shadow: inset 0 0 0 1px var(--edge); }
+  .scope.shake { animation: shake .35s; }
+  @keyframes shake { 20% { transform: translate(-6px, 3px); } 40% { transform: translate(5px, -4px); } 60% { transform: translate(-4px, 2px); } 80% { transform: translate(3px, -1px); } }
   .scope canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .hud { position: absolute; inset: 12px 12px auto 12px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; pointer-events: none; }
   .gauges { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -102,6 +118,9 @@
   .status.s-win::before { background: #12302a; }
   .status.s-lost { color: #fff; background: #b8433a; }
   .status.s-lost::before { background: #fff; }
+  .status.s-scout { color: #1b1733; background: var(--violet); }
+  .status.s-scout::before { background: #1b1733; }
+  .record { font: 600 12px var(--ui); color: var(--gold); background: rgba(18,13,34,.72); padding: 4px 10px; border-radius: 99px; white-space: nowrap; }
   .right-hud { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
   .planets { display: flex; gap: 6px; pointer-events: auto; }
   .planet-tab { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; font: 700 12px var(--mono); display: grid; place-items: center; color: #1b1733; }
@@ -109,12 +128,36 @@
   .planet-tab.no { background: radial-gradient(circle at 35% 30%, #ffc4bc, #c8574c); }
   .planet-tab.on { border-color: var(--bone); transform: scale(1.12); }
   .where { position: absolute; left: 12px; bottom: 12px; font: 12px var(--mono); color: var(--haze); background: rgba(18,13,34,.6); padding: 3px 8px; border-radius: 6px; pointer-events: none; }
-  .banner { position: absolute; left: 16px; right: 16px; bottom: 16px; width: fit-content; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 10px 12px 10px 18px; border-radius: 14px; background: rgba(27,21,52,.9); backdrop-filter: blur(6px); box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 1px var(--edge); }
+  .banner { position: absolute; left: 16px; right: 16px; bottom: 16px; width: fit-content; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 10px 12px 10px 18px; border-radius: 14px; background: rgba(27,21,52,.92); backdrop-filter: blur(6px); box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 1px var(--edge); }
   .banner p { margin: 0; font-weight: 650; }
   .banner.win { box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 2px var(--mint); }
   .banner.lost { box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 2px var(--coral); }
+  .banner.scout { box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 2px var(--violet); }
   .banner .quiet { color: var(--bone); }
   .banner-actions { display: flex; gap: 8px; flex: none; }
+
+  /* The moment a hidden rule first shows itself: the replay stops for it. */
+  .anomaly { position: absolute; left: 16px; right: 16px; top: 64px; width: fit-content; margin: 0 auto; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 12px 14px 12px 18px; border-radius: 16px; background: rgba(39,27,72,.94); box-shadow: 0 0 0 2px var(--violet), 0 0 40px rgba(185,163,255,.45); animation: glow 1.4s ease-in-out infinite alternate; }
+  .anomaly b { display: block; font-size: 18px; letter-spacing: -.01em; }
+  .anomaly span { color: var(--haze); font-size: 14px; }
+  @keyframes glow { to { box-shadow: 0 0 0 2px var(--violet), 0 0 70px rgba(185,163,255,.7); } }
+
+  /* The stars, revealed one by one. */
+  .celebrate { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; background: radial-gradient(circle at 50% 45%, rgba(27,21,52,.35), rgba(12,9,26,.7)); }
+  .cele-card { width: min(440px, 100%); text-align: center; padding: 22px 22px 18px; border-radius: 22px; background: rgba(35,29,63,.96); box-shadow: 0 30px 80px rgba(0,0,0,.55), inset 0 0 0 1px var(--edge); }
+  .cele-card h2 { margin: 0; font-size: 30px; font-weight: 850; letter-spacing: -.03em; }
+  .cele-card .sub { margin: 4px 0 0; color: var(--haze); }
+  .big-stars { display: flex; justify-content: center; gap: 14px; margin: 16px 0 12px; }
+  .big-star { width: 84px; display: grid; justify-items: center; gap: 4px; font-size: 13px; color: var(--haze); }
+  .big-star i { font-style: normal; font-size: 58px; line-height: 1; color: #3d3466; transform: scale(.6); opacity: .3; transition: transform .35s cubic-bezier(.2,1.6,.4,1), opacity .2s, color .2s; }
+  .big-star.show i { transform: scale(1); opacity: 1; }
+  .big-star.got i { color: var(--gold); text-shadow: 0 0 22px rgba(255,211,107,.7); }
+  .big-star.was i { color: #b89a4a; }
+  .big-star span { font-size: 20px; }
+  .cele-note { margin: 0 0 14px; min-height: 22px; font-weight: 650; }
+  .cele-note .rec { color: var(--gold); }
+  .cele-miss { margin: -6px 0 12px; color: var(--haze); font-size: 14px; }
+  .cele-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 
   .timeline { display: flex; align-items: center; gap: 12px; padding: 10px 16px 14px; }
   .play { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--panel-2); font-size: 15px; flex: none; }
@@ -131,11 +174,24 @@
   .scrub::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--bone); border: 3px solid var(--violet); }
   .clock { font: 600 13px var(--mono); color: var(--haze); min-width: 64px; text-align: right; font-variant-numeric: tabular-nums; }
 
+  /* Scouting: drive by hand. */
+  .pad { position: absolute; right: 14px; bottom: 14px; display: grid; grid-template-columns: repeat(3, 46px); grid-template-rows: repeat(2, 46px); gap: 6px; }
+  .pad button { border: 0; border-radius: 12px; background: rgba(53,45,96,.92); font-size: 20px; box-shadow: 0 3px 0 #1b1733; }
+  .pad button:active { transform: translateY(2px); box-shadow: 0 1px 0 #1b1733; }
+  .pad .up { grid-column: 2; }
+  .pad .left { grid-column: 1; grid-row: 2; }
+  .pad .wait { grid-column: 2; grid-row: 2; font-size: 15px; }
+  .pad .right { grid-column: 3; grid-row: 2; }
+  .scout-help { position: absolute; left: 14px; bottom: 14px; max-width: calc(100% - 200px); padding: 8px 12px; border-radius: 12px; background: rgba(39,27,72,.9); box-shadow: inset 0 0 0 1px var(--violet); font-size: 13px; color: #e5dcff; }
+  .scout-help b { color: var(--bone); }
+  .tool.on { background: var(--violet); color: #1b1733; border-color: var(--violet); }
+
   /* ---- Uplink: the program going up to the rover ---------------------------------- */
   .uplink { min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(140px, 1fr) auto auto minmax(110px, 30%); background: var(--dusk); border-left: 1px solid var(--edge); }
   .uplink-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px 8px; }
   .uplink-head b { font-weight: 750; }
   .uplink-head span { color: var(--haze); font-size: 13px; }
+  .uplink-head span.fits { color: var(--gold); }
   .editor { min-height: 0; margin: 0 12px; display: grid; grid-template-columns: auto 1fr; border-radius: 12px; overflow: hidden; background: #171329; box-shadow: inset 0 0 0 1px var(--edge); }
   .lines { padding: 12px 8px 40px 10px; color: #5d5486; text-align: right; white-space: pre; overflow: hidden; font: 14px/1.6 var(--mono); user-select: none; }
   .lines .err { color: var(--coral); font-weight: 700; }
@@ -161,26 +217,55 @@
   .feed .empty { color: var(--dim); padding: 10px 6px; }
   .feed-head { position: sticky; top: 0; background: var(--dusk); padding: 8px 6px 4px; color: var(--haze); font-size: 13px; }
 
-  /* ---- Pop-overs: mission control's radio, the field journal, how it works ------- */
+  /* ---- Toasts: badges and unlocks ---------------------------------------------- */
+  .toasts { position: fixed; z-index: 40; right: 16px; bottom: 16px; display: grid; gap: 10px; width: min(330px, calc(100vw - 32px)); pointer-events: none; }
+  .toast { display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: center; padding: 10px 14px 10px 10px; border-radius: 16px; background: rgba(44,37,80,.97); box-shadow: 0 16px 40px rgba(0,0,0,.45), inset 0 0 0 1px var(--edge); animation: slidein .45s cubic-bezier(.2,1.4,.4,1); pointer-events: auto; }
+  .toast.out { animation: slideout .3s forwards; }
+  .toast .ico { font-size: 30px; text-align: center; }
+  .toast b { display: block; }
+  .toast small { color: var(--haze); font-size: 13px; }
+  @keyframes slidein { from { transform: translateX(120%); } }
+  @keyframes slideout { to { transform: translateX(120%); opacity: 0; } }
+
+  /* ---- Pop-overs and dialogs ------------------------------------------------------ */
   .pop { position: fixed; z-index: 20; width: min(360px, calc(100vw - 24px)); background: var(--panel); border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,.5), inset 0 0 0 1px var(--edge); padding: 14px; }
   .pop h2 { margin: 0 0 10px; font-size: 16px; }
   .msg { background: var(--dusk); border-radius: 4px 14px 14px 14px; padding: 9px 12px; margin-bottom: 8px; white-space: pre-wrap; font-size: 14px; }
-  .msg code, .pop pre { font-family: var(--mono); }
   .pop textarea { width: 100%; min-height: 80px; resize: vertical; border-radius: 10px; border: 1px solid var(--edge); background: var(--dusk); padding: 9px; }
   .pop-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
   .pop-row small { color: var(--haze); }
-  .intro { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px; background: rgba(12,9,26,.72); }
-  .intro-card { width: min(520px, 100%); background: var(--dusk); border-radius: 20px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.5), inset 0 0 0 1px var(--edge); }
+  .dialog { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px; background: rgba(12,9,26,.72); overflow: auto; }
+  .intro-card, .garage-card { width: min(520px, 100%); background: var(--dusk); border-radius: 20px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.5), inset 0 0 0 1px var(--edge); }
   .intro-card canvas { display: block; width: 100%; height: 170px; }
   .intro-body { padding: 18px 22px 22px; }
   .intro-body ol { margin: 0 0 18px; padding-left: 22px; display: grid; gap: 6px; font-size: 17px; }
   .intro-body li::marker { color: var(--mint); font-weight: 800; }
+  .garage-card { width: min(720px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 18px 20px 20px; }
+  .garage-top { display: grid; grid-template-columns: 200px 1fr; gap: 18px; align-items: start; }
+  .garage-top canvas { width: 200px; height: 200px; border-radius: 18px; display: block; }
+  .garage-card h2 { margin: 0; font-size: 24px; font-weight: 850; letter-spacing: -.02em; }
+  .garage-card h3 { margin: 14px 0 6px; font-size: 14px; color: var(--haze); font-weight: 600; }
+  .garage-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  .garage-head span { color: var(--gold); font: 700 16px var(--mono); }
+  .options { display: flex; flex-wrap: wrap; gap: 6px; }
+  .option { border: 1px solid var(--edge); background: var(--panel); border-radius: 10px; padding: 6px 10px; display: inline-flex; align-items: center; gap: 7px; font-size: 13px; }
+  .option.on { border-color: var(--mint); box-shadow: inset 0 0 0 1px var(--mint); }
+  .option:disabled { opacity: .5; cursor: default; }
+  .option .sw { width: 14px; height: 14px; border-radius: 50%; }
+  .option small { color: var(--gold); font-family: var(--mono); }
+  .badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .badge { display: grid; grid-template-columns: 30px 1fr; gap: 6px; align-items: center; padding: 8px; border-radius: 12px; background: var(--panel); font-size: 13px; }
+  .badge .ico { font-size: 22px; text-align: center; }
+  .badge small { display: block; color: var(--haze); font-size: 11.5px; line-height: 1.3; }
+  .badge.no { opacity: .5; }
+  .badge.no .ico { filter: grayscale(1); }
   .announce { position: absolute; top: 0; left: 0; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
   /* Short screens (a Chromebook with its browser bars) give the height to the map. */
   @media (max-height: 700px) and (min-width: 861px) {
-    .site-head { padding: 8px 20px 6px; }
+    .site-head { padding: 6px 20px 6px; }
     .site-head h1 { font-size: 22px; }
+    .goals { margin-top: 5px; }
     .timeline { padding: 6px 16px 8px; }
   }
   @media (max-width: 1100px) and (min-width: 861px) {
@@ -195,9 +280,12 @@
     .scope { height: 62vh; min-height: 320px; margin: 0 12px; }
     .uplink { border-left: 0; border-top: 1px solid var(--edge); grid-template-rows: auto 300px auto auto 220px; }
     .site-head { padding: 10px 14px 8px; }
+    .garage-top { grid-template-columns: 1fr; justify-items: center; }
+    .scout-help { max-width: calc(100% - 28px); bottom: 130px; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .wp span, .cell i { transition: none; }
+    .wp span, .cell i, .big-star i { transition: none; }
+    .scope.shake, .stars-button.bump, .anomaly, .toast, .toast.out { animation: none; }
   }
 </style>
 </head>
@@ -218,11 +306,20 @@
   <header class="bar">
     <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#352d60"/><rect x="8" y="13" width="16" height="9" rx="2" fill="#f2eadb"/><rect x="6" y="11" width="4" height="4" rx="1" fill="#2a2440"/><rect x="22" y="11" width="4" height="4" rx="1" fill="#2a2440"/><rect x="6" y="20" width="4" height="4" rx="1" fill="#2a2440"/><rect x="22" y="20" width="4" height="4" rx="1" fill="#2a2440"/><circle cx="20" cy="17" r="2.4" fill="#8cf2c6"/></svg>Strange Planet</div>
     <nav class="route" id="route" aria-label="Your route across the planet"></nav>
-    <div class="who"><b id="driver"></b><button class="quiet round" id="helpButton" title="How it works" aria-label="How it works">?</button><button class="quiet" id="switchButton" title="Sign in as someone else">Switch</button></div>
+    <div class="who">
+      <button class="stars-button" id="starsButton" title="Your stars, the garage and your badges">★ <span id="totalStars">0</span></button>
+      <b id="driver"></b>
+      <button class="quiet round" id="muteButton" title="Sound on or off" aria-label="Sound on or off">🔊</button>
+      <button class="quiet round" id="helpButton" title="How it works" aria-label="How it works">?</button>
+      <button class="quiet" id="switchButton" title="Sign in as someone else">Switch</button>
+    </div>
   </header>
   <div class="main">
     <section class="view">
-      <div class="site-head"><h1 id="siteName">…</h1><p id="siteBrief"></p></div>
+      <div class="site-head">
+        <div class="title-row"><h1 id="siteName">…</h1><p id="siteBrief"></p></div>
+        <div class="goals" id="goals"></div>
+      </div>
       <div class="scope" id="scope">
         <canvas id="map" aria-label="The planet surface and the rover"></canvas>
         <div class="hud">
@@ -230,14 +327,34 @@
             <div class="gauge" title="Ticks so far: one for every command"><small>tick</small><span id="tick">0</span></div>
             <div class="gauge" id="batteryGauge" hidden title="battery()"><small>battery</small><span class="cell"><i id="batteryBar"></i></span><span id="battery">100</span></div>
             <div class="gauge" id="sampleGauge" hidden title="samples_left()"><small>samples</small><span id="samples">0</span></div>
+            <div class="gauge" id="crystalGauge" hidden title="Crystals collected"><small>💎</small><span id="crystals">0</span></div>
           </div>
           <div class="right-hud">
             <div class="status" id="status">Ready</div>
+            <div class="record" id="record" hidden></div>
             <div class="planets" id="planets" hidden></div>
           </div>
         </div>
         <div class="where" id="where" hidden></div>
         <div class="banner" id="banner" hidden><p id="bannerText"></p><div class="banner-actions" id="bannerActions"></div></div>
+        <div class="anomaly" id="anomaly" hidden role="status"><div><b>📡 Anomaly detected!</b><span>Something strange just happened. What was it?</span></div><div class="banner-actions"><button class="go" id="anomalyGo">Keep watching ▶</button><button class="quiet" id="anomalyJournal">📓 Guess</button></div></div>
+        <div class="scout-help" id="scoutHelp" hidden><b>Scouting</b>: ↑ drive · ← → turn · space wait · R restart. <span id="scoutLeft"></span> Only code opens the beacon.</div>
+        <div class="pad" id="pad" hidden aria-label="Drive by hand">
+          <button class="up" data-move="move" aria-label="Drive forward">↑</button>
+          <button class="left" data-move="turn_left" aria-label="Turn left">↺</button>
+          <button class="wait" data-move="wait" aria-label="Wait one tick">⏳</button>
+          <button class="right" data-move="turn_right" aria-label="Turn right">↻</button>
+        </div>
+        <div class="celebrate" id="celebrate" hidden>
+          <div class="cele-card" role="dialog" aria-labelledby="celeTitle">
+            <h2 id="celeTitle">Beacon reached!</h2>
+            <p class="sub" id="celeSub"></p>
+            <div class="big-stars" id="bigStars"></div>
+            <p class="cele-note" id="celeNote"></p>
+            <p class="cele-miss" id="celeMiss"></p>
+            <div class="cele-actions" id="celeActions"></div>
+          </div>
+        </div>
       </div>
       <div class="timeline">
         <button class="play" id="playButton" aria-label="Play" disabled>▶</button>
@@ -252,6 +369,7 @@
       <div class="kit" id="kit" aria-label="Commands and sensors: click one to add it"></div>
       <div class="actions">
         <button class="go transmit" id="runButton" title="F5 or Ctrl+Enter">Transmit ▶</button>
+        <button class="tool" id="scoutButton" title="Scout: drive by hand to explore" aria-label="Scout: drive by hand">🕹</button>
         <button class="tool" id="radioButton" title="Hints from mission control" aria-label="Hints from mission control">📻<sup id="radioCount" hidden></sup></button>
         <button class="tool" id="journalButton" title="Field journal: your guess at this zone's rule" aria-label="Field journal">📓</button>
       </div>
@@ -260,6 +378,7 @@
   </div>
 </main>
 
+<div class="toasts" id="toasts" aria-live="polite"></div>
 <div class="pop" id="radioPop" hidden role="dialog" aria-labelledby="radioTitle">
   <h2 id="radioTitle">Mission control</h2>
   <div id="hints"></div>
@@ -270,7 +389,22 @@
   <textarea id="journal" maxlength="140" placeholder="I think… because when I ran…" aria-label="Your guess at this zone's rule"></textarea>
   <div class="pop-row"><small id="journalState">Your guess at this zone's rule.</small><button class="quiet" id="journalSave">Save</button></div>
 </div>
-<div class="intro" id="intro" hidden role="dialog" aria-modal="true" aria-labelledby="introTitle">
+<div class="dialog" id="garage" hidden role="dialog" aria-modal="true" aria-labelledby="garageTitle">
+  <div class="garage-card">
+    <div class="garage-head"><h2 id="garageTitle">Garage</h2><span id="garageStars"></span><button class="quiet" id="garageClose">Done</button></div>
+    <div class="garage-top">
+      <canvas id="garageScene" aria-hidden="true"></canvas>
+      <div>
+        <h3>Paint</h3><div class="options" id="paintOptions"></div>
+        <h3>Topper</h3><div class="options" id="topperOptions"></div>
+        <h3>Trail</h3><div class="options" id="trailOptions"></div>
+      </div>
+    </div>
+    <h3>Badges</h3>
+    <div class="badges" id="badgeList"></div>
+  </div>
+</div>
+<div class="dialog" id="intro" hidden role="dialog" aria-modal="true" aria-labelledby="introTitle">
   <div class="intro-card">
     <canvas id="introScene" aria-hidden="true"></canvas>
     <div class="intro-body">
@@ -278,7 +412,7 @@
       <ol>
         <li>Write code. Transmit it to the rover.</li>
         <li>Every zone hides a rule. Nobody will tell you.</li>
-        <li>Watch the replay. Work it out.</li>
+        <li>Earn three stars on every site.</li>
       </ol>
       <button class="go" id="introClose">Let's explore</button>
     </div>
@@ -294,8 +428,11 @@ let me = null, busy = false;
 let state = null;     // every zone and site, from the server
 let site = null;      // the site on screen, as the student sees it
 let runs = null;      // the last transmission's results (five for Uncharted)
+let rewards = null;   // what the last transmission earned, shown when its replay ends
 let scene = null;     // what the canvas shows: map, zone, frames, events
-let pos = 0, playing = false, lastTs = 0, fps = 8;
+let pos = 0, playing = false, lastTs = 0, fps = 8, heard = 0;
+let anomalyAt = null; // the tick where this replay should stop for an anomaly
+let scout = null;     // {moves, over} while driving by hand
 let errorLine = 0, errorCount = 0;
 
 const ZONE_ICONS = {landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", uncharted: "🪐"};
@@ -312,6 +449,11 @@ const HELP = {
   battery: "Charge left, 0 to 100.", in_sun: "True in sunlight.", gust_in: "Ticks until the next gust.",
 };
 const COMMANDS = ["move", "turn_left", "turn_right", "wait"];
+// Rover paints: a colour, or a few that sweep across the body.
+const PAINTS = {bone: "#f2eadb", coral: "#ff8a7a", mint: "#8cf2c6", sky: "#8fc8ff", gold: "#ffd36b",
+  aurora: ["#7ff0d6", "#8fb8ff", "#c69bff"], nebula: ["#c69bff", "#ff8ad8", "#8fb8ff"],
+  supernova: ["#fff6d0", "#ffe08a", "#ff9d5c"]};
+let look = {paint: "bone", topper: "none", trail: "tracks"};
 
 function esc(value) {
   return String(value).replace(/[&<>\"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
@@ -326,6 +468,69 @@ function recall(key) { try { return localStorage.getItem(key); } catch (_) { ret
 function codeKey(key) { return `planetCode:${me}:${key}`; }
 function saveCode() { if (me && site) store(codeKey(site.key), $("code").value); }
 function announce(text) { $("announce").textContent = text; }
+function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ---- Sound: every effect synthesized, nothing to download ---------------------
+const SFX = (() => {
+  let ac = null, master = null, muted = recall("planetMuted") === "1", lastMove = 0;
+  function context() {
+    if (!ac) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ac = new AC(); master = ac.createGain(); master.gain.value = .2; master.connect(ac.destination);
+    }
+    if (ac.state === "suspended") ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, {type = "sine", vol = .5, at = 0, slide = 0} = {}) {
+    const t = ac.currentTime + at, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq + slide), t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .05);
+  }
+  function noise(dur, {vol = .4, at = 0, from = 800, to = 2000, q = 1} = {}) {
+    const t = ac.currentTime + at, len = Math.ceil(ac.sampleRate * dur);
+    const buf = ac.createBuffer(1, len, ac.sampleRate), data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    const src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+    src.buffer = buf; f.type = "bandpass"; f.Q.value = q;
+    f.frequency.setValueAtTime(from, t); f.frequency.exponentialRampToValueAtTime(to, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + dur * .3);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f); f.connect(g); g.connect(master); src.start(t); src.stop(t + dur);
+  }
+  const notes = (list, opts) => list.forEach((f, i) => tone(f, opts.dur || .2, {...opts, at: i * (opts.gap || .08)}));
+  const SOUNDS = {
+    move: () => tone(170, .07, {type: "triangle", vol: .22}),
+    turn: () => tone(560, .03, {type: "square", vol: .06}),
+    slide: () => noise(.4, {vol: .35, from: 3200, to: 700}),
+    gust: () => noise(.7, {vol: .4, from: 380, to: 1500, q: .6}),
+    bump: () => { tone(95, .14, {vol: .55, slide: -40}); noise(.09, {vol: .25, from: 300, to: 180}); },
+    crystal: () => notes([1319, 1568, 2093, 2637], {type: "triangle", vol: .28, dur: .2, gap: .06}),
+    sample: () => notes([880, 1175], {vol: .32, dur: .22, gap: .08}),
+    portal: () => tone(260, .5, {type: "sawtooth", vol: .12, slide: 1100}),
+    fall: () => { tone(420, .7, {type: "triangle", vol: .4, slide: -360}); noise(.6, {vol: .3, at: .12, from: 500, to: 90}); },
+    flat: () => tone(330, .6, {type: "square", vol: .12, slide: -230}),
+    win: () => notes([523, 659, 784, 1047], {type: "triangle", vol: .32, dur: .3, gap: .1}),
+    star: i => tone([784, 988, 1319][i] || 1319, .3, {type: "triangle", vol: .38}),
+    badge: () => notes([659, 784, 988, 1319, 1568], {type: "square", vol: .09, dur: .14, gap: .06}),
+    anomaly: () => notes([880, 622, 880, 622, 1245], {vol: .22, dur: .1, gap: .12}),
+    error: () => tone(140, .28, {type: "sawtooth", vol: .13, slide: -30}),
+    send: () => notes([440, 660, 880], {vol: .16, dur: .08, gap: .05}),
+  };
+  return {
+    play(name, arg) {
+      if (muted || !context()) return;
+      if (name === "move") { const now = performance.now(); if (now - lastMove < 70) return; lastMove = now; }
+      try { SOUNDS[name](arg); } catch (_) {}
+    },
+    wake() { if (!muted) context(); },
+    get muted() { return muted; },
+    toggle() { muted = !muted; store("planetMuted", muted ? "1" : "0"); if (!muted) context(); return muted; },
+  };
+})();
 
 // ---- Seeded noise, so every square's texture is the same on every redraw -------
 function hash(a, b, k = 0) {
@@ -478,9 +683,17 @@ function bedPattern(ctx, zone) {
 }
 
 // ---- The rover --------------------------------------------------------------------
-// Seen from above, facing +x: six wheels, a solar deck at the back, and a
-// camera mast at the front with a mint lens.
-function drawRover(ctx, x, y, s, angle, alpha = 1) {
+// Seen from above, facing +x: six wheels, a painted body with a solar deck at
+// the back, and a camera mast at the front with a mint lens. The student's
+// garage picks the paint and what sits on top.
+function bodyPaint(ctx, s, paint) {
+  const p = PAINTS[paint] || PAINTS.bone;
+  if (typeof p === "string") return p;
+  const grad = ctx.createLinearGradient(-.32 * s, -.22 * s, .3 * s, .22 * s);
+  p.forEach((c, i) => grad.addColorStop(i / (p.length - 1), c));
+  return grad;
+}
+function drawRover(ctx, x, y, s, angle, alpha = 1, gear = look, now = performance.now()) {
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.translate(x, y); ctx.rotate(angle);
@@ -492,20 +705,41 @@ function drawRover(ctx, x, y, s, angle, alpha = 1) {
   }
   ctx.strokeStyle = "#26212f"; ctx.lineWidth = s * .05;
   ctx.beginPath(); ctx.moveTo(-.3 * s, -.27 * s); ctx.lineTo(.3 * s, -.27 * s); ctx.moveTo(-.3 * s, .27 * s); ctx.lineTo(.3 * s, .27 * s); ctx.stroke();
-  ctx.fillStyle = "#f2eadb"; ctx.strokeStyle = "#6e6290"; ctx.lineWidth = Math.max(1, s * .03);
+  ctx.fillStyle = bodyPaint(ctx, s, gear.paint); ctx.strokeStyle = "#6e6290"; ctx.lineWidth = Math.max(1, s * .03);
   roundRect(ctx, -.32 * s, -.22 * s, .62 * s, .44 * s, .08 * s); ctx.fill(); ctx.stroke();
   ctx.fillStyle = "#3f5f96";
   roundRect(ctx, -.29 * s, -.18 * s, .3 * s, .36 * s, .03 * s); ctx.fill();
   ctx.strokeStyle = "rgba(200,225,255,.45)"; ctx.lineWidth = Math.max(1, s * .015);
   ctx.beginPath(); ctx.moveTo(-.14 * s, -.18 * s); ctx.lineTo(-.14 * s, .18 * s); ctx.moveTo(-.29 * s, 0); ctx.lineTo(.01 * s, 0); ctx.stroke();
-  ctx.strokeStyle = "#6e6290"; ctx.lineWidth = Math.max(1, s * .025);
-  ctx.beginPath(); ctx.moveTo(-.05 * s, -.14 * s); ctx.lineTo(-.16 * s, -.36 * s); ctx.stroke();
-  ctx.fillStyle = "#ffb547"; ctx.beginPath(); ctx.arc(-.16 * s, -.36 * s, s * .035, 0, 7); ctx.fill();
-  ctx.fillStyle = "#e6dccb"; ctx.strokeStyle = "#6e6290";
+  drawTopper(ctx, s, gear.topper, now);
+  ctx.fillStyle = "#e6dccb"; ctx.strokeStyle = "#6e6290"; ctx.lineWidth = Math.max(1, s * .03);
   ctx.beginPath(); ctx.arc(.15 * s, 0, s * .1, 0, 7); ctx.fill(); ctx.stroke();
   ctx.fillStyle = "#231d3f"; roundRect(ctx, .18 * s, -.06 * s, .1 * s, .12 * s, .02 * s); ctx.fill();
   ctx.fillStyle = "#8cf2c6"; ctx.beginPath(); ctx.arc(.25 * s, 0, s * .025, 0, 7); ctx.fill();
   ctx.restore();
+}
+function drawTopper(ctx, s, topper, now) {
+  ctx.lineWidth = Math.max(1, s * .025);
+  if (topper === "flag") {
+    ctx.strokeStyle = "#e6dccb"; ctx.beginPath(); ctx.moveTo(-.05 * s, -.12 * s); ctx.lineTo(-.05 * s, -.46 * s); ctx.stroke();
+    ctx.fillStyle = "#ff8a7a"; ctx.beginPath(); ctx.moveTo(-.05 * s, -.46 * s); ctx.lineTo(-.3 * s, -.4 * s); ctx.lineTo(-.05 * s, -.33 * s); ctx.fill();
+  } else if (topper === "dish") {
+    ctx.fillStyle = "#e6dccb"; ctx.strokeStyle = "#6e6290";
+    ctx.beginPath(); ctx.arc(-.06 * s, .08 * s, s * .12, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(-.06 * s, .08 * s, s * .04, 0, 7); ctx.stroke();
+  } else if (topper === "light") {
+    const k = CALM ? 1 : .6 + .4 * Math.sin(now / 160);
+    ctx.fillStyle = `rgba(255,181,71,${k})`; ctx.shadowColor = "#ffb547"; ctx.shadowBlur = s * .4 * k;
+    ctx.beginPath(); ctx.arc(-.06 * s, 0, s * .07, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
+  } else if (topper === "crown") {
+    ctx.fillStyle = "#ffd36b"; ctx.strokeStyle = "#a07a20";
+    ctx.beginPath(); ctx.moveTo(-.2 * s, .1 * s);
+    for (const [px, py] of [[-.2, -.12], [-.12, -.02], [-.06, -.16], [0, -.02], [.06, -.12], [.06, .1]]) ctx.lineTo(px * s, py * s);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  } else {
+    ctx.strokeStyle = "#6e6290"; ctx.beginPath(); ctx.moveTo(-.05 * s, -.14 * s); ctx.lineTo(-.16 * s, -.36 * s); ctx.stroke();
+    ctx.fillStyle = "#ffb547"; ctx.beginPath(); ctx.arc(-.16 * s, -.36 * s, s * .035, 0, 7); ctx.fill();
+  }
 }
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
@@ -513,6 +747,56 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
 }
 const angleOf = d => (d - 1) * Math.PI / 2;
+
+// ---- Particles: dust, sparkles, wind, confetti ------------------------------------
+let particles = [], confetti = [];
+function burst(r, c, kind, n = 10) {
+  if (CALM) return;
+  const colors = {dust: ["#e8d2b8", "#c9a98a"], sparkle: ["#c8fff0", "#8cf2c6", "#ffffff"],
+                  crystal: ["#d9ccff", "#b9a3ff", "#ffffff"], portal: ["#b9a3ff", "#e5dcff"],
+                  wind: ["#f0f8ff"], fall: ["#ff8a7a", "#e8d2b8"]}[kind];
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, sp = kind === "wind" ? 0 : .6 + Math.random() * 1.6;
+    particles.push({r: r + .5, c: c + .5 + (kind === "wind" ? -1 - Math.random() : 0),
+      vr: Math.sin(a) * sp * (kind === "wind" ? 0 : 1), vc: kind === "wind" ? 3 + Math.random() * 2 : Math.cos(a) * sp,
+      life: 0, max: .5 + Math.random() * .5, size: kind === "wind" ? .5 : .05 + Math.random() * .08,
+      color: colors[i % colors.length], kind});
+  }
+}
+function drawParticles(ctx, cell, dt) {
+  particles = particles.filter(p => (p.life += dt) < p.max);
+  for (const p of particles) {
+    p.r += p.vr * dt; p.c += p.vc * dt; p.vr *= .96; p.vc *= .96;
+    const k = 1 - p.life / p.max;
+    ctx.globalAlpha = k;
+    if (p.kind === "wind") {
+      ctx.strokeStyle = p.color; ctx.lineWidth = Math.max(1.5, cell / 16);
+      ctx.beginPath(); ctx.moveTo(p.c * cell - p.size * cell, p.r * cell); ctx.lineTo(p.c * cell, p.r * cell); ctx.stroke();
+    } else {
+      ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.c * cell, p.r * cell, Math.max(1, p.size * cell * (.5 + k)), 0, 7); ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+function throwConfetti() {
+  if (CALM) return;
+  const w = $("map").clientWidth;
+  const colors = ["#ffd36b", "#8cf2c6", "#b9a3ff", "#ff8a7a", "#8fc8ff", "#f2eadb"];
+  for (let i = 0; i < 140; i++) {
+    confetti.push({x: w / 2 + (Math.random() - .5) * 120, y: $("map").clientHeight * .45,
+      vx: (Math.random() - .5) * 900, vy: -300 - Math.random() * 600, rot: Math.random() * 6, vr: (Math.random() - .5) * 12,
+      life: 0, max: 1.8 + Math.random(), color: colors[i % colors.length], w: 5 + Math.random() * 6, h: 3 + Math.random() * 4});
+  }
+}
+function drawConfetti(ctx, dt) {
+  confetti = confetti.filter(p => (p.life += dt) < p.max);
+  for (const p of confetti) {
+    p.vy += 900 * dt; p.vx *= .99; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
+    ctx.save(); ctx.globalAlpha = Math.min(1, (p.max - p.life) * 2);
+    ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.color; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+    ctx.restore();
+  }
+}
 
 // ---- Drawing the scene --------------------------------------------------------------
 function ease(u) { return u < .5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2; }
@@ -538,13 +822,16 @@ function layout(canvas) {
   }
   return {w, h, dpr};
 }
+let lastRender = 0;
 function render(now = performance.now()) {
+  const dt = Math.min(.1, Math.max(0, (now - (lastRender || now)) / 1000));
+  lastRender = now;
   const canvas = $("map"), {w, h, dpr} = layout(canvas);
   const ctx = canvas.getContext("2d");
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const zone = scene ? scene.zone : (site && site.zoneKey) || "landing";
   ctx.fillStyle = bedPattern(ctx, zone); ctx.fillRect(0, 0, w, h);
-  if (!scene) { vignette(ctx, w, h); return; }
+  if (!scene) { vignette(ctx, w, h); drawConfetti(ctx, dt); return; }
   const map = scene.map, rows = map.length, cols = map[0].length;
   // Room for the map between the HUD (top) and the result banner (bottom).
   // The whole map shows whenever its squares can be a readable size; a long,
@@ -562,7 +849,7 @@ function render(now = performance.now()) {
   ctx.save(); ctx.translate(ox, oy);
   ctx.drawImage(terrain(map, zone, cell), 0, 0);
   const i = rover.i, frames = scene.frames, f = frames[i];
-  // Cracks so far, and the samples not yet picked up.
+  // Cracks so far, and the samples and crystals not yet picked up.
   const visited = new Set();
   for (let k = 0; k <= i; k++) {
     visited.add(frames[k].r + "," + frames[k].c);
@@ -572,6 +859,7 @@ function render(now = performance.now()) {
     if (map[r][c] === "*" && !visited.has(r + "," + c)) drawSample(ctx, r, c, cell, now);
     if (map[r][c] === "P") drawPadGlow(ctx, r, c, cell, now);
   }
+  for (const [r, c] of scene.crystals) if (!visited.has(r + "," + c)) drawCrystal(ctx, r, c, cell, now);
   // Sunlight: in Solar Valley, everything outside the light is in shadow.
   if (scene.zone === "solar") {
     ctx.fillStyle = "rgba(14,8,32,.42)";
@@ -586,7 +874,7 @@ function render(now = performance.now()) {
       }
     }
   }
-  drawTracks(ctx, frames, i, rover, cell);
+  drawTrail(ctx, frames, i, rover, cell, now);
   const G = findChar(map, "G");
   if (G) drawBeacon(ctx, G[0], G[1], cell, now, f.e === "goal");
   // The rover, and whatever just happened to it.
@@ -594,15 +882,15 @@ function render(now = performance.now()) {
   const atEvent = !playing || pos - i < .6;
   if (f.e === "fell") {
     ctx.fillStyle = "rgba(255,111,97,.25)"; ctx.beginPath(); ctx.arc(rx, ry, cell * .55, 0, 7); ctx.fill();
-    drawRover(ctx, rx, ry, cell * .55, rover.angle + .6, .55);
+    drawRover(ctx, rx, ry, cell * .62, rover.angle + .6, .55, look, now);
   } else {
-    if (atEvent && f.e === "gust") drawGust(ctx, rx, ry, cell);
     if (atEvent && f.e === "portal") drawFlash(ctx, rx, ry, cell, "#b9a3ff");
-    drawRover(ctx, rx, ry, cell * 1.12, rover.angle);
-    if (atEvent && f.e === "bump") drawDust(ctx, rx, ry, cell, rover.angle);
+    drawRover(ctx, rx, ry, cell * 1.12, rover.angle, 1, look, now);
   }
+  drawParticles(ctx, cell, dt);
   ctx.restore();
   vignette(ctx, w, h);
+  drawConfetti(ctx, dt);
   // The heads-up display.
   $("tick").textContent = f.t;
   if (f.b != null) {
@@ -614,6 +902,9 @@ function render(now = performance.now()) {
     let left = scene.samples;
     for (const [r, c] of scene.sampleSquares) if (visited.has(r + "," + c)) left--;
     $("samples").textContent = left;
+  }
+  if (scene.crystals.length) {
+    $("crystals").textContent = `${scene.crystals.filter(([r, c]) => visited.has(r + "," + c)).length}/${scene.crystals.length}`;
   }
   setStatus(i);
 }
@@ -627,23 +918,39 @@ function findChar(map, ch) {
   for (let r = 0; r < map.length; r++) { const c = map[r].indexOf(ch); if (c >= 0) return [r, c]; }
   return null;
 }
-function drawTracks(ctx, frames, i, rover, cell) {
-  ctx.strokeStyle = "rgba(30,14,30,.32)"; ctx.lineWidth = Math.max(1.5, cell * .07); ctx.lineCap = "round";
+// Behind the rover: wheel tracks, in the trail style from the garage.
+function drawTrail(ctx, frames, i, rover, cell, now) {
+  const pts = frames.slice(0, i + 1).map(f => ({r: f.r, c: f.c, jump: f.e === "portal"}));
+  pts.push({r: rover.r, c: rover.c, jump: false});
+  const segs = [];
+  for (let k = 1; k < pts.length; k++) {
+    const p = pts[k], q = pts[k - 1];
+    if (!p.jump && Math.abs(p.r - q.r) + Math.abs(p.c - q.c) <= 1.01 && (p.r !== q.r || p.c !== q.c)) segs.push([q, p, k]);
+  }
+  ctx.lineCap = "round"; ctx.lineWidth = Math.max(1.5, cell * .07);
   for (const side of [-.25, .25]) {
-    ctx.beginPath();
-    let prev = null;
-    const pts = frames.slice(0, i + 1).map(f => ({r: f.r, c: f.c, jump: f.e === "portal"}));
-    pts.push({r: rover.r, c: rover.c, jump: false});
-    for (const p of pts) {
-      if (prev && !p.jump && Math.abs(p.r - prev.r) + Math.abs(p.c - prev.c) <= 1.01 && (p.r !== prev.r || p.c !== prev.c)) {
-        const dx = p.c - prev.c, dy = p.r - prev.r, len = Math.hypot(dx, dy) || 1;
-        const nx = -dy / len * side * cell, ny = dx / len * side * cell;
-        ctx.moveTo((prev.c + .5) * cell + nx, (prev.r + .5) * cell + ny);
-        ctx.lineTo((p.c + .5) * cell + nx, (p.r + .5) * cell + ny);
-      }
-      prev = p;
+    for (const [q, p, k] of segs) {
+      ctx.strokeStyle = look.trail === "rainbow" ? `hsla(${(k * 24) % 360},90%,72%,.7)` : "rgba(30,14,30,.32)";
+      const dx = p.c - q.c, dy = p.r - q.r, len = Math.hypot(dx, dy) || 1;
+      const nx = -dy / len * side * cell, ny = dx / len * side * cell;
+      ctx.beginPath();
+      ctx.moveTo((q.c + .5) * cell + nx, (q.r + .5) * cell + ny);
+      ctx.lineTo((p.c + .5) * cell + nx, (p.r + .5) * cell + ny);
+      ctx.stroke();
     }
-    ctx.stroke();
+  }
+  if (look.trail === "dust") {
+    for (const [, p, k] of segs.slice(-8)) {
+      const age = (segs.length - segs.findIndex(s => s[2] === k)) / 8;
+      ctx.fillStyle = `rgba(232,210,184,${.25 * (1 - age)})`;
+      ctx.beginPath(); ctx.arc((p.c + .5) * cell, (p.r + .5) * cell, cell * (.18 + age * .25), 0, 7); ctx.fill();
+    }
+  } else if (look.trail === "sparkle") {
+    for (const [, p, k] of segs) {
+      const tw = CALM ? .6 : .5 + .5 * Math.sin(now / 200 + k * 1.7);
+      ctx.fillStyle = `rgba(255,236,170,${tw * .8})`;
+      ctx.beginPath(); ctx.arc((p.c + .5 + (hash(k, 1) - .5) * .5) * cell, (p.r + .5 + (hash(k, 2) - .5) * .5) * cell, Math.max(1, cell * .045), 0, 7); ctx.fill();
+    }
   }
 }
 function drawCrack(ctx, r, c, cell) {
@@ -667,6 +974,18 @@ function drawSample(ctx, r, c, cell, now) {
     ctx.lineTo(cx + dx * cell + wd * cell, cy + .18 * cell); ctx.closePath(); ctx.fill(); ctx.stroke();
   }
 }
+// A bonus crystal: a violet gem that bobs and catches the light.
+function drawCrystal(ctx, r, c, cell, now) {
+  const bob = CALM ? 0 : Math.sin(now / 350 + r * 2 + c) * cell * .05;
+  const cx = (c + .5) * cell, cy = (r + .5) * cell + bob, s = cell * .3;
+  ctx.fillStyle = "rgba(185,163,255,.25)"; ctx.beginPath(); ctx.ellipse(cx, (r + .5) * cell + s * .9, s * .8, s * .3, 0, 0, 7); ctx.fill();
+  ctx.shadowColor = "#b9a3ff"; ctx.shadowBlur = cell * .4;
+  ctx.fillStyle = "#b9a3ff";
+  ctx.beginPath(); ctx.moveTo(cx, cy - s); ctx.lineTo(cx + s * .7, cy - s * .2); ctx.lineTo(cx, cy + s); ctx.lineTo(cx - s * .7, cy - s * .2); ctx.closePath(); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "#e5dcff";
+  ctx.beginPath(); ctx.moveTo(cx, cy - s); ctx.lineTo(cx + s * .7, cy - s * .2); ctx.lineTo(cx, cy - s * .1); ctx.closePath(); ctx.fill();
+}
 function drawPadGlow(ctx, r, c, cell, now) {
   const cx = (c + .5) * cell, cy = (r + .5) * cell, k = CALM ? .5 : .5 + .5 * Math.sin(now / 500 + r * 3 + c);
   ctx.strokeStyle = `rgba(185,163,255,${.35 + k * .4})`; ctx.lineWidth = Math.max(1.5, cell / 14);
@@ -683,21 +1002,40 @@ function drawBeacon(ctx, r, c, cell, now, reached) {
   ctx.fillStyle = "#8cf2c6"; ctx.shadowColor = "#8cf2c6"; ctx.shadowBlur = cell * .5;
   ctx.beginPath(); ctx.arc(cx, cy, cell * .12, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
 }
-function drawGust(ctx, x, y, cell) {
-  ctx.strokeStyle = "rgba(240,248,255,.75)"; ctx.lineWidth = Math.max(1.5, cell / 14); ctx.lineCap = "round";
-  for (const dy of [-.3, 0, .3]) {
-    ctx.beginPath(); ctx.moveTo(x - cell * 1.3, y + dy * cell); ctx.quadraticCurveTo(x - cell * .9, y + dy * cell - cell * .12, x - cell * .55, y + dy * cell); ctx.stroke();
-  }
-}
 function drawFlash(ctx, x, y, cell, color) {
   ctx.strokeStyle = color; ctx.lineWidth = Math.max(2, cell / 10);
   for (const k of [.5, .8]) { ctx.globalAlpha = 1.2 - k; ctx.beginPath(); ctx.arc(x, y, cell * k, 0, 7); ctx.stroke(); }
   ctx.globalAlpha = 1;
 }
-function drawDust(ctx, x, y, cell, angle) {
-  const fx = x + Math.cos(angle) * cell * .5, fy = y + Math.sin(angle) * cell * .5;
-  ctx.fillStyle = "rgba(240,220,200,.5)";
-  for (let k = 0; k < 5; k++) { ctx.beginPath(); ctx.arc(fx + (hash(k, 1) - .5) * cell * .5, fy + (hash(k, 2) - .5) * cell * .5, cell * (.06 + hash(k, 3) * .07), 0, 7); ctx.fill(); }
+
+// ---- What happens at each step of a replay: sound, particles, shake ---------------
+function onStep(k) {
+  const f = scene.frames[k], p = scene.frames[k - 1];
+  if (!p) return;
+  const moved = Math.abs(f.r - p.r) + Math.abs(f.c - p.c);
+  const sliding = moved && f.t === p.t && f.e !== "gust" && f.e !== "portal";
+  if (f.e === "bump") { SFX.play("bump"); burst(f.r + DIRS[f.d][0] * .45, f.c + DIRS[f.d][1] * .45, "dust", 8); }
+  else if (f.e === "gust") { SFX.play("gust"); burst(f.r, f.c, "wind", 5); }
+  else if (f.e === "portal") { SFX.play("portal"); burst(p.r, p.c, "portal", 14); burst(f.r, f.c, "portal", 14); }
+  else if (f.e === "fell") { SFX.play("fall"); burst(f.r, f.c, "fall", 18); shake(); }
+  else if (f.e === "battery") SFX.play("flat");
+  else if (sliding) { const pp = scene.frames[k - 2]; if (!pp || pp.t !== f.t) SFX.play("slide"); }
+  else if (moved) SFX.play("move");
+  else if (f.d !== p.d) SFX.play("turn");
+  if (moved) {
+    const key = f.r + "," + f.c, seen = scene.frames.slice(0, k).some(x => x.r === f.r && x.c === f.c);
+    if (!seen && scene.crystals.some(([r, c]) => r === f.r && c === f.c)) { SFX.play("crystal"); burst(f.r, f.c, "crystal", 16); }
+    else if (!seen && scene.map[f.r][f.c] === "*") { SFX.play("sample"); burst(f.r, f.c, "sparkle", 12); }
+    if (look.trail === "dust" && !sliding) burst(f.r, f.c, "dust", 2);
+  }
+  // The replay stops at the first sighting of the zone's hidden rule, once
+  // that whole tick has played (all of a slide, not its first square).
+  const after = scene.frames[k + 1];
+  if (anomalyAt != null && f.t >= anomalyAt && (!after || after.t > anomalyAt)) { anomalyAt = null; showAnomaly(); }
+}
+function shake() {
+  if (CALM) return;
+  const s = $("scope"); s.classList.remove("shake"); void s.offsetWidth; s.classList.add("shake");
 }
 
 // ---- Replay -------------------------------------------------------------------------
@@ -719,11 +1057,13 @@ function frameLoop(ts) {
   lastTs = ts;
   if (playing) {
     setPos(pos + dt / 1000 * fps);
-    if (pos >= last()) { setPos(last()); setPlaying(false); showOutcome(); }
+    while (heard < Math.floor(pos) && playing) onStep(++heard);
+    if (playing && pos >= last()) { setPos(last()); setPlaying(false); finished(); }
   }
-  // Smooth while the replay plays; otherwise just enough for the beacon's
-  // pulse (about 15 frames a second), so an idle tab stays cheap on a Chromebook.
-  if (!document.hidden && (playing || ts - (frameLoop.drawn || 0) > (CALM ? 500 : 66))) {
+  // Smooth while anything moves; otherwise just enough for the glows (about
+  // 15 frames a second), so an idle tab stays cheap on a Chromebook.
+  const busyFx = particles.length || confetti.length;
+  if (!document.hidden && (playing || busyFx || ts - (frameLoop.drawn || 0) > (CALM ? 500 : 66))) {
     render(ts); frameLoop.drawn = ts;
   }
   requestAnimationFrame(frameLoop);
@@ -731,14 +1071,14 @@ function frameLoop(ts) {
 function togglePlay() {
   if (!scene || last() === 0) return;
   if (playing) { setPlaying(false); return; }
-  if (pos >= last()) setPos(0);
-  hideBanner();
+  if (pos >= last()) { setPos(0); heard = 0; }
+  heard = Math.floor(pos);
+  hideBanner(); hideCelebrate(); $("anomaly").hidden = true;
   setPlaying(true);
 }
-function stepBy(k) {
-  if (!scene) return;
-  setPlaying(false);
-  setPos(Math.round(pos) + k);
+function jumpTo(p) {
+  setPlaying(false); hideBanner(); hideCelebrate(); $("anomaly").hidden = true;
+  setPos(p); heard = Math.floor(pos);
   render(); markFeed();
 }
 // Light up the telemetry lines from the tick on screen.
@@ -766,7 +1106,8 @@ const ENDINGS = {
 function setStatus(i) {
   const el = $("status"), f = scene && scene.frames[i];
   let cls = "", text = "Ready";
-  if (scene && scene.run) {
+  if (scout) [cls, text] = ["scout", "Scouting"];
+  else if (scene && scene.run) {
     if (i >= last() && !playing) [cls, text] = ENDINGS[scene.run.end];
     else if (f.e === "wait") [cls, text] = ["hold", "Waiting"];
     else [cls, text] = ["go", "Driving"];
@@ -779,56 +1120,62 @@ function parseLog(run) {
     return {t: m ? Number(m[1]) : 0, text: m ? m[2] : line};
   });
 }
-function showRun(run, map) {
-  const zoneKey = site.zoneKey;
+function sceneFor(map, frames, run, crystals) {
   const samples = [];
   map.forEach((row, r) => [...row].forEach((ch, c) => { if (ch === "*") samples.push([r, c]); }));
-  scene = {map, zone: zoneKey, frames: run.frames, run, sunWidth: run.sun_width || 0, samples: samples.length, sampleSquares: samples};
-  // Timeline marks: what happened, at the frame it happened.
-  const log = parseLog(run);
-  // On a busy run, slides and bumps make way for the events that matter.
+  return {map, zone: site.zoneKey, frames, run, sunWidth: (run && run.sun_width) || 0,
+          samples: samples.length, sampleSquares: samples, crystals: crystals || []};
+}
+function showRun(run, map, crystals, startAt = 0) {
+  scene = sceneFor(map, run.frames, run, crystals);
+  // Timeline marks: what happened, at the frame it happened. On a busy run,
+  // slides and bumps make way for the events that matter.
+  const log = parseLog(run).filter(x => !(scout && x.text.startsWith("🏁")));
   const frameAtTick = t => { let k = 0; run.frames.forEach((f, j) => { if (f.t === t) k = j; }); return k; };
   let marks = log.map(ev => ({k: frameAtTick(ev.t), icon: [...ev.text][0], text: ev.text}))
-    .filter(m => "⛸💨✨🧪💥🔋⏱🎉🧱".includes(m.icon));
+    .filter(m => "⛸💨✨🧪💎💥🔋⏱🎉🧱".includes(m.icon));
   if (marks.length > 12) marks = marks.filter(m => m.icon !== "⛸" && m.icon !== "🧱");
   if (marks.length > 12) marks = marks.filter(m => m.icon !== "💨" || /pushed/.test(m.text));
   $("marks").innerHTML = marks.map(m => `<span class="mark" style="left:${last() ? m.k / last() * 100 : 0}%" title="tick ${run.frames[m.k].t}: ${esc(m.text)}" data-k="${m.k}">${m.icon}</span>`).join("");
   $("scrub").max = last(); $("scrub").disabled = last() === 0; $("playButton").disabled = last() === 0;
   $("batteryGauge").hidden = run.frames[0].b == null;
-  $("sampleGauge").hidden = !samples.length;
+  $("sampleGauge").hidden = !scene.samples;
+  $("crystalGauge").hidden = !scene.crystals.length;
   // Telemetry: events and print() lines in tick order, the error last.
   const prints = run.prints.map(p => ({t: p.t, text: p.text, print: true}));
   const lines = [...log.map(x => ({...x, print: false})), ...prints].map((x, j) => ({...x, j}))
     .sort((a, b) => a.t - b.t || a.print - b.print || a.j - b.j);
-  $("feed").innerHTML = `<div class="feed-head">Telemetry</div>` + lines.map(x =>
-    `<div class="ev${x.print ? " print" : /🎉/.test(x.text) ? " good" : /💥|🔋|⏱/.test(x.text) ? " bad" : ""}" data-t="${x.t}"><span class="t">${x.t}</span><span>${x.print ? "› " : ""}${esc(x.text)}</span></div>`).join("")
+  $("feed").innerHTML = `<div class="feed-head">${scout ? "Scouting telemetry" : "Telemetry"}</div>` + lines.map(x =>
+    `<div class="ev${x.print ? " print" : /🎉|💎/.test(x.text) ? " good" : /💥|🔋|⏱/.test(x.text) ? " bad" : ""}" data-t="${x.t}"><span class="t">${x.t}</span><span>${x.print ? "› " : ""}${esc(x.text)}</span></div>`).join("")
     + (run.error ? `<div class="err">${esc(run.error)}</div>` : "")
     + (!lines.length && !run.error ? '<div class="empty">No telemetry.</div>' : "");
-  hideBanner();
-  fps = Math.max(5, Math.min(30, last() / 20));
-  setPos(0);
-  if (run.error && last() === 0) { setPlaying(false); showOutcome(); }
+  hideBanner(); hideCelebrate();
+  fps = scout ? 7 : Math.max(5, Math.min(30, last() / 20));
+  setPos(startAt); heard = startAt;
+  if (run.error && last() === 0) { setPlaying(false); finished(); }
   else setPlaying(true);
 }
-function showOutcome() {
+// The replay reached its end: celebrate, or say what went wrong.
+function finished() {
   if (!scene || !scene.run) return;
-  const run = scene.run, [cls, , say] = ENDINGS[run.end];
+  const run = scene.run;
+  if (scout) return scoutFinished(run);
+  const anyReached = site.key === "7" ? runs.some(x => x.reached) : run.reached;
+  if (rewards && anyReached) { const r = rewards; rewards = null; return celebrate(r, run); }
+  const sitesRewards = rewards; rewards = null;
+  if (sitesRewards) showToasts(sitesRewards);
+  const [cls, , say] = ENDINGS[run.end];
   const buttons = [];
   if (run.end === "goal") {
     const next = nextSite();
     if (next && site.key !== "7") buttons.push(`<button class="go" onclick="openSite('${next}')">Next site</button>`);
   } else if (run.end === "error") {
+    SFX.play("error");
     buttons.push(`<button class="quiet" onclick="$('code').focus()">Line ${run.line || "?"}</button>`);
   } else if (["fell", "battery"].includes(run.end) && last() > 1) {
-    buttons.push(`<button class="quiet" onclick="showMoment()">Show the moment</button>`);
+    buttons.push(`<button class="quiet" onclick="jumpTo(last() - 1)">Show the moment</button>`);
   }
   showBanner(cls === "win" ? "win" : cls === "lost" ? "lost" : "", say(run.ticks), buttons.join(""));
-}
-// The step just before things went wrong, paused there.
-function showMoment() {
-  hideBanner(); setPlaying(false);
-  setPos(Math.max(0, last() - 1));
-  render(); markFeed();
 }
 function showBanner(cls, text, actions = "") {
   $("banner").className = "banner " + cls; $("bannerText").textContent = text;
@@ -836,11 +1183,72 @@ function showBanner(cls, text, actions = "") {
 }
 function hideBanner() { $("banner").hidden = true; }
 
+// ---- Celebration: the stars, one by one ------------------------------------------------
+async function celebrate(r, run) {
+  const goals = site.goals || [];
+  const titles = ["Beacon reached!", "Nice driving!", "Perfect run!"];
+  const got = r.stars.filter(Boolean).length;
+  $("celeTitle").textContent = site.key === "7" ? `${runs.filter(x => x.reached).length} of 5 planets!` : titles[Math.max(0, got - 1)];
+  $("celeSub").textContent = site.key === "7" ? "" : `${run.ticks} ticks`;
+  $("bigStars").innerHTML = r.stars.map((s, i) => `<div class="big-star${s ? " got" : r.best[i] ? " was" : ""}" title="${esc(goals[i] || "")}"><i>★</i><span>${esc([...(goals[i] || "★")][0])}</span></div>`).join("");
+  const missing = goals.filter((g, i) => !r.best[i]);
+  $("celeMiss").textContent = missing.length && site.key !== "7" ? `Still to earn: ${missing.join(" · ")}` : "";
+  $("celeNote").innerHTML = "";
+  const next = nextSite();
+  $("celeActions").innerHTML = (next && site.key !== "7" ? `<button class="go" onclick="openSite('${next}')">Next site ▶</button>` : "")
+    + (r.best.every(Boolean) ? `<button class="quiet" onclick="hideCelebrate()">Watch again</button>`
+       : `<button class="quiet" onclick="hideCelebrate();$('code').focus()">Go for ${3 - r.best.filter(Boolean).length} more ★</button>`);
+  $("celebrate").hidden = false;
+  SFX.play("win");
+  const stars = [...$("bigStars").children];
+  for (let i = 0; i < stars.length; i++) {
+    await wait(CALM ? 0 : 380);
+    stars[i].classList.add("show");
+    if (r.stars[i]) SFX.play("star", i);
+  }
+  await wait(CALM ? 0 : 300);
+  const notes = [];
+  if (r.new_stars) notes.push(`+${r.new_stars} ★`);
+  if (r.record) notes.push(`<span class="rec">🏆 ${r.record.first ? "First to reach it!" : "New class record!"}</span>`);
+  $("celeNote").innerHTML = notes.join(" &nbsp; ");
+  if (r.new_stars) bumpStars(r.total_stars);
+  if (got === 3 || r.record) throwConfetti();
+  $("celeActions").querySelector("button").focus();
+  showToasts(r);
+}
+function hideCelebrate() { $("celebrate").hidden = true; }
+function bumpStars(total) {
+  $("totalStars").textContent = total;
+  const b = $("starsButton"); b.classList.remove("bump"); void b.offsetWidth; b.classList.add("bump");
+}
+// Badges and garage unlocks slide in one after another.
+async function showToasts(r) {
+  if (r.new_stars) bumpStars(r.total_stars);
+  const items = [...r.badges.map(b => [b.icon, `Badge: ${b.name}`, b.how]),
+                 ...r.unlocked.map(u => ["🔓", `Unlocked: ${u.name} ${u.slot}`, "Fit it in the garage (★ at the top)."])];
+  for (const [icon, title, text] of items) {
+    await wait(CALM ? 0 : 500);
+    SFX.play("badge");
+    const el = document.createElement("div");
+    el.className = "toast";
+    el.innerHTML = `<span class="ico">${icon}</span><div><b>${esc(title)}</b><small>${esc(text)}</small></div>`;
+    $("toasts").appendChild(el);
+    setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 350); }, 5200);
+  }
+}
+function showAnomaly() {
+  setPlaying(false);
+  SFX.play("anomaly");
+  $("anomaly").hidden = false;
+  $("anomalyGo").focus();
+}
+
 // ---- Joining ---------------------------------------------------------------------------
 async function join(event) {
   event.preventDefault();
   const name = $("name").value.trim();
   if (!name) { $("name").focus(); return; }
+  SFX.wake();
   try {
     const player = await post("/join", {name});
     store("mazeId", player.id);
@@ -857,15 +1265,21 @@ async function enter(id) {
   try { data = await get("/planet/state?id=" + encodeURIComponent(id)); }
   catch (_) { return false; }
   if (!data.you) return false;
-  me = id; state = data;
+  me = id; useState(data);
   $("driver").textContent = data.you.name;
   $("join").hidden = true; $("app").hidden = false;
-  renderRoute();
+  $("muteButton").textContent = SFX.muted ? "🔇" : "🔊";
   const lastSite = recall(`planetSite:${me}`);
   await openSite(siteOpen(lastSite) ? lastSite : data.current);
   requestAnimationFrame(frameLoop);
   if (recall("planetIntroSeen") !== "1") openIntro();
   return true;
+}
+function useState(data) {
+  state = data;
+  look = data.look || look;
+  $("totalStars").textContent = data.total_stars;
+  renderRoute();
 }
 
 // ---- The route --------------------------------------------------------------------------
@@ -883,8 +1297,9 @@ function renderRoute() {
     return `<div class="leg${isHere ? " here" : ""}${open ? "" : " locked"}">
       <span class="zg" title="${esc(z.name)}" aria-hidden="true">${ZONE_ICONS[z.key] || "•"}</span>
       ${z.sites.map(s => {
-        const cls = site && s.key === site.key ? "now" : s.solved != null ? "done" : s.open ? "open" : "locked";
-        const label = `${s.key === "7" ? "" : s.key.toUpperCase() + " "}${s.name}${s.solved != null ? `, reached in ${s.solved} ticks` : s.open ? "" : ", locked"}`;
+        const n = (s.stars || []).filter(Boolean).length;
+        const cls = [site && s.key === site.key ? "now" : "", n === 3 ? "gold" : n ? "done" : "", s.open ? "" : "locked"].join(" ");
+        const label = `${s.key === "7" ? "" : s.key.toUpperCase() + " "}${s.name}${s.open ? `, ${n} of 3 stars` : ", locked"}`;
         return `<button class="wp ${cls}${s.open ? " reach" : ""}" ${s.open ? `onclick="openSite('${s.key}')"` : "disabled"} title="${esc(label)}" aria-label="${esc(label)}"><span></span></button>`;
       }).join("")}
       ${isHere ? `<span class="zname">${esc(z.name)}</span>` : ""}
@@ -902,14 +1317,15 @@ async function openSite(key) {
   catch (_) { showBanner("lost", "No answer from the game. Is the server running?"); return; }
   if (view.error) { showBanner("lost", view.error); return; }
   saveCode();
-  closePops();
+  closePops(); stopScout(true);
   const zone = zoneOf(key);
   site = {...view, zoneKey: zone.key};
-  runs = null;
+  runs = null; rewards = null; anomalyAt = null;
   store(`planetSite:${me}`, key);
   $("siteName").textContent = view.name;
   $("siteBrief").textContent = view.brief;
   $("fileName").textContent = `site_${key}.py`;
+  renderGoals();
   // This browser's draft, else what was last run here, else the code from the
   // site before: running old code on new ground is how each rule shows itself.
   let code = recall(codeKey(key)), carried = false;
@@ -929,25 +1345,36 @@ async function openSite(key) {
   playing = false;
   $("planets").hidden = true; $("marks").innerHTML = ""; $("clock").textContent = "";
   $("scrub").max = 0; $("scrub").disabled = true; $("playButton").disabled = true;
+  $("anomaly").hidden = true; hideCelebrate();
+  $("record").hidden = !view.record;
+  if (view.record) $("record").textContent = `🏆 Class record: ${view.record.ticks} ticks · ${view.record.name}`;
   $("feed").innerHTML = '<div class="empty">Transmit to see the rover\'s telemetry.</div>';
-  if (view.map) {
-    const [r, c] = findChar(view.map, "S");
-    const samples = [];
-    view.map.forEach((row, rr) => [...row].forEach((ch, cc) => { if (ch === "*") samples.push([rr, cc]); }));
-    scene = {map: view.map, zone: zone.key, frames: [{r, c, d: view.dir, t: 0}], run: null, sunWidth: 0, samples: samples.length, sampleSquares: samples};
-    $("batteryGauge").hidden = true;
-    $("sampleGauge").hidden = !samples.length;
-    setPos(0); $("clock").textContent = "";
-  } else {
-    scene = null;
-    $("batteryGauge").hidden = true; $("sampleGauge").hidden = true;
-  }
+  $("scoutButton").hidden = key === "7";
+  resetScene();
   setPlaying(false);
   render();
   hideBanner();
   if (key === "7") showBanner("", "Five unknown planets. Transmit to land.");
   else if (carried) showBanner("", "Your last site's code is loaded. Will it still work here?");
   $("status").className = "status"; $("status").textContent = "Ready";
+}
+// The site as it is before anything has run.
+function resetScene() {
+  if (site.map) {
+    const [r, c] = findChar(site.map, "S");
+    scene = sceneFor(site.map, [{r, c, d: site.dir, t: 0}], null, site.crystals);
+    $("batteryGauge").hidden = true;
+    $("sampleGauge").hidden = !scene.samples;
+    $("crystalGauge").hidden = !scene.crystals.length;
+    setPos(0); $("clock").textContent = "";
+  } else {
+    scene = null;
+    $("batteryGauge").hidden = true; $("sampleGauge").hidden = true; $("crystalGauge").hidden = true;
+  }
+}
+function renderGoals() {
+  const best = site.stars || [false, false, false];
+  $("goals").innerHTML = (site.goals || []).map((g, i) => `<span class="goal${best[i] ? " got" : ""}"><i>★</i>${esc(g)}</span>`).join("");
 }
 
 // ---- The kit: commands and sensors, one click to add -------------------------------------
@@ -979,7 +1406,7 @@ function renderRadio() {
 }
 async function askHint() {
   const zone = zoneOf(site.key);
-  try { state = await post("/planet/hint", {id: me, zone: zone.key}); } catch (_) { return; }
+  try { useState(await post("/planet/hint", {id: me, zone: zone.key})); } catch (_) { return; }
   renderRadio();
 }
 function renderJournal() {
@@ -991,7 +1418,7 @@ function renderJournal() {
 }
 async function saveJournal() {
   const zone = zoneOf(site.key);
-  try { state = await post("/planet/journal", {id: me, zone: zone.key, text: $("journal").value}); }
+  try { useState(await post("/planet/journal", {id: me, zone: zone.key, text: $("journal").value})); }
   catch (_) { $("journalState").textContent = "Not saved: no answer from the game."; return; }
   renderJournal();
 }
@@ -1010,22 +1437,121 @@ function placePop(pop, button) {
 }
 function closePops() { $("radioPop").hidden = true; $("journalPop").hidden = true; }
 
+// ---- The garage and the badge cabinet -----------------------------------------------------
+function openGarage() {
+  $("garage").hidden = false;
+  renderGarage();
+  $("garageClose").focus();
+}
+function renderGarage() {
+  $("garageStars").textContent = `★ ${state.total_stars} / ${state.max_stars}`;
+  for (const slot of ["paint", "topper", "trail"]) {
+    $(slot + "Options").innerHTML = state.garage.filter(i => i.slot === slot).map(i => {
+      const sw = slot === "paint" ? `<span class="sw" style="background:${Array.isArray(PAINTS[i.key]) ? `linear-gradient(135deg,${PAINTS[i.key].join(",")})` : PAINTS[i.key]}"></span>` : "";
+      const need = i.open ? "" : `<small>${i.stars != null ? `★ ${i.stars}` : `class ★ ${i.class}`}</small>`;
+      return `<button class="option${look[slot] === i.key ? " on" : ""}" data-slot="${slot}" data-key="${i.key}" ${i.open ? "" : "disabled"} title="${i.open ? "" : i.stars != null ? `Earn ${i.stars} stars` : `When the class has ${i.class} stars together`}">${sw}${esc(i.name)}${need}</button>`;
+    }).join("");
+  }
+  $("badgeList").innerHTML = state.badges.map(b => `<div class="badge${b.earned ? "" : " no"}"><span class="ico">${b.icon}</span><div>${esc(b.name)}<small>${esc(b.how)}</small></div></div>`).join("");
+  garagePreview();
+}
+function garagePreview() {
+  const cv = $("garageScene"), dpr = window.devicePixelRatio || 1, s = 200;
+  cv.width = s * dpr; cv.height = s * dpr;
+  const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = bedPattern(ctx, site ? site.zoneKey : "landing"); ctx.fillRect(0, 0, s, s);
+  const grad = ctx.createRadialGradient(s / 2, s / 2, 20, s / 2, s / 2, s * .7);
+  grad.addColorStop(0, "rgba(255,240,220,.12)"); grad.addColorStop(1, "rgba(10,6,24,.5)");
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, s, s);
+  drawRover(ctx, s / 2, s / 2, 120, -Math.PI / 2 - .35, 1, look);
+}
+async function chooseLook(slot, key) {
+  look = {...look, [slot]: key};
+  try { look = (await post("/planet/look", {id: me, ...look})).look; } catch (_) {}
+  state.look = look;
+  renderGarage(); render();
+}
+
+// ---- Scouting: drive by hand to feel the planet -----------------------------------------
+function toggleScout() {
+  if (scout) return stopScout();
+  if (!site || !site.map || busy) return;
+  scout = {moves: [], queue: [], over: false};
+  rewards = null; anomalyAt = null;
+  $("scoutButton").classList.add("on");
+  $("scoutHelp").hidden = false; $("pad").hidden = false;
+  hideBanner(); hideCelebrate(); $("anomaly").hidden = true;
+  $("planets").hidden = true; $("marks").innerHTML = "";
+  resetScene(); setPlaying(false); render();
+  $("feed").innerHTML = '<div class="empty">Scouting: drive with the arrow keys or the buttons on the map.</div>';
+  scoutLeft(60);
+  announce("Scouting. Use the arrow keys to drive.");
+}
+function stopScout(quiet) {
+  if (!scout) return;
+  scout = null;
+  $("scoutButton").classList.remove("on");
+  $("scoutHelp").hidden = true; $("pad").hidden = true;
+  if (!quiet) { hideBanner(); resetScene(); setPlaying(false); render(); $("feed").innerHTML = '<div class="empty">Transmit to see the rover\'s telemetry.</div>'; }
+}
+function scoutLeft(n) { $("scoutLeft").textContent = `${n} moves left.`; }
+// Key presses queue up (a few at most) while the last move is on its way, so
+// quick tapping never gets lost.
+async function scoutMove(move) {
+  if (!scout || scout.over) return;
+  if (scout.queue.length < 3) scout.queue.push(move);
+  if (busy) return;
+  busy = true;
+  SFX.wake();
+  try {
+    while (scout && !scout.over && scout.queue.length) {
+      scout.moves.push(scout.queue.shift());
+      const from = last();
+      const data = await post("/planet/scout", {id: me, site: site.key, moves: scout.moves});
+      if (!scout) break;
+      if (data.error) { showBanner("lost", data.error); break; }
+      scoutLeft(data.left);
+      showRun(data.run, site.map, site.crystals, Math.min(from, data.run.frames.length - 1));
+      if (data.run.end !== "stopped" || !data.left) scout.over = true;
+    }
+  } catch (_) {
+    showBanner("lost", "No answer from the game. Is the server running?");
+  } finally { busy = false; }
+}
+function scoutFinished(run) {
+  if (!scout.over) return;
+  const say = {goal: "Your scout made it! Now write code that does the same.",
+               fell: "Lost! What happened there?", battery: "Flat battery! Hmm.",
+               ticks: "Out of time.", stopped: "Out of scouting moves."}[run.end] || "";
+  if (run.end === "goal") SFX.play("win");
+  showBanner("scout", say, `<button class="quiet" onclick="restartScout()">Scout again (R)</button><button class="quiet" onclick="stopScout()">Stop</button>`);
+}
+function restartScout() { if (scout) { stopScout(true); toggleScout(); } }
+
 // ---- Transmitting ------------------------------------------------------------------------
 async function transmit() {
   if (busy || !me || !site) return;
   busy = true;
-  saveCode(); closePops(); hideBanner();
+  stopScout(true);
+  SFX.wake(); SFX.play("send");
+  saveCode(); closePops(); hideBanner(); hideCelebrate(); $("anomaly").hidden = true;
   $("runButton").disabled = true;
   $("runButton").textContent = site.key === "7" ? "Landing…" : "Transmitting…";
   try {
     const data = await post("/planet/run", {id: me, site: site.key, code: $("code").value});
     if (data.error === "join") { localStorage.removeItem("mazeId"); location.reload(); return; }
     if (data.error) { showBanner("lost", data.error); return; }
-    runs = data.runs; state = data.state;
+    runs = data.runs; rewards = data.rewards;
+    useState(data.state);
+    $("totalStars").textContent = data.rewards.total_stars - data.rewards.new_stars;
+    site.stars = data.rewards.best;
+    anomalyAt = data.rewards.anomaly ? data.rewards.anomaly.tick : null;
+    const rec = data.rewards.record;
+    if (rec) { site.record = {ticks: rec.ticks, name: rec.name}; $("record").hidden = false; $("record").textContent = `🏆 Class record: ${rec.ticks} ticks · ${rec.name}`; }
     errorLine = runs[0].line || 0;
     errorCount = Math.max(1, $("code").value.split("\n").length);
     updateEditor();
-    renderRoute();
+    renderGoals();
     if (site.key === "7") {
       const reached = runs.filter(r => r.reached).length;
       const worst = runs.findIndex(r => !r.reached);
@@ -1033,7 +1559,7 @@ async function transmit() {
       announce(`${reached} of 5 planets reached.`);
     } else {
       $("planets").hidden = true;
-      showRun(runs[0], site.map);
+      showRun(runs[0], site.map, site.crystals);
       announce(ENDINGS[runs[0].end][2](runs[0].ticks));
     }
   } catch (_) {
@@ -1047,7 +1573,8 @@ async function transmit() {
 function selectPlanet(i) {
   $("planets").hidden = false;
   $("planets").innerHTML = runs.map((r, j) => `<button class="planet-tab ${r.reached ? "ok" : "no"}${j === i ? " on" : ""}" onclick="selectPlanet(${j})" title="Planet ${j + 1}: ${r.reached ? "reached" : ENDINGS[r.end][1].toLowerCase()}" aria-label="Planet ${j + 1}, ${r.reached ? "reached" : "not reached"}">${j + 1}</button>`).join("");
-  showRun(runs[i], runs[i].map);
+  site.map = runs[i].map;
+  showRun(runs[i], runs[i].map, []);
 }
 
 // ---- Editor --------------------------------------------------------------------------------
@@ -1058,7 +1585,11 @@ function updateEditor() {
   $("lines").innerHTML = Array.from({length: count}, (_, i) =>
     i + 1 === errorLine ? `<span class="err" title="The error is on this line">▸${i + 1}</span>` : i + 1).join("\n");
   const lines = code.split("\n").filter(line => line.trim() && !line.trim().startsWith("#")).length;
-  $("lineCount").textContent = `${lines} line${lines === 1 ? "" : "s"}`;
+  // The compact star's target, right where the lines are counted.
+  const m = site && site.goals && /✂️ (\d+)/.exec(site.goals[2] || "");
+  const target = m ? Number(m[1]) : null;
+  $("lineCount").textContent = `${lines} line${lines === 1 ? "" : "s"}${target ? ` · ✂️ ${target}` : ""}`;
+  $("lineCount").className = target && lines && lines <= target ? "fits" : "";
   saveCode();
 }
 function editorKey(event) {
@@ -1142,15 +1673,16 @@ function openIntro() {
   cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr;
   const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const w = cv.clientWidth, h = cv.clientHeight, cell = 44;
-  const map = ["##########", "#S......G#", "##########"].map(r => r.padEnd(14, "#"));
+  const map = ["##########", "#S......G#", "##########"];
   ctx.fillStyle = bedPattern(ctx, "landing"); ctx.fillRect(0, 0, w, h);
   const ox = (w - 10 * cell) / 2, oy = (h - 3 * cell) / 2;
   ctx.save(); ctx.translate(ox, oy);
-  ctx.drawImage(terrain(map.map(r => r.slice(0, 10)), "landing", cell), 0, 0);
+  ctx.drawImage(terrain(map, "landing", cell), 0, 0);
   ctx.strokeStyle = "rgba(30,14,30,.32)"; ctx.lineWidth = 3;
   for (const side of [-.25, .25]) { ctx.beginPath(); ctx.moveTo(1.5 * cell, (1.5 + side) * cell); ctx.lineTo(4.5 * cell, (1.5 + side) * cell); ctx.stroke(); }
+  drawCrystal(ctx, 1, 6, cell, 0);
   drawBeacon(ctx, 1, 8, cell, 400, false);
-  drawRover(ctx, 4.5 * cell, 1.5 * cell, cell, 0);
+  drawRover(ctx, 4.5 * cell, 1.5 * cell, cell * 1.12, 0, 1, look);
   ctx.restore();
   vignette(ctx, w, h);
   terrainCache.key = null;   // the intro's little map isn't the site's
@@ -1163,11 +1695,22 @@ $("joinForm").addEventListener("submit", join);
 $("switchButton").addEventListener("click", () => { localStorage.removeItem("mazeId"); location.reload(); });
 $("helpButton").addEventListener("click", openIntro);
 $("introClose").addEventListener("click", closeIntro);
-$("intro").addEventListener("keydown", e => { if (e.key === "Escape") closeIntro(); });
+$("muteButton").addEventListener("click", () => { $("muteButton").textContent = SFX.toggle() ? "🔇" : "🔊"; });
+$("starsButton").addEventListener("click", openGarage);
+$("garageClose").addEventListener("click", () => { $("garage").hidden = true; });
+$("garage").addEventListener("click", e => {
+  const b = e.target.closest(".option");
+  if (b && !b.disabled) chooseLook(b.dataset.slot, b.dataset.key);
+  if (e.target === $("garage")) $("garage").hidden = true;
+});
 $("runButton").addEventListener("click", transmit);
+$("scoutButton").addEventListener("click", toggleScout);
+$("pad").addEventListener("click", e => { const m = e.target.dataset.move; if (m) scoutMove(m); });
 $("playButton").addEventListener("click", togglePlay);
-$("scrub").addEventListener("input", () => { setPlaying(false); hideBanner(); setPos(Number($("scrub").value)); render(); markFeed(); });
-$("marks").addEventListener("click", e => { const k = e.target.dataset.k; if (k != null) { setPlaying(false); hideBanner(); setPos(Number(k)); render(); markFeed(); } });
+$("anomalyGo").addEventListener("click", () => { $("anomaly").hidden = true; setPlaying(true); });
+$("anomalyJournal").addEventListener("click", () => { $("anomaly").hidden = true; openPop($("journalPop"), $("journalButton")); });
+$("scrub").addEventListener("input", () => jumpTo(Number($("scrub").value)));
+$("marks").addEventListener("click", e => { const k = e.target.dataset.k; if (k != null) jumpTo(Number(k)); });
 $("kit").addEventListener("click", e => { const n = e.target.dataset && e.target.dataset.name; if (n) insertAtCursor(n + "()"); });
 $("radioButton").addEventListener("click", () => openPop($("radioPop"), $("radioButton")));
 $("journalButton").addEventListener("click", () => openPop($("journalPop"), $("journalButton")));
@@ -1177,11 +1720,16 @@ $("code").addEventListener("input", updateEditor);
 $("code").addEventListener("scroll", () => { $("lines").scrollTop = $("code").scrollTop; });
 $("code").addEventListener("keydown", editorKey);
 document.addEventListener("keydown", e => {
-  if (e.key === "F5" && me) { e.preventDefault(); transmit(); }
-  if (e.key === "Escape") closePops();
+  if (e.key === "F5" && me) { e.preventDefault(); transmit(); return; }
+  if (e.key === "Escape") { closePops(); if (!$("garage").hidden) $("garage").hidden = true; else if (!$("intro").hidden) closeIntro(); else if (scout) stopScout(); return; }
+  // Scouting keys, unless typing somewhere.
+  if (!scout || e.target.closest("textarea, input")) return;
+  const keys = {ArrowUp: "move", w: "move", ArrowLeft: "turn_left", a: "turn_left", ArrowRight: "turn_right", d: "turn_right", " ": "wait"};
+  if (keys[e.key]) { e.preventDefault(); scoutMove(keys[e.key]); }
+  else if (e.key === "r" || e.key === "R") restartScout();
 });
 document.addEventListener("pointerdown", e => {
-  if (!e.target.closest(".pop, #radioButton, #journalButton")) closePops();
+  if (!e.target.closest(".pop, #radioButton, #journalButton, #anomalyJournal")) closePops();
 });
 $("map").addEventListener("pointermove", e => {
   if (!scene || !scene.view) return;

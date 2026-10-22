@@ -72,7 +72,7 @@
   <div class="summary" id="summary"></div>
   <div class="zones" id="zones"></div>
   <table>
-    <thead><tr><th>STUDENT</th><th>WORKING ON</th><th>RUNS HERE</th><th>HINTS</th><th>LAST RUN</th><th>FIELD JOURNAL · THEIR GUESS AT EACH RULE</th><th></th></tr></thead>
+    <thead><tr><th>STUDENT</th><th>WORKING ON</th><th>STARS</th><th>RUNS HERE</th><th>HINTS</th><th>LAST RUN</th><th>FIELD JOURNAL · THEIR GUESS AT EACH RULE</th><th></th></tr></thead>
     <tbody id="rows"></tbody>
   </table>
   <div class="empty" id="empty" hidden>Nobody has opened Strange Planet yet. Students go to <b>/planet</b> on the same address as Python Quest.</div>
@@ -99,13 +99,14 @@ async function refresh() {
   $("empty").hidden = students.length > 0;
   const stuck = students.filter(s => s.runs_here >= 8 && s.solved < data.sites).length;
   const notes = students.reduce((n, s) => n + Object.keys(s.journal).length, 0);
-  $("summary").innerHTML = `<div><b>${students.length}</b>explorers</div><div><b>${stuck}</b>stuck (8+ runs on one site)</div><div><b>${notes}</b>journal notes</div>`;
+  $("summary").innerHTML = `<div><b>${data.class.stars} ★</b>class stars (<a href="/planet/show" target="_blank" style="color:var(--violet)">project them</a>)</div><div><b>${students.length}</b>explorers</div><div><b>${stuck}</b>stuck (8+ runs on one site)</div><div><b>${notes}</b>journal notes</div>`;
   const byZone = {};
   for (const s of students) byZone[s.zone] = (byZone[s.zone] || 0) + 1;
   $("zones").innerHTML = data.zones.map(z => `<span class="zone-count">${esc(z)}<b>${byZone[z] || 0}</b></span>`).join("");
   $("rows").innerHTML = students.map(s => `<tr>
     <td class="name">${esc(s.name)}<div class="bar" title="${s.solved} of ${data.sites} sites"><span style="width:${100 * s.solved / data.sites}%"></span></div></td>
     <td class="site">${s.site === "7" ? "Uncharted" : `${esc(s.site.toUpperCase())} · ${esc(s.site_name)}`}<small>${s.site === "7" ? (s.uncharted ? `best ${s.uncharted.reached}/5 planets` : "no run yet") : esc(s.zone)}</small></td>
+    <td class="num">${s.stars} ★<small style="display:block;color:var(--muted)">${s.badges} badges</small></td>
     <td class="num ${stuckClass(s.runs_here)}">${s.runs_here}</td>
     <td class="num">${s.hints}</td>
     <td class="num">${ago(s.active)}</td>
