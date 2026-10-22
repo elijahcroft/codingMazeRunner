@@ -2882,7 +2882,7 @@ def planet_site(p, key):
             "code": entry["code"].get(key, ""),
             "solved": entry["solved"].get(key),
             "stars": entry["stars"].get(key, [False] * 3),
-            "record": class_record(key)}
+            "record": None if key == planet.UNCHARTED["key"] else class_record(key)}
     if key == planet.UNCHARTED["key"]:
         view["goals"] = ["🪐 Reach 1 planet", "🪐 Reach 3 planets in one run",
                          "🪐 Reach all 5 in one run"]

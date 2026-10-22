@@ -1199,14 +1199,18 @@ async function celebrate(r, run) {
     + (r.best.every(Boolean) ? `<button class="quiet" onclick="hideCelebrate()">Watch again</button>`
        : `<button class="quiet" onclick="hideCelebrate();$('code').focus()">Go for ${3 - r.best.filter(Boolean).length} more ★</button>`);
   $("celebrate").hidden = false;
-  SFX.play("win");
+  // Something new earns the full reveal; a re-run with nothing new shows its
+  // stars at once, so trying again stays quick.
+  const fresh = r.new_stars || r.record || r.badges.length;
+  const pause = CALM || !fresh ? 0 : 380;
+  SFX.play(fresh ? "win" : "sample");
   const stars = [...$("bigStars").children];
   for (let i = 0; i < stars.length; i++) {
-    await wait(CALM ? 0 : 380);
+    await wait(pause);
     stars[i].classList.add("show");
-    if (r.stars[i]) SFX.play("star", i);
+    if (r.stars[i] && fresh) SFX.play("star", i);
   }
-  await wait(CALM ? 0 : 300);
+  await wait(pause && 300);
   const notes = [];
   if (r.new_stars) notes.push(`+${r.new_stars} ★`);
   if (r.record) notes.push(`<span class="rec">🏆 ${r.record.first ? "First to reach it!" : "New class record!"}</span>`);
@@ -1224,7 +1228,11 @@ function bumpStars(total) {
 // Badges and garage unlocks slide in one after another.
 async function showToasts(r) {
   if (r.new_stars) bumpStars(r.total_stars);
-  const items = [...r.badges.map(b => [b.icon, `Badge: ${b.name}`, b.how]),
+  // A handful of badges at once becomes one toast, so they never bury the editor.
+  const badges = r.badges.length > 2
+    ? [["🏅", `${r.badges.length} new badges!`, `${r.badges.map(b => b.icon).join(" ")}  See them in the garage (★ at the top).`]]
+    : r.badges.map(b => [b.icon, `Badge: ${b.name}`, b.how]);
+  const items = [...badges,
                  ...r.unlocked.map(u => ["🔓", `Unlocked: ${u.name} ${u.slot}`, "Fit it in the garage (★ at the top)."])];
   for (const [icon, title, text] of items) {
     await wait(CALM ? 0 : 500);
@@ -1721,7 +1729,14 @@ $("code").addEventListener("scroll", () => { $("lines").scrollTop = $("code").sc
 $("code").addEventListener("keydown", editorKey);
 document.addEventListener("keydown", e => {
   if (e.key === "F5" && me) { e.preventDefault(); transmit(); return; }
-  if (e.key === "Escape") { closePops(); if (!$("garage").hidden) $("garage").hidden = true; else if (!$("intro").hidden) closeIntro(); else if (scout) stopScout(); return; }
+  if (e.key === "Escape") {
+    closePops();
+    if (!$("garage").hidden) $("garage").hidden = true;
+    else if (!$("intro").hidden) closeIntro();
+    else if (!$("celebrate").hidden) hideCelebrate();
+    else if (scout) stopScout();
+    return;
+  }
   // Scouting keys, unless typing somewhere.
   if (!scout || e.target.closest("textarea, input")) return;
   const keys = {ArrowUp: "move", w: "move", ArrowLeft: "turn_left", a: "turn_left", ArrowRight: "turn_right", d: "turn_right", " ": "wait"};
