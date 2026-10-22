@@ -9,6 +9,17 @@ teaches `move()`, `for` and `while` from scratch.
 The skill you're teaching is as much **experimenting** as coding:
 *predict → run → watch → explain → change one thing → run again.*
 
+## What students see
+
+The planet fills the screen: the rover, its wheel tracks and each zone's
+ground. A heads-up display shows the tick (plus battery and samples once they
+matter), and a timeline under the map marks every slide, gust, portal and
+fall with an icon, so students can jump straight to them. Code goes in on
+the right and is sent with **Transmit** (F5 or Ctrl+Enter). Clicking a
+command or sensor under the editor types it in, and a dot marks the sensors
+that are new in the zone. The route along the top shows every site as a
+waypoint.
+
 ## Pre-class checklist (5 minutes)
 
 - [ ] `python3 server.py`. Note the **admin key** in the banner.
@@ -32,9 +43,10 @@ Each zone has three sites, and each site has a job:
 | **C · Generalise** | The rule's details differ **per student** (a different lake, gust timing, sun, or portal wiring). | "My neighbour's code doesn't work on my planet." |
 
 When a student opens a new site, **their code from the last site is
-already loaded** and the console says *"Predict first: will it work here?"*
+already loaded** and the map says *"Your last site's code is loaded. Will it
+still work here?"*
 That's deliberate: running the old program on the new ground is how they
-notice each rule. Ask them to predict out loud before they press Run.
+notice each rule. Ask them to predict out loud before they press **Transmit**.
 
 Copying is pointless on C sites, because the planet underneath is different.
 Explaining *why* your code works is how to help a neighbour.
@@ -43,10 +55,10 @@ Explaining *why* your code works is how to help a neighbour.
 
 | Moment | Say this |
 |---|---|
-| "What's the rule?" | "What did your last run show you? Step through it one tick at a time with **−1 / +1** and find the exact tick where it went wrong." |
-| They have a guess | "Good. Write it in your **field journal**, then design a run that would prove you wrong." |
-| They're changing everything at once | "Change one thing. Run. What changed?" |
-| They want numbers | "`print()` between commands. The output says which tick each line came from. Pause the replay and that tick's lines light up." |
+| "What's the rule?" | "What did your last run show you? Drag the timeline under the map back to the exact tick where it went wrong. **Show the moment** jumps there." |
+| They have a guess | "Good. Write it in your **field journal** (📓), then design a run that would prove you wrong." |
+| They're changing everything at once | "Change one thing. Transmit. What changed?" |
+| They want numbers | "`print()` between commands. The telemetry shows each line with its tick. Pause the replay and that tick's lines light up." |
 | The C site | "Your planet isn't the same as your neighbour's. What's the same about the rule, and what's different?" |
 
 ## Lesson plan
@@ -65,7 +77,7 @@ then **Unlock next**).
 
 ## Zone by zone
 
-Each zone has three hints in the **Hints** drawer, from a nudge to partial
+Each zone has three hints on the **mission control radio** (📻), from a nudge to partial
 code. `/planet/teacher` shows how many each student opened.
 
 ### 1 · Landing Site: no strange rule
@@ -78,7 +90,7 @@ against.
 
 ### 2 · Ice Field: one `move()` slides until something stops it
 - **2A First Frost**: the counting program slides past the turn. The log
-  says *"one move() took the rover 7 squares"*. Answer: take the ground
+  says *"one move() slid 7 squares"*. Answer: take the ground
   route round the bottom: `turn_right() move(3) turn_left() move(4) turn_left() move()`.
 - **2B Glacier**: the beacon is two squares away, behind a rock. It takes
   **six slides**, using rocks as brakes. *Plan backwards from the beacon.*
@@ -102,7 +114,7 @@ A rover that `wait()`s holds on. Rock to the east shelters it.
 
 ### 4 · Crumbling Crust: ground cracks when you leave it; stepping on a crack again = falling through
 The beacon won't open until every sample is collected.
-- **4A Thin Ice**: going into the pit and back out the same way falls.
+- **4A Thin Crust**: going into the pit and back out the same way falls.
   The pit is two wide: down one side, up the other.
 - **4B Three Pits**: the same trick three times: a `pit()` function in a
   `for` loop.
@@ -133,8 +145,8 @@ The beacon won't open until every sample is collected.
   ```
 
 ### 6 · Portal Fields: pads teleport you to their partner
-Some pads only send one way, and some send nowhere. The log gives the row and
-col you came out at, and pointing at any square shows its row and col.
+Some pads only send one way, and some send nowhere. The telemetry gives the
+row and col of both pads, and pointing at any square shows its row and col.
 - **6A The Pads**: one of three pads crosses the wall.
   `move(2) turn_right() move(2) turn_left() move(2) turn_left() move(2)`
 - **6B Relay**: two portals in a chain. `move(3) turn_right() move(2) turn_left() move(3) turn_left() move(2)`

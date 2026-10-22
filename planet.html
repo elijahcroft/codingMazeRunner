@@ -3,356 +3,315 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Strange Planet — Python Quest</title>
+<title>Strange Planet</title>
 <style>
-  /* Same palette and building blocks as Python Quest and Light Cycles. */
+  /* Mission control at dusk: violet chrome, bone-white type, mint telemetry.
+     The planet view is the loud part; everything around it stays quiet. */
   :root {
     color-scheme: dark;
-    --void: #080c16;
-    --chrome: #0d1322;
-    --panel: #121a2a;
-    --panel-2: #172237;
-    --line: #2a3852;
-    --text: #e8eef8;
-    --muted: #8fa0ba;
-    --cyan: #55dfd2;
-    --amber: #f4c95d;
-    --red: #ff6577;
-    --green: #72e09d;
-    --blue: #69a8ff;
-    --violet: #b48cff;
-    --editor: ui-monospace, "SFMono-Regular", "Cascadia Code", Menlo, Consolas, monospace;
+    --sky: #1b1733;
+    --dusk: #231d3f;
+    --panel: #2c2550;
+    --panel-2: #352d60;
+    --edge: #463c78;
+    --bone: #f2eadb;
+    --haze: #a89ec8;
+    --dim: #6f6596;
+    --mint: #8cf2c6;
+    --amber: #ffb547;
+    --coral: #ff6f61;
+    --violet: #b9a3ff;
+    --ui: system-ui, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    --mono: ui-monospace, "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
-  html, body { min-height: 100%; }
-  body { margin: 0; background: var(--void); color: var(--text); font-family: Inter, "Segoe UI", Arial, sans-serif; }
-  button, textarea, input { font: inherit; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--sky); color: var(--bone); font: 15px/1.45 var(--ui); }
+  button, textarea, input { font: inherit; color: inherit; }
   button { cursor: pointer; }
-  button:focus-visible, textarea:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible {
-    outline: 2px solid var(--cyan); outline-offset: 2px;
+  :focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
+  * { scrollbar-width: thin; scrollbar-color: var(--edge) transparent; }
+
+  /* ---- Join: a dusk horizon and a rover ------------------------------------- */
+  .join { position: fixed; inset: 0; overflow: hidden; }
+  .join canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .join-card { position: absolute; left: clamp(20px, 7vw, 110px); bottom: clamp(24px, 12vh, 140px); max-width: 520px; }
+  .join h1 { margin: 0; font-size: clamp(52px, 9vw, 112px); line-height: .86; font-weight: 850; letter-spacing: -.045em; text-shadow: 0 4px 30px rgba(20,10,40,.6); }
+  .join p { margin: 18px 0 26px; font-size: clamp(17px, 2vw, 21px); color: #e2d8f2; max-width: 30ch; text-shadow: 0 2px 12px rgba(20,10,40,.8); }
+  .join-form { display: flex; gap: 10px; flex-wrap: wrap; }
+  .join-form input { flex: 1 1 220px; min-width: 0; padding: 14px 16px; font-size: 18px; border-radius: 12px; border: 1px solid rgba(242,234,219,.35); background: rgba(27,23,51,.72); backdrop-filter: blur(6px); }
+  .join-form input::placeholder { color: var(--haze); }
+
+  .go { border: 0; border-radius: 12px; background: var(--mint); color: #12302a; font-weight: 800; padding: 12px 20px; font-size: 16px; box-shadow: 0 3px 0 #4fb38c; }
+  .go:hover { background: #a6f7d4; }
+  .go:active { transform: translateY(2px); box-shadow: 0 1px 0 #4fb38c; }
+  .go:disabled { opacity: .6; cursor: wait; }
+  .quiet { border: 1px solid var(--edge); background: transparent; border-radius: 8px; padding: 6px 10px; color: var(--haze); }
+  .quiet:hover { color: var(--bone); background: var(--panel-2); }
+
+  /* ---- The app ----------------------------------------------------------------- */
+  .app { height: 100%; display: grid; grid-template-rows: 58px minmax(0, 1fr); }
+  .bar { display: flex; align-items: center; gap: 18px; padding: 0 16px; background: var(--dusk); border-bottom: 1px solid var(--edge); min-width: 0; }
+  .brand { display: flex; align-items: center; gap: 9px; font-weight: 850; letter-spacing: -.02em; white-space: nowrap; font-size: 17px; }
+  .brand svg { width: 30px; height: 30px; }
+  .who { margin-left: auto; display: flex; align-items: center; gap: 8px; white-space: nowrap; color: var(--haze); }
+  .who b { color: var(--bone); font-weight: 650; }
+  .round { width: 32px; height: 32px; border-radius: 50%; padding: 0; display: grid; place-items: center; }
+
+  /* The route: every zone a stretch of trail, every site a waypoint on it. */
+  .route { display: flex; align-items: center; gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: none; padding: 6px 2px; }
+  .route::-webkit-scrollbar { display: none; }
+  .leg { display: flex; align-items: center; gap: 0; padding: 3px 8px 3px 4px; border-radius: 99px; flex: none; }
+  .leg.here { background: var(--panel); }
+  .zg { font-size: 16px; width: 24px; text-align: center; filter: saturate(.85); }
+  .leg.locked .zg { filter: grayscale(1); opacity: .45; }
+  .zname { margin-left: 6px; font-weight: 650; font-size: 13px; white-space: nowrap; }
+  .wp { position: relative; width: 22px; height: 22px; border: 0; background: none; padding: 0; display: grid; place-items: center; }
+  .wp + .wp::before { content: ""; position: absolute; right: 15px; width: 14px; height: 2px; background: var(--edge); }
+  .wp + .wp.reach::before { background: var(--haze); }
+  .wp span { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--haze); background: var(--dusk); transition: transform .15s; }
+  .wp.done span { background: var(--mint); border-color: var(--mint); }
+  .wp.now span { width: 14px; height: 14px; border-color: var(--amber); background: var(--amber); box-shadow: 0 0 0 4px rgba(255,181,71,.22); }
+  .wp.locked { cursor: default; }
+  .wp.locked span { border-color: var(--dim); background: transparent; width: 7px; height: 7px; }
+  .wp:not(.locked):hover span { transform: scale(1.25); }
+
+  .main { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 420px); }
+
+  /* ---- The planet view ---------------------------------------------------------- */
+  .view { min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: var(--sky); }
+  .site-head { display: flex; align-items: baseline; gap: 14px; padding: 12px 20px 10px; flex-wrap: wrap; }
+  .site-head h1 { margin: 0; font-size: 28px; line-height: 1.1; font-weight: 850; letter-spacing: -.03em; }
+  .site-head p { margin: 0; color: var(--haze); font-size: 16px; }
+  .scope { position: relative; min-height: 0; margin: 0 16px; border-radius: 18px; overflow: hidden; background: #120e22; box-shadow: inset 0 0 0 1px var(--edge); }
+  .scope canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .hud { position: absolute; inset: 12px 12px auto 12px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; pointer-events: none; }
+  .gauges { display: flex; gap: 8px; flex-wrap: wrap; }
+  .gauge { display: flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: 10px; background: rgba(18,13,34,.72); backdrop-filter: blur(4px); font: 600 14px var(--mono); font-variant-numeric: tabular-nums; }
+  .gauge small { font: 500 12px var(--ui); color: var(--haze); }
+  .cell { display: inline-block; width: 44px; height: 9px; border-radius: 3px; background: #3a3260; overflow: hidden; }
+  .cell i { display: block; height: 100%; background: var(--mint); transition: width .1s; }
+  .gauge.low .cell i { background: var(--coral); }
+  .gauge.low { color: var(--coral); }
+  .status { padding: 6px 12px; border-radius: 99px; font-weight: 700; font-size: 13px; background: rgba(18,13,34,.72); display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+  .status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--haze); }
+  .status.s-go::before { background: var(--mint); box-shadow: 0 0 8px var(--mint); }
+  .status.s-hold::before { background: var(--amber); }
+  .status.s-win { color: #12302a; background: var(--mint); }
+  .status.s-win::before { background: #12302a; }
+  .status.s-lost { color: #fff; background: #b8433a; }
+  .status.s-lost::before { background: #fff; }
+  .right-hud { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .planets { display: flex; gap: 6px; pointer-events: auto; }
+  .planet-tab { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; font: 700 12px var(--mono); display: grid; place-items: center; color: #1b1733; }
+  .planet-tab.ok { background: radial-gradient(circle at 35% 30%, #c9ffe6, #59c99a); }
+  .planet-tab.no { background: radial-gradient(circle at 35% 30%, #ffc4bc, #c8574c); }
+  .planet-tab.on { border-color: var(--bone); transform: scale(1.12); }
+  .where { position: absolute; left: 12px; bottom: 12px; font: 12px var(--mono); color: var(--haze); background: rgba(18,13,34,.6); padding: 3px 8px; border-radius: 6px; pointer-events: none; }
+  .banner { position: absolute; left: 16px; right: 16px; bottom: 16px; width: fit-content; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 10px 12px 10px 18px; border-radius: 14px; background: rgba(27,21,52,.9); backdrop-filter: blur(6px); box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 1px var(--edge); }
+  .banner p { margin: 0; font-weight: 650; }
+  .banner.win { box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 2px var(--mint); }
+  .banner.lost { box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 2px var(--coral); }
+  .banner .quiet { color: var(--bone); }
+  .banner-actions { display: flex; gap: 8px; flex: none; }
+
+  .timeline { display: flex; align-items: center; gap: 12px; padding: 10px 16px 14px; }
+  .play { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--panel-2); font-size: 15px; flex: none; }
+  .play:hover { background: var(--edge); }
+  .play:disabled { opacity: .4; cursor: default; }
+  .track { position: relative; flex: 1; height: 40px; min-width: 0; }
+  .marks { position: absolute; left: 9px; right: 9px; top: 0; height: 18px; pointer-events: none; }
+  .mark { position: absolute; transform: translateX(-50%); font-size: 13px; line-height: 18px; pointer-events: auto; cursor: pointer; }
+  .scrub { position: absolute; left: 0; right: 0; bottom: 2px; width: 100%; margin: 0; appearance: none; background: transparent; height: 18px; }
+  .scrub::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--violet) var(--done, 0%), #3a3260 var(--done, 0%)); }
+  .scrub::-moz-range-track { height: 6px; border-radius: 3px; background: #3a3260; }
+  .scrub::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--violet); }
+  .scrub::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; margin-top: -6px; border-radius: 50%; background: var(--bone); border: 3px solid var(--violet); }
+  .scrub::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--bone); border: 3px solid var(--violet); }
+  .clock { font: 600 13px var(--mono); color: var(--haze); min-width: 64px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ---- Uplink: the program going up to the rover ---------------------------------- */
+  .uplink { min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(140px, 1fr) auto auto minmax(110px, 30%); background: var(--dusk); border-left: 1px solid var(--edge); }
+  .uplink-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px 8px; }
+  .uplink-head b { font-weight: 750; }
+  .uplink-head span { color: var(--haze); font-size: 13px; }
+  .editor { min-height: 0; margin: 0 12px; display: grid; grid-template-columns: auto 1fr; border-radius: 12px; overflow: hidden; background: #171329; box-shadow: inset 0 0 0 1px var(--edge); }
+  .lines { padding: 12px 8px 40px 10px; color: #5d5486; text-align: right; white-space: pre; overflow: hidden; font: 14px/1.6 var(--mono); user-select: none; }
+  .lines .err { color: var(--coral); font-weight: 700; }
+  #code { width: 100%; height: 100%; resize: none; border: 0; outline: 0; padding: 12px 14px 40px 6px; background: transparent; color: #ece4ff; caret-color: var(--mint); font: 14px/1.6 var(--mono); tab-size: 4; white-space: pre; overflow: auto; }
+  .kit { display: flex; flex-wrap: wrap; gap: 5px; padding: 10px 12px 0; }
+  .chip { border: 0; border-radius: 7px; padding: 3px 7px; background: var(--panel); color: #d9ccff; font: 12.5px var(--mono); position: relative; }
+  .chip:hover { background: var(--panel-2); color: var(--bone); }
+  .chip.cmd { color: var(--bone); }
+  .chip.new::after { content: ""; position: absolute; top: -2px; right: -2px; width: 8px; height: 8px; border-radius: 50%; background: var(--mint); }
+  .actions { display: flex; align-items: center; gap: 8px; padding: 10px 12px; }
+  .transmit { flex: 1; }
+  .tool { position: relative; height: 44px; min-width: 44px; border-radius: 12px; border: 1px solid var(--edge); background: var(--panel); display: grid; place-items: center; font-size: 18px; padding: 0 10px; }
+  .tool:hover { background: var(--panel-2); }
+  .tool sup { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--violet); color: #1b1733; font: 700 11px/18px var(--ui); padding: 0 5px; }
+  .feed { min-height: 0; overflow: auto; padding: 4px 14px 14px; border-top: 1px solid var(--edge); font-size: 14px; }
+  .feed .ev { display: grid; grid-template-columns: 42px 1fr; gap: 6px; padding: 3px 6px; border-radius: 6px; }
+  .feed .ev .t { font: 12px/21px var(--mono); color: var(--dim); text-align: right; }
+  .feed .ev.print { font-family: var(--mono); font-size: 13px; color: #d9ccff; }
+  .feed .ev.good { color: var(--mint); }
+  .feed .ev.bad { color: #ffb0a8; }
+  .feed .ev.now { background: var(--panel); }
+  .feed .err { margin: 8px 0; padding: 9px 11px; border-radius: 10px; background: rgba(255,111,97,.12); color: #ffc7c0; font-size: 14px; white-space: pre-wrap; }
+  .feed .empty { color: var(--dim); padding: 10px 6px; }
+  .feed-head { position: sticky; top: 0; background: var(--dusk); padding: 8px 6px 4px; color: var(--haze); font-size: 13px; }
+
+  /* ---- Pop-overs: mission control's radio, the field journal, how it works ------- */
+  .pop { position: fixed; z-index: 20; width: min(360px, calc(100vw - 24px)); background: var(--panel); border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,.5), inset 0 0 0 1px var(--edge); padding: 14px; }
+  .pop h2 { margin: 0 0 10px; font-size: 16px; }
+  .msg { background: var(--dusk); border-radius: 4px 14px 14px 14px; padding: 9px 12px; margin-bottom: 8px; white-space: pre-wrap; font-size: 14px; }
+  .msg code, .pop pre { font-family: var(--mono); }
+  .pop textarea { width: 100%; min-height: 80px; resize: vertical; border-radius: 10px; border: 1px solid var(--edge); background: var(--dusk); padding: 9px; }
+  .pop-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+  .pop-row small { color: var(--haze); }
+  .intro { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px; background: rgba(12,9,26,.72); }
+  .intro-card { width: min(520px, 100%); background: var(--dusk); border-radius: 20px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.5), inset 0 0 0 1px var(--edge); }
+  .intro-card canvas { display: block; width: 100%; height: 170px; }
+  .intro-body { padding: 18px 22px 22px; }
+  .intro-body ol { margin: 0 0 18px; padding-left: 22px; display: grid; gap: 6px; font-size: 17px; }
+  .intro-body li::marker { color: var(--mint); font-weight: 800; }
+  .announce { position: absolute; top: 0; left: 0; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+  /* Short screens (a Chromebook with its browser bars) give the height to the map. */
+  @media (max-height: 700px) and (min-width: 861px) {
+    .site-head { padding: 8px 20px 6px; }
+    .site-head h1 { font-size: 22px; }
+    .timeline { padding: 6px 16px 8px; }
   }
-
-  .join {
-    min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(360px, .8fr);
-    background:
-      radial-gradient(circle at 18% 20%, rgba(180,140,255,.14), transparent 25%),
-      linear-gradient(135deg, #080c16 0 55%, #0e192a 55%);
+  @media (max-width: 1100px) and (min-width: 861px) {
+    .main { grid-template-columns: minmax(0, 1fr) 340px; }
+    .zname { display: none; }
   }
-  .join-story { padding: clamp(40px, 8vw, 110px); display: flex; flex-direction: column; justify-content: center; }
-  .bootline { color: var(--violet); font: 14px var(--editor); margin-bottom: 22px; }
-  .join h1 { font-size: clamp(54px, 8vw, 104px); line-height: .88; letter-spacing: -.065em; margin: 0; }
-  .join-story p { color: var(--muted); font-size: clamp(18px, 2vw, 23px); line-height: 1.5; max-width: 680px; margin-top: 28px; }
-  .join-console { margin: clamp(24px, 6vw, 76px); align-self: center; background: var(--chrome); border: 1px solid var(--line); box-shadow: 18px 18px 0 rgba(0,0,0,.35); }
-  .window-bar { height: 40px; display: flex; align-items: center; gap: 7px; border-bottom: 1px solid var(--line); padding: 0 13px; color: var(--muted); font: 12px var(--editor); }
-  .window-dot { width: 9px; height: 9px; border-radius: 50%; background: #45536b; }
-  .join-form { padding: clamp(26px, 5vw, 54px); }
-  .join-form h2 { margin: 0 0 8px; font-size: 25px; }
-  .join-form p { color: var(--muted); line-height: 1.5; margin: 0 0 28px; }
-  .join-form label { display: block; color: var(--cyan); font: 13px var(--editor); margin-bottom: 8px; }
-  .join-form input { width: 100%; border: 1px solid var(--line); background: #090e19; color: var(--text); padding: 13px; font-size: 18px; }
-  .join-form button { width: 100%; margin-top: 13px; }
-
-  .btn { border: 1px solid #397f7a; background: #173d40; color: #dffffb; padding: 9px 14px; font-weight: 700; }
-  .btn:hover { background: #205157; }
-  .btn.primary { background: var(--cyan); color: #062b2c; border-color: var(--cyan); }
-  .btn.primary:hover { background: #79eee4; }
-  .btn.ghost { background: transparent; color: var(--muted); border-color: var(--line); }
-  .btn.ghost:hover { color: var(--text); background: var(--panel-2); }
-  .btn:disabled { opacity: .55; cursor: wait; }
-
-  .ide { display: none; height: 100vh; grid-template-rows: 48px minmax(0, 1fr) 24px; }
-  .titlebar { background: #080d18; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 0 16px; }
-  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; }
-  .logo-mark { color: var(--void); background: var(--violet); font: 900 13px var(--editor); padding: 5px 7px; }
-  .title-meta { color: var(--muted); font: 12px var(--editor); white-space: nowrap; }
-  .title-actions { display: flex; align-items: center; gap: 8px; }
-  .title-actions a, .title-actions button { color: var(--muted); background: none; border: 0; font-size: 13px; padding: 7px; text-decoration: none; }
-  .title-actions a:hover, .title-actions button:hover { color: var(--text); }
-  .title-actions #helpButton { width: 26px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 50%; font-weight: 700; }
-
-  .workspace { min-height: 0; display: grid; grid-template-columns: 225px minmax(360px, 1fr) minmax(420px, 520px); }
-
-  /* Left: every zone and its three sites. */
-  .sidebar { min-width: 0; min-height: 0; overflow: auto; background: var(--chrome); border-right: 1px solid var(--line); }
-  .side-heading { height: 34px; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; color: var(--muted); font: 11px var(--editor); letter-spacing: .08em; border-bottom: 1px solid var(--line); border-top: 1px solid var(--line); background: #0b111e; }
-  .side-heading:first-child { border-top: 0; }
-  .trial-list { padding: 4px 0; }
-  .trial {
-    width: 100%; border: 0; border-left: 3px solid transparent; background: transparent; color: var(--muted);
-    text-align: left; padding: 8px 14px 8px 16px; display: grid; grid-template-columns: 26px 1fr; gap: 9px;
+  @media (max-width: 860px) {
+    .app { height: auto; min-height: 100%; grid-template-rows: auto auto; }
+    .bar { flex-wrap: wrap; padding: 8px 12px; gap: 6px 12px; }
+    .route { order: 3; width: 100%; }
+    .main { grid-template-columns: 1fr; }
+    .scope { height: 62vh; min-height: 320px; margin: 0 12px; }
+    .uplink { border-left: 0; border-top: 1px solid var(--edge); grid-template-rows: auto 300px auto auto 220px; }
+    .site-head { padding: 10px 14px 8px; }
   }
-  .trial:hover:not(:disabled) { background: #131d2f; color: var(--text); }
-  .trial.current { background: #18263c; color: var(--text); border-left-color: var(--violet); }
-  .trial:disabled { cursor: default; opacity: .5; }
-  .trial-num { font: 12px var(--editor); padding-top: 2px; }
-  .trial-copy b { display: block; font-size: 13px; line-height: 1.25; }
-  .trial-copy small { font-size: 11px; color: var(--muted); }
-  .trial.pass .trial-num, .trial.pass small { color: var(--green); }
-
-  /* Middle: the briefing, the planet replay, and the result. */
-  .rally-view { min-width: 0; min-height: 0; background: #0b111e; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; border-right: 1px solid var(--line); }
-  .brief { padding: 18px 22px 15px; border-bottom: 1px solid var(--line); background: linear-gradient(90deg, #13132b, #0c1321); }
-  .chapter { color: var(--violet); font: 11px var(--editor); margin-bottom: 7px; }
-  .brief h1 { font-size: clamp(26px, 2.6vw, 38px); line-height: 1; letter-spacing: -.035em; margin: 0 0 9px; }
-  .brief p { color: #b6c2d5; line-height: 1.45; margin: 0; max-width: 720px; font-size: 14px; }
-  .map-stage { min-height: 0; overflow: hidden; display: grid; place-items: center; padding: 46px 18px 18px; position: relative; }
-  .stage-head { position: absolute; top: 12px; left: 16px; right: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font: 12px var(--editor); color: var(--muted); flex-wrap: wrap; }
-  .stage-head b { color: var(--text); }
-  .replay-controls { display: flex; gap: 6px; align-items: center; }
-  .replay-controls .btn { font-size: 11px; padding: 5px 9px; }
-  .tick-now { color: var(--text); white-space: nowrap; margin-right: 2px; }
-  .gauge { white-space: nowrap; }
-  .gauge.low { color: var(--red); }
-  .planets { display: flex; gap: 4px; }
-  .planets .btn { font-size: 11px; padding: 4px 8px; }
-  .planets .btn.on { border-color: var(--violet); color: var(--text); }
-  .stage-inner { display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 100%; }
-  canvas { display: block; background: #050912; border: 1px solid #31405b; box-shadow: 0 18px 60px rgba(0,0,0,.28); max-width: 100%; }
-  .legend { display: flex; flex-wrap: wrap; gap: 6px 12px; justify-content: center; margin-top: 10px; font: 11px var(--editor); color: var(--muted); max-width: 100%; }
-  .legend span { display: inline-flex; align-items: center; gap: 5px; }
-  .swatch { width: 11px; height: 11px; display: inline-block; border: 1px solid #31405b; }
-  .where { margin-top: 6px; min-height: 16px; font: 11px var(--editor); color: var(--muted); }
-  .scorebar { padding: 12px 20px; border-top: 1px solid var(--line); display: flex; gap: 14px; align-items: center; flex-wrap: wrap; background: #0e1625; min-height: 62px; }
-  .score-main b { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; font-weight: 700; }
-  .score-main span { font-size: 14px; }
-  .score-main .good { color: var(--green); }
-  .score-main .bad { color: var(--red); }
-  .best { margin-left: auto; font: 11px var(--editor); color: var(--muted); text-align: right; }
-  .best b { color: var(--green); font-weight: 400; }
-
-  /* Right: the editor, toolbar, drawers and output — same as the missions. */
-  .code-column { min-width: 0; min-height: 0; background: var(--panel); display: grid; grid-template-rows: 42px minmax(160px, 1fr) auto minmax(130px, .5fr); }
-  .file-tabs { background: #0b111e; border-bottom: 1px solid var(--line); display: flex; align-items: end; }
-  .file-tab { height: 41px; padding: 0 17px; display: flex; align-items: center; gap: 8px; color: var(--text); background: var(--panel); border-right: 1px solid var(--line); border-top: 2px solid var(--violet); font: 12px var(--editor); }
-  .py-icon { color: var(--amber); font-weight: 900; }
-  .editor-shell { min-height: 0; display: grid; grid-template-columns: auto 1fr; overflow: hidden; background: #0c1220; }
-  .lines { min-width: 44px; padding: 14px 10px 60px 8px; color: #4f607a; background: #0a101c; border-right: 1px solid #18243a; text-align: right; white-space: pre; overflow: hidden; font: 14px/1.55 var(--editor); user-select: none; }
-  .lines .err { color: var(--red); font-weight: 700; }
-  textarea#code { width: 100%; height: 100%; resize: none; border: 0; outline: 0; padding: 14px 16px 60px; background: #0c1220; color: #dce7f6; caret-color: var(--cyan); font: 14px/1.55 var(--editor); tab-size: 4; white-space: pre; overflow: auto; }
-  .toolbar { min-height: 52px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: #0f1727; flex-wrap: wrap; }
-  .toolbar .btn { font-size: 12px; padding: 8px 11px; }
-  .run { min-width: 128px; }
-  .code-count { margin-left: auto; color: var(--muted); font: 11px var(--editor); text-align: right; }
-  .drawer { border-bottom: 1px solid var(--line); }
-  .drawer summary { color: var(--muted); font: 11px var(--editor); padding: 9px 12px; cursor: pointer; }
-  .drawer code { color: #a9f7ef; border: 1px solid #273b4e; padding: 2px 5px; font: 11px var(--editor); }
-  .sensor-list { padding: 0 12px 12px; display: grid; gap: 6px; font-size: 12px; color: #b6c2d5; line-height: 1.45; }
-  .drawer[open] > .sensor-list { max-height: 30vh; overflow: auto; }
-  .sensor-list b { color: var(--amber); font: 10px var(--editor); letter-spacing: .04em; margin-top: 4px; }
-  .sensor-list pre { margin: 2px 0 0; padding: 7px 9px; background: #0a101c; border: 1px solid #1d2a40; color: #dce7f6; font: 12px/1.5 var(--editor); white-space: pre-wrap; }
-  .sensor-list .new { color: var(--violet); font: 10px var(--editor); }
-  .journal textarea { width: 100%; min-height: 54px; resize: vertical; border: 1px solid var(--line); background: #090e19; color: var(--text); padding: 8px; font: 13px/1.4 Inter, "Segoe UI", Arial, sans-serif; }
-  .journal-row { display: flex; align-items: center; gap: 8px; }
-  .journal-row small { color: var(--muted); font: 11px var(--editor); }
-  .console { min-height: 0; display: grid; grid-template-rows: 34px minmax(0, 1fr); background: #080d17; }
-  .console-head { display: flex; align-items: center; justify-content: space-between; padding: 0 12px; color: var(--muted); font: 11px var(--editor); border-bottom: 1px solid #18243a; }
-  #log { overflow: auto; max-height: 35vh; padding: 10px 13px 18px; font: 12px/1.5 var(--editor); color: #b9c7db; }
-  #log div { margin: 1px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-  #log .good { color: var(--green); }
-  #log .bad { color: var(--red); }
-  #log .head { color: var(--amber); }
-  #log .print { color: #dce7f6; }
-  #log .now { background: #1d2a40; outline: 1px solid #397f7a; color: var(--text); }
-  .statusbar { background: #3d2f6b; color: #efe7ff; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 0 10px; font: 10px var(--editor); }
-
-  /* How it works: three steps on the first visit, and from the ? button. */
-  .intro { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; background: rgba(4,7,14,.78); overflow: auto; }
-  .intro-card { width: min(640px, 100%); background: var(--chrome); border: 1px solid var(--line); box-shadow: 18px 18px 0 rgba(0,0,0,.35); }
-  .intro-body { padding: 22px 26px 24px; }
-  .intro h2 { margin: 0 0 14px; font-size: 24px; }
-  .steps { margin: 0 0 18px; padding: 0; list-style: none; display: grid; gap: 12px; counter-reset: step; }
-  .steps li { display: grid; grid-template-columns: 34px 1fr; gap: 12px; color: #b6c2d5; line-height: 1.45; font-size: 15px; }
-  .steps li::before { counter-increment: step; content: counter(step); display: grid; place-items: center; width: 30px; height: 30px; background: var(--violet); color: var(--void); font: 900 15px var(--editor); }
-  .steps b { color: var(--text); display: block; font-size: 16px; }
-  .steps code, .steps pre { color: #a9f7ef; font-family: var(--editor); }
-  .steps pre { margin: 6px 0 0; padding: 7px 10px; background: #0a101c; border: 1px solid #1d2a40; font-size: 13px; white-space: pre-wrap; }
-  .announce { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-
-  @media (max-width: 1100px) {
-    .workspace { grid-template-columns: 185px minmax(320px, 1fr) minmax(360px, 440px); }
-  }
-  /* Short screens (a Chromebook once the browser's own bars are in) give the
-     height to the replay. The full briefing is also in "How it works". */
-  @media (min-width: 901px) and (max-height: 760px) {
-    .brief { padding: 10px 22px; }
-    .chapter { display: none; }
-    .brief h1 { font-size: 22px; margin-bottom: 4px; }
-    .brief p { font-size: 13px; }
-    .scorebar { padding: 8px 20px; min-height: 0; }
-  }
-  @media (max-width: 900px) {
-    .ide { height: auto; min-height: 100vh; grid-template-rows: 48px auto 24px; }
-    .workspace { grid-template-columns: 1fr; }
-    .sidebar { border-right: 0; border-bottom: 1px solid var(--line); max-height: 260px; }
-    .rally-view { border-right: 0; }
-    .map-stage { min-height: 420px; }
-    .code-column { min-height: 720px; }
-  }
-  @media (max-width: 600px) {
-    .join { grid-template-columns: 1fr; }
-    .join-story { padding: 46px 24px 20px; }
-    .join h1 { font-size: 58px; }
-    .join-console { margin: 20px 18px 50px; }
-    .title-meta, .title-actions a { display: none; }
-    .brief { padding: 16px 14px; }
-    .map-stage { min-height: 360px; padding: 70px 12px 12px; }
+  @media (prefers-reduced-motion: reduce) {
+    .wp span, .cell i { transition: none; }
   }
 </style>
 </head>
 <body>
 <section class="join" id="join">
-  <div class="join-story">
-    <div class="bootline">rover.boot() → signal from the surface</div>
-    <h1>Strange<br>Planet</h1>
-    <p>Your rover has landed somewhere nobody has explored. Every region follows a rule of its own, and nobody is going to tell you what it is. Drive, watch, experiment, and work it out.</p>
-  </div>
-  <div class="join-console">
-    <div class="window-bar"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span><span style="margin-left:7px">mission_control.py</span></div>
-    <div class="join-form">
-      <h2>Sign in to mission control</h2>
-      <p>Use the same name as in Python Quest to keep your progress together.</p>
-      <label for="name">explorer_name =</label>
-      <input id="name" maxlength="20" autocomplete="nickname" placeholder="Type your name" autofocus>
-      <button class="btn primary" id="joinButton">Land the rover</button>
-    </div>
+  <canvas id="joinScene" aria-hidden="true"></canvas>
+  <div class="join-card">
+    <h1>Strange Planet</h1>
+    <p>Your rover has landed. Nobody knows the rules here yet.</p>
+    <form class="join-form" id="joinForm">
+      <input id="name" maxlength="20" autocomplete="nickname" placeholder="Your name" aria-label="Your name" autofocus>
+      <button class="go" id="joinButton">Land the rover</button>
+    </form>
   </div>
 </section>
 
-<main class="ide" id="ide">
-  <header class="titlebar">
-    <div class="logo"><span class="logo-mark">SP</span><span>Strange Planet</span><span class="title-meta">/ python_quest</span></div>
-    <div class="title-actions"><span class="title-meta" id="driver"></span><button id="helpButton" title="How Strange Planet works" aria-label="How Strange Planet works">?</button><a href="/">Missions</a><button id="switchButton">Switch explorer</button></div>
+<main class="app" id="app" hidden>
+  <header class="bar">
+    <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#352d60"/><rect x="8" y="13" width="16" height="9" rx="2" fill="#f2eadb"/><rect x="6" y="11" width="4" height="4" rx="1" fill="#2a2440"/><rect x="22" y="11" width="4" height="4" rx="1" fill="#2a2440"/><rect x="6" y="20" width="4" height="4" rx="1" fill="#2a2440"/><rect x="22" y="20" width="4" height="4" rx="1" fill="#2a2440"/><circle cx="20" cy="17" r="2.4" fill="#8cf2c6"/></svg>Strange Planet</div>
+    <nav class="route" id="route" aria-label="Your route across the planet"></nav>
+    <div class="who"><b id="driver"></b><button class="quiet round" id="helpButton" title="How it works" aria-label="How it works">?</button><button class="quiet" id="switchButton" title="Sign in as someone else">Switch</button></div>
   </header>
-  <div class="workspace">
-    <aside class="sidebar" id="zones"></aside>
-
-    <section class="rally-view">
-      <header class="brief">
-        <div class="chapter" id="chapter"></div>
-        <h1 id="siteName">Loading…</h1>
-        <p id="siteBrief"></p>
-      </header>
-      <div class="map-stage" id="stage">
-        <div class="stage-head">
-          <span id="stageTitle"></span>
-          <span class="planets" id="planets" hidden></span>
-          <span class="replay-controls">
-            <span class="gauge" id="gauge" hidden></span>
-            <span class="tick-now" id="tickNow"></span>
-            <button class="btn ghost" id="backButton" title="One step back" aria-label="One step back">−1</button>
-            <button class="btn ghost" id="pauseButton" title="Play" aria-label="Pause or play">▶︎</button>
-            <button class="btn ghost" id="nextButton" title="One step forward" aria-label="One step forward">+1</button>
-            <button class="btn ghost" id="skipButton" hidden>▸▸ Skip</button>
-          </span>
+  <div class="main">
+    <section class="view">
+      <div class="site-head"><h1 id="siteName">…</h1><p id="siteBrief"></p></div>
+      <div class="scope" id="scope">
+        <canvas id="map" aria-label="The planet surface and the rover"></canvas>
+        <div class="hud">
+          <div class="gauges">
+            <div class="gauge" title="Ticks so far: one for every command"><small>tick</small><span id="tick">0</span></div>
+            <div class="gauge" id="batteryGauge" hidden title="battery()"><small>battery</small><span class="cell"><i id="batteryBar"></i></span><span id="battery">100</span></div>
+            <div class="gauge" id="sampleGauge" hidden title="samples_left()"><small>samples</small><span id="samples">0</span></div>
+          </div>
+          <div class="right-hud">
+            <div class="status" id="status">Ready</div>
+            <div class="planets" id="planets" hidden></div>
+          </div>
         </div>
-        <div class="stage-inner">
-          <canvas id="map" aria-label="The planet surface"></canvas>
-          <div class="where" id="where">Point at a square to see its row and col.</div>
-          <div class="legend" id="legend"></div>
-        </div>
+        <div class="where" id="where" hidden></div>
+        <div class="banner" id="banner" hidden><p id="bannerText"></p><div class="banner-actions" id="bannerActions"></div></div>
       </div>
-      <div class="scorebar">
-        <div class="score-main"><b id="scoreLabel">THIS SITE</b><span id="scoreText">Not run yet.</span></div>
-        <button class="btn primary" id="nextSiteButton" hidden>Next site ▶</button>
-        <div class="best" id="best"></div>
+      <div class="timeline">
+        <button class="play" id="playButton" aria-label="Play" disabled>▶</button>
+        <div class="track"><div class="marks" id="marks"></div><input class="scrub" id="scrub" type="range" min="0" max="0" step="any" value="0" aria-label="Replay position" disabled></div>
+        <div class="clock" id="clock"></div>
       </div>
     </section>
 
-    <section class="code-column">
-      <div class="file-tabs"><div class="file-tab"><span class="py-icon">Py</span> <span id="fileName">rover.py</span></div></div>
-      <div class="editor-shell">
-        <div class="lines" id="lines">1</div>
-        <textarea id="code" aria-label="Python editor" spellcheck="false" placeholder="# move(), turn_left(), turn_right(), wait()…"></textarea>
+    <section class="uplink">
+      <div class="uplink-head"><b id="fileName">rover.py</b><span id="lineCount"></span></div>
+      <div class="editor"><div class="lines" id="lines">1</div><textarea id="code" aria-label="Your rover program" spellcheck="false"></textarea></div>
+      <div class="kit" id="kit" aria-label="Commands and sensors: click one to add it"></div>
+      <div class="actions">
+        <button class="go transmit" id="runButton" title="F5 or Ctrl+Enter">Transmit ▶</button>
+        <button class="tool" id="radioButton" title="Hints from mission control" aria-label="Hints from mission control">📻<sup id="radioCount" hidden></sup></button>
+        <button class="tool" id="journalButton" title="Field journal: your guess at this zone's rule" aria-label="Field journal">📓</button>
       </div>
-      <div>
-        <div class="toolbar">
-          <button class="btn primary run" id="runButton">▶ Run <span style="opacity:.65">F5</span></button>
-          <button class="btn ghost" id="clearButton">Clear file</button>
-          <div class="code-count" id="codeCount">0 lines</div>
-        </div>
-        <details class="drawer">
-          <summary>Commands and sensors</summary>
-          <div class="sensor-list" id="sensors"></div>
-        </details>
-        <details class="drawer">
-          <summary id="hintsTitle">Hints</summary>
-          <div class="sensor-list" id="hints"></div>
-        </details>
-        <details class="drawer journal" id="journalDrawer">
-          <summary id="journalTitle">Field journal</summary>
-          <div class="sensor-list">
-            <label for="journal">What do you think this zone's hidden rule is? Which run showed you?</label>
-            <textarea id="journal" maxlength="140" placeholder="I think… because when I…"></textarea>
-            <div class="journal-row"><button class="btn" id="journalSave">Save note</button><small id="journalState"></small></div>
-          </div>
-        </details>
-      </div>
-      <div class="console">
-        <div class="console-head"><span>OUTPUT</span><span id="consoleState">ready</span></div>
-        <div id="log"><div>Ready.</div></div>
-      </div>
+      <div class="feed" id="feed" aria-label="Telemetry"></div>
     </section>
   </div>
-  <footer class="statusbar"><span>Python 3 · safe classroom sandbox</span><span>Spaces: 4 · UTF-8 · <span id="position">Ln 1, Col 1</span></span></footer>
-  <div class="announce" id="announce" aria-live="polite"></div>
 </main>
 
+<div class="pop" id="radioPop" hidden role="dialog" aria-labelledby="radioTitle">
+  <h2 id="radioTitle">Mission control</h2>
+  <div id="hints"></div>
+  <div class="pop-row"><small id="hintsLeft"></small><button class="quiet" id="hintButton">Ask for a hint</button></div>
+</div>
+<div class="pop" id="journalPop" hidden role="dialog" aria-labelledby="journalTitle">
+  <h2 id="journalTitle">Field journal</h2>
+  <textarea id="journal" maxlength="140" placeholder="I think… because when I ran…" aria-label="Your guess at this zone's rule"></textarea>
+  <div class="pop-row"><small id="journalState">Your guess at this zone's rule.</small><button class="quiet" id="journalSave">Save</button></div>
+</div>
 <div class="intro" id="intro" hidden role="dialog" aria-modal="true" aria-labelledby="introTitle">
   <div class="intro-card">
-    <div class="window-bar"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span><span style="margin-left:7px">how_it_works.py</span></div>
+    <canvas id="introScene" aria-hidden="true"></canvas>
     <div class="intro-body">
-      <h2 id="introTitle">How Strange Planet works</h2>
-      <ol class="steps">
-        <li><div><b>Your program drives the rover.</b>Commands run in order, top to bottom. Every command takes one <em>tick</em> of planet time.
-          <pre>move(3)        turn_left()
-turn_right()   wait()</pre></div></li>
-        <li><div><b>Every zone has a hidden rule.</b>Nobody will tell you what it is. The first site of each zone is where you notice it. Your code from the last site is loaded, so predict first: will it still work here?</div></li>
-        <li><div><b>Experiment like a scientist.</b>Run, watch the replay, step through it one tick at a time, and read the output. <code>print()</code> shows you numbers as the rover drives. Write your best guess in the <strong>Field journal</strong>.</div></li>
+      <h2 id="introTitle" class="announce">How it works</h2>
+      <ol>
+        <li>Write code. Transmit it to the rover.</li>
+        <li>Every zone hides a rule. Nobody will tell you.</li>
+        <li>Watch the replay. Work it out.</li>
       </ol>
-      <button class="btn primary" id="introClose">Got it, let's explore</button>
+      <button class="go" id="introClose">Let's explore</button>
     </div>
   </div>
 </div>
+<div class="announce" id="announce" aria-live="polite"></div>
 
 <script>
 const $ = id => document.getElementById(id);
 const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]];
-let me = null, running = false;
+const CALM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let me = null, busy = false;
 let state = null;     // every zone and site, from the server
 let site = null;      // the site on screen, as the student sees it
-let runs = null;      // the last run's results (five for Uncharted)
-let shown = null;     // the run on the canvas: {map, dir, frames, ...}
-let planetIndex = 0;  // which Uncharted planet is on screen
-let drawn = 0, timer = null, delay = 120;
+let runs = null;      // the last transmission's results (five for Uncharted)
+let scene = null;     // what the canvas shows: map, zone, frames, events
+let pos = 0, playing = false, lastTs = 0, fps = 8;
 let errorLine = 0, errorCount = 0;
 
-// What each command and sensor does, shown in the drawer for the current zone.
+const ZONE_ICONS = {landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", uncharted: "🪐"};
+// Each sensor arrives with a zone (matches planet.SENSOR_ZONE).
+const SENSOR_ZONE = {wall_ahead: 0, wall_left: 0, wall_right: 0, at_goal: 0, tick: 2, crater_ahead: 2,
+  cracked_ahead: 3, samples_left: 3, battery: 4, in_sun: 4, gust_in: 6};
 const HELP = {
-  move: ["COMMAND", "move()  move(3)", "Drive forward one square, or 3."],
-  turn_left: ["COMMAND", "turn_left()", "Turn on the spot, to the rover's left."],
-  turn_right: ["COMMAND", "turn_right()", "Turn on the spot, to the rover's right."],
-  wait: ["COMMAND", "wait()", "Stay put for one tick."],
-  wall_ahead: ["YES / NO", "wall_ahead()", "Is the next square ahead rock?"],
-  wall_left: ["YES / NO", "wall_left()", "Is the square to the rover's left rock?"],
-  wall_right: ["YES / NO", "wall_right()", "Is the square to the rover's right rock?"],
-  at_goal: ["YES / NO", "at_goal()", "Is the rover on the beacon?"],
-  tick: ["NUMBER", "tick()", "How many ticks have gone by: one for every command."],
-  crater_ahead: ["YES / NO", "crater_ahead()", "Is the next square ahead a crater?"],
-  cracked_ahead: ["YES / NO", "cracked_ahead()", "Is the next square ahead cracked?"],
-  samples_left: ["NUMBER", "samples_left()", "How many samples are still to collect."],
-  battery: ["NUMBER", "battery()", "How much charge is left, from 0 to 100."],
-  in_sun: ["YES / NO", "in_sun()", "Is the rover standing in sunlight?"],
-  gust_in: ["NUMBER", "gust_in()", "How many ticks until the next gust of wind."],
+  move: "Drive forward. move(3) drives 3 squares.", turn_left: "Turn left on the spot.",
+  turn_right: "Turn right on the spot.", wait: "Stay put for one tick.",
+  wall_ahead: "True if rock is just ahead.", wall_left: "True if rock is to the left.",
+  wall_right: "True if rock is to the right.", at_goal: "True on the beacon.",
+  tick: "Ticks so far: one per command.", crater_ahead: "True if a crater is just ahead.",
+  cracked_ahead: "True if cracked ground is just ahead.", samples_left: "Samples still to collect.",
+  battery: "Charge left, 0 to 100.", in_sun: "True in sunlight.", gust_in: "Ticks until the next gust.",
 };
 const COMMANDS = ["move", "turn_left", "turn_right", "wait"];
-// What each kind of square looks like: its name, its floor on the canvas,
-// and its colour in the legend (the thing drawn on it, if anything).
-const TILES = {
-  "#": ["rock", "#26334a"], ".": ["ground", "#151f31"], "S": ["lander", "#151f31"],
-  "~": ["ice", "#2b6a8a"], "O": ["crater", "#020307", "#7a3b44"], "*": ["sample", "#151f31", "#72e09d"],
-  "+": ["sunny ground", "#4a3f17"], "P": ["pad", "#151f31", "#b48cff"], "G": ["beacon", "#151f31", "#55dfd2"],
-};
 
 function esc(value) {
   return String(value).replace(/[&<>\"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
@@ -366,9 +325,520 @@ function store(key, value) { try { localStorage.setItem(key, value); } catch (_)
 function recall(key) { try { return localStorage.getItem(key); } catch (_) { return null; } }
 function codeKey(key) { return `planetCode:${me}:${key}`; }
 function saveCode() { if (me && site) store(codeKey(site.key), $("code").value); }
+function announce(text) { $("announce").textContent = text; }
 
-// ---- Joining ---------------------------------------------------------------
-async function join() {
+// ---- Seeded noise, so every square's texture is the same on every redraw -------
+function hash(a, b, k = 0) {
+  let h = (a * 374761393 + b * 668265263 + k * 2147483647) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+function shade(hex, f) {
+  const n = parseInt(hex.slice(1), 16);
+  const ch = s => Math.max(0, Math.min(255, Math.round(((n >> s) & 255) * f)));
+  return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
+}
+
+// ---- What each zone's ground looks like -------------------------------------------
+const GROUND = {
+  landing: {ground: "#b5683f", rock: "#5a3125", bed: "#2e1912"},
+  ice: {ground: "#8e7f93", rock: "#4b4157", bed: "#231d2b"},
+  wind: {ground: "#c39457", rock: "#6a4628", bed: "#2f2014"},
+  crumble: {ground: "#8f7c70", rock: "#4b3f3a", bed: "#211b19"},
+  solar: {ground: "#d0a868", rock: "#76552f", bed: "#2d2112"},
+  portals: {ground: "#716a8c", rock: "#3c3655", bed: "#1a1729"},
+  uncharted: {ground: "#7d8c84", rock: "#3d4945", bed: "#18201d"},
+};
+
+// The planet's still parts, drawn once per map and size: ground, rock, ice,
+// craters, sunny ground, pads and the lander.
+const terrainCache = {key: null, canvas: null};
+function terrain(map, zone, cell) {
+  const key = `${zone}|${cell}|${map.join("/")}`;
+  if (terrainCache.key === key) return terrainCache.canvas;
+  const pal = GROUND[zone] || GROUND.landing;
+  const rows = map.length, cols = map[0].length;
+  const cv = document.createElement("canvas");
+  cv.width = cols * cell; cv.height = rows * cell;
+  const g = cv.getContext("2d");
+  const at = (r, c) => (map[r] && map[r][c]) || "#";
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const ch = at(r, c), x = c * cell, y = r * cell;
+    // Ground everywhere first, each square a little different.
+    g.fillStyle = shade(pal.ground, .93 + hash(r, c) * .12);
+    g.fillRect(x, y, cell, cell);
+    for (let k = 0; k < 5; k++) {   // grit
+      g.fillStyle = hash(r, c, k + 9) > .5 ? "rgba(255,240,220,.10)" : "rgba(30,10,20,.14)";
+      const s = 1 + hash(r, c, k + 20) * cell * .07;
+      g.fillRect(x + hash(r, c, k + 1) * cell, y + hash(r, c, k + 5) * cell, s, s);
+    }
+    if (ch === "~") {
+      const grad = g.createLinearGradient(x, y, x + cell, y + cell);
+      grad.addColorStop(0, "#d8f1fb"); grad.addColorStop(1, "#8cc4dc");
+      g.fillStyle = grad; g.fillRect(x, y, cell, cell);
+      g.strokeStyle = "rgba(255,255,255,.65)"; g.lineWidth = Math.max(1, cell / 18);
+      g.beginPath();
+      const o = hash(r, c, 3) * cell * .3;
+      g.moveTo(x + cell * .15 + o, y + cell * .78); g.lineTo(x + cell * .5 + o, y + cell * .3);
+      g.moveTo(x + cell * .45 + o * .5, y + cell * .9); g.lineTo(x + cell * .7 + o * .5, y + cell * .55);
+      g.stroke();
+    } else if (ch === "+") {
+      g.fillStyle = "rgba(255,214,120,.38)"; g.fillRect(x, y, cell, cell);
+    } else if (ch === "O") {
+      const cx = x + cell / 2, cy = y + cell / 2;
+      const grad = g.createRadialGradient(cx - cell * .08, cy - cell * .08, cell * .05, cx, cy, cell * .46);
+      grad.addColorStop(0, "#07040a"); grad.addColorStop(.7, "#1d1016"); grad.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = grad; g.beginPath(); g.arc(cx, cy, cell * .46, 0, 7); g.fill();
+      g.strokeStyle = "rgba(255,230,210,.28)"; g.lineWidth = Math.max(1, cell / 12);
+      g.beginPath(); g.arc(cx, cy, cell * .42, Math.PI * .15, Math.PI * .95); g.stroke();
+    }
+  }
+  // Tile seams on open ground, faint, so squares can be counted.
+  g.strokeStyle = "rgba(40,14,22,.16)"; g.lineWidth = 1;
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    if (at(r, c) !== "#") g.strokeRect(c * cell + .5, r * cell + .5, cell - 1, cell - 1);
+  }
+  // Rock: a dark plateau that melts into the bedrock around the map, with a
+  // lit lip and a cast shadow wherever it meets open ground.
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    if (at(r, c) !== "#") continue;
+    const x = c * cell, y = r * cell;
+    if (at(r + 1, c) !== "#") { g.fillStyle = "rgba(10,4,12,.34)"; g.fillRect(x, y + cell, cell, cell * .2); }
+    if (at(r, c + 1) !== "#") { g.fillStyle = "rgba(10,4,12,.24)"; g.fillRect(x + cell, y, cell * .14, cell); }
+  }
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    if (at(r, c) !== "#") continue;
+    const x = c * cell, y = r * cell;
+    g.fillStyle = shade(pal.rock, .62 + hash(r, c, 2) * .08);
+    g.fillRect(x, y, cell + .5, cell + .5);
+    if (hash(r, c, 29) < .55) {
+      const bx = x + cell * (.3 + hash(r, c, 30) * .4), by = y + cell * (.3 + hash(r, c, 33) * .4);
+      const br = cell * (.12 + hash(r, c, 36) * .12);
+      g.fillStyle = shade(pal.rock, .82 + hash(r, c, 4) * .14);
+      g.beginPath();
+      for (let a = 0; a < 7; a++) {
+        const ang = a / 7 * Math.PI * 2, rr = br * (.75 + hash(r, c, a + 40) * .35);
+        const px = bx + Math.cos(ang) * rr, py = by + Math.sin(ang) * rr;
+        a ? g.lineTo(px, py) : g.moveTo(px, py);
+      }
+      g.fill();
+      g.fillStyle = "rgba(255,240,225,.08)";
+      g.beginPath(); g.arc(bx - br * .3, by - br * .3, br * .4, 0, 7); g.fill();
+    }
+  }
+  g.strokeStyle = shade(pal.rock, 1.35); g.lineWidth = Math.max(1.5, cell * .06); g.lineCap = "round";
+  g.beginPath();
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    if (at(r, c) !== "#") continue;
+    const x = c * cell, y = r * cell, k = g.lineWidth / 2;
+    if (r + 1 < rows && at(r + 1, c) !== "#") { g.moveTo(x, y + cell - k); g.lineTo(x + cell, y + cell - k); }
+    if (r > 0 && at(r - 1, c) !== "#") { g.moveTo(x, y + k); g.lineTo(x + cell, y + k); }
+    if (c + 1 < cols && at(r, c + 1) !== "#") { g.moveTo(x + cell - k, y); g.lineTo(x + cell - k, y + cell); }
+    if (c > 0 && at(r, c - 1) !== "#") { g.moveTo(x + k, y); g.lineTo(x + k, y + cell); }
+  }
+  g.stroke();
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const ch = at(r, c), x = c * cell, y = r * cell, cx = x + cell / 2, cy = y + cell / 2;
+    if (ch === "P") {   // a pad: metal disc, glow drawn live
+      g.fillStyle = "#4a4466"; g.beginPath(); g.arc(cx, cy, cell * .4, 0, 7); g.fill();
+      g.strokeStyle = "#8c80c0"; g.lineWidth = Math.max(1, cell / 16);
+      g.beginPath(); g.arc(cx, cy, cell * .4, 0, 7); g.stroke();
+      g.beginPath(); g.arc(cx, cy, cell * .22, 0, 7); g.stroke();
+    } else if (ch === "S") {   // the lander's footprint
+      g.strokeStyle = "rgba(242,234,219,.45)"; g.lineWidth = Math.max(1, cell / 18);
+      g.beginPath();
+      for (let a = 0; a < 6; a++) {
+        const ang = a / 6 * Math.PI * 2 + Math.PI / 6;
+        g.lineTo(cx + Math.cos(ang) * cell * .36, cy + Math.sin(ang) * cell * .36);
+      }
+      g.closePath(); g.stroke();
+    }
+  }
+  terrainCache.key = key; terrainCache.canvas = cv;
+  return cv;
+}
+
+// A tile of the zone's bedrock, repeated behind the map so the planet goes on
+// past the edge instead of ending in a box.
+const bedCache = {};
+function bedPattern(ctx, zone) {
+  if (!bedCache[zone]) {
+    const pal = GROUND[zone] || GROUND.landing, cv = document.createElement("canvas");
+    cv.width = cv.height = 96;
+    const g = cv.getContext("2d");
+    g.fillStyle = pal.bed; g.fillRect(0, 0, 96, 96);
+    for (let k = 0; k < 90; k++) {
+      g.fillStyle = hash(k, 7) > .5 ? "rgba(255,235,220,.05)" : "rgba(0,0,0,.18)";
+      const s = 1 + hash(k, 3) * 4;
+      g.beginPath(); g.arc(hash(k, 1) * 96, hash(k, 2) * 96, s, 0, 7); g.fill();
+    }
+    bedCache[zone] = cv;
+  }
+  return ctx.createPattern(bedCache[zone], "repeat");
+}
+
+// ---- The rover --------------------------------------------------------------------
+// Seen from above, facing +x: six wheels, a solar deck at the back, and a
+// camera mast at the front with a mint lens.
+function drawRover(ctx, x, y, s, angle, alpha = 1) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(x, y); ctx.rotate(angle);
+  ctx.fillStyle = "rgba(10,4,16,.38)";
+  ctx.beginPath(); ctx.ellipse(s * .05, s * .07, s * .42, s * .36, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#26212f";
+  for (const wx of [-.26, 0, .26]) for (const wy of [-.33, .33]) {
+    roundRect(ctx, (wx - .09) * s, (wy - .07) * s, .18 * s, .14 * s, .04 * s); ctx.fill();
+  }
+  ctx.strokeStyle = "#26212f"; ctx.lineWidth = s * .05;
+  ctx.beginPath(); ctx.moveTo(-.3 * s, -.27 * s); ctx.lineTo(.3 * s, -.27 * s); ctx.moveTo(-.3 * s, .27 * s); ctx.lineTo(.3 * s, .27 * s); ctx.stroke();
+  ctx.fillStyle = "#f2eadb"; ctx.strokeStyle = "#6e6290"; ctx.lineWidth = Math.max(1, s * .03);
+  roundRect(ctx, -.32 * s, -.22 * s, .62 * s, .44 * s, .08 * s); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#3f5f96";
+  roundRect(ctx, -.29 * s, -.18 * s, .3 * s, .36 * s, .03 * s); ctx.fill();
+  ctx.strokeStyle = "rgba(200,225,255,.45)"; ctx.lineWidth = Math.max(1, s * .015);
+  ctx.beginPath(); ctx.moveTo(-.14 * s, -.18 * s); ctx.lineTo(-.14 * s, .18 * s); ctx.moveTo(-.29 * s, 0); ctx.lineTo(.01 * s, 0); ctx.stroke();
+  ctx.strokeStyle = "#6e6290"; ctx.lineWidth = Math.max(1, s * .025);
+  ctx.beginPath(); ctx.moveTo(-.05 * s, -.14 * s); ctx.lineTo(-.16 * s, -.36 * s); ctx.stroke();
+  ctx.fillStyle = "#ffb547"; ctx.beginPath(); ctx.arc(-.16 * s, -.36 * s, s * .035, 0, 7); ctx.fill();
+  ctx.fillStyle = "#e6dccb"; ctx.strokeStyle = "#6e6290";
+  ctx.beginPath(); ctx.arc(.15 * s, 0, s * .1, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#231d3f"; roundRect(ctx, .18 * s, -.06 * s, .1 * s, .12 * s, .02 * s); ctx.fill();
+  ctx.fillStyle = "#8cf2c6"; ctx.beginPath(); ctx.arc(.25 * s, 0, s * .025, 0, 7); ctx.fill();
+  ctx.restore();
+}
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+const angleOf = d => (d - 1) * Math.PI / 2;
+
+// ---- Drawing the scene --------------------------------------------------------------
+function ease(u) { return u < .5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2; }
+// Where the rover is at replay position p: between two frames it rolls (or
+// turns) smoothly, except through a portal.
+function roverAt(p) {
+  const f = scene.frames, i = Math.min(Math.floor(p), f.length - 1), a = f[i], b = f[Math.min(i + 1, f.length - 1)];
+  const u = CALM ? 0 : ease(p - i);
+  const step = Math.abs(a.r - b.r) + Math.abs(a.c - b.c);
+  let r = a.r, c = a.c;
+  if (step === 1 && b.e !== "portal") { r += (b.r - a.r) * u; c += (b.c - a.c) * u; }
+  else if (b.e === "portal" && u > .5) { r = b.r; c = b.c; }
+  let turn = angleOf(b.d) - angleOf(a.d);
+  if (turn > Math.PI) turn -= 2 * Math.PI;
+  if (turn < -Math.PI) turn += 2 * Math.PI;
+  return {r, c, angle: angleOf(a.d) + turn * u, frame: a, i};
+}
+function layout(canvas) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+    canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+  }
+  return {w, h, dpr};
+}
+function render(now = performance.now()) {
+  const canvas = $("map"), {w, h, dpr} = layout(canvas);
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const zone = scene ? scene.zone : (site && site.zoneKey) || "landing";
+  ctx.fillStyle = bedPattern(ctx, zone); ctx.fillRect(0, 0, w, h);
+  if (!scene) { vignette(ctx, w, h); return; }
+  const map = scene.map, rows = map.length, cols = map[0].length;
+  // Room for the map between the HUD (top) and the result banner (bottom).
+  // The whole map shows whenever its squares can be a readable size; a long,
+  // thin map zooms in and the view follows the rover along it.
+  const top = 56, bottom = 76, roomW = w - 24, roomH = Math.max(80, h - top - bottom);
+  const fitW = roomW / cols, fitH = roomH / rows;
+  let cell = Math.min(fitW, fitH);
+  if (cell < 20) cell = Math.max(cell, Math.min(fitH, roomW / 15), Math.min(fitW, roomH / 11));
+  cell = Math.floor(Math.max(w < 520 ? 16 : 20, Math.min(56, cell)));
+  const rover = roverAt(pos);
+  const worldW = cols * cell, worldH = rows * cell;
+  const ox = worldW <= roomW ? (w - worldW) / 2 : clamp(w / 2 - (rover.c + .5) * cell, w - worldW - 12, 12);
+  const oy = worldH <= roomH ? top + (roomH - worldH) / 2 : clamp(top + roomH / 2 - (rover.r + .5) * cell, top + roomH - worldH, top);
+  scene.view = {ox, oy, cell};
+  ctx.save(); ctx.translate(ox, oy);
+  ctx.drawImage(terrain(map, zone, cell), 0, 0);
+  const i = rover.i, frames = scene.frames, f = frames[i];
+  // Cracks so far, and the samples not yet picked up.
+  const visited = new Set();
+  for (let k = 0; k <= i; k++) {
+    visited.add(frames[k].r + "," + frames[k].c);
+    if (frames[k].x) drawCrack(ctx, frames[k].x[0], frames[k].x[1], cell);
+  }
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    if (map[r][c] === "*" && !visited.has(r + "," + c)) drawSample(ctx, r, c, cell, now);
+    if (map[r][c] === "P") drawPadGlow(ctx, r, c, cell, now);
+  }
+  // Sunlight: in Solar Valley, everything outside the light is in shadow.
+  if (scene.zone === "solar") {
+    ctx.fillStyle = "rgba(14,8,32,.42)";
+    for (let c = 0; c < cols; c++) {
+      const band = f.sun != null && (c - f.sun + cols) % cols < scene.sunWidth;
+      for (let r = 0; r < rows; r++) if (!band && map[r][c] !== "+") ctx.fillRect(c * cell, r * cell, cell, cell);
+    }
+    if (f.sun != null) {
+      for (let k = 0; k < scene.sunWidth; k++) {
+        const c = (f.sun + k) % cols;
+        ctx.fillStyle = "rgba(255,214,120,.16)"; ctx.fillRect(c * cell, 0, cell, worldH);
+      }
+    }
+  }
+  drawTracks(ctx, frames, i, rover, cell);
+  const G = findChar(map, "G");
+  if (G) drawBeacon(ctx, G[0], G[1], cell, now, f.e === "goal");
+  // The rover, and whatever just happened to it.
+  const rx = (rover.c + .5) * cell, ry = (rover.r + .5) * cell;
+  const atEvent = !playing || pos - i < .6;
+  if (f.e === "fell") {
+    ctx.fillStyle = "rgba(255,111,97,.25)"; ctx.beginPath(); ctx.arc(rx, ry, cell * .55, 0, 7); ctx.fill();
+    drawRover(ctx, rx, ry, cell * .55, rover.angle + .6, .55);
+  } else {
+    if (atEvent && f.e === "gust") drawGust(ctx, rx, ry, cell);
+    if (atEvent && f.e === "portal") drawFlash(ctx, rx, ry, cell, "#b9a3ff");
+    drawRover(ctx, rx, ry, cell * 1.12, rover.angle);
+    if (atEvent && f.e === "bump") drawDust(ctx, rx, ry, cell, rover.angle);
+  }
+  ctx.restore();
+  vignette(ctx, w, h);
+  // The heads-up display.
+  $("tick").textContent = f.t;
+  if (f.b != null) {
+    $("battery").textContent = f.b;
+    $("batteryBar").style.width = f.b + "%";
+    $("batteryGauge").classList.toggle("low", f.b <= 10);
+  }
+  if (scene.samples) {
+    let left = scene.samples;
+    for (const [r, c] of scene.sampleSquares) if (visited.has(r + "," + c)) left--;
+    $("samples").textContent = left;
+  }
+  setStatus(i);
+}
+function clamp(v, lo, hi) { return Math.max(Math.min(v, hi), Math.min(lo, hi)); }
+function vignette(ctx, w, h) {
+  const grad = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * .35, w / 2, h / 2, Math.max(w, h) * .75);
+  grad.addColorStop(0, "rgba(10,6,24,0)"); grad.addColorStop(1, "rgba(10,6,24,.55)");
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, w, h);
+}
+function findChar(map, ch) {
+  for (let r = 0; r < map.length; r++) { const c = map[r].indexOf(ch); if (c >= 0) return [r, c]; }
+  return null;
+}
+function drawTracks(ctx, frames, i, rover, cell) {
+  ctx.strokeStyle = "rgba(30,14,30,.32)"; ctx.lineWidth = Math.max(1.5, cell * .07); ctx.lineCap = "round";
+  for (const side of [-.25, .25]) {
+    ctx.beginPath();
+    let prev = null;
+    const pts = frames.slice(0, i + 1).map(f => ({r: f.r, c: f.c, jump: f.e === "portal"}));
+    pts.push({r: rover.r, c: rover.c, jump: false});
+    for (const p of pts) {
+      if (prev && !p.jump && Math.abs(p.r - prev.r) + Math.abs(p.c - prev.c) <= 1.01 && (p.r !== prev.r || p.c !== prev.c)) {
+        const dx = p.c - prev.c, dy = p.r - prev.r, len = Math.hypot(dx, dy) || 1;
+        const nx = -dy / len * side * cell, ny = dx / len * side * cell;
+        ctx.moveTo((prev.c + .5) * cell + nx, (prev.r + .5) * cell + ny);
+        ctx.lineTo((p.c + .5) * cell + nx, (p.r + .5) * cell + ny);
+      }
+      prev = p;
+    }
+    ctx.stroke();
+  }
+}
+function drawCrack(ctx, r, c, cell) {
+  const x = c * cell, y = r * cell;
+  ctx.fillStyle = "rgba(20,10,8,.42)"; ctx.fillRect(x, y, cell, cell);
+  ctx.strokeStyle = "#1a0f0c"; ctx.lineWidth = Math.max(1.5, cell / 12); ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(x + cell * .1, y + cell * (.2 + hash(r, c, 1) * .3)); ctx.lineTo(x + cell * .45, y + cell * .5);
+  ctx.lineTo(x + cell * (.3 + hash(r, c, 2) * .2), y + cell * .92);
+  ctx.moveTo(x + cell * .45, y + cell * .5); ctx.lineTo(x + cell * .9, y + cell * (.3 + hash(r, c, 3) * .3));
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,220,190,.22)"; ctx.lineWidth = Math.max(1, cell / 30); ctx.stroke();
+}
+function drawSample(ctx, r, c, cell, now) {
+  const cx = (c + .5) * cell, cy = (r + .5) * cell, glow = CALM ? .5 : .5 + .5 * Math.sin(now / 400 + r + c);
+  ctx.fillStyle = `rgba(140,242,198,${.12 + glow * .12})`; ctx.beginPath(); ctx.arc(cx, cy, cell * .4, 0, 7); ctx.fill();
+  ctx.fillStyle = "#8cf2c6"; ctx.strokeStyle = "#2b7d5f"; ctx.lineWidth = Math.max(1, cell / 24);
+  for (const [dx, hgt, wd] of [[-.12, .34, .1], [.05, .44, .12], [.18, .28, .09]]) {
+    ctx.beginPath();
+    ctx.moveTo(cx + dx * cell - wd * cell, cy + .18 * cell); ctx.lineTo(cx + dx * cell, cy + (.18 - hgt) * cell);
+    ctx.lineTo(cx + dx * cell + wd * cell, cy + .18 * cell); ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+}
+function drawPadGlow(ctx, r, c, cell, now) {
+  const cx = (c + .5) * cell, cy = (r + .5) * cell, k = CALM ? .5 : .5 + .5 * Math.sin(now / 500 + r * 3 + c);
+  ctx.strokeStyle = `rgba(185,163,255,${.35 + k * .4})`; ctx.lineWidth = Math.max(1.5, cell / 14);
+  ctx.beginPath(); ctx.arc(cx, cy, cell * (.3 + k * .05), 0, 7); ctx.stroke();
+}
+function drawBeacon(ctx, r, c, cell, now, reached) {
+  const cx = (c + .5) * cell, cy = (r + .5) * cell;
+  const rings = CALM ? [0.35] : [0, .5].map(o => ((now / 1600 + o) % 1));
+  for (const k of rings) {
+    ctx.strokeStyle = `rgba(140,242,198,${(1 - k) * (reached ? .9 : .6)})`; ctx.lineWidth = Math.max(1.5, cell / 14);
+    ctx.beginPath(); ctx.arc(cx, cy, cell * (.25 + k * (reached ? 1.4 : .75)), 0, 7); ctx.stroke();
+  }
+  ctx.fillStyle = "#2a2440"; ctx.beginPath(); ctx.arc(cx, cy, cell * .24, 0, 7); ctx.fill();
+  ctx.fillStyle = "#8cf2c6"; ctx.shadowColor = "#8cf2c6"; ctx.shadowBlur = cell * .5;
+  ctx.beginPath(); ctx.arc(cx, cy, cell * .12, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
+}
+function drawGust(ctx, x, y, cell) {
+  ctx.strokeStyle = "rgba(240,248,255,.75)"; ctx.lineWidth = Math.max(1.5, cell / 14); ctx.lineCap = "round";
+  for (const dy of [-.3, 0, .3]) {
+    ctx.beginPath(); ctx.moveTo(x - cell * 1.3, y + dy * cell); ctx.quadraticCurveTo(x - cell * .9, y + dy * cell - cell * .12, x - cell * .55, y + dy * cell); ctx.stroke();
+  }
+}
+function drawFlash(ctx, x, y, cell, color) {
+  ctx.strokeStyle = color; ctx.lineWidth = Math.max(2, cell / 10);
+  for (const k of [.5, .8]) { ctx.globalAlpha = 1.2 - k; ctx.beginPath(); ctx.arc(x, y, cell * k, 0, 7); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+}
+function drawDust(ctx, x, y, cell, angle) {
+  const fx = x + Math.cos(angle) * cell * .5, fy = y + Math.sin(angle) * cell * .5;
+  ctx.fillStyle = "rgba(240,220,200,.5)";
+  for (let k = 0; k < 5; k++) { ctx.beginPath(); ctx.arc(fx + (hash(k, 1) - .5) * cell * .5, fy + (hash(k, 2) - .5) * cell * .5, cell * (.06 + hash(k, 3) * .07), 0, 7); ctx.fill(); }
+}
+
+// ---- Replay -------------------------------------------------------------------------
+function last() { return scene ? scene.frames.length - 1 : 0; }
+function setPos(p) {
+  pos = Math.max(0, Math.min(last(), p));
+  $("scrub").value = pos;
+  $("scrub").style.setProperty("--done", last() ? (pos / last() * 100) + "%" : "0%");
+  if (scene) $("clock").textContent = `${scene.frames[Math.floor(pos)].t} / ${scene.frames[last()].t}`;
+}
+function setPlaying(on) {
+  playing = on && scene && last() > 0;
+  $("playButton").textContent = playing ? "❚❚" : pos >= last() && last() > 0 ? "↻" : "▶";
+  $("playButton").setAttribute("aria-label", playing ? "Pause" : "Play");
+  if (!playing) markFeed();
+}
+function frameLoop(ts) {
+  const dt = lastTs ? Math.min(100, ts - lastTs) : 0;
+  lastTs = ts;
+  if (playing) {
+    setPos(pos + dt / 1000 * fps);
+    if (pos >= last()) { setPos(last()); setPlaying(false); showOutcome(); }
+  }
+  // Smooth while the replay plays; otherwise just enough for the beacon's
+  // pulse (about 15 frames a second), so an idle tab stays cheap on a Chromebook.
+  if (!document.hidden && (playing || ts - (frameLoop.drawn || 0) > (CALM ? 500 : 66))) {
+    render(ts); frameLoop.drawn = ts;
+  }
+  requestAnimationFrame(frameLoop);
+}
+function togglePlay() {
+  if (!scene || last() === 0) return;
+  if (playing) { setPlaying(false); return; }
+  if (pos >= last()) setPos(0);
+  hideBanner();
+  setPlaying(true);
+}
+function stepBy(k) {
+  if (!scene) return;
+  setPlaying(false);
+  setPos(Math.round(pos) + k);
+  render(); markFeed();
+}
+// Light up the telemetry lines from the tick on screen.
+function markFeed() {
+  if (!scene) return;
+  const t = scene.frames[Math.floor(pos)].t;
+  let first = null;
+  for (const el of $("feed").querySelectorAll(".ev")) {
+    const now = el.dataset.t === String(t);
+    el.classList.toggle("now", now);
+    if (now && !first) first = el;
+  }
+  if (first) first.scrollIntoView({block: "nearest"});
+}
+
+// ---- A run on screen -------------------------------------------------------------------
+const ENDINGS = {
+  goal: ["win", "Beacon reached", t => `🎉 Beacon reached in ${t} ticks`],
+  fell: ["lost", "Lost", t => `💥 Rover lost at tick ${t}`],
+  battery: ["lost", "Flat battery", t => `🔋 Battery flat at tick ${t}`],
+  ticks: ["lost", "Out of time", t => `⏱ Out of time after ${t} ticks`],
+  stopped: ["hold", "Stopped", t => `🏁 Ended ${t} ticks in, away from the beacon`],
+  error: ["lost", "Code error", () => "⚠️ Code error"],
+};
+function setStatus(i) {
+  const el = $("status"), f = scene && scene.frames[i];
+  let cls = "", text = "Ready";
+  if (scene && scene.run) {
+    if (i >= last() && !playing) [cls, text] = ENDINGS[scene.run.end];
+    else if (f.e === "wait") [cls, text] = ["hold", "Waiting"];
+    else [cls, text] = ["go", "Driving"];
+  }
+  el.className = "status" + (cls ? " s-" + cls : ""); el.textContent = text;
+}
+function parseLog(run) {
+  return run.log.map(line => {
+    const m = /^tick (\d+): (.*)$/.exec(line);
+    return {t: m ? Number(m[1]) : 0, text: m ? m[2] : line};
+  });
+}
+function showRun(run, map) {
+  const zoneKey = site.zoneKey;
+  const samples = [];
+  map.forEach((row, r) => [...row].forEach((ch, c) => { if (ch === "*") samples.push([r, c]); }));
+  scene = {map, zone: zoneKey, frames: run.frames, run, sunWidth: run.sun_width || 0, samples: samples.length, sampleSquares: samples};
+  // Timeline marks: what happened, at the frame it happened.
+  const log = parseLog(run);
+  // On a busy run, slides and bumps make way for the events that matter.
+  const frameAtTick = t => { let k = 0; run.frames.forEach((f, j) => { if (f.t === t) k = j; }); return k; };
+  let marks = log.map(ev => ({k: frameAtTick(ev.t), icon: [...ev.text][0], text: ev.text}))
+    .filter(m => "⛸💨✨🧪💥🔋⏱🎉🧱".includes(m.icon));
+  if (marks.length > 12) marks = marks.filter(m => m.icon !== "⛸" && m.icon !== "🧱");
+  if (marks.length > 12) marks = marks.filter(m => m.icon !== "💨" || /pushed/.test(m.text));
+  $("marks").innerHTML = marks.map(m => `<span class="mark" style="left:${last() ? m.k / last() * 100 : 0}%" title="tick ${run.frames[m.k].t}: ${esc(m.text)}" data-k="${m.k}">${m.icon}</span>`).join("");
+  $("scrub").max = last(); $("scrub").disabled = last() === 0; $("playButton").disabled = last() === 0;
+  $("batteryGauge").hidden = run.frames[0].b == null;
+  $("sampleGauge").hidden = !samples.length;
+  // Telemetry: events and print() lines in tick order, the error last.
+  const prints = run.prints.map(p => ({t: p.t, text: p.text, print: true}));
+  const lines = [...log.map(x => ({...x, print: false})), ...prints].map((x, j) => ({...x, j}))
+    .sort((a, b) => a.t - b.t || a.print - b.print || a.j - b.j);
+  $("feed").innerHTML = `<div class="feed-head">Telemetry</div>` + lines.map(x =>
+    `<div class="ev${x.print ? " print" : /🎉/.test(x.text) ? " good" : /💥|🔋|⏱/.test(x.text) ? " bad" : ""}" data-t="${x.t}"><span class="t">${x.t}</span><span>${x.print ? "› " : ""}${esc(x.text)}</span></div>`).join("")
+    + (run.error ? `<div class="err">${esc(run.error)}</div>` : "")
+    + (!lines.length && !run.error ? '<div class="empty">No telemetry.</div>' : "");
+  hideBanner();
+  fps = Math.max(5, Math.min(30, last() / 20));
+  setPos(0);
+  if (run.error && last() === 0) { setPlaying(false); showOutcome(); }
+  else setPlaying(true);
+}
+function showOutcome() {
+  if (!scene || !scene.run) return;
+  const run = scene.run, [cls, , say] = ENDINGS[run.end];
+  const buttons = [];
+  if (run.end === "goal") {
+    const next = nextSite();
+    if (next && site.key !== "7") buttons.push(`<button class="go" onclick="openSite('${next}')">Next site</button>`);
+  } else if (run.end === "error") {
+    buttons.push(`<button class="quiet" onclick="$('code').focus()">Line ${run.line || "?"}</button>`);
+  } else if (["fell", "battery"].includes(run.end) && last() > 1) {
+    buttons.push(`<button class="quiet" onclick="showMoment()">Show the moment</button>`);
+  }
+  showBanner(cls === "win" ? "win" : cls === "lost" ? "lost" : "", say(run.ticks), buttons.join(""));
+}
+// The step just before things went wrong, paused there.
+function showMoment() {
+  hideBanner(); setPlaying(false);
+  setPos(Math.max(0, last() - 1));
+  render(); markFeed();
+}
+function showBanner(cls, text, actions = "") {
+  $("banner").className = "banner " + cls; $("bannerText").textContent = text;
+  $("bannerActions").innerHTML = actions; $("banner").hidden = false;
+}
+function hideBanner() { $("banner").hidden = true; }
+
+// ---- Joining ---------------------------------------------------------------------------
+async function join(event) {
+  event.preventDefault();
   const name = $("name").value.trim();
   if (!name) { $("name").focus(); return; }
   try {
@@ -376,402 +846,211 @@ async function join() {
     store("mazeId", player.id);
     if (await enter(player.id)) return;
   } catch (_) {}
-  $("joinButton").textContent = "No answer from the game. Try again";
+  $("joinButton").textContent = "No answer. Try again";
 }
 async function resume() {
   const id = recall("mazeId");
-  if (id) await enter(id);
+  if (!id || !(await enter(id))) joinScene();
 }
 async function enter(id) {
   let data;
   try { data = await get("/planet/state?id=" + encodeURIComponent(id)); }
-  catch (_) { return; }
-  if (!data.you) return;   // unknown id: stay on the join screen
+  catch (_) { return false; }
+  if (!data.you) return false;
   me = id; state = data;
   $("driver").textContent = data.you.name;
-  $("join").style.display = "none";
-  $("ide").style.display = "grid";
-  renderZones();
-  const last = recall(`planetSite:${me}`);
-  await openSite(siteOpen(last) ? last : data.current);
+  $("join").hidden = true; $("app").hidden = false;
+  renderRoute();
+  const lastSite = recall(`planetSite:${me}`);
+  await openSite(siteOpen(lastSite) ? lastSite : data.current);
+  requestAnimationFrame(frameLoop);
   if (recall("planetIntroSeen") !== "1") openIntro();
   return true;
 }
-function openIntro() { $("intro").hidden = false; $("introClose").focus(); }
-function closeIntro() { $("intro").hidden = true; store("planetIntroSeen", "1"); $("code").focus(); }
 
-// ---- Left column: zones and sites --------------------------------------------
+// ---- The route --------------------------------------------------------------------------
 function allSites() { return state.zones.flatMap(z => z.sites.map(s => ({...s, zone: z}))); }
 function siteOpen(key) { return allSites().some(s => s.key === key && s.open); }
 function zoneOf(key) { return state.zones.find(z => z.sites.some(s => s.key === key)); }
-function renderZones() {
-  $("zones").innerHTML = state.zones.map((z, zi) => `
-    <div class="side-heading"><span>${zi + 1 < state.zones.length ? `ZONE ${zi + 1}` : "FINALE"} · ${esc(z.name.toUpperCase())}</span></div>
-    <div class="trial-list">${z.sites.map(s => {
-      const label = s.key === "7" ? "∞" : s.key.toUpperCase();
-      const status = s.key === "7" && state.uncharted ? `best ${state.uncharted.reached}/5 planets`
-        : s.solved != null ? `✓ beacon in ${s.solved} ticks` : s.open ? "not reached yet" : "🔒 locked";
-      return `<button class="trial${s.solved != null ? " pass" : ""}${site && site.key === s.key ? " current" : ""}" ${s.open ? "" : "disabled"} onclick="openSite('${s.key}')">
-        <span class="trial-num">${s.solved != null ? "✓" : label}</span>
-        <span class="trial-copy"><b>${esc(s.name)}</b><small>${status}</small></span>
-      </button>`;
-    }).join("")}</div>`).join("");
-}
-
-// ---- Opening a site -----------------------------------------------------------
-async function openSite(key) {
-  if (running) return;
-  let view;
-  try { view = await get(`/planet/site?id=${encodeURIComponent(me)}&site=${encodeURIComponent(key)}`); }
-  catch (_) { $("consoleState").textContent = "no response"; return; }
-  if (view.error) { $("log").innerHTML = logLine(view.error, "bad"); return; }
-  saveCode();
-  site = view; runs = null; planetIndex = 0;
-  store(`planetSite:${me}`, key);
-  const zone = zoneOf(key), zi = state.zones.indexOf(zone);
-  $("chapter").textContent = key === "7" ? "FINALE / UNCHARTED"
-    : `ZONE ${zi + 1} · ${zone.name.toUpperCase()} / SITE ${key.toUpperCase()}`;
-  $("siteName").textContent = view.name;
-  $("siteBrief").textContent = view.brief;
-  $("fileName").textContent = `site_${key}.py`;
-  // Code: this browser's draft, else what was last run here, else the code
-  // from the site before. Running the old code on a new site is how students
-  // notice each hidden rule.
-  let code = recall(codeKey(key)), note = null;
-  if (code == null && view.code) code = view.code;
-  if (code == null) {
-    const order = allSites().map(s => s.key), prev = order[order.indexOf(key) - 1];
-    code = prev ? recall(codeKey(prev)) : null;
-    if (code) note = "📋 Your code from the last site is loaded. Predict first: will it work here?";
-    else if (key === "1a") code = "# Drive the rover to the beacon.\n# Count the squares on the map first.\nmove(3)\n";
-  }
-  $("code").value = code || "";
-  errorLine = 0;
-  updateEditor();
-  renderSensors(zi);
-  renderHints(zone);
-  renderJournal(zone);
-  renderZones();
-  $("scoreText").textContent = "Not run yet."; $("scoreText").className = "";
-  $("scoreLabel").textContent = "THIS SITE";
-  $("nextSiteButton").hidden = view.solved == null || !nextSite();
-  renderBest();
-  $("planets").hidden = true;
-  if (view.map) {
-    shown = {map: view.map, dir: view.dir, frames: [{r: 0, c: 0, d: view.dir, t: 0}], log: [], prints: []};
-    const [sr, sc] = findStart(view.map);
-    shown.frames[0].r = sr; shown.frames[0].c = sc;
-    stopReplay(); draw(0); controls();
-  } else {
-    shown = null; stopReplay(); clearCanvas();
-    $("tickNow").textContent = ""; $("gauge").hidden = true; $("legend").innerHTML = "";
-  }
-  $("log").innerHTML = [note ? logLine(note, "head") : "",
-    logLine(key === "7" ? "Each run lands on 5 new random planets. Press Run when your rover is ready."
-                        : "Press Run to drive. Then step through the replay one tick at a time.")].join("");
-}
-function findStart(map) {
-  for (let r = 0; r < map.length; r++) { const c = map[r].indexOf("S"); if (c >= 0) return [r, c]; }
-  return [0, 0];
-}
 function nextSite() {
   const order = allSites(), i = order.findIndex(s => s.key === site.key);
   return order[i + 1] && order[i + 1].open ? order[i + 1].key : null;
 }
-function renderBest() {
-  const s = allSites().find(x => x.key === site.key);
-  $("best").innerHTML = site.key === "7"
-    ? (state.uncharted ? `best: <b>${state.uncharted.reached}/5 planets</b> · ${state.uncharted.ticks} ticks` : "")
-    : s && s.solved != null ? `your best: <b>${s.solved} ticks</b>` : "";
+function renderRoute() {
+  const here = site && zoneOf(site.key);
+  $("route").innerHTML = state.zones.map(z => {
+    const open = z.sites.some(s => s.open), isHere = here && here.key === z.key;
+    return `<div class="leg${isHere ? " here" : ""}${open ? "" : " locked"}">
+      <span class="zg" title="${esc(z.name)}" aria-hidden="true">${ZONE_ICONS[z.key] || "•"}</span>
+      ${z.sites.map(s => {
+        const cls = site && s.key === site.key ? "now" : s.solved != null ? "done" : s.open ? "open" : "locked";
+        const label = `${s.key === "7" ? "" : s.key.toUpperCase() + " "}${s.name}${s.solved != null ? `, reached in ${s.solved} ticks` : s.open ? "" : ", locked"}`;
+        return `<button class="wp ${cls}${s.open ? " reach" : ""}" ${s.open ? `onclick="openSite('${s.key}')"` : "disabled"} title="${esc(label)}" aria-label="${esc(label)}"><span></span></button>`;
+      }).join("")}
+      ${isHere ? `<span class="zname">${esc(z.name)}</span>` : ""}
+    </div>`;
+  }).join("");
+  const now = $("route").querySelector(".wp.now");
+  if (now) now.scrollIntoView({block: "nearest", inline: "center"});
 }
 
-// ---- Right column: drawers ------------------------------------------------------
-function renderSensors(zi) {
-  const prev = zi > 0 ? (zoneSensors[zi - 1] || []) : [];
-  const names = [...COMMANDS, ...site.sensors];
-  zoneSensors[zi] = site.sensors;
-  let group = null, html = "";
-  for (const name of names) {
-    const [kind, code, text] = HELP[name] || ["SENSOR", name + "()", ""];
-    if (kind !== group) { html += `<b>${kind === "COMMAND" ? "COMMANDS · each takes one tick" : kind === "NUMBER" ? "NUMBER SENSORS" : "YES / NO SENSORS · True or False"}</b>`; group = kind; }
-    const fresh = zi > 0 && !COMMANDS.includes(name) && !prev.includes(name) && prev.length ? ' <span class="new">NEW</span>' : "";
-    html += `<div><code>${esc(code)}</code> ${esc(text)}${fresh}</div>`;
+// ---- Opening a site -----------------------------------------------------------------------
+async function openSite(key) {
+  if (busy) return;
+  let view;
+  try { view = await get(`/planet/site?id=${encodeURIComponent(me)}&site=${encodeURIComponent(key)}`); }
+  catch (_) { showBanner("lost", "No answer from the game. Is the server running?"); return; }
+  if (view.error) { showBanner("lost", view.error); return; }
+  saveCode();
+  closePops();
+  const zone = zoneOf(key);
+  site = {...view, zoneKey: zone.key};
+  runs = null;
+  store(`planetSite:${me}`, key);
+  $("siteName").textContent = view.name;
+  $("siteBrief").textContent = view.brief;
+  $("fileName").textContent = `site_${key}.py`;
+  // This browser's draft, else what was last run here, else the code from the
+  // site before: running old code on new ground is how each rule shows itself.
+  let code = recall(codeKey(key)), carried = false;
+  if (code == null && view.code) code = view.code;
+  if (code == null) {
+    const order = allSites().map(s => s.key), prev = order[order.indexOf(key) - 1];
+    code = prev ? recall(codeKey(prev)) : null;
+    carried = !!code;
+    if (!code && key === "1a") code = "# Count the squares first.\nmove(3)\n";
   }
-  html += `<b>ALSO WORKS</b><div><code>for i in range(4):</code> <code>while</code> <code>if</code>/<code>elif</code>/<code>else</code>, <code>and</code> <code>or</code> <code>not</code>, variables, <code>% //</code>, your own <code>def</code> functions, and <code>print("note", at_goal())</code>.</div>`;
-  $("sensors").innerHTML = html;
+  $("code").value = code || "";
+  errorLine = 0;
+  updateEditor();
+  renderKit(state.zones.indexOf(zone));
+  renderRadio(); renderJournal();
+  renderRoute();
+  playing = false;
+  $("planets").hidden = true; $("marks").innerHTML = ""; $("clock").textContent = "";
+  $("scrub").max = 0; $("scrub").disabled = true; $("playButton").disabled = true;
+  $("feed").innerHTML = '<div class="empty">Transmit to see the rover\'s telemetry.</div>';
+  if (view.map) {
+    const [r, c] = findChar(view.map, "S");
+    const samples = [];
+    view.map.forEach((row, rr) => [...row].forEach((ch, cc) => { if (ch === "*") samples.push([rr, cc]); }));
+    scene = {map: view.map, zone: zone.key, frames: [{r, c, d: view.dir, t: 0}], run: null, sunWidth: 0, samples: samples.length, sampleSquares: samples};
+    $("batteryGauge").hidden = true;
+    $("sampleGauge").hidden = !samples.length;
+    setPos(0); $("clock").textContent = "";
+  } else {
+    scene = null;
+    $("batteryGauge").hidden = true; $("sampleGauge").hidden = true;
+  }
+  setPlaying(false);
+  render();
+  hideBanner();
+  if (key === "7") showBanner("", "Five unknown planets. Transmit to land.");
+  else if (carried) showBanner("", "Your last site's code is loaded. Will it still work here?");
+  $("status").className = "status"; $("status").textContent = "Ready";
 }
-const zoneSensors = {};
-function renderHints(zone) {
-  $("hintsTitle").textContent = `Hints for ${zone.name} (${zone.hints.length}/${zone.hint_count} open)`;
-  const more = zone.hints.length < zone.hint_count;
-  $("hints").innerHTML = (zone.hints.length ? zone.hints.map((h, i) => `<b>HINT ${i + 1}</b><pre>${esc(h)}</pre>`).join("")
-      : '<div>Try a few experiments first. Hints are free: each one says a little more.</div>')
-    + (more ? `<div><button class="btn ghost" onclick="openHint('${zone.key}')">Open hint ${zone.hints.length + 1}</button></div>` : "");
+
+// ---- The kit: commands and sensors, one click to add -------------------------------------
+function renderKit(zi) {
+  const names = [...COMMANDS, ...site.sensors];
+  $("kit").innerHTML = names.map(n => {
+    const cmd = COMMANDS.includes(n), fresh = !cmd && SENSOR_ZONE[n] === zi && zi > 0;
+    return `<button class="chip${cmd ? " cmd" : ""}${fresh ? " new" : ""}" data-name="${n}" title="${esc(HELP[n] || "")}${fresh ? " (new here)" : ""}">${n}()</button>`;
+  }).join("");
 }
-async function openHint(zoneKey) {
-  try { state = await post("/planet/hint", {id: me, zone: zoneKey}); } catch (_) { return; }
-  renderHints(state.zones.find(z => z.key === zoneKey));
+function insertAtCursor(text) {
+  const t = $("code"), start = t.selectionStart, end = t.selectionEnd;
+  t.value = t.value.slice(0, start) + text + t.value.slice(end);
+  t.selectionStart = t.selectionEnd = start + text.length;
+  t.focus(); updateEditor();
 }
-function renderJournal(zone) {
-  $("journalDrawer").hidden = zone.key === "uncharted";
-  $("journalTitle").textContent = `Field journal: ${zone.name}${zone.journal ? " ✎" : ""}`;
+
+// ---- Radio and journal -------------------------------------------------------------------
+function renderRadio() {
+  const zone = zoneOf(site.key);
+  $("hints").innerHTML = zone.hints.length ? zone.hints.map(h => `<div class="msg">${esc(h)}</div>`).join("")
+    : '<div class="msg">Try an experiment first. Ask if you\'re stuck.</div>';
+  const left = zone.hint_count - zone.hints.length;
+  $("hintsLeft").textContent = left ? `${left} more` : "That's everything.";
+  $("hintButton").hidden = !left;
+  $("radioCount").hidden = !zone.hints.length;
+  $("radioCount").textContent = zone.hints.length;
+  if (!$("radioPop").hidden) placePop($("radioPop"), $("radioButton"));
+}
+async function askHint() {
+  const zone = zoneOf(site.key);
+  try { state = await post("/planet/hint", {id: me, zone: zone.key}); } catch (_) { return; }
+  renderRadio();
+}
+function renderJournal() {
+  const zone = zoneOf(site.key);
+  $("journalButton").hidden = zone.key === "uncharted";
+  $("journalTitle").textContent = `Field journal: ${zone.name}`;
   $("journal").value = zone.journal || "";
-  $("journalState").textContent = zone.journal ? "saved" : "";
+  $("journalState").textContent = zone.journal ? "Saved. Your teacher can read it." : "Your guess at this zone's rule.";
 }
 async function saveJournal() {
   const zone = zoneOf(site.key);
   try { state = await post("/planet/journal", {id: me, zone: zone.key, text: $("journal").value}); }
-  catch (_) { $("journalState").textContent = "not saved: no answer"; return; }
-  renderJournal(zoneOf(site.key));
-  $("journalState").textContent = "saved ✓ your teacher can see it";
+  catch (_) { $("journalState").textContent = "Not saved: no answer from the game."; return; }
+  renderJournal();
 }
+function openPop(pop, button) {
+  const wasOpen = !pop.hidden;
+  closePops();
+  if (wasOpen) return;
+  pop.hidden = false;
+  placePop(pop, button);
+  (pop.querySelector("textarea") || pop.querySelector("button:not([hidden])") || pop).focus();
+}
+function placePop(pop, button) {
+  const r = button.getBoundingClientRect(), pr = pop.getBoundingClientRect();
+  pop.style.left = Math.max(12, Math.min(window.innerWidth - pr.width - 12, r.right - pr.width)) + "px";
+  pop.style.top = Math.max(12, r.top - pr.height - 10) + "px";
+}
+function closePops() { $("radioPop").hidden = true; $("journalPop").hidden = true; }
 
-// ---- Middle column: drawing the planet ------------------------------------------
-function cellSize(map) {
-  const stage = $("stage");
-  const below = 70;   // the legend and the row/col line
-  const fit = Math.min((stage.clientWidth - 40) / map[0].length, (stage.clientHeight - 60 - below) / map.length);
-  return Math.max(8, Math.min(40, Math.floor(fit)));
-}
-function clearCanvas() { const c = $("map"); c.width = 1; c.height = 1; }
-function draw(k) {
-  if (!shown) return;
-  drawn = k;
-  const map = shown.map, frames = shown.frames, f = frames[k];
-  const size = cellSize(map), rows = map.length, cols = map[0].length;
-  const canvas = $("map");
-  canvas.width = cols * size; canvas.height = rows * size;
-  const ctx = canvas.getContext("2d");
-  // What the replay has changed by this step: cracks, samples picked up.
-  const cracked = new Set(), visited = new Set();
-  for (let i = 0; i <= k; i++) {
-    if (frames[i].x) cracked.add(frames[i].x.join(","));
-    visited.add(frames[i].r + "," + frames[i].c);
-  }
-  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-    const ch = map[r][c], x = c * size, y = r * size;
-    ctx.fillStyle = (TILES[ch] || TILES["."])[1];
-    ctx.fillRect(x, y, size, size);
-    if (ch !== "#") { ctx.strokeStyle = "#0b111e"; ctx.lineWidth = 1; ctx.strokeRect(x + .5, y + .5, size - 1, size - 1); }
-    if (ch === "~") {   // a little shine
-      ctx.strokeStyle = "rgba(210,240,255,.45)"; ctx.lineWidth = Math.max(1, size / 14);
-      ctx.beginPath(); ctx.moveTo(x + size * .25, y + size * .7); ctx.lineTo(x + size * .55, y + size * .3); ctx.stroke();
-    } else if (ch === "O") {
-      ctx.strokeStyle = "#7a3b44"; ctx.lineWidth = Math.max(1, size / 10);
-      ctx.beginPath(); ctx.arc(x + size / 2, y + size / 2, size * .36, 0, 7); ctx.stroke();
-    } else if (ch === "*" && !visited.has(r + "," + c)) {
-      ctx.fillStyle = "#72e09d";
-      ctx.beginPath(); ctx.moveTo(x + size / 2, y + size * .2); ctx.lineTo(x + size * .8, y + size / 2);
-      ctx.lineTo(x + size / 2, y + size * .8); ctx.lineTo(x + size * .2, y + size / 2); ctx.fill();
-    } else if (ch === "P") {
-      ctx.strokeStyle = "#b48cff"; ctx.lineWidth = Math.max(2, size / 8);
-      ctx.beginPath(); ctx.arc(x + size / 2, y + size / 2, size * .32, 0, 7); ctx.stroke();
-    } else if (ch === "G") {
-      ctx.shadowColor = "#55dfd2"; ctx.shadowBlur = size / 2;
-      ctx.fillStyle = "#55dfd2";
-      ctx.beginPath(); ctx.arc(x + size / 2, y + size / 2, size * .22, 0, 7); ctx.fill();
-      ctx.shadowBlur = 0;
-    } else if (ch === "S") {
-      ctx.strokeStyle = "#45536b"; ctx.lineWidth = 1;
-      ctx.strokeRect(x + size * .2, y + size * .2, size * .6, size * .6);
-    }
-    if (cracked.has(r + "," + c)) {
-      ctx.fillStyle = "rgba(10,8,6,.55)"; ctx.fillRect(x, y, size, size);
-      ctx.strokeStyle = "#a0714f"; ctx.lineWidth = Math.max(1, size / 14);
-      ctx.beginPath(); ctx.moveTo(x + size * .15, y + size * .3); ctx.lineTo(x + size * .45, y + size * .5);
-      ctx.lineTo(x + size * .35, y + size * .85); ctx.moveTo(x + size * .45, y + size * .5); ctx.lineTo(x + size * .85, y + size * .4); ctx.stroke();
-    }
-  }
-  // Moving sunlight: a band of lit columns.
-  if (f.sun != null) {
-    ctx.fillStyle = "rgba(244,201,93,.2)";
-    for (let i = 0; i < (shown.sunWidth || 0); i++) ctx.fillRect(((f.sun + i) % cols) * size, 0, size, rows * size);
-  }
-  // The rover's trail, then the rover.
-  ctx.strokeStyle = "rgba(180,140,255,.45)"; ctx.lineWidth = Math.max(2, size / 8);
-  ctx.beginPath();
-  for (let i = 0; i <= k; i++) {
-    const p = frames[i], px = (p.c + .5) * size, py = (p.r + .5) * size;
-    const jump = i > 0 && (frames[i].e === "portal" || Math.abs(p.r - frames[i - 1].r) + Math.abs(p.c - frames[i - 1].c) > 1);
-    if (i === 0 || jump) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-  }
-  ctx.stroke();
-  const x = f.c * size, y = f.r * size;
-  if (f.e === "fell") {
-    ctx.strokeStyle = "#ff6577"; ctx.lineWidth = Math.max(2, size / 5);
-    ctx.beginPath(); ctx.moveTo(x + 3, y + 3); ctx.lineTo(x + size - 3, y + size - 3);
-    ctx.moveTo(x + size - 3, y + 3); ctx.lineTo(x + 3, y + size - 3); ctx.stroke();
-  } else {
-    ctx.shadowColor = f.e === "portal" ? "#b48cff" : f.e === "gust" ? "#69a8ff" : "#ffffff";
-    ctx.shadowBlur = f.e ? size : size / 3;
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(x + size * .12, y + size * .12, size * .76, size * .76);
-    ctx.shadowBlur = 0;
-    const [dr, dc] = DIRS[f.d], cx = x + size / 2, cy = y + size / 2, a = size * .32;
-    ctx.fillStyle = "#050912";
-    ctx.beginPath();
-    ctx.moveTo(cx + dc * a, cy + dr * a);
-    ctx.lineTo(cx - dc * a * .6 + dr * a, cy - dr * a * .6 - dc * a);
-    ctx.lineTo(cx - dc * a * .6 - dr * a, cy - dr * a * .6 + dc * a);
-    ctx.fill();
-  }
-  if (f.e === "gust" || f.e === "bump" || f.e === "wait") {
-    ctx.font = `${Math.round(size * .6)}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(f.e === "gust" ? "💨" : f.e === "bump" ? "💥" : "⏳", x + size / 2, y - size * .35 < 0 ? y + size * 1.3 : y - size * .35);
-  }
-  // Header: the tick and the battery gauge.
-  $("tickNow").textContent = `tick ${f.t} of ${frames[frames.length - 1].t}`;
-  $("gauge").hidden = f.b == null;
-  if (f.b != null) {
-    $("gauge").textContent = `🔋 ${f.b}`;
-    $("gauge").classList.toggle("low", f.b <= 5);
-  }
-  // Legend: only what's on this map.
-  const present = new Set(map.join(""));
-  $("legend").innerHTML = Object.entries(TILES).filter(([ch]) => present.has(ch) && ch !== "." && ch !== "S")
-    .map(([, [name, floor, mark]]) => `<span><span class="swatch" style="background:${mark || floor}"></span>${name}</span>`).join("")
-    + (cracked.size ? '<span><span class="swatch" style="background:#3a2a20"></span>cracked</span>' : "")
-    + (f.sun != null ? '<span><span class="swatch" style="background:#5c4f22"></span>sunlight</span>' : "");
-}
-
-// ---- Replay controls ------------------------------------------------------------
-function controls() {
-  const playing = !!timer, last = shown ? shown.frames.length - 1 : 0;
-  $("skipButton").hidden = !playing;
-  $("pauseButton").textContent = playing ? "⏸" : "▶︎";
-  $("pauseButton").title = playing ? "Pause" : drawn >= last ? "Replay from the start" : "Play from here";
-  for (const b of ["backButton", "pauseButton", "nextButton"]) $(b).disabled = !shown || last === 0;
-}
-function step() {
-  draw(drawn);
-  if (drawn < shown.frames.length - 1) { timer = setTimeout(() => { drawn++; step(); }, delay); }
-  else { timer = null; controls(); markTick(true); }
-}
-function stopReplay() { if (timer) clearTimeout(timer); timer = null; }
-function play(from = 0) {
-  stopReplay(); markTick(false);
-  // Short runs play slowly enough to follow; a long one still ends in ~25 s.
-  delay = Math.max(25, Math.min(160, 25000 / Math.max(1, shown.frames.length)));
-  drawn = from; step(); controls();
-}
-function togglePause() {
-  if (!shown) return;
-  if (timer) { stopReplay(); markTick(true); controls(); return; }
-  play(drawn >= shown.frames.length - 1 ? 0 : drawn + 1);
-}
-function stepBy(k) {
-  if (!shown) return;
-  stopReplay();
-  draw(Math.max(0, Math.min(shown.frames.length - 1, drawn + k)));
-  markTick(true); controls();
-}
-function skip() { stopReplay(); draw(shown.frames.length - 1); markTick(true); controls(); }
-// Paused: light up the output lines from the tick on screen.
-function markTick(on) {
-  if (!shown) return;
-  const t = shown.frames[drawn].t;
-  let first = null;
-  for (const div of $("log").children) {
-    const now = on && div.dataset.t === String(t);
-    div.classList.toggle("now", now);
-    if (now && !first) first = div;
-  }
-  if (first) first.scrollIntoView({block: "nearest"});
-}
-$("map").addEventListener("mousemove", e => {
-  if (!shown) return;
-  const rect = $("map").getBoundingClientRect(), size = rect.width / shown.map[0].length;
-  const c = Math.floor((e.clientX - rect.left) / size), r = Math.floor((e.clientY - rect.top) / size);
-  const ch = shown.map[r] && shown.map[r][c];
-  if (ch) $("where").textContent = `row ${r}, col ${c} · ${(TILES[ch] || TILES["."])[0]}`;
-});
-
-// ---- Running ---------------------------------------------------------------------
-function logLine(text, cls = "", t = null) {
-  return `<div class="${cls}"${t != null ? ` data-t="${t}"` : ""}>${esc(text)}</div>`;
-}
-const ENDINGS = {
-  goal: ["good", t => `🎉 Reached the beacon in ${t} ticks.`],
-  fell: ["bad", t => `💥 The rover was lost after ${t} ticks.`],
-  battery: ["bad", t => `🔋 The battery ran flat after ${t} ticks.`],
-  ticks: ["bad", t => `⏱ Out of time after ${t} ticks.`],
-  stopped: ["bad", t => `🏁 Your program finished after ${t} ticks, but not at the beacon.`],
-  error: ["bad", () => "⚠️ Your code stopped with an error."],
-};
-// The run's events and print() output, in tick order.
-function runLines(run) {
-  const events = run.log.map(line => {
-    const m = /^tick (\d+): (.*)$/.exec(line);
-    return {t: m ? Number(m[1]) : 0, text: line, cls: /🎉/.test(line) ? "good" : /💥|🔋|⏱/.test(line) ? "bad" : ""};
-  });
-  const prints = run.prints.map(p => ({t: p.t, text: `tick ${p.t} │ ${p.text}`, cls: "print"}));
-  const merged = [...events, ...prints].map((x, i) => ({...x, i})).sort((a, b) => a.t - b.t || (a.cls === "print") - (b.cls === "print") || a.i - b.i);
-  const lines = merged.map(x => logLine(x.text, x.cls, x.t));
-  if (run.error) lines.push(logLine(`💥 ${run.error}`, "bad"));
-  if (!run.prints.length && run.end !== "goal" && !run.error) lines.push(logLine("Tip: add print() between commands, like print(\"turned\", at_goal()), to see what the rover sees."));
-  return lines;
-}
-function showRun(run, title) {
-  shown = {map: run.map || site.map, frames: run.frames, log: run.log, prints: run.prints, sunWidth: run.sun_width};
-  $("stageTitle").innerHTML = title;
-  const [cls, say] = ENDINGS[run.end];
-  $("log").innerHTML = logLine(`— ${say(run.ticks)} —`, "head") + runLines(run).join("");
-  $("log").scrollTop = 0;
-  play(0);
-}
-async function runCode() {
-  if (running || !me || !site) return;
-  running = true;
-  saveCode();
+// ---- Transmitting ------------------------------------------------------------------------
+async function transmit() {
+  if (busy || !me || !site) return;
+  busy = true;
+  saveCode(); closePops(); hideBanner();
   $("runButton").disabled = true;
-  $("consoleState").textContent = site.key === "7" ? "landing on 5 planets…" : "driving…";
+  $("runButton").textContent = site.key === "7" ? "Landing…" : "Transmitting…";
   try {
     const data = await post("/planet/run", {id: me, site: site.key, code: $("code").value});
     if (data.error === "join") { localStorage.removeItem("mazeId"); location.reload(); return; }
-    if (data.error) { $("log").innerHTML = logLine(data.error, "bad"); return; }
+    if (data.error) { showBanner("lost", data.error); return; }
     runs = data.runs; state = data.state;
-    const run = runs[0];
-    errorLine = run.line || 0;
+    errorLine = runs[0].line || 0;
     errorCount = Math.max(1, $("code").value.split("\n").length);
     updateEditor();
-    renderZones(); renderBest();
+    renderRoute();
     if (site.key === "7") {
       const reached = runs.filter(r => r.reached).length;
-      $("scoreLabel").textContent = "THIS RUN";
-      $("scoreText").textContent = `${reached} of 5 planets reached`;
-      $("scoreText").className = reached ? "good" : "bad";
-      // Open the first planet that went wrong: the one with most to learn.
       const worst = runs.findIndex(r => !r.reached);
       selectPlanet(worst >= 0 ? worst : 0);
-      $("consoleState").textContent = `${reached}/5 planets`;
-      $("announce").textContent = `Run finished. ${reached} of 5 planets reached.`;
+      announce(`${reached} of 5 planets reached.`);
     } else {
-      const [cls, say] = ENDINGS[run.end];
-      $("scoreLabel").textContent = "THIS RUN";
-      $("scoreText").textContent = say(run.ticks);
-      $("scoreText").className = cls;
       $("planets").hidden = true;
-      showRun(run, `<b>${esc(site.name)}</b>`);
-      $("nextSiteButton").hidden = !(run.reached && nextSite());
-      $("consoleState").textContent = run.reached ? "beacon reached" : run.end;
-      $("announce").textContent = say(run.ticks);
+      showRun(runs[0], site.map);
+      announce(ENDINGS[runs[0].end][2](runs[0].ticks));
     }
   } catch (_) {
-    $("consoleState").textContent = "no response";
-    $("log").innerHTML = logLine("⚠️ The game server did not respond. Ask your teacher to check it is still running.", "bad");
+    showBanner("lost", "No answer from the game. Is the server running?");
   } finally {
-    running = false;
+    busy = false;
     $("runButton").disabled = false;
+    $("runButton").textContent = "Transmit ▶";
   }
 }
 function selectPlanet(i) {
-  planetIndex = i;
   $("planets").hidden = false;
-  $("planets").innerHTML = runs.map((r, j) => `<button class="btn ghost${j === i ? " on" : ""}" onclick="selectPlanet(${j})" title="Planet ${j + 1}: ${r.reached ? "reached" : r.end}">${j + 1} ${r.reached ? "✓" : "✗"}</button>`).join("");
-  showRun(runs[i], `<b>Planet ${i + 1}</b>`);
+  $("planets").innerHTML = runs.map((r, j) => `<button class="planet-tab ${r.reached ? "ok" : "no"}${j === i ? " on" : ""}" onclick="selectPlanet(${j})" title="Planet ${j + 1}: ${r.reached ? "reached" : ENDINGS[r.end][1].toLowerCase()}" aria-label="Planet ${j + 1}, ${r.reached ? "reached" : "not reached"}">${j + 1}</button>`).join("");
+  showRun(runs[i], runs[i].map);
 }
 
-// ---- Editor ----------------------------------------------------------------------
+// ---- Editor --------------------------------------------------------------------------------
 function updateEditor() {
   const code = $("code").value;
   const count = Math.max(1, code.split("\n").length);
@@ -779,18 +1058,13 @@ function updateEditor() {
   $("lines").innerHTML = Array.from({length: count}, (_, i) =>
     i + 1 === errorLine ? `<span class="err" title="The error is on this line">▸${i + 1}</span>` : i + 1).join("\n");
   const lines = code.split("\n").filter(line => line.trim() && !line.trim().startsWith("#")).length;
-  $("codeCount").textContent = `${lines} line${lines === 1 ? "" : "s"} of code`;
-  updatePosition();
+  $("lineCount").textContent = `${lines} line${lines === 1 ? "" : "s"}`;
   saveCode();
-}
-function updatePosition() {
-  const t = $("code"), before = t.value.slice(0, t.selectionStart).split("\n");
-  $("position").textContent = `Ln ${before.length}, Col ${before[before.length - 1].length + 1}`;
 }
 function editorKey(event) {
   const t = event.target, start = t.selectionStart, end = t.selectionEnd;
   if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
-    event.preventDefault(); runCode(); return;
+    event.preventDefault(); transmit(); return;
   }
   if (event.key === "Tab") {
     event.preventDefault(); t.value = t.value.slice(0, start) + "    " + t.value.slice(end); t.selectionStart = t.selectionEnd = start + 4;
@@ -814,27 +1088,111 @@ function editorKey(event) {
   updateEditor();
 }
 
-$("joinButton").addEventListener("click", join);
-$("name").addEventListener("keydown", e => { if (e.key === "Enter") join(); });
+// ---- Scenes: the join screen and the how-it-works card ------------------------------------
+function horizon(cv, t, roverX) {
+  const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+  cv.width = w * dpr; cv.height = h * dpr;
+  const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const sky = ctx.createLinearGradient(0, 0, 0, h);
+  sky.addColorStop(0, "#15112b"); sky.addColorStop(.55, "#4a2f63"); sky.addColorStop(.78, "#c0697a"); sky.addColorStop(1, "#f0a46c");
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
+  for (let k = 0; k < 120; k++) {
+    ctx.fillStyle = `rgba(255,245,235,${.15 + hash(k, 4) * .6})`;
+    ctx.fillRect(hash(k, 1) * w, hash(k, 2) * h * .55, 1.4, 1.4);
+  }
+  ctx.fillStyle = "#f6d6b8"; ctx.beginPath(); ctx.arc(w * .78, h * .3, Math.min(w, h) * .09, 0, 7); ctx.fill();
+  ctx.fillStyle = "#32214a"; ctx.beginPath(); ctx.arc(w * .78 + Math.min(w, h) * .035, h * .3 - Math.min(w, h) * .02, Math.min(w, h) * .085, 0, 7); ctx.fill();
+  ctx.fillStyle = "rgba(255,220,200,.35)"; ctx.beginPath(); ctx.arc(w * .62, h * .2, Math.min(w, h) * .02, 0, 7); ctx.fill();
+  const dunes = [[.7, "#7a3f45", 30, 1.3], [.78, "#5b2e3d", 22, 2.1], [.88, "#3a1f33", 14, 3.4]];
+  for (const [base, color, amp, freq] of dunes) {
+    ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(0, h);
+    for (let x = 0; x <= w; x += 8) ctx.lineTo(x, h * base + Math.sin(x / w * Math.PI * freq + base * 9) * amp + Math.sin(x / 90 + base) * 4);
+    ctx.lineTo(w, h); ctx.fill();
+  }
+  // The rover on the nearest ridge, seen from the side.
+  const gy = x => h * .88 + Math.sin(x / w * Math.PI * 3.4 + .88 * 9) * 14 + Math.sin(x / 90 + .88) * 4;
+  const x = roverX * w, s = Math.max(38, Math.min(70, w * .05)), y = gy(x);
+  ctx.save(); ctx.translate(x, y - s * .1);
+  ctx.fillStyle = "#1b1222";
+  for (const wx of [-.4, 0, .4]) { ctx.beginPath(); ctx.arc(wx * s, 0, s * .14, 0, 7); ctx.fill(); }
+  ctx.fillRect(-.5 * s, -.36 * s, s, .2 * s);
+  ctx.fillRect(-.48 * s, -.46 * s, .5 * s, .08 * s);
+  ctx.fillRect(.18 * s, -.8 * s, .06 * s, .46 * s);
+  ctx.fillRect(.1 * s, -.92 * s, .26 * s, .14 * s);
+  ctx.fillStyle = "#8cf2c6"; ctx.beginPath(); ctx.arc(.32 * s, -.85 * s, s * .035, 0, 7); ctx.fill();
+  ctx.restore();
+  const dust = ctx.createLinearGradient(0, h * .6, 0, h);
+  dust.addColorStop(0, "rgba(240,164,108,0)"); dust.addColorStop(1, "rgba(27,23,51,.5)");
+  ctx.fillStyle = dust; ctx.fillRect(0, h * .6, w, h * .4);
+}
+function joinScene() {
+  const cv = $("joinScene"), start = performance.now();
+  const frame = now => {
+    if ($("join").hidden) return;
+    const u = CALM ? 1 : Math.min(1, (now - start) / 3200);
+    horizon(cv, now, .2 + .5 * (1 - Math.pow(1 - u, 3)));
+    if (u < 1) requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+  window.addEventListener("resize", () => { if (!$("join").hidden) horizon(cv, 0, .7); });
+}
+function openIntro() {
+  $("intro").hidden = false;
+  const cv = $("introScene"), dpr = window.devicePixelRatio || 1;
+  cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr;
+  const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const w = cv.clientWidth, h = cv.clientHeight, cell = 44;
+  const map = ["##########", "#S......G#", "##########"].map(r => r.padEnd(14, "#"));
+  ctx.fillStyle = bedPattern(ctx, "landing"); ctx.fillRect(0, 0, w, h);
+  const ox = (w - 10 * cell) / 2, oy = (h - 3 * cell) / 2;
+  ctx.save(); ctx.translate(ox, oy);
+  ctx.drawImage(terrain(map.map(r => r.slice(0, 10)), "landing", cell), 0, 0);
+  ctx.strokeStyle = "rgba(30,14,30,.32)"; ctx.lineWidth = 3;
+  for (const side of [-.25, .25]) { ctx.beginPath(); ctx.moveTo(1.5 * cell, (1.5 + side) * cell); ctx.lineTo(4.5 * cell, (1.5 + side) * cell); ctx.stroke(); }
+  drawBeacon(ctx, 1, 8, cell, 400, false);
+  drawRover(ctx, 4.5 * cell, 1.5 * cell, cell, 0);
+  ctx.restore();
+  vignette(ctx, w, h);
+  terrainCache.key = null;   // the intro's little map isn't the site's
+  $("introClose").focus();
+}
+function closeIntro() { $("intro").hidden = true; store("planetIntroSeen", "1"); $("code").focus(); }
+
+// ---- Wiring ----------------------------------------------------------------------------------
+$("joinForm").addEventListener("submit", join);
 $("switchButton").addEventListener("click", () => { localStorage.removeItem("mazeId"); location.reload(); });
 $("helpButton").addEventListener("click", openIntro);
 $("introClose").addEventListener("click", closeIntro);
 $("intro").addEventListener("keydown", e => { if (e.key === "Escape") closeIntro(); });
-$("runButton").addEventListener("click", runCode);
-$("clearButton").addEventListener("click", () => { $("code").value = ""; updateEditor(); $("code").focus(); });
-$("nextSiteButton").addEventListener("click", () => { const k = nextSite(); if (k) openSite(k); });
+$("runButton").addEventListener("click", transmit);
+$("playButton").addEventListener("click", togglePlay);
+$("scrub").addEventListener("input", () => { setPlaying(false); hideBanner(); setPos(Number($("scrub").value)); render(); markFeed(); });
+$("marks").addEventListener("click", e => { const k = e.target.dataset.k; if (k != null) { setPlaying(false); hideBanner(); setPos(Number(k)); render(); markFeed(); } });
+$("kit").addEventListener("click", e => { const n = e.target.dataset && e.target.dataset.name; if (n) insertAtCursor(n + "()"); });
+$("radioButton").addEventListener("click", () => openPop($("radioPop"), $("radioButton")));
+$("journalButton").addEventListener("click", () => openPop($("journalPop"), $("journalButton")));
+$("hintButton").addEventListener("click", askHint);
 $("journalSave").addEventListener("click", saveJournal);
-$("pauseButton").addEventListener("click", togglePause);
-$("backButton").addEventListener("click", () => stepBy(-1));
-$("nextButton").addEventListener("click", () => stepBy(1));
-$("skipButton").addEventListener("click", skip);
 $("code").addEventListener("input", updateEditor);
-$("code").addEventListener("click", updatePosition);
-$("code").addEventListener("keyup", updatePosition);
 $("code").addEventListener("scroll", () => { $("lines").scrollTop = $("code").scrollTop; });
 $("code").addEventListener("keydown", editorKey);
-document.addEventListener("keydown", e => { if (e.key === "F5" && me) { e.preventDefault(); runCode(); } });
-window.addEventListener("resize", () => { if (shown && !timer) draw(drawn); });
+document.addEventListener("keydown", e => {
+  if (e.key === "F5" && me) { e.preventDefault(); transmit(); }
+  if (e.key === "Escape") closePops();
+});
+document.addEventListener("pointerdown", e => {
+  if (!e.target.closest(".pop, #radioButton, #journalButton")) closePops();
+});
+$("map").addEventListener("pointermove", e => {
+  if (!scene || !scene.view) return;
+  const rect = $("map").getBoundingClientRect(), {ox, oy, cell} = scene.view;
+  const c = Math.floor((e.clientX - rect.left - ox) / cell), r = Math.floor((e.clientY - rect.top - oy) / cell);
+  const ok = scene.map[r] && scene.map[r][c];
+  $("where").hidden = !ok;
+  if (ok) $("where").textContent = `row ${r}, col ${c}`;
+});
+$("map").addEventListener("pointerleave", () => { $("where").hidden = true; });
+window.addEventListener("resize", () => render());
 resume();
 </script>
 </body>

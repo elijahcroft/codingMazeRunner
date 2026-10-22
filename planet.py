@@ -289,24 +289,22 @@ class World:
         ch = self.at(r, c)
         if (r, c) in self.cracked:
             self.frames.append(self.frame())
-            self.finish("fell", f"💥 the cracked ground at row {r}, col {c} "
-                                f"gave way under the rover.")
+            self.finish("fell", "💥 cracked ground gave way")
         if ch == "O":
             self.frames.append(self.frame())
-            self.finish("fell", f"💥 the rover fell into the crater at row {r}, "
-                                f"col {c}.")
+            self.finish("fell", "💥 fell into a crater")
         if (r, c) in self.samples:
             self.samples.discard((r, c))
-            self.say(f"🧪 picked up a sample ({len(self.samples)} left).")
+            self.say(f"🧪 sample collected, {len(self.samples)} left")
         self.frames.append(self.frame(how if how != "move" else None))
 
     def act(self, command):
         if self.end:
             raise _End()
         if self.t >= MAX_TICKS:
-            self.finish("ticks", f"⏱ out of time after {MAX_TICKS} ticks.")
+            self.finish("ticks", f"⏱ out of time ({MAX_TICKS} ticks)")
         if "battery" in self.rules and command != "wait" and self.battery <= 0:
-            self.finish("battery", "🔋 the battery is empty: the rover can't move.")
+            self.finish("battery", "🔋 battery empty")
         self.t += 1
         if "battery" in self.rules and command != "wait":
             self.battery -= 1
@@ -330,7 +328,7 @@ class World:
     def drive(self):
         r, c = self.ahead()
         if self.at(r, c) == "#":
-            self.say(f"🧱 bumped into rock at row {self.r}, col {self.c}.")
+            self.say("🧱 bumped into rock")
             self.frames.append(self.frame("bump"))
             return
         start = (self.r, self.c)
@@ -345,8 +343,7 @@ class World:
             self.enter(r, c)
             slid += 1
         if slid > 1:
-            self.say(f"⛸ one move() took the rover {slid} squares, from row "
-                     f"{start[0]}, col {start[1]} to row {self.r}, col {self.c}.")
+            self.say(f"⛸ one move() slid {slid} squares")
 
     def portal(self):
         if self.at(self.r, self.c) != "P":
@@ -357,24 +354,23 @@ class World:
         frm = (self.r, self.c)
         self.r, self.c = to
         self.frames.append(self.frame("portal"))
-        self.say(f"✨ the rover vanished at row {frm[0]}, col {frm[1]} and "
-                 f"reappeared at row {to[0]}, col {to[1]}.")
+        self.say(f"✨ pad at row {frm[0]} col {frm[1]} → row {to[0]} col {to[1]}")
 
     def gust(self):
         r, c = self.r, self.c + 1
         if self.at(r, c) == "#":
-            self.say("💨 a gust of wind, but the rock beside the rover blocked it.")
+            self.say("💨 gust, but a rock sheltered the rover")
             return
-        self.say("💨 a gust of wind pushed the rover one square east.")
+        self.say("💨 gust pushed the rover east")
         self.enter(r, c, "gust")
 
     def check_goal(self):
         if self.at(self.r, self.c) == "G":
             if self.samples:
                 self.say(f"🛰 the beacon needs every sample first "
-                         f"({len(self.samples)} left).")
+                         f"({len(self.samples)} left)")
             else:
-                self.finish("goal", "🎉 the rover reached the beacon!")
+                self.finish("goal", "🎉 beacon reached")
 
 
 def drive(code, variant, rules, zone):
@@ -394,7 +390,7 @@ def drive(code, variant, rules, zone):
         error = "Your functions call each other too deeply."
     if error is None and world.end is None:
         world.end = "stopped"
-        world.say("🏁 the program finished, but the rover isn't at the beacon.")
+        world.say("🏁 program ended away from the beacon")
     return {"reached": world.end == "goal", "end": "error" if error else world.end,
             "ticks": world.t, "error": error, "line": line,
             "frames": world.frames, "log": world.log, "prints": world.prints,
@@ -540,8 +536,7 @@ ZONES = [
      ],
      "sites": [
          site("1a", "Touchdown",
-              "Drive from the lander to the beacon. move(3) drives three "
-              "squares; turn_left() and turn_right() turn on the spot.",
+              "Drive to the beacon. Count the squares before each turn.",
               [{"map": ["###########",
                         "#S...######",
                         "####.######",
@@ -549,8 +544,7 @@ ZONES = [
                         "###########"]}],
               reference="move(3)\nturn_right()\nmove(2)\nturn_left()\nmove(5)\n"),
          site("1b", "Ridge Steps",
-              "A long staircase down the ridge. You could type every step... "
-              "or notice that one step repeats.",
+              "A long staircase. One step repeats.",
               [{"map": ["###########",
                         "#S.########",
                         "##..#######",
@@ -564,8 +558,7 @@ ZONES = [
               reference="for i in range(7):\n    move()\n    turn_right()\n"
                         "    move()\n    turn_left()\nmove()\n"),
          site("1c", "Long Corridors",
-              "Your corridors are a different length from your neighbour's. "
-              "A program that counts squares only works on one planet.",
+              "Your corridors are a different length from everyone else's.",
               [{"map": strings(path_map(legs)[0])} for legs in (
                   [(1, 4), (2, 3), (1, 6), (2, 4), (1, 5)],
                   [(1, 7), (2, 2), (1, 3), (2, 5), (1, 4)],
@@ -590,7 +583,7 @@ ZONES = [
      ],
      "sites": [
          site("2a", "First Frost",
-              "The beacon is just below the ice. Drive over and down to it.",
+              "The beacon is just below the ice.",
               [{"map": ["###########",
                         "#S~~~~~~..#",
                         "#.###.###.#",
@@ -600,7 +593,7 @@ ZONES = [
               reference="turn_right()\nmove(3)\nturn_left()\nmove(4)\n"
                         "turn_left()\nmove()\n"),
          site("2b", "Glacier",
-              "The beacon is two squares away. Getting there is another matter.",
+              "Two squares away. Getting there is another matter.",
               [{"map": ["#########",
                         "#~~~#~~~#",
                         "#~~~#~~~#",
@@ -613,8 +606,7 @@ ZONES = [
                         "turn_right()\nmove()\nturn_left()\nmove()\n"
                         "turn_right()\nmove()\nturn_right()\nmove()\n"),
          site("2c", "Frozen Lake",
-              "Every student's lake has its rocks in different places. Plan "
-              "your own slides.",
+              "Your lake's rocks are yours alone. Plan your route.",
               [{"map": m} for m in FROZEN_LAKES], per_student=True),
      ]},
     {"key": "wind", "name": "Wind Canyon", "rules": {"wind"},
@@ -630,14 +622,14 @@ ZONES = [
      ],
      "sites": [
          site("3a", "Canyon Floor",
-              "A straight run south to the beacon. What could go wrong?",
+              "A straight run south. What could go wrong?",
               [{"map": ["######",
                         "##S.O#"] + ["##..O#"] * 11 + [
                         "##G.O#",
                         "######"], "dir": 2, "wind": 5}],
               reference="move(4)\nwait()\nmove(4)\nwait()\nmove(4)\n"),
          site("3b", "The Ledge",
-              "A long ledge with turns. Too many gusts to dodge by hand.",
+              "A long ledge. Too much to dodge by hand.",
               [{"map": windy_ledge([(2, 6), (1, 5), (2, 6), (1, 4), (2, 5)]),
                 "dir": 2, "wind": 5}],
               reference="def step():\n    if tick() % 5 == 4:\n        wait()\n"
@@ -646,8 +638,7 @@ ZONES = [
                         "turn_right()\ngo(6)\nturn_left()\ngo(4)\nturn_right()\n"
                         "go(5)\n"),
          site("3c", "Gale Ridge",
-              "The wind here keeps its own time, and it's not the same as "
-              "your neighbour's.",
+              "This ridge keeps its own time.",
               [{"map": windy_ledge([(2, 5), (1, 7), (2, 4), (1, 3), (2, 7)]),
                 "dir": 2, "wind": n} for n in (4, 6, 7, 9)],
               per_student=True),
@@ -663,9 +654,8 @@ ZONES = [
          "if wall_ahead() or cracked_ahead():\n    turn_right()",
      ],
      "sites": [
-         site("4a", "Thin Ice",
-              "Grab the sample at the bottom of the pit, then reach the beacon. "
-              "The beacon won't open without it.",
+         site("4a", "Thin Crust",
+              "Grab the sample, then reach the beacon.",
               [{"map": ["###########",
                         "#S.......G#",
                         "#####..####",
@@ -675,7 +665,7 @@ ZONES = [
               reference="move(4)\nturn_right()\nmove(3)\nturn_left()\nmove()\n"
                         "turn_left()\nmove(3)\nturn_right()\nmove(3)\n"),
          site("4b", "Three Pits",
-              "Three pits, three samples, one rover that can never go back.",
+              "Three pits, three samples.",
               [{"map": ["####################",
                         "#S................G#",
                         "#####..###..###..###",
@@ -686,8 +676,7 @@ ZONES = [
                         "    move()\n    turn_left()\n    move(3)\n    turn_right()\n\n"
                         "for i in range(3):\n    move(4)\n    pit()\nmove(2)\n"),
          site("4c", "Sample Field",
-              "A whole field to sweep, and the samples are scattered "
-              "differently on every student's planet.",
+              "Sweep the field. Your samples are scattered differently.",
               [{"map": spiral_room(5, 7, [(2, 4), (4, 2), (5, 6)])},
                {"map": spiral_room(6, 6, [(1, 5), (5, 3), (3, 2)])},
                {"map": spiral_room(7, 5, [(6, 1), (2, 3), (4, 5)])},
@@ -709,13 +698,13 @@ ZONES = [
      ],
      "sites": [
          site("5a", "First Light",
-              "A straight run east across the valley floor.",
+              "A straight run east.",
               [{"map": ["################################",
                         "#S++..........................G#",
                         "################################"], "battery": 12}],
               reference="move(2)\nfor i in range(10):\n    wait()\nmove(27)\n"),
          site("5b", "Shadow Steps",
-              "Sunny pads at the corners, long dark stretches between them.",
+              "Sunny corners, long shadows between.",
               [{"map": sunny([(1, 12), (2, 5), (3, 16), (2, 5), (1, 20)],
                              [12, 17, 33, 38]), "dir": 1, "battery": 14}],
               reference="def charge_to(n):\n    while battery() < n:\n"
@@ -724,8 +713,7 @@ ZONES = [
                         "charge_to(8)\nturn_left()\nmove(5)\ncharge_to(22)\n"
                         "turn_left()\nmove(20)\n"),
          site("5c", "Moving Shadows",
-              "Here the sunlight travels across the valley. How fast, and "
-              "from where, depends on your planet.",
+              "Here, the sunlight moves.",
               [{"map": ["#" * 44, "#S" + "." * 40 + "G#", "#" * 44],
                 "battery": 10, "sun": sun}
                # The rover can catch each band before its 10 battery runs out.
@@ -765,7 +753,7 @@ ZONES.append(
      ],
      "sites": [
          site("6a", "The Pads",
-              "The beacon is behind a wall of rock. There's no way round.",
+              "The beacon is behind solid rock.",
               [{"map": ["#############",
                         "#S....#.....#",
                         "#.....#..G..#",
@@ -787,8 +775,7 @@ ZONES.append(
               reference="move(3)\nturn_right()\nmove(2)\nturn_left()\nmove(2)\n"
                         "move()\nturn_left()\nmove(2)\n"),
          site("6c", "Portal Maze",
-              "Seven pads, four fields, and your pads are wired differently "
-              "from everyone else's.",
+              "Seven pads, wired differently on your planet.",
               [{"map": PORTAL_MAP, "pairs": pairs, "oneway": oneway}
                for pairs, oneway in (
                    ([(A1, B2), (B1, C2)], [(C1, D1), (A2, B1)]),
@@ -906,9 +893,7 @@ ZONE_NAMES = [z["name"] for z in ZONES] + ["Uncharted"]
 # ---- for the classroom side ------------------------------------------------------
 
 UNCHARTED = {"key": "7", "name": "Uncharted",
-             "brief": f"Every run lands on {PLANETS_PER_RUN} new random planets: "
-                      f"ice, craters, wind and sunlight, all at once. Only a "
-                      f"program that reads its sensors gets through."}
+             "brief": f"{PLANETS_PER_RUN} new random planets every run."}
 ZONES.append({"key": "uncharted", "name": "Uncharted", "rules": UNCHARTED_RULES,
               "blurb": "Random planets. Everything you've learnt, at once.",
               "hints": [
