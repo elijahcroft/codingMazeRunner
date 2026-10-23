@@ -662,6 +662,7 @@ function skipToEnd() {
 function endOfBake() {
   served = results.length;
   renderQueue();
+  renderTicket();   // after a Skip, the checks for the customer on screen
   const happy = results.filter(r => r.happy).length;
   const won = rewards.stars[0];
   $("totalStars").textContent = rewards.total_stars;
