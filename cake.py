@@ -101,8 +101,8 @@ UNLOCKS = [
     {"kind": "wallpaper", "key": "lemon", "stars": 30},
     {"kind": "topping", "key": "teddy", "stars": 32},
     {"kind": "special", "key": "gold", "stars": 35},
-    {"kind": "topping", "key": "planet", "stars": 38},
-    {"kind": "wallpaper", "key": "night", "stars": 44},
+    {"kind": "topping", "key": "planet", "stars": 37},
+    {"kind": "wallpaper", "key": "night", "stars": 40},
     {"kind": "topping", "key": "fireworks", "class": 40},
     {"kind": "wallpaper", "key": "candy", "class": 120},
     {"kind": "topping", "key": "disco", "class": 240},
@@ -1731,7 +1731,7 @@ def run_level(level, code, unlocked=LOCKED, unlock_hint=None, seed=0):
         checks, extras = judge(c["want"], out["cake"])
         happy = out["error"] is None and all(ch["ok"] for ch in checks)
         if out["error"]:
-            reply = "Oh dear... something went wrong in the kitchen!"
+            reply = "Oh no, a bug! Read the red message under your code."
         elif happy:
             reply = c.get("happy") or HAPPY[zlib.crc32(c["name"].encode()) % len(HAPPY)]
             if extras:
