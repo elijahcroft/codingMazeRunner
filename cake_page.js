@@ -798,9 +798,13 @@ function replaceAll(text) {
   $("code").setSelectionRange(0, 0);
   $("code").scrollTop = 0;
 }
+let tabOut = false;   // after Escape, Tab leaves the editor instead of indenting
 function editorKey(event) {
   const t = event.target, start = t.selectionStart, end = t.selectionEnd;
   if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); bake(); return; }
+  if (event.key === "Escape") { tabOut = true; return; }
+  if (event.key === "Tab" && tabOut) { tabOut = false; return; }
+  tabOut = false;
   if (event.key === "Tab") {
     event.preventDefault();
     replaceText(start, end, "    ");
