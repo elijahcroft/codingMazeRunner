@@ -247,7 +247,12 @@ $("openAll").addEventListener("click", async () => {
 });
 $("key").value = recall("cakeKey") || "";
 document.addEventListener("keydown", e => { if (e.key === "Escape") $("peek").hidden = true; });
-$("key").addEventListener("change", () => { store("cakeKey", key()); lastCakes = ""; refreshCakes(); });
+// The window shows as soon as the key is typed, without having to press Enter.
+let keyTimer = null;
+$("key").addEventListener("input", () => {
+  clearTimeout(keyTimer);
+  keyTimer = setTimeout(() => { store("cakeKey", key()); lastCakes = ""; refreshCakes(); }, 350);
+});
 refresh();
 setInterval(refresh, 5000);
 </script>
