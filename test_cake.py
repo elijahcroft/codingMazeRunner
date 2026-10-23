@@ -263,6 +263,10 @@ class Interpreter(unittest.TestCase):
         self.assertIn("isn't part of Cake Shop", self.error("x = [i for i in range(3)]"))
         self.assertIn("isn't part of Cake Shop", self.error("try:\n    pass\nexcept:\n    pass"))
 
+    def test_lists_as_dictionary_keys_are_a_friendly_error(self):
+        self.assertIn('order["name"]', self.error('print(order[["name"]])', {"name": "x"}))
+        self.assertIn("in order", self.error('print([1] in order)', {"name": "x"}))
+
     def test_lists_inside_lists_print_short_and_compare_cheaply(self):
         out = self.ok("a = [1]\nfor i in range(60):\n    a = [a, a]\nprint(a)")
         self.assertLessEqual(len(out["prints"][0]["text"]), cake.MAX_TEXT)

@@ -525,6 +525,8 @@ class Baker(Brain):
                     raise BotError("in with text checks for text inside it, like  "
                                    "\"a\" in name")
                 found = a in b
+            elif isinstance(b, dict) and not isinstance(a, (str, int, bool)) and a is not None:
+                raise BotError("in with a dictionary checks for a word, like  \"name\" in order")
             elif isinstance(b, (list, dict)):
                 found = a in b
             else:
@@ -595,6 +597,8 @@ class Baker(Brain):
             return target[slice(*parts)]
         key = self.eval(index, frame)
         if isinstance(target, dict):
+            if not isinstance(key, (str, int)):
+                raise BotError('Read a dictionary with a word in quotes, like  order["name"]')
             if key in target:
                 return target[key]
             if TICKET_ALIASES.get(key) in target:
@@ -820,6 +824,9 @@ def bake(code, order=None, commands=COMMANDS, unlocked=LOCKED, unlock_hint=None,
         error, line = str(e), e.line
     except RecursionError:
         error = "Your recipes call each other too deeply."
+    except Exception as e:   # a bug in the kitchen, not the student's code
+        print(f"Cake Shop: unexpected {type(e).__name__}: {e}", flush=True)
+        error = "Something unexpected went wrong in the kitchen. Try changing that line a little."
     return {"cake": kitchen.cake(), "steps": kitchen.steps, "prints": kitchen.prints,
             "error": error, "line": line,
             "own_function": bool(baker and baker.own_function),
