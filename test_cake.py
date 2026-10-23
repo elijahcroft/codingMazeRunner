@@ -1,6 +1,12 @@
+import json
+import os
+import tempfile
+import threading
 import unittest
+from urllib.request import Request, urlopen
 
 import cake
+import server
 
 
 def level(key):
@@ -268,6 +274,155 @@ class Interpreter(unittest.TestCase):
         out = self.ok('layer("lime")\ntier()\nlayer("lemon")\nwrite("Top")')
         self.assertEqual([t["layers"] for t in out["cake"]], [["lime"], ["lemon"]])
         self.assertEqual(out["cake"][1]["text"], "Top")
+
+
+class Classroom(unittest.TestCase):
+    """The whole flow over HTTP, on a real server with its own save file."""
+
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.saved = dict(server.players), server.STATE_FILE, dict(server.cake_class)
+        server.players.clear()
+        server.STATE_FILE = os.path.join(self.folder.name, "scores.json")
+        self.httpd = server.ClassroomServer(("127.0.0.1", 0), server.Handler)
+        threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
+        self.base = f"http://127.0.0.1:{self.httpd.server_address[1]}"
+
+    def tearDown(self):
+        self.httpd.shutdown()
+        self.httpd.server_close()
+        server.players.clear()
+        server.players.update(self.saved[0])
+        server.STATE_FILE = self.saved[1]
+        server.cake_class.update(self.saved[2])
+        self.folder.cleanup()
+
+    def get(self, path):
+        with urlopen(self.base + path) as response:
+            return json.loads(response.read())
+
+    def post(self, path, data):
+        request = Request(self.base + path, json.dumps(data).encode(),
+                          {"Content-Type": "application/json"})
+        with urlopen(request) as response:
+            return json.loads(response.read())
+
+    def join(self, name="Ada"):
+        return self.post("/join", {"name": name})["id"]
+
+    def bake(self, pid, key, code=None):
+        return self.post("/cake/run", {"id": pid, "level": key,
+                                       "code": code or level(key)["reference"]})
+
+    def test_pages_are_served(self):
+        for path in ("/cake", "/cake/teacher", "/cake/show"):
+            with urlopen(self.base + path) as response:
+                self.assertIn(b"Cake Shop", response.read())
+
+    def test_levels_open_one_at_a_time(self):
+        pid = self.join()
+        state = self.get(f"/cake/state?id={pid}")
+        self.assertEqual(state["current"], "1a")
+        self.assertEqual(state["total_stars"], 0)
+        self.assertIn("vanilla", state["palette"]["flavours"])
+        self.assertIn("error", self.get(f"/cake/level?id={pid}&level=1b"))
+        self.assertIn("error", self.bake(pid, "1b"))
+        view = self.get(f"/cake/level?id={pid}&level=1a")
+        self.assertEqual(view["customers"][0]["checklist"],
+                         ["2 chocolate layers", "white frosting"])
+        self.assertEqual(view["hints"], [])
+        out = self.bake(pid, "1a")
+        self.assertEqual(out["rewards"]["stars"], [True, True, True])
+        self.assertEqual(out["rewards"]["new_stars"], 3)
+        self.assertTrue(out["rewards"]["first"])
+        self.assertEqual(out["state"]["current"], "1b")
+        self.assertIn("First Customer", [b["name"] for b in out["rewards"]["badges"]])
+        self.assertIn("board", [u["key"] for u in out["rewards"]["unlocked"]])
+        # Stars add up across bakes and never go away.
+        again = self.bake(pid, "1a", 'layer("chocolate")')
+        self.assertEqual(again["rewards"]["best"], [True, True, True])
+        self.assertEqual(again["rewards"]["stars"], [False, False, False])
+
+    def test_rush_levels_show_the_tickets(self):
+        pid = self.join()
+        self.post("/cake/teacher", {"key": server.ADMIN_KEY, "action": "unlock",
+                                    "id": pid, "level": "3a"})
+        view = self.get(f"/cake/level?id={pid}&level=3a")
+        self.assertEqual(len(view["customers"]), 3)
+        self.assertEqual(view["customers"][0]["ticket"], {"name": "Sam", "flavour": "lemon"})
+        out = self.bake(pid, "3a", 'layer("lemon")\nlayer("lemon")\nfrosting("white")')
+        self.assertEqual([r["happy"] for r in out["runs"]], [True, False, False])
+        self.assertIn("blueberry", out["runs"][1]["reply"])
+
+    def test_bake_off_has_new_customers_every_bake(self):
+        pid = self.join()
+        self.post("/cake/teacher", {"key": server.ADMIN_KEY, "action": "unlock",
+                                    "id": pid, "level": "7"})
+        a = self.bake(pid, "7")
+        b = self.bake(pid, "7")
+        self.assertEqual(a["rewards"]["stars"], [True, True, True])
+        self.assertNotEqual([r["ticket"] for r in a["runs"]], [r["ticket"] for r in b["runs"]])
+
+    def test_hints_open_one_at_a_time(self):
+        pid = self.join()
+        self.assertEqual(len(self.post("/cake/hint", {"id": pid, "level": "1a"})["hints"]), 1)
+        self.assertEqual(len(self.post("/cake/hint", {"id": pid, "level": "1a"})["hints"]), 2)
+        self.assertEqual(len(self.get(f"/cake/level?id={pid}&level=1a")["hints"]), 2)
+
+    def test_locked_toppings_unlock_with_stars(self):
+        pid = self.join()
+        code = 'layer("lime")\ntopping("butterfly")'
+        self.assertIn("unlocks at 2 stars", self.post("/cake/studio", {"id": pid, "code": code})["error"])
+        self.bake(pid, "1a")
+        self.assertIsNone(self.post("/cake/studio", {"id": pid, "code": code})["error"])
+
+    def test_shop_window_hearts_and_teacher(self):
+        ada, bo = self.join("Ada"), self.join("Bo")
+        self.post("/cake/shop", {"id": ada, "name": "  Ada's   Cakes  "})
+        studio = self.post("/cake/studio", {"id": ada, "new_seed": True,
+                                            "code": cake.STUDIO_STARTER})
+        self.assertIsNone(studio["error"])
+        self.assertIn("error", self.post("/cake/window", {"id": ada, "code": cake.STUDIO_STARTER,
+                                                         "seed": studio["seed"], "title": ""}))
+        put = self.post("/cake/window", {"id": ada, "code": cake.STUDIO_STARTER,
+                                         "seed": studio["seed"], "title": "Pink Dream"})
+        self.assertTrue(put["ok"])
+        window = self.get(f"/cake/window?id={bo}")
+        mine = window["cakes"][0]
+        self.assertEqual((mine["title"], mine["shop"], mine["mine"]),
+                         ("Pink Dream", "Ada's Cakes", False))
+        # The same seed bakes the same cake the student saw.
+        self.assertEqual(mine["cake"], studio["cake"])
+        self.assertNotIn(ada, json.dumps(window))
+        heart = self.post("/cake/heart", {"id": bo, "owner": mine["owner"]})
+        self.assertEqual((heart["hearts"], heart["hearted"]), (1, True))
+        self.assertIn("error", self.post("/cake/heart", {"id": ada, "owner": mine["owner"]}))
+        self.assertEqual(self.post("/cake/heart", {"id": bo, "owner": mine["owner"]})["hearts"], 0)
+        # The teacher can hide a cake from the window, and set a theme.
+        self.assertIn("error", self.post("/cake/teacher", {"key": "nope", "action": "hide",
+                                                           "owner": mine["owner"]}))
+        self.post("/cake/teacher", {"key": server.ADMIN_KEY, "action": "hide",
+                                    "owner": mine["owner"]})
+        self.post("/cake/teacher", {"key": server.ADMIN_KEY, "action": "theme",
+                                    "theme": "Spooky 🎃"})
+        window = self.get(f"/cake/window?id={bo}")
+        self.assertEqual((window["cakes"], window["theme"]), ([], "Spooky 🎃"))
+        self.assertEqual(len(self.get(f"/cake/window?key={server.ADMIN_KEY}")["cakes"]), 1)
+
+    def test_teacher_overview(self):
+        pid = self.join()
+        self.bake(pid, "1a", "layer(chocolate)")
+        overview = self.get("/cake/overview")
+        row = overview["students"][0]
+        self.assertEqual((row["level"], row["misses"]), ("1a", 1))
+        self.assertIn("Put quotes", row["last_error"])
+        self.assertTrue(overview["address"].endswith("/cake"))
+
+    def test_look_only_takes_unlocked_things(self):
+        pid = self.join()
+        self.assertEqual(self.post("/cake/look", {"id": pid, "stand": "gold"})["look"]["stand"], "plate")
+        self.bake(pid, "1a")
+        self.assertEqual(self.post("/cake/look", {"id": pid, "stand": "board"})["look"]["stand"], "board")
 
 
 if __name__ == "__main__":

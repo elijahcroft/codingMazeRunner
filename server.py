@@ -91,9 +91,11 @@ import re
 import socket
 import threading
 import time
+import zlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
+import cake
 import cycles
 import planet
 
@@ -3277,6 +3279,329 @@ def admin_action(data):
 # ---------------------------------------------------------------------------
 # HTTP handling.
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Cake Shop (cake.py): customers order cakes and students bake them with
+# Python at /cake. The projector shows the class shop window at /cake/show,
+# and the teacher's overview is /cake/teacher.
+#
+# Stars unlock toppings, special frostings and the look of the shop; the class
+# star meter unlocks the last few for everyone. Studio cakes go in the class
+# shop window, where classmates can heart them and remix their recipes.
+# ---------------------------------------------------------------------------
+SHOP_NAME_MAX = 30
+CAKE_TITLE_MAX = 30
+THEME_MAX = 60
+cake_feed = []                       # the class's recent moments, for the projector
+cake_class = {"theme": ""}           # the shop window theme the teacher set
+
+CAKE_BADGES = {
+    "first": ("🎂", "First Customer", "Make a customer happy"),
+    "loop": ("🔁", "Loop Baker", "Make a customer happy using a for loop"),
+    "if": ("🔀", "Decision Maker", "Make a customer happy using an if"),
+    "list": ("📋", "List Maker", "Make a customer happy using a list you made"),
+    "fstring": ("✍️", "Word Wizard", "Make a customer happy using an f-string"),
+    "def": ("📖", "Recipe Writer", "Make a customer happy with a recipe you made with def"),
+    "print": ("🔬", "Taste Tester", "Make a customer happy with print() in your code"),
+    "fixer": ("🐛", "Bug Squasher", "Fix a code error, then make the customer happy"),
+    "grit": ("💪", "Never Give Up", "Make a customer happy after 5 bakes that didn't"),
+    "triple": ("🌟", "Triple Star", "Earn all three stars in one bake"),
+    "artist": ("🎨", "Artist", "Earn the own-touch star on 5 levels"),
+    "dragon": ("🐉", "Dragon Tamer", "Light all 100 of Ember's candles"),
+    "window": ("🪟", "Window Display", "Put a cake in the shop window"),
+    "loved": ("💖", "Crowd Pleaser", "Get 5 hearts on your shop window cake"),
+    "kind": ("💌", "Kind Critic", "Heart 5 cakes in the shop window"),
+    "starbaker": ("🏆", "Star Baker", "Make all 5 Bake-Off customers happy at once"),
+}
+for _ci, _ch in enumerate(cake.CHAPTERS[:-1]):
+    CAKE_BADGES["master_" + _ch["key"]] = (
+        "🏅", f"{_ch['name']} Master", f"Earn all 9 stars in {_ch['name']}")
+CAKE_CLASS_GOALS = sorted({u["class"] for u in cake.UNLOCKS if "class" in u})
+
+
+def cake_entry(p):
+    entry = p.setdefault("cake", {})
+    for key, value in (("shop", ""), ("solved", {}), ("stars", {}), ("code", {}),
+                       ("runs", {}), ("hints", {}), ("badges", []), ("misses", {}),
+                       ("errored", {}), ("unlocked", 0), ("active", None),
+                       ("look", {"stand": "plate", "wallpaper": "strawberry"}),
+                       ("studio", ""), ("window", None), ("last_error", ""),
+                       ("bake_off", 0)):
+        entry.setdefault(key, value)
+    return entry
+
+
+def cake_public(p):
+    """A name for a student's shop window cake that isn't their login id."""
+    return "w%08x" % zlib.crc32(("cake:" + p["id"]).encode())
+
+
+def cake_frontier(p):
+    """Index in cake.LEVEL_ORDER of the furthest level this student may open."""
+    entry = cake_entry(p)
+    first = next((i for i, key in enumerate(cake.LEVEL_ORDER)
+                  if key not in entry["solved"]), len(cake.LEVEL_ORDER) - 1)
+    return max(first, min(entry["unlocked"], len(cake.LEVEL_ORDER) - 1))
+
+
+def cake_open(p, key):
+    return key in cake.LEVEL_ORDER and cake.LEVEL_ORDER.index(key) <= cake_frontier(p)
+
+
+def cake_star_count(entry):
+    return sum(sum(v) for v in entry["stars"].values())
+
+
+def cake_class_stars():
+    return sum(cake_star_count(cake_entry(q)) for q in players.values() if q.get("cake"))
+
+
+def cake_unlocked(entry):
+    return cake.open_unlocks(cake_star_count(entry), cake_class_stars())
+
+
+def cake_pantry(entry):
+    opened = cake_unlocked(entry)
+    return [dict(u, name=cake.unlock_name(u), open=(u["kind"], u["key"]) in opened)
+            for u in cake.UNLOCKS]
+
+
+def cake_feed_add(text):
+    cake_feed.append({"at": int(time.time()), "text": text})
+    del cake_feed[:-40]
+
+
+def cake_state(p):
+    """Everything the student page needs: chapters and levels with stars,
+    badges, the pantry of unlocks and the look of their shop."""
+    entry = cake_entry(p)
+    frontier = cake_frontier(p)
+    chapters = []
+    for ci, ch in enumerate(cake.CHAPTERS):
+        chapters.append(dict(ch, levels=[
+            {"key": lv["key"], "name": lv["name"],
+             "face": lv["customers"][0]["face"] if lv["customers"] else "🏆",
+             "solved": lv["key"] in entry["solved"],
+             "stars": entry["stars"].get(lv["key"], [False] * 3),
+             "open": cake.LEVEL_ORDER.index(lv["key"]) <= frontier}
+            for lv in cake.LEVELS if lv["chapter"] == ci]))
+    window = entry["window"]
+    return {"you": {"name": p["name"], "shop": entry["shop"]},
+            "chapters": chapters, "current": cake.LEVEL_ORDER[frontier],
+            "total_stars": cake_star_count(entry),
+            "max_stars": 3 * len(cake.LEVEL_ORDER),
+            "badges": [{"key": k, "icon": b[0], "name": b[1], "how": b[2],
+                        "earned": k in entry["badges"]}
+                       for k, b in CAKE_BADGES.items()],
+            "look": entry["look"], "pantry": cake_pantry(entry),
+            "studio": entry["studio"] or cake.STUDIO_STARTER,
+            "window": {"title": window["title"], "hearts": len(window["hearts"]),
+                       "hidden": window.get("hidden", False)} if window else None,
+            "theme": cake_class["theme"],
+            "class": {"stars": cake_class_stars(), "goals": CAKE_CLASS_GOALS}}
+
+
+def cake_palette():
+    return {"flavours": cake.FLAVOURS, "colours": cake.COLOURS,
+            "specials": cake.SPECIALS, "toppings": cake.TOPPINGS,
+            "stands": cake.STANDS, "wallpapers": cake.WALLPAPERS}
+
+
+def cake_level(p, key):
+    """One level as the student sees it before baking: the customers, their
+    tickets, the house rules, the Chef's tip and the goals."""
+    lv = cake.LEVEL_BY_KEY[key]
+    entry = cake_entry(p)
+    bake_off = lv.get("bake_off", False)
+    customers = cake.customers_for(lv, 0)
+    return {"key": key, "name": lv["name"], "chapter": cake.CHAPTERS[lv["chapter"]],
+            "tip": lv["tip"], "rules": lv.get("rules", []),
+            "starter": lv["starter"], "code": entry["code"].get(key, ""),
+            "hints": lv["hints"][:entry["hints"].get(key, 0)],
+            "hint_count": len(lv["hints"]), "goals": cake.goals(lv),
+            "stars": entry["stars"].get(key, [False] * 3),
+            "solved": key in entry["solved"], "bake_off": bake_off,
+            "commands": lv["commands"],
+            "new": [c for c in lv["commands"] if cake.COMMAND_CHAPTER[c] == lv["chapter"]],
+            "customers": [{"name": c["name"], "face": c["face"], "says": c["says"],
+                           "ticket": c.get("ticket"),
+                           "checklist": None if c.get("ticket") else cake.checklist(c["want"])}
+                          for c in customers]}
+
+
+def cake_code_features(code):
+    """Which Python a program uses, for the coding badges."""
+    found = code_features(code) - {"while", "def"}
+    try:
+        nodes = list(ast.walk(ast.parse(code)))
+    except SyntaxError:
+        return found
+    if any(isinstance(n, ast.List) for n in nodes):
+        found.add("list")
+    if any(isinstance(n, ast.JoinedStr) and any(isinstance(v, ast.FormattedValue)
+                                                for v in n.values) for n in nodes):
+        found.add("fstring")
+    return found
+
+
+def cake_record(p, key, code, results):
+    """Save a bake and work out everything it earned."""
+    entry = cake_entry(p)
+    lv = cake.LEVEL_BY_KEY[key]
+    entry["code"][key] = code
+    entry["runs"][key] = entry["runs"].get(key, 0) + 1
+    entry["active"] = int(time.time())
+    before_open = cake_unlocked(entry)
+    before_stars = cake_star_count(entry)
+    earned = []
+
+    def badge(k):
+        if k not in entry["badges"]:
+            entry["badges"].append(k)
+            icon, name, how = CAKE_BADGES[k]
+            earned.append({"icon": icon, "name": name, "how": how})
+            cake_feed_add(f"{icon} {p['name']} earned {name}")
+
+    run_stars = cake.stars(lv, results, code)
+    happy = sum(r["happy"] for r in results)
+    stars = [a or b for a, b in zip(entry["stars"].get(key, [False] * 3), run_stars)]
+    entry["stars"][key] = stars
+    new_stars = cake_star_count(entry) - before_stars
+    first_time = run_stars[0] and key not in entry["solved"]
+    if run_stars[0]:
+        entry["solved"].setdefault(key, int(time.time()))
+    if lv.get("bake_off"):
+        entry["bake_off"] = max(entry["bake_off"], happy)
+    if first_time:
+        face = results[0]["face"] if len(results) == 1 else "🎉"
+        who = results[0]["name"] if len(results) == 1 else f"every customer at {lv['name']}"
+        cake_feed_add(f"{face} {p['name']} made {who} happy")
+
+    if run_stars[0]:
+        badge("first")
+        for feature in sorted(cake_code_features(code)):
+            badge(feature)
+        if any(r["own_function"] for r in results):
+            badge("def")
+        if entry["errored"].get(key):
+            badge("fixer")
+        if entry["misses"].get(key, 0) >= 5:
+            badge("grit")
+        if key == "2b":
+            badge("dragon")
+        entry["misses"][key] = 0
+    else:
+        entry["misses"][key] = entry["misses"].get(key, 0) + 1
+    errors = [r["error"] for r in results if r.get("error")]
+    entry["errored"][key] = bool(errors)
+    entry["last_error"] = errors[0] if errors else ""
+    if all(run_stars):
+        badge("triple")
+        if lv.get("bake_off"):
+            badge("starbaker")
+        cake_feed_add(f"🌟 {p['name']} earned all three stars on {lv['name']}")
+    touch = [k for k, v in entry["stars"].items()
+             if v[1] and cake.LEVEL_BY_KEY[k]["star2"]["kind"] == "touch"]
+    if len(touch) >= 5:
+        badge("artist")
+    for ci, ch in enumerate(cake.CHAPTERS[:-1]):
+        if all(all(entry["stars"].get(x["key"], [False])) for x in cake.LEVELS
+               if x["chapter"] == ci):
+            badge("master_" + ch["key"])
+    unlocked = cake_unlocked(entry) - before_open
+    return {"stars": run_stars, "best": stars, "new_stars": new_stars,
+            "happy": happy, "badges": earned, "first": first_time,
+            "unlocked": [dict(u, name=cake.unlock_name(u)) for u in cake.UNLOCKS
+                         if (u["kind"], u["key"]) in unlocked],
+            "total_stars": cake_star_count(entry),
+            "misses": entry["misses"].get(key, 0)}
+
+
+def cake_window(viewer=None, teacher=False):
+    """Every cake in the class shop window, newest first. Hidden ones only
+    show on the teacher's page."""
+    cakes = []
+    for q in players.values():
+        w = (q.get("cake") or {}).get("window")
+        if not w or (w.get("hidden") and not teacher):
+            continue
+        entry = cake_entry(q)
+        cakes.append({"owner": cake_public(q), "baker": q["name"],
+                      "shop": entry["shop"] or f"{q['name']}'s Bakery",
+                      "title": w["title"], "cake": w["cake"], "code": w["code"],
+                      "look": entry["look"], "at": w["at"],
+                      "hearts": len(w["hearts"]), "hidden": w.get("hidden", False),
+                      "hearted": bool(viewer) and viewer["id"] in w["hearts"],
+                      "mine": bool(viewer) and viewer["id"] == q["id"]})
+    cakes.sort(key=lambda c: -c["at"])
+    return {"theme": cake_class["theme"], "cakes": cakes}
+
+
+def cake_owner(public):
+    return next((q for q in players.values()
+                 if q.get("cake") and cake_public(q) == public), None)
+
+
+def cake_overview():
+    """The teacher's page and the projector: where everyone is, who's stuck,
+    their last error, the class star meter and the recent moments."""
+    rows = []
+    for q in players.values():
+        if not q.get("cake"):
+            continue
+        entry = cake_entry(q)
+        frontier = cake_frontier(q)
+        key = cake.LEVEL_ORDER[frontier]
+        lv = cake.LEVEL_BY_KEY[key]
+        rows.append({"id": q["id"], "name": q["name"],
+                     "shop": entry["shop"] or f"{q['name']}'s Bakery",
+                     "level": key, "level_name": lv["name"], "at": frontier,
+                     "chapter": cake.CHAPTERS[lv["chapter"]]["name"],
+                     "solved": len(entry["solved"]), "stars": cake_star_count(entry),
+                     "badges": len(entry["badges"]),
+                     "runs_here": entry["runs"].get(key, 0),
+                     "misses": entry["misses"].get(key, 0),
+                     "hints": sum(entry["hints"].values()),
+                     "last_error": entry["last_error"],
+                     "window": bool(entry["window"]),
+                     "active": entry["active"]})
+    rows.sort(key=lambda x: (x["at"], -x["misses"], x["name"].lower()))
+    return {"students": rows, "levels": len(cake.LEVEL_ORDER),
+            "level_names": {lv["key"]: lv["name"] for lv in cake.LEVELS},
+            "class": {"stars": cake_class_stars(), "goals": CAKE_CLASS_GOALS,
+                      "unlocks": [dict(u, name=cake.unlock_name(u))
+                                  for u in cake.UNLOCKS if "class" in u]},
+            "theme": cake_class["theme"], "feed": cake_feed[-12:]}
+
+
+def cake_teacher(data):
+    """Teacher actions on /cake/teacher (they need the admin key)."""
+    action = data.get("action")
+    if action == "theme":
+        cake_class["theme"] = str(data.get("theme", "")).strip()[:THEME_MAX]
+        if cake_class["theme"]:
+            cake_feed_add(f"🪟 New shop window theme: {cake_class['theme']}")
+        return {"ok": True}
+    if action in ("hide", "show"):
+        q = cake_owner(str(data.get("owner", "")))
+        if not q or not cake_entry(q)["window"]:
+            return {"error": "No such cake."}
+        cake_entry(q)["window"]["hidden"] = action == "hide"
+        return {"ok": True}
+    if action == "unlock":
+        targets = list(players.values()) if data.get("everyone") else \
+            [players.get(str(data.get("id", "")))]
+        if not all(targets):
+            return {"error": "No such student."}
+        to = cake.LEVEL_ORDER.index(data.get("level")) if data.get("level") in \
+            cake.LEVEL_ORDER else len(cake.LEVEL_ORDER) - 1
+        for q in targets:
+            if q.get("cake") or not data.get("everyone"):
+                entry = cake_entry(q)
+                entry["unlocked"] = max(entry["unlocked"], to)
+        return {"ok": True}
+    return {"error": "Unknown action."}
+
+
 def load(path):
     with open(path, "rb") as f:
         return f.read()
@@ -3291,6 +3616,9 @@ PAGES = {
     "/planet": ("planet.html", "text/html; charset=utf-8"),
     "/planet/teacher": ("planet_teacher.html", "text/html; charset=utf-8"),
     "/planet/show": ("planet_show.html", "text/html; charset=utf-8"),
+    "/cake": ("cake.html", "text/html; charset=utf-8"),
+    "/cake/teacher": ("cake_teacher.html", "text/html; charset=utf-8"),
+    "/cake/show": ("cake_show.html", "text/html; charset=utf-8"),
     "/leaderboard": ("leaderboard.html", "text/html; charset=utf-8"),
     "/screen": ("screen.html", "text/html; charset=utf-8"),
     "/admin": ("admin.html", "text/html; charset=utf-8"),
@@ -3390,6 +3718,9 @@ class Handler(BaseHTTPRequestHandler):
                     body = planet_site(p, key)
                 body = json.dumps(body).encode()
             self._send(200, body)
+            return
+        if path.startswith("/cake/"):
+            self.cake_get(path, parse_qs(urlsplit(self.path).query))
             return
         if path == "/cycles/board":
             address = f"http://{get_lan_ip()}:{PORT}/cycles"
@@ -3561,6 +3892,9 @@ class Handler(BaseHTTPRequestHandler):
                 save_state()
             self._send(200, body)
             return
+        if self.path.startswith("/cake/"):
+            self.cake_post(self.path, data)
+            return
         if self.path == "/typing":
             with lock:
                 p = players.get(data.get("id"))
@@ -3629,6 +3963,160 @@ class Handler(BaseHTTPRequestHandler):
         self._send(404, {"error": "not found"})
 
 
+    # ---- Cake Shop -------------------------------------------------------------
+    # Replies are built under the lock but sent after it, and code is baked
+    # without the lock, so a slow program never holds up the rest of the class.
+
+    def cake_get(self, path, query):
+        pid = query.get("id", [""])[0]
+        with lock:
+            p = players.get(pid)
+            if path == "/cake/overview":
+                body = dict(cake_overview(), address=f"http://{get_lan_ip()}:{PORT}/cake")
+            elif path == "/cake/window":
+                body = cake_window(p, teacher=query.get("key", [""])[0] == ADMIN_KEY)
+            elif not p:
+                body = {"you": None}
+            elif path == "/cake/state":
+                body = dict(cake_state(p), palette=cake_palette())
+            elif path == "/cake/level":
+                key = query.get("level", [""])[0]
+                body = cake_level(p, key) if cake_open(p, key) else \
+                    {"error": "🔒 Make the customers before this one happy to open it."}
+            else:
+                body = {"error": "not found"}
+            body = json.dumps(body).encode()
+        self._send(200, body)
+
+    def cake_post(self, path, data):
+        if path == "/cake/teacher":
+            with lock:
+                body = cake_teacher(data) if str(data.get("key", "")) == ADMIN_KEY \
+                    else {"error": "Wrong admin key."}
+                save_state()
+                self._send(200, body)
+            return
+        with lock:
+            p = players.get(data.get("id"))
+            if not p:
+                self._send(200, {"error": "join"})
+                return
+            entry = cake_entry(p)
+            unlocked = cake_unlocked(entry)
+            if path == "/cake/run":
+                key = str(data.get("level", ""))
+                if not cake_open(p, key):
+                    self._send(200, {"error": "🔒 That level isn't open yet."})
+                    return
+        code = str(data.get("code", ""))[:cake.MAX_CODE + 1]
+        if path == "/cake/run":
+            # Bake without the lock: other students keep working.
+            lv = cake.LEVEL_BY_KEY[key]
+            results = cake.run_level(lv, code, unlocked, seed=random.randrange(10 ** 9)
+                                     if lv.get("bake_off") else 0)
+            with lock:
+                rewards = cake_record(p, key, code[:cake.MAX_CODE], results)
+                save_state()
+                body = json.dumps({"runs": results, "rewards": rewards,
+                                   "state": cake_state(p)}).encode()
+            self._send(200, body)
+            return
+        if path in ("/cake/studio", "/cake/window"):
+            try:
+                seed = int(data.get("seed", 0)) % 10 ** 9
+            except (TypeError, ValueError):
+                seed = 0
+            if path == "/cake/studio" and data.get("new_seed"):
+                seed = random.randrange(10 ** 9)
+            out = cake.studio_bake(code, unlocked, seed=seed)
+            with lock:
+                entry["studio"] = code[:cake.MAX_CODE]
+                if path == "/cake/window":
+                    title = str(data.get("title", "")).strip()[:CAKE_TITLE_MAX]
+                    if out["error"] or not out["cake"][0]["layers"]:
+                        body = {"error": "Bake a cake without errors first, then put it "
+                                         "in the window."}
+                    elif not title:
+                        body = {"error": "Give your cake a name first."}
+                    else:
+                        old = entry["window"] or {}
+                        entry["window"] = {"title": title, "code": code[:cake.MAX_CODE],
+                                           "seed": seed, "cake": out["cake"],
+                                           "at": int(time.time()),
+                                           "hearts": old.get("hearts", []) if
+                                           old.get("title") == title else [],
+                                           "hidden": False}
+                        cake_feed_add(f"🪟 {p['name']} put {title} in the shop window")
+                        earned = []
+                        if "window" not in entry["badges"]:
+                            entry["badges"].append("window")
+                            icon, name, how = CAKE_BADGES["window"]
+                            earned.append({"icon": icon, "name": name, "how": how})
+                        body = {"ok": True, "badges": earned, "state": cake_state(p)}
+                else:
+                    body = dict(out, seed=seed)
+                save_state()
+                body = json.dumps(body).encode()
+            self._send(200, body)
+            return
+        with lock:
+            if path == "/cake/heart":
+                owner = cake_owner(str(data.get("owner", "")))
+                w = owner and cake_entry(owner)["window"]
+                if not w or owner is p:
+                    body = {"error": "You can't heart that cake."}
+                else:
+                    earned = []
+                    if p["id"] in w["hearts"]:
+                        w["hearts"].remove(p["id"])
+                    else:
+                        w["hearts"].append(p["id"])
+                        if len(w["hearts"]) == 5:
+                            o = cake_entry(owner)
+                            if "loved" not in o["badges"]:
+                                o["badges"].append("loved")
+                                cake_feed_add(f"💖 {owner['name']}'s {w['title']} got 5 hearts")
+                        given = sum(p["id"] in (cake_entry(q)["window"] or {}).get("hearts", [])
+                                    for q in players.values() if q.get("cake"))
+                        if given >= 5 and "kind" not in entry["badges"]:
+                            entry["badges"].append("kind")
+                            icon, name, how = CAKE_BADGES["kind"]
+                            earned.append({"icon": icon, "name": name, "how": how})
+                    body = {"hearts": len(w["hearts"]), "hearted": p["id"] in w["hearts"],
+                            "badges": earned}
+            elif path == "/cake/hint":
+                key = str(data.get("level", ""))
+                if not cake_open(p, key):
+                    body = {"error": "No such level."}
+                else:
+                    opened = entry["hints"].get(key, 0)
+                    entry["hints"][key] = min(opened + 1, len(cake.LEVEL_BY_KEY[key]["hints"]))
+                    body = {"hints": cake.LEVEL_BY_KEY[key]["hints"][:entry["hints"][key]]}
+            elif path == "/cake/shop":
+                name = " ".join(str(data.get("name", "")).split())[:SHOP_NAME_MAX]
+                entry["shop"] = name
+                body = cake_state(p)
+            elif path == "/cake/look":
+                opened = unlocked | {("stand", "plate"), ("wallpaper", "strawberry")}
+                for slot, kind in (("stand", "stand"), ("wallpaper", "wallpaper")):
+                    choice = str(data.get(slot, entry["look"][slot]))
+                    if (kind, choice) in opened:
+                        entry["look"][slot] = choice
+                body = {"look": entry["look"]}
+            elif path == "/cake/code":
+                key = str(data.get("level", ""))
+                if key == "studio":
+                    entry["studio"] = code[:cake.MAX_CODE]
+                elif cake_open(p, key):
+                    entry["code"][key] = code[:cake.MAX_CODE]
+                body = {"ok": True}
+            else:
+                body = {"error": "not found"}
+            save_state()
+            body = json.dumps(body).encode()
+        self._send(200, body)
+
+
 class ClassroomServer(ThreadingHTTPServer):
     # Python waits for only 5 connections by default; a whole class pressing
     # Run at once overflowed that, so some got "connection reset".
@@ -3663,6 +4151,9 @@ def main():
         f"  Strange Planet: http://{ip}:{PORT}/planet       (hidden-rule rover zones)",
         f"  Planet class: http://localhost:{PORT}/planet/teacher (who's stuck, journals)",
         f"  Planet show:  http://localhost:{PORT}/planet/show    (project the class star meter)",
+        f"  Cake Shop:    http://{ip}:{PORT}/cake           (bake cakes for customers)",
+        f"  Cake class:   http://localhost:{PORT}/cake/teacher  (who's stuck, the shop window)",
+        f"  Cake show:    http://localhost:{PORT}/cake/show     (project the shop window)",
         f"  Maze library: http://{ip}:{PORT}/classic        (optional practice)",
         f"  Big screen:   http://localhost:{PORT}/screen        (project this)",
         f"  Leaderboard:  http://localhost:{PORT}/leaderboard",
