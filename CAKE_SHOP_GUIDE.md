@@ -1,16 +1,18 @@
-# Cake Shop: teaching guide (about 3 lessons)
+# Cake Shop: teaching guide
 
-Students run a bakery. Customers come in with orders, and students write
-Python that bakes the cake. The cake builds itself on the counter one step at
-a time, and the customer reacts. They're either delighted, or politely puzzled
-(*"Layer 2 from the bottom should be strawberry, not lemon."*). That reaction
-is the debugging feedback, so students learn to **read what went wrong and fix
-it**.
+Students write **one Python program that bakes the right cake for every
+customer**. Each customer brings a ticket, `order`, which is a Python
+dictionary: `{"name": "Priya", "flavour": "blueberry"}`. The same program runs
+once per customer, so a hard-coded `layer("lemon")` makes Sam happy and Priya
+says *"Layer 1 from the bottom should be blueberry, not lemon."* That moment,
+when one program has to work for different inputs, is what the whole game is
+about, from the very first level.
 
-It was made for the students who find "get the robot to the exit" pointless.
-Here the goal is to make something lovely for someone, and there's room to be
-creative at every step. It needs no Python beforehand: Chapter 1 starts from
-a single line of code.
+It follows Python Quest: students already know commands, loops and `def`, so
+nothing here is "type commands in order". Every level teaches one real idea:
+reading data, variables, joining text, loops driven by data, `if/elif`, `%`,
+`in`, and `def` with parameters. The page is built to explain itself, so you
+shouldn't need to introduce each part.
 
 ## Running it
 
@@ -21,278 +23,201 @@ It's part of the same server as everything else:
 | Page | Who | What |
 |---|---|---|
 | `http://<your-ip>:8000/cake` | students | the game |
-| `http://localhost:8000/cake/teacher` | you | who's where, who's stuck, their last error, the shop window |
-| `http://localhost:8000/cake/show` | the projector | the class shop window as a slideshow, the class star meter, a live feed |
+| `http://localhost:8000/cake/teacher` | you | who's where, who's stuck, their last error and code, the shop window |
+| `http://localhost:8000/cake/show` | the projector | the class shop window, the class star meter, a live feed |
 
-Students join with their name, as in the other games (the same name brings
-back their progress), then name their bakery. The admin key printed in the
-terminal unlocks the teacher actions.
+Students type their name (the same name brings back their progress) and go
+straight to level 1a. Calm mode and bigger text are ticks under the name box.
+The admin key printed in the terminal unlocks the teacher actions.
 
 ## What students see
 
-- **The shop.** The customer stands at the counter with a speech bubble
-  saying what they want. A chalkboard shows the chapter or the shop's **house
-  rules**, and a pinned **ticket** shows the order. From Chapter 3 that's the
-  actual Python dictionary, `order = {...}`.
-- **The kitchen** (on the right). There's a **Chef's tip** with an example of the
-  level's new idea, the editor (colour-coded, with line numbers), a **recipe
-  book** of commands to click, and an **ingredients** list of flavours, colours
-  and toppings. Clicking a command adds it with its word selected. Clicking an
-  ingredient then swaps that word, so `layer("vanilla")` becomes
-  `layer("chocolate")` without any typing. That helps students who type
-  slowly get started, and they still have to put the steps in the right order. Then come **Bake!** (Ctrl+Enter), **hints**,
-  and the **Kitchen notes**, where `print()` output and errors appear.
-- **Baking.** Each command is a step: layers drop in, frosting spreads,
-  sprinkles rain down, candles pop up and flicker, writing appears on the front
-  of the cake. After that the customer hops for joy or looks puzzled. The ticket
-  then ticks off ✓ or ✗ every part of the order, so students can see *exactly*
-  what's wrong. (On a ticket from Chapter 3 on, the `order = {...}` folds away
-  under the checks; **🎫 The ticket** opens it again.)
-- **Queues** (Chapter 3 onwards). The same program bakes for 3–5 customers with
-  different tickets. A hard-coded program makes the first customer happy and
-  the next one says *"I wanted blueberry, not lemon"*. That moment is the
-  lesson. Each face at the top gets its 😊 or 😕 once that customer has had
-  their cake. Click a customer to see their cake and ticket.
+The screen has two halves.
+
+- **Left: the shop.** The customers in the queue at the top, the cake, and the
+  current customer's **ticket**, written as the Python dictionary their code
+  reads. **Clicking a line of the ticket puts `order["that key"]` into the
+  code.** If the cursor is on a quoted word, it replaces it, so
+  `layer("lemon")` becomes `layer(order["flavour"])` in one click.
+- **Right: the kitchen.** From the top:
+  1. **The task card.** What every cake needs ("One program, 3 customers.
+     Each cake: …"), and under it the level's **NEW** idea with a small code
+     example. It's open the first time, and *show/hide* folds it.
+  2. **The editor.** Colour-coded, with line numbers. Every starter runs, and
+     most bake correctly for at least one customer, so the first Bake! always
+     shows something.
+  3. **📖 Commands, flavours, colours and toppings**, folded away. Click a
+     command to add it, then a flavour or colour to fill it in.
+  4. **Bake!** (Ctrl+Enter), **💡 Hint** and **↺ Start again**.
+  5. **Output.** `print()` output, mistakes in the code (in red, with the
+     line picked out in the editor), and how the bake went: *"😕 1 of 3
+     happy. Priya: …"*.
+
+**Watching the program run.** While a cake bakes, the line of code that made
+each step lights up green in the editor, and `print()` output appears as it
+happens. Students can see a loop go round 100 times for Ember the dragon, an
+`if` skip its lines, and a `def` run when it's called. Each customer is baked
+in turn. Afterwards their face gets 😊 or 😕, and their ticket ticks off ✓ or
+✗ for every part of the order. Click any customer to see their cake.
 
 ## What keeps them coding
 
 Every reward is for writing code. Nothing is random and nothing is taken away.
 
-- **Three stars per level**: 😊 make every customer happy, a level-specific
-  second star, and a third star for compact code or for using the new idea
-  (a variable, `elif`, `def`, parameters). Stars add up across bakes, so a
-  student can get them in different runs. Going back for the missing star *is*
-  the practice.
-- **✨ Your own touch.** On most levels the second star is for adding a
-  decoration the customer *didn't* ask for, like sprinkles, a swirl or a topping.
-  Creativity is part of the score. (On rush levels it has to be on every cake,
-  which nudges them to add it outside any `if`.)
-- **Unlocks.** Stars unlock new toppings (🦋 👻 🎃 🌈 👑 🦄 💎 …), special
-  frostings (✨ glitter, 🌌 galaxy, 🌈 rainbow, 🥇 gold), cake stands and shop
-  wallpapers. The ★ button at the top shows them all. The last few unlock for
-  **the whole class together** on the class star meter (40, 120 and 240
-  stars), which the projector shows.
+- **Three stars per level**: 😊 make every customer happy, a second star (often
+  **✨ your own touch**: a decoration nobody asked for, on every cake), and a
+  third star for using the new idea well: `print()` each name, a variable,
+  `.upper()`, "Ava is 8" (text and a number), a number worked out with `*` or
+  `len()`, `elif`, compact code, or `def` with parameters. Stars add up across
+  bakes. Going back for the missing star *is* the practice.
+- **Unlocks.** Stars unlock new toppings, special frostings, cake stands and
+  shop wallpapers (the ★ button shows them). The last few unlock for **the
+  whole class together** on the class star meter (40, 120 and 240 stars).
 - **Badges** for coding habits: first loop, first `if`, first list, first
-  f-string, a recipe made with `def`, `print()`, fixing an error, **Never Give
-  Up** (succeed after 5 bakes that didn't), Dragon Tamer, putting a cake in
-  the window, giving and getting hearts, chapter masters.
-- **🎨 The Studio.** Free baking with every command, plus `choice()` and
-  `randint()` for surprise cakes (🎲 Again re-bakes with new random picks).
-  **💡 Ideas** load a starting recipe (rainbow tower, spooky night, surprise
-  me, birthday, strawberry dream, royal wedding), and each one shows off a bit of
-  Python to change. **📸 Photo** saves a picture of the cake to keep. Fast
-  finishers live here.
-- **🪟 The Shop Window.** Students name their best Studio cake and put it in
-  the window. Classmates can ❤️ it, open it to **read its recipe**, and
-  **Remix it** into their own Studio. Reading each other's code is a great
-  habit to encourage.
-- **Sound.** Every step makes a small sound. 🔊 at the top mutes it (each
-  browser remembers). Headphones help in a full room.
-- **Calm mode and bigger text.** Both are ticks on the welcome card and at the
-  bottom of the ★ panel. Calm mode stops the hopping, shaking, confetti and
-  flickering candles (it's on already on computers set to reduce motion).
-  Bigger text enlarges the recipe, the notes, the ticket and what customers
-  say. Each browser remembers.
+  f-string, `def`, `print()`, fixing an error, **Never Give Up** (succeed
+  after 5 bakes that didn't), Dragon Tamer, chapter masters, shop window ones.
+- **🎨 The Studio**: free baking with every command (including `tier()` for
+  tall cakes), `choice()` and `randint()`, and ready-made ideas to remix.
+  **🪟 The Shop Window**: put your best Studio cake up for the class to ❤️,
+  read its recipe and remix it. Fast finishers live here.
+- **Sound** (🔊 mutes it), **calm mode** (no hopping, shaking, confetti or
+  flickering candles; already on for computers set to reduce motion) and
+  **bigger text**. The last two are ticks on the join screen and in the ★
+  panel. Each browser remembers.
 
 ## The kitchen commands
 
+All of them work from level 1a. `tier()` is for the Studio.
+
 ```python
 layer("vanilla")        # add a sponge layer (bottom first)
-frosting("pink")        # frost the cake (top and between the layers)
+frosting("pink")        # frost the cake
 drip("chocolate")       # a drip running down the sides
 sprinkles()             # rainbow sprinkles, or sprinkles("pink")
-swirl("white")          # one piped swirl on the rim — loop it for a ring
-topping("cherry")       # ONE topping on top — call it again for more
+swirl("white")          # one piped swirl on the rim: loop it for a ring
+topping("cherry")       # ONE topping on top: call it again for more
 candle()                # one candle, or candle("blue")
-write("Hi Gran")        # writing on the front of the cake (40 letters max)
-write("BOO!", "orange") # ...in a colour of your choice
-tier()                  # start a smaller cake on top (Chapter 6)
+write("Hi Gran")        # writing on the front of the cake
+tier()                  # (Studio) start a smaller cake on top
 ```
 
-Colours can also be hex codes like `"#ff88cc"`. The Python that works:
-variables, `+ - * // %`, text with `+`, f-strings, `str()` `int()` `len()`,
-lists (`[ ]`, `for x in list`, `.append()`, `[0]`, `[1:]`), dictionaries
-(`order["name"]`), `if/elif/else`, `and/or/not`, `in`, `for`, `while`,
-`def` with parameters and `return`, `print()`, and `.upper() .lower()
-.title() .replace()` on text. There are no imports. Like the other games, the
-code is interpreted safely and never runs as real Python on your laptop.
+The code is interpreted safely and never runs as real Python on your laptop.
 
-## Lesson plan
+## Lesson plan (about 60 minutes)
 
-**Lesson 1: Chapters 1–2 (commands, text, `for` loops).** Do level 1a together
-on the board. Granny Rose's starter already has one line; ask *"what's missing?"*
-Then let them go. Point out the ticket ticks: *"which line made that ✗?"*. Ember
-the dragon (100 candles) is the moment loops click. Finish with 10 minutes of
-Studio and the first shop window cakes on the projector.
+**0–5. Hook (projector).** Open 1a, press **Bake!** without changing anything.
+Sam is happy and Priya isn't. Ask *"How can ONE program know what each customer
+wants?"* Point at Priya's ticket. That's all the introduction it needs.
 
-**Lesson 2: Chapters 3–4 (dictionaries, `if/elif/else`).** Open on the
-projector with level 3a: run a program that says `layer("lemon")` and let
-the class watch Priya's face. *"How can ONE program know what each customer
-wants?"* Then `print(order)`. Chapter 4's **Age Rules** (4c) is a great
-discussion: Max is exactly 10 and Omar exactly 18. *Which group are they in,
-and which comparison puts them there?*
+**5–35. Chapters 1–2 (the ticket, variables, text, loops from data).** Students
+work on their own or in driver/navigator pairs. Things worth saying out loud
+to the room as they come up:
+- 1c: `"Happy Birthday" + order["name"]` with no space. Read the ✗ on the ticket.
+- 2a: `range(8)` works for Ava but not Ember (100). Numbers can come from data.
+- 2b: two lines inside one loop make TWO layers each time round.
 
-**Lesson 3: Chapters 5–6 and the Bake-Off (`%`, lists, functions).** 5a
-(`i % 2`) is worth a demo: `print(i, i % 2)` in the Studio. The Bake-Off is the
-finale. Five random customers each bake, so only a program that reads every
-part of the ticket gets all five. Fast finishers: Studio and a themed window.
+**35–55. Chapters 3–4 (`if/elif`, a bug hunt, `%`, `in`).** 3c is a **bug
+hunt**: the starter is a full program with two `<=` mistakes. Max is exactly
+10 and Omar exactly 18. Ask *"which line made Max unhappy?"* and let them
+watch the green line go through the `if`.
 
-If a class needs to start at a later chapter, use **Open levels for
+**55–60. Show and tell.** Put a shop window cake on the projector, or show
+two different correct programs for the same level.
+
+Chapter 5 (`def`, parameters) and the Bake-Off are for a second lesson or
+fast finishers. To start a later lesson at a chapter, use **Open levels for
 everyone** on the teacher page. Open student pages pick it up within 20
-seconds, with a "🔓 new customers are open" message.
+seconds.
 
 ## Level by level
 
-| Level | Teaches | ★2 / ★3 | Watch for |
-|---|---|---|---|
-| 1a Granny Rose | one command per line, quotes | own touch / `print()` | `layer(chocolate)` without quotes (the error says so) |
-| 1b Leo | order matters (first layer = bottom) | own touch / write LEO | layers in the wrong order: the ticket's ✗ names the layer |
-| 1c Captain Whiskers | drips, toppings, `write()` | own touch / ≤ 9 lines | `topping("fish")` once, not three times |
-| 2a Ava turns 8 | `for i in range(8):` | own touch / ≤ 7 lines | `write()` pushed into the loop (it writes 8 times, harmlessly, but it's a good talk) |
-| 2b Ember the dragon | loops for anything | own touch / ≤ 8 lines | typing candles by hand; the ≤ 8 lines star needs a loop for the layers too |
-| 2c Zoe's stripes | two lines inside one loop | own touch / ≤ 7 lines | `range(8)` with two layers inside makes 16 |
-| 3a Flavour of the day | `order["flavour"]`, variables | own touch / a variable | hard-coding `"lemon"`: only Sam is happy |
-| 3b Birthday rush | `range(order["age"])`, joining text | own touch / ≤ 8 lines | `"Happy Birthday" + name` with no space |
-| 3c Party planner | f-strings or `str()` | name in CAPITALS (`.upper()`) / ≤ 6 lines | `"is " + order["age"]` (text + number): the error suggests `str()` |
-| 4a Sprinkles or not? | `if` with True/False | own touch / ≤ 7 lines | sprinkles for everyone: Sir Hoot complains |
-| 4b Party time | `if/elif/else`, `==` | write each name / uses `elif` | candles on the wedding cake ("Candles? It isn't my birthday!") |
-| 4c Age rules | `<`, edges of ranges | own touch / ≤ 13 lines | `age <= 10` gets Max wrong |
-| 5a Penguin Pete | `i % 2` | own touch / ≤ 9 lines | red/white swapped: red comes first |
-| 5b Rainbow the unicorn | lists, `for x in list` | own touch / ≤ 8 lines | flavours vs colours (`layer("red")` explains the difference) |
-| 5c Build your own | lists inside the ticket, `len()` | write the layer count / ≤ 6 lines | Bramble's empty topping list (a loop over `[]` does nothing, which is right) |
-| 6a The menu | `def` | own touch / uses `def` | defining the recipe but never calling it |
-| 6b Any size | parameters | own touch / a `def` with parameters | the sizes' numbers |
-| 6c Wedding bells | `tier()`, functions + lists | own touch / ≤ 15 lines | writing the names on the top tier instead of the bottom |
-| 7 The Great Bake-Off | one general program | 3 happy / all 5 happy | forgetting one part of the ticket: some runs pass, some don't |
+| Level | Teaches | Starter | ★2 / ★3 | Watch for |
+|---|---|---|---|---|
+| 1a Flavour of the Day | `order["flavour"]`: one program, many tickets | bakes lemon for everyone: Sam is happy | own touch / `print()` each name | changing only one of the two `layer` lines |
+| 1b Pick Your Colours | more keys, variables | flavour done, frosting fixed to pink | own touch / a variable | `topping(order["topping"])` |
+| 1c Names on Cakes | joining text with `+` | writes "Happy Birthday Ava" on every cake | own touch / name in CAPITALS (`.upper()`) | the missing space after Birthday |
+| 2a Birthday Candles | a number from the ticket in `range()` | `range(8)`: Ava happy, Ember (100) not | own touch / write "Ava is 8" | `"is " + 8`: the error suggests `str()` or an f-string |
+| 2b Stripes | two lines inside one loop | one layer per stripe | own touch / write the number of layers (`* 2`) | dark before light: the ✗ names the layer |
+| 2c Build Your Own | `for x in` a list from the ticket | prints the list | own touch / write how many toppings, `len()` | Bramble's empty topping list: a loop over `[]` does nothing, which is right |
+| 3a Sprinkles or Not? | `if` with `True`/`False` | sprinkles for everyone | own touch / ≤ 7 lines | Sir Hoot: "NO sprinkles!" |
+| 3b Party Time | `if/elif/else`, `==` | only the birthday branch | each name on the cake / uses `elif` | candles on the wedding cake |
+| 3c Bug Hunt: The Age Rules | `<` vs `<=`, finding a bug | a full program with two bugs | own touch / ≤ 11 lines (needs a rethink) | Max (10) and Omar (18) are the edges |
+| 4a Candy Canes | `i % 2` in a loop | prints `i, i % 2` | own touch / ≤ 9 lines | colours swapped: the first colour goes first |
+| 4b Pick and Mix | `in` a list | no extras, prints the list | own touch / ≤ 10 lines | a cherry for everyone upsets Sir Hoot and Lily |
+| 5a The Menu | `def` | half-written recipes | own touch / uses `def` | defining a recipe but never calling it |
+| 5b Any Size | parameters | a `def` that only prints | own touch / a `def` with parameters | the numbers for each size |
+| 6 The Great Bake-Off | one general program | `print(order)` | 3 happy / all 5 happy | forgetting one part of the ticket: some runs pass, some don't |
 
-Every level has three hints that go from a nudge to the full answer, and the
-teacher page counts the hints each student opens. A student on their 3rd bake
-in a row without success gets a "💡 Want a hint?" nudge.
+Every level has three hints, from a nudge to the full answer. After 3 bakes in
+a row that don't make everyone happy, the Hint button lights up and the Output
+offers "💡 Want a hint?".
 
 ## The teacher page
 
 - **The table** is sorted with the furthest-behind first. **Tries** counts
   bakes in a row on the same level that didn't make every customer happy. The
-  row turns amber at 4 and pink at 8, which is a good time to visit. **Last error** is
-  the most recent error from their code.
-- **👀 Code** shows the student's code for the level they're on, with line
-  numbers and the line their last error names picked out.
-- **Open next** lets one student skip ahead.
-- **Shop window theme** shows at the top of the window and on the projector.
-  Halloween idea: *"Spooky cakes 🎃"* (the ghost and pumpkin toppings unlock at
-  4 and 6 stars).
-- **In the shop window.** Everything written on a cake is visible to the class.
-  **Hide** takes a cake out of the window at once. The student can put up a
-  new one.
+  row turns amber at 4 and pink at 8, which is a good time to visit. **Last
+  error** is the most recent error from their code.
+- **👀 Code** shows the student's code for the level they're on, with the line
+  their last error names picked out.
+- **Open next** lets one student skip ahead. **Open levels for everyone** does
+  it for the class.
+- **Shop window theme** shows in the window and on the projector.
+- **In the shop window**, **Hide** takes a cake out of the window at once.
 
 ## Troubleshooting
 
-- *"My code worked for one customer but not the others."* That's the point of
-  Chapter 3 onwards. Click the unhappy customer at the top of the shop to see
-  their ticket and what they said.
-- *"It says 🔒 … unlocks at 12 stars."* Locked toppings and frostings work
-  everywhere once unlocked. Stars come from levels.
+- *"It worked for one customer but not the others."* That's the point. Click
+  the unhappy customer at the top of the shop: their ticket says what their
+  code read, and the ✗ says what was wrong.
+- *"Where do I see my mistake?"* In red at the bottom of the kitchen (the
+  Output), and the line is marked red in the editor.
 - *A student lost their code.* It's saved in their browser and on the server
-  with each bake. Joining with the same name brings it back. **Ctrl+Z** also
-  undoes anything, including ↺ Reset, a Studio idea or a remix.
+  with each bake. Joining with the same name brings it back. **Ctrl+Z** undoes
+  anything, including ↺ Start again.
 - The game keeps everyone's progress in `scores.json` with the other games.
-
 
 ## Answers
 
 One way to earn all three stars on each level (there are others, and
 students' own versions are often nicer).
 
-<details><summary><b>1a Granny Rose</b></summary>
+<details><summary><b>1a Flavour of the Day</b></summary>
 
 ```python
-layer("chocolate")
-layer("chocolate")
+layer(order["flavour"])
+layer(order["flavour"])
 frosting("white")
 sprinkles()
-print("Enjoy your cake, Granny!")
+print(order["name"])
 ```
 </details>
 
-<details><summary><b>1b Leo's Sandwich Cake</b></summary>
-
-```python
-layer("vanilla")
-layer("strawberry")
-layer("vanilla")
-frosting("pink")
-topping("cherry")
-write("LEO")
-```
-</details>
-
-<details><summary><b>1c Captain Whiskers</b></summary>
-
-```python
-layer("lemon")
-layer("lemon")
-frosting("white")
-drip("chocolate")
-topping("fish")
-topping("fish")
-topping("fish")
-write("MEOW")
-sprinkles("blue")
-```
-</details>
-
-<details><summary><b>2a Ava Turns 8</b></summary>
-
-```python
-layer("strawberry")
-layer("strawberry")
-frosting("pink")
-for i in range(8):
-    candle()
-write("Happy Birthday Ava")
-swirl("white")
-```
-</details>
-
-<details><summary><b>2b Ember the Dragon</b></summary>
-
-```python
-for i in range(3):
-    layer("chocolate")
-frosting("orange")
-for i in range(100):
-    candle()
-for i in range(10):
-    topping("coin")
-drip("red")
-```
-</details>
-
-<details><summary><b>2c Zoe Loves Stripes</b></summary>
-
-```python
-for i in range(4):
-    layer("chocolate")
-    layer("vanilla")
-frosting("white")
-for i in range(12):
-    swirl("black")
-topping("star")
-```
-</details>
-
-<details><summary><b>3a Flavour of the Day</b></summary>
+<details><summary><b>1b Pick Your Colours</b></summary>
 
 ```python
 flavour = order["flavour"]
 layer(flavour)
 layer(flavour)
-frosting("white")
+frosting(order["frosting"])
+topping(order["topping"])
+sprinkles()
+```
+</details>
+
+<details><summary><b>1c Names on Cakes</b></summary>
+
+```python
+layer(order["flavour"])
+layer(order["flavour"])
+frosting("pink")
+name = order["name"].upper()
+write("Happy Birthday " + name)
 topping("heart")
 ```
 </details>
 
-<details><summary><b>3b Birthday Rush</b></summary>
+<details><summary><b>2a Birthday Candles</b></summary>
 
 ```python
 layer(order["flavour"])
@@ -300,24 +225,39 @@ layer(order["flavour"])
 frosting("pink")
 for i in range(order["age"]):
     candle()
-write("Happy Birthday " + order["name"])
+name = order["name"]
+age = order["age"]
+write(f"{name} is {age}")
 sprinkles()
 ```
 </details>
 
-<details><summary><b>3c Party Planner</b></summary>
+<details><summary><b>2b Stripes</b></summary>
 
 ```python
-for i in range(order["layers"]):
-    layer(order["flavour"])
-frosting(order["frosting"])
-name = order["name"].upper()
-age = order["age"]
-write(f"{name} is {age}")
+for i in range(order["stripes"]):
+    layer(order["dark"])
+    layer(order["light"])
+frosting("white")
+write(order["stripes"] * 2)
+swirl("black")
 ```
 </details>
 
-<details><summary><b>4a Sprinkles or Not?</b></summary>
+<details><summary><b>2c Build Your Own</b></summary>
+
+```python
+for flavour in order["layers"]:
+    layer(flavour)
+frosting(order["frosting"])
+for t in order["toppings"]:
+    topping(t)
+write(len(order["toppings"]))
+sprinkles()
+```
+</details>
+
+<details><summary><b>3a Sprinkles or Not?</b></summary>
 
 ```python
 for i in range(2):
@@ -329,7 +269,7 @@ topping("strawberry")
 ```
 </details>
 
-<details><summary><b>4b Party Time</b></summary>
+<details><summary><b>3b Party Time</b></summary>
 
 ```python
 layer(order["flavour"])
@@ -349,67 +289,55 @@ write(order["name"])
 ```
 </details>
 
-<details><summary><b>4c The Age Rules</b></summary>
+<details><summary><b>3c Bug Hunt: The Age Rules</b></summary>
 
 ```python
-layer(order["flavour"])
-layer(order["flavour"])
+for i in range(2):
+    layer(order["flavour"])
 frosting("white")
 age = order["age"]
-if age < 10:
+if age < 18:
     sprinkles()
-elif age < 18:
-    sprinkles()
+if age >= 10:
     drip("chocolate")
-else:
-    drip("chocolate")
+if age >= 18:
     topping("cherry")
 swirl("pink")
 ```
 </details>
 
-<details><summary><b>5a Penguin Pete</b></summary>
+<details><summary><b>4a Candy Canes</b></summary>
 
 ```python
 for i in range(2):
     layer("vanilla")
 frosting("white")
-for i in range(12):
+for i in range(order["swirls"]):
     if i % 2 == 0:
-        swirl("red")
+        swirl(order["first"])
     else:
-        swirl("white")
+        swirl(order["second"])
 topping("star")
 ```
 </details>
 
-<details><summary><b>5b Rainbow the Unicorn</b></summary>
+<details><summary><b>4b Pick and Mix</b></summary>
 
 ```python
-layers = ["cherry", "orange", "lemon", "lime", "blueberry", "grape"]
-colours = ["red", "orange", "yellow", "green", "blue", "purple"]
-for flavour in layers:
-    layer(flavour)
+layer(order["flavour"])
+layer(order["flavour"])
 frosting("white")
-for colour in colours:
-    swirl(colour)
-sprinkles()
+if "sprinkles" in order["extras"]:
+    sprinkles()
+if "drip" in order["extras"]:
+    drip("chocolate")
+if "cherry" in order["extras"]:
+    topping("cherry")
+swirl("pink")
 ```
 </details>
 
-<details><summary><b>5c Build Your Own</b></summary>
-
-```python
-for flavour in order["layers"]:
-    layer(flavour)
-frosting(order["frosting"])
-for t in order["toppings"]:
-    topping(t)
-write(len(order["layers"]))
-```
-</details>
-
-<details><summary><b>6a The Menu</b></summary>
+<details><summary><b>5a The Menu</b></summary>
 
 ```python
 def choco_bomb():
@@ -433,7 +361,7 @@ write("Enjoy!")
 ```
 </details>
 
-<details><summary><b>6b Any Size</b></summary>
+<details><summary><b>5b Any Size</b></summary>
 
 ```python
 def cake(layers, swirls):
@@ -453,29 +381,7 @@ topping("bow")
 ```
 </details>
 
-<details><summary><b>6c Wedding Bells</b></summary>
-
-```python
-def one_tier(flavour):
-    layer(flavour)
-    layer(flavour)
-    frosting("white")
-    for i in range(8):
-        swirl("white")
-
-flavours = order["flavours"]
-one_tier(flavours[0])
-write(order["names"])
-for flavour in flavours[1:]:
-    tier()
-    one_tier(flavour)
-for i in range(2):
-    topping("heart")
-sprinkles("white")
-```
-</details>
-
-<details><summary><b>7 The Great Bake-Off</b></summary>
+<details><summary><b>6 The Great Bake-Off</b></summary>
 
 ```python
 for flavour in order["layers"]:

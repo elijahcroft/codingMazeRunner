@@ -12,9 +12,9 @@ creative at every step.
 
 ## What makes it fun
 
-- **Customers with personality.** Granny Rose, a cat who wants fish on the
-  cake, a dragon turning 100 (100 candles, and only a loop will do), a zebra
-  who wants stripes, a unicorn who wants a rainbow.
+- **Customers with personality.** Granny Rose, Sir Hoot the owl who hates
+  sprinkles, a dragon turning 100 (100 candles, and only a loop will do), a
+  zebra who wants stripes, a penguin who wants candy-cane swirls.
 - **A big, pretty cake** that builds step by step: layers drop in, frosting
   spreads, sprinkles rain down, candles pop up and flicker, writing appears.
   Every step has a sound.
@@ -23,36 +23,47 @@ creative at every step.
 - **Unlocks**: stars unlock new toppings (butterflies, ghosts, crowns,
   unicorns…), special frostings (glitter, galaxy, rainbow) and the look of
   your shop (cake stand, wallpaper). The class unlocks the last few together.
-- **Name your bakery.** It shows on your page, in the shop window and on the projector.
+- **Name your bakery** (✎ at the top): it shows on your page, in the shop window and on the projector.
 - **Studio and the Shop Window**: free baking with everything unlocked, then
   put your best cake in the class shop window. Classmates can ❤️ it, view its
   recipe (code) and remix it.
 - **Projector page**: the shop window as a slideshow, the class star meter and
   a live feed ("🐉 Mia made Ember the dragon very happy").
 
-## Not too easy, not too hard
+## Every level is one program for many customers (Oct 2026 rework)
 
-- Every level has starter code, a **Chef's tip** card with an example of the
-  new idea, and three hints that go from a nudge to the answer.
-- Error messages are friendly and say what to type (as in the other games).
-- The customer says exactly what's wrong, so students can debug by reading.
-- Depth comes from later chapters: dictionaries, lists, `if/elif/else`,
-  `%`, functions with parameters, and one program that bakes for any customer.
+The first version opened with two chapters of typing commands in order and
+fixed-count loops, which students had already done in Python Quest, so the
+programming only started at level 7. Now every level, from 1a, is a queue of
+customers with tickets (`order`, a dictionary), and the SAME program bakes for
+each. A hard-coded value pleases one customer and not the next, in plain sight.
 
-## The Python it uses (more than the other games)
+- **Each starter runs**, and usually bakes right for one customer, so the
+  first Bake! shows what's left to do. 1a's starter is the hard-coded answer
+  for Sam; 2a's is `range(8)` with Ember turning 100; 3c's is a whole program
+  with two `<=` bugs (a bug hunt).
+- **One new idea per level**, on the task card with a short example, and three
+  hints that go from a nudge to the answer.
+- **The page explains itself**: no welcome card or shop-name step; one task
+  card (the rules and the new idea), one ticket (as Python; click a line to
+  insert `order["key"]`), one Output (prints, errors, how the bake went).
+- **Watching the program run**: every bake step records its code line, and
+  the editor lights that line up as the cake builds; prints appear as they run.
+- Error messages are friendly and say what to type, and the customer says
+  exactly what's wrong, so students debug by reading.
+
+## The Python it uses
 
 | Idea | Where |
 |---|---|
-| Commands with text arguments: `layer("chocolate")` | Ch 1 |
-| `print()` | Ch 1 (a star) |
-| `for` loops, loops with several lines inside | Ch 2 |
-| Dictionaries: `order["flavour"]`, variables | Ch 3 (Lunch Rush) |
-| Joining text, f-strings, `.upper()` | Ch 3 |
-| `True`/`False`, `if/elif/else`, `< <= >=` | Ch 4 |
-| Loop counters and `%`, lists, `for x in list`, `len()` | Ch 5 |
-| `def` with and without parameters | Ch 6 |
-| One general program for any order | Finale |
-| `choice()` and `randint()` for surprise cakes | Studio |
+| Dictionaries: `order["flavour"]`, one program for many inputs | Ch 1 (1a) |
+| Variables, joining text, `.upper()` | Ch 1 |
+| `range()` from ticket numbers, loop bodies, `for x in list`, `len()`, `*` | Ch 2 |
+| `if` on `True`/`False`, `if/elif/else`, `==`, `<` vs `<=` (a bug hunt) | Ch 3 |
+| `i % 2`, `in` | Ch 4 |
+| `def` with and without parameters | Ch 5 |
+| One general program for any order | Bake-Off |
+| `choice()`, `randint()`, `tier()` | Studio |
 
 ## The kitchen commands
 
@@ -68,38 +79,29 @@ write("Hi Gran")        write on the front of the cake (a colour is optional)
 tier()                  start a smaller cake on top (wedding cakes)
 ```
 
-Commands arrive chapter by chapter, as sensors do in Strange Planet.
-Chapter 1: layer, frosting, drip, sprinkles, topping, write. Chapter 2: candle,
-swirl. Chapter 6: tier. Studio: everything.
+Every command works from level 1a; tier() is only in the Studio.
 Colours can also be hex codes (`"#ff88cc"`) for anyone who wants a custom shade.
 
 ## Levels
 
-Ch 1 and 2 have one customer each. From Ch 3 on, **the same program bakes for
-3 to 5 customers** with different tickets (`order`), so hard-coding fails in
-plain sight: one customer is happy, the next gets the wrong flavour.
+Every level has 3 to 5 customers with tickets; the Bake-Off brings 5 random ones.
 
 | Lvl | Level | Customers | ★2 | ★3 |
 |---|---|---|---|---|
-| 1a | Granny Rose | 👵 Granny Rose | Your own touch: add something extra | `print()` a note, like `print("Enjoy!")` |
-| 1b | Leo's Sandwich Cake | 🧒 Leo | Your own touch: add something extra | Write LEO on the cake |
-| 1c | Captain Whiskers | 🐱 Captain Whiskers | Your own touch: add something extra | 9 lines of code or fewer |
-| 2a | Ava Turns 8 | 👧 Ava | Your own touch: add something extra | 7 lines of code or fewer |
-| 2b | Ember the Dragon | 🐉 Ember | Your own touch: add something extra | 8 lines of code or fewer |
-| 2c | Zoe Loves Stripes | 🦓 Zoe | Your own touch: add something extra | 7 lines of code or fewer |
-| 3a | Flavour of the Day | 3 in a queue | Your own touch: add something extra to every cake | Keep the flavour in a variable |
-| 3b | Birthday Rush | 3 in a queue | Your own touch: add something extra to every cake | 8 lines of code or fewer |
-| 3c | Party Planner | 3 in a queue | Write the name in CAPITALS with `.upper()` | 6 lines of code or fewer |
-| 4a | Sprinkles or Not? | 4 in a queue | Your own touch: add something extra to every cake | 7 lines of code or fewer |
-| 4b | Party Time | 4 in a queue | Write each customer's name on their cake | Use `if`, `elif` and `else` |
-| 4c | The Age Rules | 5 in a queue | Your own touch: add something extra to every cake | 13 lines of code or fewer |
-| 5a | Penguin Pete | 🐧 Penguin Pete | Your own touch: add something extra | 9 lines of code or fewer |
-| 5b | Rainbow the Unicorn | 🦄 Rainbow | Your own touch: add something extra | 8 lines of code or fewer |
-| 5c | Build Your Own | 4 in a queue | Write how many layers it has, using `len()` | 6 lines of code or fewer |
-| 6a | The Menu | 4 in a queue | Your own touch: add something extra to every cake | Use a recipe you made with `def` |
-| 6b | Any Size | 4 in a queue | Your own touch: add something extra to every cake | Use a `def` with parameters |
-| 6c | Wedding Bells | 3 in a queue | Your own touch: add something extra to every cake | 15 lines of code or fewer |
-| 7 | The Great Bake-Off | 5 random | 3 happy customers in one run | All 5 happy in one run |
+| 1a | Flavour of the Day | 3 | ✨ Your own touch: add something extra to every cake | 🖨 `print()` each customer's name |
+| 1b | Pick Your Colours | 3 | ✨ Your own touch: add something extra to every cake | 🏷 Keep something from the ticket in a variable |
+| 1c | Names on Cakes | 3 | ✨ Your own touch: add something extra to every cake | 📣 Write the name in CAPITALS with `.upper()` |
+| 2a | Birthday Candles | 3 | ✨ Your own touch: add something extra to every cake | 🖊 Write their name and age, like "Ava is 8" |
+| 2b | Stripes | 3 | ✨ Your own touch: add something extra to every cake | 🔢 Write how many layers it has |
+| 2c | Build Your Own | 4 | ✨ Your own touch: add something extra to every cake | 🔢 Write how many toppings it has, using `len()` |
+| 3a | Sprinkles or Not? | 4 | ✨ Your own touch: add something extra to every cake | ✂️ 7 lines of code or fewer |
+| 3b | Party Time | 4 | 🖊 Write each customer's name on their cake | 🔀 Use `if`, `elif` and `else` |
+| 3c | Bug Hunt: The Age Rules | 5 | ✨ Your own touch: add something extra to every cake | ✂️ 11 lines of code or fewer |
+| 4a | Candy Canes | 3 | ✨ Your own touch: add something extra to every cake | ✂️ 9 lines of code or fewer |
+| 4b | Pick and Mix | 4 | ✨ Your own touch: add something extra to every cake | ✂️ 10 lines of code or fewer |
+| 5a | The Menu | 4 | ✨ Your own touch: add something extra to every cake | 🧩 Use a recipe you made with `def` |
+| 5b | Any Size | 4 | ✨ Your own touch: add something extra to every cake | 🧩 Use a `def` with parameters |
+| 6 | The Great Bake-Off | 5 random | 🏆 3 happy customers in one run | 🏆 All 5 happy in one run |
 
 ★1 is always "every customer happy" (on the Bake-Off, 1 happy).
 

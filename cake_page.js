@@ -116,7 +116,8 @@ const STAND_ICONS = {plate: "🍽️", board: "🪵", glass: "🥂", pink: "🌸
 const SHOP_IDEAS = ["The Sugar Plum", "Sprinkle Palace", "Cloud Nine Cakes", "Crumbs & Co",
   "The Happy Whisk", "Frosted Dreams", "The Little Oven", "Butter & Bloom"];
 
-function codeKey(key) { return `cakeCode:${me}:${key}`; }
+// "cakeCode2": the levels changed in Oct 2026, so code saved for the old ones isn't loaded.
+function codeKey(key) { return `cakeCode2:${me}:${key}`; }
 // What the editor holds: the Studio, the open level, or nothing on the Shop Window
 // (which keeps whatever the editor had, so it mustn't be saved as a level).
 function contextKey() { return mode === "studio" ? "studio" : mode === "window" ? null : view && view.key; }
@@ -160,8 +161,6 @@ async function enter(id) {
   const lastLevel = recall(`cakeLevel:${me}`);
   const open = allLevels().filter(l => l.open).map(l => l.key);
   await openLevel(open.includes(lastLevel) ? lastLevel : data.current);
-  if (!data.you.shop) openShopName(true);
-  else if (recall("cakeIntroSeen") !== "1") openIntro();
   return true;
 }
 // Levels the teacher opens for everyone show up without a reload.
@@ -208,7 +207,7 @@ function renderRoute() {
         const cls = ["lvl", l.key === here ? "now" : "", n === 3 ? "gold" : l.solved ? "done" : ""].join(" ");
         return `<button class="${cls}" data-level="${l.key}" ${l.open ? "" : "disabled"} ` +
           `title="${esc(l.name)}${l.open ? ` · ${n} of 3 stars` : " · not open yet"}" aria-label="${esc(l.name)}${l.open ? `, ${n} of 3 stars` : ", locked"}">` +
-          `<span aria-hidden="true">${l.face}</span>` +
+          `<span aria-hidden="true">${esc(l.key)}</span>` +
           (l.open ? `<span class="mini" aria-hidden="true">${"★".repeat(n)}<s>${"★".repeat(3 - n)}</s></span>` : "") + `</button>`;
       }).join("") + `</div>`;
   }).join("");
@@ -251,11 +250,9 @@ async function openLevel(key, fromMode = false) {
   renderNotes();
 }
 function renderLevel() {
-  const ch = view.chapter;
-  $("crumb").textContent = view.bake_off ? `${ch.icon} The finale` : `${ch.icon} Chapter ${ch.key} · ${ch.name}`;
-  $("levelName").textContent = view.name;
+  $("levelName").innerHTML = `<span class="key">${esc(view.key)}</span>${esc(view.name)}`;
   renderGoals();
-  renderBoard();
+  renderRules();
   renderBook(view.commands, view.new);
   renderChips();
   renderHints();
@@ -269,16 +266,18 @@ function renderGoals() {
   $("goals").innerHTML = view.goals.map((g, i) =>
     `<span class="goal${view.stars[i] ? " got" : ""}"><i>★</i>${fmt(g)}</span>`).join("");
 }
-function renderBoard() {
+// What to bake, at the top of the kitchen: the level's rules, the same for
+// every customer, so ONE program can follow them.
+function renderRules() {
   let html;
   if (mode === "studio") {
-    html = `<h2>🎨 The Studio</h2><p>Bake anything you like! Every command works here, and so do <code>choice()</code> and <code>randint()</code> for surprise cakes.</p><p style="margin-top:6px">Stuck for an idea? Try one of the 💡 ideas on the right.</p>`;
-  } else if (view.rules.length) {
-    html = `<h2>${view.bake_off ? "🏆 Bake-Off rules" : "📋 House rules"}</h2><ul>${view.rules.map(r => `<li>${fmt(r)}</li>`).join("")}</ul>`;
+    html = `<h2>🎨 Bake anything you like</h2><p>Every command works here, and so do <code>choice()</code> and <code>randint()</code> for surprise cakes.</p>`;
   } else {
-    html = `<h2>${view.chapter.icon} ${esc(view.chapter.name)}</h2><p>${esc(view.chapter.blurb)}</p>`;
+    const n = view.customers.length;
+    html = `<h2>${view.bake_off ? "🏆 Bake exactly what each ticket says" : `One program, ${n} customers. Each cake:`}</h2>` +
+      `<ul>${view.rules.map(r => `<li>${fmt(r)}</li>`).join("")}</ul>`;
   }
-  $("board").innerHTML = html;
+  $("rules").innerHTML = html;
 }
 
 // ---- The customer, the ticket and the queue -----------------------------------------------
@@ -321,9 +320,31 @@ function pyValue(v) {
 function ticketCode(t) {
   return "order = {\n" + Object.entries(t).map(([k, v]) => `  "${k}": ${pyValue(v)},`).join("\n") + "\n}";
 }
-// The ticket as lines that wrap with a hanging indent, so a long list stays readable.
+// The ticket as lines that wrap with a hanging indent, so a long list stays
+// readable. Click a line to put  order["that key"]  in the code.
 function ticketHtml(t) {
-  return ticketCode(t).split("\n").map(l => `<span class="tl">${highlight(l)}</span>`).join("");
+  return ticketCode(t).split("\n").map(l => {
+    const key = (/^  "(\w+)":/.exec(l) || [])[1];
+    return key && mode === "orders"
+      ? `<button class="tl key" data-key="${esc(key)}" title='Click to add order["${esc(key)}"] to your code'>${highlight(l)}</button>`
+      : `<span class="tl">${highlight(l)}</span>`;
+  }).join("");
+}
+// A quoted word under the cursor (or selected) becomes the ticket's value:
+// layer("lemon") turns into layer(order["flavour"]).
+function insertTicketKey(key) {
+  const t = $("code"), v = t.value, text = `order["${key}"]`;
+  let s = t.selectionStart, e = t.selectionEnd;
+  if (v[s - 1] === '"' && v[e] === '"' && !v.slice(s, e).includes('"')) { s -= 1; e += 1; }
+  else if (s === e) {
+    const lineStart = v.lastIndexOf("\n", s - 1) + 1;
+    let lineEnd = v.indexOf("\n", s); if (lineEnd < 0) lineEnd = v.length;
+    const m = [...v.slice(lineStart, lineEnd).matchAll(/"[^"]*"/g)]
+      .find(m => lineStart + m.index < s && s < lineStart + m.index + m[0].length);
+    if (m) { s = lineStart + m.index; e = s + m[0].length; }
+  }
+  replaceText(s, e, text);
+  t.setSelectionRange(s + text.length, s + text.length);
 }
 function renderTicket() {
   if (mode === "studio") return;
@@ -350,19 +371,23 @@ function renderTicket() {
   $("ticket").innerHTML = html;
   $("ticket").scrollTop = 0;
 }
-let ticketOpen = false;
+let ticketOpen = true;   // the ticket stays open under the checks: it is what the code reads
 $("ticket").addEventListener("toggle", e => { if (e.target.matches("details.tk")) ticketOpen = e.target.open; }, true);
+$("ticket").addEventListener("mousedown", e => { if (e.target.closest("button.key")) e.preventDefault(); });   // keep the cursor in the code
+$("ticket").addEventListener("click", e => {
+  const b = e.target.closest("button.key");
+  if (b) { SFX.play("click"); insertTicketKey(b.dataset.key); }
+});
 function renderQueue() {
   const list = mode === "studio" ? [] : (results || view.customers);
   const q = $("queue");
   q.hidden = list.length < 2;
-  document.querySelector(".shelf").hidden = !q.hidden;
   if (q.hidden) return;
   q.innerHTML = list.map((c, i) => {
     const seen = results && i < served;   // no spoilers for customers still waiting
     const st = seen ? (c.happy ? " ok" : " no") : "";
     const mark = seen ? (c.happy ? "😊" : "😕") : "";
-    return `<button class="${i === sel ? "on" : ""}${st}" data-c="${i}" title="${esc(c.name)}"><span class="qf">${c.face}</span>${esc(c.name.split(" ")[0])}${mark ? ` ${mark}` : ""}</button>`;
+    return `<button class="${i === sel ? "on" : ""}${st}" data-c="${i}" title="${esc(c.name)}"><span class="qf">${c.face}</span>${esc(c.name.split(" ")[0].length > 3 ? c.name.split(" ")[0] : c.name)}${mark ? ` ${mark}` : ""}</button>`;
   }).join("");
 }
 $("queue").addEventListener("click", e => {
@@ -378,19 +403,25 @@ $("queue").addEventListener("click", e => {
 });
 
 // ---- Kitchen notes ---------------------------------------------------------------------------------
+let notice = null;   // a message under the output: how the bake went, or the shop not answering
 function renderNotes() {
   const notes = $("notes");
   const r = mode === "studio" ? studio.run : results && results[sel];
   const who = mode === "studio" ? "your cake" : `${customerData(sel).name}'s cake`;
-  let html = `<div class="nh">Kitchen notes${r ? " · " + esc(who) : ""}</div>`;
+  const live = play && r && play.run === r;   // still baking: show what's printed so far
+  let html = `<div class="nh">Output${r ? " · " + esc(who) : ""}</div>`;
   if (!r) {
-    html += `<div class="dim">print() writes here. If something goes wrong in the kitchen, it shows up here too.</div>`;
+    html += `<div class="dim">print() shows here. So do mistakes in your code.</div>`;
   } else {
-    if (r.prints.length) html += r.prints.map(p => esc(p.text)).join("\n") + "\n";
-    if (r.error) html += `<span class="err">🐛 ${esc(r.error)}</span>`;
+    const prints = live ? r.prints.filter(p => p.step <= play.k) : r.prints;
+    if (prints.length) html += prints.map(p => esc(p.text)).join("\n") + "\n";
+    if (live) { /* the result comes at the end */ }
+    else if (r.error) html += `<span class="err">🐛 ${esc(r.error)}</span>`;
     else html += `<span class="ok">✓ Baked in ${r.steps.length} step${r.steps.length === 1 ? "" : "s"}.</span>`;
   }
+  if (notice) html += `\n<span class="${notice.kind === "error" ? "err" : "say"}">${fmt(notice.text)}${notice.extra}</span>`;
   notes.innerHTML = html;
+  notes.classList.toggle("bad", !live && !!(r && r.error || notice && notice.kind === "error"));
   notes.scrollTop = notes.scrollHeight;
 }
 
@@ -455,6 +486,8 @@ function advance(dt) {
 function startStep(step) {
   SFX.step(step.do);
   if (step.do === "sprinkles") puff("✨", 4);
+  setRunLine(step.line);
+  if (play.run.prints.length) renderNotes();
 }
 function startPlay(run, speed = 1) {
   return new Promise(resolve => {
@@ -463,11 +496,13 @@ function startPlay(run, speed = 1) {
     play = {steps: run.steps, fit: run.cake, k: 0, u: 0, dur: Math.max(28, base) / speed, done: false, resolve, run};
     playing(true);
     if (!n) finishPlay();
+    else renderNotes();
   });
 }
 function finishPlay() {
   if (!play || play.done) return;
   play.done = true;
+  setRunLine(0);
   shown = {tiers: play.run.cake, fit: play.run.cake};
   const resolve = play.resolve;
   play = null;
@@ -539,7 +574,7 @@ async function bake() {
   busy = true;
   SFX.wake(); SFX.play("whoosh");
   saveCode(); hideBanner(); closeCelebrate(); stopQueue();
-  $("tip").open = false;   // they've read it; it opens again with a click
+  $("hintButton").classList.remove("nudge");
   $("bakeButton").disabled = true; $("bakeButton").textContent = "Baking…";
   const key = view.key;
   try {
@@ -627,6 +662,7 @@ function skipToEnd() {
 function endOfBake() {
   served = results.length;
   renderQueue();
+  renderTicket();   // after a Skip, the checks for the customer on screen
   const happy = results.filter(r => r.happy).length;
   const won = rewards.stars[0];
   $("totalStars").textContent = rewards.total_stars;
@@ -645,7 +681,7 @@ function endOfBake() {
     const r = results[bad];
     if (results.length > 1) showCustomer(bad, {reacted: true, enter: true});
     if (r.error) {
-      showBanner("error", `🐛 ${r.error}`);
+      showBanner("error", "", misses());
     } else {
       const lead = results.length > 1 ? `${happy} of ${results.length} happy. ` : "";
       showBanner("", `😕 ${lead}${r.name}: “${r.reply}”`, misses());
@@ -655,17 +691,21 @@ function endOfBake() {
 }
 function misses() {
   // After a few tries in a row, point at the hint button.
-  return rewards && rewards.misses >= 3 && view.hints.length < view.hint_count
-    ? `<button class="soft" onclick="askHint()">💡 Want a hint?</button>` : "";
+  const stuck = rewards && rewards.misses >= 3 && view.hints.length < view.hint_count;
+  $("hintButton").classList.toggle("nudge", !!stuck);
+  return stuck ? `<button class="soft" onclick="askHint()">💡 Want a hint?</button>` : "";
 }
+// A message at the bottom of the output, under the code where the student is looking.
 function showBanner(kind, text, extra = "") {
-  const b = $("banner");
-  b.className = "banner " + kind;
-  b.innerHTML = `<span>${fmt(text)}</span>${extra}<button class="soft round" onclick="hideBanner()" aria-label="Close">✕</button>`;
-  b.hidden = false;
-  if (kind === "error") SFX.play("error");
+  notice = text || extra ? {kind, text, extra} : null;
+  renderNotes();
+  if (kind === "error" && text) SFX.play("error");
 }
-function hideBanner() { $("banner").hidden = true; }
+function hideBanner() {
+  if (!notice) return;
+  notice = null;
+  renderNotes();
+}
 
 // ---- The celebration ---------------------------------------------------------------------------------
 async function celebrate() {
@@ -708,10 +748,6 @@ function closeCelebrate() {
   const inside = $("celebrate").contains(document.activeElement);
   $("celebrate").hidden = true;
   if (inside) $("code").focus({preventScroll: true});   // back to the recipe for more stars
-}
-function openIntro() {
-  $("introModal").hidden = false;
-  $("introClose").focus();
 }
 function nextLevel() {
   const list = allLevels(), i = list.findIndex(l => l.key === view.key);
@@ -761,12 +797,40 @@ function highlight(code) {
   }
   return out + esc(code.slice(at));
 }
+function renderGutter() {
+  const count = Math.max(1, $("code").value.split("\n").length);
+  $("lines").innerHTML = Array.from({length: count}, (_, i) =>
+    i + 1 === runLine ? `<span class="run" title="Running this line">▸${i + 1}</span>`
+    : i + 1 === errorLine ? `<span class="err" title="The problem is on this line">▸${i + 1}</span>` : i + 1).join("\n");
+  $("lines").scrollTop = $("code").scrollTop;
+}
+// While the cake bakes, the line that made each step lights up, so you can
+// watch the program run: round a loop, into an if, through a def.
+let runLine = 0;
+function setRunLine(n) {
+  if ((n || 0) === runLine) return;
+  runLine = n || 0;
+  const t = $("code");
+  if (runLine) {
+    const lh = parseFloat(getComputedStyle(t).lineHeight), top = 10 + (runLine - 1) * lh;
+    if (top < t.scrollTop || top + lh > t.scrollTop + t.clientHeight) t.scrollTop = Math.max(0, top - t.clientHeight / 3);
+  }
+  renderGutter();
+  syncScroll();
+}
+function placeRunLine() {
+  const band = $("runline"), t = $("code");
+  band.hidden = !runLine;
+  if (!runLine) return;
+  const lh = parseFloat(getComputedStyle(t).lineHeight);
+  band.style.top = `${10 + (runLine - 1) * lh - t.scrollTop}px`;
+  band.style.height = `${lh}px`;
+}
 function updateEditor() {
   const code = $("code").value;
   const count = Math.max(1, code.split("\n").length);
   if (count !== errorCount) errorLine = 0;
-  $("lines").innerHTML = Array.from({length: count}, (_, i) =>
-    i + 1 === errorLine ? `<span class="err" title="The problem is on this line">▸${i + 1}</span>` : i + 1).join("\n");
+  renderGutter();
   $("hl").innerHTML = highlight(code) + "\n ";
   const lines = code.split("\n").filter(l => l.trim() && !l.trim().startsWith("#")).length;
   const goal = mode === "orders" && view && view.goals.find(g => g.startsWith("✂️"));
@@ -780,6 +844,7 @@ function syncScroll() {
   const t = $("code");
   $("hl").scrollTop = t.scrollTop; $("hl").scrollLeft = t.scrollLeft;
   $("lines").scrollTop = t.scrollTop;
+  placeRunLine();
 }
 // Every change the page makes to the code goes through the browser's own
 // typing, so Ctrl+Z still undoes it (setRangeText and .value skip the history).
@@ -878,13 +943,13 @@ const SNIPPETS = {
   candle: "candle()", write: 'write("Hello")', tier: "tier()",
 };
 function renderBook(commands, fresh = []) {
-  const chapter = mode === "studio" ? 9 : view.chapter.key === "7" ? 9 : Number(view.chapter.key);
+  const chapter = mode === "studio" || view.bake_off ? 9 : Number(view.chapter.key);
   const py = [["print()", 'print("hello")', "line", 1]];
+  if (mode !== "studio") py.push(['order["…"]', 'order["name"]', "here", 1]);
   if (chapter >= 2) py.push(["for loop", "for i in range(3):\n    ", "line", 2]);
-  if (chapter >= 3 && mode !== "studio") py.push(['order["…"]', 'order["name"]', "here", 3]);
-  if (chapter >= 4) py.push(["if / else", 'if order["sprinkles"]:\n    \nelse:\n    ', "line", 4]);
-  if (chapter >= 5) py.push(["[list]", 'flavours = ["lemon", "lime"]', "line", 5]);
-  if (chapter >= 6) py.push(["def", "def my_recipe():\n    ", "line", 6]);
+  if (chapter >= 3) py.push(["if / else", 'if order["sprinkles"]:\n    \nelse:\n    ', "line", 3]);
+  if (chapter >= 4) py.push(["[list]", 'flavours = ["lemon", "lime"]', "line", 4]);
+  if (chapter >= 5) py.push(["def", "def my_recipe():\n    ", "line", 5]);
   if (mode === "studio") py.push(["choice()", 'choice(["pink", "blue"])', "here", 9], ["randint()", "randint(1, 6)", "here", 9]);
   $("book").innerHTML = commands.map(c =>
     `<button class="${fresh.includes(c) && chapter > 1 ? "new" : ""}" data-line="${esc(SNIPPETS[c])}" title="Add ${esc(SNIPPETS[c])}">${esc(SNIPPETS[c])}</button>`).join("") +
@@ -921,6 +986,9 @@ function renderChips() {
   $("chips").innerHTML = html;
   [...$("pantryTabs").querySelectorAll("button")].forEach(b => b.classList.toggle("on", b.dataset.p === pantryTab));
 }
+// The commands and ingredients fold away; each browser remembers if they're open.
+$("pantry").open = recall("cakePantryOpen") === "1";
+$("pantry").addEventListener("toggle", () => store("cakePantryOpen", $("pantry").open ? "1" : "0"));
 $("pantryTabs").addEventListener("click", e => {
   const b = e.target.closest("button[data-p]");
   if (b) { pantryTab = b.dataset.p; renderChips(); }
@@ -931,9 +999,10 @@ $("chips").addEventListener("click", e => {
 });
 
 // ---- Tips and hints ------------------------------------------------------------------------------------
-function renderTip(tip, open) {
+function renderTip(tip, open, tag = "New") {
   $("tip").hidden = !tip;
   if (!tip) return;
+  document.querySelector("#tip .new-tag").textContent = tag;
   $("tipTitle").textContent = tip.title;
   $("tipBody").innerHTML = `<p>${fmt(tip.text)}</p>` + (tip.code ? `<pre>${highlight(tip.code)}</pre>` : "");
   $("tip").open = open;
@@ -1090,16 +1159,15 @@ async function setMode(next, level = null) {
     return;
   }
   if (mode === "studio") {
-    $("crumb").textContent = "🎨 Free baking";
-    $("levelName").textContent = "The Studio";
+    $("levelName").textContent = "🎨 The Studio";
     $("goals").innerHTML = `<span class="goal"><i>✨</i>No orders, no rules: just bake something lovely</span>`;
-    renderBoard();
+    renderRules();
     renderBook(["layer", "frosting", "drip", "sprinkles", "swirl", "topping", "candle", "write", "tier"]);
     renderChips();
     renderHints();
     $("tip").hidden = false;
-    renderTip({title: "💡 Studio ideas", text: "Start from one of these, then make it your own: change the colours, add a loop, let `choice()` pick a surprise.",
-      code: ""}, true);
+    renderTip({title: "Start from one of these", text: "Then make it your own: change the colours, add a loop, let `choice()` pick a surprise.",
+      code: ""}, true, "Ideas");
     $("tipBody").insertAdjacentHTML("beforeend", `<div class="ideas">${state.palette.ideas.map((idea, i) =>
       `<button data-idea="${i}">${esc(idea.name)}</button>`).join("")}</div>`);
     $("hintButton").hidden = true;
@@ -1234,12 +1302,11 @@ $("starsButton").addEventListener("click", openPantry);
 $("pantryClose").addEventListener("click", () => { $("pantryModal").hidden = true; });
 
 // ---- Naming the bakery -------------------------------------------------------------------------------------
-function openShopName(first) {
+function openShopName() {
   const name = state.you.name;
   $("shopInput").value = state.you.shop || `${name}'s Bakery`;
   $("suggest").innerHTML = [`${name}'s Bakery`, ...SHOP_IDEAS].map(s => `<button class="soft">${esc(s)}</button>`).join("");
   $("shopModal").hidden = false;
-  $("shopModal").dataset.first = first ? "1" : "";
   setTimeout(() => $("shopInput").select(), 50);
 }
 async function saveShopName() {
@@ -1249,7 +1316,6 @@ async function saveShopName() {
   if (data.you) useState(data);
   $("shopModal").hidden = true;
   SFX.play("happy");
-  if ($("shopModal").dataset.first && recall("cakeIntroSeen") !== "1") openIntro();
 }
 $("suggest").addEventListener("click", e => {
   const b = e.target.closest("button");
@@ -1257,7 +1323,7 @@ $("suggest").addEventListener("click", e => {
 });
 $("shopSave").addEventListener("click", saveShopName);
 $("shopInput").addEventListener("keydown", e => { if (e.key === "Enter") saveShopName(); });
-$("renameButton").addEventListener("click", () => openShopName(false));
+$("renameButton").addEventListener("click", openShopName);
 
 // ---- The join screen: a birthday cake with flickering candles ---------------------------------------
 let joinArt = null;
@@ -1344,16 +1410,14 @@ $("windowButton").addEventListener("click", putInWindow);
 $("cakeTitle").addEventListener("keydown", e => { if (e.key === "Enter") putInWindow(); });
 $("muteButton").addEventListener("click", () => { $("muteButton").textContent = SFX.toggle() ? "🔇" : "🔊"; SFX.wake(); });
 $("switchButton").addEventListener("click", forget);
-$("introClose").addEventListener("click", () => { $("introModal").hidden = true; store("cakeIntroSeen", "1"); $("code").focus(); });
 document.addEventListener("keydown", e => {
   if (e.key === "F5" && !$("app").hidden) { e.preventDefault(); bake(); }
   if (e.key === "Escape") {
     if (!$("celebrate").hidden) { closeCelebrate(); return; }
-    for (const id of ["cakeModal", "pantryModal"]) if (!$(id).hidden) { $(id).hidden = true; return; }
-    if (!$("introModal").hidden) $("introClose").click();
+    for (const id of ["cakeModal", "pantryModal", "shopModal"]) if (!$(id).hidden) { $(id).hidden = true; return; }
   }
 });
-for (const id of ["cakeModal", "pantryModal", "celebrate"]) {
+for (const id of ["cakeModal", "pantryModal", "shopModal", "celebrate"]) {
   $(id).addEventListener("click", e => { if (e.target === $(id)) $(id).hidden = true; });
 }
 resume();

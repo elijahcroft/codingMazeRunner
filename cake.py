@@ -101,8 +101,8 @@ UNLOCKS = [
     {"kind": "wallpaper", "key": "lemon", "stars": 30},
     {"kind": "topping", "key": "teddy", "stars": 32},
     {"kind": "special", "key": "gold", "stars": 35},
-    {"kind": "topping", "key": "planet", "stars": 38},
-    {"kind": "wallpaper", "key": "night", "stars": 44},
+    {"kind": "topping", "key": "planet", "stars": 37},
+    {"kind": "wallpaper", "key": "night", "stars": 40},
     {"kind": "topping", "key": "fireworks", "class": 40},
     {"kind": "wallpaper", "key": "candy", "class": 120},
     {"kind": "topping", "key": "disco", "class": 240},
@@ -170,6 +170,7 @@ class Kitchen:
         self.prints = []
         self.unlocked = unlocked
         self.unlock_hint = unlock_hint   # (kind, key) -> "unlocks at 5 stars"
+        self.line = None                 # the code line running now
 
     @property
     def top(self):
@@ -184,7 +185,10 @@ class Kitchen:
             raise BotError(f"That's a LOT of baking! The kitchen stops at "
                            f"{MAX_STEPS} steps for one cake. Is a loop going "
                            f"round too many times?")
-        self.steps.append({"do": do, "arg": arg} if arg is not None else {"do": do})
+        step = {"do": do, "arg": arg} if arg is not None else {"do": do}
+        if self.line:
+            step["line"] = self.line
+        self.steps.append(step)
 
     def locked(self, kind, key, what):
         if (kind, key) in LOCKED and (kind, key) not in self.unlocked:
@@ -486,8 +490,8 @@ class Baker(Brain):
             return super().lookup(name, frame)
         except BotError as err:
             if name == "order" and self.order is None:
-                raise BotError("There's no order ticket here. Tickets come with the "
-                               "customers from Chapter 3 on.")
+                raise BotError("There's no order ticket in the Studio. Tickets come "
+                               "with the customers in 🧾 Orders.")
             if isinstance(self.order, dict) and name in self.order:
                 raise BotError(f'Put quotes round the ticket\'s word:  order["{name}"]')
             word = name.lower().replace("_", " ")
@@ -662,11 +666,15 @@ class Baker(Brain):
         name = node.func.id
         if name in self.funcs:
             return self.call_user(self.funcs[name], [self.eval(a, frame) for a in node.args])
+        if name == "order" and "order" not in self.named:
+            raise BotError('Read the ticket with square brackets, not round ones:  '
+                           'order["flavour"]')
         args = [self.eval(a, frame) for a in node.args]
         if name in COMMANDS:
             if name not in self.commands:
                 raise BotError(f"{name}() isn't open yet: it arrives in "
                                f"{self.arrives.get(name, 'a later chapter')}.")
+            self.kitchen.line = node.lineno
             self.kitchen.do(name, args)
             return None
         if name == "print":
@@ -832,6 +840,13 @@ def cake_syntax(code, e):
     if not e.lineno or e.lineno > len(lines):
         return None
     line = lines[e.lineno - 1]
+    # The ticket in quotes, or with the wrong brackets.
+    if re.search(r"[\"']order\s*\[", line):
+        return (f"Syntax error on line {e.lineno}: order[\"...\"] is Python, not "
+                f"words, so it goes WITHOUT quotes round it, like  layer(order[\"flavour\"])")
+    if re.search(r"\border\s*\{", line):
+        return (f"Syntax error on line {e.lineno}: read the ticket with square "
+                f"brackets  [ ]  like  order[\"flavour\"]")
     bare = re.match(r"\s*([a-z_]+)\s+([\"'].*?[\"']|\d+)\s*$", line)
     if bare and bare[1] in COMMANDS + HELPERS:
         return (f"Syntax error on line {e.lineno}: put brackets round what goes in:  "
@@ -848,6 +863,11 @@ def cake_syntax(code, e):
         a = "an" if head[1][0] in "aeiou" else "a"
         return (f"Syntax error on line {e.lineno}: {a}  {head[1]}  line ends with a colon  :  "
                 f"and the steps go on the lines below it, pushed in.")
+    # Two pieces of text side by side, with nothing joining them.
+    if re.search(r"[\"']\s+(order\b|[a-z_]\w*\s*[\[(])", line) or \
+            re.search(r"\]\s+[\"']", line):
+        return (f"Syntax error on line {e.lineno}: to join text, put  +  between the "
+                f"parts, like  \"Hi \" + order[\"name\"]")
     if re.search(r"[a-z_]\s*\(.*\)\s*[a-z_]+\s*\(", line) and not head:
         return f"Syntax error on line {e.lineno}: put each command on its own line."
     return None
@@ -855,8 +875,7 @@ def cake_syntax(code, e):
 
 # ---- baking one cake -----------------------------------------------------------
 
-ARRIVES = {"candle": "Chapter 2: Birthday Week", "swirl": "Chapter 2: Birthday Week",
-           "tier": "Chapter 6: Secret Recipes"}
+ARRIVES = {"tier": "the Studio"}
 
 
 def default_hint(kind, key):
@@ -1059,35 +1078,30 @@ def cake_text(cake):
 # ---- the levels ----------------------------------------------------------------
 
 CHAPTERS = [
-    {"key": "1", "name": "Opening Day", "icon": "🎀",
-     "blurb": "Your first customers! Each line of code is one step of the recipe."},
-    {"key": "2", "name": "Birthday Week", "icon": "🎂",
-     "blurb": "Candles, candles, candles. A for loop repeats lines so you don't have to."},
-    {"key": "3", "name": "Lunch Rush", "icon": "🎫",
-     "blurb": "A queue! Now ONE program bakes for every customer. Read their order ticket."},
-    {"key": "4", "name": "Picky Customers", "icon": "🤔",
+    {"key": "1", "name": "The Ticket", "icon": "🎫",
+     "blurb": "One program bakes for every customer. Each customer brings a ticket called order."},
+    {"key": "2", "name": "Loops", "icon": "🔁",
+     "blurb": "Loops that use the numbers and lists on the ticket."},
+    {"key": "3", "name": "Choices", "icon": "🔀",
      "blurb": "Different customers, different rules: if, elif and else."},
-    {"key": "5", "name": "Patterns & Rainbows", "icon": "🌈",
-     "blurb": "Stripes, spots and rainbows with %, lists and loops over lists."},
-    {"key": "6", "name": "Secret Recipes", "icon": "📖",
-     "blurb": "Name your own recipes with def, and build towering wedding cakes."},
-    {"key": "7", "name": "The Great Bake-Off", "icon": "🏆",
+    {"key": "4", "name": "Patterns", "icon": "🍬",
+     "blurb": "Counting round a loop with %, and looking in lists with in."},
+    {"key": "5", "name": "Recipes", "icon": "📖",
+     "blurb": "Name your own recipes with def."},
+    {"key": "6", "name": "The Great Bake-Off", "icon": "🏆",
      "blurb": "Five surprise customers. One program that can bake anything."},
 ]
+# Every kitchen command is open from the start; tier() is for the Studio.
 COMMAND_CHAPTER = {"layer": 0, "frosting": 0, "drip": 0, "sprinkles": 0, "topping": 0,
-                   "write": 0, "candle": 1, "swirl": 1, "tier": 5}
+                   "write": 0, "candle": 0, "swirl": 0, "tier": 99}
 HAPPY = ["Yum! It's perfect, thank you!", "Exactly what I wanted!",
          "Wow, look at it! I'm taking a photo.", "Best bakery in town!",
          "It's beautiful! I almost don't want to eat it.", "Mmm! You're a star baker!"]
 
 
-def one(name, face, says, want, happy):
-    return {"name": name, "face": face, "says": says, "want": want, "happy": happy}
-
-
 def queue(people, rule, ask):
-    """Customers for a rush level: each one's ticket, what they want (the
-    level's house rules applied to the ticket) and what they say."""
+    """Customers for a level: each one's ticket, what they want (the level's
+    rules applied to the ticket) and what they say."""
     out = []
     for face, ticket in people:
         out.append({"name": ticket.get("name", ticket.get("names")), "face": face,
@@ -1117,6 +1131,18 @@ def _ages(t):
     return want
 
 
+def _canes(t):
+    return {"layers": ["vanilla"] * 2, "frosting": "white",
+            "swirls": [t["first"] if i % 2 == 0 else t["second"] for i in range(t["swirls"])]}
+
+
+def _mix(t):
+    return {"layers": [t["flavour"]] * 2, "frosting": "white",
+            "sprinkles": "sprinkles" in t["extras"],
+            "drip": "chocolate" if "drip" in t["extras"] else None,
+            "toppings": {"cherry": 1 if "cherry" in t["extras"] else 0}}
+
+
 MENU = {"Choco Bomb": {"layers": ["chocolate"] * 3, "frosting": "chocolate",
                        "toppings": {"cherry": 6}},
         "Lemon Cloud": {"layers": ["lemon"] * 2, "frosting": "white",
@@ -1130,239 +1156,163 @@ def _sized(t):
             "swirls": ["pink"] * swirls}
 
 
-def _wedding(t):
-    tiers = []
-    for i, f in enumerate(t["flavours"]):
-        tw = {"layers": [f, f], "frosting": "white", "swirls": ["white"] * 8}
-        if i == 0:
-            tw["text"] = t["names"]
-        if i == len(t["flavours"]) - 1:
-            tw["toppings"] = {"heart": 2}
-        tiers.append(tw)
-    return {"tiers": tiers}
-
-
+# Every level is a queue: ONE program bakes for every customer, each with their
+# own ticket, so hard-coding a value makes one customer happy and the next one
+# not. Each level's starter runs, and shows what's left to do.
 LEVELS = [
-    # ---- Chapter 1: Opening Day ----------------------------------------------
-    {"key": "1a", "chapter": 0, "name": "Granny Rose",
-     "customers": [one("Granny Rose", "👵",
-                       "Hello, dear! Could I have a cake with two chocolate layers "
-                       "and white frosting, please?",
-                       {"layers": ["chocolate"] * 2, "frosting": "white"},
-                       "Oh, how lovely! Just like the ones I used to bake.")],
-     "tip": {"title": "A recipe is a program",
-             "text": "Each line is one step, and they run from top to bottom. "
-                     "Words go inside quotes.",
-             "code": 'layer("vanilla")\nfrosting("pink")'},
-     "starter": '# Granny Rose wants two chocolate\n'
-                '# layers and white frosting.\n'
-                '# Each line is one step. Press Bake!\n'
-                'layer("chocolate")\n',
-     "hints": ['Two layers means two lines of `layer("chocolate")`',
-               'Frosting goes on after the layers: `frosting("white")`',
-               'layer("chocolate")\nlayer("chocolate")\nfrosting("white")'],
-     "star2": {"kind": "touch"}, "star3": {"kind": "print"},
-     "reference": 'layer("chocolate")\nlayer("chocolate")\nfrosting("white")\n'
-                  'sprinkles()\nprint("Enjoy your cake, Granny!")\n'},
-    {"key": "1b", "chapter": 0, "name": "Leo's Sandwich Cake",
-     "customers": [one("Leo", "🧒",
-                       "Hi! Can I have vanilla, then strawberry, then vanilla on top? "
-                       "With pink frosting and one cherry on top!",
-                       {"layers": ["vanilla", "strawberry", "vanilla"], "frosting": "pink",
-                        "toppings": {"cherry": 1}},
-                       "Whoa, it looks like a giant sandwich! Thank you!")],
-     "tip": {"title": "Order matters",
-             "text": "The first `layer()` goes at the bottom, and each new one goes on "
-                     "top. `topping()` puts something on top of the cake.",
-             "code": 'layer("chocolate")   # bottom\nlayer("lemon")       # on top of it\n'
-                     'topping("star")'},
-     "starter": "# Leo's order, from the bottom up:\n"
-                "# vanilla, strawberry, vanilla,\n"
-                "# then pink frosting and one cherry\n",
-     "hints": ["The first `layer()` you write ends up at the bottom.",
-               'The cherry is `topping("cherry")`',
-               'layer("vanilla")\nlayer("strawberry")\nlayer("vanilla")\n'
-               'frosting("pink")\ntopping("cherry")'],
-     "star2": {"kind": "touch"}, "star3": {"kind": "text", "text": "LEO"},
-     "reference": 'layer("vanilla")\nlayer("strawberry")\nlayer("vanilla")\n'
-                  'frosting("pink")\ntopping("cherry")\nwrite("LEO")\n'},
-    {"key": "1c", "chapter": 0, "name": "Captain Whiskers",
-     "customers": [one("Captain Whiskers", "🐱",
-                       "Meow. Two lemon layers, white frosting and a chocolate drip. "
-                       "Three fish on top. And it must say MEOW.",
-                       {"layers": ["lemon"] * 2, "frosting": "white", "drip": "chocolate",
-                        "toppings": {"fish": 3}, "text": "MEOW"},
-                       "Purrrrfect. I shall eat the fish first.")],
-     "tip": {"title": "Drips and writing",
-             "text": "`drip()` runs down the sides of the cake, and `write()` writes a "
-                     "message on the front.",
-             "code": 'drip("caramel")\nwrite("Hello!")'},
-     "starter": "# Captain Whiskers wants 2 lemon\n"
-                "# layers, white frosting, a chocolate\n"
-                "# drip, 3 fish on top, and MEOW\n"
-                "# written on it.\n",
-     "hints": ["Three fish means three lines of `topping(\"fish\")`",
-               'The message is `write("MEOW")`',
-               'layer("lemon")\nlayer("lemon")\nfrosting("white")\ndrip("chocolate")\n'
-               'topping("fish")\ntopping("fish")\ntopping("fish")\nwrite("MEOW")'],
-     "star2": {"kind": "touch"}, "star3": {"kind": "lines", "max": 9},
-     "reference": 'layer("lemon")\nlayer("lemon")\nfrosting("white")\ndrip("chocolate")\n'
-                  'topping("fish")\ntopping("fish")\ntopping("fish")\nwrite("MEOW")\n'
-                  'sprinkles("blue")\n'},
-
-    # ---- Chapter 2: Birthday Week ----------------------------------------------
-    {"key": "2a", "chapter": 1, "name": "Ava Turns 8",
-     "customers": [one("Ava", "👧",
-                       "It's my 8th birthday! Two strawberry layers, pink frosting, "
-                       "8 candles, and write Happy Birthday Ava!",
-                       {"layers": ["strawberry"] * 2, "frosting": "pink", "candles": 8,
-                        "text": "Happy Birthday Ava"},
-                       "8 candles! I'm going to make a really big wish!")],
-     "tip": {"title": "for loops",
-             "text": "A `for` loop repeats the lines pushed in (indented) under it. "
-                     "The number in `range()` is how many times.",
-             "code": "for i in range(3):\n    candle()"},
-     "starter": 'layer("strawberry")\nlayer("strawberry")\nfrosting("pink")\n'
-                "# This loop adds 3 candles. Ava needs 8!\n"
-                "for i in range(3):\n    candle()\n",
-     "hints": ["Change the 3 in `range(3)` to the number of candles Ava needs.",
-               "`write()` goes after the loop and NOT pushed in, or it would run 8 times.",
-               'layer("strawberry")\nlayer("strawberry")\nfrosting("pink")\n'
-               'for i in range(8):\n    candle()\nwrite("Happy Birthday Ava")'],
-     "star2": {"kind": "touch"}, "star3": {"kind": "lines", "max": 7},
-     "reference": 'layer("strawberry")\nlayer("strawberry")\nfrosting("pink")\n'
-                  'for i in range(8):\n    candle()\nwrite("Happy Birthday Ava")\n'
-                  'swirl("white")\n'},
-    {"key": "2b", "chapter": 1, "name": "Ember the Dragon",
-     "customers": [one("Ember", "🐉",
-                       "ROAR! I'm 100 years old today! Three chocolate layers, orange "
-                       "frosting, 100 candles... and 10 gold coins on top. Dragons "
-                       "love treasure.",
-                       {"layers": ["chocolate"] * 3, "frosting": "orange", "candles": 100,
-                        "toppings": {"coin": 10}},
-                       "*whoosh* ALL 100 CANDLES, LIT AT ONCE! Best. Birthday. Ever.")],
-     "tip": {"title": "Loops can repeat anything",
-             "text": "Any command can go in a loop, as many times as you like. "
-                     "You can have more than one loop, too.",
-             "code": "for i in range(5):\n    topping(\"star\")"},
-     "starter": "# 100 candles. You are NOT typing\n# candle() 100 times!\n",
-     "hints": ["One loop for the candles and another loop for the coins.",
-               "for i in range(100):\n    candle()",
-               'for i in range(3):\n    layer("chocolate")\nfrosting("orange")\n'
-               'for i in range(100):\n    candle()\nfor i in range(10):\n    topping("coin")'],
-     "star2": {"kind": "touch"}, "star3": {"kind": "lines", "max": 8},
-     "reference": 'for i in range(3):\n    layer("chocolate")\nfrosting("orange")\n'
-                  'for i in range(100):\n    candle()\nfor i in range(10):\n'
-                  '    topping("coin")\ndrip("red")\n'},
-    {"key": "2c", "chapter": 1, "name": "Zoe Loves Stripes",
-     "customers": [one("Zoe", "🦓",
-                       "STRIPES! Eight layers: chocolate, vanilla, chocolate, vanilla... "
-                       "with chocolate at the bottom. White frosting, and 12 black "
-                       "swirls around the top.",
-                       {"layers": ["chocolate", "vanilla"] * 4, "frosting": "white",
-                        "swirls": ["black"] * 12},
-                       "Stripes inside AND out? You totally get me.")],
-     "tip": {"title": "Two lines in one loop",
-             "text": "Everything pushed in under the for repeats, so each time round "
-                     "this loop adds TWO layers. `swirl()` pipes one swirl on the rim.",
-             "code": 'for i in range(2):\n    layer("lime")\n    layer("lemon")\n'
-                     'swirl("pink")'},
-     "starter": "# 8 stripy layers (chocolate first),\n"
-                "# white frosting and 12 black swirls.\n",
-     "hints": ["Each time round the loop, add a chocolate layer AND a vanilla layer. "
-               "How many times round makes 8 layers?",
-               'for i in range(4):\n    layer("chocolate")\n    layer("vanilla")',
-               'for i in range(4):\n    layer("chocolate")\n    layer("vanilla")\n'
-               'frosting("white")\nfor i in range(12):\n    swirl("black")'],
-     "star2": {"kind": "touch"}, "star3": {"kind": "lines", "max": 7},
-     "reference": 'for i in range(4):\n    layer("chocolate")\n    layer("vanilla")\n'
-                  'frosting("white")\nfor i in range(12):\n    swirl("black")\n'
-                  'topping("star")\n'},
-
-    # ---- Chapter 3: Lunch Rush -----------------------------------------------------
-    {"key": "3a", "chapter": 2, "name": "Flavour of the Day",
-     "rules": ["Every cake: 2 layers of the customer's flavour, and white frosting."],
+    # ---- Chapter 1: The Ticket ------------------------------------------------------
+    {"key": "1a", "chapter": 0, "name": "Flavour of the Day",
+     "rules": ["2 layers of the customer's flavour, then white frosting."],
      "customers": queue([("🧑", {"name": "Sam", "flavour": "lemon"}),
                          ("👩🏽", {"name": "Priya", "flavour": "blueberry"}),
                          ("🐶", {"name": "Biscuit", "flavour": "caramel"})],
                         lambda t: {"layers": [t["flavour"]] * 2, "frosting": "white"},
                         lambda t: f"Hi! A {t['flavour']} cake for me, please."),
-     "tip": {"title": "The order ticket",
-             "text": "Each customer's ticket is a dictionary called `order`. Square "
-                     "brackets read one part of it, and a variable can keep it.",
-             "code": 'flavour = order["flavour"]\nlayer(flavour)\nprint(order["name"])'},
-     "starter": "# ONE program bakes for EVERY customer.\n"
-                "# Their ticket is in  order . See it:\n"
-                "print(order)\n"
-                'layer("lemon")\n',
-     "hints": ['`print(order)` shows the ticket in the Kitchen notes. The flavour is '
-               '`order["flavour"]`',
-               'Swap `"lemon"` for `order["flavour"]` so each customer gets their own.',
+     "tip": {"title": "The ticket",
+             "text": "Each customer has a ticket called `order`. "
+                     "`order[\"flavour\"]` is the flavour on THEIR ticket.",
+             "code": 'layer(order["flavour"])'},
+     "starter": "# Press Bake! to see who's happy.\n"
+                'layer("lemon")\nlayer("lemon")\nfrosting("white")\n',
+     "hints": ["Only Sam wanted lemon. Priya's ticket says blueberry.",
+               'Change both  "lemon"  to  order["flavour"]  so each customer gets '
+               "the flavour on their ticket.",
+               'layer(order["flavour"])\nlayer(order["flavour"])\nfrosting("white")'],
+     "star2": {"kind": "touch"}, "star3": {"kind": "print_name"},
+     "reference": 'layer(order["flavour"])\nlayer(order["flavour"])\nfrosting("white")\n'
+                  'sprinkles()\nprint(order["name"])\n'},
+    {"key": "1b", "chapter": 0, "name": "Pick Your Colours",
+     "rules": ["2 layers of their flavour.", "Frosting in their colour.",
+               "Their topping on top."],
+     "customers": queue([("👧🏻", {"name": "Mia", "flavour": "strawberry",
+                                   "frosting": "pink", "topping": "cherry"}),
+                         ("🧒🏽", {"name": "Kai", "flavour": "chocolate",
+                                   "frosting": "white", "topping": "star"}),
+                         ("🦊", {"name": "Hazel", "flavour": "orange",
+                                 "frosting": "yellow", "topping": "flower"})],
+                        lambda t: {"layers": [t["flavour"]] * 2, "frosting": t["frosting"],
+                                   "toppings": {t["topping"]: 1}},
+                        lambda t: f"I love {t['frosting']} frosting!"),
+     "tip": {"title": "Variables",
+             "text": "A variable keeps a value under a name. Make it once with `=`, "
+                     "then use the name as often as you like.",
+             "code": 'flavour = order["flavour"]\nlayer(flavour)\nlayer(flavour)'},
+     "starter": 'layer(order["flavour"])\nlayer(order["flavour"])\nfrosting("pink")\n',
+     "hints": ['The frosting colour is on the ticket too:  order["frosting"]',
+               'The topping is  topping(order["topping"])',
                'flavour = order["flavour"]\nlayer(flavour)\nlayer(flavour)\n'
-               'frosting("white")'],
+               'frosting(order["frosting"])\ntopping(order["topping"])'],
      "star2": {"kind": "touch"}, "star3": {"kind": "uses", "what": "variable"},
      "reference": 'flavour = order["flavour"]\nlayer(flavour)\nlayer(flavour)\n'
-                  'frosting("white")\ntopping("heart")\n'},
-    {"key": "3b", "chapter": 2, "name": "Birthday Rush",
-     "rules": ["2 layers of their flavour and pink frosting.",
-               "One candle for each year of their age.",
-               'Write "Happy Birthday" and their name.'],
-     "customers": queue([("👧🏻", {"name": "Mia", "age": 6, "flavour": "strawberry"}),
-                         ("🧒🏽", {"name": "Kai", "age": 9, "flavour": "chocolate"}),
-                         ("🦊", {"name": "Hazel", "age": 11, "flavour": "orange"})],
+                  'frosting(order["frosting"])\ntopping(order["topping"])\nsprinkles()\n'},
+    {"key": "1c", "chapter": 0, "name": "Names on Cakes",
+     "rules": ["2 layers of their flavour, and pink frosting.",
+               'Write "Happy Birthday" and their name, like "Happy Birthday Ava".'],
+     "customers": queue([("👧", {"name": "Ava", "flavour": "strawberry"}),
+                         ("🧒🏿", {"name": "Leo", "flavour": "chocolate"}),
+                         ("👵", {"name": "Granny Rose", "flavour": "vanilla"})],
                         lambda t: {"layers": [t["flavour"]] * 2, "frosting": "pink",
-                                   "candles": t["age"],
                                    "text": f"Happy Birthday {t['name']}"},
-                        lambda t: f"I'm {t['age']} today! Can I have a birthday cake?"),
-     "tip": {"title": "Joining text, and numbers from the ticket",
-             "text": "`+` joins two pieces of text. A number from the ticket can go "
-                     "straight into `range()`.",
-             "code": 'write("Hello " + order["name"])\n'
-                     'for i in range(order["age"]):\n    candle()'},
-     "starter": 'layer(order["flavour"])\nlayer(order["flavour"])\nfrosting("pink")\n',
-     "hints": ['The number of candles is `order["age"]`, so loop '
-               '`for i in range(order["age"]):`',
-               'Join the words and the name: `write("Happy Birthday " + order["name"])` '
-               '(mind the space after Birthday).',
+                        lambda t: "It's my birthday! Put my name on it, please."),
+     "tip": {"title": "Joining text",
+             "text": "`+` joins two pieces of text into one. "
+                     "Mind the space inside the quotes.",
+             "code": 'write("Hi " + order["name"])'},
+     "starter": 'layer(order["flavour"])\nlayer(order["flavour"])\nfrosting("pink")\n'
+                'write("Happy Birthday Ava")\n',
+     "hints": ['Every cake says Ava. The name on the ticket is  order["name"]',
+               'write("Happy Birthday " + order["name"])  (mind the space after Birthday)',
                'layer(order["flavour"])\nlayer(order["flavour"])\nfrosting("pink")\n'
-               'for i in range(order["age"]):\n    candle()\n'
                'write("Happy Birthday " + order["name"])'],
-     "star2": {"kind": "touch"}, "star3": {"kind": "lines", "max": 8},
+     "star2": {"kind": "touch"}, "star3": {"kind": "caps"},
+     "reference": 'layer(order["flavour"])\nlayer(order["flavour"])\nfrosting("pink")\n'
+                  'name = order["name"].upper()\nwrite("Happy Birthday " + name)\n'
+                  'topping("heart")\n'},
+
+    # ---- Chapter 2: Loops --------------------------------------------------------------
+    {"key": "2a", "chapter": 1, "name": "Birthday Candles",
+     "rules": ["2 layers of their flavour, and pink frosting.",
+               "One candle for every year of their age."],
+     "customers": queue([("👧", {"name": "Ava", "age": 8, "flavour": "strawberry"}),
+                         ("🧒🏼", {"name": "Theo", "age": 5, "flavour": "lime"}),
+                         ("🐉", {"name": "Ember", "age": 100, "flavour": "chocolate"})],
+                        lambda t: {"layers": [t["flavour"]] * 2, "frosting": "pink",
+                                   "candles": t["age"]},
+                        lambda t: "ROAR! I'm 100 years old today!" if t["age"] == 100
+                        else f"I'm {t['age']} today!"),
+     "tip": {"title": "Loops with ticket numbers",
+             "text": "A number from the ticket can go in `range()`, so the loop goes "
+                     "round a different number of times for each customer.",
+             "code": 'for i in range(order["age"]):\n    candle()'},
+     "starter": 'layer(order["flavour"])\nlayer(order["flavour"])\nfrosting("pink")\n'
+                "for i in range(8):\n    candle()\n",
+     "hints": ['range(8) always makes 8 candles, but Ember is 100! The age is  order["age"]',
+               'for i in range(order["age"]):\n    candle()',
+               'layer(order["flavour"])\nlayer(order["flavour"])\nfrosting("pink")\n'
+               'for i in range(order["age"]):\n    candle()'],
+     "star2": {"kind": "touch"}, "star3": {"kind": "name_age"},
      "reference": 'layer(order["flavour"])\nlayer(order["flavour"])\nfrosting("pink")\n'
                   'for i in range(order["age"]):\n    candle()\n'
-                  'write("Happy Birthday " + order["name"])\nsprinkles()\n'},
-    {"key": "3c", "chapter": 2, "name": "Party Planner",
-     "rules": ["As many layers as the ticket says, in their flavour.",
-               "Frosting in the colour on the ticket.",
-               'Write their name and age, like "Sam is 9"'],
-     "customers": queue([("🧒🏼", {"name": "Theo", "age": 7, "flavour": "lime",
-                                   "layers": 3, "frosting": "green"}),
-                         ("👵🏾", {"name": "Nana Bea", "age": 80, "flavour": "vanilla",
-                                   "layers": 2, "frosting": "lavender"}),
-                         ("🤖", {"name": "Robo-7", "age": 3, "flavour": "blueberry",
-                                 "layers": 4, "frosting": "blue"})],
-                        lambda t: {"layers": [t["flavour"]] * t["layers"],
-                                   "frosting": t["frosting"],
-                                   "text": f"{t['name']} is {t['age']}"},
-                        lambda t: f"It's my party! The details are on my ticket."),
-     "tip": {"title": "f-strings",
-             "text": "Put `f` before the quotes, and anything in `{ }` is filled in. "
-                     "Or turn a number into text with `str()` and join with `+`.",
-             "code": 'name = order["name"]\nwrite(f"Go {name}!")\n'
-                     'write(name + " is " + str(order["age"]))'},
-     "starter": 'for i in range(order["layers"]):\n    layer(order["flavour"])\n',
-     "hints": ['The frosting colour is `order["frosting"]`',
-               'name = order["name"]\nage = order["age"]\nwrite(f"{name} is {age}")',
-               'for i in range(order["layers"]):\n    layer(order["flavour"])\n'
-               'frosting(order["frosting"])\nname = order["name"]\nage = order["age"]\n'
-               'write(f"{name} is {age}")'],
-     "star2": {"kind": "caps"}, "star3": {"kind": "lines", "max": 6},
-     "reference": 'for i in range(order["layers"]):\n    layer(order["flavour"])\n'
-                  'frosting(order["frosting"])\nname = order["name"].upper()\n'
-                  'age = order["age"]\nwrite(f"{name} is {age}")\n'},
+                  'name = order["name"]\nage = order["age"]\nwrite(f"{name} is {age}")\n'
+                  'sprinkles()\n'},
+    {"key": "2b", "chapter": 1, "name": "Stripes",
+     "rules": ["For each stripe: a dark layer, then a light layer on top.",
+               "White frosting."],
+     "customers": queue([("🦓", {"name": "Zoe", "stripes": 4, "dark": "chocolate",
+                                 "light": "vanilla"}),
+                         ("🐝", {"name": "Bea", "stripes": 2, "dark": "chocolate",
+                                 "light": "lemon"}),
+                         ("🐯", {"name": "Tiger Tom", "stripes": 3, "dark": "orange",
+                                 "light": "coconut"})],
+                        lambda t: {"layers": [t["dark"], t["light"]] * t["stripes"],
+                                   "frosting": "white"},
+                        lambda t: f"{t['stripes']} stripes, please!"),
+     "tip": {"title": "Two lines in one loop",
+             "text": "Every line pushed in under the `for` repeats. "
+                     "So each time round, this loop adds TWO layers.",
+             "code": 'for i in range(2):\n    layer("lime")\n    layer("lemon")'},
+     "starter": 'for i in range(order["stripes"]):\n    layer(order["dark"])\n'
+                'frosting("white")\n',
+     "hints": ["Each time round the loop needs a dark layer AND a light layer.",
+               'for i in range(order["stripes"]):\n    layer(order["dark"])\n'
+               '    layer(order["light"])',
+               'for i in range(order["stripes"]):\n    layer(order["dark"])\n'
+               '    layer(order["light"])\nfrosting("white")'],
+     "star2": {"kind": "touch"}, "star3": {"kind": "count"},
+     "reference": 'for i in range(order["stripes"]):\n    layer(order["dark"])\n'
+                  '    layer(order["light"])\nfrosting("white")\n'
+                  'write(order["stripes"] * 2)\nswirl("black")\n'},
+    {"key": "2c", "chapter": 1, "name": "Build Your Own",
+     "rules": ["The layers on their list, bottom first.", "Frosting in their colour.",
+               "Every topping on their list."],
+     "customers": queue([("🧜🏽‍♀️", {"name": "Marina", "layers": ["blueberry", "coconut", "blueberry"],
+                                      "frosting": "blue", "toppings": ["fish", "star"]}),
+                         ("👽", {"name": "Cosmo", "layers": ["grape", "grape", "lime", "grape", "grape"],
+                                 "frosting": "purple", "toppings": ["star", "star", "star"]}),
+                         ("🧚", {"name": "Fern", "layers": ["matcha", "strawberry"],
+                                 "frosting": "pink", "toppings": ["flower", "flower", "leaf"]}),
+                         ("🦔", {"name": "Bramble", "layers": ["caramel"],
+                                 "frosting": "chocolate", "toppings": []})],
+                        lambda t: {"layers": t["layers"], "frosting": t["frosting"],
+                                   "toppings": dict(collections.Counter(t["toppings"]))},
+                        lambda t: "I've written my dream cake on the ticket!"),
+     "tip": {"title": "Looping over a list",
+             "text": "`order[\"layers\"]` is a list. A `for` loop can go through it, "
+                     "one item each time round.",
+             "code": 'for flavour in order["layers"]:\n    layer(flavour)'},
+     "starter": "# The ticket has lists in [ ]. See one:\n"
+                'print(order["layers"])\n',
+     "hints": ['for flavour in order["layers"]:\n    layer(flavour)',
+               'Toppings work the same way:  for t in order["toppings"]:',
+               'for flavour in order["layers"]:\n    layer(flavour)\n'
+               'frosting(order["frosting"])\nfor t in order["toppings"]:\n    topping(t)'],
+     "star2": {"kind": "touch"}, "star3": {"kind": "count_toppings"},
+     "reference": 'for flavour in order["layers"]:\n    layer(flavour)\n'
+                  'frosting(order["frosting"])\nfor t in order["toppings"]:\n    topping(t)\n'
+                  'write(len(order["toppings"]))\nsprinkles()\n'},
 
-    # ---- Chapter 4: Picky Customers ----------------------------------------------
-    {"key": "4a", "chapter": 3, "name": "Sprinkles or Not?",
+    # ---- Chapter 3: Choices ---------------------------------------------------------------
+    {"key": "3a", "chapter": 2, "name": "Sprinkles or Not?",
      "rules": ["2 layers of their flavour, and white frosting.",
                'Sprinkles ONLY if the ticket says `"sprinkles": True`'],
      "customers": queue([("👧🏼", {"name": "Lily", "flavour": "cherry", "sprinkles": True}),
@@ -1381,14 +1331,14 @@ LEVELS = [
              "code": 'if order["sprinkles"]:\n    sprinkles()'},
      "starter": 'layer(order["flavour"])\nlayer(order["flavour"])\nfrosting("white")\n'
                 "sprinkles()\n",
-     "hints": ['Some tickets say `"sprinkles": False`. Those customers mustn\'t get any.',
-               'Push `sprinkles()` in under `if order["sprinkles"]:`',
+     "hints": ['Some tickets say  "sprinkles": False . Those customers mustn\'t get any.',
+               'Push  sprinkles()  in under  if order["sprinkles"]:',
                'layer(order["flavour"])\nlayer(order["flavour"])\nfrosting("white")\n'
                'if order["sprinkles"]:\n    sprinkles()'],
      "star2": {"kind": "touch"}, "star3": {"kind": "lines", "max": 7},
      "reference": 'for i in range(2):\n    layer(order["flavour"])\nfrosting("white")\n'
                   'if order["sprinkles"]:\n    sprinkles()\ntopping("strawberry")\n'},
-    {"key": "4b", "chapter": 3, "name": "Party Time",
+    {"key": "3b", "chapter": 2, "name": "Party Time",
      "rules": ["Every cake: 2 layers of their flavour.",
                "🎂 birthday: pink frosting, and a candle for every year.",
                "💍 wedding: white frosting and 2 hearts on top.",
@@ -1413,7 +1363,7 @@ LEVELS = [
                      'else:\n    frosting("yellow")'},
      "starter": 'layer(order["flavour"])\nlayer(order["flavour"])\n'
                 'if order["party"] == "birthday":\n    frosting("pink")\n',
-     "hints": ["Three kinds of party means `if`, `elif` and `else`.",
+     "hints": ["Three kinds of party means  if ,  elif  and  else .",
                'Under the wedding branch:\n    frosting("white")\n    topping("heart")\n'
                '    topping("heart")',
                'layer(order["flavour"])\nlayer(order["flavour"])\n'
@@ -1429,7 +1379,7 @@ LEVELS = [
                   'elif order["party"] == "wedding":\n    frosting("white")\n'
                   '    topping("heart")\n    topping("heart")\nelse:\n'
                   '    frosting("yellow")\n    topping("flower")\nwrite(order["name"])\n'},
-    {"key": "4c", "chapter": 3, "name": "The Age Rules",
+    {"key": "3c", "chapter": 2, "name": "Bug Hunt: The Age Rules",
      "rules": ["Every cake: 2 layers of their flavour, and white frosting.",
                "Under 10: sprinkles.",
                "10 to 17: sprinkles AND a chocolate drip.",
@@ -1442,112 +1392,97 @@ LEVELS = [
                         _ages,
                         lambda t: f"I'm {t['age']}. What do I get?"),
      "tip": {"title": "Comparing numbers",
-             "text": "`<` means less than, and `<=` less than or equal. Python checks "
-                     "an `if`/`elif` chain from the top and runs the FIRST branch that's "
-                     "True, so the order of the checks matters.",
-             "code": 'if order["age"] < 10:\n    print("a kid")\n'
-                     'elif order["age"] < 18:\n    print("a teenager")\n'
-                     'else:\n    print("a grown-up")'},
-     "starter": 'layer(order["flavour"])\nlayer(order["flavour"])\nfrosting("white")\n'
-                'age = order["age"]\n',
-     "hints": ["Watch the edges: Max is exactly 10 and Omar is exactly 18. Which "
-               "group is each of them in?",
-               'if age < 10:\n    sprinkles()\nelif age < 18:\n    sprinkles()\n'
-               '    drip("chocolate")\nelse:\n    ...',
+             "text": "`<` means less than, and `<=` means less than OR equal. "
+                     "Python checks from the top and runs the FIRST branch that's True.",
+             "code": "print(10 < 10)    # False\nprint(10 <= 10)   # True"},
+     "starter": "# This program has a bug. Bake, see who's\n# unhappy, and fix it!\n"
+                'layer(order["flavour"])\nlayer(order["flavour"])\nfrosting("white")\n'
+                'age = order["age"]\nif age <= 10:\n    sprinkles()\n'
+                'elif age <= 18:\n    sprinkles()\n    drip("chocolate")\n'
+                'else:\n    drip("chocolate")\n    topping("cherry")\n',
+     "hints": ["Max is exactly 10 and Omar is exactly 18. Which group should each of "
+               "them be in? Which group did they get?",
+               "Max is 10, so  age <= 10  is True for him. He needs a check that's "
+               "False at 10:  age < 10",
                'layer(order["flavour"])\nlayer(order["flavour"])\nfrosting("white")\n'
                'age = order["age"]\nif age < 10:\n    sprinkles()\nelif age < 18:\n'
                '    sprinkles()\n    drip("chocolate")\nelse:\n    drip("chocolate")\n'
                '    topping("cherry")'],
-     "star2": {"kind": "touch"}, "star3": {"kind": "lines", "max": 13},
-     "reference": 'layer(order["flavour"])\nlayer(order["flavour"])\nfrosting("white")\n'
-                  'age = order["age"]\nif age < 10:\n    sprinkles()\nelif age < 18:\n'
-                  '    sprinkles()\n    drip("chocolate")\nelse:\n    drip("chocolate")\n'
-                  '    topping("cherry")\nswirl("pink")\n'},
+     "star2": {"kind": "touch"}, "star3": {"kind": "lines", "max": 11},
+     "reference": 'for i in range(2):\n    layer(order["flavour"])\nfrosting("white")\n'
+                  'age = order["age"]\nif age < 18:\n    sprinkles()\nif age >= 10:\n'
+                  '    drip("chocolate")\nif age >= 18:\n    topping("cherry")\n'
+                  'swirl("pink")\n'},
 
-    # ---- Chapter 5: Patterns & Rainbows --------------------------------------------
-    {"key": "5a", "chapter": 4, "name": "Penguin Pete",
-     "customers": [one("Penguin Pete", "🐧",
-                       "Candy-cane cake, please! Two vanilla layers, white frosting, "
-                       "and 12 swirls going red, white, red, white... all the way "
-                       "round. Red first!",
-                       {"layers": ["vanilla"] * 2, "frosting": "white",
-                        "swirls": ["red", "white"] * 6},
-                       "Red, white, red, white... *happy flapping*")],
+    # ---- Chapter 4: Patterns ----------------------------------------------------------------
+    {"key": "4a", "chapter": 3, "name": "Candy Canes",
+     "rules": ["2 vanilla layers and white frosting.",
+               "Swirls round the top, as many as the ticket says.",
+               "They take turns: first colour, second colour, first, second..."],
+     "customers": queue([("🐧", {"name": "Penguin Pete", "swirls": 12, "first": "red",
+                                 "second": "white"}),
+                         ("🦩", {"name": "Flo", "swirls": 10, "first": "pink",
+                                 "second": "white"}),
+                         ("🐝", {"name": "Bea", "swirls": 8, "first": "yellow",
+                                 "second": "black"})],
+                        _canes,
+                        lambda t: f"{t['first'].capitalize()}, {t['second']}, "
+                                  f"{t['first']}, {t['second']}... all the way round!"),
      "tip": {"title": "Counting with i and %",
-             "text": "In `for i in range(6)`, `i` counts 0, 1, 2, 3, 4, 5. `i % 2` is "
+             "text": "In  `for i in range(6)`, `i` counts 0, 1, 2, 3, 4, 5. `i % 2` is "
                      "the remainder after dividing by 2: 0, 1, 0, 1... so it's 0 "
                      "every other time round.",
              "code": 'for i in range(6):\n    if i % 2 == 0:\n        topping("star")\n'
                      '    else:\n        topping("heart")'},
-     "starter": "# Run this, then look at the\n# Kitchen notes:\n"
-                "for i in range(12):\n    print(i, i % 2)\n",
-     "hints": ["`i % 2` is 0 on the 1st, 3rd, 5th... swirl. Those ones are red.",
-               'for i in range(12):\n    if i % 2 == 0:\n        swirl("red")\n'
-               '    else:\n        swirl("white")',
-               'for i in range(2):\n    layer("vanilla")\nfrosting("white")\n'
-               'for i in range(12):\n    if i % 2 == 0:\n        swirl("red")\n'
-               '    else:\n        swirl("white")'],
+     "starter": 'layer("vanilla")\nlayer("vanilla")\nfrosting("white")\n'
+                "# Bake, then look at the Output:\n"
+                'for i in range(order["swirls"]):\n    print(i, i % 2)\n',
+     "hints": ['When  i % 2  is 0, use the first colour:  swirl(order["first"])',
+               'for i in range(order["swirls"]):\n    if i % 2 == 0:\n'
+               '        swirl(order["first"])\n    else:\n        swirl(order["second"])',
+               'layer("vanilla")\nlayer("vanilla")\nfrosting("white")\n'
+               'for i in range(order["swirls"]):\n    if i % 2 == 0:\n'
+               '        swirl(order["first"])\n    else:\n        swirl(order["second"])'],
      "star2": {"kind": "touch"}, "star3": {"kind": "lines", "max": 9},
      "reference": 'for i in range(2):\n    layer("vanilla")\nfrosting("white")\n'
-                  'for i in range(12):\n    if i % 2 == 0:\n        swirl("red")\n'
-                  '    else:\n        swirl("white")\ntopping("star")\n'},
-    {"key": "5b", "chapter": 4, "name": "Rainbow the Unicorn",
-     "customers": [one("Rainbow", "🦄",
-                       "Make me a RAINBOW! Six layers from the bottom: cherry, orange, "
-                       "lemon, lime, blueberry, grape. White frosting. Then six swirls: "
-                       "red, orange, yellow, green, blue, purple.",
-                       {"layers": ["cherry", "orange", "lemon", "lime", "blueberry", "grape"],
-                        "frosting": "white",
-                        "swirls": ["red", "orange", "yellow", "green", "blue", "purple"]},
-                       "It's... it's MAGNIFICENT. *sparkles everywhere*")],
-     "tip": {"title": "Lists",
-             "text": "A list keeps lots of values in order, inside `[ ]`. A `for` loop "
-                     "can visit each one in turn.",
-             "code": 'fruits = ["cherry", "lemon", "lime"]\nfor fruit in fruits:\n'
-                     '    layer(fruit)'},
-     "starter": 'layers = ["cherry", "orange", "lemon", "lime", "blueberry", "grape"]\n',
-     "hints": ["for flavour in layers:\n    layer(flavour)",
-               "Make a second list for the swirl colours, and loop over it the same way.",
-               'layers = ["cherry", "orange", "lemon", "lime", "blueberry", "grape"]\n'
-               'colours = ["red", "orange", "yellow", "green", "blue", "purple"]\n'
-               'for flavour in layers:\n    layer(flavour)\nfrosting("white")\n'
-               'for colour in colours:\n    swirl(colour)'],
-     "star2": {"kind": "touch"}, "star3": {"kind": "lines", "max": 8},
-     "reference": 'layers = ["cherry", "orange", "lemon", "lime", "blueberry", "grape"]\n'
-                  'colours = ["red", "orange", "yellow", "green", "blue", "purple"]\n'
-                  'for flavour in layers:\n    layer(flavour)\nfrosting("white")\n'
-                  'for colour in colours:\n    swirl(colour)\nsprinkles()\n'},
-    {"key": "5c", "chapter": 4, "name": "Build Your Own",
-     "rules": ['The ticket lists the layers (bottom first) and the toppings.',
-               "Bake exactly those, with the frosting on the ticket."],
-     "customers": queue([("🧜🏽‍♀️", {"name": "Marina", "layers": ["blueberry", "coconut", "blueberry"],
-                                      "frosting": "blue", "toppings": ["fish", "star"]}),
-                         ("👽", {"name": "Cosmo", "layers": ["grape", "grape", "lime", "grape", "grape"],
-                                 "frosting": "purple", "toppings": ["star", "star", "star"]}),
-                         ("🧚", {"name": "Fern", "layers": ["matcha", "strawberry"],
-                                 "frosting": "pink", "toppings": ["flower", "flower", "leaf"]}),
-                         ("🦔", {"name": "Bramble", "layers": ["caramel"],
-                                 "frosting": "chocolate", "toppings": []})],
-                        lambda t: {"layers": t["layers"], "frosting": t["frosting"],
-                                   "toppings": dict(collections.Counter(t["toppings"]))},
-                        lambda t: "I've written my dream cake on the ticket!"),
-     "tip": {"title": "Lists on the ticket",
-             "text": '`order["layers"]` is a list, so a `for` loop can go through it. '
-                     "`len()` says how many things a list has.",
-             "code": 'for flavour in order["layers"]:\n    layer(flavour)\n'
-                     'print(len(order["layers"]))'},
-     "starter": "print(order)\n",
-     "hints": ['for flavour in order["layers"]:\n    layer(flavour)',
-               'Toppings work the same way: `for t in order["toppings"]:`',
-               'for flavour in order["layers"]:\n    layer(flavour)\n'
-               'frosting(order["frosting"])\nfor t in order["toppings"]:\n    topping(t)'],
-     "star2": {"kind": "count"}, "star3": {"kind": "lines", "max": 6},
-     "reference": 'for flavour in order["layers"]:\n    layer(flavour)\n'
-                  'frosting(order["frosting"])\nfor t in order["toppings"]:\n    topping(t)\n'
-                  'write(len(order["layers"]))\n'},
+                  'for i in range(order["swirls"]):\n    if i % 2 == 0:\n'
+                  '        swirl(order["first"])\n    else:\n        swirl(order["second"])\n'
+                  'topping("star")\n'},
+    {"key": "4b", "chapter": 3, "name": "Pick and Mix",
+     "rules": ["2 layers of their flavour, and white frosting.",
+               'If "sprinkles" is in their extras: sprinkles.',
+               'If "drip" is in their extras: a chocolate drip.',
+               'If "cherry" is in their extras: a cherry on top.'],
+     "customers": queue([("🐭", {"name": "Pip", "flavour": "banana",
+                                 "extras": ["sprinkles", "cherry"]}),
+                         ("🦉", {"name": "Sir Hoot", "flavour": "coconut", "extras": []}),
+                         ("👧🏼", {"name": "Lily", "flavour": "cherry", "extras": ["drip"]}),
+                         ("🤖", {"name": "Robo-7", "flavour": "blueberry",
+                                 "extras": ["drip", "sprinkles", "cherry"]})],
+                        _mix,
+                        lambda t: "Just the cake, please." if not t["extras"]
+                        else "My extras are on my ticket!"),
+     "tip": {"title": "in",
+             "text": "`in` checks whether something is in a list. It's `True` or "
+                     "`False`, so it fits in an `if`.",
+             "code": 'if "cherry" in order["extras"]:\n    topping("cherry")'},
+     "starter": 'layer(order["flavour"])\nlayer(order["flavour"])\nfrosting("white")\n'
+                'print(order["extras"])\n',
+     "hints": ["Each extra needs its own  if . Sir Hoot's list is empty, so he gets none.",
+               'if "sprinkles" in order["extras"]:\n    sprinkles()\n'
+               'if "drip" in order["extras"]:\n    drip("chocolate")',
+               'layer(order["flavour"])\nlayer(order["flavour"])\nfrosting("white")\n'
+               'if "sprinkles" in order["extras"]:\n    sprinkles()\n'
+               'if "drip" in order["extras"]:\n    drip("chocolate")\n'
+               'if "cherry" in order["extras"]:\n    topping("cherry")'],
+     "star2": {"kind": "touch"}, "star3": {"kind": "lines", "max": 10},
+     "reference": 'layer(order["flavour"])\nlayer(order["flavour"])\nfrosting("white")\n'
+                  'if "sprinkles" in order["extras"]:\n    sprinkles()\n'
+                  'if "drip" in order["extras"]:\n    drip("chocolate")\n'
+                  'if "cherry" in order["extras"]:\n    topping("cherry")\nswirl("pink")\n'},
 
-    # ---- Chapter 6: Secret Recipes ------------------------------------------------
-    {"key": "6a", "chapter": 5, "name": "The Menu",
+    # ---- Chapter 5: Recipes ---------------------------------------------------------------
+    {"key": "5a", "chapter": 4, "name": "The Menu",
      "rules": ["🍫 Choco Bomb: 3 chocolate layers, chocolate frosting, 6 cherries.",
                "🍋 Lemon Cloud: 2 lemon layers, white frosting, yellow sprinkles."],
      "customers": queue([("🐼", {"name": "Professor Paws", "cake": "Choco Bomb"}),
@@ -1565,7 +1500,7 @@ LEVELS = [
                 "    # finish the recipe...\n\n"
                 'def lemon_cloud():\n    layer("lemon")\n    # ...\n\n'
                 'if order["cake"] == "Choco Bomb":\n    choco_bomb()\n',
-     "hints": ["Finish each recipe from the menu, then call the right one with `if` and `else`.",
+     "hints": ["Finish each recipe from the menu, then call the right one with  if  and  else .",
                'else:\n    lemon_cloud()',
                'def choco_bomb():\n    for i in range(3):\n        layer("chocolate")\n'
                '    frosting("chocolate")\n    for i in range(6):\n        topping("cherry")\n\n'
@@ -1579,7 +1514,7 @@ LEVELS = [
                   '    frosting("white")\n    sprinkles("yellow")\n\n'
                   'if order["cake"] == "Choco Bomb":\n    choco_bomb()\nelse:\n'
                   '    lemon_cloud()\nwrite("Enjoy!")\n'},
-    {"key": "6b", "chapter": 5, "name": "Any Size",
+    {"key": "5b", "chapter": 4, "name": "Any Size",
      "rules": ["Every cake: their flavour, white frosting and pink swirls.",
                "small: 2 layers and 6 swirls.", "medium: 3 layers and 8 swirls.",
                "large: 4 layers and 10 swirls."],
@@ -1600,8 +1535,8 @@ LEVELS = [
                 "    # use the numbers here...\n"
                 "    print(layers, swirls)\n\n"
                 'if order["size"] == "small":\n    cake(2, 6)\n',
-     "hints": ['Inside the def: `for i in range(layers):` then `layer(order["flavour"])`',
-               'Call it with the right numbers for each size: `cake(3, 8)` for medium.',
+     "hints": ['Inside the def:  for i in range(layers):  then  layer(order["flavour"])',
+               'Call it with the right numbers for each size:  cake(3, 8)  for medium.',
                'def cake(layers, swirls):\n    for i in range(layers):\n'
                '        layer(order["flavour"])\n    frosting("white")\n'
                '    for i in range(swirls):\n        swirl("pink")\n\n'
@@ -1614,45 +1549,10 @@ LEVELS = [
                   'if order["size"] == "small":\n    cake(2, 6)\n'
                   'elif order["size"] == "medium":\n    cake(3, 8)\nelse:\n    cake(4, 10)\n'
                   'topping("bow")\n'},
-    {"key": "6c", "chapter": 5, "name": "Wedding Bells",
-     "rules": ["One tier for each flavour on the ticket, bottom tier first.",
-               "Every tier: 2 layers of its flavour, white frosting, 8 white swirls.",
-               "Write the couple's names on the bottom tier.",
-               "2 hearts on the very top tier."],
-     "customers": queue([("👰🏿", {"names": "Amara & Jo", "flavours": ["vanilla", "lemon"]}),
-                         ("🦉", {"names": "Sir Hoot & Lady Owl",
-                                 "flavours": ["chocolate", "caramel", "vanilla"]}),
-                         ("👵", {"names": "Rose & Joe",
-                                 "flavours": ["strawberry", "vanilla", "strawberry", "vanilla"]})],
-                        _wedding,
-                        lambda t: f"We're getting married! {len(t['flavours'])} tiers, please!"
-                        if t["names"] != "Rose & Joe" else
-                        "50 years married! Make it the tallest cake you've ever baked."),
-     "tip": {"title": "Tiers",
-             "text": "`tier()` starts a new, smaller cake on top. Everything after it "
-                     "goes on the new tier. `[1:]` is the list without its first item.",
-             "code": 'layer("lemon")\ntier()\nlayer("lime")\n\n'
-                     'rest = order["flavours"][1:]'},
-     "starter": "def one_tier(flavour):\n"
-                "    layer(flavour)\n    layer(flavour)\n    # frosting and 8 swirls...\n\n"
-                'flavours = order["flavours"]\none_tier(flavours[0])\n',
-     "hints": ["Bake the bottom tier and write the names, THEN loop over the rest of "
-               "the flavours: each one needs `tier()` first.",
-               'for flavour in flavours[1:]:\n    tier()\n    one_tier(flavour)',
-               "def one_tier(flavour):\n    layer(flavour)\n    layer(flavour)\n"
-               '    frosting("white")\n    for i in range(8):\n        swirl("white")\n\n'
-               'flavours = order["flavours"]\none_tier(flavours[0])\nwrite(order["names"])\n'
-               'for flavour in flavours[1:]:\n    tier()\n    one_tier(flavour)\n'
-               'topping("heart")\ntopping("heart")'],
-     "star2": {"kind": "touch"}, "star3": {"kind": "lines", "max": 15},
-     "reference": "def one_tier(flavour):\n    layer(flavour)\n    layer(flavour)\n"
-                  '    frosting("white")\n    for i in range(8):\n        swirl("white")\n\n'
-                  'flavours = order["flavours"]\none_tier(flavours[0])\nwrite(order["names"])\n'
-                  'for flavour in flavours[1:]:\n    tier()\n    one_tier(flavour)\n'
-                  'for i in range(2):\n    topping("heart")\nsprinkles("white")\n'},
 ]
 
-# ---- Chapter 7: The Great Bake-Off (random customers every run) ---------------
+
+# ---- Chapter 6: The Great Bake-Off (random customers every run) ---------------
 
 BAKE_OFF_PEOPLE = [
     ("Mia", "👧🏻"), ("Kai", "🧒🏽"), ("Hazel", "🦊"), ("Biscuit", "🐶"), ("Ruby", "👧🏽"),
@@ -1722,7 +1622,7 @@ def _bake_off_want(t):
     return want
 
 
-BAKE_OFF = {"key": "7", "chapter": 6, "name": "The Great Bake-Off", "bake_off": True,
+BAKE_OFF = {"key": "6", "chapter": 5, "name": "The Great Bake-Off", "bake_off": True,
             "rules": ["Bake exactly what each ticket says.",
                       'An empty `""` means none, and so does `0` or an empty list `[ ]`.',
                       "Every run brings five NEW customers."],
@@ -1846,7 +1746,7 @@ def run_level(level, code, unlocked=LOCKED, unlock_hint=None, seed=0):
         checks, extras = judge(c["want"], out["cake"])
         happy = out["error"] is None and all(ch["ok"] for ch in checks)
         if out["error"]:
-            reply = "Oh dear... something went wrong in the kitchen!"
+            reply = "Oh no, a bug! Read the red message under your code."
         elif happy:
             reply = c.get("happy") or HAPPY[zlib.crc32(c["name"].encode()) % len(HAPPY)]
             if extras:
@@ -1897,12 +1797,15 @@ def star_label(level, star):
         "touch": "✨ Your own touch: add something extra"
                  + (" to every cake" if many else ""),
         "print": '🖨 `print()` a note, like `print("Enjoy!")`',
+        "print_name": "🖨 `print()` each customer's name",
+        "name_age": '🖊 Write their name and age, like "Ava is 8"',
         "text": f"🖊 Write {star.get('text')} on the cake",
         "caps": "📣 Write the name in CAPITALS with `.upper()`",
         "names": "🖊 Write each customer's name on their cake",
-        "count": "🔢 Write how many layers it has, using `len()`",
+        "count": "🔢 Write how many layers it has",
+        "count_toppings": "🔢 Write how many toppings it has, using `len()`",
         "lines": f"✂️ {star.get('max')} lines of code or fewer",
-        "uses": {"variable": "🏷 Keep the flavour in a variable",
+        "uses": {"variable": "🏷 Keep something from the ticket in a variable",
                  "elif": "🔀 Use `if`, `elif` and `else`",
                  "def": "🧩 Use a recipe you made with `def`",
                  "params": "🧩 Use a `def` with parameters"}.get(star.get("what"), ""),
@@ -1930,8 +1833,17 @@ def _met(star, results, code):
         return all(r["ticket"]["name"].upper() in cake_text(r["cake"]) for r in results)
     if kind == "names":
         return all(plain(r["ticket"]["name"]) in plain(cake_text(r["cake"])) for r in results)
+    if kind == "print_name":
+        return all(any(plain(r["ticket"]["name"]) in plain(p["text"]) for p in r["prints"])
+                   for r in results)
+    if kind == "name_age":
+        return all(plain(cake_text(r["cake"])) ==
+                   plain(f'{r["ticket"]["name"]} is {r["ticket"]["age"]}') for r in results)
     if kind == "count":
-        return all(plain(cake_text(r["cake"])) == str(len(r["ticket"]["layers"]))
+        return all(plain(cake_text(r["cake"])) == str(sum(len(t["layers"]) for t in r["cake"]))
+                   for r in results)
+    if kind == "count_toppings":
+        return all(plain(cake_text(r["cake"])) == str(len(r["ticket"]["toppings"]))
                    for r in results)
     if kind == "lines":
         return code_lines(code) <= star["max"]

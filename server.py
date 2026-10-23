@@ -3334,8 +3334,9 @@ CAKE_BADGES = {
     "starbaker": ("🏆", "Star Baker", "Make all 5 Bake-Off customers happy at once"),
 }
 for _ci, _ch in enumerate(cake.CHAPTERS[:-1]):
+    _n = 3 * sum(1 for _lv in cake.LEVELS if _lv["chapter"] == _ci)
     CAKE_BADGES["master_" + _ch["key"]] = (
-        "🏅", f"{_ch['name']} Master", f"Earn all 9 stars in {_ch['name']}")
+        "🏅", f"{_ch['name']} Master", f"Earn all {_n} stars in {_ch['name']}")
 CAKE_CLASS_GOALS = sorted({u["class"] for u in cake.UNLOCKS if "class" in u})
 
 
@@ -3509,7 +3510,7 @@ def cake_record(p, key, code, results):
             badge("fixer")
         if entry["misses"].get(key, 0) >= 5:
             badge("grit")
-        if key == "2b":
+        if key == "2a":
             badge("dragon")
         entry["misses"][key] = 0
     else:
