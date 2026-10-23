@@ -1,1 +1,201 @@
-<title>Cake Shop show</title>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cake Shop · Shop Window</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>🧁</text></svg>">
+<style>
+  /* The projector: the class shop window, one cake at a time, big enough to
+     read from the back of the room. */
+  :root {
+    color-scheme: light;
+    --cream: #fff6ee; --blush: #ffe9ef; --rose: #ffd3e1; --pink: #ff6f9f; --pink-deep: #d94a7b;
+    --gold: #f2b62d; --cocoa: #4a2b2e; --mocha: #7c5a5c; --dust: #b39a9b; --line: #f1dcd6;
+    --ui: ui-rounded, "Nunito", "Varela Round", system-ui, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--cream); color: var(--cocoa); font: 18px/1.4 var(--ui); overflow: hidden; }
+  .stage { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 30vw); }
+  .window { position: relative; margin: 2.2vh 0 2.2vh 2.2vh; border-radius: 30px; overflow: hidden; box-shadow: 0 10px 30px rgba(120, 60, 70, .16), inset 0 0 0 10px #fff; }
+  .wp-strawberry { background: repeating-linear-gradient(90deg, #ffe0ea 0 44px, #fff3f6 44px 88px); }
+  .wp-mint { background: repeating-linear-gradient(90deg, #d5f3e9 0 44px, #f1fbf7 44px 88px); }
+  .wp-lavender { background: radial-gradient(circle, #d8c8fb 0 6px, transparent 7px) 0 0 / 44px 44px, radial-gradient(circle, #d8c8fb 0 6px, transparent 7px) 22px 22px / 44px 44px, #f4efff; }
+  .wp-lemon { background: linear-gradient(90deg, rgba(255, 216, 90, .35) 50%, transparent 50%) 0 0 / 52px 52px, linear-gradient(rgba(255, 216, 90, .35) 50%, transparent 50%) 0 0 / 52px 52px, #fffbe8; }
+  .wp-night { background: radial-gradient(circle, #fff 0 1px, transparent 2px) 0 0 / 53px 47px, radial-gradient(circle, #ffe9a8 0 1.5px, transparent 2.5px) 20px 30px / 71px 61px, linear-gradient(#25204a, #3b2f6e); }
+  .wp-candy { background: repeating-linear-gradient(45deg, #ffd1e0 0 28px, #fff 28px 56px, #d8f2ff 56px 84px, #fff 84px 112px); }
+  .counter { position: absolute; left: 0; right: 0; bottom: 0; height: 22%; background: linear-gradient(#f7c9b0, #eab096 14%, #e3a487); box-shadow: inset 0 8px 0 #ffdcc8; }
+  .window canvas { position: absolute; left: 10%; right: 10%; top: 13%; bottom: 3%; width: 80%; height: 84%; }
+  .label { position: absolute; top: 4%; left: 5%; right: 5%; display: flex; align-items: flex-start; gap: 20px; z-index: 2; }
+  .label h1 { margin: 0; font-size: clamp(34px, 4.6vw, 76px); line-height: 1; font-weight: 900; letter-spacing: -.03em; text-shadow: 0 3px 0 #fff, 0 0 20px #fff; }
+  .label p { margin: 8px 0 0; font-size: clamp(18px, 1.7vw, 28px); font-weight: 800; color: var(--mocha); text-shadow: 0 2px 0 #fff; }
+  .wp-night .label h1, .wp-night .label p { color: #fff; text-shadow: 0 3px 12px rgba(0, 0, 0, .5); }
+  .hearts { margin-left: auto; background: #fff; border-radius: 99px; padding: 8px 18px; font-size: clamp(20px, 2vw, 32px); font-weight: 900; color: var(--pink-deep); box-shadow: 0 4px 14px rgba(120, 60, 70, .15); white-space: nowrap; }
+  .new { position: absolute; top: 3%; right: -60px; transform: rotate(35deg); background: var(--pink); color: #fff; font-weight: 900; padding: 6px 70px; z-index: 3; box-shadow: 0 4px 10px rgba(0, 0, 0, .15); }
+  .dots { position: absolute; bottom: 2.5%; left: 0; right: 0; display: flex; justify-content: center; gap: 8px; z-index: 2; }
+  .dots i { width: 10px; height: 10px; border-radius: 50%; background: rgba(255, 255, 255, .7); }
+  .dots i.on { background: var(--pink); }
+  .empty { position: absolute; left: 0; right: 0; top: 5%; text-align: center; z-index: 2; padding: 0 30px; }
+  .empty h1 { margin: 0; font-size: clamp(30px, 3.8vw, 60px); font-weight: 900; text-shadow: 0 3px 0 #fff; }
+  .empty p { margin: 6px 0 0; font-size: clamp(18px, 1.7vw, 28px); font-weight: 700; color: var(--mocha); }
+
+  .side { padding: 2.2vh 2.2vh 2.2vh 2vw; display: flex; flex-direction: column; gap: 2vh; min-height: 0; }
+  .brand { display: flex; align-items: center; gap: 12px; font-size: clamp(28px, 2.6vw, 44px); font-weight: 900; letter-spacing: -.03em; }
+  .join { background: #fff; border-radius: 20px; padding: 12px 18px; box-shadow: 0 4px 14px rgba(120, 60, 70, .1); }
+  .join small { color: var(--mocha); font-weight: 800; display: block; }
+  .join b { font: 800 clamp(20px, 1.9vw, 32px) var(--mono); color: var(--pink-deep); word-break: break-all; }
+  .theme { background: #fff3cf; border-radius: 20px; padding: 10px 18px; font-weight: 900; color: #8a5d00; font-size: clamp(18px, 1.5vw, 26px); }
+  .card { background: #fff; border-radius: 20px; padding: 14px 18px; box-shadow: 0 4px 14px rgba(120, 60, 70, .1); }
+  .card h2 { margin: 0 0 6px; font-size: 15px; text-transform: uppercase; letter-spacing: .1em; color: var(--pink-deep); }
+  .meter { position: relative; height: 22px; border-radius: 99px; background: #f3e4e1; margin: 30px 0 8px; }
+  .meter i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: linear-gradient(90deg, var(--pink), var(--gold)); transition: width 1s; }
+  .goal { position: absolute; top: -32px; transform: translateX(-50%); text-align: center; font-size: 22px; line-height: 1; }
+  .goal small { display: block; font: 800 11px var(--ui); color: var(--mocha); margin-top: 2px; }
+  .goal.got { filter: none; }
+  .goal:not(.got) { filter: grayscale(.9); opacity: .6; }
+  .big { font-size: clamp(26px, 2.4vw, 40px); font-weight: 900; }
+  .feed { list-style: none; margin: 0; padding: 0; overflow: hidden; flex: 1; min-height: 0; }
+  .feed li { padding: 8px 0; border-bottom: 1.5px dashed #f1e3de; font-weight: 700; font-size: clamp(15px, 1.15vw, 20px); animation: in .6s cubic-bezier(.2, .9, .3, 1.3); }
+  @keyframes in { from { transform: translateX(40px); opacity: 0; } }
+  .feedcard { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="window wp-strawberry" id="window">
+    <div class="counter"></div>
+    <canvas id="cake"></canvas>
+    <div class="label" id="label" hidden><div><h1 id="title"></h1><p id="by"></p></div><span class="hearts" id="hearts"></span></div>
+    <div class="new" id="newRibbon" hidden>NEW!</div>
+    <div class="empty" id="empty" hidden><h1>The shop window is empty… for now!</h1><p>Bake something lovely in the 🎨 Studio and put it in the window.</p></div>
+    <div class="dots" id="dots"></div>
+  </div>
+  <div class="side">
+    <div class="brand"><span>🧁</span>Cake Shop</div>
+    <div class="join"><small>Join at</small><b id="address">…</b></div>
+    <div class="theme" id="theme" hidden></div>
+    <div class="card">
+      <h2>The class star meter</h2>
+      <div class="big">★ <span id="stars">0</span></div>
+      <div class="meter" id="meter"><i id="fill"></i></div>
+    </div>
+    <div class="card feedcard">
+      <h2>In the kitchen</h2>
+      <ul class="feed" id="feed"></ul>
+    </div>
+  </div>
+</div>
+<script src="/cake/render.js"></script>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+function esc(v) { return String(v).replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c])); }
+const SLIDE_MS = 9000;
+let cakes = [], at = 0, slideStart = 0, seenAt = 0, fresh = null, feedSeen = new Set(), firstFeed = true;
+let demo = null;
+
+async function refresh() {
+  let o, w;
+  try {
+    [o, w] = await Promise.all([fetch("/cake/overview").then(r => r.json()), fetch("/cake/window").then(r => r.json())]);
+  } catch (_) { return; }
+  CakeArt.setPalette(o.palette);
+  $("address").textContent = o.address;
+  $("theme").hidden = !w.theme;
+  $("theme").textContent = w.theme ? `🪟 This week: ${w.theme}` : "";
+  // The class star meter, with what each goal unlocks for everyone.
+  const cls = o.class, top = cls.goals[cls.goals.length - 1];
+  $("stars").textContent = cls.stars;
+  $("fill").style.width = Math.min(100, cls.stars / top * 100) + "%";
+  $("meter").querySelectorAll(".goal").forEach(g => g.remove());
+  cls.unlocks.forEach(u => {
+    const g = document.createElement("div");
+    g.className = "goal" + (cls.stars >= u.class ? " got" : "");
+    g.style.left = Math.min(97, u.class / top * 100) + "%";
+    g.title = u.name;
+    g.innerHTML = `${u.kind === "topping" ? o.palette.toppings[u.key] : "🎨"}<small>${u.class}</small>`;
+    $("meter").append(g);
+  });
+  // The feed: newest at the top.
+  const items = o.feed.slice().reverse();
+  $("feed").innerHTML = items.slice(0, 12).map(m => {
+    const key = m.at + m.text;
+    const isNew = !feedSeen.has(key) && !firstFeed;
+    feedSeen.add(key);
+    return `<li style="${isNew ? "" : "animation:none"}">${esc(m.text)}</li>`;
+  }).join("") || "<li style='animation:none;color:var(--dust)'>Waiting for the first bakes…</li>";
+  firstFeed = false;
+  // The window: a cake that's just arrived goes on straight away.
+  const before = cakes.map(c => c.owner + c.at);
+  cakes = w.cakes;
+  const newest = cakes.reduce((a, c) => c.at > (a ? a.at : 0) ? c : a, null);
+  if (newest && seenAt && newest.at > seenAt && !before.includes(newest.owner + newest.at)) {
+    fresh = newest.owner + newest.at;
+    at = cakes.indexOf(newest); slideStart = performance.now(); show();
+  } else if (at >= cakes.length) { at = 0; show(); }
+  else show(false);
+  if (newest) seenAt = Math.max(seenAt, newest.at);
+  if (!seenAt) seenAt = Date.now() / 1000;
+}
+
+function show(restart = true) {
+  $("empty").hidden = cakes.length > 0;
+  $("label").hidden = !cakes.length;
+  $("dots").innerHTML = cakes.length > 1 ? cakes.slice(0, 30).map((_, i) => `<i class="${i === at ? "on" : ""}"></i>`).join("") : "";
+  if (!cakes.length) { $("newRibbon").hidden = true; $("window").className = "window wp-strawberry"; return; }
+  const c = cakes[at];
+  $("title").textContent = c.title;
+  $("by").textContent = `by ${c.baker} · ${c.shop}`;
+  $("hearts").textContent = `❤️ ${c.hearts}`;
+  $("window").className = "window wp-" + c.look.wallpaper;
+  $("newRibbon").hidden = fresh !== c.owner + c.at;
+  if (restart) slideStart = performance.now();
+}
+
+// A demo cake bakes itself over and over while the window is empty.
+function demoSteps() {
+  const s = [];
+  ["chocolate", "vanilla", "chocolate"].forEach(f => s.push({do: "layer", arg: f}));
+  s.push({do: "frosting", arg: "pink"}, {do: "drip", arg: "chocolate"});
+  for (let i = 0; i < 12; i++) s.push({do: "swirl", arg: i % 2 ? "white" : "pink"});
+  for (let i = 0; i < 5; i++) s.push({do: "topping", arg: "strawberry"});
+  s.push({do: "write", arg: "Bake me!"});
+  return s;
+}
+
+function frame(now) {
+  const c = $("cake");
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = c.clientWidth, h = c.clientHeight;
+  if (c.width !== Math.round(w * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
+  const ctx = c.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  if (cakes.length) {
+    if (now - slideStart > SLIDE_MS && cakes.length > 1) { at = (at + 1) % cakes.length; fresh = null; show(); }
+    const cake = cakes[at];
+    // Each cake gently bobs in, so a change of slide is easy to notice.
+    const u = Math.min(1, (now - slideStart) / 500);
+    ctx.save(); ctx.globalAlpha = u; ctx.translate(0, (1 - u) * 30);
+    CakeArt.draw(ctx, w, h, {tiers: cake.cake, stand: cake.look.stand, now});
+    ctx.restore();
+  } else {
+    if (!demo) demo = {steps: demoSteps(), start: now};
+    const t = (now - demo.start) / 300, n = demo.steps.length;
+    if (t > n + 12) demo.start = now;
+    const k = Math.min(n, Math.floor(t));
+    const tiers = CakeArt.replay(demo.steps, Math.min(n, k + 1));
+    const anim = k < n ? {do: demo.steps[k].do, tier: 0, u: t - k} : null;
+    CakeArt.draw(ctx, w, h, {tiers, fit: CakeArt.replay(demo.steps, n), stand: "glass", anim, now});
+  }
+  requestAnimationFrame(frame);
+}
+refresh();
+setInterval(refresh, 4000);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

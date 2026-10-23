@@ -1446,7 +1446,8 @@ def save_state():
         tmp = STATE_FILE + ".tmp"
         with open(tmp, "w") as f:
             json.dump({"players": players, "next": next_player_num[0],
-                       "admin_key": ADMIN_KEY, "cycles_round": cycles_round}, f)
+                       "admin_key": ADMIN_KEY, "cycles_round": cycles_round,
+                       "cake_class": cake_class}, f)
         os.replace(tmp, STATE_FILE)  # atomic: never leaves a half-written file
     except Exception:
         pass
@@ -1490,6 +1491,7 @@ def load_state():
     saved_round = data.get("cycles_round") or {}
     cycles_round["number"] = int(saved_round.get("number", 0) or 0)
     cycles_round["last"] = saved_round.get("last") or None
+    cake_class.update(data.get("cake_class") or {})
     # Reuse the same admin key across restarts so an open admin page keeps
     # working; fall back to this run's freshly generated one if none was saved.
     ADMIN_KEY = data.get("admin_key") or ADMIN_KEY
@@ -3292,7 +3294,7 @@ SHOP_NAME_MAX = 30
 CAKE_TITLE_MAX = 30
 THEME_MAX = 60
 cake_feed = []                       # the class's recent moments, for the projector
-cake_class = {"theme": ""}           # the shop window theme the teacher set
+cake_class = {"theme": "", "open": 0}   # the window theme, and levels opened for everyone
 
 CAKE_BADGES = {
     "first": ("🎂", "First Customer", "Make a customer happy"),
@@ -3340,7 +3342,8 @@ def cake_frontier(p):
     entry = cake_entry(p)
     first = next((i for i, key in enumerate(cake.LEVEL_ORDER)
                   if key not in entry["solved"]), len(cake.LEVEL_ORDER) - 1)
-    return max(first, min(entry["unlocked"], len(cake.LEVEL_ORDER) - 1))
+    return max(first, min(max(entry["unlocked"], cake_class.get("open", 0)),
+                          len(cake.LEVEL_ORDER) - 1))
 
 
 def cake_open(p, key):
@@ -3588,16 +3591,17 @@ def cake_teacher(data):
         cake_entry(q)["window"]["hidden"] = action == "hide"
         return {"ok": True}
     if action == "unlock":
-        targets = list(players.values()) if data.get("everyone") else \
-            [players.get(str(data.get("id", "")))]
-        if not all(targets):
-            return {"error": "No such student."}
         to = cake.LEVEL_ORDER.index(data.get("level")) if data.get("level") in \
             cake.LEVEL_ORDER else len(cake.LEVEL_ORDER) - 1
-        for q in targets:
-            if q.get("cake") or not data.get("everyone"):
-                entry = cake_entry(q)
-                entry["unlocked"] = max(entry["unlocked"], to)
+        if data.get("everyone"):
+            # Everyone, including students who haven't opened the shop yet.
+            cake_class["open"] = max(cake_class.get("open", 0), to)
+            return {"ok": True}
+        q = players.get(str(data.get("id", "")))
+        if not q:
+            return {"error": "No such student."}
+        entry = cake_entry(q)
+        entry["unlocked"] = max(entry["unlocked"], to)
         return {"ok": True}
     return {"error": "Unknown action."}
 
@@ -3974,7 +3978,8 @@ class Handler(BaseHTTPRequestHandler):
         with lock:
             p = players.get(pid)
             if path == "/cake/overview":
-                body = dict(cake_overview(), address=f"http://{get_lan_ip()}:{PORT}/cake")
+                body = dict(cake_overview(), address=f"http://{get_lan_ip()}:{PORT}/cake",
+                            palette=cake_palette())
             elif path == "/cake/window":
                 body = cake_window(p, teacher=query.get("key", [""])[0] == ADMIN_KEY)
             elif not p:

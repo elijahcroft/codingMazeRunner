@@ -1009,7 +1009,8 @@ function openPantry() {
   const pm = state.pantry;
   $("pmStars").textContent = `${state.total_stars} of ${state.max_stars}`;
   const next = pm.filter(u => u.stars && !u.open).sort((a, b) => a.stars - b.stars)[0];
-  $("pmNext").textContent = next ? `Next unlock: ${next.name} at ${next.stars} stars (${next.stars - state.total_stars} to go).` : "You've unlocked everything you can on your own!";
+  const plural = n => `${n} star${n === 1 ? "" : "s"}`;
+  $("pmNext").textContent = next ? `Next unlock: ${next.name} at ${plural(next.stars)} (${next.stars - state.total_stars} to go).` : "You've unlocked everything you can on your own!";
   const look = state.look;
   const openKind = (kind, key) => (kind === "stand" && key === "plate") || (kind === "wallpaper" && key === "strawberry") || pm.some(u => u.kind === kind && u.key === key && u.open);
   const needOf = (kind, key) => { const u = pm.find(x => x.kind === kind && x.key === key); return u ? (u.stars ? `${u.stars} ★` : `class ${u.class} ★`) : ""; };
@@ -1018,7 +1019,7 @@ function openPantry() {
     state.palette.wallpapers.map(k => { const o = openKind("wallpaper", k); return `<button class="item${look.wallpaper === k ? " on" : ""}${o ? "" : " locked"}" data-look="wallpaper" data-key="${k}" ${o ? "" : "disabled"}><span class="ico"><span class="swatch wp-${k}"></span></span>${esc(k)} wall<span class="need">${o ? (look.wallpaper === k ? "in use" : "tap to use") : "🔒 " + needOf("wallpaper", k)}</span></button>`; }).join("");
   const specialSwatch = {glitter: "✨", galaxy: "🌌", rainbow: "🌈", gold: "🥇"};
   $("pmItems").innerHTML = pm.filter(u => u.kind === "topping" || u.kind === "special").map(u =>
-    `<div class="item${u.open ? "" : " locked"}"><span class="ico">${u.kind === "topping" ? state.palette.toppings[u.key] : specialSwatch[u.key]}</span>${esc(u.name)}<span class="need">${u.open ? "✓ in your pantry" : "🔒 " + (u.stars ? u.stars + " ★" : "class " + u.class + " ★")}</span></div>`).join("");
+    `<div class="item${u.open ? "" : " locked"}"><span class="ico">${u.kind === "topping" ? state.palette.toppings[u.key] : specialSwatch[u.key]}</span>${esc(u.key[0].toUpperCase() + u.key.slice(1))} ${u.kind === "topping" ? "topping" : "frosting"}<span class="need">${u.open ? "✓ in your pantry" : "🔒 " + (u.stars ? u.stars + " ★" : "class " + u.class + " ★")}</span></div>`).join("");
   const cls = state.class, goal = cls.goals.find(g => g > cls.stars) || cls.goals[cls.goals.length - 1];
   $("pmMeter").style.width = Math.min(100, cls.stars / goal * 100) + "%";
   const classItem = pm.find(u => u.class === goal);

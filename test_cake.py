@@ -407,7 +407,16 @@ class Classroom(unittest.TestCase):
                                     "theme": "Spooky 🎃"})
         window = self.get(f"/cake/window?id={bo}")
         self.assertEqual((window["cakes"], window["theme"]), ([], "Spooky 🎃"))
+        self.assertEqual(json.load(open(server.STATE_FILE))["cake_class"]["theme"], "Spooky 🎃")
         self.assertEqual(len(self.get(f"/cake/window?key={server.ADMIN_KEY}")["cakes"]), 1)
+
+    def test_opening_levels_for_everyone_includes_newcomers(self):
+        self.post("/cake/teacher", {"key": server.ADMIN_KEY, "action": "unlock",
+                                    "everyone": True, "level": "4a"})
+        pid = self.join("Late")
+        self.assertEqual(self.get(f"/cake/state?id={pid}")["current"], "4a")
+        self.assertNotIn("error", self.get(f"/cake/level?id={pid}&level=4a"))
+        self.assertIn("error", self.get(f"/cake/level?id={pid}&level=4b"))
 
     def test_teacher_overview(self):
         pid = self.join()
