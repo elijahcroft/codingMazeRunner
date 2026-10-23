@@ -1075,8 +1075,9 @@ LEVELS = [
              "text": "Each line is one step, and they run from top to bottom. "
                      "Words go inside quotes.",
              "code": 'layer("vanilla")\nfrosting("pink")'},
-     "starter": '# Granny Rose wants two chocolate layers and white frosting.\n'
-                '# Each line is one step. Press Bake! to try it.\n'
+     "starter": '# Granny Rose wants two chocolate\n'
+                '# layers and white frosting.\n'
+                '# Each line is one step. Press Bake!\n'
                 'layer("chocolate")\n',
      "hints": ['Two layers means two lines of `layer("chocolate")`',
                'Frosting goes on after the layers: `frosting("white")`',
@@ -1097,7 +1098,8 @@ LEVELS = [
              "code": 'layer("chocolate")   # bottom\nlayer("lemon")       # on top of it\n'
                      'topping("star")'},
      "starter": "# Leo's order, from the bottom up:\n"
-                "# vanilla, strawberry, vanilla, pink frosting, one cherry\n",
+                "# vanilla, strawberry, vanilla,\n"
+                "# then pink frosting and one cherry\n",
      "hints": ["The first `layer()` you write ends up at the bottom.",
                'The cherry is `topping("cherry")`',
                'layer("vanilla")\nlayer("strawberry")\nlayer("vanilla")\n'
@@ -1116,8 +1118,10 @@ LEVELS = [
              "text": "`drip()` runs down the sides of the cake, and `write()` writes a "
                      "message on the front.",
              "code": 'drip("caramel")\nwrite("Hello!")'},
-     "starter": "# Captain Whiskers: 2 lemon layers, white frosting,\n"
-                "# a chocolate drip, 3 fish on top, and MEOW written on it.\n",
+     "starter": "# Captain Whiskers wants 2 lemon\n"
+                "# layers, white frosting, a chocolate\n"
+                "# drip, 3 fish on top, and MEOW\n"
+                "# written on it.\n",
      "hints": ["Three fish means three lines of `topping(\"fish\")`",
                'The message is `write("MEOW")`',
                'layer("lemon")\nlayer("lemon")\nfrosting("white")\ndrip("chocolate")\n'
@@ -1162,7 +1166,7 @@ LEVELS = [
              "text": "Any command can go in a loop, as many times as you like. "
                      "You can have more than one loop, too.",
              "code": "for i in range(5):\n    topping(\"star\")"},
-     "starter": "# 100 candles. You are NOT typing candle() 100 times!\n",
+     "starter": "# 100 candles. You are NOT typing\n# candle() 100 times!\n",
      "hints": ["One loop for the candles and another loop for the coins.",
                "for i in range(100):\n    candle()",
                'for i in range(3):\n    layer("chocolate")\nfrosting("orange")\n'
@@ -1184,8 +1188,8 @@ LEVELS = [
                      "this loop adds TWO layers. `swirl()` pipes one swirl on the rim.",
              "code": 'for i in range(2):\n    layer("lime")\n    layer("lemon")\n'
                      'swirl("pink")'},
-     "starter": "# 8 stripy layers (chocolate first), white frosting,\n"
-                "# and 12 black swirls.\n",
+     "starter": "# 8 stripy layers (chocolate first),\n"
+                "# white frosting and 12 black swirls.\n",
      "hints": ["Each time round the loop, add a chocolate layer AND a vanilla layer. "
                "How many times round makes 8 layers?",
                'for i in range(4):\n    layer("chocolate")\n    layer("vanilla")',
@@ -1208,8 +1212,8 @@ LEVELS = [
              "text": "Each customer's ticket is a dictionary called `order`. Square "
                      "brackets read one part of it, and a variable can keep it.",
              "code": 'flavour = order["flavour"]\nlayer(flavour)\nprint(order["name"])'},
-     "starter": "# Your ONE program bakes for EVERY customer in the queue.\n"
-                "# Each customer's ticket is in  order . Print it to see:\n"
+     "starter": "# ONE program bakes for EVERY customer.\n"
+                "# Their ticket is in  order . See it:\n"
                 "print(order)\n"
                 'layer("lemon")\n',
      "hints": ['`print(order)` shows the ticket in the Kitchen notes. The flavour is '
@@ -1396,7 +1400,7 @@ LEVELS = [
                      "every other time round.",
              "code": 'for i in range(6):\n    if i % 2 == 0:\n        topping("star")\n'
                      '    else:\n        topping("heart")'},
-     "starter": "# Run this first and look at the Kitchen notes:\n"
+     "starter": "# Run this, then look at the\n# Kitchen notes:\n"
                 "for i in range(12):\n    print(i, i % 2)\n",
      "hints": ["`i % 2` is 0 on the 1st, 3rd, 5th... swirl. Those ones are red.",
                'for i in range(12):\n    if i % 2 == 0:\n        swirl("red")\n'
@@ -1648,7 +1652,7 @@ BAKE_OFF = {"key": "7", "chapter": 6, "name": "The Great Bake-Off", "bake_off": 
                     "text": "You don't know what's coming, so check every part of the "
                             "ticket. `!=` means 'is not the same as'.",
                     "code": 'if order["drip"] != "":\n    drip(order["drip"])'},
-            "starter": "# Five surprise customers! print(order) to see a ticket.\n"
+            "starter": "# Five surprise customers!\n# print(order) shows their tickets.\n"
                        "print(order)\n",
             "hints": ["Go through the ticket one key at a time: layers, frosting, drip, "
                       "sprinkles, candles, toppings, message.",
@@ -1663,7 +1667,8 @@ for _lv in LEVELS:
     _lv["commands"] = [c for c in COMMANDS if COMMAND_CHAPTER[c] <= _lv["chapter"]]
 
 STUDIO_STARTER = '''# 🎨 Studio: bake ANYTHING you like.
-# Then put your best cake in the Shop Window for the class to see.
+# Then put your best cake in the
+# Shop Window for the class to see.
 colours = ["pink", "white", "lavender"]
 for i in range(3):
     layer("strawberry")
