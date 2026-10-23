@@ -199,7 +199,10 @@ function renderRoute() {
 }
 $("route").addEventListener("click", e => {
   const b = e.target.closest("button[data-level]");
-  if (b && !b.disabled && !busy) { SFX.play("click"); setMode("orders"); openLevel(b.dataset.level); }
+  if (!b || b.disabled || busy) return;
+  SFX.play("click");
+  if (mode === "orders") openLevel(b.dataset.level);
+  else setMode("orders", b.dataset.level);
 });
 
 // ---- Opening a level --------------------------------------------------------------------------
@@ -522,7 +525,9 @@ function markError(r) {
 async function playQueue() {
   const token = ++queueToken;
   $("skipButton").hidden = false;
-  for (let i = 0; i < results.length; i++) {
+  // A code error stops every customer's cake the same way: show it once.
+  const count = results.every(r => r.error) ? 1 : results.length;
+  for (let i = 0; i < count; i++) {
     if (token !== queueToken) return;
     showCustomer(i, {enter: i > 0});
     shown = {tiers: [CakeArt.newTier()], fit: results[i].cake};
@@ -531,7 +536,7 @@ async function playQueue() {
     await startPlay(results[i], i === 0 ? 1 : 2.4);
     if (token !== queueToken) return;
     react(i);
-    await wait(i < results.length - 1 ? 1300 : 900);
+    await wait(i < count - 1 ? 1300 : 900);
   }
   if (token === queueToken) { playing(false); endOfBake(); }
 }
@@ -566,6 +571,11 @@ function endOfBake() {
   $("totalStars").textContent = rewards.total_stars;
   if (rewards.new_stars) restartClass($("starsButton"), "bump");
   if (won) {
+    const bad = results.findIndex(r => !r.happy);
+    if (bad >= 0) {   // the Bake-Off can earn a star with some customers unhappy
+      showCustomer(bad, {reacted: true, enter: true});
+      showBanner("", `😕 ${results[bad].name}: “${results[bad].reply}”`);
+    }
     celebrate();
   } else {
     const bad = results.findIndex(r => !r.happy);
@@ -713,28 +723,52 @@ function editorKey(event) {
   } else return;
   updateEditor();
 }
-// Put a command on its own line (at the indent of the line it's on), or a
-// value right where the cursor is.
+// Put a command on its own line (pushed in under a line ending in : ), with the
+// word in its quotes selected, so typing, or clicking an ingredient, replaces it.
 function insertLine(snippet) {
   const t = $("code");
   const pos = t.selectionStart;
   const lineStart = t.value.lastIndexOf("\n", pos - 1) + 1;
   let lineEnd = t.value.indexOf("\n", pos); if (lineEnd < 0) lineEnd = t.value.length;
   const line = t.value.slice(lineStart, lineEnd);
-  const indent = (line.match(/^\s*/) || [""])[0];
+  let indent = (line.match(/^\s*/) || [""])[0];
+  if (line.trimEnd().endsWith(":")) indent += "    ";
   const body = snippet.split("\n").join("\n" + indent);
+  let at;
   if (!line.trim()) {
     t.setRangeText(indent + body, lineStart, lineEnd, "end");
+    at = lineStart + indent.length;
   } else {
     t.setRangeText("\n" + indent + body, lineEnd, lineEnd, "end");
+    at = lineEnd + 1 + indent.length;
+  }
+  const q = /"([^"]*)"/.exec(body);
+  if (q && !body.includes("\n")) {
+    t.selectionStart = at + q.index + 1;
+    t.selectionEnd = at + q.index + 1 + q[1].length;
   }
   t.focus(); updateEditor();
 }
+// Put a value at the cursor. A quoted word clicked while the cursor is in (or
+// on a line with just one) "..." replaces what's in the quotes instead.
 function insertHere(text) {
   const t = $("code");
   const s = t.selectionStart, e = t.selectionEnd;
-  const before = t.value[s - 1], after = t.value[e];
-  if (text.startsWith('"') && before === '"' && after === '"') text = text.slice(1, -1);
+  if (text.startsWith('"')) {
+    const word = text.slice(1, -1);
+    const lineStart = t.value.lastIndexOf("\n", s - 1) + 1;
+    let lineEnd = t.value.indexOf("\n", s); if (lineEnd < 0) lineEnd = t.value.length;
+    const line = t.value.slice(lineStart, lineEnd);
+    const quoted = [...line.matchAll(/"([^"]*)"/g)];
+    const inside = quoted.find(m => lineStart + m.index < s && s <= lineStart + m.index + m[0].length - 1 + (e > s ? 1 : 0));
+    const target = inside || (quoted.length === 1 && !/^\s*$/.test(line) ? quoted[0] : null);
+    if (target) {
+      const from = lineStart + target.index + 1;
+      t.setRangeText(word, from, from + target[1].length, "select");
+      t.focus(); updateEditor();
+      return;
+    }
+  }
   t.setRangeText(text, s, e, "end");
   t.focus(); updateEditor();
 }
@@ -911,7 +945,7 @@ function undoIdea() {
 }
 
 // ---- Switching between Orders, Studio and the Shop Window --------------------------------------------
-async function setMode(next) {
+async function setMode(next, level = null) {
   if (next === mode) return;
   saveCode();
   stopQueue(); hideBanner(); closeCelebrate();
@@ -951,7 +985,7 @@ async function setMode(next) {
     showCustomer(0, {enter: true});
     updateEditor();
   } else {
-    await openLevel(view.key);
+    await openLevel(level || view.key);
   }
 }
 document.querySelector(".tabs").addEventListener("click", e => {
