@@ -174,6 +174,8 @@ in a row without success gets a "💡 Want a hint?" nudge.
   bakes in a row on the same level that didn't make every customer happy. The
   row turns amber at 4 and pink at 8, which is a good time to visit. **Last error** is
   the most recent error from their code.
+- **👀 Code** shows the student's code for the level they're on, with line
+  numbers and the line their last error names picked out.
 - **Open next** lets one student skip ahead.
 - **Shop window theme** shows at the top of the window and on the projector.
   Halloween idea: *"Spooky cakes 🎃"* (the ghost and pumpkin toppings unlock at
@@ -190,7 +192,8 @@ in a row without success gets a "💡 Want a hint?" nudge.
 - *"It says 🔒 … unlocks at 12 stars."* Locked toppings and frostings work
   everywhere once unlocked. Stars come from levels.
 - *A student lost their code.* It's saved in their browser and on the server
-  with each bake. Joining with the same name brings it back.
+  with each bake. Joining with the same name brings it back. **Ctrl+Z** also
+  undoes anything, including ↺ Reset, a Studio idea or a remix.
 - The game keeps everyone's progress in `scores.json` with the other games.
 
 

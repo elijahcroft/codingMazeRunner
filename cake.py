@@ -937,7 +937,9 @@ def judge_tier(want, t):
 
     if "layers" in want:
         w, g = want["layers"], t["layers"]
-        if len(g) != len(w):
+        if not g:
+            say = f"There's no cake yet! I'd like {_s(len(w), 'layer')}: start with  layer(...)"
+        elif len(g) != len(w):
             say = f"I asked for {_s(len(w), 'layer')}, but this cake has {len(g)}."
         else:
             i = next((i for i, (a, b) in enumerate(zip(w, g)) if a != b), 0)
