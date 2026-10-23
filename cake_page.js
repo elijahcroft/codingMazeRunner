@@ -527,6 +527,7 @@ async function bake() {
     $("totalStars").textContent = rewards.total_stars - rewards.new_stars;
     renderGoals();
     markError(results.find(r => r.error) || results[0]);
+    showScene();
     playQueue();
   } catch (_) {
     showBanner("error", "No answer from the shop. Is the server running?");
@@ -534,6 +535,11 @@ async function bake() {
     busy = false;
     $("bakeButton").disabled = false; $("bakeButton").textContent = "Bake! ▶";
   }
+}
+// On narrow screens the shop sits above the kitchen: bring it into view to watch the bake.
+function showScene() {
+  if (matchMedia("(max-width: 1060px)").matches)
+    $("scene").scrollIntoView({block: "nearest", behavior: CALM ? "auto" : "smooth"});
 }
 function markError(r) {
   errorLine = r && r.line || 0;
@@ -940,6 +946,7 @@ async function bakeStudio(fresh, quiet = false) {
       return;
     }
     shown = {tiers: [CakeArt.newTier()], fit: data.cake};
+    showScene();
     const token = ++queueToken;
     await startPlay(data, 1);
     if (token !== queueToken) return;
