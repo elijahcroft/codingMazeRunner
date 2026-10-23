@@ -101,6 +101,7 @@ let busy = false;
 let play = null;        // the bake being animated
 let shown = null;       // {tiers, fit}: the cake on the counter when nothing is playing
 let queueToken = 0;     // bumped to stop a queue that's playing
+let served = 0;         // customers who've had their cake so far this bake
 let studio = {run: null, seed: 0};
 let errorLine = 0, errorCount = 0;
 let pantryTab = "flavours";
@@ -221,6 +222,7 @@ async function openLevel(key, fromMode = false) {
   store(`cakeLevel:${me}`, key);
   const saved = recall(codeKey(key));
   $("code").value = saved !== null ? saved : (data.code || data.starter);
+  $("code").scrollTop = 0;
   errorLine = 0;
   renderRoute();
   renderLevel();
@@ -337,8 +339,9 @@ function renderQueue() {
   document.querySelector(".shelf").hidden = !q.hidden;
   if (q.hidden) return;
   q.innerHTML = list.map((c, i) => {
-    const st = results ? (c.happy ? " ok" : " no") : "";
-    const mark = results ? (c.happy ? "😊" : "😕") : "";
+    const seen = results && i < served;   // no spoilers for customers still waiting
+    const st = seen ? (c.happy ? " ok" : " no") : "";
+    const mark = seen ? (c.happy ? "😊" : "😕") : "";
     return `<button class="${i === sel ? "on" : ""}${st}" data-c="${i}" title="${esc(c.name)}"><span class="qf">${c.face}</span>${esc(c.name.split(" ")[0])}${mark ? ` ${mark}` : ""}</button>`;
   }).join("");
 }
@@ -346,6 +349,8 @@ $("queue").addEventListener("click", e => {
   const b = e.target.closest("button[data-c]");
   if (!b) return;
   SFX.play("click");
+  // Jumping to a customer mid-bake finishes the bake first, so the stars still come.
+  if (results && served < results.length && mode === "orders") skipToEnd();
   stopQueue();
   const i = Number(b.dataset.c);
   showCustomer(i, {enter: true, reacted: !!results});
@@ -514,7 +519,7 @@ async function bake() {
     if (data.error === "join") { forget(); return; }
     if (data.error) { showBanner("error", data.error); return; }
     if (!view || view.key !== key) return;
-    results = data.runs; rewards = data.rewards;
+    results = data.runs; rewards = data.rewards; served = 0;
     view.stars = rewards.best;
     useState(data.state);
     $("totalStars").textContent = rewards.total_stars - rewards.new_stars;
@@ -559,6 +564,7 @@ const DELIGHT = {"🐱": "🐟", "🦄": "🌈", "🐧": "❄️", "🦓": "⭐"
   "🦊": "🍊", "🐭": "🧀", "👸": "👑", "👰": "💐", "👵": "🌷"};
 function react(i) {
   const r = results[i];
+  served = Math.max(served, i + 1);
   showCustomer(i, {reacted: true});
   restartClass($("face"), r.happy ? "happy" : "sad");
   const at = sceneXY($("face"), .5, .2);
@@ -585,6 +591,8 @@ function skipToEnd() {
   endOfBake();
 }
 function endOfBake() {
+  served = results.length;
+  renderQueue();
   const happy = results.filter(r => r.happy).length;
   const won = rewards.stars[0];
   $("totalStars").textContent = rewards.total_stars;
@@ -1032,6 +1040,7 @@ async function setMode(next, level = null) {
     renderStudioCard();
     const saved = recall(codeKey("studio"));
     $("code").value = saved !== null ? saved : state.studio;
+    $("code").scrollTop = 0;
     studio = {run: null, seed: 0};
     shown = {tiers: [CakeArt.newTier()], fit: null};
     errorLine = 0;
