@@ -575,7 +575,6 @@ async function bake() {
   SFX.wake(); SFX.play("whoosh");
   saveCode(); hideBanner(); closeCelebrate(); stopQueue();
   $("hintButton").classList.remove("nudge");
-  $("tip").open = false;   // they've read it; it opens again with a click
   $("bakeButton").disabled = true; $("bakeButton").textContent = "Baking…";
   const key = view.key;
   try {
