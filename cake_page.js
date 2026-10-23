@@ -322,6 +322,7 @@ function renderQueue() {
   const list = mode === "studio" ? [] : (results || view.customers);
   const q = $("queue");
   q.hidden = list.length < 2;
+  document.querySelector(".shelf").hidden = !q.hidden;
   if (q.hidden) return;
   q.innerHTML = list.map((c, i) => {
     const st = results ? (c.happy ? " ok" : " no") : "";
@@ -414,8 +415,7 @@ function startPlay(run, speed = 1) {
     const n = run.steps.length;
     const base = n > 40 ? 3600 / n : n > 14 ? 5200 / n : 380;
     play = {steps: run.steps, fit: run.cake, k: 0, u: 0, dur: Math.max(28, base) / speed, done: false, resolve, run};
-    $("skipButton").hidden = false;
-    $("replayButton").hidden = true;
+    playing(true);
     if (!n) finishPlay();
   });
 }
@@ -425,13 +425,17 @@ function finishPlay() {
   shown = {tiers: play.run.cake, fit: play.run.cake};
   const resolve = play.resolve;
   play = null;
-  $("skipButton").hidden = true;
-  $("replayButton").hidden = !(results || studio.run);
   resolve();
+}
+// Skip shows while a bake (or a queue of them) plays; Replay once it's over.
+function playing(on) {
+  $("skipButton").hidden = !on;
+  $("replayButton").hidden = on || !(mode === "studio" ? studio.run : results);
 }
 function stopQueue() {
   queueToken += 1;
   if (play) finishPlay();
+  playing(false);
 }
 
 // Emoji particles (hearts, flames) and confetti.
@@ -517,6 +521,7 @@ function markError(r) {
 // at full speed, the rest quicker; clicking a customer or Skip jumps ahead.
 async function playQueue() {
   const token = ++queueToken;
+  $("skipButton").hidden = false;
   for (let i = 0; i < results.length; i++) {
     if (token !== queueToken) return;
     showCustomer(i, {enter: i > 0});
@@ -528,7 +533,7 @@ async function playQueue() {
     react(i);
     await wait(i < results.length - 1 ? 1300 : 900);
   }
-  if (token === queueToken) endOfBake();
+  if (token === queueToken) { playing(false); endOfBake(); }
 }
 function react(i) {
   const r = results[i];
@@ -841,6 +846,7 @@ async function bakeStudio(fresh) {
     const token = ++queueToken;
     await startPlay(data, 1);
     if (token !== queueToken) return;
+    playing(false);
     if (data.error) {
       showBanner("error", `🐛 ${data.error}`);
       $("bubble").textContent = "Oops! Something went wrong in the kitchen."; $("bubble").className = "bubble pop sad";
@@ -1083,6 +1089,7 @@ function joinScene() {
     const c = $("joinCanvas"), {ctx, w, h} = fitCanvas(c);
     ctx.clearRect(0, 0, w, h);
     const t = (now - joinArt.start) / 260;
+    if (t > joinArt.steps.length + 40) joinArt.start = now;   // bake it again
     const k = Math.min(joinArt.steps.length, Math.floor(t));
     const tiers = CakeArt.replay(joinArt.steps, Math.min(joinArt.steps.length, k + 1));
     const anim = k < joinArt.steps.length ? {do: joinArt.steps[k].do, tier: 0, u: t - k} : null;
@@ -1108,15 +1115,22 @@ $("hintButton").addEventListener("click", askHint);
 $("resetButton").addEventListener("click", resetCode);
 $("skipButton").addEventListener("click", skipToEnd);
 $("replayButton").addEventListener("click", async () => {
-  hideBanner();
-  if (mode === "studio" && studio.run) { const token = ++queueToken; shown = {tiers: [CakeArt.newTier()], fit: studio.run.cake}; await startPlay(studio.run); return token; }
-  if (!results) return;
+  hideBanner(); closeCelebrate();
   stopQueue();
-  const i = sel, token = ++queueToken;
+  const token = ++queueToken;
+  if (mode === "studio") {
+    if (!studio.run) return;
+    shown = {tiers: [CakeArt.newTier()], fit: studio.run.cake};
+    await startPlay(studio.run);
+    if (token === queueToken) playing(false);
+    return;
+  }
+  if (!results) return;
+  const i = sel;
   showCustomer(i);
   shown = {tiers: [CakeArt.newTier()], fit: results[i].cake};
   await startPlay(results[i]);
-  if (token === queueToken) react(i);
+  if (token === queueToken) { playing(false); react(i); }
 });
 $("windowButton").addEventListener("click", putInWindow);
 $("cakeTitle").addEventListener("keydown", e => { if (e.key === "Enter") putInWindow(); });

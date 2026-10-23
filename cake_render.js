@@ -380,8 +380,13 @@
       }
       return pts;
     };
-    const candleSpots = spots(nc, 0, nt ? .42 : .66, 0);
-    const toppingSpots = spots(nt, nc ? .5 : 0, nc ? .72 : .66, nc ? .3 : .4);
+    // Lots of candles fill the whole top, and the toppings ring the edge.
+    const crowd = nc > 20;
+    const candleSpots = spots(nc, 0, crowd ? .66 : nt ? .42 : .66, 0);
+    const toppingSpots = crowd ? spots(nt, .82, .82, .3).map(([x, y], k) => {
+      const a = Math.PI / 2 + .3 + k / nt * Math.PI * 2;
+      return [Math.cos(a) * .82, Math.sin(a) * .82];
+    }) : spots(nt, nc ? .5 : 0, nc ? .72 : .66, nc ? .3 : .4);
     const candleH = (nc > 40 ? 20 : nc > 12 ? 26 : 34) * s;
     t.candles.forEach((c, k) => {
       const [px, py] = candleSpots[k];
@@ -389,7 +394,7 @@
       const last = k === nc - 1 && cur && cur.do === "candle";
       const grow = last ? Math.max(0, easeBack(cur.u)) : 1;
       const lit = !last || cur.u > .55;
-      out.push({y, front: py > 0, draw: () => drawCandle(ctx, x, y, candleH * grow, c, s * (nc > 40 ? .8 : 1), lit, now, k)});
+      out.push({y, front: py > 0, draw: () => drawCandle(ctx, x, y, candleH * grow, c, s * (nc > 40 ? .8 : 1), lit, now, k, nc > 30)});
     });
     const tSize = (nt > 24 ? 17 : nt > 12 ? 21 : nt > 6 ? 25 : 30) * s;
     t.toppings.forEach((name, k) => {
@@ -446,7 +451,7 @@
     ctx.restore();
   }
 
-  function drawCandle(ctx, x, y, h, colour, s, lit, now, k) {
+  function drawCandle(ctx, x, y, h, colour, s, lit, now, k, many) {
     if (h <= .5) return;
     const w = 4.6 * s;
     ctx.save();
@@ -466,9 +471,10 @@
     if (lit) {
       const f = 1 + .14 * Math.sin(now / 90 + k * 2.3) + .08 * Math.sin(now / 37 + k);
       const fy = y - h - 3 * s;
-      const glow = ctx.createRadialGradient(x, fy - 4 * s, 0, x, fy - 4 * s, 14 * s);
-      glow.addColorStop(0, "rgba(255,210,120,.55)"); glow.addColorStop(1, "rgba(255,210,120,0)");
-      ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(x, fy - 4 * s, 14 * s, 0, Math.PI * 2); ctx.fill();
+      const gr = (many ? 7 : 14) * s;
+      const glow = ctx.createRadialGradient(x, fy - 4 * s, 0, x, fy - 4 * s, gr);
+      glow.addColorStop(0, `rgba(255,210,120,${many ? .3 : .55})`); glow.addColorStop(1, "rgba(255,210,120,0)");
+      ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(x, fy - 4 * s, gr, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = "#ffb42e";
       ctx.beginPath(); ctx.moveTo(x, fy - 11 * s * f); ctx.quadraticCurveTo(x + 4.2 * s, fy - 3 * s, x, fy + 1 * s); ctx.quadraticCurveTo(x - 4.2 * s, fy - 3 * s, x, fy - 11 * s * f); ctx.fill();
       ctx.fillStyle = "#fff4c2";

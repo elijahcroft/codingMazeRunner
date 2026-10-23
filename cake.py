@@ -1262,7 +1262,7 @@ LEVELS = [
      "star2": {"kind": "caps"}, "star3": {"kind": "lines", "max": 6},
      "reference": 'for i in range(order["layers"]):\n    layer(order["flavour"])\n'
                   'frosting(order["frosting"])\nname = order["name"].upper()\n'
-                  'write(f"{name} is {order["age"]}")\n'},
+                  'age = order["age"]\nwrite(f"{name} is {age}")\n'},
 
     # ---- Chapter 4: Picky Customers ----------------------------------------------
     {"key": "4a", "chapter": 3, "name": "Sprinkles or Not?",

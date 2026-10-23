@@ -292,8 +292,12 @@
   .suggest { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 14px; }
   .modal input[type=text] { width: 100%; padding: 12px 14px; font-size: 18px; border-radius: 14px; border: 2px solid var(--rose); }
 
-  .celebrate { background: rgba(74, 43, 46, .22); }
-  .celebrate .modal { text-align: center; width: min(470px, 100%); }
+  /* The celebration slides in over the kitchen, so the cake and the happy
+     customer stay in view. */
+  .celebrate { background: none; place-items: start end; padding: 128px 16px 16px; pointer-events: none; }
+  .celebrate .modal { text-align: center; width: min(420px, 100%); pointer-events: auto; box-shadow: 0 20px 60px rgba(74, 43, 46, .35), 0 0 0 4px var(--rose); animation: slidein .45s cubic-bezier(.2, .9, .3, 1.15); }
+  @keyframes slidein { from { transform: translateX(60px); opacity: 0; } }
+  @media (max-width: 1060px) { .celebrate { place-items: center; padding: 16px; background: rgba(74, 43, 46, .22); } }
   .big-stars { display: flex; justify-content: center; gap: 14px; margin: 6px 0 8px; }
   .big-stars span { font-size: 54px; color: #eadad6; line-height: 1; transform: scale(.3); opacity: 0; transition: transform .45s cubic-bezier(.2, .9, .3, 1.6), opacity .2s; }
   .big-stars span.in { transform: scale(1); opacity: 1; }

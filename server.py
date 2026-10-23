@@ -7,7 +7,8 @@ general algorithms to debugging and exploration.  Bot Rally at `/arena` tests
 one program on five tracks.  Light Cycles at `/cycles` is a battle royale where
 every student's steer() function rides against the class (cycles.py).  Strange
 Planet at `/planet` is a rover in zones that each hide a physics rule
-(planet.py).  The original maze ladders remain at `/classic` as optional drills.
+(planet.py). Cake Shop at `/cake` bakes cakes for customers with Python:
+dictionaries, lists, if/elif and functions, with a class shop window (cake.py).  The original maze ladders remain at `/classic` as optional drills.
 
 Students connect from their browsers to your laptop and drive a little
 character through a maze by typing Python:
