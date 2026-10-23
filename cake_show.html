@@ -176,13 +176,14 @@ function frame(now) {
   const ctx = c.getContext("2d");
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
+  const floor = $("window").clientHeight * .85 - c.offsetTop;   // on the counter
   if (cakes.length) {
     if (now - slideStart > SLIDE_MS && cakes.length > 1) { at = (at + 1) % cakes.length; fresh = null; show(); }
     const cake = cakes[at];
     // Each cake gently bobs in, so a change of slide is easy to notice.
     const u = Math.min(1, (now - slideStart) / 500);
     ctx.save(); ctx.globalAlpha = u; ctx.translate(0, (1 - u) * 30);
-    CakeArt.draw(ctx, w, h, {tiers: cake.cake, stand: cake.look.stand, now});
+    CakeArt.draw(ctx, w, h, {tiers: cake.cake, stand: cake.look.stand, now, floor});
     ctx.restore();
   } else {
     if (!demo) demo = {steps: demoSteps(), start: now};
@@ -191,7 +192,7 @@ function frame(now) {
     const k = Math.min(n, Math.floor(t));
     const tiers = CakeArt.replay(demo.steps, Math.min(n, k + 1));
     const anim = k < n ? {do: demo.steps[k].do, tier: 0, u: t - k} : null;
-    CakeArt.draw(ctx, w, h, {tiers, fit: CakeArt.replay(demo.steps, n), stand: "glass", anim, now});
+    CakeArt.draw(ctx, w, h, {tiers, fit: CakeArt.replay(demo.steps, n), stand: "glass", anim, now, floor});
   }
   requestAnimationFrame(frame);
 }

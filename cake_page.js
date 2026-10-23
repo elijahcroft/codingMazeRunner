@@ -403,14 +403,16 @@ function drawCounter(now) {
   const {ctx, w, h} = fitCanvas(cakeCanvas);
   ctx.clearRect(0, 0, w, h);
   const stand = state ? state.look.stand : "plate";
+  // The stand sits on the counter, which starts 80% of the way down the scene.
+  const floor = $("scene").clientHeight * .86 - cakeCanvas.offsetTop;
   if (play) {
     const k = play.k + (play.u > 0 ? 1 : 0);
     const tiers = CakeArt.replay(play.steps, Math.min(k, play.steps.length));
     const anim = play.u > 0 && play.k < play.steps.length
       ? {do: play.steps[play.k].do, tier: tiers.length - 1, u: play.u} : null;
-    CakeArt.draw(ctx, w, h, {tiers, fit: play.fit, stand, anim, now});
+    CakeArt.draw(ctx, w, h, {tiers, fit: play.fit, stand, anim, now, floor});
   } else if (shown) {
-    CakeArt.draw(ctx, w, h, {tiers: shown.tiers, fit: shown.fit || shown.tiers, stand, now});
+    CakeArt.draw(ctx, w, h, {tiers: shown.tiers, fit: shown.fit || shown.tiers, stand, now, floor});
   }
 }
 // Step through the bake: each step takes a moment, and lots of steps go faster.
@@ -1117,7 +1119,7 @@ function drawDetail(now) {
   if ($("cakeModal").hidden) { detail = null; return; }
   const {ctx, w, h} = fitCanvas(c);
   ctx.clearRect(0, 0, w, h);
-  CakeArt.draw(ctx, w, h, {tiers: detail.cake, stand: detail.look.stand, now: CALM ? 1000 : now});
+  CakeArt.draw(ctx, w, h, {tiers: detail.cake, stand: detail.look.stand, now: CALM ? 1000 : now, floor: h * .86});
 }
 $("cmHeart").addEventListener("click", () => detail && heart(detail.i));
 $("cakeClose").addEventListener("click", () => { $("cakeModal").hidden = true; });
