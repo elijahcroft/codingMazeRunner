@@ -3621,7 +3621,6 @@ PAGES = {
     "/cake/show": ("cake_show.html", "text/html; charset=utf-8"),
     "/cake/render.js": ("cake_render.js", "text/javascript; charset=utf-8"),
     "/cake/page.js": ("cake_page.js", "text/javascript; charset=utf-8"),
-    "/cake/preview": ("cake_preview.html", "text/html; charset=utf-8"),
     "/leaderboard": ("leaderboard.html", "text/html; charset=utf-8"),
     "/screen": ("screen.html", "text/html; charset=utf-8"),
     "/admin": ("admin.html", "text/html; charset=utf-8"),
