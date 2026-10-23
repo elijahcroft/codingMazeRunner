@@ -54,6 +54,10 @@
     const mix = v => Math.round((t - v) * p + v);
     return `rgb(${mix(r)},${mix(g)},${mix(b)})`;
   }
+  function mixRgb(hex, to, p) {
+    const c = rgb(hex).map((v, i) => Math.round(v + (to[i] - v) * p));
+    return `rgb(${c[0]},${c[1]},${c[2]})`;
+  }
   function light(hex) {
     const [r, g, b] = rgb(hex);
     return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
@@ -95,7 +99,9 @@
     }
     if (flat) return hex;
     const g = ctx.createLinearGradient(x0, 0, x1, 0);
-    g.addColorStop(0, shade(hex, -.3)); g.addColorStop(.28, shade(hex, .12)); g.addColorStop(.5, hex); g.addColorStop(1, shade(hex, -.34));
+    // Very light colours shade toward a warm cream, so white stays white rather than grey.
+    const edge = f => light(hex) > .85 ? mixRgb(hex, [196, 150, 138], f * 1.15) : shade(hex, -f);
+    g.addColorStop(0, edge(.3)); g.addColorStop(.28, shade(hex, .12)); g.addColorStop(.5, hex); g.addColorStop(1, edge(.34));
     return g;
   }
   // Glitter sparkles and galaxy stars, inside whatever path is clipped.
