@@ -2729,19 +2729,19 @@ def cycles_state(p):
 # Nothing is random and nothing is taken away.
 # ---------------------------------------------------------------------------
 JOURNAL_MAX = 140   # characters in one field journal note
-SCOUT_MAX = 60      # hand-driven moves in one scouting trip
+SCOUT_MAX = 150     # hand-driven moves in one scouting trip: enough to drive any site
 planet_feed = []    # the class's recent moments, newest last, for the projector
 
 # Badges: (icon, name, how to earn it). Zone masters are added below.
 PLANET_BADGES = {
-    "first": ("🛰", "First Contact", "Reach your first beacon"),
-    "loop": ("🔁", "Loop Pilot", "Reach a beacon using a for loop"),
-    "while": ("👀", "Sensor Driver", "Reach a beacon using a while loop"),
-    "if": ("🔀", "Decision Maker", "Reach a beacon using an if"),
-    "def": ("🧩", "Architect", "Reach a beacon using a function you made"),
-    "print": ("🔬", "Scientist", "Reach a beacon with print() in your code"),
-    "fixer": ("🐛", "Bug Squasher", "Fix a code error, then reach the beacon"),
-    "grit": ("💪", "Never Give Up", "Reach a beacon after 5 runs that didn't"),
+    "first": ("🛰", "First Contact", "Complete your first mission"),
+    "loop": ("🔁", "Loop Pilot", "Complete a mission using a for loop"),
+    "while": ("👀", "Sensor Driver", "Complete a mission using a while loop"),
+    "if": ("🔀", "Decision Maker", "Complete a mission using an if"),
+    "def": ("🧩", "Architect", "Complete a mission using a function you made"),
+    "print": ("🔬", "Scientist", "Complete a mission with print() in your code"),
+    "fixer": ("🐛", "Bug Squasher", "Fix a code error, then complete the mission"),
+    "grit": ("💪", "Never Give Up", "Complete a mission after 5 runs that didn't"),
     "triple": ("🌟", "Triple Star", "Earn all three stars in one run"),
     "compact": ("✂️", "Minimalist", "Earn the compact star on 5 sites"),
     "crystals": ("💎", "Crystal Hunter", "Collect every crystal on 4 sites"),
@@ -2813,6 +2813,11 @@ def planet_variant(p, key):
     return s["variants"][planet.variant_index(p["id"], s)]
 
 
+def measuring(p, key):
+    """Is this site a field measurement (report a number) for this student?"""
+    return planet.mission_of(planet_variant(p, key)) == "report"
+
+
 def star_count(entry):
     return sum(sum(v) for v in entry["stars"].values())
 
@@ -2828,7 +2833,7 @@ def garage_for(entry):
 
 
 def class_record(key):
-    """The fewest ticks anyone has reached this site's beacon in, and who."""
+    """The fewest ticks anyone has completed this site's mission in, and who."""
     best = None
     for q in players.values():
         ticks = (q.get("planet") or {}).get("solved", {}).get(key)
@@ -2882,14 +2887,20 @@ def planet_site(p, key):
             "code": entry["code"].get(key, ""),
             "solved": entry["solved"].get(key),
             "stars": entry["stars"].get(key, [False] * 3),
-            "record": None if key == planet.UNCHARTED["key"] else class_record(key)}
+            "record": None if key == planet.UNCHARTED["key"] or measuring(p, key)
+            else class_record(key)}
     if key == planet.UNCHARTED["key"]:
         view["goals"] = ["🪐 Reach 1 planet", "🪐 Reach 3 planets in one run",
                          "🪐 Reach all 5 in one run"]
+        sample = planet.UNCHARTED_SAMPLE
+        view.update(map=sample["map"], dir=1, mission="beacon",
+                    battery=sample["battery"], crystals=[])
     else:
         v = planet_variant(p, key)
-        view.update(map=v["map"], dir=v.get("dir", 1),
-                    battery="battery" in zone["rules"],
+        view.update(map=v["map"], dir=v.get("dir", 1), mission=planet.mission_of(v),
+                    # The gauge shows from the start: what drains it is the hidden part.
+                    battery=v.get("battery", planet.BATTERY_MAX)
+                    if "battery" in zone["rules"] else None,
                     crystals=v.get("crystals", []), goals=planet.goals(s, v))
     return view
 
@@ -2958,9 +2969,12 @@ def planet_record(p, key, code, results):
             previous = class_record(key)
             best = entry["solved"].get(key)
             entry["solved"][key] = run["ticks"] if best is None else min(best, run["ticks"])
+            # A measurement takes a tick or two, so it has no records to beat.
+            if measuring(p, key):
+                previous = {"ticks": 0}
             if previous is None:
                 record = {"ticks": run["ticks"], "name": p["name"], "first": True}
-                feed(f"🚩 {p['name']} was first to reach {s['name']}")
+                feed(f"🚩 {p['name']} was first to complete {s['name']}")
             elif run["ticks"] < previous["ticks"]:
                 record = {"ticks": run["ticks"], "name": p["name"], "first": False}
                 feed(f"🏆 {p['name']} set a class record on {s['name']}: "
@@ -2974,7 +2988,9 @@ def planet_record(p, key, code, results):
     if reached_any:
         badge("first")
         for feature in sorted(code_features(code)):
-            badge(feature)
+            # Architect wants a def that ran, not one that only sits there.
+            if feature != "def" or any(r.get("own_function") for r in results):
+                badge(feature)
         if entry["errored"].get(key):
             badge("fixer")
         if entry["misses"].get(key, 0) >= 5:
@@ -3012,7 +3028,8 @@ def planet_record(p, key, code, results):
             "badges": earned, "record": record, "anomaly": anomaly,
             "unlocked": [{"slot": i["slot"], "key": i["key"], "name": i["name"]}
                          for i in unlocked],
-            "total_stars": star_count(entry)}
+            "total_stars": star_count(entry),
+            "misses": entry["misses"].get(key, 0)}   # runs in a row that didn't get there
 
 
 def planet_set_look(p, data):
@@ -3040,6 +3057,7 @@ def planet_class():
         key = planet.SITE_ORDER[frontier]
         zi, zone, s = planet.find_site(key)
         rows.append({"id": q["id"], "name": q["name"], "site": key,
+                     "at": frontier,   # sites behind them, unlocked ones included
                      "site_name": s["name"], "zone": zone["name"],
                      "solved": len(entry["solved"]),
                      "stars": star_count(entry),
@@ -3051,7 +3069,7 @@ def planet_class():
                                  for z in planet.ZONES if entry["journal"].get(z["key"])},
                      "uncharted": entry["uncharted"],
                      "active": entry["active"]})
-    rows.sort(key=lambda x: (x["solved"], -x["runs_here"], x["name"].lower()))
+    rows.sort(key=lambda x: (x["at"], -x["runs_here"], x["name"].lower()))
     return {"students": rows, "sites": len(planet.SITE_ORDER),
             "zones": [z["name"] for z in planet.ZONES],
             "class": {"stars": class_stars(), "goals": CLASS_GOALS,
@@ -3384,8 +3402,8 @@ class Handler(BaseHTTPRequestHandler):
                 elif path == "/planet/state":
                     body = planet_state(p)
                 elif not planet_open(p, key):
-                    body = {"error": "🔒 Reach the beacon on the site before "
-                                     "this one to open it."}
+                    body = {"error": "🔒 Complete the site before this one "
+                                     "to open it."}
                 else:
                     body = planet_site(p, key)
                 body = json.dumps(body).encode()
@@ -3483,8 +3501,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"error": "join"})
                 return
             if not planet_open(p, key):
-                self._send(200, {"error": "🔒 Reach the beacon on the site "
-                                          "before this one to open it."})
+                self._send(200, {"error": "🔒 Complete the site before this "
+                                          "one to open it."})
                 return
             # Drive without the lock: other students keep working.
             code = str(data.get("code", ""))[:planet.MAX_CODE + 1]
@@ -3503,7 +3521,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         if self.path == "/planet/scout":
             # Driving by hand, to feel the planet: nothing is saved, and the
-            # beacon only counts when code gets there.
+            # mission only counts when code does it.
             key = str(data.get("site", ""))
             moves = data.get("moves")
             with lock:

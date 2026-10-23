@@ -104,7 +104,7 @@ async function refresh() {
   for (const s of students) byZone[s.zone] = (byZone[s.zone] || 0) + 1;
   $("zones").innerHTML = data.zones.map(z => `<span class="zone-count">${esc(z)}<b>${byZone[z] || 0}</b></span>`).join("");
   $("rows").innerHTML = students.map(s => `<tr>
-    <td class="name">${esc(s.name)}<div class="bar" title="${s.solved} of ${data.sites} sites"><span style="width:${100 * s.solved / data.sites}%"></span></div></td>
+    <td class="name">${esc(s.name)}<div class="bar" title="Site ${s.at + 1} of ${data.sites}"><span style="width:${100 * s.at / Math.max(1, data.sites - 1)}%"></span></div></td>
     <td class="site">${s.site === "7" ? "Uncharted" : `${esc(s.site.toUpperCase())} · ${esc(s.site_name)}`}<small>${s.site === "7" ? (s.uncharted ? `best ${s.uncharted.reached}/5 planets` : "no run yet") : esc(s.zone)}</small></td>
     <td class="num">${s.stars} ★<small style="display:block;color:var(--muted)">${s.badges} badges</small></td>
     <td class="num ${stuckClass(s.runs_here)}">${s.runs_here}</td>

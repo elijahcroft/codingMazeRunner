@@ -31,10 +31,14 @@ Decided so far: standalone (Zone 1 teaches Python from zero), several lessons
 
 ## The program model
 
-Same as Python Quest: the program runs top to bottom with commands
-(`move()`, `turn_left()`, `turn_right()`, `wait()`) and yes/no or number
-sensors. Every command takes one **tick** of planet time, and the time-based
-rules (wind, sun) run on ticks.
+The program runs top to bottom with commands, like Python Quest, but the
+rover **never turns**: it drives by compass (`north()`, `south()`,
+`east(3)`, `west()`, `wait()`), senses in words (`look("east")` is
+`"rock"`, `"ice"`, `"crater"`, `"crack"`, `"sun"`, `"pad"`...) and in
+coordinates (`x()`, `y()`), and some missions end with `report(n)`. Every
+square of driving (or wait) takes one **tick** of planet time, and the
+time-based rules (wind, sun) run on ticks. See "Not the maze game" below
+for why it changed.
 
 *Why not a per-turn function like Light Cycles' `steer()`?* For students
 who have never coded, commands in order are much easier to start with, and
@@ -173,3 +177,30 @@ work starts.
   portals are left out because a wall follower must backtrack. It adds the
   `gust_in()` sensor, and every random planet is checked solvable before it's used.
 - **No par stars and no fog** in v1. Each site keeps the student's best ticks.
+
+## Not the maze game (the compass redesign, October 2026)
+
+ej: "the new game is too much like the old one". The class had already done
+the Python Quest maze game, and Strange Planet opened the same way: a
+corridor, an arrow, `move(3)`, `turn_left()`, `wall_ahead()`, "reach the
+goal". So what students *do* changed, and the zones and their hidden rules
+stayed:
+
+- **Compass driving, no turning.** `north() south() east() west()`. It looks
+  different from the first screen, and it's easier for beginners (no turning
+  in your head). The maze game's commands give a message saying what to
+  write instead.
+- **Open ground, not corridors.** The opening sites are fields with
+  boulders, samples and ice, checked by a test that most squares have
+  three or four open neighbours.
+- **Missions, not exits.** Each site is 🧪 collect every sample,
+  🛰 reach the beacon, or 📡 a field measurement: find the rule's number
+  and `report()` it. Measuring it in code earns the 🔢 star, so the A site
+  of Ice, Wind and Solar *is* the experiment.
+- **Sensing in words and coordinates.** `look(way)` returns text, so
+  students compare strings (`!= "rock"`), which the maze game never needed.
+  The map is numbered along the top and side for `x()` and `y()`.
+- **Uncharted steers by coordinates** (`beacon_x()`, `beacon_y()`) instead
+  of hotter or colder.
+- The Landing Site is no longer a skippable warm-up: it's where compass
+  driving and `look()` are learnt.

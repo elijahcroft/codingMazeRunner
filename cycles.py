@@ -106,11 +106,19 @@ LINE_HINTS = [
     (r"=>", "write  >=  (not  =>)"),
     (r"\b(wall|space) (ahead|left|right)\b", "sensor names have an underscore "
                                             "in the middle, like  wall_ahead()"),
+    # The rover's commands (Strange Planet).
+    (r"^(north|south|east|west|wait|report)\s+\w", "commands need brackets, like  east(3)"),
+    (r"^(move|turn_left|turn_right|turn)\b", "this rover drives by compass: "
+                                            "north()  south()  east(3)  west()"),
+    (r"\)\s*(?!(?:and|or|not|if|else|in|is)\b)[A-Za-z_]\w*\s*\(",
+     "put each command on its own line"),
+    (r"^(repeat|loop)\b", "to repeat lines, write  for i in range(7):  and push "
+                          "the lines to repeat in under it"),
 ]
 KEYWORDS = ["return", "if", "elif", "else", "while", "for", "def", "print", "global"]
 
 
-def syntax_message(e):
+def syntax_message(e, def_example="def steer():"):
     """A friendly sentence for a SyntaxError, pointing at its line."""
     msg, text = e.msg or "", (e.text or "").strip()
     code = re.sub(r"\"[^\"]*\"|'[^']*'", '""', text)   # ignore what's inside text
@@ -123,7 +131,7 @@ def syntax_message(e):
     if words[:2] == ["else", "if"] or first in ("elseif", "elsif"):
         hint = "write  elif  for 'else if'"
     elif first == "def" and "(" not in code:
-        hint = "a def needs brackets, like  def steer():"
+        hint = f"a def needs brackets, like  {def_example}"
     else:
         hint = next((h for key, h in LINE_HINTS if re.search(key, code)), None)
     if hint is None:

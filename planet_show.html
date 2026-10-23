@@ -94,15 +94,17 @@ async function refresh() {
     el.innerHTML = `<span>${total >= goal ? "✓ " : ""}${goal} ★ unlocks ${UNLOCKS[goal] || "a surprise"}</span>`;
     $("meter").appendChild(el);
   }
-  const ships = [...data.students].sort((a, b) => b.stars - a.stars || a.name.localeCompare(b.name));
-  $("fleet").innerHTML = ships.length ? ships.map(s => `<div class="ship"><canvas data-paint="${esc(s.look.paint)}"></canvas><div><b>${esc(s.name)}</b><small>${s.stars} ★</small></div></div>`).join("")
+  // By name, with no one's star count: this is a crew on the class screen,
+  // not a ranking. The meter above is what the stars are for.
+  const ships = [...data.students].sort((a, b) => a.name.localeCompare(b.name));
+  $("fleet").innerHTML = ships.length ? ships.map(s => `<div class="ship"><canvas data-paint="${esc(s.look.paint)}"></canvas><div><b>${esc(s.name)}</b></div></div>`).join("")
     : '<p class="empty">Nobody has landed yet.</p>';
   $("fleet").querySelectorAll("canvas").forEach(cv => rover(cv, cv.dataset.paint));
   $("moments").innerHTML = data.feed.length ? [...data.feed].reverse().map(m => {
     const key = m.at + m.text, fresh = !seen.has(key);
     seen.add(key);
     return `<div class="moment${fresh && seen.size > data.feed.length ? " fresh" : ""}">${esc(m.text)}<time>${ago(m.at)}</time></div>`;
-  }).join("") : '<p class="empty">First beacons, records and three-star runs appear here.</p>';
+  }).join("") : '<p class="empty">First missions, records and three-star runs appear here.</p>';
 }
 refresh();
 setInterval(refresh, 4000);

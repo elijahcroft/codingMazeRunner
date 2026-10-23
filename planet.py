@@ -5,33 +5,44 @@ Every zone has ONE hidden physics rule that nobody explains. Students find it
 by running code, watching the replay and reading the log, then write a
 program that works with it. Each zone has three sites:
 
-    A  Notice      the rule appears, and the obvious program breaks in plain sight
+    A  Notice      a field measurement: the rule shows up, and the mission is
+                   to find its number and report() it (Crumbling Crust and
+                   the Portal Fields notice it on a normal mission instead)
     B  Use         the site can only be solved by using the rule on purpose
     C  Generalise  the rule's details differ per student, so only a program
                    built on sensors and variables works (and copying doesn't)
 
-The program runs top to bottom like Python Quest, with commands
+This is not the maze game. The rover never turns: it drives by compass on
+open ground,
 
-    move()  move(3)  turn_left()  turn_right()  wait()
+    north()  south(3)  east()  west(2)  wait()
 
-and every command takes one tick of planet time. Sensors arrive zone by zone.
-Student code runs in the Light Cycles interpreter (cycles.Brain): a whitelist
-of the parse tree, so no imports, attribute access or real builtins ever run
-on the teacher's laptop.
+and every square of driving (or wait) takes one tick of planet time. It
+senses with look("east"), which says what's on the next square in words
+("rock", "ice", "crater"...), and x() and y(), the square it's on. Each site
+has a mission: reach the beacon, collect every sample, or report() a number
+to mission control. Sensors arrive zone by zone. Student code runs in the
+Light Cycles interpreter (cycles.Brain): a whitelist of the parse tree, so no
+imports, attribute access or real builtins ever run on the teacher's laptop.
 
 Map squares:
-    #  rock          .  ground        S  start (ground)   G  beacon (the goal)
+    #  rock          .  ground        S  start (ground)   G  beacon
     ~  ice           O  crater        *  sample           +  sunny ground
     P  portal pad
 
-Crystals are bonus pick-ups listed beside the map (a variant's "crystals"),
-lying on top of whatever square they're on, so a crystal on ice is still ice.
+A site with a beacon is reached by stopping on it (with every sample
+collected first, if there are any). Without a beacon, collecting the last
+sample completes it. A variant with an "answer" is a field measurement:
+report() the right number. Crystals are bonus pick-ups listed beside the map
+(a variant's "crystals"), lying on top of whatever square they're on.
 
-Every site has three stars: reach the beacon, the site's bonus challenge, and
-compact code (that many lines or fewer). Re-running to earn them is the practice.
+Every site has three stars: complete the mission, the site's bonus
+challenge, and compact code (that many lines or fewer). Re-running to earn
+them is the practice.
 """
 
 import ast
+import difflib
 import random
 import zlib
 
@@ -42,24 +53,56 @@ MAX_TICKS = 1000          # planet time before the rover gives up
 PROGRAM_BUDGET = 200_000  # interpreter operations for one whole run
 MAX_CODE = 4000           # characters in one program
 MAX_PRINTS = 80           # print() lines kept: the LAST ones
-MAX_MOVE = 50             # move(n) takes at most this many squares
+MAX_MOVE = 50             # east(n) drives at most this many squares
 BATTERY_MAX = 100
 SUN_CHARGE = 2            # battery gained each tick the rover ends in sunlight
 
-COMMANDS = ("move", "turn_left", "turn_right", "wait")
+COMMANDS = ("north", "south", "east", "west", "wait")
+COMPASS = {"north": 0, "east": 1, "south": 2, "west": 3}   # index into DIRS
 
 # Each sensor arrives with a zone and stays for every zone after it.
 SENSOR_ZONE = {
-    "wall_ahead": 0, "wall_left": 0, "wall_right": 0, "at_goal": 0,
-    "tick": 2, "crater_ahead": 2,
-    "cracked_ahead": 3, "samples_left": 3,
+    "look": 0, "at_beacon": 0,
+    "x": 1, "y": 1, "report": 1,
+    "tick": 2,
+    "samples_left": 3,
     "battery": 4, "in_sun": 4,
-    "gust_in": 6,
+    "beacon_x": 6, "beacon_y": 6, "gust_in": 6,
 }
+
+# What look() calls each square.
+WORDS = {"#": "rock", ".": "ground", "S": "ground", "G": "beacon", "~": "ice",
+         "O": "crater", "*": "ground", "+": "sun", "P": "pad"}
+
+# The maze game's words, each with what to write on this planet instead.
+COMPASS_ONLY = ("This rover doesn't turn: it drives by compass. Write  "
+                "north()  south()  east()  or  west(),  like  east(3)")
+LOOK_INSTEAD = ('There\'s no "ahead" on this planet. To check the square to '
+                'the east, write  look("east") == "rock"')
+MAZE_HABITS = {
+    "move": COMPASS_ONLY, "turn_left": COMPASS_ONLY, "turn_right": COMPASS_ONLY,
+    "turn": COMPASS_ONLY, "forward": COMPASS_ONLY, "go": COMPASS_ONLY,
+    "drive": COMPASS_ONLY, "steer": COMPASS_ONLY, "left": COMPASS_ONLY,
+    "right": COMPASS_ONLY,
+    "wall_ahead": LOOK_INSTEAD, "wall_left": LOOK_INSTEAD,
+    "wall_right": LOOK_INSTEAD, "crater_ahead": LOOK_INSTEAD,
+    "cracked_ahead": LOOK_INSTEAD,
+    "at_goal": "Here it's  at_beacon()",
+}
+LOOK_HOW = ('look() needs a direction in quotes: "north", "south", "east" or '
+            '"west", like  look("east")')
+
+
+def literal(node):
+    """A number typed straight in, like 6 or -2 (not worked out by code)."""
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
+        node = node.operand
+    return isinstance(node, ast.Constant)
 
 
 class _End(Exception):
-    """The run is over (goal, fall, flat battery, out of time): stop the program."""
+    """The run is over (mission done, fall, flat battery, out of time): stop
+    the program."""
 
 
 class Rover(Brain):
@@ -80,11 +123,18 @@ class Rover(Brain):
             raise BotError(f"Your program is too long: the limit is {MAX_CODE} "
                            f"characters (about 100 lines). Delete some comments "
                            f"or lines you don't need.")
-        code = code.replace(" ", " ").replace("​", "").replace("﻿", "")
+        code = code.replace(" ", " ").replace("​", "").replace("﻿", "")
         try:
             self.tree = ast.parse(code)
         except SyntaxError as e:
-            raise BotError(syntax_message(e))
+            err = BotError(syntax_message(e, "def step():"))
+            err.syntax_line = e.lineno   # for the editor; the text already says it
+            raise err
+        # Every def in the program, so a call above its def can say where it is,
+        # and the ones that ran, so a def nobody calls can be pointed out.
+        self.defs = {n.name: n.lineno for n in ast.walk(self.tree)
+                     if isinstance(n, ast.FunctionDef)}
+        self.called = set()
 
     def run(self):
         try:
@@ -112,11 +162,64 @@ class Rover(Brain):
                            "own with def.")
         return super().eval(node, frame)
 
+    def mine(self, name, frame):
+        return name in frame.vars or name in self.globals.vars
+
+    def lookup(self, name, frame):
+        if not self.mine(name, frame):
+            if name.lower() in ("left", "right", "straight", "forward"):
+                raise BotError(COMPASS_ONLY)
+            if name.lower() in COMPASS:
+                raise BotError(f'To drive, write  {name.lower()}()  with brackets. '
+                               f'To name the direction, put it in quotes: '
+                               f'"{name.lower()}"')
+        return super().lookup(name, frame)
+
+    def assign(self, name, value, frame):
+        if name in ("x", "y") and name in self.sensors:
+            raise BotError(f"{name}() is the rover's sensor for where it is, so "
+                           f"{name} can't be a variable too. Pick another name, "
+                           f"like  n  or  steps")
+        super().assign(name, value, frame)
+
     def run_statement(self, node, frame):
         if isinstance(node, (ast.Import, ast.ImportFrom)):
             raise BotError("import isn't allowed on Strange Planet — "
                            "everything you need is already here.")
+        if isinstance(node, ast.FunctionDef) and \
+                (node.name in COMMANDS or node.name in ("look", "report")):
+            raise BotError(f"{node.name}() is already one of the rover's commands — "
+                           f"pick another name, like  def hop():")
+        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Name):
+            name = node.value.id
+            if name in self.sensors or name in self.defs:
+                raise BotError(f"{name} needs brackets to run: write  {name}()")
+            self.lookup(name, frame)   # left, north, or a name it doesn't know
+            if frame.module:
+                raise BotError("That line doesn't do anything on its own. "
+                               "Commands need brackets, like  east()")
         super().run_statement(node, frame)
+
+    def call_user(self, fn, args):
+        self.called.add(fn.name)
+        want = len(fn.args.args)
+        if len(args) != want:
+            raise BotError(f"{fn.name}() doesn't take anything in the ( ), because "
+                           f"it was made with  def {fn.name}():" if not want else
+                           f"{fn.name}() needs {want} value{'s' if want > 1 else ''} "
+                           f"in the ( ), like  {fn.name}({', '.join(['3'] * want)})")
+        return super().call_user(fn, args)
+
+    def direction(self, node, frame):
+        """look()'s direction: "east" in quotes, a variable holding it, or
+        (forgiven) the bare word east."""
+        if isinstance(node, ast.Name) and node.id.lower() in COMPASS and \
+                not self.mine(node.id, frame):
+            return node.id.lower()
+        way = self.eval(node, frame)
+        if not isinstance(way, str) or way.strip().lower() not in COMPASS:
+            raise BotError(LOOK_HOW)
+        return way.strip().lower()
 
     def call(self, node, frame):
         if isinstance(node.func, ast.Attribute):
@@ -124,25 +227,33 @@ class Rover(Brain):
                            f"Planet — use the commands and sensors, or make your "
                            f"own with def.")
         if not isinstance(node.func, ast.Name):
-            raise BotError("I can only call plain commands, like  move()")
+            raise BotError("I can only call plain commands, like  east()")
         if node.keywords:
             raise BotError("Commands don't take name=value arguments here.")
         name = node.func.id
         world = self.world
         if name in COMMANDS:
             args = [self.eval(a, frame) for a in node.args]
-            if name == "move":
-                if len(args) > 1:
-                    raise BotError("move() takes one number at most, like  move(3)")
-                n = self.number(args[0], "move()") if args else 1
-                if n < 0 or n > MAX_MOVE:
-                    raise BotError(f"move() takes a number from 0 to {MAX_MOVE}.")
-                for _ in range(n):
-                    world.act("move")
-            elif args:
-                raise BotError(f"{name}() doesn't take anything in the ( ).")
-            else:
+            if len(args) > 1:
+                raise BotError(f"{name}() takes one number at most, like  {name}(3)")
+            n = self.number(args[0], f"{name}()") if args else 1
+            if n < 0 or n > MAX_MOVE:
+                raise BotError(f"{name}() takes a number from 0 to {MAX_MOVE}.")
+            for _ in range(n):
                 world.act(name)
+            return None
+        if name == "look" and name in self.sensors:
+            if len(node.args) != 1:
+                raise BotError(LOOK_HOW)
+            return world.look(self.direction(node.args[0], frame))
+        if name == "report" and name in self.sensors:
+            if len(node.args) != 1:
+                raise BotError("report() sends one number, like  report(6)")
+            value = self.eval(node.args[0], frame)
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise BotError(f"report() sends a whole number, like  report(6), "
+                               f"not {value!r}.")
+            world.report(value, not literal(node.args[0]))
             return None
         if name in self.sensors:
             if node.args:
@@ -151,6 +262,8 @@ class Rover(Brain):
         if name in SENSOR_ZONE:
             raise BotError(f"{name}() hasn't been unlocked yet: it arrives in "
                            f"{ZONE_NAMES[SENSOR_ZONE[name]]}.")
+        if name in MAZE_HABITS and name not in self.funcs and name not in self.defs:
+            raise BotError(MAZE_HABITS[name])
         if name == "print":
             args = [self.eval(a, frame) for a in node.args]
             line = " ".join(str(a) for a in args)
@@ -162,11 +275,15 @@ class Rover(Brain):
         if name in ("max", "min") and len(node.args) < 2:
             raise BotError(f"{name}() needs at least two numbers, like "
                            f"{name}(3, battery())")
-        if name in ("steer", "left", "right", "forward", "turn", "go", "stop") \
-                and name not in self.funcs:
-            raise BotError(f"I don't know the command '{name}'. The rover's "
-                           f"commands are  move()  turn_left()  turn_right()  "
-                           f"and  wait()")
+        if name not in self.funcs and name in self.defs:
+            raise BotError(f"{name}() is made with def further down, on line "
+                           f"{self.defs[name]}. The program runs from the top, so "
+                           f"move the def above the first line that uses {name}().")
+        known = list(self.sensors) + list(self.funcs) + ["print", "max", "min", "abs", "range"]
+        if name not in known and not difflib.get_close_matches(name.lower(), known, 1, 0.75):
+            raise BotError(f"I don't know the command '{name}'. The rover's commands "
+                           f"and sensors are the buttons under your code — or make "
+                           f"{name}() yourself with def.")
         return super().call(node, frame)
 
 
@@ -180,13 +297,17 @@ class World:
         self.v = variant
         self.r, self.c = next((r, c) for r, row in enumerate(self.grid)
                               for c, ch in enumerate(row) if ch == "S")
-        self.d = variant.get("dir", 1)
+        self.goal = next(((r, c) for r, row in enumerate(self.grid)
+                          for c, ch in enumerate(row) if ch == "G"), None)
+        self.mission = mission_of(variant)
+        self.d = variant.get("dir", 1)   # the way the rover last drove: for drawing it
         self.t = 0
         self.battery = variant.get("battery", BATTERY_MAX)
         self.cracked = set()
         self.crack = None    # the square that just cracked, for the next frame
         self.crystals = {tuple(p) for p in variant.get("crystals", [])}
         self.bumps = self.pushes = 0
+        self.computed = False   # the right report() was worked out by code
         self.samples = {(r, c) for r, row in enumerate(self.grid)
                         for c, ch in enumerate(row) if ch == "*"}
         self.links = {}
@@ -198,7 +319,7 @@ class World:
         self.log = []
         self.prints = []
         self.frames = [self.frame()]
-        self.end = None      # "goal", "fell", "battery", "ticks" once it's over
+        self.end = None      # "goal", "wrong", "fell", "battery", "ticks" once it's over
 
     # ---- what the rover sees ----------------------------------------------
 
@@ -207,17 +328,20 @@ class World:
             return self.grid[r][c]
         return "#"
 
-    def ahead(self, turn=0):
-        dr, dc = DIRS[(self.d + turn) % 4]
+    def ahead(self):
+        dr, dc = DIRS[self.d]
         return self.r + dr, self.c + dc
 
-    def in_sun(self):
-        if self.at(self.r, self.c) == "+":
+    def sunny(self, r, c):
+        if self.at(r, c) == "+":
             return True
         band = self.v.get("sun")
-        if not band:
+        if not band or self.at(r, c) == "#":
             return False
-        return (self.c - self.sun_at(self.t)) % self.cols < band["width"]
+        return (c - self.sun_at(self.t)) % self.cols < band["width"]
+
+    def in_sun(self):
+        return self.sunny(self.r, self.c)
 
     def sun_at(self, t):
         band = self.v["sun"]
@@ -229,21 +353,25 @@ class World:
             return 0
         return every - self.t % every
 
+    def look(self, way):
+        dr, dc = DIRS[COMPASS[way]]
+        r, c = self.r + dr, self.c + dc
+        if (r, c) in self.cracked:
+            return "crack"
+        if (r, c) in self.samples:
+            return "sample"
+        word = WORDS[self.at(r, c)]
+        return "sun" if word == "ground" and self.sunny(r, c) else word
+
     def sense(self, name):
-        if name == "wall_ahead":
-            return self.at(*self.ahead()) == "#"
-        if name == "wall_left":
-            return self.at(*self.ahead(-1)) == "#"
-        if name == "wall_right":
-            return self.at(*self.ahead(1)) == "#"
-        if name == "at_goal":
-            return self.at(self.r, self.c) == "G"
+        if name == "at_beacon":
+            return (self.r, self.c) == self.goal
+        if name == "x":
+            return self.c
+        if name == "y":
+            return self.r
         if name == "tick":
             return self.t
-        if name == "crater_ahead":
-            return self.at(*self.ahead()) == "O"
-        if name == "cracked_ahead":
-            return self.ahead() in self.cracked
         if name == "samples_left":
             return len(self.samples)
         if name == "battery":
@@ -252,6 +380,10 @@ class World:
             return self.in_sun()
         if name == "gust_in":
             return self.gust_in()
+        if name in ("beacon_x", "beacon_y"):
+            if self.goal is None:
+                return -1
+            return self.goal[1] if name == "beacon_x" else self.goal[0]
         raise BotError(f"I don't know the sensor '{name}'.")
 
     # ---- the replay ----------------------------------------------------------
@@ -319,43 +451,37 @@ class World:
         self.t += 1
         if "battery" in self.rules and command != "wait":
             self.battery -= 1
-        if command == "turn_left":
-            self.d = (self.d - 1) % 4
-            self.frames.append(self.frame())
-        elif command == "turn_right":
-            self.d = (self.d + 1) % 4
-            self.frames.append(self.frame())
-        elif command == "wait":
+        if command == "wait":
             self.frames.append(self.frame("wait"))
         else:
-            self.drive()
-        if "wind" in self.rules and command == "move" and self.t % self.v["wind"] == 0:
+            self.d = COMPASS[command]
+            self.drive(command)
+        if "wind" in self.rules and command != "wait" and self.t % self.v["wind"] == 0:
             self.gust()
         if "battery" in self.rules and self.in_sun():
             self.battery = min(BATTERY_MAX, self.battery + SUN_CHARGE)
             self.frames[-1]["b"] = self.battery
         self.check_goal()
 
-    def drive(self):
+    def drive(self, command):
         r, c = self.ahead()
         if self.at(r, c) == "#":
             self.bumps += 1
             self.say("🧱 bumped into rock")
             self.frames.append(self.frame("bump"))
             return
-        start = (self.r, self.c)
         self.enter(r, c)
         self.portal()
         # On ice the rover keeps sliding until something stops it.
-        slid = 1
+        slid = False
         while "ice" in self.rules and self.at(self.r, self.c) == "~":
             r, c = self.ahead()
             if self.at(r, c) == "#":
                 break
             self.enter(r, c)
-            slid += 1
-        if slid > 1:
-            self.say(f"⛸ one move() slid {slid} squares")
+            slid = True
+        if slid:
+            self.say(f"⛸ one {command}() kept sliding")
 
     def portal(self):
         if self.at(self.r, self.c) != "P":
@@ -366,7 +492,7 @@ class World:
         frm = (self.r, self.c)
         self.r, self.c = to
         self.frames.append(self.frame("portal"))
-        self.say(f"✨ pad at row {frm[0]} col {frm[1]} → row {to[0]} col {to[1]}")
+        self.say(f"✨ pad at x {frm[1]} y {frm[0]} → x {to[1]} y {to[0]}")
 
     def gust(self):
         r, c = self.r, self.c + 1
@@ -377,13 +503,40 @@ class World:
         self.say("💨 gust pushed the rover east")
         self.enter(r, c, "gust")
 
+    def report(self, value, computed):
+        if self.end:
+            raise _End()
+        if self.mission != "report":
+            self.say(f"📡 report sent: {value}")
+            return
+        self.computed = computed
+        if value == self.v["answer"]:
+            self.finish("goal", f"📡 you reported {value}. Mission control: "
+                                f"that matches what we measured!")
+        self.finish("wrong", f"📡 you reported {value}. Mission control "
+                             f"measured something different.")
+
     def check_goal(self):
-        if self.at(self.r, self.c) == "G":
+        if self.mission == "beacon" and (self.r, self.c) == self.goal:
             if self.samples:
                 self.say(f"🛰 the beacon needs every sample first "
                          f"({len(self.samples)} left)")
             else:
                 self.finish("goal", "🎉 beacon reached")
+        elif self.mission == "samples" and not self.samples:
+            self.finish("goal", "🎉 every sample collected")
+
+
+def mission_of(variant):
+    """"report" (a field measurement), "beacon" or "samples"."""
+    if "answer" in variant:
+        return "report"
+    return "beacon" if any("G" in row for row in variant["map"]) else "samples"
+
+
+ENDED_SHORT = {"report": "🏁 program ended without a report()",
+               "beacon": "🏁 program ended away from the beacon",
+               "samples": "🏁 program ended with samples still out there"}
 
 
 def drive(code, variant, rules, zone):
@@ -391,27 +544,35 @@ def drive(code, variant, rules, zone):
     world = World(variant, rules)
     sensors = {name: None for name, z in SENSOR_ZONE.items() if z <= zone}
     sensors.update({name: None for name in COMMANDS})
-    error = line = None
+    error = line = rover = None
     try:
         rover = Rover(str(code)[:MAX_CODE + 1], world, sensors)
         rover.run()
     except _End:
         pass
     except BotError as e:
-        error, line = str(e), e.line
+        error, line = str(e), e.line or getattr(e, "syntax_line", None)
     except RecursionError:
         error = "Your functions call each other too deeply."
     if error is None and world.end is None:
         world.end = "stopped"
-        world.say("🏁 program ended away from the beacon")
+        for name in [n for n in rover.defs if n not in rover.called][:1]:
+            world.say(f"🧩 {name}() was made with def but never used. Add a "
+                      f"line  {name}()  to run it.")
+        world.say(ENDED_SHORT[world.mission])
     return {"reached": world.end == "goal", "end": "error" if error else world.end,
+            "mission": world.mission,
             "ticks": world.t, "error": error, "line": line,
             "frames": world.frames, "log": world.log, "prints": world.prints,
             "cracked": sorted(world.cracked),
             "sun_width": (variant.get("sun") or {}).get("width", 0),
             "crystals": [len(variant.get("crystals", [])) - len(world.crystals),
                          len(variant.get("crystals", []))],
+            "samples": len(world.samples),
             "bumps": world.bumps, "pushes": world.pushes,
+            "computed": world.computed,
+            # A def the program actually ran, for the def star and badge.
+            "own_function": bool(rover and rover.called),
             "battery": world.battery if "battery" in rules else None}
 
 
@@ -445,6 +606,46 @@ def strings(grid):
     return ["".join(row) for row in grid]
 
 
+def open_ground(rows, cols):
+    """An empty field: ground with a rock border."""
+    return [["#"] * cols] + [["#"] + ["."] * (cols - 2) + ["#"]
+                             for _ in range(rows - 2)] + [["#"] * cols]
+
+
+def boulder_run(pairs, seed):
+    """Open ground with a sample at every stop of a rover that drives east
+    until the next square is rock, then south until it's rock, `len(pairs)`
+    times over. `pairs` are the (east, south) squares of each stretch. A few
+    loose boulders lie well away from the way through."""
+    r = c = 1
+    path, rocks, stops = [(r, c)], [], []
+    for east, south in pairs:
+        for _ in range(east):
+            c += 1
+            path.append((r, c))
+        rocks.append((r, c + 1))
+        stops.append((r, c))
+        for _ in range(south):
+            r += 1
+            path.append((r, c))
+        rocks.append((r + 1, c))
+        stops.append((r, c))
+    rows = r + 4
+    cols = max(p[1] for p in path) + 4
+    grid = open_ground(rows, cols)
+    for rr, cc in rocks:
+        grid[rr][cc] = "#"
+    rng = random.Random(seed)
+    for _ in range(14):
+        rr, cc = rng.randrange(1, rows - 1), rng.randrange(1, cols - 1)
+        if all(max(abs(rr - a), abs(cc - b)) > 1 for a, b in path + rocks):
+            grid[rr][cc] = "#"
+    for rr, cc in stops:
+        grid[rr][cc] = "*"
+    grid[1][1] = "S"
+    return strings(grid)
+
+
 def windy_ledge(legs):
     """A track with craters just east of every square, wherever there's room:
     a gust that catches the rover driving pushes it over the edge."""
@@ -465,28 +666,16 @@ def sunny(legs, pads):
     return strings(grid)
 
 
-def spiral_room(rows, cols, samples):
-    """An empty crumbling room. A rover that turns right whenever it's blocked
-    by rock or cracks spirals in and visits every square once; the beacon
-    sits where that spiral ends, and the samples are on the way."""
-    grid = [["#"] * (cols + 2)] + [["#"] + ["."] * cols + ["#"]
-                                   for _ in range(rows)] + [["#"] * (cols + 2)]
-    r, c, d = 1, 1, 1
-    seen = {(r, c)}
-    while True:
-        for turn in range(4):
-            dr, dc = DIRS[(d + turn) % 4]
-            if grid[r + dr][c + dc] != "#" and (r + dr, c + dc) not in seen:
-                d = (d + turn) % 4
-                break
-        else:
-            break
-        r, c = r + DIRS[d][0], c + DIRS[d][1]
-        seen.add((r, c))
+def crust_room(rows, cols, seed):
+    """An empty crumbling room with a sample somewhere on every row but the
+    first, so sweeping it like mowing a lawn collects them all."""
+    rng = random.Random(seed)
+    grid = open_ground(rows + 2, cols + 2)
+    c = 1
+    for r in range(2, rows + 1):   # never straight below the last one
+        c = rng.choice([x for x in range(1, cols + 1) if x != c])
+        grid[r][c] = "*"
     grid[1][1] = "S"
-    grid[r][c] = "G"
-    for sr, sc in samples:
-        grid[sr][sc] = "*"
     return strings(grid)
 
 
@@ -529,90 +718,137 @@ FROZEN_LAKES = [
      "#~~~~~~#~#",
      "#S~~##~~~#",
      "##########"],
+    ["##########",
+     "#~~~G~~~~#",
+     "#~~~~#~#~#",
+     "#~~~#~~#~#",
+     "##~~~~~~~#",
+     "#~##~#~~~#",
+     "#~~~~~~~##",
+     "#S~~#~~~~#",
+     "##########"],
+    ["##########",
+     "#~~####~~#",
+     "#~~~~~#~~#",
+     "##~~~~~~~#",
+     "#~~~~#~G~#",
+     "#~~~~~~~~#",
+     "#~~~~~~~~#",
+     "#S~~#~~###",
+     "##########"],
+    ["##########",
+     "#~##~#~~~#",
+     "#~~~~~#~~#",
+     "#~~~~~~~~#",
+     "#~~~~~G~~#",
+     "#~~~####~#",
+     "#~#~~~~~~#",
+     "#S~~~~~#~#",
+     "##########"],
+    ["##########",
+     "#~~#~~~~~#",
+     "#~##~~#~~#",
+     "#~~~~~#~~#",
+     "#~~##~~~~#",
+     "#~G#~~~~~#",
+     "###~~~~~~#",
+     "#S~~~~~~~#",
+     "##########"],
 ]
+
 
 
 def site(key, name, brief, variants, per_student=False, reference="",
          bonus=None, compact=99):
     """One site. Every variant is a dict with a "map" and the hidden details
-    (wind, sun, portal pairs, battery). `per_student` sites give each student
-    their own variant; `reference` is a program that clears every variant.
-    `bonus` is the site's challenge star and `compact` the most lines of code
-    for the compact star; a variant may set its own of either."""
+    (wind, sun, portal pairs, battery, the answer to report). `per_student`
+    sites give each student their own variant; `reference` is a program that
+    clears every variant. `bonus` is the site's challenge star and `compact`
+    the most lines of code for the compact star; a variant may set its own of
+    either."""
     return {"key": key, "name": name, "brief": brief, "variants": variants,
             "per_student": per_student, "reference": reference,
             "bonus": bonus or {"kind": "no_bump"}, "compact": compact}
 
 
+# The 1B field: eight samples on a diagonal, loose boulders off it.
+STEPS_FIELD = open_ground(11, 11)
+for _k in range(2, 10):
+    STEPS_FIELD[_k][_k] = "*"
+for _r, _c in ((1, 6), (2, 9), (4, 1), (6, 3), (7, 9), (9, 5)):
+    STEPS_FIELD[_r][_c] = "#"
+STEPS_FIELD[1][1] = "S"
+STEPS_FIELD = strings(STEPS_FIELD)
+
 ZONES = [
     {"key": "landing", "name": "Landing Site", "rules": set(),
-     "blurb": "Ordinary ground. Learn to drive.",
+     "blurb": "Ordinary ground. Learn to drive by compass.",
      "hints": [
-         "Commands run in order, top to bottom. Count the squares on the map "
-         "before each turn.",
-         "for i in range(7):  repeats the lines pushed in under it 7 times. "
+         "The rover doesn't turn: it drives by compass. east(3) drives three "
+         "squares east (to the right), south() one square down. Count the "
+         "squares on the map.",
+         "for i in range(8):  repeats the lines pushed in under it 8 times. "
          "Find the piece of the route that repeats.",
-         "When the lengths change, don't count them: drive until you meet "
-         "rock.\n\nwhile not wall_ahead():\n    move()",
+         "look(\"east\") says what's on the next square to the east, like "
+         "\"rock\". Drive until it's rock:\n\nwhile look(\"east\") != \"rock\":\n"
+         "    east()",
      ],
      "sites": [
          site("1a", "Touchdown",
-              "Drive to the beacon. Count the squares before each turn.",
-              [{"map": ["###########",
-                        "#S...######",
-                        "#.##.######",
-                        "####.....G#",
-                        "###########"]}],
-              reference="move(3)\nturn_right()\nmove(2)\nturn_left()\nmove(5)\n"),
-         site("1b", "Ridge Steps",
-              "A long staircase. One step repeats.",
-              [{"map": ["###########",
-                        "#S.########",
-                        "##..#######",
-                        "###..######",
-                        "####..#####",
-                        "#####..####",
-                        "######..###",
-                        "#######..##",
-                        "########.G#",
-                        "###########"]}],
-              reference="for i in range(7):\n    move()\n    turn_right()\n"
-                        "    move()\n    turn_left()\nmove()\n"),
-         site("1c", "Long Corridors",
-              "Your corridors are a different length from everyone else's.",
-              [{"map": strings(path_map(legs)[0])} for legs in (
-                  [(1, 4), (2, 3), (1, 6), (2, 4), (1, 5)],
-                  [(1, 7), (2, 2), (1, 3), (2, 5), (1, 4)],
-                  [(1, 3), (2, 5), (1, 5), (2, 2), (1, 7)],
-                  [(1, 6), (2, 4), (1, 2), (2, 3), (1, 6)])],
+              "Collect the three samples. Drive with north() south() east() west().",
+              [{"map": ["############",
+                        "#S...#.....#",
+                        "#....#..*..#",
+                        "#.*..#.....#",
+                        "#..........#",
+                        "#....##..*.#",
+                        "############"]}],
+              reference="south(2)\neast()\nsouth()\neast(7)\nsouth()\n"
+                        "north(3)\nwest()\n"),
+         site("1b", "Crystal Steps",
+              "Eight samples in a line of steps. One step repeats.",
+              [{"map": STEPS_FIELD}],
+              reference="for i in range(8):\n    east()\n    south()\n"),
+         site("1c", "Boulder Run",
+              "A sample waits at every boulder. Your boulders aren't where "
+              "anyone else's are.",
+              [{"map": boulder_run(pairs, i)} for i, pairs in enumerate((
+                  [(4, 2), (3, 4), (5, 2), (2, 3)],
+                  [(6, 3), (2, 2), (3, 4), (4, 2)],
+                  [(3, 4), (5, 3), (2, 2), (3, 3)],
+                  [(5, 2), (4, 3), (3, 3), (2, 2)],
+                  [(2, 3), (3, 2), (6, 3), (3, 4)],
+                  [(4, 4), (2, 3), (4, 2), (5, 3)],
+                  [(3, 2), (6, 2), (2, 4), (4, 2)],
+                  [(5, 3), (3, 4), (2, 2), (2, 3)]))],
               per_student=True,
-              reference="for i in range(2):\n    while not wall_ahead():\n"
-                        "        move()\n    turn_right()\n"
-                        "    while not wall_ahead():\n        move()\n"
-                        "    turn_left()\nwhile not wall_ahead():\n    move()\n"),
+              # A route counted off the map is 8 lines; this is 5, so only
+              # it is compact.
+              reference="for i in range(4):\n"
+                        "    while look(\"east\") != \"rock\":\n        east()\n"
+                        "    while look(\"south\") != \"rock\":\n        south()\n"),
      ]},
     {"key": "ice", "name": "Ice Field", "rules": {"ice"},
      "blurb": "Something about this ground is different.",
      "hints": [
-         "Watch the replay closely. How many squares does ONE move() take "
-         "on the shiny ground?",
-         "On ice, one move() slides until something stops it: rock, or "
+         "Watch the replay closely. How many squares does ONE east() take "
+         "on the shiny ground? x() says which column the rover is on.",
+         "On ice, one east() slides until something stops it: rock, or "
          "ordinary ground. You can't stop in the middle of the ice.",
          "Rocks are your brakes. Work backwards from the beacon: which rock "
-         "could stop you right next to it? A function per direction helps:\n\n"
-         "def slide_up():\n    turn_left()\n    move()\n    turn_right()",
+         "could stop you right next to it? To measure a slide in code:\n\n"
+         "before = x()\neast()\nreport(x() - before)",
      ],
      "sites": [
          site("2a", "First Frost",
-              "The beacon is just below the ice.",
-              [{"map": ["###########",
-                        "#S~~~~~~..#",
-                        "#.###.###.#",
-                        "#.###G###.#",
-                        "#.........#",
-                        "###########"]}],
-              reference="turn_right()\nmove(3)\nturn_left()\nmove(4)\n"
-                        "turn_left()\nmove()\n"),
+              "📡 Field measurement: how many squares does one east() take "
+              "on the ice? report() the number, like  report(4)",
+              [{"map": ["#############",
+                        "#...........#",
+                        "#S~~~~~~#...#",
+                        "#...........#",
+                        "#############"], "answer": 6}],
+              reference="east()\nreport(x() - 1)\n"),
          site("2b", "Glacier",
               "Two squares away. Getting there is another matter.",
               [{"map": ["#########",
@@ -623,45 +859,48 @@ ZONES = [
                         "#~~#~~#~#",
                         "#S#G~~~~#",
                         "#########"]}],
-              reference="turn_left()\nmove()\nturn_right()\nmove()\n"
-                        "turn_right()\nmove()\nturn_left()\nmove()\n"
-                        "turn_right()\nmove()\nturn_right()\nmove()\n"),
+              reference="north()\neast()\nsouth()\neast()\nsouth()\nwest()\n"),
          site("2c", "Frozen Lake",
-              "Your lake's rocks are yours alone. Plan your route.",
+              "Your lake's rocks are yours alone. Plan your slides.",
               [{"map": m} for m in FROZEN_LAKES], per_student=True),
      ]},
     {"key": "wind", "name": "Wind Canyon", "rules": {"wind"},
-     "blurb": "Craters line the canyon. Something keeps nudging the rover.",
+     "blurb": "Something keeps nudging the rover.",
      "hints": [
-         "Watch WHEN the rover gets pushed. print(tick()) before each move "
-         "and compare the numbers.",
+         "Watch WHEN the rover gets pushed. print(tick()) before each "
+         "south() and compare the numbers.",
          "A gust comes every few ticks, and it only catches a rover that is "
          "driving. A rover that wait()s holds on. tick() % 5 is 4 just "
          "before a gust that comes every 5 ticks.",
-         "Make your own safe move:\n\ndef step():\n    if tick() % 5 == 4:\n"
-         "        wait()\n    move()",
+         "Make your own guard, and call it before every square:\n\n"
+         "def guard():\n    if tick() % 5 == 4:\n        wait()\n\n"
+         "for i in range(6):\n    guard()\n    south()",
      ],
      "sites": [
          site("3a", "Canyon Floor",
-              "A straight run south. What could go wrong?",
-              [{"map": ["######",
-                        "##S.O#"] + ["##..O#"] * 11 + [
-                        "##G.O#",
-                        "######"], "dir": 2, "wind": 5}],
-              reference="move(4)\nwait()\nmove(4)\nwait()\nmove(4)\n"),
+              "📡 Field measurement: something pushes the rover. How many "
+              "ticks apart are the pushes? report() the number.",
+              [{"map": ["########",
+                        "#.S....#"] + ["#......#"] * 13 + ["########"],
+                "dir": 2, "wind": 5, "answer": 5}],
+              reference="while x() == 2:\n    south()\nreport(tick())\n"),
          site("3b", "The Ledge",
-              "A long ledge. Too much to dodge by hand.",
+              "A long ledge with craters along it. Too far to dodge by hand.",
               [{"map": windy_ledge([(2, 6), (1, 5), (2, 6), (1, 4), (2, 5)]),
                 "dir": 2, "wind": 5}],
-              reference="def step():\n    if tick() % 5 == 4:\n        wait()\n"
-                        "    move()\n\ndef go(n):\n    for i in range(n):\n"
-                        "        step()\n\ngo(6)\nturn_left()\ngo(5)\n"
-                        "turn_right()\ngo(6)\nturn_left()\ngo(4)\nturn_right()\n"
-                        "go(5)\n"),
+              reference="def guard():\n    if tick() % 5 == 4:\n        wait()\n\n"
+                        "def go_south(n):\n    for i in range(n):\n"
+                        "        guard()\n        south()\n\n"
+                        "def go_east(n):\n    for i in range(n):\n"
+                        "        guard()\n        east()\n\n"
+                        "go_south(6)\ngo_east(5)\ngo_south(6)\ngo_east(4)\n"
+                        "go_south(5)\n"),
          site("3c", "Gale Ridge",
               "This ridge keeps its own time.",
-              [{"map": windy_ledge([(2, 5), (1, 7), (2, 4), (1, 3), (2, 7)]),
-                "dir": 2, "wind": n} for n in (4, 6, 7, 9)],
+              [{"map": windy_ledge(legs), "dir": 2, "wind": n, "legs": legs}
+               for legs in ([(2, 5), (1, 7), (2, 4), (1, 3), (2, 7)],
+                            [(2, 4), (1, 5), (2, 6), (1, 4), (2, 5)])
+               for n in (4, 6, 7, 9)],
               per_student=True),
      ]},
     {"key": "crumble", "name": "Crumbling Crust", "rules": {"crumble"},
@@ -670,9 +909,11 @@ ZONES = [
          "Look at the squares the rover has already driven over. What "
          "happens if it drives over one again?",
          "Ground cracks as soon as the rover leaves it, and cracked ground "
-         "gives way. Never go back the way you came: find a loop.",
-         "Treat cracks like rock. Turn when either is ahead:\n\n"
-         "if wall_ahead() or cracked_ahead():\n    turn_right()",
+         "gives way. Never go back the way you came: find a loop. "
+         "look(\"south\") says \"crack\" for a cracked square.",
+         "Sweep like mowing a lawn: east to the rock, down one, west to "
+         "the rock, down one, and again. You never cross your own tracks:\n\n"
+         "while look(\"east\") != \"rock\":\n    east()\nsouth()",
      ],
      "sites": [
          site("4a", "Thin Crust",
@@ -683,8 +924,7 @@ ZONES = [
                         "#####..####",
                         "#####*.####",
                         "###########"]}],
-              reference="move(4)\nturn_right()\nmove(3)\nturn_left()\nmove()\n"
-                        "turn_left()\nmove(3)\nturn_right()\nmove(3)\n"),
+              reference="east(4)\nsouth(3)\neast()\nnorth(3)\neast(3)\n"),
          site("4b", "Three Pits",
               "Three pits, three samples.",
               [{"map": ["####################",
@@ -693,59 +933,63 @@ ZONES = [
                         "#####..###..###..###",
                         "#####*.###*.###*.###",
                         "####################"]}],
-              reference="def pit():\n    turn_right()\n    move(3)\n    turn_left()\n"
-                        "    move()\n    turn_left()\n    move(3)\n    turn_right()\n\n"
-                        "for i in range(3):\n    move(4)\n    pit()\nmove(2)\n"),
+              reference="def pit():\n    south(3)\n    east()\n    north(3)\n\n"
+                        "for i in range(3):\n    east(4)\n    pit()\neast(2)\n"),
          site("4c", "Sample Field",
-              "Sweep the field. Your samples are scattered differently.",
-              [{"map": spiral_room(5, 7, [(2, 4), (4, 2), (5, 6)])},
-               {"map": spiral_room(6, 6, [(1, 5), (5, 3), (3, 2)])},
-               {"map": spiral_room(7, 5, [(6, 1), (2, 3), (4, 5)])},
-               {"map": spiral_room(6, 8, [(2, 6), (6, 2), (5, 7)])}],
+              "Sweep the field for samples. Yours are scattered differently.",
+              [{"map": crust_room(rows, cols, i)} for i, (rows, cols) in enumerate(
+                  [(6, 7), (7, 6), (6, 8), (7, 8), (6, 9), (7, 7), (6, 6), (7, 9)])],
               per_student=True,
-              reference="while not at_goal():\n"
-                        "    if wall_ahead() or cracked_ahead():\n"
-                        "        turn_right()\n    else:\n        move()\n"),
+              reference="while samples_left() > 0:\n"
+                        "    while look(\"east\") != \"rock\":\n        east()\n"
+                        "    south()\n"
+                        "    while look(\"west\") != \"rock\":\n        west()\n"
+                        "    south()\n"),
      ]},
     {"key": "solar", "name": "Solar Valley", "rules": {"battery"},
      "blurb": "Long shadows. Keep an eye on the gauge.",
      "hints": [
          "print(battery()) as you go. What makes it go down? Does anything "
          "make it go up?",
-         "Driving and turning cost 1 battery. Waiting is free, and every "
+         "Driving costs 1 battery a square. Waiting is free, and every "
          "tick the rover spends in sunlight adds 2.",
          "Charge until you have enough for the next stretch:\n\n"
          "def charge_to(n):\n    while battery() < n:\n        wait()",
      ],
      "sites": [
          site("5a", "First Light",
-              "A straight run east.",
-              [{"map": ["################################",
-                        "#S++..........................G#",
-                        "################################"], "battery": 12}],
-              reference="move(2)\nfor i in range(10):\n    wait()\nmove(27)\n"),
+              "📡 Field measurement: how much battery does one tick of "
+              "wait() on the bright ground give? report() the number.",
+              [{"map": ["############",
+                        "#S++++.....#",
+                        "############"], "battery": 12, "answer": 2}],
+              reference="east()\nbefore = battery()\nwait()\n"
+                        "report(battery() - before)\n"),
          site("5b", "Shadow Steps",
               "Sunny corners, long shadows between.",
               [{"map": sunny([(1, 12), (2, 5), (3, 16), (2, 5), (1, 20)],
                              [12, 17, 33, 38]), "dir": 1, "battery": 14}],
               reference="def charge_to(n):\n    while battery() < n:\n"
-                        "        wait()\n\nmove(12)\ncharge_to(8)\nturn_right()\n"
-                        "move(5)\ncharge_to(18)\nturn_right()\nmove(16)\n"
-                        "charge_to(8)\nturn_left()\nmove(5)\ncharge_to(22)\n"
-                        "turn_left()\nmove(20)\n"),
+                        "        wait()\n\neast(12)\ncharge_to(5)\nsouth(5)\n"
+                        "charge_to(16)\nwest(16)\ncharge_to(5)\nsouth(5)\n"
+                        "charge_to(20)\neast(20)\n"),
          site("5c", "Moving Shadows",
               "Here, the sunlight moves.",
               [{"map": ["#" * 44, "#S" + "." * 40 + "G#", "#" * 44],
                 "battery": 10, "sun": sun}
                # The rover can catch each band before its 10 battery runs out.
-               for sun in ({"start": 6, "width": 4, "every": 3},
+               for sun in ({"start": 8, "width": 4, "every": 3},
                            {"start": 5, "width": 3, "every": 2},
-                           {"start": 4, "width": 3, "every": 4},
-                           {"start": 7, "width": 3, "every": 3})],
+                           {"start": 4, "width": 3, "every": 5},
+                           {"start": 5, "width": 4, "every": 2},
+                           {"start": 3, "width": 4, "every": 5},
+                           {"start": 8, "width": 3, "every": 3},
+                           {"start": 6, "width": 3, "every": 4},
+                           {"start": 8, "width": 3, "every": 5})],
               per_student=True,
-              reference="while not at_goal():\n"
+              reference="while not at_beacon():\n"
                         "    if in_sun() and battery() < 90:\n        wait()\n"
-                        "    else:\n        move()\n"),
+                        "    else:\n        east()\n"),
      ]},
 ]
 
@@ -764,12 +1008,12 @@ ZONES.append(
     {"key": "portals", "name": "Portal Fields", "rules": set(),
      "blurb": "Strange pads, all alike. Where do they go?",
      "hints": [
-         "Drive onto one pad at a time and read the log: it says the row and "
-         "col where the rover came out. Write it in your field journal.",
+         "Drive onto one pad at a time and read the log: it says the x and "
+         "y where the rover came out. Write it in your field journal.",
          "Pads work in pairs: go in one, come out of its partner. But some "
          "pads only send one way, and some send nowhere.",
          "Make one function per trip, then chain them:\n\n"
-         "def to_middle():\n    move(3)\n    turn_right()\n    move(2)\n\n"
+         "def to_middle():\n    south(2)\n    east(3)\n\n"
          "to_middle()\n...",
      ],
      "sites": [
@@ -782,8 +1026,7 @@ ZONES.append(
                         "#.....#P....#",
                         "#############"],
                 "pairs": [[(3, 3), (4, 7)], [(3, 1), (3, 5)]]}],
-              reference="move(2)\nturn_right()\nmove(2)\nturn_left()\nmove(2)\n"
-                        "turn_left()\nmove(2)\n"),
+              reference="east(2)\nsouth(2)\nnorth(2)\neast(2)\n"),
          site("6b", "Relay",
               "Two walls this time.",
               [{"map": ["###################",
@@ -793,8 +1036,7 @@ ZONES.append(
                         "#.....#.....#.P...#",
                         "###################"],
                 "pairs": [[(3, 4), (3, 8)], [(3, 10), (4, 14)], [(3, 2), (1, 10)]]}],
-              reference="move(3)\nturn_right()\nmove(2)\nturn_left()\nmove(2)\n"
-                        "move()\nturn_left()\nmove(2)\n"),
+              reference="east(3)\nsouth(2)\neast(2)\nnorth(2)\neast()\n"),
          site("6c", "Portal Maze",
               "Seven pads, wired differently on your planet.",
               [{"map": PORTAL_MAP, "pairs": pairs, "oneway": oneway}
@@ -802,7 +1044,11 @@ ZONES.append(
                    ([(A1, B2), (B1, C2)], [(C1, D1), (A2, B1)]),
                    ([(A2, C1), (C2, B1)], [(B2, D1), (A1, C2)]),
                    ([(A1, C2), (C1, B2)], [(B1, D1), (A2, A1)]),
-                   ([(A2, B1), (B2, C1)], [(C2, D1), (A1, C1)]))],
+                   ([(A2, B1), (B2, C1)], [(C2, D1), (A1, C1)]),
+                   ([(B1, A2), (C1, C2)], [(B2, D1), (A1, C2)]),
+                   ([(C2, B2), (B1, A2)], [(C1, D1), (A1, B2)]),
+                   ([(A1, B1), (B2, C2)], [(C1, D1), (A2, B2)]),
+                   ([(B2, A2), (C1, A1)], [(B1, D1), (C2, C1)]))],
               per_student=True),
      ]})
 
@@ -811,24 +1057,24 @@ ZONES.append(
 # site's only planet; on the per-student lakes and portal mazes the compact
 # target follows that student's own shortest route.
 CHALLENGES = {
-    "1a": {"bonus": {"kind": "crystals"}, "compact": 5, "crystals": [(2, 1)]},
-    "1b": {"bonus": {"kind": "def"}, "compact": 6},
-    "1c": {"bonus": {"kind": "no_bump"}, "compact": 9},
-    "2a": {"bonus": {"kind": "crystals"}, "compact": 6, "crystals": [(1, 8)]},
-    "2b": {"bonus": {"kind": "crystals"}, "compact": 12, "crystals": [(1, 7)]},
-    "2c": {"bonus": {"kind": "no_bump"}, "compact": [14, 15, 14, 16]},
-    "3a": {"bonus": {"kind": "ticks", "max": 14}, "compact": 5},
+    "1a": {"bonus": {"kind": "crystals"}, "compact": 7, "crystals": [(1, 10)]},
+    "1b": {"bonus": {"kind": "def"}, "compact": 3},
+    "1c": {"bonus": {"kind": "no_bump"}, "compact": 5},
+    "2a": {"bonus": {"kind": "computed"}, "compact": 3},
+    "2b": {"bonus": {"kind": "crystals"}, "compact": 6, "crystals": [(1, 7)]},
+    "2c": {"bonus": {"kind": "no_bump"}, "compact": [8, 8, 8, 9, 8, 8, 8, 8]},
+    "3a": {"bonus": {"kind": "computed"}, "compact": 3},
     "3b": {"bonus": {"kind": "no_push"}, "compact": 16},
     "3c": {"bonus": {"kind": "no_push"}, "compact": 17},
-    "4a": {"bonus": {"kind": "ticks", "max": 18}, "compact": 9},
-    "4b": {"bonus": {"kind": "ticks", "max": 47}, "compact": 12},
-    "4c": {"bonus": {"kind": "no_bump"}, "compact": 5},
-    "5a": {"bonus": {"kind": "battery", "min": 20}, "compact": 4},
-    "5b": {"bonus": {"kind": "ticks", "max": 80}, "compact": 16},
+    "4a": {"bonus": {"kind": "ticks", "max": 14}, "compact": 5},
+    "4b": {"bonus": {"kind": "def"}, "compact": 8},
+    "4c": {"bonus": {"kind": "no_bump"}, "compact": 8},
+    "5a": {"bonus": {"kind": "computed"}, "compact": 4},
+    "5b": {"bonus": {"kind": "ticks", "max": 80}, "compact": 12},
     "5c": {"bonus": {"kind": "battery", "min": 30}, "compact": 5},
-    "6a": {"bonus": {"kind": "crystals"}, "compact": 7, "crystals": [(4, 1)]},
-    "6b": {"bonus": {"kind": "ticks", "max": 13}, "compact": 8},
-    "6c": {"bonus": {"kind": "no_bump"}, "compact": [14, 14, 11, 8]},
+    "6a": {"bonus": {"kind": "crystals"}, "compact": 4, "crystals": [(4, 1)]},
+    "6b": {"bonus": {"kind": "ticks", "max": 8}, "compact": 5},
+    "6c": {"bonus": {"kind": "no_bump"}, "compact": [8, 7, 8, 6, 8, 7, 8, 8]},
 }
 for _zone in ZONES:
     for _s in _zone["sites"]:
@@ -855,14 +1101,21 @@ def bonus_label(bonus):
             "def": "🧩 Use a function you made with def",
             "no_bump": "🧱 Never bump into rock",
             "no_push": "💨 Never get blown off course",
-            "ticks": f"⚡ Reach the beacon in {bonus.get('max')} ticks or fewer",
+            "computed": "🔢 Work the number out in code, not typed in",
+            "ticks": f"⚡ Done in {bonus.get('max')} ticks or fewer",
             "battery": f"🔋 Finish with {bonus.get('min')} battery or more"}[kind]
+
+
+MISSION_LABELS = {"beacon": "🛰 Reach the beacon",
+                  "samples": "🧪 Collect every sample",
+                  "report": "📡 Report the right number"}
 
 
 def goals(s, variant):
     """The three stars a site offers, as the student sees them."""
     compact = variant.get("compact", s["compact"])
-    return ["🛰 Reach the beacon", bonus_label(variant.get("bonus", s["bonus"])),
+    return [MISSION_LABELS[mission_of(variant)],
+            bonus_label(variant.get("bonus", s["bonus"])),
             f"✂️ {compact} lines of code or fewer"]
 
 
@@ -875,14 +1128,13 @@ def stars(s, variant, run, code):
     if kind == "crystals":
         met = run["crystals"][0] == run["crystals"][1]
     elif kind == "def":
-        try:
-            met = any(isinstance(n, ast.FunctionDef) for n in ast.walk(ast.parse(code)))
-        except SyntaxError:
-            met = False
+        met = run.get("own_function", False)
     elif kind == "no_bump":
         met = run["bumps"] == 0
     elif kind == "no_push":
         met = run["pushes"] == 0
+    elif kind == "computed":
+        met = run.get("computed", False)
     elif kind == "ticks":
         met = run["ticks"] <= bonus["max"]
     else:
@@ -892,86 +1144,92 @@ def stars(s, variant, run, code):
 
 # ---- Zone 7: random planets ----------------------------------------------------
 
-UNCHARTED_REFERENCE = """def blocked():
-    return wall_ahead() or crater_ahead()
+# Uncharted is open ground with the beacon somewhere new every run. The
+# rover knows where it is, x() and y(), and where the beacon is, beacon_x()
+# and beacon_y(): the program compares them to pick a way, and goes round
+# whatever is in the way.
+UNCHARTED_REFERENCE = """def safe(way):
+    return look(way) != "rock" and look(way) != "crater"
 
-def step():
+def ready():
     if gust_in() == 1:
         wait()
-    move()
-
-while not at_goal():
-    if in_sun() and battery() < 60:
-        while battery() < 95:
+    if in_sun() and battery() < 30:
+        while battery() < 80:
             wait()
-    if not wall_right():
-        turn_right()
-        if blocked():
-            turn_left()
-    if blocked():
-        turn_left()
+
+while not at_beacon():
+    ready()
+    if x() < beacon_x() and safe("east"):
+        east()
+    elif y() < beacon_y() and safe("south"):
+        south()
+    elif x() > beacon_x() and safe("west"):
+        west()
+    elif y() > beacon_y() and safe("north"):
+        north()
+    elif safe("south"):
+        south()
     else:
-        step()
+        north()
 """
 PLANETS_PER_RUN = 5
 
 
 def random_planet(rng):
-    """A random maze with ice, craters, wind and sunlight. The rover starts in
-    the top-left corner facing east; the beacon is on the far cell."""
-    h, w = rng.randint(4, 6), rng.randint(6, 8)
-    rows, cols = 2 * h + 1, 2 * w + 1
-    grid = [["#"] * cols for _ in range(rows)]
-    stack, seen = [(0, 0)], {(0, 0)}
-    grid[1][1] = "."
-    while stack:
-        y, x = stack[-1]
-        options = [(y + dy, x + dx) for dy, dx in DIRS
-                   if 0 <= y + dy < h and 0 <= x + dx < w and (y + dy, x + dx) not in seen]
-        if not options:
-            stack.pop()
-            continue
-        ny, nx = rng.choice(options)
-        grid[y + ny + 1][x + nx + 1] = "."
-        grid[2 * ny + 1][2 * nx + 1] = "."
-        seen.add((ny, nx))
-        stack.append((ny, nx))
-    # The beacon goes on the cell furthest from the start.
-    far, dist = (1, 1), {(1, 1): 0}
-    queue = [(1, 1)]
-    for r, c in queue:
-        for dr, dc in DIRS:
-            n = (r + dr, c + dc)
-            if grid[n[0]][n[1]] != "#" and n not in dist:
-                dist[n] = dist[(r, c)] + 1
-                queue.append(n)
-                if dist[n] > dist[far] and n[0] % 2 and n[1] % 2:
-                    far = n
-    on_route = set()
-    p = far
-    while p != (1, 1):
-        on_route.add(p)
-        p = next((p[0] + dr, p[1] + dc) for dr, dc in DIRS
-                 if dist.get((p[0] + dr, p[1] + dc)) == dist[p] - 1)
+    """Open ground with rock ridges, crater lines, ice and sunny patches. The
+    lander and the beacon are in opposite corners (which corners changes).
+    The lander sits in a patch of sun with too little battery to cross the
+    planet, and a few craters lie round the beacon, where a gust that catches
+    the rover can push it in. Craters keep away from ice, so a slide never
+    ends in one."""
+    rows, cols = rng.randint(9, 11), rng.randint(14, 18)
+    grid = open_ground(rows, cols)
+    start = (rng.randint(1, 3), rng.randint(1, 3))
+    goal = (rng.randint(rows - 4, rows - 3), rng.randint(cols - 5, cols - 3))
+    clear = {(p[0] + dr, p[1] + dc) for p in (start, goal)
+             for dr in (-1, 0, 1) for dc in (-1, 0, 1)}
 
-    def openings(r, c):
-        return [(dr, dc) for dr, dc in DIRS if grid[r + dr][c + dc] != "#"]
+    def put(r, c, ch):
+        if 0 < r < rows - 1 and 0 < c < cols - 1 and (r, c) not in clear \
+                and grid[r][c] == ".":
+            grid[r][c] = ch
 
-    squares = [(r, c) for r in range(rows) for c in range(cols)
-               if grid[r][c] == "." and (r, c) != (1, 1)]
-    for r, c in squares:
-        ways = openings(r, c)
-        if len(ways) == 1 and (r, c) not in on_route and rng.random() < 0.5:
-            grid[r][c] = "O"          # a crater at the end of a dead end
-        elif len(ways) == 2 and ways[0][0] == -ways[1][0] and \
-                ways[0][1] == -ways[1][1] and rng.random() < 0.25:
-            grid[r][c] = "~"          # ice only on straight stretches
-        elif rng.random() < 0.12:
-            grid[r][c] = "+"
-    grid[1][1] = "S"
-    grid[far[0]][far[1]] = "G"
-    return {"map": strings(grid), "wind": rng.randint(4, 7),
-            "battery": rng.randint(40, 70)}
+    for _ in range(rng.randint(5, 8)):          # rock ridges, 2 to 4 long
+        r, c = rng.randrange(1, rows - 1), rng.randrange(1, cols - 1)
+        dr, dc = rng.choice(DIRS)
+        for i in range(rng.randint(2, 4)):
+            put(r + dr * i, c + dc * i, "#")
+    for _ in range(rng.randint(1, 3)):          # ice patches
+        r, c = rng.randrange(1, rows - 2), rng.randrange(1, cols - 3)
+        for dr in range(2):
+            for dc in range(rng.randint(2, 3)):
+                put(r + dr, c + dc, "~")
+    ice = [(r, c) for r in range(rows) for c in range(cols) if grid[r][c] == "~"]
+    for _ in range(rng.randint(2, 4)):          # crater lines, north to south
+        r, c = rng.randrange(1, rows - 1), rng.randrange(1, cols - 1)
+        for i in range(rng.randint(2, 4)):
+            if all(abs(r + i - a) + abs(c - b) > 2 for a, b in ice):
+                put(r + i, c, "O")
+    for _ in range(rng.randint(2, 4)):          # sunny ground
+        put(rng.randrange(1, rows - 1), rng.randrange(1, cols - 1), "+")
+    for dr in (-1, 0, 1):                       # sun round the lander
+        for dc in (-1, 0, 1):
+            if grid[start[0] + dr][start[1] + dc] == ".":
+                grid[start[0] + dr][start[1] + dc] = "+"
+    ring = [(goal[0] + dr, goal[1] + dc) for dr in range(-2, 3) for dc in range(-2, 3)
+            if max(abs(dr), abs(dc)) == 2 or (dr == 0 and abs(dc) == 1)]
+    for r, c in rng.sample(ring, 4):            # craters round the beacon
+        if 0 < r < rows - 1 and 0 < c < cols - 1 and grid[r][c] == ".":
+            grid[r][c] = "O"
+    grid[start[0]][start[1]] = "S"
+    grid[goal[0]][goal[1]] = "G"
+    if rng.random() < .5:
+        grid.reverse()
+    if rng.random() < .5:
+        grid = [row[::-1] for row in grid]
+    return {"map": strings(grid), "wind": rng.randint(3, 6),
+            "battery": rng.randint(8, 12)}
 
 
 UNCHARTED_RULES = {"ice", "wind", "battery"}
@@ -991,23 +1249,33 @@ def uncharted_planets(seed):
     return planets
 
 
+# What Uncharted shows before the first run: one planet of the kind every
+# run lands on, so students can see it's open ground before writing code.
+UNCHARTED_SAMPLE = uncharted_planets(1)[0]
+
 ZONE_NAMES = [z["name"] for z in ZONES] + ["Uncharted"]
 
 
 # ---- for the classroom side ------------------------------------------------------
 
 UNCHARTED = {"key": "7", "name": "Uncharted",
-             "brief": f"{PLANETS_PER_RUN} new random planets every run."}
+             "brief": f"{PLANETS_PER_RUN} new planets every run. The beacon is "
+                      f"somewhere new each time."}
 ZONES.append({"key": "uncharted", "name": "Uncharted", "rules": UNCHARTED_RULES,
-              "blurb": "Random planets. Everything you've learnt, at once.",
+              "blurb": "A new planet every run. Two new sensors, beacon_x() "
+                       "and beacon_y(), say where the beacon is.",
               "hints": [
-                  "Start from a wall follower: keep your right hand on the "
-                  "rock and you'll find the beacon in any maze.",
-                  "Treat craters like rock: write  def blocked():  that "
-                  "returns  wall_ahead() or crater_ahead().  gust_in() says "
-                  "how many ticks until the next gust.",
-                  "Before each move:  if gust_in() == 1: wait().  When the "
-                  "battery is low and you're in the sun, charge up first.",
+                  "Compare where you are with where the beacon is. If x() is "
+                  "smaller than beacon_x(), the beacon is to the east:\n\n"
+                  "while not at_beacon():\n    if x() < beacon_x():\n"
+                  "        east()\n    elif y() < beacon_y():\n        south()",
+                  "Rocks and craters get in the way. Only drive a way that's "
+                  "safe, and try another way when it isn't:\n\n"
+                  "def safe(way):\n    return look(way) != \"rock\" and "
+                  "look(way) != \"crater\"",
+                  "Everything from before still counts. Before each square:  "
+                  "if gust_in() == 1: wait().  And when you're in the sun "
+                  "with a low battery, charge up first.",
               ],
               "sites": [UNCHARTED]})
 SITE_ORDER = [s["key"] for z in ZONES for s in z["sites"]]

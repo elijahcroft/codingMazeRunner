@@ -24,6 +24,7 @@
     --violet: #b9a3ff;
     --ui: system-ui, "Segoe UI", Roboto, "Noto Sans", sans-serif;
     --mono: ui-monospace, "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+    --code-size: 14px;
   }
   * { box-sizing: border-box; }
   * { scrollbar-width: thin; scrollbar-color: var(--edge) transparent; }
@@ -129,7 +130,7 @@
   .planet-tab.on { border-color: var(--bone); transform: scale(1.12); }
   .where { position: absolute; left: 12px; bottom: 12px; font: 12px var(--mono); color: var(--haze); background: rgba(18,13,34,.6); padding: 3px 8px; border-radius: 6px; pointer-events: none; }
   .banner { position: absolute; left: 16px; right: 16px; bottom: 16px; width: fit-content; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 10px 12px 10px 18px; border-radius: 14px; background: rgba(27,21,52,.92); backdrop-filter: blur(6px); box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 1px var(--edge); }
-  .banner p { margin: 0; font-weight: 650; }
+  .banner p { margin: 0; font-weight: 650; max-width: 62ch; }
   .banner.win { box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 2px var(--mint); }
   .banner.lost { box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 2px var(--coral); }
   .banner.scout { box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 2px var(--violet); }
@@ -137,7 +138,7 @@
   .banner-actions { display: flex; gap: 8px; flex: none; }
 
   /* The moment a hidden rule first shows itself: the replay stops for it. */
-  .anomaly { position: absolute; left: 16px; right: 16px; top: 64px; width: fit-content; margin: 0 auto; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 12px 14px 12px 18px; border-radius: 16px; background: rgba(39,27,72,.94); box-shadow: 0 0 0 2px var(--violet), 0 0 40px rgba(185,163,255,.45); animation: glow 1.4s ease-in-out infinite alternate; }
+  .anomaly { position: absolute; left: 16px; right: 16px; bottom: 16px; width: fit-content; margin: 0 auto; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 12px 14px 12px 18px; border-radius: 16px; background: rgba(39,27,72,.94); box-shadow: 0 0 0 2px var(--violet), 0 0 40px rgba(185,163,255,.45); animation: glow 1.4s ease-in-out infinite alternate; }
   .anomaly b { display: block; font-size: 18px; letter-spacing: -.01em; }
   .anomaly span { color: var(--haze); font-size: 14px; }
   @keyframes glow { to { box-shadow: 0 0 0 2px var(--violet), 0 0 70px rgba(185,163,255,.7); } }
@@ -157,12 +158,15 @@
   .cele-note { margin: 0 0 14px; min-height: 22px; font-weight: 650; }
   .cele-note .rec { color: var(--gold); }
   .cele-miss { margin: -6px 0 12px; color: var(--haze); font-size: 14px; }
+  .cele-tip { margin-top: -4px; color: var(--mint); }
+  .cele-tip:empty { display: none; }
   .cele-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 
   .timeline { display: flex; align-items: center; gap: 12px; padding: 10px 16px 14px; }
   .play { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--panel-2); font-size: 15px; flex: none; }
   .play:hover { background: var(--edge); }
   .play:disabled { opacity: .4; cursor: default; }
+  .play.speed { width: auto; min-width: 48px; border-radius: 20px; padding: 0 10px; font: 700 13px var(--mono); color: var(--haze); }
   .track { position: relative; flex: 1; height: 40px; min-width: 0; }
   .marks { position: absolute; left: 9px; right: 9px; top: 0; height: 18px; pointer-events: none; }
   .mark { position: absolute; transform: translateX(-50%); font-size: 13px; line-height: 18px; pointer-events: auto; cursor: pointer; }
@@ -175,15 +179,21 @@
   .clock { font: 600 13px var(--mono); color: var(--haze); min-width: 64px; text-align: right; font-variant-numeric: tabular-nums; }
 
   /* Scouting: drive by hand. */
-  .pad { position: absolute; right: 14px; bottom: 14px; display: grid; grid-template-columns: repeat(3, 46px); grid-template-rows: repeat(2, 46px); gap: 6px; }
+  .pad { position: absolute; right: 14px; bottom: 14px; display: grid; grid-template-columns: repeat(3, 46px); grid-template-rows: repeat(3, 46px); gap: 6px; }
   .pad button { border: 0; border-radius: 12px; background: rgba(53,45,96,.92); font-size: 20px; box-shadow: 0 3px 0 #1b1733; }
   .pad button:active { transform: translateY(2px); box-shadow: 0 1px 0 #1b1733; }
+  .pad button small { display: block; font-size: 10px; line-height: 1; color: var(--haze); }
   .pad .up { grid-column: 2; }
   .pad .left { grid-column: 1; grid-row: 2; }
   .pad .wait { grid-column: 2; grid-row: 2; font-size: 15px; }
   .pad .right { grid-column: 3; grid-row: 2; }
+  .pad .down { grid-column: 2; grid-row: 3; }
+  /* Which way is north: the rover drives by compass, never by turning. */
+  .compass { position: absolute; left: 12px; bottom: 40px; width: 58px; height: 58px; pointer-events: none; opacity: .9; }
   .scout-help { position: absolute; left: 14px; bottom: 14px; max-width: calc(100% - 200px); padding: 8px 12px; border-radius: 12px; background: rgba(39,27,72,.9); box-shadow: inset 0 0 0 1px var(--violet); font-size: 13px; color: #e5dcff; }
   .scout-help b { color: var(--bone); }
+  .scout-help .quiet { margin-left: 6px; padding: 3px 9px; color: var(--bone); }
+  .scout-help .quiet:disabled { opacity: .45; cursor: default; }
   .tool.on { background: var(--violet); color: #1b1733; border-color: var(--violet); }
 
   /* ---- Uplink: the program going up to the rover ---------------------------------- */
@@ -193,9 +203,19 @@
   .uplink-head span { color: var(--haze); font-size: 13px; }
   .uplink-head span.fits { color: var(--gold); }
   .editor { min-height: 0; margin: 0 12px; display: grid; grid-template-columns: auto 1fr; border-radius: 12px; overflow: hidden; background: #171329; box-shadow: inset 0 0 0 1px var(--edge); }
-  .lines { padding: 12px 8px 40px 10px; color: #5d5486; text-align: right; white-space: pre; overflow: hidden; font: 14px/1.6 var(--mono); user-select: none; }
+  .lines { padding: 12px 8px 40px 10px; color: #5d5486; text-align: right; white-space: pre; overflow: hidden; font: var(--code-size)/1.6 var(--mono); user-select: none; }
   .lines .err { color: var(--coral); font-weight: 700; }
-  #code { width: 100%; height: 100%; resize: none; border: 0; outline: 0; padding: 12px 14px 40px 6px; background: transparent; color: #ece4ff; caret-color: var(--mint); font: 14px/1.6 var(--mono); tab-size: 4; white-space: pre; overflow: auto; }
+  .code-wrap { position: relative; min-width: 0; min-height: 0; }
+  /* The textarea's own text is see-through; the coloured copy behind it shows. */
+  #code, .paint { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 12px 14px 40px 6px; font: var(--code-size)/1.6 var(--mono); tab-size: 4; white-space: pre; letter-spacing: 0; }
+  #code { resize: none; border: 0; outline: 0; background: transparent; color: transparent; caret-color: var(--mint); overflow: auto; }
+  #code::selection { background: rgba(140,242,198,.28); color: transparent; }
+  .paint { z-index: 0; overflow: hidden; color: #ece4ff; pointer-events: none; }
+  .paint i { font-style: normal; }
+  .ind { box-shadow: inset 1px 0 0 rgba(185,163,255,.22); }
+  .err-line { position: absolute; z-index: -1; left: 0; right: 0; height: 1.6em; background: rgba(255,111,97,.18); box-shadow: inset 3px 0 0 var(--coral); }
+  .t-cmd { color: var(--mint); } .t-sense { color: #8fc8ff; } .t-own { color: #f0a8ff; } .t-key { color: var(--amber); }
+  .t-num { color: var(--gold); } .t-text { color: #ffc7a8; } .t-note { color: #8a80b0; }
   .kit { display: flex; flex-wrap: wrap; gap: 5px; padding: 10px 12px 0; }
   .chip { border: 0; border-radius: 7px; padding: 3px 7px; background: var(--panel); color: #d9ccff; font: 12.5px var(--mono); position: relative; }
   .chip:hover { background: var(--panel-2); color: var(--bone); }
@@ -203,8 +223,10 @@
   .chip.new::after { content: ""; position: absolute; top: -2px; right: -2px; width: 8px; height: 8px; border-radius: 50%; background: var(--mint); }
   .actions { display: flex; align-items: center; gap: 8px; padding: 10px 12px; }
   .transmit { flex: 1; }
-  .tool { position: relative; height: 44px; min-width: 44px; border-radius: 12px; border: 1px solid var(--edge); background: var(--panel); display: grid; place-items: center; font-size: 18px; padding: 0 10px; }
+  .tool { position: relative; height: 48px; min-width: 52px; border-radius: 12px; border: 1px solid var(--edge); background: var(--panel); display: grid; place-items: center; align-content: center; font-size: 17px; line-height: 1; padding: 0 8px; }
   .tool:hover { background: var(--panel-2); }
+  .tool small { display: block; font: 600 10.5px/1 var(--ui); color: var(--haze); margin-top: 3px; }
+  .tool.on small { color: inherit; }
   .tool sup { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--violet); color: #1b1733; font: 700 11px/18px var(--ui); padding: 0 5px; }
   .feed { min-height: 0; overflow: auto; padding: 4px 14px 14px; border-top: 1px solid var(--edge); font-size: 14px; }
   .feed .ev { display: grid; grid-template-columns: 42px 1fr; gap: 6px; padding: 3px 6px; border-radius: 6px; }
@@ -215,7 +237,7 @@
   .feed .ev.now { background: var(--panel); }
   .feed .err { margin: 8px 0; padding: 9px 11px; border-radius: 10px; background: rgba(255,111,97,.12); color: #ffc7c0; font-size: 14px; white-space: pre-wrap; }
   .feed .empty { color: var(--dim); padding: 10px 6px; }
-  .feed-head { position: sticky; top: 0; background: var(--dusk); padding: 8px 6px 4px; color: var(--haze); font-size: 13px; }
+  .feed-head { position: sticky; top: -4px; background: var(--dusk); padding: 8px 6px 4px; color: var(--haze); font-size: 13px; }
 
   /* ---- Toasts: badges and unlocks ---------------------------------------------- */
   .toasts { position: fixed; z-index: 40; right: 16px; bottom: 16px; display: grid; gap: 10px; width: min(330px, calc(100vw - 32px)); pointer-events: none; }
@@ -240,6 +262,7 @@
   .intro-body { padding: 18px 22px 22px; }
   .intro-body ol { margin: 0 0 18px; padding-left: 22px; display: grid; gap: 6px; font-size: 17px; }
   .intro-body li::marker { color: var(--mint); font-weight: 800; }
+  .intro-body code { font: 600 .9em var(--mono); color: var(--mint); }
   .garage-card { width: min(720px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 18px 20px 20px; }
   .garage-top { display: grid; grid-template-columns: 200px 1fr; gap: 18px; align-items: start; }
   .garage-top canvas { width: 200px; height: 200px; border-radius: 18px; display: block; }
@@ -287,6 +310,15 @@
     .wp span, .cell i, .big-star i { transition: none; }
     .scope.shake, .stars-button.bump, .anomaly, .toast, .toast.out { animation: none; }
   }
+  .calm .wp span, .calm .cell i, .calm .big-star i { transition: none; }
+  .calm .scope.shake, .calm .stars-button.bump, .calm .anomaly, .calm .toast, .calm .toast.out { animation: none; }
+  .intro-note, .calm-pick { display: flex; align-items: center; gap: 8px; margin: 0 0 16px; color: var(--haze); font-size: 14px; }
+  .calm-pick { cursor: pointer; }
+  .big { --code-size: 17px; }
+  .big .feed { font-size: 16px; }
+  .big .chip { font-size: 14.5px; }
+  .big .site-head p, .big .banner p { font-size: 17px; }
+  .calm-pick input { width: 18px; height: 18px; accent-color: var(--mint); }
 </style>
 </head>
 <body>
@@ -335,23 +367,26 @@
             <div class="planets" id="planets" hidden></div>
           </div>
         </div>
+        <svg class="compass" id="compass" viewBox="0 0 58 58" aria-hidden="true"><circle cx="29" cy="29" r="20" fill="rgba(18,13,34,.6)" stroke="rgba(242,234,219,.25)"/><path d="M29 12 L33 29 L29 26 L25 29 Z" fill="#8cf2c6"/><path d="M29 46 L33 29 L29 32 L25 29 Z" fill="rgba(242,234,219,.4)"/><g font-family="ui-monospace,monospace" font-size="9" font-weight="700" fill="#f2eadb" text-anchor="middle"><text x="29" y="8">N</text><text x="29" y="57">S</text><text x="53" y="32">E</text><text x="5" y="32">W</text></g></svg>
         <div class="where" id="where" hidden></div>
         <div class="banner" id="banner" hidden><p id="bannerText"></p><div class="banner-actions" id="bannerActions"></div></div>
         <div class="anomaly" id="anomaly" hidden role="status"><div><b>📡 Anomaly detected!</b><span>Something strange just happened. What was it?</span></div><div class="banner-actions"><button class="go" id="anomalyGo">Keep watching ▶</button><button class="quiet" id="anomalyJournal">📓 Guess</button></div></div>
-        <div class="scout-help" id="scoutHelp" hidden><b>Scouting</b>: ↑ drive · ← → turn · space wait · R restart. <span id="scoutLeft"></span> Only code opens the beacon.</div>
+        <div class="scout-help" id="scoutHelp" hidden><b>Scouting</b>: arrow keys drive north, south, east and west · space waits · R restarts. <span id="scoutLeft"></span> Only code completes the mission. <button class="quiet" id="scoutCode" disabled>📋 Use as code</button></div>
         <div class="pad" id="pad" hidden aria-label="Drive by hand">
-          <button class="up" data-move="move" aria-label="Drive forward">↑</button>
-          <button class="left" data-move="turn_left" aria-label="Turn left">↺</button>
+          <button class="up" data-move="north" aria-label="Drive north">↑<small>N</small></button>
+          <button class="left" data-move="west" aria-label="Drive west">←<small>W</small></button>
           <button class="wait" data-move="wait" aria-label="Wait one tick">⏳</button>
-          <button class="right" data-move="turn_right" aria-label="Turn right">↻</button>
+          <button class="right" data-move="east" aria-label="Drive east">→<small>E</small></button>
+          <button class="down" data-move="south" aria-label="Drive south">↓<small>S</small></button>
         </div>
         <div class="celebrate" id="celebrate" hidden>
           <div class="cele-card" role="dialog" aria-labelledby="celeTitle">
-            <h2 id="celeTitle">Beacon reached!</h2>
+            <h2 id="celeTitle">Mission complete!</h2>
             <p class="sub" id="celeSub"></p>
             <div class="big-stars" id="bigStars"></div>
             <p class="cele-note" id="celeNote"></p>
             <p class="cele-miss" id="celeMiss"></p>
+            <p class="cele-miss cele-tip" id="celeTip"></p>
             <div class="cele-actions" id="celeActions"></div>
           </div>
         </div>
@@ -360,18 +395,19 @@
         <button class="play" id="playButton" aria-label="Play" disabled>▶</button>
         <div class="track"><div class="marks" id="marks"></div><input class="scrub" id="scrub" type="range" min="0" max="0" step="any" value="0" aria-label="Replay position" disabled></div>
         <div class="clock" id="clock"></div>
+        <button class="play speed" id="speedButton" title="Replay speed" aria-label="Replay speed">1×</button>
       </div>
     </section>
 
     <section class="uplink">
       <div class="uplink-head"><b id="fileName">rover.py</b><span id="lineCount"></span></div>
-      <div class="editor"><div class="lines" id="lines">1</div><textarea id="code" aria-label="Your rover program" spellcheck="false"></textarea></div>
+      <div class="editor"><div class="lines" id="lines">1</div><div class="code-wrap"><pre class="paint" id="paint" aria-hidden="true"></pre><textarea id="code" aria-label="Your rover program. Press Escape then Tab to leave it." spellcheck="false"></textarea></div></div>
       <div class="kit" id="kit" aria-label="Commands and sensors: click one to add it"></div>
       <div class="actions">
         <button class="go transmit" id="runButton" title="F5 or Ctrl+Enter">Transmit ▶</button>
-        <button class="tool" id="scoutButton" title="Scout: drive by hand to explore" aria-label="Scout: drive by hand">🕹</button>
-        <button class="tool" id="radioButton" title="Hints from mission control" aria-label="Hints from mission control">📻<sup id="radioCount" hidden></sup></button>
-        <button class="tool" id="journalButton" title="Field journal: your guess at this zone's rule" aria-label="Field journal">📓</button>
+        <button class="tool" id="scoutButton" title="Scout: drive by hand to explore" aria-label="Scout: drive by hand">🕹<small>Scout</small></button>
+        <button class="tool" id="radioButton" title="Hints from mission control" aria-label="Hints from mission control">📻<small>Hints</small><sup id="radioCount" hidden></sup></button>
+        <button class="tool" id="journalButton" title="Field journal: your guess at this zone's rule" aria-label="Field journal">📓<small>Journal</small></button>
       </div>
       <div class="feed" id="feed" aria-label="Telemetry"></div>
     </section>
@@ -410,10 +446,13 @@
     <div class="intro-body">
       <h2 id="introTitle" class="announce">How it works</h2>
       <ol>
-        <li>Write code. Transmit it to the rover.</li>
+        <li>Your rover drives by compass: <code>north()</code> <code>south()</code> <code>east(3)</code> <code>west()</code>. It never turns.</li>
+        <li>Every site is a mission: collect samples, reach the beacon, or measure something strange and <code>report()</code> it.</li>
         <li>Every zone hides a rule. Nobody will tell you.</li>
-        <li>Earn three stars on every site.</li>
       </ol>
+      <p class="intro-note">Earn three stars on every site. Stuck? 🕹 Scout drives by hand, 📻 Hints asks mission control.</p>
+      <label class="calm-pick"><input type="checkbox" id="calmPick"> Calm mode: no shaking, confetti or flashing</label>
+      <label class="calm-pick"><input type="checkbox" id="bigPick"> Bigger text for the code and telemetry</label>
       <button class="go" id="introClose">Let's explore</button>
     </div>
   </div>
@@ -423,7 +462,11 @@
 <script>
 const $ = id => document.getElementById(id);
 const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]];
-const CALM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+// Calm mode: no shaking, confetti, flashing or bobbing. On when the computer
+// asks for less motion, or when the student ticks it on the how-it-works card.
+let CALM = matchMedia("(prefers-reduced-motion: reduce)").matches || recall("planetCalm") === "1";
+document.body.classList.toggle("calm", CALM);
+document.body.classList.toggle("big", recall("planetBig") === "1");
 let me = null, busy = false;
 let state = null;     // every zone and site, from the server
 let site = null;      // the site on screen, as the student sees it
@@ -437,18 +480,25 @@ let errorLine = 0, errorCount = 0;
 
 const ZONE_ICONS = {landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", uncharted: "🪐"};
 // Each sensor arrives with a zone (matches planet.SENSOR_ZONE).
-const SENSOR_ZONE = {wall_ahead: 0, wall_left: 0, wall_right: 0, at_goal: 0, tick: 2, crater_ahead: 2,
-  cracked_ahead: 3, samples_left: 3, battery: 4, in_sun: 4, gust_in: 6};
+const SENSOR_ZONE = {look: 0, at_beacon: 0, x: 1, y: 1, report: 1, tick: 2, samples_left: 3,
+  battery: 4, in_sun: 4, beacon_x: 6, beacon_y: 6, gust_in: 6};
 const HELP = {
-  move: "Drive forward. move(3) drives 3 squares.", turn_left: "Turn left on the spot.",
-  turn_right: "Turn right on the spot.", wait: "Stay put for one tick.",
-  wall_ahead: "True if rock is just ahead.", wall_left: "True if rock is to the left.",
-  wall_right: "True if rock is to the right.", at_goal: "True on the beacon.",
-  tick: "Ticks so far: one per command.", crater_ahead: "True if a crater is just ahead.",
-  cracked_ahead: "True if cracked ground is just ahead.", samples_left: "Samples still to collect.",
+  north: "Drive north (up). north(3) drives 3 squares.", south: "Drive south (down). south(3) drives 3 squares.",
+  east: "Drive east (right). east(3) drives 3 squares.", west: "Drive west (left). west(3) drives 3 squares.",
+  wait: "Stay put for one tick. wait(5) waits 5.",
+  look: 'What\'s on the next square that way, in words: look("east") == "rock"',
+  at_beacon: "True on the beacon.", x: "Which column the rover is on (the numbers along the top).",
+  y: "Which row the rover is on (the numbers down the side).",
+  report: "Send a number to mission control, like report(6).",
+  tick: "Ticks so far: one per square or wait.", samples_left: "Samples still to collect.",
   battery: "Charge left, 0 to 100.", in_sun: "True in sunlight.", gust_in: "Ticks until the next gust.",
+  beacon_x: "The beacon's column.", beacon_y: "The beacon's row.",
 };
-const COMMANDS = ["move", "turn_left", "turn_right", "wait"];
+const COMMANDS = ["north", "south", "east", "west", "wait"];
+// Clicked into the code as a line of its own, like a command.
+const LINE_CHIPS = [...COMMANDS, "report"];
+// What a click on each chip types.
+const CHIP_TEXT = {look: 'look("east")'};
 // Rover paints: a colour, or a few that sweep across the body.
 const PAINTS = {bone: "#f2eadb", coral: "#ff8a7a", mint: "#8cf2c6", sky: "#8fc8ff", gold: "#ffd36b",
   aurora: ["#7ff0d6", "#8fb8ff", "#c69bff"], nebula: ["#c69bff", "#ff8ad8", "#8fb8ff"],
@@ -472,7 +522,10 @@ function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // ---- Sound: every effect synthesized, nothing to download ---------------------
 const SFX = (() => {
-  let ac = null, master = null, muted = recall("planetMuted") === "1", lastMove = 0;
+  // Off until a student turns it on: a room of laptop speakers is a lot, and
+  // sudden sounds are hard for some students.
+  let ac = null, master = null, muted = recall("planetMuted") !== "0";
+  const lastAt = {};   // the quick, repeated sounds play at most every 70 ms
   function context() {
     if (!ac) {
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -519,11 +572,14 @@ const SFX = (() => {
     anomaly: () => notes([880, 622, 880, 622, 1245], {vol: .22, dur: .1, gap: .12}),
     error: () => tone(140, .28, {type: "sawtooth", vol: .13, slide: -30}),
     send: () => notes([440, 660, 880], {vol: .16, dur: .08, gap: .05}),
+    report: () => notes([1175, 1568, 1175, 1568], {type: "square", vol: .07, dur: .06, gap: .05}),
   };
   return {
     play(name, arg) {
       if (muted || !context()) return;
-      if (name === "move") { const now = performance.now(); if (now - lastMove < 70) return; lastMove = now; }
+      if (["move", "turn", "bump"].includes(name)) {
+        const now = performance.now(); if (now - (lastAt[name] || 0) < 70) return; lastAt[name] = now;
+      }
       try { SOUNDS[name](arg); } catch (_) {}
     },
     wake() { if (!muted) context(); },
@@ -848,6 +904,7 @@ function render(now = performance.now()) {
   scene.view = {ox, oy, cell};
   ctx.save(); ctx.translate(ox, oy);
   ctx.drawImage(terrain(map, zone, cell), 0, 0);
+  drawRulers(ctx, rows, cols, cell);
   const i = rover.i, frames = scene.frames, f = frames[i];
   // Cracks so far, and the samples and crystals not yet picked up.
   const visited = new Set();
@@ -885,6 +942,10 @@ function render(now = performance.now()) {
     drawRover(ctx, rx, ry, cell * .62, rover.angle + .6, .55, look, now);
   } else {
     if (atEvent && f.e === "portal") drawFlash(ctx, rx, ry, cell, "#b9a3ff");
+    // A report goes out as radio rings: mint when it matches, coral when not.
+    if (scene.run && scene.run.mission === "report" && (f.e === "goal" || f.e === "wrong")) {
+      drawRadio(ctx, rx, ry, cell, now, f.e === "goal" ? "140,242,198" : "255,138,122");
+    }
     drawRover(ctx, rx, ry, cell * 1.12, rover.angle, 1, look, now);
   }
   drawParticles(ctx, cell, dt);
@@ -1002,6 +1063,24 @@ function drawBeacon(ctx, r, c, cell, now, reached) {
   ctx.fillStyle = "#8cf2c6"; ctx.shadowColor = "#8cf2c6"; ctx.shadowBlur = cell * .5;
   ctx.beginPath(); ctx.arc(cx, cy, cell * .12, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
 }
+// The squares' numbers, x along the top edge and y down the left, written on
+// the rock border, so squares can be counted and x() and y() read off the map.
+function drawRulers(ctx, rows, cols, cell) {
+  const every = cell >= 22 ? 1 : 2;
+  ctx.font = `600 ${Math.max(9, Math.min(13, cell * .36))}px ui-monospace, monospace`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(242,234,219,.62)";
+  for (let c = 1; c < cols - 1; c += every) ctx.fillText(c, (c + .5) * cell, cell * .5);
+  for (let r = 1; r < rows - 1; r += every) ctx.fillText(r, cell * .5, (r + .5) * cell);
+}
+function drawRadio(ctx, x, y, cell, now, rgb) {
+  const rings = CALM ? [.4] : [0, .33, .66].map(o => (now / 1200 + o) % 1);
+  ctx.lineWidth = Math.max(1.5, cell / 14);
+  for (const k of rings) {
+    ctx.strokeStyle = `rgba(${rgb},${(1 - k) * .85})`;
+    ctx.beginPath(); ctx.arc(x, y, cell * (.5 + k * 1.6), -Math.PI * .8, -Math.PI * .2); ctx.stroke();
+  }
+}
 function drawFlash(ctx, x, y, cell, color) {
   ctx.strokeStyle = color; ctx.lineWidth = Math.max(2, cell / 10);
   for (const k of [.5, .8]) { ctx.globalAlpha = 1.2 - k; ctx.beginPath(); ctx.arc(x, y, cell * k, 0, 7); ctx.stroke(); }
@@ -1019,6 +1098,7 @@ function onStep(k) {
   else if (f.e === "portal") { SFX.play("portal"); burst(p.r, p.c, "portal", 14); burst(f.r, f.c, "portal", 14); }
   else if (f.e === "fell") { SFX.play("fall"); burst(f.r, f.c, "fall", 18); shake(); }
   else if (f.e === "battery") SFX.play("flat");
+  else if (f.e === "wrong" || (f.e === "goal" && scene.run && scene.run.mission === "report")) SFX.play("report");
   else if (sliding) { const pp = scene.frames[k - 2]; if (!pp || pp.t !== f.t) SFX.play("slide"); }
   else if (moved) SFX.play("move");
   else if (f.d !== p.d) SFX.play("turn");
@@ -1056,7 +1136,7 @@ function frameLoop(ts) {
   const dt = lastTs ? Math.min(100, ts - lastTs) : 0;
   lastTs = ts;
   if (playing) {
-    setPos(pos + dt / 1000 * fps);
+    setPos(pos + dt / 1000 * fps * speed * (stalled(Math.floor(pos)) ? 6 : 1));
     while (heard < Math.floor(pos) && playing) onStep(++heard);
     if (playing && pos >= last()) { setPos(last()); setPlaying(false); finished(); }
   }
@@ -1067,6 +1147,19 @@ function frameLoop(ts) {
     render(ts); frameLoop.drawn = ts;
   }
   requestAnimationFrame(frameLoop);
+}
+// A rover stuck in place (bumping, spinning on the spot, waiting) for several
+// ticks in a row fast-forwards, so a loop that never ends doesn't take a minute.
+function stalled(i) {
+  const f = scene.frames, same = (x, y) => x && y && x.r === y.r && x.c === y.c && x.d === y.d;
+  return same(f[i - 1], f[i]) && same(f[i], f[i + 1]);
+}
+const SPEEDS = [1, 2, 4, .5];
+let speed = SPEEDS.includes(Number(recall("planetSpeed"))) ? Number(recall("planetSpeed")) : 1;
+function showSpeed() { $("speedButton").textContent = (speed === .5 ? "½" : speed) + "×"; }
+function nextSpeed() {
+  speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length];
+  store("planetSpeed", String(speed)); showSpeed();
 }
 function togglePlay() {
   if (!scene || last() === 0) return;
@@ -1087,7 +1180,7 @@ function markFeed() {
   const t = scene.frames[Math.floor(pos)].t;
   let first = null;
   for (const el of $("feed").querySelectorAll(".ev")) {
-    const now = el.dataset.t === String(t);
+    const now = Number(el.dataset.t) <= t && t <= Number(el.dataset.end);
     el.classList.toggle("now", now);
     if (now && !first) first = el;
   }
@@ -1095,20 +1188,32 @@ function markFeed() {
 }
 
 // ---- A run on screen -------------------------------------------------------------------
-const ENDINGS = {
-  goal: ["win", "Beacon reached", t => `🎉 Beacon reached in ${t} ticks`],
-  fell: ["lost", "Lost", t => `💥 Rover lost at tick ${t}`],
-  battery: ["lost", "Flat battery", t => `🔋 Battery flat at tick ${t}`],
-  ticks: ["lost", "Out of time", t => `⏱ Out of time after ${t} ticks`],
-  stopped: ["hold", "Stopped", t => `🏁 Ended ${t} ticks in, away from the beacon`],
-  error: ["lost", "Code error", () => "⚠️ Code error"],
-};
+// What the end of a run says: [style, status, sentence]. Doing the mission
+// and stopping short both depend on what the mission was.
+const DONE = {beacon: ["Beacon reached", t => `🎉 Beacon reached in ${t} ticks`],
+  samples: ["Samples collected", t => `🎉 Every sample collected in ${t} ticks`],
+  report: ["Report confirmed", () => "📡 Mission control: that matches what we measured! 🎉"]};
+const SHORT = {beacon: t => `🏁 Ended ${t} ticks in, away from the beacon`,
+  samples: t => `🏁 Ended ${t} ticks in, with samples still out there`,
+  report: t => `🏁 Ended ${t} ticks in without a report(). Found the number? Send it with report()`};
+function ending(run) {
+  const mission = run.mission || "beacon", t = run.ticks;
+  return {
+    goal: ["win", DONE[mission][0], DONE[mission][1](t)],
+    wrong: ["lost", "Wrong number", "📡 Mission control measured something different. Watch the replay again: what number did you see?"],
+    fell: ["lost", "Fell", `💥 The rover fell at tick ${t}. What happened just before?`],
+    battery: ["lost", "Flat battery", `🔋 Battery flat at tick ${t}. What made the gauge go down?`],
+    ticks: ["lost", "Out of time", `⏱ Out of time after ${t} ticks. Is a loop going round forever?`],
+    stopped: ["hold", "Stopped", SHORT[mission](t)],
+    error: ["lost", "Code error", "⚠️ Code error"],
+  }[run.end];
+}
 function setStatus(i) {
   const el = $("status"), f = scene && scene.frames[i];
   let cls = "", text = "Ready";
   if (scout) [cls, text] = ["scout", "Scouting"];
   else if (scene && scene.run) {
-    if (i >= last() && !playing) [cls, text] = ENDINGS[scene.run.end];
+    if (i >= last() && !playing) [cls, text] = ending(scene.run);
     else if (f.e === "wait") [cls, text] = ["hold", "Waiting"];
     else [cls, text] = ["go", "Driving"];
   }
@@ -1133,7 +1238,7 @@ function showRun(run, map, crystals, startAt = 0) {
   const log = parseLog(run).filter(x => !(scout && x.text.startsWith("🏁")));
   const frameAtTick = t => { let k = 0; run.frames.forEach((f, j) => { if (f.t === t) k = j; }); return k; };
   let marks = log.map(ev => ({k: frameAtTick(ev.t), icon: [...ev.text][0], text: ev.text}))
-    .filter(m => "⛸💨✨🧪💎💥🔋⏱🎉🧱".includes(m.icon));
+    .filter(m => "⛸💨✨🧪💎💥🔋⏱🎉🧱📡".includes(m.icon));
   if (marks.length > 12) marks = marks.filter(m => m.icon !== "⛸" && m.icon !== "🧱");
   if (marks.length > 12) marks = marks.filter(m => m.icon !== "💨" || /pushed/.test(m.text));
   $("marks").innerHTML = marks.map(m => `<span class="mark" style="left:${last() ? m.k / last() * 100 : 0}%" title="tick ${run.frames[m.k].t}: ${esc(m.text)}" data-k="${m.k}">${m.icon}</span>`).join("");
@@ -1144,15 +1249,22 @@ function showRun(run, map, crystals, startAt = 0) {
   // Telemetry: events and print() lines in tick order, the error last.
   const prints = run.prints.map(p => ({t: p.t, text: p.text, print: true}));
   const lines = [...log.map(x => ({...x, print: false})), ...prints].map((x, j) => ({...x, j}))
-    .sort((a, b) => a.t - b.t || a.print - b.print || a.j - b.j);
+    .sort((a, b) => a.t - b.t || a.print - b.print || a.j - b.j)
+    // The same event over and over (a rover stuck bumping) reads as one line.
+    .reduce((out, x) => {
+      const prev = out[out.length - 1];
+      if (prev && !x.print && !prev.print && prev.text === x.text) { prev.n++; prev.end = x.t; }
+      else out.push({...x, n: 1, end: x.t});
+      return out;
+    }, []);
   $("feed").innerHTML = `<div class="feed-head">${scout ? "Scouting telemetry" : "Telemetry"}</div>` + lines.map(x =>
-    `<div class="ev${x.print ? " print" : /🎉|💎/.test(x.text) ? " good" : /💥|🔋|⏱/.test(x.text) ? " bad" : ""}" data-t="${x.t}"><span class="t">${x.t}</span><span>${x.print ? "› " : ""}${esc(x.text)}</span></div>`).join("")
+    `<div class="ev${x.print ? " print" : /🎉|💎|matches/.test(x.text) ? " good" : /💥|🔋|⏱|different/.test(x.text) ? " bad" : ""}" data-t="${x.t}" data-end="${x.end}"><span class="t">${x.t}</span><span>${x.print ? "› " : ""}${esc(x.text)}${x.n > 1 ? ` ×${x.n} <small>(until tick ${x.end})</small>` : ""}</span></div>`).join("")
     + (run.error ? `<div class="err">${esc(run.error)}</div>` : "")
     + (!lines.length && !run.error ? '<div class="empty">No telemetry.</div>' : "");
   hideBanner(); hideCelebrate();
   fps = scout ? 7 : Math.max(5, Math.min(30, last() / 20));
   setPos(startAt); heard = startAt;
-  if (run.error && last() === 0) { setPlaying(false); finished(); }
+  if (last() === 0) { setPlaying(false); finished(); }
   else setPlaying(true);
 }
 // The replay reached its end: celebrate, or say what went wrong.
@@ -1164,18 +1276,38 @@ function finished() {
   if (rewards && anyReached) { const r = rewards; rewards = null; return celebrate(r, run); }
   const sitesRewards = rewards; rewards = null;
   if (sitesRewards) showToasts(sitesRewards);
-  const [cls, , say] = ENDINGS[run.end];
+  const [cls, , say] = ending(run);
   const buttons = [];
   if (run.end === "goal") {
     const next = nextSite();
     if (next && site.key !== "7") buttons.push(`<button class="go" onclick="openSite('${next}')">Next site</button>`);
   } else if (run.end === "error") {
     SFX.play("error");
-    buttons.push(`<button class="quiet" onclick="$('code').focus()">Line ${run.line || "?"}</button>`);
-  } else if (["fell", "battery"].includes(run.end) && last() > 1) {
+    if (run.line) buttons.push(`<button class="quiet" onclick="goToLine(${run.line})">Go to line ${run.line}</button>`);
+  } else if (["fell", "battery", "wrong"].includes(run.end) && last() > 1) {
     buttons.push(`<button class="quiet" onclick="jumpTo(last() - 1)">Show the moment</button>`);
   }
-  showBanner(cls === "win" ? "win" : cls === "lost" ? "lost" : "", say(run.ticks), buttons.join(""));
+  // A few misses in a row: offer the two ways to find out more, without
+  // waiting for the teacher to come over.
+  if (!["goal", "error"].includes(run.end) && (site.misses || 0) >= 3) {
+    const zone = zoneOf(site.key);
+    if (site.key !== "7") buttons.push(`<button class="quiet" onclick="toggleScout()">🕹 Try it by hand</button>`);
+    if (zone.hints.length < zone.hint_count) buttons.push(`<button class="quiet" onclick="openPop($('radioPop'), $('radioButton'))">📻 Get a hint</button>`);
+  }
+  // A def that never ran is the likeliest reason a program stopped short.
+  const unused = run.end === "stopped" && run.log.find(l => l.includes("🧩"));
+  // Students watch the map, not the telemetry, so a code error says itself here.
+  let text = unused ? unused.replace(/^tick \d+: /, "") : run.end === "error" ? `⚠️ ${run.error}` : say;
+  if (site.key === "7" && runs) text = `${unchartedSummary()} Planet ${runs.indexOf(run) + 1}: ${text}`;
+  showBanner(cls === "win" ? "win" : cls === "lost" ? "lost" : "", text, buttons.join(""));
+}
+// What happened across the five planets, so the next thing to handle is clear.
+function unchartedSummary() {
+  const why = {fell: "fell in a crater", battery: "ran flat", ticks: "ran out of time", stopped: "stopped short", error: "hit a code error"};
+  const counts = {};
+  for (const r of runs) if (!r.reached) counts[r.end] = (counts[r.end] || 0) + 1;
+  const parts = Object.entries(counts).map(([end, n]) => `${n} ${why[end] || end}`);
+  return `${runs.filter(r => r.reached).length} of 5 reached${parts.length ? ` · ${parts.join(" · ")}` : ""}.`;
 }
 function showBanner(cls, text, actions = "") {
   $("banner").className = "banner " + cls; $("bannerText").textContent = text;
@@ -1186,13 +1318,14 @@ function hideBanner() { $("banner").hidden = true; }
 // ---- Celebration: the stars, one by one ------------------------------------------------
 async function celebrate(r, run) {
   const goals = site.goals || [];
-  const titles = ["Beacon reached!", "Nice driving!", "Perfect run!"];
+  const titles = ["Mission complete!", "Nice work!", "Perfect run!"];
   const got = r.stars.filter(Boolean).length;
   $("celeTitle").textContent = site.key === "7" ? `${runs.filter(x => x.reached).length} of 5 planets!` : titles[Math.max(0, got - 1)];
-  $("celeSub").textContent = site.key === "7" ? "" : `${run.ticks} ticks`;
+  $("celeSub").textContent = site.key === "7" ? unchartedSummary() : run.mission === "report" ? "📡 Report confirmed" : `${run.ticks} ticks`;
   $("bigStars").innerHTML = r.stars.map((s, i) => `<div class="big-star${s ? " got" : r.best[i] ? " was" : ""}" title="${esc(goals[i] || "")}"><i>★</i><span>${esc([...(goals[i] || "★")][0])}</span></div>`).join("");
   const missing = goals.filter((g, i) => !r.best[i]);
   $("celeMiss").textContent = missing.length && site.key !== "7" ? `Still to earn: ${missing.join(" · ")}` : "";
+  $("celeTip").textContent = site.key !== "7" && !r.best[2] ? compactTip($("code").value) : "";
   $("celeNote").innerHTML = "";
   const next = nextSite();
   $("celeActions").innerHTML = (next && site.key !== "7" ? `<button class="go" onclick="openSite('${next}')">Next site ▶</button>` : "")
@@ -1213,12 +1346,19 @@ async function celebrate(r, run) {
   await wait(pause && 300);
   const notes = [];
   if (r.new_stars) notes.push(`+${r.new_stars} ★`);
-  if (r.record) notes.push(`<span class="rec">🏆 ${r.record.first ? "First to reach it!" : "New class record!"}</span>`);
+  if (r.record) notes.push(`<span class="rec">🏆 ${r.record.first ? "First to complete it!" : "New class record!"}</span>`);
   $("celeNote").innerHTML = notes.join(" &nbsp; ");
   if (r.new_stars) bumpStars(r.total_stars);
   if (got === 3 || r.record) throwConfetti();
   $("celeActions").querySelector("button").focus();
   showToasts(r);
+}
+// One next step toward the ✂️ star, from what the code already uses.
+function compactTip(code) {
+  if (!/\b(for|while)\b/.test(code)) return "💡 Find a chunk of lines that repeats, and put it in a for loop.";
+  if (!/\bwhile\b/.test(code) && site.sensors.includes("look")) return '💡 Instead of counting squares, let a sensor decide:  while look("east") != "rock":';
+  if (!/\bdef\b/.test(code)) return "💡 Give a chunk you use more than once a name with def, then call it.";
+  return "💡 Look for lines that do the same job, and merge them into one loop.";
 }
 function hideCelebrate() { $("celebrate").hidden = true; }
 function bumpStars(total) {
@@ -1237,12 +1377,15 @@ async function showToasts(r) {
   for (const [icon, title, text] of items) {
     await wait(CALM ? 0 : 500);
     SFX.play("badge");
-    const el = document.createElement("div");
-    el.className = "toast";
-    el.innerHTML = `<span class="ico">${icon}</span><div><b>${esc(title)}</b><small>${esc(text)}</small></div>`;
-    $("toasts").appendChild(el);
-    setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 350); }, 5200);
+    toast(icon, title, text);
   }
+}
+function toast(icon, title, text) {
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.innerHTML = `<span class="ico">${icon}</span><div><b>${esc(title)}</b><small>${esc(text)}</small></div>`;
+  $("toasts").appendChild(el);
+  setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 350); }, 5200);
 }
 function showAnomaly() {
   setPlaying(false);
@@ -1281,6 +1424,9 @@ async function enter(id) {
   await openSite(siteOpen(lastSite) ? lastSite : data.current);
   requestAnimationFrame(frameLoop);
   if (recall("planetIntroSeen") !== "1") openIntro();
+  // A returning driver sees their own progress, so joining with a classmate's
+  // name by mistake shows straight away.
+  else if (data.total_stars) toast("👋", `Welcome back, ${data.you.name}!`, `${data.total_stars} ★ so far. Not you? Press Switch.`);
   return true;
 }
 function useState(data) {
@@ -1342,7 +1488,7 @@ async function openSite(key) {
     const order = allSites().map(s => s.key), prev = order[order.indexOf(key) - 1];
     code = prev ? recall(codeKey(prev)) : null;
     carried = !!code;
-    if (!code && key === "1a") code = "# Count the squares first.\nmove(3)\n";
+    if (!code && key === "1a") code = "# The rover drives by compass. Count the squares first.\nsouth(2)\n";
   }
   $("code").value = code || "";
   errorLine = 0;
@@ -1362,16 +1508,21 @@ async function openSite(key) {
   setPlaying(false);
   render();
   hideBanner();
-  if (key === "7") showBanner("", "Five unknown planets. Transmit to land.");
-  else if (carried) showBanner("", "Your last site's code is loaded. Will it still work here?");
+  if (key === "7") showBanner("", "A sample planet. Every run lands on five new ones, so a list of moves can't work here. beacon_x() and beacon_y() say where the beacon is: compare them with x() and y().");
+  else {
+    // A new zone's first site also says what the zone is like.
+    const intro = zone.sites[0].key === key && zone.blurb ? `${zone.name}: ${zone.blurb}` : "";
+    const text = [intro, carried ? "Your last site's code is loaded. Will it still work here?" : ""].filter(Boolean).join(" ");
+    if (text) showBanner("", text);
+  }
   $("status").className = "status"; $("status").textContent = "Ready";
 }
 // The site as it is before anything has run.
 function resetScene() {
   if (site.map) {
     const [r, c] = findChar(site.map, "S");
-    scene = sceneFor(site.map, [{r, c, d: site.dir, t: 0}], null, site.crystals);
-    $("batteryGauge").hidden = true;
+    scene = sceneFor(site.map, [{r, c, d: site.dir, t: 0, b: site.battery}], null, site.crystals);
+    $("batteryGauge").hidden = site.battery == null;
     $("sampleGauge").hidden = !scene.samples;
     $("crystalGauge").hidden = !scene.crystals.length;
     setPos(0); $("clock").textContent = "";
@@ -1387,17 +1538,37 @@ function renderGoals() {
 
 // ---- The kit: commands and sensors, one click to add -------------------------------------
 function renderKit(zi) {
-  const names = [...COMMANDS, ...site.sensors];
+  // Uncharted has no samples and nothing to report, so those would only mislead.
+  const names = [...COMMANDS, ...site.sensors.filter(n => site.key !== "7" || !["samples_left", "report"].includes(n))];
   $("kit").innerHTML = names.map(n => {
-    const cmd = COMMANDS.includes(n), fresh = !cmd && SENSOR_ZONE[n] === zi && zi > 0;
-    return `<button class="chip${cmd ? " cmd" : ""}${fresh ? " new" : ""}" data-name="${n}" title="${esc(HELP[n] || "")}${fresh ? " (new here)" : ""}">${n}()</button>`;
+    const cmd = LINE_CHIPS.includes(n), fresh = SENSOR_ZONE[n] === zi && zi > 0;
+    return `<button class="chip${cmd ? " cmd" : ""}${fresh ? " new" : ""}" data-name="${n}" title="${esc(HELP[n] || "")}${fresh ? " (new here)" : ""}">${esc(CHIP_TEXT[n] || n + "()")}</button>`;
   }).join("");
 }
+// A command goes on a line of its own (in line with the one it's typed on),
+// so clicking a few in a row never runs them together. A sensor goes where
+// the cursor is, since it's usually part of an  if  or  while.
+function insertChip(name) {
+  const t = $("code"), before = t.value.slice(t.value.lastIndexOf("\n", t.selectionStart - 1) + 1, t.selectionStart);
+  if (!LINE_CHIPS.includes(name)) return insertAtCursor(CHIP_TEXT[name] || name + "()");
+  let indent = (before.match(/^\s*/) || [""])[0];
+  if (before.trimEnd().endsWith(":")) indent += "    ";
+  insertAtCursor((before.trim() ? "\n" + indent : "") + name + "()\n" + indent);
+}
 function insertAtCursor(text) {
-  const t = $("code"), start = t.selectionStart, end = t.selectionEnd;
-  t.value = t.value.slice(0, start) + text + t.value.slice(end);
-  t.selectionStart = t.selectionEnd = start + text.length;
-  t.focus(); updateEditor();
+  const t = $("code");
+  replaceText(t.selectionStart, t.selectionEnd, text);
+}
+// Every change the page makes to the code goes through the browser's own
+// typing, so Ctrl+Z still undoes it (setting .value would wipe the history).
+function replaceText(start, end, text) {
+  const t = $("code");
+  t.focus(); t.setSelectionRange(start, end);
+  // (Inserting "" puts the cursor back a line in Chrome, so deleting is a delete.)
+  const done = text ? document.execCommand("insertText", false, text)
+                    : start === end || document.execCommand("delete");
+  if (!done) t.setRangeText(text, start, end, "end");
+  updateEditor();
 }
 
 // ---- Radio and journal -------------------------------------------------------------------
@@ -1487,21 +1658,22 @@ function toggleScout() {
   scout = {moves: [], queue: [], over: false};
   rewards = null; anomalyAt = null;
   $("scoutButton").classList.add("on");
-  $("scoutHelp").hidden = false; $("pad").hidden = false;
+  $("scoutHelp").hidden = false; $("pad").hidden = false; $("compass").hidden = true;
   hideBanner(); hideCelebrate(); $("anomaly").hidden = true;
   $("planets").hidden = true; $("marks").innerHTML = "";
   resetScene(); setPlaying(false); render();
-  $("feed").innerHTML = '<div class="empty">Scouting: drive with the arrow keys or the buttons on the map.</div>';
-  scoutLeft(60);
+  $("feed").innerHTML = '<div class="empty">Scouting: drive north, south, east and west with the arrow keys or the buttons on the map.</div>';
+  scoutLeft(SCOUT_MAX); $("scoutCode").disabled = true;
   announce("Scouting. Use the arrow keys to drive.");
 }
 function stopScout(quiet) {
   if (!scout) return;
   scout = null;
   $("scoutButton").classList.remove("on");
-  $("scoutHelp").hidden = true; $("pad").hidden = true;
+  $("scoutHelp").hidden = true; $("pad").hidden = true; $("compass").hidden = false;
   if (!quiet) { hideBanner(); resetScene(); setPlaying(false); render(); $("feed").innerHTML = '<div class="empty">Transmit to see the rover\'s telemetry.</div>'; }
 }
+const SCOUT_MAX = 150;   // matches server.SCOUT_MAX
 function scoutLeft(n) { $("scoutLeft").textContent = `${n} moves left.`; }
 // Key presses queue up (a few at most) while the last move is on its way, so
 // quick tapping never gets lost.
@@ -1518,7 +1690,7 @@ async function scoutMove(move) {
       const data = await post("/planet/scout", {id: me, site: site.key, moves: scout.moves});
       if (!scout) break;
       if (data.error) { showBanner("lost", data.error); break; }
-      scoutLeft(data.left);
+      scoutLeft(data.left); $("scoutCode").disabled = false;
       showRun(data.run, site.map, site.crystals, Math.min(from, data.run.frames.length - 1));
       if (data.run.end !== "stopped" || !data.left) scout.over = true;
     }
@@ -1528,11 +1700,36 @@ async function scoutMove(move) {
 }
 function scoutFinished(run) {
   if (!scout.over) return;
+  // The trip is over: the banner (with its own buttons) takes the place of
+  // the driving help and pad, which would otherwise sit on top of it.
+  $("scoutHelp").hidden = true; $("pad").hidden = true;
   const say = {goal: "Your scout made it! Now write code that does the same.",
                fell: "Lost! What happened there?", battery: "Flat battery! Hmm.",
                ticks: "Out of time.", stopped: "Out of scouting moves."}[run.end] || "";
   if (run.end === "goal") SFX.play("win");
-  showBanner("scout", say, `<button class="quiet" onclick="restartScout()">Scout again (R)</button><button class="quiet" onclick="stopScout()">Stop</button>`);
+  showBanner("scout", say, `${run.end === "goal" ? `<button class="go" onclick="scoutAsCode()">📋 Use as code</button>` : ""}<button class="quiet" onclick="restartScout()">Scout again (R)</button><button class="quiet" onclick="stopScout()">Stop</button>`);
+}
+// The hand-driven route, written as code: three east() in a row become
+// east(3), and a long wait becomes a for loop, so the first loop a student
+// sees is their own.
+function movesAsCode(moves) {
+  const runs = [];
+  for (const m of moves) {
+    const last = runs[runs.length - 1];
+    if (last && last[0] === m) last[1]++; else runs.push([m, 1]);
+  }
+  return runs.map(([m, n]) => m === "wait" && n >= 3 ? `for i in range(${n}):\n    wait()`
+    : m === "wait" ? Array(n).fill("wait()").join("\n")
+    : `${m}(${n > 1 ? n : ""})`).join("\n") + "\n";
+}
+function scoutAsCode() {
+  if (!scout || !scout.moves.length) return;
+  const code = movesAsCode(scout.moves);
+  stopScout();
+  replaceText(0, $("code").value.length, code);
+  const lines = code.split("\n").filter(l => l.trim()).length, m = /✂️ (\d+)/.exec((site.goals || [])[2] || "");
+  const more = m && lines > Number(m[1]) ? ` The ✂️ star wants ${m[1]} or fewer: can a loop do the part that repeats?` : "";
+  toast("📋", "Your drive is now code", `${lines} lines. Transmit it!${more} Ctrl+Z brings back what was there.`);
 }
 function restartScout() { if (scout) { stopScout(true); toggleScout(); } }
 
@@ -1553,6 +1750,7 @@ async function transmit() {
     useState(data.state);
     $("totalStars").textContent = data.rewards.total_stars - data.rewards.new_stars;
     site.stars = data.rewards.best;
+    site.misses = data.rewards.misses;
     anomalyAt = data.rewards.anomaly ? data.rewards.anomaly.tick : null;
     const rec = data.rewards.record;
     if (rec) { site.record = {ticks: rec.ticks, name: rec.name}; $("record").hidden = false; $("record").textContent = `🏆 Class record: ${rec.ticks} ticks · ${rec.name}`; }
@@ -1568,7 +1766,7 @@ async function transmit() {
     } else {
       $("planets").hidden = true;
       showRun(runs[0], site.map, site.crystals);
-      announce(ENDINGS[runs[0].end][2](runs[0].ticks));
+      announce(ending(runs[0])[2]);
     }
   } catch (_) {
     showBanner("lost", "No answer from the game. Is the server running?");
@@ -1580,7 +1778,7 @@ async function transmit() {
 }
 function selectPlanet(i) {
   $("planets").hidden = false;
-  $("planets").innerHTML = runs.map((r, j) => `<button class="planet-tab ${r.reached ? "ok" : "no"}${j === i ? " on" : ""}" onclick="selectPlanet(${j})" title="Planet ${j + 1}: ${r.reached ? "reached" : ENDINGS[r.end][1].toLowerCase()}" aria-label="Planet ${j + 1}, ${r.reached ? "reached" : "not reached"}">${j + 1}</button>`).join("");
+  $("planets").innerHTML = runs.map((r, j) => `<button class="planet-tab ${r.reached ? "ok" : "no"}${j === i ? " on" : ""}" onclick="selectPlanet(${j})" title="Planet ${j + 1}: ${r.reached ? "reached" : ending(r)[1].toLowerCase()}" aria-label="Planet ${j + 1}, ${r.reached ? "reached" : "not reached"}">${j + 1}</button>`).join("");
   site.map = runs[i].map;
   showRun(runs[i], runs[i].map, []);
 }
@@ -1598,33 +1796,72 @@ function updateEditor() {
   const target = m ? Number(m[1]) : null;
   $("lineCount").textContent = `${lines} line${lines === 1 ? "" : "s"}${target ? ` · ✂️ ${target}` : ""}`;
   $("lineCount").className = target && lines && lines <= target ? "fits" : "";
+  paintCode(code);
+  syncPaint();
   saveCode();
 }
+function syncPaint() { $("paint").scrollTop = $("code").scrollTop; $("paint").scrollLeft = $("code").scrollLeft; }
 function editorKey(event) {
   const t = event.target, start = t.selectionStart, end = t.selectionEnd;
   if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
     event.preventDefault(); transmit(); return;
   }
+  // Escape, then Tab, leaves the editor, so the keyboard is never trapped in it.
+  if (event.key === "Escape") { tabLeaves = true; return; }
+  if (event.key === "Tab" && tabLeaves) return;
+  tabLeaves = false;
   if (event.key === "Tab") {
-    event.preventDefault(); t.value = t.value.slice(0, start) + "    " + t.value.slice(end); t.selectionStart = t.selectionEnd = start + 4;
+    event.preventDefault(); replaceText(start, end, "    ");
   } else if (event.key === "Enter") {
     event.preventDefault();
     const lineStart = t.value.lastIndexOf("\n", start - 1) + 1;
     const line = t.value.slice(lineStart, start);
     let indent = (line.match(/^\s*/) || [""])[0];
     if (line.trimEnd().endsWith(":")) indent += "    ";
-    const addition = "\n" + indent;
-    t.value = t.value.slice(0, start) + addition + t.value.slice(end); t.selectionStart = t.selectionEnd = start + addition.length;
+    replaceText(start, end, "\n" + indent);
   } else if (event.key === "Backspace" && start === end) {
     // In the spaces at the start of a line, go back a whole level (4 spaces)
     // so the indentation always lines up.
     const before = t.value.slice(t.value.lastIndexOf("\n", start - 1) + 1, start);
     if (!before || /[^ ]/.test(before)) return;
     event.preventDefault();
-    const back = (before.length - 1) % 4 + 1;
-    t.value = t.value.slice(0, start - back) + t.value.slice(end); t.selectionStart = t.selectionEnd = start - back;
-  } else return;
-  updateEditor();
+    replaceText(start - ((before.length - 1) % 4 + 1), start, "");
+  }
+}
+let tabLeaves = false;
+// Put the cursor at the start of a line and select it, for the error's Line button.
+function goToLine(n) {
+  const t = $("code"), lines = t.value.split("\n");
+  const start = lines.slice(0, n - 1).reduce((sum, l) => sum + l.length + 1, 0);
+  t.focus(); t.setSelectionRange(start, start + (lines[n - 1] || "").length);
+  const lineHeight = parseFloat(getComputedStyle(t).lineHeight) || 22;
+  t.scrollTop = Math.max(0, (n - 3) * lineHeight);
+}
+
+// Colour behind the editor: commands, sensors and your own functions light up
+// when they're spelt right, so a typo like  turnright()  stays plain.
+const KEYWORDS = new Set(["def", "if", "elif", "else", "while", "for", "in", "range", "not", "and", "or",
+  "return", "True", "False", "None", "break", "continue", "pass", "global", "print"]);
+function paintCode(code) {
+  const own = new Set([...code.matchAll(/^\s*def\s+([A-Za-z_]\w*)/gm)].map(m => m[1]));
+  const sensors = new Set((site && site.sensors) || []);
+  const token = line => line.replace(/(#.*)|("[^"]*"?|'[^']*'?)|\b(\d+)\b|([A-Za-z_]\w*)|([&<>])/g, (all, comment, text, num, word, ch) => {
+    if (ch) return {"&": "&amp;", "<": "&lt;", ">": "&gt;"}[ch];
+    if (comment) return `<i class="t-note">${esc(comment)}</i>`;
+    if (text) return `<i class="t-text">${esc(text)}</i>`;
+    if (num) return `<i class="t-num">${num}</i>`;
+    const cls = COMMANDS.includes(word) ? "t-cmd" : sensors.has(word) ? "t-sense" : own.has(word) ? "t-own"
+      : KEYWORDS.has(word) ? "t-key" : "";
+    return cls ? `<i class="${cls}">${word}</i>` : word;
+  });
+  // Faint guides in the indentation, one per level, so blocks line up by eye.
+  const html = code.split("\n").map(line => {
+    const lead = line.match(/^ */)[0], levels = Math.floor(lead.length / 4);
+    return '<i class="ind">    </i>'.repeat(levels) + lead.slice(levels * 4) + token(line.slice(lead.length));
+  }).join("\n");
+  // The line with the error gets a coral bar behind it.
+  const bar = errorLine ? `<span class="err-line" style="top: calc(12px + ${errorLine - 1} * 1.6em)"></span>` : "";
+  $("paint").innerHTML = bar + html + "\n ";
 }
 
 // ---- Scenes: the join screen and the how-it-works card ------------------------------------
@@ -1680,16 +1917,20 @@ function openIntro() {
   const cv = $("introScene"), dpr = window.devicePixelRatio || 1;
   cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr;
   const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const w = cv.clientWidth, h = cv.clientHeight, cell = 44;
-  const map = ["##########", "#S......G#", "##########"];
+  const w = cv.clientWidth, h = cv.clientHeight, cell = 32;
+  // Open ground, not corridors: samples to collect, a beacon, a crystal.
+  const map = ["############", "#S...*...#.#", "#..#.....*.#", "#.....#..G.#", "############"];
   ctx.fillStyle = bedPattern(ctx, "landing"); ctx.fillRect(0, 0, w, h);
-  const ox = (w - 10 * cell) / 2, oy = (h - 3 * cell) / 2;
+  const ox = (w - 12 * cell) / 2, oy = (h - 5 * cell) / 2;
   ctx.save(); ctx.translate(ox, oy);
   ctx.drawImage(terrain(map, "landing", cell), 0, 0);
+  drawRulers(ctx, 5, 12, cell);
   ctx.strokeStyle = "rgba(30,14,30,.32)"; ctx.lineWidth = 3;
   for (const side of [-.25, .25]) { ctx.beginPath(); ctx.moveTo(1.5 * cell, (1.5 + side) * cell); ctx.lineTo(4.5 * cell, (1.5 + side) * cell); ctx.stroke(); }
-  drawCrystal(ctx, 1, 6, cell, 0);
-  drawBeacon(ctx, 1, 8, cell, 400, false);
+  drawSample(ctx, 1, 5, cell, 0);
+  drawSample(ctx, 2, 9, cell, 0);
+  drawCrystal(ctx, 3, 3, cell, 0);
+  drawBeacon(ctx, 3, 9, cell, 400, false);
   drawRover(ctx, 4.5 * cell, 1.5 * cell, cell * 1.12, 0, 1, look);
   ctx.restore();
   vignette(ctx, w, h);
@@ -1703,6 +1944,18 @@ $("joinForm").addEventListener("submit", join);
 $("switchButton").addEventListener("click", () => { localStorage.removeItem("mazeId"); location.reload(); });
 $("helpButton").addEventListener("click", openIntro);
 $("introClose").addEventListener("click", closeIntro);
+$("calmPick").checked = CALM;
+$("bigPick").checked = document.body.classList.contains("big");
+$("bigPick").addEventListener("change", e => {
+  store("planetBig", e.target.checked ? "1" : "0");
+  document.body.classList.toggle("big", e.target.checked);
+  updateEditor(); render();
+});
+$("calmPick").addEventListener("change", e => {
+  CALM = e.target.checked; store("planetCalm", CALM ? "1" : "0");
+  document.body.classList.toggle("calm", CALM);
+  particles = []; confetti = [];
+});
 $("muteButton").addEventListener("click", () => { $("muteButton").textContent = SFX.toggle() ? "🔇" : "🔊"; });
 $("starsButton").addEventListener("click", openGarage);
 $("garageClose").addEventListener("click", () => { $("garage").hidden = true; });
@@ -1713,19 +1966,22 @@ $("garage").addEventListener("click", e => {
 });
 $("runButton").addEventListener("click", transmit);
 $("scoutButton").addEventListener("click", toggleScout);
+$("scoutCode").addEventListener("click", scoutAsCode);
 $("pad").addEventListener("click", e => { const m = e.target.dataset.move; if (m) scoutMove(m); });
 $("playButton").addEventListener("click", togglePlay);
+$("speedButton").addEventListener("click", nextSpeed);
+showSpeed();
 $("anomalyGo").addEventListener("click", () => { $("anomaly").hidden = true; setPlaying(true); });
 $("anomalyJournal").addEventListener("click", () => { $("anomaly").hidden = true; openPop($("journalPop"), $("journalButton")); });
 $("scrub").addEventListener("input", () => jumpTo(Number($("scrub").value)));
 $("marks").addEventListener("click", e => { const k = e.target.dataset.k; if (k != null) jumpTo(Number(k)); });
-$("kit").addEventListener("click", e => { const n = e.target.dataset && e.target.dataset.name; if (n) insertAtCursor(n + "()"); });
+$("kit").addEventListener("click", e => { const n = e.target.dataset && e.target.dataset.name; if (n) insertChip(n); });
 $("radioButton").addEventListener("click", () => openPop($("radioPop"), $("radioButton")));
 $("journalButton").addEventListener("click", () => openPop($("journalPop"), $("journalButton")));
 $("hintButton").addEventListener("click", askHint);
 $("journalSave").addEventListener("click", saveJournal);
 $("code").addEventListener("input", updateEditor);
-$("code").addEventListener("scroll", () => { $("lines").scrollTop = $("code").scrollTop; });
+$("code").addEventListener("scroll", () => { $("lines").scrollTop = $("code").scrollTop; syncPaint(); });
 $("code").addEventListener("keydown", editorKey);
 document.addEventListener("keydown", e => {
   if (e.key === "F5" && me) { e.preventDefault(); transmit(); return; }
@@ -1739,7 +1995,8 @@ document.addEventListener("keydown", e => {
   }
   // Scouting keys, unless typing somewhere.
   if (!scout || e.target.closest("textarea, input")) return;
-  const keys = {ArrowUp: "move", w: "move", ArrowLeft: "turn_left", a: "turn_left", ArrowRight: "turn_right", d: "turn_right", " ": "wait"};
+  const keys = {ArrowUp: "north", w: "north", ArrowDown: "south", s: "south", ArrowRight: "east", d: "east",
+                ArrowLeft: "west", a: "west", " ": "wait"};
   if (keys[e.key]) { e.preventDefault(); scoutMove(keys[e.key]); }
   else if (e.key === "r" || e.key === "R") restartScout();
 });
@@ -1752,7 +2009,7 @@ $("map").addEventListener("pointermove", e => {
   const c = Math.floor((e.clientX - rect.left - ox) / cell), r = Math.floor((e.clientY - rect.top - oy) / cell);
   const ok = scene.map[r] && scene.map[r][c];
   $("where").hidden = !ok;
-  if (ok) $("where").textContent = `row ${r}, col ${c}`;
+  if (ok) $("where").textContent = `x ${c}, y ${r}`;
 });
 $("map").addEventListener("pointerleave", () => { $("where").hidden = true; });
 window.addEventListener("resize", () => render());
