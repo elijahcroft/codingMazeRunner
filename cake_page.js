@@ -540,6 +540,10 @@ async function playQueue() {
   }
   if (token === queueToken) { playing(false); endOfBake(); }
 }
+// Some customers show their joy their own way.
+const DELIGHT = {"🐱": "🐟", "🦄": "🌈", "🐧": "❄️", "🦓": "⭐", "👻": "👻", "🐸": "💚", "🤖": "⚙️",
+  "👽": "🛸", "🧜": "🫧", "🧚": "✨", "🐶": "🦴", "🐼": "🎋", "🦖": "🦴", "🦔": "🍂", "🦉": "🪶",
+  "🦊": "🍊", "🐭": "🧀", "👸": "👑", "👰": "💐", "👵": "🌷"};
 function react(i) {
   const r = results[i];
   showCustomer(i, {reacted: true});
@@ -548,7 +552,9 @@ function react(i) {
   if (r.happy) {
     SFX.play("happy");
     if (r.face === "🐉") { SFX.play("fire"); puff("🔥", 14, [at[0] + 80, at[1]]); }
-    puff("💖", 6, at);
+    const extra = Object.entries(DELIGHT).find(([face]) => r.face.startsWith(face));
+    puff(extra ? extra[1] : "💖", extra ? 5 : 6, at);
+    if (extra) puff("💖", 3, at);
   } else {
     SFX.play(r.error ? "error" : "sad");
     puff(r.error ? "💨" : "❓", 2, at);
@@ -609,7 +615,11 @@ async function celebrate() {
   const st = rewards.stars, best = rewards.best;
   const all = results.length > 1;
   const happy = results.filter(r => r.happy).length;
+  const nextKey = nextLevel();
+  const nextCh = nextKey && allLevels().find(l => l.key === nextKey).chapter;
+  const newChapter = rewards.first && nextCh && nextCh.key !== view.chapter.key;
   $("celTitle").textContent = view.bake_off ? `${happy} of ${results.length} happy customers!`
+    : newChapter ? `${view.chapter.icon} ${view.chapter.name}: done!`
     : st.every(Boolean) ? "Perfect bake! 🎉" : all ? "Everyone's happy!" : `${results[0].name} loves it!`;
   const spans = [...$("celStars").children];
   spans.forEach(s => { s.className = ""; });
@@ -618,8 +628,9 @@ async function celebrate() {
   const unlocks = rewards.unlocked || [];
   $("celUnlocks").hidden = !unlocks.length;
   $("celUnlocks").innerHTML = unlocks.length ? "🔓 New: " + unlocks.map(u => esc(u.name)).join(", ") : "";
-  const next = nextLevel();
-  $("celButtons").innerHTML = (next ? `<button class="go" onclick="goNext()">Next customer ▶</button>` : "") +
+  const next = nextKey;
+  const label = newChapter ? `On to ${nextCh.icon} ${esc(nextCh.name)} ▶` : "Next customer ▶";
+  $("celButtons").innerHTML = (next ? `<button class="go" onclick="goNext()">${label}</button>` : "") +
     `<button class="soft" onclick="closeCelebrate()">${best.every(Boolean) ? "Stay here" : "Go for more stars"}</button>`;
   $("celebrate").hidden = false;
   if (st.every(Boolean) || rewards.first) throwConfetti();
