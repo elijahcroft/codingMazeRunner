@@ -160,7 +160,7 @@ async function enter(id) {
   const open = allLevels().filter(l => l.open).map(l => l.key);
   await openLevel(open.includes(lastLevel) ? lastLevel : data.current);
   if (!data.you.shop) openShopName(true);
-  else if (recall("cakeIntroSeen") !== "1") $("introModal").hidden = false;
+  else if (recall("cakeIntroSeen") !== "1") openIntro();
   return true;
 }
 function useState(data) {
@@ -677,6 +677,8 @@ async function celebrate() {
   $("celButtons").innerHTML = (next ? `<button class="go" onclick="goNext()">${label}</button>` : "") +
     `<button class="soft" onclick="closeCelebrate()">${best.every(Boolean) ? "Stay here" : "Go for more stars"}</button>`;
   $("celebrate").hidden = false;
+  // Enter goes on, as in any dialog, and doesn't add a line to the recipe.
+  $("celButtons").firstElementChild.focus({preventScroll: true});
   if (st.every(Boolean) || rewards.first) throwConfetti();
   for (let i = 0; i < 3; i++) {
     await wait(260);
@@ -686,7 +688,15 @@ async function celebrate() {
   }
   if (unlocks.length) { await wait(300); SFX.play("unlock"); }
 }
-function closeCelebrate() { $("celebrate").hidden = true; }
+function closeCelebrate() {
+  const inside = $("celebrate").contains(document.activeElement);
+  $("celebrate").hidden = true;
+  if (inside) $("code").focus({preventScroll: true});   // back to the recipe for more stars
+}
+function openIntro() {
+  $("introModal").hidden = false;
+  $("introClose").focus();
+}
 function nextLevel() {
   const list = allLevels(), i = list.findIndex(l => l.key === view.key);
   return list[i + 1] && list[i + 1].open ? list[i + 1].key : null;
@@ -1219,7 +1229,7 @@ async function saveShopName() {
   if (data.you) useState(data);
   $("shopModal").hidden = true;
   SFX.play("happy");
-  if ($("shopModal").dataset.first && recall("cakeIntroSeen") !== "1") $("introModal").hidden = false;
+  if ($("shopModal").dataset.first && recall("cakeIntroSeen") !== "1") openIntro();
 }
 $("suggest").addEventListener("click", e => {
   const b = e.target.closest("button");
@@ -1318,7 +1328,8 @@ $("introClose").addEventListener("click", () => { $("introModal").hidden = true;
 document.addEventListener("keydown", e => {
   if (e.key === "F5" && !$("app").hidden) { e.preventDefault(); bake(); }
   if (e.key === "Escape") {
-    for (const id of ["cakeModal", "pantryModal", "celebrate"]) if (!$(id).hidden) { $(id).hidden = true; return; }
+    if (!$("celebrate").hidden) { closeCelebrate(); return; }
+    for (const id of ["cakeModal", "pantryModal"]) if (!$(id).hidden) { $(id).hidden = true; return; }
     if (!$("introModal").hidden) $("introClose").click();
   }
 });
