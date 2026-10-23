@@ -628,7 +628,10 @@ async function celebrate() {
     `<li class="${best[i] ? "" : "miss"}"><b>${best[i] ? "★" : "☆"}</b><span>${fmt(g)}</span></li>`).join("");
   const unlocks = rewards.unlocked || [];
   $("celUnlocks").hidden = !unlocks.length;
-  $("celUnlocks").innerHTML = unlocks.length ? "🔓 New: " + unlocks.map(u => esc(u.name)).join(", ") : "";
+  const howTo = u => u.kind === "topping" ? ` <code>topping("${esc(u.key)}")</code>`
+    : u.kind === "special" ? ` <code>frosting("${esc(u.key)}")</code>` : " (tap ★ to use it)";
+  $("celUnlocks").innerHTML = unlocks.length ? "🔓 New in your pantry:<br>" +
+    unlocks.map(u => `${esc(u.name)}${howTo(u)}`).join("<br>") : "";
   const next = nextKey;
   const label = newChapter ? `On to ${nextCh.icon} ${esc(nextCh.name)} ▶` : "Next customer ▶";
   $("celButtons").innerHTML = (next ? `<button class="go" onclick="goNext()">${label}</button>` : "") +
