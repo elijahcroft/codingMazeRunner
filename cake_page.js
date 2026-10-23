@@ -101,6 +101,7 @@ let busy = false;
 let play = null;        // the bake being animated
 let shown = null;       // {tiers, fit}: the cake on the counter when nothing is playing
 let queueToken = 0;     // bumped to stop a queue that's playing
+let served = 0;         // customers who've had their cake so far this bake
 let studio = {run: null, seed: 0};
 let errorLine = 0, errorCount = 0;
 let pantryTab = "flavours";
@@ -116,7 +117,9 @@ const SHOP_IDEAS = ["The Sugar Plum", "Sprinkle Palace", "Cloud Nine Cakes", "Cr
   "The Happy Whisk", "Frosted Dreams", "The Little Oven", "Butter & Bloom"];
 
 function codeKey(key) { return `cakeCode:${me}:${key}`; }
-function contextKey() { return mode === "studio" ? "studio" : view && view.key; }
+// What the editor holds: the Studio, the open level, or nothing on the Shop Window
+// (which keeps whatever the editor had, so it mustn't be saved as a level).
+function contextKey() { return mode === "studio" ? "studio" : mode === "window" ? null : view && view.key; }
 function saveCode() {
   const key = contextKey();
   if (me && key) store(codeKey(key), $("code").value);
@@ -190,7 +193,7 @@ function renderRoute() {
         const cls = ["lvl", l.key === here ? "now" : "", n === 3 ? "gold" : l.solved ? "done" : ""].join(" ");
         return `<button class="${cls}" data-level="${l.key}" ${l.open ? "" : "disabled"} ` +
           `title="${esc(l.name)}${l.open ? ` · ${n} of 3 stars` : " · not open yet"}" aria-label="${esc(l.name)}${l.open ? `, ${n} of 3 stars` : ", locked"}">` +
-          `<span aria-hidden="true">${l.open ? l.face : "🔒"}</span>` +
+          `<span aria-hidden="true">${l.face}</span>` +
           (l.open ? `<span class="mini" aria-hidden="true">${"★".repeat(n)}<s>${"★".repeat(3 - n)}</s></span>` : "") + `</button>`;
       }).join("") + `</div>`;
   }).join("");
@@ -206,8 +209,9 @@ $("route").addEventListener("click", e => {
 });
 
 // ---- Opening a level --------------------------------------------------------------------------
-async function openLevel(key) {
-  saveCode();
+// fromMode: setMode has already saved the editor under the page we came from.
+async function openLevel(key, fromMode = false) {
+  if (!fromMode) saveCode();
   stopQueue();
   let data;
   try { data = await get(`/cake/level?id=${encodeURIComponent(me)}&level=${encodeURIComponent(key)}`); }
@@ -218,6 +222,7 @@ async function openLevel(key) {
   store(`cakeLevel:${me}`, key);
   const saved = recall(codeKey(key));
   $("code").value = saved !== null ? saved : (data.code || data.starter);
+  $("code").scrollTop = 0;
   errorLine = 0;
   renderRoute();
   renderLevel();
@@ -305,22 +310,28 @@ function renderTicket() {
   const c = customerData(sel);
   const r = results && results[sel];
   let html = `<span class="pin" aria-hidden="true">📌</span>`;
-  if (c.ticket) {
+  // After a bake the checks come first, and a long ticket folds away so it all fits.
+  if (c.ticket && r) {
+    html += `<h3>🎫 ${esc(c.name)}'s cake</h3>`;
+  } else if (c.ticket) {
     html += `<h3>🎫 ${esc(c.name)}'s ticket</h3><pre>${highlight(ticketCode(c.ticket))}</pre>`;
   } else {
     html += `<h3>🧾 Order for ${esc(c.name)}</h3>`;
   }
   if (r) {
-    html += (c.ticket ? `<div class="sep"></div><h3>Did you bake it?</h3>` : "") +
-      `<ul>${r.checks.map(ch => `<li class="${ch.ok ? "ok" : "no"}"><b>${ch.ok ? "✓" : "✗"}</b><span>${esc(ch.text)}</span></li>`).join("")}</ul>`;
+    html += `<ul>${r.checks.map(ch => `<li class="${ch.ok ? "ok" : "no"}"><b>${ch.ok ? "✓" : "✗"}</b><span>${esc(ch.text)}</span></li>`).join("")}</ul>`;
     if (r.extras.length && !r.error) html += `<div class="extras">✨ Your own touch: ${esc(r.extras.join(", "))}</div>`;
+    if (c.ticket) html += `<details class="tk"${ticketOpen ? " open" : ""}><summary>🎫 The ticket: <code>order</code></summary><pre>${highlight(ticketCode(c.ticket))}</pre></details>`;
   } else if (!c.ticket && c.checklist) {
     html += `<ul>${c.checklist.map(t => `<li><b>•</b><span>${esc(t)}</span></li>`).join("")}</ul>`;
   } else if (view.bake_off) {
     html += `<p style="margin:6px 0 0;color:var(--mocha)">Every bake brings five NEW customers. This is just an example ticket.</p>`;
   }
   $("ticket").innerHTML = html;
+  $("ticket").scrollTop = 0;
 }
+let ticketOpen = false;
+$("ticket").addEventListener("toggle", e => { if (e.target.matches("details.tk")) ticketOpen = e.target.open; }, true);
 function renderQueue() {
   const list = mode === "studio" ? [] : (results || view.customers);
   const q = $("queue");
@@ -328,8 +339,9 @@ function renderQueue() {
   document.querySelector(".shelf").hidden = !q.hidden;
   if (q.hidden) return;
   q.innerHTML = list.map((c, i) => {
-    const st = results ? (c.happy ? " ok" : " no") : "";
-    const mark = results ? (c.happy ? "😊" : "😕") : "";
+    const seen = results && i < served;   // no spoilers for customers still waiting
+    const st = seen ? (c.happy ? " ok" : " no") : "";
+    const mark = seen ? (c.happy ? "😊" : "😕") : "";
     return `<button class="${i === sel ? "on" : ""}${st}" data-c="${i}" title="${esc(c.name)}"><span class="qf">${c.face}</span>${esc(c.name.split(" ")[0])}${mark ? ` ${mark}` : ""}</button>`;
   }).join("");
 }
@@ -337,6 +349,8 @@ $("queue").addEventListener("click", e => {
   const b = e.target.closest("button[data-c]");
   if (!b) return;
   SFX.play("click");
+  // Jumping to a customer mid-bake finishes the bake first, so the stars still come.
+  if (results && served < results.length && mode === "orders") skipToEnd();
   stopQueue();
   const i = Number(b.dataset.c);
   showCustomer(i, {enter: true, reacted: !!results});
@@ -385,17 +399,20 @@ function frameLoop(ts) {
   requestAnimationFrame(frameLoop);
 }
 function drawCounter(now) {
+  if (CALM) now = 1000;   // still candles and sparkles
   const {ctx, w, h} = fitCanvas(cakeCanvas);
   ctx.clearRect(0, 0, w, h);
   const stand = state ? state.look.stand : "plate";
+  // The stand sits on the counter, which starts 80% of the way down the scene.
+  const floor = $("scene").clientHeight * .86 - cakeCanvas.offsetTop;
   if (play) {
     const k = play.k + (play.u > 0 ? 1 : 0);
     const tiers = CakeArt.replay(play.steps, Math.min(k, play.steps.length));
     const anim = play.u > 0 && play.k < play.steps.length
       ? {do: play.steps[play.k].do, tier: tiers.length - 1, u: play.u} : null;
-    CakeArt.draw(ctx, w, h, {tiers, fit: play.fit, stand, anim, now});
+    CakeArt.draw(ctx, w, h, {tiers, fit: play.fit, stand, anim, now, floor});
   } else if (shown) {
-    CakeArt.draw(ctx, w, h, {tiers: shown.tiers, fit: shown.fit || shown.tiers, stand, now});
+    CakeArt.draw(ctx, w, h, {tiers: shown.tiers, fit: shown.fit || shown.tiers, stand, now, floor});
   }
 }
 // Step through the bake: each step takes a moment, and lots of steps go faster.
@@ -447,6 +464,7 @@ function sceneXY(el, fx = .5, fy = .3) {
   return [a.left - b.left + a.width * fx, a.top - b.top + a.height * fy];
 }
 function puff(icon, n, from = null) {
+  if (CALM) return;
   const [x, y] = from || (() => {
     const r = cakeCanvas.getBoundingClientRect(), b = $("scene").getBoundingClientRect();
     return [r.left - b.left + r.width / 2, r.top - b.top + r.height * .35];
@@ -458,6 +476,7 @@ function puff(icon, n, from = null) {
   }
 }
 function throwConfetti(n = 140) {
+  if (CALM) return;
   const r = $("scene").getBoundingClientRect();
   const colours = ["#ff6f9f", "#ffd447", "#6fd3b5", "#8fb8ff", "#c8a6ff", "#ff9b54"];
   for (let i = 0; i < n; i++) {
@@ -502,7 +521,7 @@ async function bake() {
     if (data.error === "join") { forget(); return; }
     if (data.error) { showBanner("error", data.error); return; }
     if (!view || view.key !== key) return;
-    results = data.runs; rewards = data.rewards;
+    results = data.runs; rewards = data.rewards; served = 0;
     view.stars = rewards.best;
     useState(data.state);
     $("totalStars").textContent = rewards.total_stars - rewards.new_stars;
@@ -547,6 +566,7 @@ const DELIGHT = {"🐱": "🐟", "🦄": "🌈", "🐧": "❄️", "🦓": "⭐"
   "🦊": "🍊", "🐭": "🧀", "👸": "👑", "👰": "💐", "👵": "🌷"};
 function react(i) {
   const r = results[i];
+  served = Math.max(served, i + 1);
   showCustomer(i, {reacted: true});
   restartClass($("face"), r.happy ? "happy" : "sad");
   const at = sceneXY($("face"), .5, .2);
@@ -573,6 +593,8 @@ function skipToEnd() {
   endOfBake();
 }
 function endOfBake() {
+  served = results.length;
+  renderQueue();
   const happy = results.filter(r => r.happy).length;
   const won = rewards.stars[0];
   $("totalStars").textContent = rewards.total_stars;
@@ -879,10 +901,11 @@ function resetCode() {
 }
 
 // ---- The Studio ------------------------------------------------------------------------------------------
-async function bakeStudio(fresh) {
+// quiet: put the cake on the counter at once, with no fuss (coming back to the Studio).
+async function bakeStudio(fresh, quiet = false) {
   if (busy) return;
   busy = true;
-  SFX.wake(); SFX.play("whoosh");
+  if (!quiet) { SFX.wake(); SFX.play("whoosh"); }
   saveCode(); hideBanner(); stopQueue();
   $("bakeButton").disabled = true; $("bakeButton").textContent = "Baking…";
   try {
@@ -891,6 +914,12 @@ async function bakeStudio(fresh) {
     studio = {run: data, seed: data.seed};
     markError(data);
     renderNotes();
+    if (quiet) {
+      shown = {tiers: data.cake, fit: data.cake};
+      playing(false);
+      $("surpriseButton").hidden = !/\b(choice|randint)\s*\(/.test($("code").value);
+      return;
+    }
     shown = {tiers: [CakeArt.newTier()], fit: data.cake};
     const token = ++queueToken;
     await startPlay(data, 1);
@@ -1013,13 +1042,15 @@ async function setMode(next, level = null) {
     renderStudioCard();
     const saved = recall(codeKey("studio"));
     $("code").value = saved !== null ? saved : state.studio;
+    $("code").scrollTop = 0;
     studio = {run: null, seed: 0};
     shown = {tiers: [CakeArt.newTier()], fit: null};
     errorLine = 0;
     showCustomer(0, {enter: true});
     updateEditor();
+    if ($("code").value.trim()) await bakeStudio(false, true);
   } else {
-    await openLevel(level || view.key);
+    await openLevel(level || view.key, true);
   }
 }
 document.querySelector(".tabs").addEventListener("click", e => {
@@ -1037,7 +1068,7 @@ async function loadWindow() {
   $("theme").hidden = !data.theme;
   $("theme").textContent = data.theme ? `This week's theme: ${data.theme}` : "";
   if (!data.cakes.length) {
-    $("gallery").innerHTML = `<div class="empty"><div style="font-size:44px">🪟</div><b>The window is empty!</b><br>Bake something in the Studio and be the first to put a cake in it.</div>`;
+    $("gallery").innerHTML = `<div class="empty"><div style="font-size:44px">🪟</div><b>The window is empty!</b><br>Bake something in the Studio and be the first to put a cake in it.<br><button class="go" style="margin-top:16px" onclick="setMode('studio')">🎨 Bake one in the Studio</button></div>`;
     return;
   }
   $("gallery").innerHTML = data.cakes.map((c, i) => `
@@ -1088,7 +1119,7 @@ function drawDetail(now) {
   if ($("cakeModal").hidden) { detail = null; return; }
   const {ctx, w, h} = fitCanvas(c);
   ctx.clearRect(0, 0, w, h);
-  CakeArt.draw(ctx, w, h, {tiers: detail.cake, stand: detail.look.stand, now});
+  CakeArt.draw(ctx, w, h, {tiers: detail.cake, stand: detail.look.stand, now: CALM ? 1000 : now, floor: h * .86});
 }
 $("cmHeart").addEventListener("click", () => detail && heart(detail.i));
 $("cakeClose").addEventListener("click", () => { $("cakeModal").hidden = true; });
@@ -1098,6 +1129,7 @@ $("cmRemix").addEventListener("click", async () => {
   await setMode("studio");
   $("code").value = `# Remixed from ${who} “${title}”. Make it your own!\n` + code.replace(/^# Remixed from .*\n/, "");
   updateEditor();
+  await bakeStudio(false);
   showBanner("", `🎨 Remixing ${who} “${title}”. Change something and bake it!`);
 });
 
@@ -1194,6 +1226,26 @@ function forget() {
   try { localStorage.removeItem("mazeId"); } catch (_) {}
   location.reload();
 }
+
+// ---- Calm mode and bigger text ---------------------------------------------------------------------------
+// Calm mode is on when the computer asks for less motion, until the student
+// says otherwise. Both ticks are on the welcome card and in the ★ panel.
+let CALM = recall("cakeCalm") !== null ? recall("cakeCalm") === "1" : matchMedia("(prefers-reduced-motion: reduce)").matches;
+function applyPrefs() {
+  const big = recall("cakeBig") === "1";
+  document.body.classList.toggle("calm", CALM);
+  document.body.classList.toggle("big", big);
+  document.querySelectorAll("input[data-pref]").forEach(i => { i.checked = i.dataset.pref === "calm" ? CALM : big; });
+}
+document.addEventListener("change", e => {
+  const i = e.target.closest("input[data-pref]");
+  if (!i) return;
+  if (i.dataset.pref === "calm") { CALM = i.checked; store("cakeCalm", CALM ? "1" : "0"); particles = []; confetti = []; }
+  else store("cakeBig", i.checked ? "1" : "0");
+  applyPrefs();
+  updateEditor();
+});
+applyPrefs();
 
 // ---- Wiring ----------------------------------------------------------------------------------------------------
 $("joinForm").addEventListener("submit", join);

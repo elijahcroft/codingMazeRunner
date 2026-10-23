@@ -41,6 +41,8 @@
   .empty { position: absolute; left: 0; right: 0; top: 5%; text-align: center; z-index: 2; padding: 0 30px; }
   .empty h1 { margin: 0; font-size: clamp(30px, 3.8vw, 60px); font-weight: 900; text-shadow: 0 3px 0 #fff; }
   .empty p { margin: 6px 0 0; font-size: clamp(18px, 1.7vw, 28px); font-weight: 700; color: var(--mocha); }
+  /* The demo cake sits lower, under the words. */
+  .window.is-empty canvas { top: 30%; height: 67%; }
 
   .side { padding: 2.2vh 2.2vh 2.2vh 2vw; display: flex; flex-direction: column; gap: 2vh; min-height: 0; }
   .brand { display: flex; align-items: center; gap: 12px; font-size: clamp(28px, 2.6vw, 44px); font-weight: 900; letter-spacing: -.03em; }
@@ -145,7 +147,7 @@ function show(restart = true) {
   $("empty").hidden = cakes.length > 0;
   $("label").hidden = !cakes.length;
   $("dots").innerHTML = cakes.length > 1 ? cakes.slice(0, 30).map((_, i) => `<i class="${i === at ? "on" : ""}"></i>`).join("") : "";
-  if (!cakes.length) { $("newRibbon").hidden = true; $("window").className = "window wp-strawberry"; return; }
+  if (!cakes.length) { $("newRibbon").hidden = true; $("window").className = "window wp-strawberry is-empty"; return; }
   const c = cakes[at];
   $("title").textContent = c.title;
   $("by").textContent = `by ${c.baker} · ${c.shop}`;
@@ -170,17 +172,18 @@ function frame(now) {
   const c = $("cake");
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const w = c.clientWidth, h = c.clientHeight;
-  if (c.width !== Math.round(w * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
+  if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
   const ctx = c.getContext("2d");
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
+  const floor = $("window").clientHeight * .85 - c.offsetTop;   // on the counter
   if (cakes.length) {
     if (now - slideStart > SLIDE_MS && cakes.length > 1) { at = (at + 1) % cakes.length; fresh = null; show(); }
     const cake = cakes[at];
     // Each cake gently bobs in, so a change of slide is easy to notice.
     const u = Math.min(1, (now - slideStart) / 500);
     ctx.save(); ctx.globalAlpha = u; ctx.translate(0, (1 - u) * 30);
-    CakeArt.draw(ctx, w, h, {tiers: cake.cake, stand: cake.look.stand, now});
+    CakeArt.draw(ctx, w, h, {tiers: cake.cake, stand: cake.look.stand, now, floor});
     ctx.restore();
   } else {
     if (!demo) demo = {steps: demoSteps(), start: now};
@@ -189,7 +192,7 @@ function frame(now) {
     const k = Math.min(n, Math.floor(t));
     const tiers = CakeArt.replay(demo.steps, Math.min(n, k + 1));
     const anim = k < n ? {do: demo.steps[k].do, tier: 0, u: t - k} : null;
-    CakeArt.draw(ctx, w, h, {tiers, fit: CakeArt.replay(demo.steps, n), stand: "glass", anim, now});
+    CakeArt.draw(ctx, w, h, {tiers, fit: CakeArt.replay(demo.steps, n), stand: "glass", anim, now, floor});
   }
   requestAnimationFrame(frame);
 }

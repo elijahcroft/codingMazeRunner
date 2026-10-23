@@ -85,7 +85,7 @@
   <h1>🧁 Cake Shop · Class</h1>
   <span>Students go to <span class="address" id="address">…</span></span>
   <div class="tools">
-    <label for="key">Admin key</label><input id="key" type="password" placeholder="from the terminal" size="10">
+    <label for="key">Admin key</label><input id="key" type="password" placeholder="from the terminal" size="16">
     <a class="soft" href="/cake/show" target="_blank" rel="noopener">📽 Projector page</a>
   </div>
 </header>
@@ -247,7 +247,12 @@ $("openAll").addEventListener("click", async () => {
 });
 $("key").value = recall("cakeKey") || "";
 document.addEventListener("keydown", e => { if (e.key === "Escape") $("peek").hidden = true; });
-$("key").addEventListener("change", () => { store("cakeKey", key()); lastCakes = ""; refreshCakes(); });
+// The window shows as soon as the key is typed, without having to press Enter.
+let keyTimer = null;
+$("key").addEventListener("input", () => {
+  clearTimeout(keyTimer);
+  keyTimer = setTimeout(() => { store("cakeKey", key()); lastCakes = ""; refreshCakes(); }, 350);
+});
 refresh();
 setInterval(refresh, 5000);
 </script>

@@ -46,11 +46,13 @@ terminal unlocks the teacher actions.
   sprinkles rain down, candles pop up and flicker, writing appears on the front
   of the cake. After that the customer hops for joy or looks puzzled. The ticket
   then ticks off ✓ or ✗ every part of the order, so students can see *exactly*
-  what's wrong.
+  what's wrong. (On a ticket from Chapter 3 on, the `order = {...}` folds away
+  under the checks; **🎫 The ticket** opens it again.)
 - **Queues** (Chapter 3 onwards). The same program bakes for 3–5 customers with
   different tickets. A hard-coded program makes the first customer happy and
   the next one says *"I wanted blueberry, not lemon"*. That moment is the
-  lesson. Click a customer at the top to see their cake and ticket.
+  lesson. Each face at the top gets its 😊 or 😕 once that customer has had
+  their cake. Click a customer to see their cake and ticket.
 
 ## What keeps them coding
 
@@ -86,6 +88,11 @@ Every reward is for writing code. Nothing is random and nothing is taken away.
   habit to encourage.
 - **Sound.** Every step makes a small sound. 🔊 at the top mutes it (each
   browser remembers). Headphones help in a full room.
+- **Calm mode and bigger text.** Both are ticks on the welcome card and at the
+  bottom of the ★ panel. Calm mode stops the hopping, shaking, confetti and
+  flickering candles (it's on already on computers set to reduce motion).
+  Bigger text enlarges the recipe, the notes, the ticket and what customers
+  say. Each browser remembers.
 
 ## The kitchen commands
 

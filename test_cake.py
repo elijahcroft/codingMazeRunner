@@ -236,6 +236,18 @@ class Interpreter(unittest.TestCase):
         self.assertIn("positions", self.error('x = ["a"]\nprint(x[3])'))
         self.assertIn("Syntax error on line 1", self.error('layer("lime"'))
 
+    def test_beginner_slips_say_what_to_type(self):
+        self.assertIn("add brackets:  sprinkles()", self.error('layer("lime")\nsprinkles'))
+        self.assertIn('layer("lime")', self.error('layer "lime"'))
+        self.assertIn("own line", self.error('layer("lime") layer("lime")'))
+        self.assertIn("colon", self.error('layer("lime")\nfor i in range(3) candle()'))
+        self.assertIn("an  if  line", self.error('layer("lime")\nif 1 > 0\n    sprinkles()'))
+        # A name the program never sets is probably a word without its quotes...
+        self.assertIn('"Enjoy"', self.error("print(Enjoy)"))
+        # ...but one it sets later just needs setting first.
+        self.assertIn("set it first", self.error("print(n)\nn = 2"))
+        self.assertIn("doesn't do anything", self.error('layer("lime")\nn = 2\nn'))
+
     def test_locked_toppings_say_how_to_unlock_them(self):
         message = self.error('layer("lime")\ntopping("unicorn")', unlocked=set())
         self.assertIn("unlocks at 15 stars", message)

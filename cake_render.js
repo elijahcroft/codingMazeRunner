@@ -54,6 +54,10 @@
     const mix = v => Math.round((t - v) * p + v);
     return `rgb(${mix(r)},${mix(g)},${mix(b)})`;
   }
+  function mixRgb(hex, to, p) {
+    const c = rgb(hex).map((v, i) => Math.round(v + (to[i] - v) * p));
+    return `rgb(${c[0]},${c[1]},${c[2]})`;
+  }
   function light(hex) {
     const [r, g, b] = rgb(hex);
     return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
@@ -95,7 +99,9 @@
     }
     if (flat) return hex;
     const g = ctx.createLinearGradient(x0, 0, x1, 0);
-    g.addColorStop(0, shade(hex, -.3)); g.addColorStop(.28, shade(hex, .12)); g.addColorStop(.5, hex); g.addColorStop(1, shade(hex, -.34));
+    // Very light colours shade toward a warm cream, so white stays white rather than grey.
+    const edge = f => light(hex) > .85 ? mixRgb(hex, [196, 150, 138], f * 1.15) : shade(hex, -f);
+    g.addColorStop(0, edge(.3)); g.addColorStop(.28, shade(hex, .12)); g.addColorStop(.5, hex); g.addColorStop(1, edge(.34));
     return g;
   }
   // Glitter sparkles and galaxy stars, inside whatever path is clipped.
@@ -138,7 +144,8 @@
     const n = Math.max(1, t.layers.length);
     return n * LH + (n - 1) * FILL + (t.frosting ? 4 : 0);
   }
-  function layout(w, h, fit, stand) {
+  // floor: the y the stand stands on (the top of a counter), or none to centre the cake.
+  function layout(w, h, fit, stand, floor) {
     const tiers = fit && fit.length ? fit : [newTier()];
     let height = (STAND_H[stand] || 10) + 18;
     tiers.forEach((t, i) => { height += tierHeight(t); });
@@ -147,8 +154,13 @@
     height += topRy + (top.candles.length ? 44 : top.toppings.length ? 34 : top.swirls.length ? 22 : 8);
     height += BASE_W / 2 * .27 + 10;
     const width = BASE_W * 1.3;
+    const below = BASE_W / 2 * .27 + 10;
+    if (floor) {
+      const s = Math.min(w * .94 / width, floor * .96 / (height - below), 2.4);
+      return {s, cx: w / 2, base: floor};
+    }
     const s = Math.min(w * .94 / width, h * .94 / height, 2.4);
-    const base = h - (h - height * s) / 2 - (BASE_W / 2 * .27 + 10) * s;
+    const base = h - (h - height * s) / 2 - below * s;
     return {s, cx: w / 2, base};
   }
 
@@ -564,10 +576,10 @@
   }
 
   // ---- everything ----------------------------------------------------------------------------
-  // opts: {tiers, fit, stand, anim: {do, tier, u}, now}
+  // opts: {tiers, fit, stand, anim: {do, tier, u}, now, floor}
   function draw(ctx, w, h, opts) {
     const tiers = opts.tiers || [newTier()];
-    const L = layout(w, h, opts.fit || tiers, opts.stand || "plate");
+    const L = layout(w, h, opts.fit || tiers, opts.stand || "plate", opts.floor);
     const now = opts.now || 0;
     let y = drawStand(ctx, L, opts.stand || "plate");
     let pendingFront = [];
@@ -585,21 +597,22 @@
   // Where the top of the cake is, for effects like sparkles and flames.
   function topOf(w, h, opts) {
     const tiers = opts.tiers || [newTier()];
-    const L = layout(w, h, opts.fit || tiers, opts.stand || "plate");
+    const L = layout(w, h, opts.fit || tiers, opts.stand || "plate", opts.floor);
     let y = L.base - (STAND_H[opts.stand || "plate"] || 10) * L.s;
     tiers.forEach(t => { if (t.layers.length) y -= tierHeight(t) * L.s; });
     return {x: L.cx, y, s: L.s};
   }
 
-  // A quick still picture of a finished cake (shop window cards).
-  function still(canvas, tiers, stand) {
+  // A quick still picture of a finished cake (shop window cards), standing on
+  // a counter whose top is at floor (a share of the height).
+  function still(canvas, tiers, stand, floor = .86) {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const w = canvas.clientWidth || canvas.width, h = canvas.clientHeight || canvas.height;
     canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
     const ctx = canvas.getContext("2d");
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
-    draw(ctx, w, h, {tiers, stand, now: 1000});
+    draw(ctx, w, h, {tiers, stand, now: 1000, floor: h * floor});
   }
 
   // A picture to keep: the cake on its stand in front of the shop's wallpaper,
@@ -618,7 +631,7 @@
     ctx.fillStyle = counter; ctx.fillRect(0, H * .78, W, H * .22);
     ctx.fillStyle = "#ffdcc8"; ctx.fillRect(0, H * .78, W, 8);
     ctx.save(); ctx.translate(W * .1, H * .16);
-    draw(ctx, W * .8, H * .8, {tiers, stand: look.stand, now: 1000});
+    draw(ctx, W * .8, H * .8, {tiers, stand: look.stand, now: 1000, floor: H * .67});
     ctx.restore();
     const dark = look.wallpaper === "night";
     ctx.textAlign = "center";

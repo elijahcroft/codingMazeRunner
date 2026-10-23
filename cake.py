@@ -444,7 +444,15 @@ class Baker(Brain):
         try:
             self.tree = ast.parse(code)
         except SyntaxError as e:
-            raise BotError(syntax_message(e).replace("def steer():", "def my_cake():"))
+            raise BotError(cake_syntax(code, e) or
+                           syntax_message(e).replace("def steer():", "def my_cake():"))
+        # Every name the program sets somewhere, so a name it never sets can
+        # be taken for a word that's missing its quotes.
+        self.named = {n.id for n in ast.walk(self.tree)
+                      if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store)}
+        self.named |= {n.name for n in ast.walk(self.tree) if isinstance(n, ast.FunctionDef)}
+        self.named |= {a.arg for n in ast.walk(self.tree) if isinstance(n, ast.FunctionDef)
+                       for a in n.args.args}
         if order is not None:
             self.globals.vars["order"] = order
 
@@ -462,7 +470,7 @@ class Baker(Brain):
     def lookup(self, name, frame):
         try:
             return super().lookup(name, frame)
-        except BotError:
+        except BotError as err:
             if name == "order" and self.order is None:
                 raise BotError("There's no order ticket here. Tickets come with the "
                                "customers from Chapter 3 on.")
@@ -472,6 +480,9 @@ class Baker(Brain):
             if word in KNOWN_WORDS and name not in frame.vars:
                 raise BotError(f'Put quotes round words:  "{word}"  — like  '
                                f'layer("vanilla")  or  frosting("pink")')
+            if name not in self.named and "Did you mean" not in str(err):
+                raise BotError(f'Words need quotes round them, like  "{name}"  '
+                               f'(or if {name} is a variable, set it first, like  {name} = 3)')
             raise
 
     def assign(self, name, value, frame):
@@ -785,11 +796,39 @@ class Baker(Brain):
         if isinstance(node, ast.FunctionDef) and (node.name in COMMANDS or node.name in HELPERS):
             raise BotError(f"{node.name}() is already a command — give your "
                            f"recipe another name, like  def my_{node.name}():")
+        if isinstance(node, ast.Expr) and not isinstance(node.value, ast.Call) and not (
+                isinstance(node.value, ast.Constant) and isinstance(node.value.value, str)):
+            v = node.value
+            if isinstance(v, ast.Name) and (v.id in COMMANDS or v.id in HELPERS or v.id in self.funcs):
+                raise BotError(f"To use {v.id}, add brackets:  {v.id}()")
+            raise BotError('That line doesn\'t do anything on its own. Commands need '
+                           'brackets, like  sprinkles()  or  layer("vanilla")')
         if isinstance(node, (ast.Try, ast.With, ast.ClassDef, ast.Delete, ast.Raise,
                              ast.Assert, ast.Nonlocal, ast.AsyncFunctionDef)) or \
                 type(node).__name__ in ("Match", "TypeAlias", "TryStar"):
             raise BotError("That kind of line isn't part of Cake Shop.")
         super().run_statement(node, frame)
+
+
+def cake_syntax(code, e):
+    """Beginner slips Python's own message doesn't explain: a command without
+    its brackets, a loop or if without its colon, and two commands on one line."""
+    lines = code.split("\n")
+    if not e.lineno or e.lineno > len(lines):
+        return None
+    line = lines[e.lineno - 1]
+    bare = re.match(r"\s*([a-z_]+)\s+([\"'].*?[\"']|\d+)\s*$", line)
+    if bare and bare[1] in COMMANDS + HELPERS:
+        return (f"Syntax error on line {e.lineno}: put brackets round what goes in:  "
+                f"{bare[1]}({bare[2]})")
+    head = re.match(r"\s*(for|if|elif|else|while|def)\b", line)
+    if head and not line.rstrip().endswith(":"):
+        a = "an" if head[1][0] in "aeiou" else "a"
+        return (f"Syntax error on line {e.lineno}: {a}  {head[1]}  line ends with a colon  :  "
+                f"and the steps go on the lines below it, pushed in.")
+    if re.search(r"\)\s*[a-z_]+\s*\(", line) and not head:
+        return f"Syntax error on line {e.lineno}: put each command on its own line."
+    return None
 
 
 # ---- baking one cake -----------------------------------------------------------
