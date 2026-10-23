@@ -190,7 +190,7 @@ function renderRoute() {
         const cls = ["lvl", l.key === here ? "now" : "", n === 3 ? "gold" : l.solved ? "done" : ""].join(" ");
         return `<button class="${cls}" data-level="${l.key}" ${l.open ? "" : "disabled"} ` +
           `title="${esc(l.name)}${l.open ? ` · ${n} of 3 stars` : " · not open yet"}" aria-label="${esc(l.name)}${l.open ? `, ${n} of 3 stars` : ", locked"}">` +
-          `<span aria-hidden="true">${l.open ? l.face : "🔒"}</span>` +
+          `<span aria-hidden="true">${l.face}</span>` +
           (l.open ? `<span class="mini" aria-hidden="true">${"★".repeat(n)}<s>${"★".repeat(3 - n)}</s></span>` : "") + `</button>`;
       }).join("") + `</div>`;
   }).join("");
@@ -305,22 +305,28 @@ function renderTicket() {
   const c = customerData(sel);
   const r = results && results[sel];
   let html = `<span class="pin" aria-hidden="true">📌</span>`;
-  if (c.ticket) {
+  // After a bake the checks come first, and a long ticket folds away so it all fits.
+  if (c.ticket && r) {
+    html += `<h3>🎫 ${esc(c.name)}'s cake</h3>`;
+  } else if (c.ticket) {
     html += `<h3>🎫 ${esc(c.name)}'s ticket</h3><pre>${highlight(ticketCode(c.ticket))}</pre>`;
   } else {
     html += `<h3>🧾 Order for ${esc(c.name)}</h3>`;
   }
   if (r) {
-    html += (c.ticket ? `<div class="sep"></div><h3>Did you bake it?</h3>` : "") +
-      `<ul>${r.checks.map(ch => `<li class="${ch.ok ? "ok" : "no"}"><b>${ch.ok ? "✓" : "✗"}</b><span>${esc(ch.text)}</span></li>`).join("")}</ul>`;
+    html += `<ul>${r.checks.map(ch => `<li class="${ch.ok ? "ok" : "no"}"><b>${ch.ok ? "✓" : "✗"}</b><span>${esc(ch.text)}</span></li>`).join("")}</ul>`;
     if (r.extras.length && !r.error) html += `<div class="extras">✨ Your own touch: ${esc(r.extras.join(", "))}</div>`;
+    if (c.ticket) html += `<details class="tk"${ticketOpen ? " open" : ""}><summary>🎫 The ticket: <code>order</code></summary><pre>${highlight(ticketCode(c.ticket))}</pre></details>`;
   } else if (!c.ticket && c.checklist) {
     html += `<ul>${c.checklist.map(t => `<li><b>•</b><span>${esc(t)}</span></li>`).join("")}</ul>`;
   } else if (view.bake_off) {
     html += `<p style="margin:6px 0 0;color:var(--mocha)">Every bake brings five NEW customers. This is just an example ticket.</p>`;
   }
   $("ticket").innerHTML = html;
+  $("ticket").scrollTop = 0;
 }
+let ticketOpen = false;
+$("ticket").addEventListener("toggle", e => { if (e.target.matches("details.tk")) ticketOpen = e.target.open; }, true);
 function renderQueue() {
   const list = mode === "studio" ? [] : (results || view.customers);
   const q = $("queue");
@@ -385,6 +391,7 @@ function frameLoop(ts) {
   requestAnimationFrame(frameLoop);
 }
 function drawCounter(now) {
+  if (CALM) now = 1000;   // still candles and sparkles
   const {ctx, w, h} = fitCanvas(cakeCanvas);
   ctx.clearRect(0, 0, w, h);
   const stand = state ? state.look.stand : "plate";
@@ -447,6 +454,7 @@ function sceneXY(el, fx = .5, fy = .3) {
   return [a.left - b.left + a.width * fx, a.top - b.top + a.height * fy];
 }
 function puff(icon, n, from = null) {
+  if (CALM) return;
   const [x, y] = from || (() => {
     const r = cakeCanvas.getBoundingClientRect(), b = $("scene").getBoundingClientRect();
     return [r.left - b.left + r.width / 2, r.top - b.top + r.height * .35];
@@ -458,6 +466,7 @@ function puff(icon, n, from = null) {
   }
 }
 function throwConfetti(n = 140) {
+  if (CALM) return;
   const r = $("scene").getBoundingClientRect();
   const colours = ["#ff6f9f", "#ffd447", "#6fd3b5", "#8fb8ff", "#c8a6ff", "#ff9b54"];
   for (let i = 0; i < n; i++) {
@@ -1037,7 +1046,7 @@ async function loadWindow() {
   $("theme").hidden = !data.theme;
   $("theme").textContent = data.theme ? `This week's theme: ${data.theme}` : "";
   if (!data.cakes.length) {
-    $("gallery").innerHTML = `<div class="empty"><div style="font-size:44px">🪟</div><b>The window is empty!</b><br>Bake something in the Studio and be the first to put a cake in it.</div>`;
+    $("gallery").innerHTML = `<div class="empty"><div style="font-size:44px">🪟</div><b>The window is empty!</b><br>Bake something in the Studio and be the first to put a cake in it.<br><button class="go" style="margin-top:16px" onclick="setMode('studio')">🎨 Bake one in the Studio</button></div>`;
     return;
   }
   $("gallery").innerHTML = data.cakes.map((c, i) => `
@@ -1088,7 +1097,7 @@ function drawDetail(now) {
   if ($("cakeModal").hidden) { detail = null; return; }
   const {ctx, w, h} = fitCanvas(c);
   ctx.clearRect(0, 0, w, h);
-  CakeArt.draw(ctx, w, h, {tiers: detail.cake, stand: detail.look.stand, now});
+  CakeArt.draw(ctx, w, h, {tiers: detail.cake, stand: detail.look.stand, now: CALM ? 1000 : now});
 }
 $("cmHeart").addEventListener("click", () => detail && heart(detail.i));
 $("cakeClose").addEventListener("click", () => { $("cakeModal").hidden = true; });
@@ -1194,6 +1203,26 @@ function forget() {
   try { localStorage.removeItem("mazeId"); } catch (_) {}
   location.reload();
 }
+
+// ---- Calm mode and bigger text ---------------------------------------------------------------------------
+// Calm mode is on when the computer asks for less motion, until the student
+// says otherwise. Both ticks are on the welcome card and in the ★ panel.
+let CALM = recall("cakeCalm") !== null ? recall("cakeCalm") === "1" : matchMedia("(prefers-reduced-motion: reduce)").matches;
+function applyPrefs() {
+  const big = recall("cakeBig") === "1";
+  document.body.classList.toggle("calm", CALM);
+  document.body.classList.toggle("big", big);
+  document.querySelectorAll("input[data-pref]").forEach(i => { i.checked = i.dataset.pref === "calm" ? CALM : big; });
+}
+document.addEventListener("change", e => {
+  const i = e.target.closest("input[data-pref]");
+  if (!i) return;
+  if (i.dataset.pref === "calm") { CALM = i.checked; store("cakeCalm", CALM ? "1" : "0"); particles = []; confetti = []; }
+  else store("cakeBig", i.checked ? "1" : "0");
+  applyPrefs();
+  updateEditor();
+});
+applyPrefs();
 
 // ---- Wiring ----------------------------------------------------------------------------------------------------
 $("joinForm").addEventListener("submit", join);
