@@ -116,7 +116,9 @@ const SHOP_IDEAS = ["The Sugar Plum", "Sprinkle Palace", "Cloud Nine Cakes", "Cr
   "The Happy Whisk", "Frosted Dreams", "The Little Oven", "Butter & Bloom"];
 
 function codeKey(key) { return `cakeCode:${me}:${key}`; }
-function contextKey() { return mode === "studio" ? "studio" : view && view.key; }
+// What the editor holds: the Studio, the open level, or nothing on the Shop Window
+// (which keeps whatever the editor had, so it mustn't be saved as a level).
+function contextKey() { return mode === "studio" ? "studio" : mode === "window" ? null : view && view.key; }
 function saveCode() {
   const key = contextKey();
   if (me && key) store(codeKey(key), $("code").value);
@@ -206,8 +208,9 @@ $("route").addEventListener("click", e => {
 });
 
 // ---- Opening a level --------------------------------------------------------------------------
-async function openLevel(key) {
-  saveCode();
+// fromMode: setMode has already saved the editor under the page we came from.
+async function openLevel(key, fromMode = false) {
+  if (!fromMode) saveCode();
   stopQueue();
   let data;
   try { data = await get(`/cake/level?id=${encodeURIComponent(me)}&level=${encodeURIComponent(key)}`); }
@@ -888,10 +891,11 @@ function resetCode() {
 }
 
 // ---- The Studio ------------------------------------------------------------------------------------------
-async function bakeStudio(fresh) {
+// quiet: put the cake on the counter at once, with no fuss (coming back to the Studio).
+async function bakeStudio(fresh, quiet = false) {
   if (busy) return;
   busy = true;
-  SFX.wake(); SFX.play("whoosh");
+  if (!quiet) { SFX.wake(); SFX.play("whoosh"); }
   saveCode(); hideBanner(); stopQueue();
   $("bakeButton").disabled = true; $("bakeButton").textContent = "Baking…";
   try {
@@ -900,6 +904,12 @@ async function bakeStudio(fresh) {
     studio = {run: data, seed: data.seed};
     markError(data);
     renderNotes();
+    if (quiet) {
+      shown = {tiers: data.cake, fit: data.cake};
+      playing(false);
+      $("surpriseButton").hidden = !/\b(choice|randint)\s*\(/.test($("code").value);
+      return;
+    }
     shown = {tiers: [CakeArt.newTier()], fit: data.cake};
     const token = ++queueToken;
     await startPlay(data, 1);
@@ -1027,8 +1037,9 @@ async function setMode(next, level = null) {
     errorLine = 0;
     showCustomer(0, {enter: true});
     updateEditor();
+    if ($("code").value.trim()) await bakeStudio(false, true);
   } else {
-    await openLevel(level || view.key);
+    await openLevel(level || view.key, true);
   }
 }
 document.querySelector(".tabs").addEventListener("click", e => {
@@ -1107,6 +1118,7 @@ $("cmRemix").addEventListener("click", async () => {
   await setMode("studio");
   $("code").value = `# Remixed from ${who} “${title}”. Make it your own!\n` + code.replace(/^# Remixed from .*\n/, "");
   updateEditor();
+  await bakeStudio(false);
   showBanner("", `🎨 Remixing ${who} “${title}”. Change something and bake it!`);
 });
 
