@@ -23,7 +23,7 @@
     --lav: #c8b5f5;
     --cocoa: #4a2b2e;
     --mocha: #7c5a5c;
-    --dust: #b39a9b;
+    --dust: #866667;   /* small print: dark enough to read (4.8:1 on cream) */
     --line: #f1dcd6;
     --red: #e2445c;
     --ui: ui-rounded, "Nunito", "Varela Round", system-ui, "Segoe UI", Roboto, sans-serif;
@@ -207,7 +207,7 @@
   .tip { background: #fff8e3; border: 1.5px solid #f6e2a6; border-radius: 14px; flex: none; }
   .tip summary { padding: 8px 12px; font-weight: 900; cursor: pointer; list-style: none; display: flex; align-items: center; gap: 7px; }
   .tip summary::-webkit-details-marker { display: none; }
-  .tip summary .tg { margin-left: auto; color: #c19a3a; font-size: 12px; font-weight: 800; }
+  .tip summary .tg { margin-left: auto; color: #8f6b16; font-size: 12px; font-weight: 800; }
   .tip[open] summary .tg::after { content: " ▲"; }
   .tip:not([open]) summary .tg::after { content: " ▼"; }
   .tip .body { padding: 0 12px 10px; max-height: 26vh; overflow: auto; scrollbar-width: thin; }
@@ -216,7 +216,7 @@
 
   .editor { position: relative; flex: 1 1 220px; min-height: 150px; display: grid; grid-template-columns: auto minmax(0, 1fr); border-radius: 14px; overflow: hidden; background: #fff; border: 1.5px solid var(--line); }
   .editor:focus-within { border-color: var(--rose); box-shadow: 0 0 0 3px var(--blush); }
-  .lines { padding: 10px 7px 10px 10px; text-align: right; color: #d3bcbc; background: #fdf6f3; font: 14px/1.6 var(--mono); white-space: pre; user-select: none; overflow: hidden; min-width: 38px; }
+  .lines { padding: 10px 7px 10px 10px; text-align: right; color: #a58586; background: #fdf6f3; font: 14px/1.6 var(--mono); white-space: pre; user-select: none; overflow: hidden; min-width: 38px; }
   .lines .err { color: #fff; background: var(--red); border-radius: 4px; padding: 0 3px; }
   .code-wrap { position: relative; min-width: 0; }
   .code-wrap pre, .code-wrap textarea { position: absolute; inset: 0; margin: 0; padding: 10px 12px 26px; font: 14px/1.6 var(--mono); white-space: pre; overflow: auto; tab-size: 4; border: 0; letter-spacing: 0; }
