@@ -191,11 +191,23 @@ class Kitchen:
             raise BotError(f"🔒 {what} {self.unlock_hint(kind, key)}. Keep baking "
                            f"to unlock it!")
 
+    @staticmethod
+    def one_thing(value, command):
+        """A whole ticket or a whole list where one word belongs."""
+        if isinstance(value, dict):
+            key = {"layer": "flavour", "frosting": "frosting", "drip": "drip"}.get(command, "...")
+            raise BotError(f"That's the whole ticket. {command}() needs one part of it, "
+                           f"with square brackets, like  {command}(order[\"{key}\"])")
+        if isinstance(value, list):
+            raise BotError(f"That's a list of {len(value)}. {command}() takes one at a time, "
+                           f"so loop over the list:  for x in ...:  and then  {command}(x)")
+
     def colour(self, value, command, specials=True, extra=()):
         example = {"frosting": "frosting(\"pink\")", "drip": "drip(\"chocolate\")",
                    "sprinkles": "sprinkles(\"pink\")", "swirl": "swirl(\"white\")",
                    "candle": "candle(\"blue\")", "write": "write(\"Hi\", \"pink\")"}[command]
         if not isinstance(value, str):
+            self.one_thing(value, command)
             raise BotError(f"{command}() needs a colour in quotes, like  {example}")
         word = _clean(value)
         if word in COLOURS or word in extra:
@@ -298,6 +310,7 @@ class Kitchen:
 
     def flavour(self, value):
         if not isinstance(value, str):
+            self.one_thing(value, "layer")
             raise BotError('layer() needs a flavour in quotes, like  layer("vanilla")')
         word = _clean(value)
         word = {"redvelvet": "red velvet", "cookies and cream": "cookies",
@@ -322,6 +335,7 @@ class Kitchen:
 
     def topping(self, value):
         if not isinstance(value, str):
+            self.one_thing(value, "topping")
             raise BotError('topping() needs a topping in quotes, like  topping("cherry")')
         word = _clean(value)
         if word in TOPPINGS:
@@ -812,7 +826,8 @@ class Baker(Brain):
 
 def cake_syntax(code, e):
     """Beginner slips Python's own message doesn't explain: a command without
-    its brackets, a loop or if without its colon, and two commands on one line."""
+    its brackets, a colon in the wrong place or missing, no space after if,
+    and two commands on one line."""
     lines = code.split("\n")
     if not e.lineno or e.lineno > len(lines):
         return None
@@ -821,12 +836,19 @@ def cake_syntax(code, e):
     if bare and bare[1] in COMMANDS + HELPERS:
         return (f"Syntax error on line {e.lineno}: put brackets round what goes in:  "
                 f"{bare[1]}({bare[2]})")
+    glued = re.match(r"\s*(if|elif|for|while)([a-z_]\w*)", line)
+    if glued and not re.match(r"\s*(if|elif|for|while|def|else)\b", line):
+        return f"Syntax error on line {e.lineno}: put a space after  {glued[1]} ."
+    if re.match(r"\s*[a-z_]+\s*\(.*\)\s*:\s*$", line) and \
+            not re.match(r"\s*(if|elif|for|while|def|else)\b", line):
+        return (f"Syntax error on line {e.lineno}: only lines starting with for, if, elif, "
+                f"else or def end with a colon. Take the  :  off the end of this one.")
     head = re.match(r"\s*(for|if|elif|else|while|def)\b", line)
     if head and not line.rstrip().endswith(":"):
         a = "an" if head[1][0] in "aeiou" else "a"
         return (f"Syntax error on line {e.lineno}: {a}  {head[1]}  line ends with a colon  :  "
                 f"and the steps go on the lines below it, pushed in.")
-    if re.search(r"\)\s*[a-z_]+\s*\(", line) and not head:
+    if re.search(r"[a-z_]\s*\(.*\)\s*[a-z_]+\s*\(", line) and not head:
         return f"Syntax error on line {e.lineno}: put each command on its own line."
     return None
 
@@ -864,6 +886,10 @@ def bake(code, order=None, commands=COMMANDS, unlocked=LOCKED, unlock_hint=None,
                       _copy(order) if order is not None else None,
                       random.Random(seed), ARRIVES)
         baker.run()
+        if baker.funcs and not baker.own_function and not kitchen.steps:
+            name = next(iter(baker.funcs))
+            raise BotError(f"Your recipes are written down, but nothing uses them yet. "
+                           f"Call one by its name with brackets, like  {name}()")
     except BotError as e:
         error, line = str(e), e.line
     except RecursionError:

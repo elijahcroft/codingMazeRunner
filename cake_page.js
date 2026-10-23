@@ -737,28 +737,44 @@ function syncScroll() {
   $("hl").scrollTop = t.scrollTop; $("hl").scrollLeft = t.scrollLeft;
   $("lines").scrollTop = t.scrollTop;
 }
+// Every change the page makes to the code goes through the browser's own
+// typing, so Ctrl+Z still undoes it (setRangeText and .value skip the history).
+function replaceText(start, end, text) {
+  const t = $("code");
+  t.focus(); t.setSelectionRange(start, end);
+  // (Inserting "" puts the cursor back a line in Chrome, so deleting is a delete.)
+  const done = text ? document.execCommand("insertText", false, text)
+                    : start === end || document.execCommand("delete");
+  if (!done) t.setRangeText(text, start, end, "end");
+  updateEditor();
+}
+// The whole recipe at once (Reset, a Studio idea, a remix), still undoable.
+function replaceAll(text) {
+  replaceText(0, $("code").value.length, text);
+  $("code").setSelectionRange(0, 0);
+  $("code").scrollTop = 0;
+}
 function editorKey(event) {
   const t = event.target, start = t.selectionStart, end = t.selectionEnd;
   if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); bake(); return; }
   if (event.key === "Tab") {
     event.preventDefault();
-    t.setRangeText("    ", start, end, "end");
+    replaceText(start, end, "    ");
   } else if (event.key === "Enter") {
     event.preventDefault();
     const lineStart = t.value.lastIndexOf("\n", start - 1) + 1;
     const line = t.value.slice(lineStart, start);
     let indent = (line.match(/^\s*/) || [""])[0];
     if (line.trimEnd().endsWith(":")) indent += "    ";
-    t.setRangeText("\n" + indent, start, end, "end");
+    replaceText(start, end, "\n" + indent);
   } else if (event.key === "Backspace" && start === end) {
     // In the spaces at the start of a line, go back a whole level.
     const before = t.value.slice(t.value.lastIndexOf("\n", start - 1) + 1, start);
     if (!before || /[^ ]/.test(before)) return;
     event.preventDefault();
     const back = (before.length - 1) % 4 + 1;
-    t.setRangeText("", start - back, start, "end");
-  } else return;
-  updateEditor();
+    replaceText(start - back, start, "");
+  }
 }
 // Put a command on its own line (pushed in under a line ending in : ), with the
 // word in its quotes selected, so typing, or clicking an ingredient, replaces it.
@@ -773,10 +789,10 @@ function insertLine(snippet) {
   const body = snippet.split("\n").join("\n" + indent);
   let at;
   if (!line.trim()) {
-    t.setRangeText(indent + body, lineStart, lineEnd, "end");
+    replaceText(lineStart, lineEnd, indent + body);
     at = lineStart + indent.length;
   } else {
-    t.setRangeText("\n" + indent + body, lineEnd, lineEnd, "end");
+    replaceText(lineEnd, lineEnd, "\n" + indent + body);
     at = lineEnd + 1 + indent.length;
   }
   const q = /"([^"]*)"/.exec(body);
@@ -801,13 +817,12 @@ function insertHere(text) {
     const target = inside || (quoted.length === 1 && !/^\s*$/.test(line) ? quoted[0] : null);
     if (target) {
       const from = lineStart + target.index + 1;
-      t.setRangeText(word, from, from + target[1].length, "select");
-      t.focus(); updateEditor();
+      replaceText(from, from + target[1].length, word);
+      t.setSelectionRange(from, from + word.length);
       return;
     }
   }
-  t.setRangeText(text, s, e, "end");
-  t.focus(); updateEditor();
+  replaceText(s, e, text);
 }
 const SNIPPETS = {
   layer: 'layer("vanilla")', frosting: 'frosting("pink")', drip: 'drip("chocolate")',
@@ -834,6 +849,11 @@ $("book").addEventListener("click", e => {
   SFX.play("click");
   if (b.dataset.line !== undefined) insertLine(b.dataset.line);
   else insertHere(b.dataset.here);
+  // Show the ingredients that fit the command just added, ready to click.
+  const cmd = (/^(\w+)\(/.exec(b.dataset.line || "") || [])[1];
+  const tab = cmd === "layer" ? "flavours" : cmd === "topping" ? "toppings"
+    : ["frosting", "drip", "sprinkles", "swirl", "candle", "write"].includes(cmd) ? "colours" : null;
+  if (tab && tab !== pantryTab) { pantryTab = tab; renderChips(); }
 });
 function renderChips() {
   const pal = state.palette, open = new Set(state.pantry.filter(u => u.open).map(u => u.kind + ":" + u.key));
@@ -895,9 +915,8 @@ function resetCode() {
     return;
   }
   clearTimeout(resetArmed); resetArmed = null; $("resetButton").textContent = "↺";
-  $("code").value = mode === "studio" ? state.studio : view.starter;
   errorLine = 0;
-  updateEditor();
+  replaceAll(mode === "studio" ? state.studio : view.starter);   // Ctrl+Z brings it back
 }
 
 // ---- The Studio ------------------------------------------------------------------------------------------
@@ -973,18 +992,16 @@ $("tipBody").addEventListener("click", e => {
   if (!b) return;
   const idea = state.palette.ideas[Number(b.dataset.idea)];
   undoCode = $("code").value;
-  $("code").value = idea.code;
   errorLine = 0;
-  updateEditor();
+  replaceAll(idea.code);
   SFX.play("click");
   showBanner("", `Loaded “${idea.name}”. Bake it, then change it to make it yours!`,
     `<button class="soft" onclick="undoIdea()">↩ Undo</button>`);
 });
 function undoIdea() {
   if (undoCode === null) return;
-  $("code").value = undoCode;
+  replaceAll(undoCode);
   undoCode = null;
-  updateEditor();
   hideBanner();
 }
 
@@ -1127,8 +1144,7 @@ $("cmRemix").addEventListener("click", async () => {
   const code = detail.code, title = detail.title, who = detail.mine ? "your" : detail.baker + "'s";
   $("cakeModal").hidden = true;
   await setMode("studio");
-  $("code").value = `# Remixed from ${who} “${title}”. Make it your own!\n` + code.replace(/^# Remixed from .*\n/, "");
-  updateEditor();
+  replaceAll(`# Remixed from ${who} “${title}”. Make it your own!\n` + code.replace(/^# Remixed from .*\n/, ""));
   await bakeStudio(false);
   showBanner("", `🎨 Remixing ${who} “${title}”. Change something and bake it!`);
 });
