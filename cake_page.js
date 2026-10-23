@@ -605,7 +605,9 @@ function endOfBake() {
   const won = rewards.stars[0];
   $("totalStars").textContent = rewards.total_stars;
   if (rewards.new_stars) restartClass($("starsButton"), "bump");
-  if (won) {
+  // A Bake-Off run that pleases some but earns nothing new is a nudge, not a party.
+  const partial = view.bake_off && happy < results.length && !rewards.new_stars;
+  if (won && !partial) {
     const bad = results.findIndex(r => !r.happy);
     if (bad >= 0) {   // the Bake-Off can earn a star with some customers unhappy
       showCustomer(bad, {reacted: true, enter: true});
