@@ -73,6 +73,11 @@
   .msg { min-height: 20px; color: var(--mint-deep); font-weight: 800; font-size: 13.5px; }
   .msg.bad { color: var(--red); }
   .empty { padding: 30px; text-align: center; color: var(--mocha); }
+  .overlay { position: fixed; inset: 0; background: rgba(74, 43, 46, .35); display: grid; place-items: center; padding: 16px; z-index: 10; }
+  .sheet { background: var(--paper); border-radius: 20px; padding: 18px 20px; width: min(680px, 100%); max-height: 90vh; overflow: auto; position: relative; }
+  .sheet h2 { margin: 0 0 10px; font-size: 20px; }
+  .sheet pre { margin: 0 0 10px; background: #fff; border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 12px; font: 13.5px/1.55 var(--mono); white-space: pre-wrap; }
+  .sheet .x { position: absolute; top: 14px; right: 14px; }
 </style>
 </head>
 <body>
@@ -116,6 +121,14 @@
     </div>
   </aside>
 </main>
+<div class="overlay" id="peek" hidden>
+  <div class="sheet">
+    <button class="soft small x" onclick="document.getElementById('peek').hidden = true">✕ Close</button>
+    <h2 id="peekTitle"></h2>
+    <pre id="peekCode"></pre>
+    <div class="err" id="peekError" style="-webkit-line-clamp:unset;max-width:none" hidden></div>
+  </div>
+</div>
 <script src="/cake/render.js"></script>
 <script>
 "use strict";
@@ -166,7 +179,7 @@ async function refresh() {
       <td class="tries ${tries}">${s.misses || ""}</td>
       <td>${s.hints || ""}</td>
       <td>${s.last_error ? `<div class="err" title="${esc(s.last_error)}">${esc(s.last_error)}</div>` : '<span class="dim">–</span>'}</td>
-      <td><button class="soft small" data-open="${esc(s.id)}" data-at="${s.at}" title="Let ${esc(s.name)} skip to the next level">Open next</button></td>
+      <td style="white-space:nowrap"><button class="soft small" data-peek="${esc(s.id)}" title="See ${esc(s.name)}'s code">👀 Code</button> <button class="soft small" data-open="${esc(s.id)}" data-at="${s.at}" title="Let ${esc(s.name)} skip to the next level">Open next</button></td>
     </tr>`;
   }).join("") : `<tr><td colspan="7" class="empty">Nobody has opened the Cake Shop yet. Students go to <b>${esc(data.address)}</b></td></tr>`;
   $("feed").innerHTML = data.feed.slice().reverse().map(m =>
@@ -201,6 +214,18 @@ async function teacher(body) {
 }
 
 $("rows").addEventListener("click", async e => {
+  const peek = e.target.closest("button[data-peek]");
+  if (peek) {
+    if (!key()) { say("Type the admin key first (it's in the terminal where the server is running).", true); $("key").focus(); return; }
+    const d = await (await fetch(`/cake/peek?key=${encodeURIComponent(key())}&id=${encodeURIComponent(peek.dataset.peek)}`)).json();
+    if (d.error) { say(d.error, true); return; }
+    $("peekTitle").textContent = `${d.name} · ${d.level} ${d.level_name}`;
+    $("peekCode").textContent = d.code || "(nothing baked on this level yet)";
+    $("peekError").textContent = d.error || "";
+    $("peekError").hidden = !d.error;
+    $("peek").hidden = false;
+    return;
+  }
   const b = e.target.closest("button[data-open]");
   if (!b) return;
   const levels = Object.keys(overview.level_names);
@@ -221,6 +246,7 @@ $("openAll").addEventListener("click", async () => {
   if (await teacher({action: "unlock", everyone: true, level})) { say(`Everyone can now reach level ${level}.`); refresh(); }
 });
 $("key").value = recall("cakeKey") || "";
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("peek").hidden = true; });
 $("key").addEventListener("change", () => { store("cakeKey", key()); lastCakes = ""; refreshCakes(); });
 refresh();
 setInterval(refresh, 5000);

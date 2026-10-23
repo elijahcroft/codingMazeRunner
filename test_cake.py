@@ -441,6 +441,13 @@ class Classroom(unittest.TestCase):
         self.assertIn("Put quotes", row["last_error"])
         self.assertTrue(overview["address"].endswith("/cake"))
 
+    def test_teacher_can_peek_at_code(self):
+        pid = self.join()
+        self.bake(pid, "1a", 'layer("chocolate")')
+        self.assertIn("error", self.get(f"/cake/peek?id={pid}&key=nope"))
+        peek = self.get(f"/cake/peek?id={pid}&key={server.ADMIN_KEY}")
+        self.assertEqual((peek["level"], peek["code"]), ("1a", 'layer("chocolate")'))
+
     def test_look_only_takes_unlocked_things(self):
         pid = self.join()
         self.assertEqual(self.post("/cake/look", {"id": pid, "stand": "gold"})["look"]["stand"], "plate")

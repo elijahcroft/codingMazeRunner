@@ -3984,6 +3984,19 @@ class Handler(BaseHTTPRequestHandler):
                             palette=cake_palette())
             elif path == "/cake/window":
                 body = cake_window(p, teacher=query.get("key", [""])[0] == ADMIN_KEY)
+            elif path == "/cake/peek":
+                # The teacher looks at a student's code for the level they're on.
+                if query.get("key", [""])[0] != ADMIN_KEY:
+                    body = {"error": "Wrong admin key."}
+                elif not p:
+                    body = {"error": "No such student."}
+                else:
+                    entry = cake_entry(p)
+                    key = cake.LEVEL_ORDER[cake_frontier(p)]
+                    body = {"name": p["name"], "level": key,
+                            "level_name": cake.LEVEL_BY_KEY[key]["name"],
+                            "code": entry["code"].get(key, ""), "error": entry["last_error"],
+                            "studio": entry["studio"]}
             elif not p:
                 body = {"you": None}
             elif path == "/cake/state":
