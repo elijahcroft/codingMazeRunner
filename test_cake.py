@@ -472,6 +472,13 @@ class Classroom(unittest.TestCase):
         self.assertIn("error", self.get(f"/cake/peek?id={pid}&key=nope"))
         peek = self.get(f"/cake/peek?id={pid}&key={server.ADMIN_KEY}")
         self.assertEqual((peek["level"], peek["code"]), ("1a", 'layer("chocolate")'))
+        # A student whose last bake broke can still be looked at: their error
+        # isn't the same as the peek failing.
+        self.bake(pid, "1a", "layer(chocolate)")
+        peek = self.get(f"/cake/peek?id={pid}&key={server.ADMIN_KEY}")
+        self.assertNotIn("error", peek)
+        self.assertIn("Put quotes", peek["last_error"])
+        self.assertEqual(peek["code"], "layer(chocolate)")
 
     def test_look_only_takes_unlocked_things(self):
         pid = self.join()

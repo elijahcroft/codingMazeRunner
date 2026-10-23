@@ -77,6 +77,10 @@
   .sheet { background: var(--paper); border-radius: 20px; padding: 18px 20px; width: min(680px, 100%); max-height: 90vh; overflow: auto; position: relative; }
   .sheet h2 { margin: 0 0 10px; font-size: 20px; }
   .sheet pre { margin: 0 0 10px; background: #fff; border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 12px; font: 13.5px/1.55 var(--mono); white-space: pre-wrap; }
+  .sheet pre i { font-style: normal; display: inline-block; width: 2.4em; color: #d3bcbc; user-select: none; }
+  .sheet pre span { display: block; }
+  .sheet pre .bad { background: #ffe5ea; border-radius: 4px; }
+  .sheet pre .bad i { color: #c0294a; font-weight: 700; }
   .sheet .x { position: absolute; top: 14px; right: 14px; }
 </style>
 </head>
@@ -220,9 +224,13 @@ $("rows").addEventListener("click", async e => {
     const d = await (await fetch(`/cake/peek?key=${encodeURIComponent(key())}&id=${encodeURIComponent(peek.dataset.peek)}`)).json();
     if (d.error) { say(d.error, true); return; }
     $("peekTitle").textContent = `${d.name} · ${d.level} ${d.level_name}`;
-    $("peekCode").textContent = d.code || "(nothing baked on this level yet)";
-    $("peekError").textContent = d.error || "";
-    $("peekError").hidden = !d.error;
+    // Numbered, with the line the error names picked out.
+    const bad = Number((/line (\d+)/i.exec(d.last_error || "") || [])[1]);
+    $("peekCode").innerHTML = d.code ? d.code.split("\n").map((l, i) =>
+      `<span class="${i + 1 === bad ? "bad" : ""}"><i>${i + 1}</i>${esc(l)}</span>`).join("")
+      : "(nothing baked on this level yet)";
+    $("peekError").textContent = d.last_error || "";
+    $("peekError").hidden = !d.last_error;
     $("peek").hidden = false;
     return;
   }

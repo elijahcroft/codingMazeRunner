@@ -4013,7 +4013,7 @@ class Handler(BaseHTTPRequestHandler):
                     key = cake.LEVEL_ORDER[cake_frontier(p)]
                     body = {"name": p["name"], "level": key,
                             "level_name": cake.LEVEL_BY_KEY[key]["name"],
-                            "code": entry["code"].get(key, ""), "error": entry["last_error"],
+                            "code": entry["code"].get(key, ""), "last_error": entry["last_error"],
                             "studio": entry["studio"]}
             elif not p:
                 body = {"you": None}
