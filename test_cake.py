@@ -242,11 +242,24 @@ class Interpreter(unittest.TestCase):
         self.assertIn("own line", self.error('layer("lime") layer("lime")'))
         self.assertIn("colon", self.error('layer("lime")\nfor i in range(3) candle()'))
         self.assertIn("an  if  line", self.error('layer("lime")\nif 1 > 0\n    sprinkles()'))
+        self.assertIn("space after  if", self.error('age = 3\nifage < 10:\n    sprinkles()'))
+        self.assertIn("Take the  :  off", self.error('layer("lime")\nfrosting("pink"):'))
         # A name the program never sets is probably a word without its quotes...
         self.assertIn('"Enjoy"', self.error("print(Enjoy)"))
         # ...but one it sets later just needs setting first.
         self.assertIn("set it first", self.error("print(n)\nn = 2"))
         self.assertIn("doesn't do anything", self.error('layer("lime")\nn = 2\nn'))
+
+    def test_a_whole_ticket_or_list_where_one_word_belongs(self):
+        order = {"flavour": "lime", "toppings": ["star", "fish"]}
+        self.assertIn('layer(order["flavour"])', self.error("layer(order)", order))
+        self.assertIn("loop over the list",
+                      self.error('layer("lime")\ntopping(order["toppings"])', order))
+
+    def test_recipes_that_are_never_called(self):
+        self.assertIn("choco_bomb()", self.error('def choco_bomb():\n    layer("lime")'))
+        # A def that isn't used is fine if the cake gets baked anyway.
+        self.ok('def spare():\n    layer("lime")\nlayer("lemon")')
 
     def test_locked_toppings_say_how_to_unlock_them(self):
         message = self.error('layer("lime")\ntopping("unicorn")', unlocked=set())
