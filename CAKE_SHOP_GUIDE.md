@@ -138,7 +138,8 @@ finale. Five random customers each bake, so only a program that reads every
 part of the ticket gets all five. Fast finishers: Studio and a themed window.
 
 If a class needs to start at a later chapter, use **Open levels for
-everyone** on the teacher page.
+everyone** on the teacher page. Open student pages pick it up within 20
+seconds, with a "🔓 new customers are open" message.
 
 ## Level by level
 
