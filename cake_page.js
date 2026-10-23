@@ -308,7 +308,7 @@ function ticketCode(t) {
 function renderTicket() {
   if (mode === "studio") return;
   const c = customerData(sel);
-  const r = results && results[sel];
+  const r = results && sel < served ? results[sel] : null;   // the checks once they've had their cake
   let html = `<span class="pin" aria-hidden="true">📌</span>`;
   // After a bake the checks come first, and a long ticket folds away so it all fits.
   if (c.ticket && r) {
@@ -387,10 +387,16 @@ function fitCanvas(c) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   return {ctx, w, h};
 }
+// Full speed while something moves; when it's just candles flickering, about
+// 15 frames a second (2 in calm mode), to spare the Chromebooks' batteries.
+let lastDrawn = 0;
 function frameLoop(ts) {
   const dt = Math.min(64, ts - (lastFrame || ts));
   lastFrame = ts;
-  if (!$("app").hidden && mode !== "window") {
+  const moving = play || particles.length || confetti.length;
+  if (!$("app").hidden && mode !== "window" && !document.hidden &&
+      (moving || ts - lastDrawn > (CALM ? 500 : 66))) {
+    lastDrawn = ts;
     advance(dt);
     drawCounter(ts);
     drawFx(dt);
