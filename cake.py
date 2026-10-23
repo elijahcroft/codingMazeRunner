@@ -564,6 +564,7 @@ class Baker(Brain):
                         raise BotError('Keep f-strings simple, like  f"Hi {name}"  '
                                        '— no : formatting inside the { }.')
                     parts.append(show(self.eval(v.value, frame)))
+                    self.ops += len(parts[-1])
                 else:
                     raise BotError("I can't read that f-string.")
             text = "".join(parts)
@@ -644,7 +645,9 @@ class Baker(Brain):
             self.kitchen.do(name, args)
             return None
         if name == "print":
-            self.kitchen.note(show(" ".join(show(a) for a in args)))
+            text = show(" ".join(show(a) for a in args))
+            self.ops += len(text)   # writing text out is work too
+            self.kitchen.note(text)
             return None
         if name == "len":
             if len(args) != 1 or not isinstance(args[0], (list, str, dict)):
@@ -653,7 +656,9 @@ class Baker(Brain):
         if name == "str":
             if len(args) != 1:
                 raise BotError("str() takes one thing, like  str(8)")
-            return show(args[0])
+            text = show(args[0])
+            self.ops += len(text)
+            return text
         if name == "int":
             if len(args) != 1:
                 raise BotError('int() takes one thing, like  int("8")')
