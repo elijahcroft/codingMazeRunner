@@ -156,12 +156,27 @@ async function enter(id) {
   $("baker").textContent = data.you.name;
   $("muteButton").textContent = SFX.muted ? "🔇" : "🔊";
   requestAnimationFrame(frameLoop);
+  setInterval(checkForNews, 20000);
   const lastLevel = recall(`cakeLevel:${me}`);
   const open = allLevels().filter(l => l.open).map(l => l.key);
   await openLevel(open.includes(lastLevel) ? lastLevel : data.current);
   if (!data.you.shop) openShopName(true);
   else if (recall("cakeIntroSeen") !== "1") openIntro();
   return true;
+}
+// Levels the teacher opens for everyone show up without a reload.
+async function checkForNews() {
+  if (busy || play || document.hidden || !state) return;
+  let data;
+  try { data = await get("/cake/state?id=" + encodeURIComponent(me)); } catch (_) { return; }
+  if (!data.you || busy || play) return;
+  const was = new Set(allLevels().filter(l => l.open).map(l => l.key));
+  const before = state;
+  useState(data);
+  const fresh = allLevels().filter(l => l.open && !was.has(l.key));
+  if (fresh.length && before)
+    showToasts([{icon: "🔓", name: fresh.length === 1 ? `${fresh[0].name} is open!` : `${fresh.length} new customers are open!`,
+                 how: "Your teacher opened them for you."}]);
 }
 function useState(data) {
   const before = state;
@@ -198,7 +213,8 @@ function renderRoute() {
       }).join("") + `</div>`;
   }).join("");
   const now = $("route").querySelector(".lvl.now");
-  if (now) now.scrollIntoView({block: "nearest", inline: "center"});
+  if (now && here !== renderRoute.shown) now.scrollIntoView({block: "nearest", inline: "center"});
+  renderRoute.shown = here;   // scroll only when the level changes, not on every refresh
 }
 $("route").addEventListener("click", e => {
   const b = e.target.closest("button[data-level]");
