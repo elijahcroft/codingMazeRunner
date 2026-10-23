@@ -243,6 +243,14 @@ class Interpreter(unittest.TestCase):
         self.ok('order["layers"].append("grape")', order)
         self.assertEqual(order["layers"], ["lime"])
 
+    def test_ticket_slips(self):
+        order = {"name": "Sam", "flavour": "lemon"}
+        self.assertIn("WITHOUT quotes", self.error('layer("order["flavour"]")', order))
+        self.assertIn("square brackets", self.error('layer(order("flavour"))', order))
+        self.assertIn("square brackets", self.error('layer(order{"flavour"})', order))
+        self.assertIn("put  +  between", self.error('layer("lemon")\nwrite("Hi" order["name"])', order))
+        self.assertIn("colon", self.error('if order["name"] == "Sam" layer("lemon")', order))
+
     def test_no_ticket_in_the_studio(self):
         self.assertIn("Studio", self.error('layer(order["flavour"])'))
 

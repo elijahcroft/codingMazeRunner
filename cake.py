@@ -666,6 +666,9 @@ class Baker(Brain):
         name = node.func.id
         if name in self.funcs:
             return self.call_user(self.funcs[name], [self.eval(a, frame) for a in node.args])
+        if name == "order" and "order" not in self.named:
+            raise BotError('Read the ticket with square brackets, not round ones:  '
+                           'order["flavour"]')
         args = [self.eval(a, frame) for a in node.args]
         if name in COMMANDS:
             if name not in self.commands:
@@ -837,6 +840,13 @@ def cake_syntax(code, e):
     if not e.lineno or e.lineno > len(lines):
         return None
     line = lines[e.lineno - 1]
+    # The ticket in quotes, or with the wrong brackets.
+    if re.search(r"[\"']order\s*\[", line):
+        return (f"Syntax error on line {e.lineno}: order[\"...\"] is Python, not "
+                f"words, so it goes WITHOUT quotes round it, like  layer(order[\"flavour\"])")
+    if re.search(r"\border\s*\{", line):
+        return (f"Syntax error on line {e.lineno}: read the ticket with square "
+                f"brackets  [ ]  like  order[\"flavour\"]")
     bare = re.match(r"\s*([a-z_]+)\s+([\"'].*?[\"']|\d+)\s*$", line)
     if bare and bare[1] in COMMANDS + HELPERS:
         return (f"Syntax error on line {e.lineno}: put brackets round what goes in:  "
@@ -853,6 +863,11 @@ def cake_syntax(code, e):
         a = "an" if head[1][0] in "aeiou" else "a"
         return (f"Syntax error on line {e.lineno}: {a}  {head[1]}  line ends with a colon  :  "
                 f"and the steps go on the lines below it, pushed in.")
+    # Two pieces of text side by side, with nothing joining them.
+    if re.search(r"[\"']\s+(order\b|[a-z_]\w*\s*[\[(])", line) or \
+            re.search(r"\]\s+[\"']", line):
+        return (f"Syntax error on line {e.lineno}: to join text, put  +  between the "
+                f"parts, like  \"Hi \" + order[\"name\"]")
     if re.search(r"[a-z_]\s*\(.*\)\s*[a-z_]+\s*\(", line) and not head:
         return f"Syntax error on line {e.lineno}: put each command on its own line."
     return None
