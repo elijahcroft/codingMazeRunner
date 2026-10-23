@@ -274,6 +274,12 @@ class Interpreter(unittest.TestCase):
         a = cake.bake(code, seed=5)
         self.assertEqual(a["cake"], cake.bake(code, seed=5)["cake"])
 
+    def test_writing_in_colour(self):
+        out = self.ok('layer("lime")\nwrite("Boo!", "orange")')
+        self.assertEqual((out["cake"][0]["text"], out["cake"][0]["text_colour"]), ("Boo!", "orange"))
+        self.assertEqual(out["steps"][-1], {"do": "write", "arg": "Boo!", "colour": "orange"})
+        self.assertIn("colour", self.error('layer("lime")\nwrite("Boo!", "vanilla")'))
+
     def test_tiers(self):
         out = self.ok('layer("lime")\ntier()\nlayer("lemon")\nwrite("Top")')
         self.assertEqual([t["layers"] for t in out["cake"]], [["lime"], ["lemon"]])

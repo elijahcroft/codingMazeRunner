@@ -16,7 +16,7 @@
 
   // ---- the cake as data ----------------------------------------------------------
   function newTier() {
-    return {layers: [], frosting: null, drip: null, sprinkles: null, swirls: [], toppings: [], candles: [], text: null};
+    return {layers: [], frosting: null, drip: null, sprinkles: null, swirls: [], toppings: [], candles: [], text: null, text_colour: null};
   }
   function apply(tiers, step) {
     const t = tiers[tiers.length - 1];
@@ -26,7 +26,7 @@
       case "swirl": t.swirls.push(step.arg); break;
       case "topping": t.toppings.push(step.arg); break;
       case "candle": t.candles.push(step.arg); break;
-      case "write": t.text = step.arg; break;
+      case "write": t.text = step.arg; t.text_colour = step.colour || null; break;
       default: t[step.do] = step.arg;   // frosting, drip, sprinkles
     }
     return tiers;
@@ -524,8 +524,16 @@
     // Which colour reads well on this layer?
     const mid = hexOf(t.layers[Math.floor(t.layers.length / 2)] || "vanilla", "flavour");
     const dark = light(mid) < .55;
-    const fill = dark ? "#fff7fb" : "#6b2f45";
-    const edge = dark ? "#d4588a" : "#ffffff";
+    let fill = dark ? "#fff7fb" : "#6b2f45";
+    let edge = dark ? "#d4588a" : "#ffffff";
+    if (t.text_colour) {   // write("Hi", "pink"): their colour, with an outline that shows it up
+      fill = hexOf(t.text_colour, "colour");
+      edge = light(fill) > .6 ? "#5b3220" : "#ffffff";
+      if (["rainbow", "galaxy", "gold", "glitter"].includes(t.text_colour)) {
+        fill = paint(ctx, t.text_colour, "colour", cx - rx, cx + rx, cy - 20 * s, cy + 20 * s, true);
+        edge = t.text_colour === "galaxy" ? "#ffffff" : "#5b3220";
+      }
+    }
     let shown = text.length;
     const lineH = size * 1.05;
     const y0 = cy - (lines.length - 1) * lineH / 2;

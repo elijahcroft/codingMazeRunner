@@ -46,7 +46,7 @@ creative at every step.
 | Commands with text arguments: `layer("chocolate")` | Ch 1 |
 | `print()` | Ch 1 (a star) |
 | `for` loops, loops with several lines inside | Ch 2 |
-| Dictionaries: `order["flavour"]`, variables | Ch 3 |
+| Dictionaries: `order["flavour"]`, variables | Ch 3 (Lunch Rush) |
 | Joining text, f-strings, `.upper()` | Ch 3 |
 | `True`/`False`, `if/elif/else`, `< <= >=` | Ch 4 |
 | Loop counters and `%`, lists, `for x in list`, `len()` | Ch 5 |
@@ -64,7 +64,7 @@ sprinkles()             rainbow sprinkles; sprinkles("pink") for one colour
 swirl("white")          one piped swirl on the rim; loop it for a ring
 topping("cherry")       one topping on top; call it again for more
 candle()                one candle; candle("blue") for a coloured one
-write("Hi Gran")        write on the front of the cake
+write("Hi Gran")        write on the front of the cake (a colour is optional)
 tier()                  start a smaller cake on top (wedding cakes)
 ```
 
@@ -79,27 +79,27 @@ Ch 1 and 2 have one customer each. From Ch 3 on, **the same program bakes for
 3 to 5 customers** with different tickets (`order`), so hard-coding fails in
 plain sight: one customer is happy, the next gets the wrong flavour.
 
-| Lvl | Customer | Python idea | ★2 | ★3 |
+| Lvl | Level | Customers | ★2 | ★3 |
 |---|---|---|---|---|
-| 1a | 👵 Granny Rose: 2 chocolate layers, white frosting | commands, quotes | own touch | `print()` a note |
-| 1b | 🧒 Leo: vanilla, strawberry, vanilla, pink frosting, a cherry | order matters | own touch | write LEO |
-| 1c | 🐱 Captain Whiskers: lemon ×2, white, chocolate drip, 3 fish, "MEOW" | putting it together | own touch | ≤ 9 lines |
-| 2a | 👧 Ava turns 8: candles | `for` | own touch | ≤ 7 lines |
-| 2b | 🐉 Ember the dragon turns 100 | big loops | own touch | ≤ 8 lines |
-| 2c | 🦓 Zoe: 8 stripy layers, 12 swirls | two lines in a loop | own touch | ≤ 7 lines |
-| 3a | Flavour of the day ×3 | `order["flavour"]` | own touch | use a variable |
-| 3b | Birthday rush ×3 | `range(order["age"])`, `+` text | own touch | ≤ 8 lines |
-| 3c | Party planner ×3 | f-strings / `str()` | name in CAPITALS (`.upper()`) | ≤ 6 lines |
-| 4a | Sprinkles or not? ×4 | `if` with True/False | own touch | ≤ 7 lines |
-| 4b | Party time ×4 | `if/elif/else` with `==` | write each name | uses `elif` |
-| 4c | Age rules ×5 | `<`, boundaries | own touch | ≤ 13 lines |
-| 5a | 🐧 Penguin Pete: alternating swirls | counter and `%` | own touch | ≤ 8 lines |
-| 5b | 🦄 Rainbow: layers and swirls | lists, `for x in list` | own touch | ≤ 7 lines |
-| 5c | Build your own ×4 | lists in the ticket | write the number of layers (`len`) | ≤ 6 lines |
-| 6a | The menu ×4 | `def` | own touch | uses `def` |
-| 6b | Any size ×4 | parameters | own touch | a def with parameters |
-| 6c | 💍 Wedding bells ×3 | `tier()`, functions + lists | own touch | ≤ 12 lines |
-| 🏆 | The Great Bake-Off: 5 random customers | one general program | 3 happy | all 5 happy |
+| 1a | Granny Rose | 👵 Granny Rose | Your own touch: add something extra | `print()` a note, like `print("Enjoy!")` |
+| 1b | Leo's Sandwich Cake | 🧒 Leo | Your own touch: add something extra | Write LEO on the cake |
+| 1c | Captain Whiskers | 🐱 Captain Whiskers | Your own touch: add something extra | 9 lines of code or fewer |
+| 2a | Ava Turns 8 | 👧 Ava | Your own touch: add something extra | 7 lines of code or fewer |
+| 2b | Ember the Dragon | 🐉 Ember | Your own touch: add something extra | 8 lines of code or fewer |
+| 2c | Zoe Loves Stripes | 🦓 Zoe | Your own touch: add something extra | 7 lines of code or fewer |
+| 3a | Flavour of the Day | 3 in a queue | Your own touch: add something extra to every cake | Keep the flavour in a variable |
+| 3b | Birthday Rush | 3 in a queue | Your own touch: add something extra to every cake | 8 lines of code or fewer |
+| 3c | Party Planner | 3 in a queue | Write the name in CAPITALS with `.upper()` | 6 lines of code or fewer |
+| 4a | Sprinkles or Not? | 4 in a queue | Your own touch: add something extra to every cake | 7 lines of code or fewer |
+| 4b | Party Time | 4 in a queue | Write each customer's name on their cake | Use `if`, `elif` and `else` |
+| 4c | The Age Rules | 5 in a queue | Your own touch: add something extra to every cake | 13 lines of code or fewer |
+| 5a | Penguin Pete | 🐧 Penguin Pete | Your own touch: add something extra | 9 lines of code or fewer |
+| 5b | Rainbow the Unicorn | 🦄 Rainbow | Your own touch: add something extra | 8 lines of code or fewer |
+| 5c | Build Your Own | 4 in a queue | Write how many layers it has, using `len()` | 6 lines of code or fewer |
+| 6a | The Menu | 4 in a queue | Your own touch: add something extra to every cake | Use a recipe you made with `def` |
+| 6b | Any Size | 4 in a queue | Your own touch: add something extra to every cake | Use a `def` with parameters |
+| 6c | Wedding Bells | 3 in a queue | Your own touch: add something extra to every cake | 15 lines of code or fewer |
+| 7 | The Great Bake-Off | 5 random | 3 happy customers in one run | All 5 happy in one run |
 
 ★1 is always "every customer happy" (on the Bake-Off, 1 happy).
 

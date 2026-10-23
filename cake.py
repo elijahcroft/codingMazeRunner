@@ -12,7 +12,7 @@ one step at a time, and the customer reacts: delighted, or politely puzzled
     swirl("white")          one piped swirl on the rim
     topping("cherry")       one topping on top
     candle()                one candle, or candle("blue")
-    write("Hi Gran")        writing on the front of the cake
+    write("Hi Gran")        writing on the front, or write("Hi Gran", "pink")
     tier()                  start a smaller cake on top
 
 From Chapter 3 on, the same program bakes for every customer in the queue,
@@ -158,7 +158,7 @@ def _hex(value):
 
 def new_tier():
     return {"layers": [], "frosting": None, "drip": None, "sprinkles": None,
-            "swirls": [], "toppings": [], "candles": [], "text": None}
+            "swirls": [], "toppings": [], "candles": [], "text": None, "text_colour": None}
 
 
 class Kitchen:
@@ -194,7 +194,7 @@ class Kitchen:
     def colour(self, value, command, specials=True, extra=()):
         example = {"frosting": "frosting(\"pink\")", "drip": "drip(\"chocolate\")",
                    "sprinkles": "sprinkles(\"pink\")", "swirl": "swirl(\"white\")",
-                   "candle": "candle(\"blue\")"}[command]
+                   "candle": "candle(\"blue\")", "write": "write(\"Hi\", \"pink\")"}[command]
         if not isinstance(value, str):
             raise BotError(f"{command}() needs a colour in quotes, like  {example}")
         word = _clean(value)
@@ -234,9 +234,10 @@ class Kitchen:
             return
         if command in ("sprinkles", "swirl", "candle") and not args:
             args = [{"sprinkles": "rainbow", "swirl": "white", "candle": "classic"}[command]]
-        if command == "write" and len(args) != 1:
-            raise BotError('write() needs one message in quotes, like  write("Hi Gran")')
-        if len(args) != 1:
+        if command == "write" and len(args) not in (1, 2):
+            raise BotError('write() needs a message in quotes, like  write("Hi Gran")  '
+                           '(and a colour if you like:  write("Hi Gran", "pink") )')
+        if len(args) != 1 and command != "write":
             example = {"layer": 'layer("vanilla")', "frosting": 'frosting("pink")',
                        "drip": 'drip("chocolate")', "topping": 'topping("cherry")',
                        "sprinkles": 'sprinkles("pink")', "swirl": 'swirl("white")',
@@ -290,7 +291,10 @@ class Kitchen:
                 raise BotError(f"That message is too long to fit on the cake: keep it "
                                f"to {MAX_MESSAGE} letters (it has {len(text)}).")
             t["text"] = text
+            t["text_colour"] = self.colour(args[1], "write") if len(args) > 1 else None
             self.step("write", text)
+            if t["text_colour"]:
+                self.steps[-1]["colour"] = t["text_colour"]
 
     def flavour(self, value):
         if not isinstance(value, str):
@@ -1692,7 +1696,7 @@ for i in range(14):
         swirl("purple")
 for i in range(5):
     candle("purple")
-write("BOO!")
+write("BOO!", "orange")
 '''},
     {"name": "🎲 Surprise me", "code": '''# Press 🎲 Again to get a different cake every time!
 flavours = ["vanilla", "chocolate", "strawberry", "lemon", "mint", "grape"]

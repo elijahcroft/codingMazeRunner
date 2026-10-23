@@ -98,6 +98,7 @@ swirl("white")          # one piped swirl on the rim — loop it for a ring
 topping("cherry")       # ONE topping on top — call it again for more
 candle()                # one candle, or candle("blue")
 write("Hi Gran")        # writing on the front of the cake (40 letters max)
+write("BOO!", "orange") # ...in a colour of your choice
 tier()                  # start a smaller cake on top (Chapter 6)
 ```
 
