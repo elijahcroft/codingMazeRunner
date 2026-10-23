@@ -167,6 +167,7 @@
   .ticket .pin { position: absolute; top: 2px; right: 8px; font-size: 18px; }
   .ticket h3 { margin: 2px 22px 6px 0; font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: var(--pink-deep); font-weight: 900; }
   .ticket pre { margin: 0; white-space: pre-wrap; word-break: break-word; font: 12px/1.55 var(--mono); }
+  .ticket .tk-code .tl { display: block; padding-left: 2.5ch; text-indent: -2.5ch; }
   .ticket ul { list-style: none; margin: 0; padding: 0; }
   .ticket li { display: flex; gap: 6px; align-items: baseline; padding: 1px 0; line-height: 1.4; }
   .ticket li b { width: 15px; flex: none; text-align: center; color: var(--dust); }
@@ -348,8 +349,9 @@
   .cake-detail pre { margin: 0; background: #fff; border-radius: 14px; padding: 10px 12px; font: 13px/1.55 var(--mono); max-height: 300px; overflow: auto; border: 1.5px solid var(--line); white-space: pre; }
   @media (max-width: 700px) { .cake-detail { grid-template-columns: 1fr; } }
 
-  /* Bottom left, on the counter: clear of the celebration card and the route. */
-  .toasts { position: fixed; bottom: 18px; left: 18px; display: flex; flex-direction: column; gap: 8px; z-index: 60; pointer-events: none; }
+  /* Top left, over the route of customers: clear of the celebration card, the
+     customer and the result banner. */
+  .toasts { position: fixed; top: 60px; left: 14px; display: flex; flex-direction: column; gap: 8px; z-index: 60; pointer-events: none; }
   .toast { background: #fff; border-radius: 16px; padding: 10px 14px; box-shadow: 0 10px 26px rgba(74, 43, 46, .22); font-weight: 800; display: flex; gap: 10px; align-items: center; animation: slide .4s cubic-bezier(.2, .9, .3, 1.3); max-width: 340px; transition: opacity .4s, transform .4s; }
   .toast.out { opacity: 0; transform: translateX(-40px); }
   .toast span { font-size: 26px; }

@@ -303,7 +303,11 @@ function pyValue(v) {
   return String(v);
 }
 function ticketCode(t) {
-  return "order = {\n" + Object.entries(t).map(([k, v]) => `    "${k}": ${pyValue(v)},`).join("\n") + "\n}";
+  return "order = {\n" + Object.entries(t).map(([k, v]) => `  "${k}": ${pyValue(v)},`).join("\n") + "\n}";
+}
+// The ticket as lines that wrap with a hanging indent, so a long list stays readable.
+function ticketHtml(t) {
+  return ticketCode(t).split("\n").map(l => `<span class="tl">${highlight(l)}</span>`).join("");
 }
 function renderTicket() {
   if (mode === "studio") return;
@@ -314,16 +318,16 @@ function renderTicket() {
   if (c.ticket && r) {
     html += `<h3>🎫 ${esc(c.name)}'s cake</h3>`;
   } else if (c.ticket) {
-    html += `<h3>🎫 ${esc(c.name)}'s ticket</h3><pre>${highlight(ticketCode(c.ticket))}</pre>`;
+    html += `<h3>🎫 ${esc(c.name)}'s ticket</h3><pre class="tk-code">${ticketHtml(c.ticket)}</pre>`;
   } else {
     html += `<h3>🧾 Order for ${esc(c.name)}</h3>`;
   }
   if (r) {
     html += `<ul>${r.checks.map(ch => `<li class="${ch.ok ? "ok" : "no"}"><b>${ch.ok ? "✓" : "✗"}</b><span>${esc(ch.text)}</span></li>`).join("")}</ul>`;
     if (r.extras.length && !r.error) html += `<div class="extras">✨ Your own touch: ${esc(r.extras.join(", "))}</div>`;
-    if (c.ticket) html += `<details class="tk"${ticketOpen ? " open" : ""}><summary>🎫 The ticket: <code>order</code></summary><pre>${highlight(ticketCode(c.ticket))}</pre></details>`;
-  } else if (!c.ticket && c.checklist) {
-    html += `<ul>${c.checklist.map(t => `<li><b>•</b><span>${esc(t)}</span></li>`).join("")}</ul>`;
+    if (c.ticket) html += `<details class="tk"${ticketOpen ? " open" : ""}><summary>🎫 The ticket: <code>order</code></summary><pre class="tk-code">${ticketHtml(c.ticket)}</pre></details>`;
+  } else if (!c.ticket && (c.checklist || view.customers[sel].checklist)) {
+    html += `<ul>${(c.checklist || view.customers[sel].checklist).map(t => `<li><b>•</b><span>${esc(t)}</span></li>`).join("")}</ul>`;
   } else if (view.bake_off) {
     html += `<p style="margin:6px 0 0;color:var(--mocha)">Every bake brings five NEW customers. This is just an example ticket.</p>`;
   }
