@@ -47,7 +47,7 @@ class LevelClaims(unittest.TestCase):
             code = lv.get("starter", cake.STUDIO_STARTER)
             with self.subTest(level=lv["key"]):
                 out = cake.bake(code, (lv.get("customers") or [{}])[0].get("ticket")
-                                if lv["key"] != "7" else cake.bake_off_customers(1)[0]["ticket"],
+                                if lv["key"] != "6" else cake.bake_off_customers(1)[0]["ticket"],
                                 cake.COMMANDS)
                 self.assertIsNone(out["error"])
 
@@ -69,42 +69,63 @@ class LevelClaims(unittest.TestCase):
                 self.assertTrue(results[0]["happy"])
                 self.assertFalse(all(happy(results)))
 
-    def test_compact_stars_need_a_loop(self):
-        # Typing every candle out is too many lines for the compact star.
-        code = 'layer("strawberry")\nlayer("strawberry")\nfrosting("pink")\n' + \
-               'candle()\n' * 8 + 'write("Happy Birthday Ava")\n'
-        results, stars = run("2a", code)
-        self.assertEqual(stars, [True, False, False])
+    def test_every_level_is_a_queue_of_tickets(self):
+        for lv in cake.LEVELS:
+            if lv.get("bake_off"):
+                continue
+            with self.subTest(level=lv["key"]):
+                self.assertGreaterEqual(len(lv["customers"]), 3)
+                self.assertTrue(all(c["ticket"] for c in lv["customers"]))
+
+    def test_the_first_starter_already_bakes_for_one_customer(self):
+        # Level 1's starter is hard-coded: Sam is happy, and the others say why not.
+        results, _ = run("1a", level("1a")["starter"])
+        self.assertEqual(happy(results), [True, False, False])
+        self.assertIn("blueberry", results[1]["reply"])
+
+    def test_a_fixed_number_of_candles_fails_the_dragon(self):
+        results, _ = run("2a", level("2a")["starter"])
+        self.assertEqual(happy(results), [True, False, False])
+        self.assertIn("100 candles", results[2]["reply"])
 
     def test_sprinkles_for_everyone_upsets_the_no_sprinkles_customers(self):
         code = 'layer(order["flavour"])\nlayer(order["flavour"])\nfrosting("white")\nsprinkles()\n'
-        results, _ = run("4a", code)
+        results, _ = run("3a", code)
         self.assertEqual(happy(results), [True, False, True, False])
         self.assertIn("NO sprinkles", results[1]["reply"])
 
-    def test_age_rules_check_the_edges(self):
-        wrong = level("4c")["reference"].replace("age < 10", "age <= 10")
-        results, _ = run("4c", wrong)
+    def test_the_bug_hunt_bug_is_at_the_edges(self):
+        # The starter's  <=  gets exactly Max (10) and Omar (18) wrong.
+        results, _ = run("3c", level("3c")["starter"])
+        self.assertEqual([r["name"] for r in results if not r["happy"]], ["Max", "Omar"])
+        wrong = level("3c")["hints"][-1].replace("age < 10", "age <= 10")
+        results, _ = run("3c", wrong)
         self.assertEqual([r["name"] for r in results if not r["happy"]], ["Max"])
 
     def test_a_birthday_rule_for_everyone_gives_the_wedding_candles(self):
         code = 'layer(order["flavour"])\nlayer(order["flavour"])\nfrosting("pink")\n' \
                'for i in range(order["age"]):\n    candle()\n'
-        results, _ = run("4b", code)
+        results, _ = run("3b", code)
         self.assertEqual(happy(results), [True, False, False, True])
 
     def test_counting_loops_reach_an_empty_list(self):
         # Bramble wants no toppings at all: a for over [] does nothing.
-        results, _ = run("5c", level("5c")["hints"][-1])
+        results, _ = run("2c", level("2c")["hints"][-1])
         self.assertEqual(results[3]["cake"][0]["toppings"], [])
         self.assertTrue(results[3]["happy"])
 
-    def test_wedding_names_go_on_the_bottom_tier(self):
-        code = level("6c")["hints"][-1].replace('write(order["names"])\n', '') + \
-            '\nwrite(order["names"])'
-        results, _ = run("6c", code)
+    def test_extras_left_off_the_list_are_left_off_the_cake(self):
+        # Pick and Mix: a cherry for everyone upsets the customers who didn't ask.
+        code = level("4b")["hints"][-1].replace('if "cherry" in order["extras"]:\n    ', "")
+        results, _ = run("4b", code)
+        self.assertEqual(happy(results), [True, False, False, True])
+
+    def test_candy_canes_take_turns(self):
+        code = 'layer("vanilla")\nlayer("vanilla")\nfrosting("white")\n' \
+               'for i in range(order["swirls"]):\n    swirl(order["first"])\n'
+        results, _ = run("4a", code)
         self.assertFalse(any(happy(results)))
-        self.assertIn("bottom tier", results[0]["reply"])
+        self.assertIn("Swirl 2 should be white", results[0]["reply"])
 
     def test_bake_off_tickets_cover_every_choice(self):
         for seed in range(60):
@@ -117,23 +138,30 @@ class LevelClaims(unittest.TestCase):
                 self.assertEqual({t["message"] == "" for t in tickets}, {True, False})
 
     def test_a_bake_off_program_that_skips_a_part_never_gets_five(self):
-        reference = level("7")["reference"]
+        reference = level("6")["reference"]
         for part in ("drip", "sprinkles", "candle", "topping", "write"):
             lines = reference.split("\n")
             i = next(i for i, l in enumerate(lines) if part + "(" in l)
             broken = "\n".join(lines[:i - 1] + lines[i + 1:])
             for seed in range(20):
                 with self.subTest(part=part, seed=seed):
-                    self.assertFalse(run("7", broken, seed)[1][2])
+                    self.assertFalse(run("6", broken, seed)[1][2])
 
     def test_stars_for_creativity_and_python(self):
-        _, stars = run("1a", 'layer("chocolate")\nlayer("chocolate")\nfrosting("white")\n')
+        _, stars = run("1a", level("1a")["hints"][-1])
         self.assertEqual(stars, [True, False, False])
-        _, stars = run("3c", 'for i in range(order["layers"]):\n    layer(order["flavour"])\n'
-                             'frosting(order["frosting"])\n'
-                             'write(order["name"] + " is " + str(order["age"]))\n')
+        _, stars = run("1a", level("1a")["hints"][-1] + '\nprint("Enjoy!")')
+        self.assertEqual(stars, [True, False, False])   # the name, not any note
+        _, stars = run("1a", level("1a")["hints"][-1] + '\nprint("For", order["name"])')
         self.assertEqual(stars, [True, False, True])
-        _, stars = run("6a", level("6a")["hints"][-1])
+        _, stars = run("2a", level("2a")["hints"][-1] +
+                       '\nwrite(order["name"] + " is " + str(order["age"]))')
+        self.assertEqual(stars, [True, True, True])   # writing they didn't ask for is a touch
+        _, stars = run("2b", level("2b")["hints"][-1] + '\nwrite(order["stripes"] * 2)')
+        self.assertEqual(stars, [True, True, True])
+        _, stars = run("2b", level("2b")["hints"][-1] + '\nwrite(order["stripes"])')
+        self.assertEqual(stars, [True, True, False])
+        _, stars = run("5a", level("5a")["hints"][-1])
         self.assertEqual(stars, [True, False, True])
 
     def test_a_def_that_never_runs_does_not_count(self):
@@ -171,9 +199,8 @@ class Judge(unittest.TestCase):
                                 "I need 3 candles, but I count 0."])
 
     def test_checklist_describes_the_order(self):
-        self.assertEqual(cake.checklist(level("1c")["customers"][0]["want"]),
-                         ["2 lemon layers", "white frosting", "chocolate drip",
-                          "3 × 🐟 fish", 'writing: "MEOW"'])
+        self.assertEqual(cake.checklist(level("1b")["customers"][0]["want"]),
+                         ["2 strawberry layers", "pink frosting", "1 × 🍒 cherry"])
 
 
 class Interpreter(unittest.TestCase):
@@ -216,8 +243,8 @@ class Interpreter(unittest.TestCase):
         self.ok('order["layers"].append("grape")', order)
         self.assertEqual(order["layers"], ["lime"])
 
-    def test_no_ticket_before_chapter_3(self):
-        self.assertIn("Chapter 3", self.error('layer(order["flavour"])'))
+    def test_no_ticket_in_the_studio(self):
+        self.assertIn("Studio", self.error('layer(order["flavour"])'))
 
     def test_friendly_mistakes(self):
         self.assertIn('Put quotes round words', self.error("layer(chocolate)"))
@@ -267,8 +294,8 @@ class Interpreter(unittest.TestCase):
         self.ok('layer("lime")\ntopping("unicorn")\nfrosting("galaxy")')
 
     def test_commands_arrive_chapter_by_chapter(self):
-        out = cake.bake('layer("lime")\ncandle()', None, level("1a")["commands"])
-        self.assertIn("Chapter 2", out["error"])
+        out = cake.bake('layer("lime")\ntier()', None, level("1a")["commands"])
+        self.assertIn("Studio", out["error"])
 
     def test_hex_colours(self):
         out = self.ok('layer("#ABC")\nfrosting("#ff88cc")')
@@ -306,7 +333,7 @@ class Interpreter(unittest.TestCase):
     def test_writing_in_colour(self):
         out = self.ok('layer("lime")\nwrite("Boo!", "orange")')
         self.assertEqual((out["cake"][0]["text"], out["cake"][0]["text_colour"]), ("Boo!", "orange"))
-        self.assertEqual(out["steps"][-1], {"do": "write", "arg": "Boo!", "colour": "orange"})
+        self.assertEqual(out["steps"][-1], {"do": "write", "arg": "Boo!", "colour": "orange", "line": 2})
         self.assertIn("colour", self.error('layer("lime")\nwrite("Boo!", "vanilla")'))
 
     def test_tiers(self):
@@ -367,38 +394,39 @@ class Classroom(unittest.TestCase):
         self.assertIn("error", self.get(f"/cake/level?id={pid}&level=1b"))
         self.assertIn("error", self.bake(pid, "1b"))
         view = self.get(f"/cake/level?id={pid}&level=1a")
-        self.assertEqual(view["customers"][0]["checklist"],
-                         ["2 chocolate layers", "white frosting"])
+        self.assertEqual(view["customers"][0]["ticket"], {"name": "Sam", "flavour": "lemon"})
         self.assertEqual(view["hints"], [])
         out = self.bake(pid, "1a")
         self.assertEqual(out["rewards"]["stars"], [True, True, True])
+        self.assertEqual(out["runs"][0]["steps"][0], {"do": "layer", "arg": "lemon", "line": 1})
         self.assertEqual(out["rewards"]["new_stars"], 3)
         self.assertTrue(out["rewards"]["first"])
         self.assertEqual(out["state"]["current"], "1b")
         self.assertIn("First Customer", [b["name"] for b in out["rewards"]["badges"]])
         self.assertIn("board", [u["key"] for u in out["rewards"]["unlocked"]])
         # Stars add up across bakes and never go away.
-        again = self.bake(pid, "1a", 'layer("chocolate")')
+        again = self.bake(pid, "1a", 'layer("lemon")')
         self.assertEqual(again["rewards"]["best"], [True, True, True])
         self.assertEqual(again["rewards"]["stars"], [False, False, False])
 
     def test_rush_levels_show_the_tickets(self):
         pid = self.join()
         self.post("/cake/teacher", {"key": server.ADMIN_KEY, "action": "unlock",
-                                    "id": pid, "level": "3a"})
-        view = self.get(f"/cake/level?id={pid}&level=3a")
+                                    "id": pid, "level": "2a"})
+        view = self.get(f"/cake/level?id={pid}&level=2a")
         self.assertEqual(len(view["customers"]), 3)
-        self.assertEqual(view["customers"][0]["ticket"], {"name": "Sam", "flavour": "lemon"})
-        out = self.bake(pid, "3a", 'layer("lemon")\nlayer("lemon")\nfrosting("white")')
+        self.assertEqual(view["customers"][2]["ticket"],
+                         {"name": "Ember", "age": 100, "flavour": "chocolate"})
+        out = self.bake(pid, "2a", level("2a")["starter"])
         self.assertEqual([r["happy"] for r in out["runs"]], [True, False, False])
-        self.assertIn("blueberry", out["runs"][1]["reply"])
+        self.assertIn("I count 8", out["runs"][1]["reply"])
 
     def test_bake_off_has_new_customers_every_bake(self):
         pid = self.join()
         self.post("/cake/teacher", {"key": server.ADMIN_KEY, "action": "unlock",
-                                    "id": pid, "level": "7"})
-        a = self.bake(pid, "7")
-        b = self.bake(pid, "7")
+                                    "id": pid, "level": "6"})
+        a = self.bake(pid, "6")
+        b = self.bake(pid, "6")
         self.assertEqual(a["rewards"]["stars"], [True, True, True])
         self.assertNotEqual([r["ticket"] for r in a["runs"]], [r["ticket"] for r in b["runs"]])
 
