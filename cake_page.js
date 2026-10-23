@@ -248,7 +248,7 @@ function renderGoals() {
 function renderBoard() {
   let html;
   if (mode === "studio") {
-    html = `<h2>🎨 The Studio</h2><p>Bake anything you like! Every command works here, and so do  <code>choice()</code>  and  <code>randint()</code>  for surprise cakes.</p>`;
+    html = `<h2>🎨 The Studio</h2><p>Bake anything you like! Every command works here, and so do <code>choice()</code> and <code>randint()</code> for surprise cakes.</p><p style="margin-top:6px">Stuck for an idea? Try one of the 💡 ideas on the right.</p>`;
   } else if (view.rules.length) {
     html = `<h2>${view.bake_off ? "🏆 Bake-Off rules" : "📋 House rules"}</h2><ul>${view.rules.map(r => `<li>${fmt(r)}</li>`).join("")}</ul>`;
   } else {
@@ -796,7 +796,7 @@ function renderTip(tip, open) {
   $("tip").hidden = !tip;
   if (!tip) return;
   $("tipTitle").textContent = tip.title;
-  $("tipBody").innerHTML = `<p>${fmt(tip.text)}</p><pre>${highlight(tip.code)}</pre>`;
+  $("tipBody").innerHTML = `<p>${fmt(tip.text)}</p>` + (tip.code ? `<pre>${highlight(tip.code)}</pre>` : "");
   $("tip").open = open;
 }
 function renderHints() {
@@ -889,6 +889,27 @@ function renderStudioCard() {
   $("nowIn").innerHTML = w ? `In the window now: <b>${esc(w.title)}</b> · ❤️ ${w.hearts}${w.hidden ? " · <i>hidden by your teacher</i>" : ""}` : "Nothing in the window yet.";
 }
 
+let undoCode = null;
+$("tipBody").addEventListener("click", e => {
+  const b = e.target.closest("button[data-idea]");
+  if (!b) return;
+  const idea = state.palette.ideas[Number(b.dataset.idea)];
+  undoCode = $("code").value;
+  $("code").value = idea.code;
+  errorLine = 0;
+  updateEditor();
+  SFX.play("click");
+  showBanner("", `Loaded “${idea.name}”. Bake it, then change it to make it yours!`,
+    `<button class="soft" onclick="undoIdea()">↩ Undo</button>`);
+});
+function undoIdea() {
+  if (undoCode === null) return;
+  $("code").value = undoCode;
+  undoCode = null;
+  updateEditor();
+  hideBanner();
+}
+
 // ---- Switching between Orders, Studio and the Shop Window --------------------------------------------
 async function setMode(next) {
   if (next === mode) return;
@@ -914,8 +935,10 @@ async function setMode(next) {
     renderChips();
     renderHints();
     $("tip").hidden = false;
-    renderTip({title: "Studio ideas", text: "Try a list of colours with  i % 3 , a tiered cake with  tier() , or let  choice()  pick a surprise topping. Then press 🎲 Again for a new surprise.",
-      code: 'colours = ["pink", "white", "lavender"]\nfor i in range(12):\n    swirl(colours[i % 3])'}, false);
+    renderTip({title: "💡 Studio ideas", text: "Start from one of these, then make it your own: change the colours, add a loop, let `choice()` pick a surprise.",
+      code: ""}, true);
+    $("tipBody").insertAdjacentHTML("beforeend", `<div class="ideas">${state.palette.ideas.map((idea, i) =>
+      `<button data-idea="${i}">${esc(idea.name)}</button>`).join("")}</div>`);
     $("hintButton").hidden = true;
     $("ticket").hidden = true; $("queue").hidden = true;
     $("studioCard").hidden = false;
@@ -1088,7 +1111,7 @@ function joinScene() {
     if (!joinArt) return;
     const c = $("joinCanvas"), {ctx, w, h} = fitCanvas(c);
     ctx.clearRect(0, 0, w, h);
-    const t = (now - joinArt.start) / 260;
+    const t = Math.max(0, now - joinArt.start) / 260;   // a frame can be stamped just before the start
     if (t > joinArt.steps.length + 40) joinArt.start = now;   // bake it again
     const k = Math.min(joinArt.steps.length, Math.floor(t));
     const tiers = CakeArt.replay(joinArt.steps, Math.min(joinArt.steps.length, k + 1));

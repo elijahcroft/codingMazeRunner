@@ -70,7 +70,7 @@
   .bar { display: flex; align-items: center; gap: 14px; padding: 0 14px; background: var(--paper); border-bottom: 1.5px solid var(--line); min-width: 0; }
   .brand { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: 900; font-size: 18px; letter-spacing: -.02em; }
   .brand .logo { font-size: 26px; }
-  .brand .shop { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 26vw; }
+  .brand .shop { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 26vw; min-width: 6ch; }
   .brand button { border: 0; background: none; color: var(--dust); padding: 2px 4px; font-size: 14px; }
   .brand button:hover { color: var(--pink); }
   .tabs { display: flex; gap: 4px; padding: 4px; background: var(--blush); border-radius: 14px; margin: 0 auto; }
@@ -139,6 +139,9 @@
   .board li::marker { color: #ffb3c9; }
   .board code { color: #a8f0d6; background: rgba(255, 255, 255, .08); font-size: 12px; white-space: normal; }
   .board p { margin: 0; color: #e7e1d3; }
+  .ideas { display: flex; flex-wrap: wrap; gap: 5px; }
+  .ideas button { border: 1.5px solid #f3d98e; background: #fff; color: var(--cocoa); border-radius: 10px; padding: 4px 10px; font-weight: 800; font-size: 13px; }
+  .ideas button:hover { border-color: var(--pink); background: var(--blush); }
 
   .customer { position: absolute; left: 3%; bottom: 16%; width: 21%; display: flex; flex-direction: column; align-items: center; z-index: 3; }
   .face { font-size: clamp(60px, 8.5vw, 108px); line-height: 1; filter: drop-shadow(0 6px 8px rgba(90, 40, 40, .2)); transform-origin: 50% 100%; animation: bob 3.2s ease-in-out infinite; user-select: none; }
@@ -159,8 +162,8 @@
 
   .ticket { position: absolute; top: 20%; right: 2.5%; width: 25%; max-height: 60%; overflow: auto; padding: 12px 13px; background: #fffef6; border-radius: 4px; box-shadow: 0 8px 18px rgba(110, 60, 50, .2); transform: rotate(1.2deg); font-size: 13px; scrollbar-width: thin; z-index: 2;
       background-image: repeating-linear-gradient(transparent 0 23px, #e9eef7 23px 24px); }
-  .ticket .pin { position: absolute; top: -1px; left: 50%; transform: translateX(-50%); font-size: 18px; }
-  .ticket h3 { margin: 6px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: var(--pink-deep); font-weight: 900; }
+  .ticket .pin { position: absolute; top: 2px; right: 8px; font-size: 18px; }
+  .ticket h3 { margin: 2px 22px 6px 0; font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: var(--pink-deep); font-weight: 900; }
   .ticket pre { margin: 0; white-space: pre-wrap; word-break: break-word; font: 12px/1.55 var(--mono); }
   .ticket ul { list-style: none; margin: 0; padding: 0; }
   .ticket li { display: flex; gap: 6px; align-items: baseline; padding: 1px 0; line-height: 1.4; }

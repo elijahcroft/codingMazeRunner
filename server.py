@@ -3407,7 +3407,8 @@ def cake_state(p):
 def cake_palette():
     return {"flavours": cake.FLAVOURS, "colours": cake.COLOURS,
             "specials": cake.SPECIALS, "toppings": cake.TOPPINGS,
-            "stands": cake.STANDS, "wallpapers": cake.WALLPAPERS}
+            "stands": cake.STANDS, "wallpapers": cake.WALLPAPERS,
+            "ideas": cake.STUDIO_IDEAS}
 
 
 def cake_level(p, key):

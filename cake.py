@@ -1661,6 +1661,78 @@ write("Made by me")
 '''
 
 
+STUDIO_IDEAS = [
+    {"name": "🌈 Rainbow tower", "code": '''flavours = ["cherry", "orange", "lemon", "lime", "blueberry", "grape"]
+colours = ["red", "orange", "yellow", "green", "blue", "purple"]
+for f in flavours:
+    layer(f)
+frosting("white")
+for i in range(12):
+    swirl(colours[i % 6])
+topping("star")
+'''},
+    {"name": "🌙 Spooky night", "code": '''for i in range(3):
+    layer("chocolate")
+frosting("black")
+drip("orange")
+for i in range(14):
+    if i % 2 == 0:
+        swirl("orange")
+    else:
+        swirl("purple")
+for i in range(5):
+    candle("purple")
+write("BOO!")
+'''},
+    {"name": "🎲 Surprise me", "code": '''# Press 🎲 Again to get a different cake every time!
+flavours = ["vanilla", "chocolate", "strawberry", "lemon", "mint", "grape"]
+for i in range(randint(2, 5)):
+    layer(choice(flavours))
+frosting(choice(["pink", "white", "lavender", "mint", "yellow"]))
+sprinkles()
+for i in range(randint(3, 8)):
+    topping(choice(["cherry", "star", "heart", "flower", "candy"]))
+'''},
+    {"name": "🎂 Birthday for…", "code": '''name = "Sam"
+age = 9
+layer("chocolate")
+layer("vanilla")
+layer("chocolate")
+frosting("blue")
+for i in range(age):
+    candle("classic")
+write(f"Happy {age}th {name}!")
+for i in range(10):
+    swirl("white")
+'''},
+    {"name": "🍓 Strawberry dream", "code": '''def strawberry_ring(n):
+    for i in range(n):
+        topping("strawberry")
+
+layer("vanilla")
+layer("strawberry")
+layer("vanilla")
+frosting("cream")
+drip("pink")
+strawberry_ring(8)
+'''},
+    {"name": "👑 Royal wedding", "code": '''def one_tier(flavour, swirls):
+    layer(flavour)
+    layer(flavour)
+    frosting("white")
+    for i in range(swirls):
+        swirl("white")
+
+one_tier("vanilla", 16)
+write("Forever")
+tier()
+one_tier("lemon", 12)
+tier()
+one_tier("strawberry", 8)
+topping("heart")
+'''},
+]
+
 # ---- running a level, and its stars ---------------------------------------------
 
 def customers_for(level, seed=0):
@@ -1679,12 +1751,26 @@ def run_level(level, code, unlocked=LOCKED, unlock_hint=None, seed=0):
             reply = "Oh dear... something went wrong in the kitchen!"
         elif happy:
             reply = c.get("happy") or HAPPY[zlib.crc32(c["name"].encode()) % len(HAPPY)]
+            if extras:
+                reply += " " + touch_line(extras, c["name"])
         else:
             reply = next(ch["say"] for ch in checks if not ch["ok"])
         results.append(dict(out, name=c["name"], face=c["face"], says=c["says"],
                             ticket=c.get("ticket"), happy=happy, reply=reply,
                             checks=checks, extras=extras))
     return results
+
+
+def touch_line(extras, name):
+    """What a happy customer says about the decoration they didn't ask for."""
+    first = extras[0]
+    named = {icon: key for key, icon in TOPPINGS.items()}
+    thing = {"sprinkles": "sprinkles", "drip": "a drip", "swirls": "swirls",
+             "candles": "candles", "writing": "writing on it",
+             "frosting": "frosting"}.get(first) or f"the {first} {named.get(first, 'topping')}"
+    lines = [f"Ooh, {thing} too! What a lovely touch.", f"And {thing}? I love it!",
+             f"{thing[0].upper() + thing[1:]}! You thought of everything."]
+    return lines[zlib.crc32(f"{name}:{first}".encode()) % len(lines)]
 
 
 def code_lines(code):
