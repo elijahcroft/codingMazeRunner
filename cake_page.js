@@ -303,27 +303,31 @@ function pyValue(v) {
   return String(v);
 }
 function ticketCode(t) {
-  return "order = {\n" + Object.entries(t).map(([k, v]) => `    "${k}": ${pyValue(v)},`).join("\n") + "\n}";
+  return "order = {\n" + Object.entries(t).map(([k, v]) => `  "${k}": ${pyValue(v)},`).join("\n") + "\n}";
+}
+// The ticket as lines that wrap with a hanging indent, so a long list stays readable.
+function ticketHtml(t) {
+  return ticketCode(t).split("\n").map(l => `<span class="tl">${highlight(l)}</span>`).join("");
 }
 function renderTicket() {
   if (mode === "studio") return;
   const c = customerData(sel);
-  const r = results && results[sel];
+  const r = results && sel < served ? results[sel] : null;   // the checks once they've had their cake
   let html = `<span class="pin" aria-hidden="true">📌</span>`;
   // After a bake the checks come first, and a long ticket folds away so it all fits.
   if (c.ticket && r) {
     html += `<h3>🎫 ${esc(c.name)}'s cake</h3>`;
   } else if (c.ticket) {
-    html += `<h3>🎫 ${esc(c.name)}'s ticket</h3><pre>${highlight(ticketCode(c.ticket))}</pre>`;
+    html += `<h3>🎫 ${esc(c.name)}'s ticket</h3><pre class="tk-code">${ticketHtml(c.ticket)}</pre>`;
   } else {
     html += `<h3>🧾 Order for ${esc(c.name)}</h3>`;
   }
   if (r) {
     html += `<ul>${r.checks.map(ch => `<li class="${ch.ok ? "ok" : "no"}"><b>${ch.ok ? "✓" : "✗"}</b><span>${esc(ch.text)}</span></li>`).join("")}</ul>`;
     if (r.extras.length && !r.error) html += `<div class="extras">✨ Your own touch: ${esc(r.extras.join(", "))}</div>`;
-    if (c.ticket) html += `<details class="tk"${ticketOpen ? " open" : ""}><summary>🎫 The ticket: <code>order</code></summary><pre>${highlight(ticketCode(c.ticket))}</pre></details>`;
-  } else if (!c.ticket && c.checklist) {
-    html += `<ul>${c.checklist.map(t => `<li><b>•</b><span>${esc(t)}</span></li>`).join("")}</ul>`;
+    if (c.ticket) html += `<details class="tk"${ticketOpen ? " open" : ""}><summary>🎫 The ticket: <code>order</code></summary><pre class="tk-code">${ticketHtml(c.ticket)}</pre></details>`;
+  } else if (!c.ticket && (c.checklist || view.customers[sel].checklist)) {
+    html += `<ul>${(c.checklist || view.customers[sel].checklist).map(t => `<li><b>•</b><span>${esc(t)}</span></li>`).join("")}</ul>`;
   } else if (view.bake_off) {
     html += `<p style="margin:6px 0 0;color:var(--mocha)">Every bake brings five NEW customers. This is just an example ticket.</p>`;
   }
@@ -387,10 +391,16 @@ function fitCanvas(c) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   return {ctx, w, h};
 }
+// Full speed while something moves; when it's just candles flickering, about
+// 15 frames a second (2 in calm mode), to spare the Chromebooks' batteries.
+let lastDrawn = 0;
 function frameLoop(ts) {
   const dt = Math.min(64, ts - (lastFrame || ts));
   lastFrame = ts;
-  if (!$("app").hidden && mode !== "window") {
+  const moving = play || particles.length || confetti.length;
+  if (!$("app").hidden && mode !== "window" && !document.hidden &&
+      (moving || ts - lastDrawn > (CALM ? 500 : 66))) {
+    lastDrawn = ts;
     advance(dt);
     drawCounter(ts);
     drawFx(dt);
@@ -874,7 +884,7 @@ function renderChips() {
     html = Object.entries(pal.flavours).map(([k, c]) => `<button class="chip" data-v="${esc(k)}" title="layer(&quot;${esc(k)}&quot;)"><i style="background:${c}"></i>${esc(k)}</button>`).join("");
   } else if (pantryTab === "colours") {
     html = Object.entries(pal.colours).map(([k, c]) => `<button class="chip" data-v="${esc(k)}"><i style="background:${c}"></i>${esc(k)}</button>`).join("") +
-      pal.specials.map(k => { const u = lock("special:" + k); return `<button class="chip${u ? " locked" : ""}" data-v="${esc(k)}" title="${esc(k)} frosting${tip(u)}"><i style="background:${{glitter: "linear-gradient(135deg,#f3e3b3,#fff,#f3e3b3)", galaxy: "linear-gradient(135deg,#1c1440,#4b2a8a,#2a4d9b)", rainbow: "linear-gradient(90deg,#ff5f6d,#ffd93d,#6bd66b,#5cb8ff,#a77bff)", gold: "linear-gradient(135deg,#9c6f12,#ffe08a,#d9a52b)"}[k]}"></i>${u ? "🔒 " : "✨ "}${esc(k)}</button>`; }).join("");
+      pal.specials.map(k => { const u = lock("special:" + k); return `<button class="chip${u ? " locked" : ""}" data-v="${esc(k)}" title="${esc(k)} frosting${tip(u)}"><i style="background:${{glitter: "linear-gradient(135deg,#f6d7e8,#fff4d6,#e3dcfb,#d6f5ec)", galaxy: "linear-gradient(135deg,#1c1440,#4b2a8a,#2a4d9b)", rainbow: "linear-gradient(90deg,#ff5f6d,#ffd93d,#6bd66b,#5cb8ff,#a77bff)", gold: "linear-gradient(135deg,#9c6f12,#ffe08a,#d9a52b)"}[k]}"></i>${u ? "🔒 " : "✨ "}${esc(k)}</button>`; }).join("");
   } else {
     html = Object.entries(pal.toppings).map(([k, icon]) => { const u = lock("topping:" + k); return `<button class="chip${u ? " locked" : ""}" data-v="${esc(k)}" title="topping(&quot;${esc(k)}&quot;)${tip(u)}"><i>${u ? "🔒" : icon}</i>${esc(k)}</button>`; }).join("");
   }
