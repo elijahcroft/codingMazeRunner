@@ -944,6 +944,25 @@ function undoIdea() {
   hideBanner();
 }
 
+// A picture of the cake to keep.
+function savePhoto(tiers, look, title, by) {
+  const a = document.createElement("a");
+  a.href = CakeArt.photo(tiers, look, title, by);
+  a.download = (title || "my cake").replace(/[^\w -]+/g, "").trim().replace(/\s+/g, "-").toLowerCase() + ".png";
+  document.body.append(a); a.click(); a.remove();
+  SFX.play("click");
+}
+$("photoButton").addEventListener("click", () => {
+  if (!studio.run || studio.run.error || !studio.run.cake[0].layers.length) {
+    showBanner("", "Bake a cake first, then take its photo 📸"); return;
+  }
+  const title = $("cakeTitle").value.trim() || "My cake";
+  savePhoto(studio.run.cake, state.look, title, `by ${state.you.name} · ${$("shopName").textContent}`);
+});
+$("cmPhoto").addEventListener("click", () => {
+  if (detail) savePhoto(detail.cake, detail.look, detail.title, `by ${detail.baker} · ${detail.shop}`);
+});
+
 // ---- Switching between Orders, Studio and the Shop Window --------------------------------------------
 async function setMode(next, level = null) {
   if (next === mode) return;

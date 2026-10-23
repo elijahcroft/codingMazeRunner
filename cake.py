@@ -243,6 +243,12 @@ class Kitchen:
                        "candle": 'candle("blue")'}[command]
             raise BotError(f"{command}() takes one thing in the ( ), like  {example}")
         value = args[0]
+        if isinstance(value, int) and not isinstance(value, bool) and command != "write":
+            noun = {"layer": 'layer("vanilla")', "topping": 'topping("cherry")',
+                    "candle": "candle()", "swirl": 'swirl("white")'}.get(command)
+            if noun:
+                raise BotError(f"{command}() adds ONE at a time. For {value} use a loop:  "
+                               f"for i in range({value}):  then  {noun}  pushed in under it.")
         if command == "layer":
             if len(t["layers"]) >= MAX_LAYERS:
                 raise BotError(f"That cake is as tall as the oven! {MAX_LAYERS} layers "
@@ -454,8 +460,10 @@ class Baker(Brain):
             return super().lookup(name, frame)
         except BotError:
             if name == "order" and self.order is None:
-                raise BotError("There's no order ticket here: tickets arrive in "
-                               "Chapter 3. Read what the customer says instead.")
+                raise BotError("There's no order ticket here. Tickets come with the "
+                               "customers from Chapter 3 on.")
+            if isinstance(self.order, dict) and name in self.order:
+                raise BotError(f'Put quotes round the ticket\'s word:  order["{name}"]')
             word = name.lower().replace("_", " ")
             if word in KNOWN_WORDS and name not in frame.vars:
                 raise BotError(f'Put quotes round words:  "{word}"  — like  '
@@ -562,6 +570,8 @@ class Baker(Brain):
             raise BotError("That shortcut isn't part of Cake Shop. Use a for loop "
                            "and .append() instead.")
         if isinstance(node, ast.Attribute):
+            if isinstance(node.value, ast.Name) and node.value.id == "order":
+                raise BotError(f'Read the ticket with square brackets:  order["{node.attr}"]')
             raise BotError(f"Dots like  .{node.attr}  only work as methods with ( ), "
                            f"like  name.upper()")
         if isinstance(node, ast.Constant) and isinstance(node.value, float):

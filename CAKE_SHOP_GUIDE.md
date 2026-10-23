@@ -37,7 +37,10 @@ terminal unlocks the teacher actions.
 - **The kitchen** (on the right). There's a **Chef's tip** with an example of the
   level's new idea, the editor (colour-coded, with line numbers), a **recipe
   book** of commands to click, and an **ingredients** list of flavours, colours
-  and toppings (click to type one in). Then come **Bake!** (Ctrl+Enter), **hints**,
+  and toppings. Clicking a command adds it with its word selected. Clicking an
+  ingredient then swaps that word, so `layer("vanilla")` becomes
+  `layer("chocolate")` without any typing. That helps students who type
+  slowly get started, and they still have to put the steps in the right order. Then come **Bake!** (Ctrl+Enter), **hints**,
   and the **Kitchen notes**, where `print()` output and errors appear.
 - **Baking.** Each command is a step: layers drop in, frosting spreads,
   sprinkles rain down, candles pop up and flicker, writing appears on the front
@@ -73,7 +76,10 @@ Every reward is for writing code. Nothing is random and nothing is taken away.
   the window, giving and getting hearts, chapter masters.
 - **🎨 The Studio.** Free baking with every command, plus `choice()` and
   `randint()` for surprise cakes (🎲 Again re-bakes with new random picks).
-  Fast finishers live here.
+  **💡 Ideas** load a starting recipe (rainbow tower, spooky night, surprise
+  me, birthday, strawberry dream, royal wedding), and each one shows off a bit of
+  Python to change. **📸 Photo** saves a picture of the cake to keep. Fast
+  finishers live here.
 - **🪟 The Shop Window.** Students name their best Studio cake and put it in
   the window. Classmates can ❤️ it, open it to **read its recipe**, and
   **Remix it** into their own Studio. Reading each other's code is a great

@@ -228,6 +228,10 @@ class Interpreter(unittest.TestCase):
         self.assertIn("Bake a layer first", self.error('frosting("pink")'))
         self.assertIn("str()", self.error('layer("lime")\nwrite("Age " + 8)'))
         self.assertIn("candle() adds one", self.error('layer("lime")\ncandles(8)'))
+        self.assertIn("for i in range(8)", self.error('layer("lime")\ncandle(8)'))
+        order = {"flavour": "lime"}
+        self.assertIn('order["flavour"]', self.error("layer(order[flavour])", order))
+        self.assertIn('order["flavour"]', self.error("layer(order.flavour)", order))
         self.assertIn("for i in range(4)", self.error('for i in 4:\n    candle()'))
         self.assertIn("positions", self.error('x = ["a"]\nprint(x[3])'))
         self.assertIn("Syntax error on line 1", self.error('layer("lime"'))

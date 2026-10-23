@@ -193,6 +193,7 @@
   .studio-card h3 { margin: 0 0 6px; font-size: 16px; font-weight: 900; }
   .studio-card p { margin: 0 0 10px; color: var(--mocha); }
   .studio-card input { width: 100%; padding: 8px 10px; border-radius: 10px; border: 2px solid var(--line); margin-bottom: 8px; }
+  .studio-card .row-btns { display: flex; gap: 6px; flex-wrap: wrap; }
   .studio-card .now-in { margin-top: 8px; font-size: 12.5px; color: var(--mocha); }
 
   /* ---- The kitchen: tip, editor, recipe book, notes ------------------------------------------ */
@@ -422,7 +423,7 @@
           <h3>🪟 Shop window</h3>
           <p>Proud of it? Name it and put it in the window for the class to see.</p>
           <input id="cakeTitle" maxlength="30" placeholder="Name your cake" aria-label="Your cake's name">
-          <button class="mint-btn" id="windowButton">Put it in the window</button>
+          <div class="row-btns"><button class="mint-btn" id="windowButton">Put it in the window</button><button class="soft" id="photoButton" title="Save a picture of your cake">📸 Photo</button></div>
           <div class="now-in" id="nowIn"></div>
         </div>
         <canvas class="fx" id="fx" aria-hidden="true"></canvas>
@@ -531,6 +532,7 @@
         <div class="cel-buttons" style="justify-content:flex-start">
           <button class="heart" id="cmHeart"></button>
           <button class="mint-btn" id="cmRemix">🎨 Remix it in my Studio</button>
+          <button class="soft" id="cmPhoto" title="Save a picture of this cake">📸 Photo</button>
         </div>
       </div>
     </div>

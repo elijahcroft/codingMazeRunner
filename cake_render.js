@@ -594,5 +594,38 @@
     draw(ctx, w, h, {tiers, stand, now: 1000});
   }
 
-  window.CakeArt = {setPalette, newTier, apply, replay, draw, topOf, still, hexOf};
+  // A picture to keep: the cake on its stand in front of the shop's wallpaper,
+  // with its name. Returns a PNG data URL.
+  const WALL = {strawberry: ["#ffe0ea", "#fff3f6"], mint: ["#d5f3e9", "#f1fbf7"], lavender: ["#efe7ff", "#f8f4ff"],
+                lemon: ["#fff3c4", "#fffbe8"], night: ["#2b2452", "#342b63"], candy: ["#ffd1e0", "#d8f2ff"]};
+  function photo(tiers, look, title, by) {
+    const W = 1200, H = 960;
+    const c = document.createElement("canvas");
+    c.width = W; c.height = H;
+    const ctx = c.getContext("2d");
+    const [a, b] = WALL[look.wallpaper] || WALL.strawberry;
+    for (let x = 0; x < W; x += 60) { ctx.fillStyle = (x / 60) % 2 ? b : a; ctx.fillRect(x, 0, 60, H); }
+    const counter = ctx.createLinearGradient(0, H * .78, 0, H);
+    counter.addColorStop(0, "#f7c9b0"); counter.addColorStop(.1, "#eab096"); counter.addColorStop(1, "#e0a083");
+    ctx.fillStyle = counter; ctx.fillRect(0, H * .78, W, H * .22);
+    ctx.fillStyle = "#ffdcc8"; ctx.fillRect(0, H * .78, W, 8);
+    ctx.save(); ctx.translate(W * .1, H * .16);
+    draw(ctx, W * .8, H * .8, {tiers, stand: look.stand, now: 1000});
+    ctx.restore();
+    const dark = look.wallpaper === "night";
+    ctx.textAlign = "center";
+    ctx.font = `900 64px ui-rounded, "Nunito", system-ui, sans-serif`;
+    ctx.lineWidth = 10; ctx.lineJoin = "round";
+    ctx.strokeStyle = dark ? "rgba(0,0,0,.35)" : "#fff"; ctx.strokeText(title, W / 2, 96);
+    ctx.fillStyle = dark ? "#fff" : "#4a2b2e"; ctx.fillText(title, W / 2, 96);
+    ctx.font = `800 30px ui-rounded, "Nunito", system-ui, sans-serif`;
+    ctx.lineWidth = 6; ctx.strokeText(by, W / 2, 142);
+    ctx.fillStyle = dark ? "#f0e6ff" : "#7c5a5c"; ctx.fillText(by, W / 2, 142);
+    ctx.font = `800 24px ui-rounded, "Nunito", system-ui, sans-serif`;
+    ctx.fillStyle = "rgba(74,43,46,.55)"; ctx.textAlign = "right";
+    ctx.fillText("🧁 Baked with Python in the Cake Shop", W - 30, H - 26);
+    return c.toDataURL("image/png");
+  }
+
+  window.CakeArt = {setPalette, newTier, apply, replay, draw, topOf, still, hexOf, photo};
 })();
