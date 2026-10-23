@@ -231,7 +231,7 @@ async function openLevel(key, fromMode = false) {
   stopQueue();
   let data;
   try { data = await get(`/cake/level?id=${encodeURIComponent(me)}&level=${encodeURIComponent(key)}`); }
-  catch (_) { showBanner("error", "No answer from the shop. Is the server running?"); return; }
+  catch (_) { showBanner("error", "The shop isn't answering. Try again in a moment, or tell your teacher."); return; }
   if (data.you === null) { forget(); return; }
   if (data.error) { showBanner("error", data.error); return; }
   view = data; results = null; rewards = null; sel = 0;
@@ -556,7 +556,7 @@ async function bake() {
     showScene();
     playQueue();
   } catch (_) {
-    showBanner("error", "No answer from the shop. Is the server running?");
+    showBanner("error", "The shop isn't answering. Try again in a moment, or tell your teacher.");
   } finally {
     busy = false;
     $("bakeButton").disabled = false; $("bakeButton").textContent = "Bake! ▶";
@@ -1002,7 +1002,7 @@ async function bakeStudio(fresh, quiet = false) {
     }
     $("surpriseButton").hidden = !/\b(choice|randint)\s*\(/.test($("code").value);
   } catch (_) {
-    showBanner("error", "No answer from the shop. Is the server running?");
+    showBanner("error", "The shop isn't answering. Try again in a moment, or tell your teacher.");
   } finally {
     busy = false;
     $("bakeButton").disabled = false; $("bakeButton").textContent = "Bake! ▶";
