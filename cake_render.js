@@ -97,6 +97,12 @@
       g.addColorStop(0, "#9c6f12"); g.addColorStop(.3, "#ffe08a"); g.addColorStop(.5, "#d9a52b"); g.addColorStop(.75, "#fff1b8"); g.addColorStop(1, "#8f6410");
       return g;
     }
+    if (name === "glitter") {   // a pastel shimmer, like holographic sugar
+      const g = ctx.createLinearGradient(x0, y0, x1, y1);
+      g.addColorStop(0, "#f6d7e8"); g.addColorStop(.3, "#fff4d6"); g.addColorStop(.55, "#e3dcfb");
+      g.addColorStop(.8, "#d6f5ec"); g.addColorStop(1, "#f3d3e4");
+      return g;
+    }
     if (flat) return hex;
     const g = ctx.createLinearGradient(x0, 0, x1, 0);
     // Very light colours shade toward a warm cream, so white stays white rather than grey.
@@ -107,16 +113,19 @@
   // Glitter sparkles and galaxy stars, inside whatever path is clipped.
   function texture(ctx, name, x0, y0, w, h, s, now, seed) {
     if (name !== "glitter" && name !== "galaxy") return;
-    const n = Math.min(90, Math.round(w * h / (220 * s * s)));
+    const glitter = name === "glitter";
+    const n = Math.min(glitter ? 160 : 90, Math.round(w * h / ((glitter ? 120 : 220) * s * s)));
+    const flecks = ["255,250,220", "255,170,210", "255,215,110", "170,235,255", "215,190,255"];
     for (let i = 0; i < n; i++) {
       const x = x0 + hash(seed, i, 1) * w, y = y0 + hash(seed, i, 2) * h;
       const tw = .5 + .5 * Math.sin(now / 300 + i * 1.7);
-      ctx.fillStyle = name === "galaxy" ? `rgba(255,255,255,${.35 + .6 * tw})` : `rgba(255,250,220,${.3 + .7 * tw})`;
-      const r = (name === "galaxy" ? .9 : 1.3) * s * (.6 + hash(seed, i, 3));
+      ctx.fillStyle = glitter ? `rgba(${flecks[i % flecks.length]},${.45 + .55 * tw})` : `rgba(255,255,255,${.35 + .6 * tw})`;
+      const r = (glitter ? 1.25 : .9) * s * (.6 + hash(seed, i, 3));
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-      if (name === "glitter" && tw > .85) {
-        ctx.strokeStyle = "rgba(255,255,255,.9)"; ctx.lineWidth = .8 * s;
-        ctx.beginPath(); ctx.moveTo(x - 3 * s, y); ctx.lineTo(x + 3 * s, y); ctx.moveTo(x, y - 3 * s); ctx.lineTo(x, y + 3 * s); ctx.stroke();
+      if (glitter && tw > .75 && i % 3 === 0) {   // a twinkle catching the light
+        const k = 2.5 + 3 * (tw - .75) * 4;
+        ctx.strokeStyle = "rgba(255,255,255,.95)"; ctx.lineWidth = .9 * s;
+        ctx.beginPath(); ctx.moveTo(x - k * s, y); ctx.lineTo(x + k * s, y); ctx.moveTo(x, y - k * s); ctx.lineTo(x, y + k * s); ctx.stroke();
       }
     }
   }
@@ -313,7 +322,7 @@
       const spread = .35 + .65 * frostU;
       ellipse(ctx, cx, topY, rx * 1.01 * spread, ry * spread);
       const fhex = hexOf(t.frosting, "colour");
-      ctx.fillStyle = ["rainbow", "galaxy", "gold"].includes(t.frosting) ? paint(ctx, t.frosting, "colour", cx - rx, cx + rx, topY - ry, topY + ry) : (() => {
+      ctx.fillStyle = ["rainbow", "galaxy", "gold", "glitter"].includes(t.frosting) ? paint(ctx, t.frosting, "colour", cx - rx, cx + rx, topY - ry, topY + ry) : (() => {
         const g = ctx.createRadialGradient(cx - rx * .3, topY - ry * .4, rx * .1, cx, topY, rx * 1.05);
         g.addColorStop(0, shade(fhex, .25)); g.addColorStop(1, shade(fhex, -.06)); return g; })();
       ctx.fill();

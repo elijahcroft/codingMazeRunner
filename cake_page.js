@@ -874,7 +874,7 @@ function renderChips() {
     html = Object.entries(pal.flavours).map(([k, c]) => `<button class="chip" data-v="${esc(k)}" title="layer(&quot;${esc(k)}&quot;)"><i style="background:${c}"></i>${esc(k)}</button>`).join("");
   } else if (pantryTab === "colours") {
     html = Object.entries(pal.colours).map(([k, c]) => `<button class="chip" data-v="${esc(k)}"><i style="background:${c}"></i>${esc(k)}</button>`).join("") +
-      pal.specials.map(k => { const u = lock("special:" + k); return `<button class="chip${u ? " locked" : ""}" data-v="${esc(k)}" title="${esc(k)} frosting${tip(u)}"><i style="background:${{glitter: "linear-gradient(135deg,#f3e3b3,#fff,#f3e3b3)", galaxy: "linear-gradient(135deg,#1c1440,#4b2a8a,#2a4d9b)", rainbow: "linear-gradient(90deg,#ff5f6d,#ffd93d,#6bd66b,#5cb8ff,#a77bff)", gold: "linear-gradient(135deg,#9c6f12,#ffe08a,#d9a52b)"}[k]}"></i>${u ? "🔒 " : "✨ "}${esc(k)}</button>`; }).join("");
+      pal.specials.map(k => { const u = lock("special:" + k); return `<button class="chip${u ? " locked" : ""}" data-v="${esc(k)}" title="${esc(k)} frosting${tip(u)}"><i style="background:${{glitter: "linear-gradient(135deg,#f6d7e8,#fff4d6,#e3dcfb,#d6f5ec)", galaxy: "linear-gradient(135deg,#1c1440,#4b2a8a,#2a4d9b)", rainbow: "linear-gradient(90deg,#ff5f6d,#ffd93d,#6bd66b,#5cb8ff,#a77bff)", gold: "linear-gradient(135deg,#9c6f12,#ffe08a,#d9a52b)"}[k]}"></i>${u ? "🔒 " : "✨ "}${esc(k)}</button>`; }).join("");
   } else {
     html = Object.entries(pal.toppings).map(([k, icon]) => { const u = lock("topping:" + k); return `<button class="chip${u ? " locked" : ""}" data-v="${esc(k)}" title="topping(&quot;${esc(k)}&quot;)${tip(u)}"><i>${u ? "🔒" : icon}</i>${esc(k)}</button>`; }).join("");
   }
