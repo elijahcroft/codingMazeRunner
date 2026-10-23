@@ -186,6 +186,7 @@ in a row without success gets a "💡 Want a hint?" nudge.
   with each bake. Joining with the same name brings it back.
 - The game keeps everyone's progress in `scores.json` with the other games.
 
+
 ## Answers
 
 One way to earn all three stars on each level (there are others, and
@@ -481,4 +482,3 @@ if order["message"] != "":
     write(order["message"])
 ```
 </details>
-
