@@ -287,3 +287,7 @@ date so the class shares them; all but a first try work on solved sites),
 mission-day trophies with a medal at 3, a **zone cleared** card with a
 teaser for the next zone, and the rover's cheer at the beacon (a 0.9 s beat
 before the card, none in calm mode).
+
+Then choices in the fun moments: a **victory dance** slot (`dance(kind, u)`
+in the page; some dances are earned with a badge, `"badge"` in GARAGE) and
+one earned badge **worn on the class screen** (`entry["showoff"]`).

@@ -310,6 +310,10 @@
   .badge .ico { font-size: 22px; text-align: center; }
   .badge small { display: block; color: var(--haze); font-size: 11.5px; line-height: 1.3; }
   .badge.no { opacity: .5; }
+  button.badge { border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  button.badge:hover { background: var(--panel-2); }
+  .badge.worn { box-shadow: inset 0 0 0 2px var(--gold); }
+  .wear-note { font-weight: 400; font-size: 12px; color: var(--muted, #a99fc8); margin-left: 8px; }
   .badge.no .ico { filter: grayscale(1); }
   .announce { position: absolute; top: 0; left: 0; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
@@ -475,10 +479,11 @@
         <h3>Topper</h3><div class="options" id="topperOptions"></div>
         <h3>Trail</h3><div class="options" id="trailOptions"></div>
         <h3>Map look</h3><div class="options" id="worldOptions"></div>
+        <h3>Victory dance</h3><div class="options" id="danceOptions"></div>
         <p class="gift-note" id="giftNote"></p>
       </div>
     </div>
-    <h3>Badges</h3>
+    <h3>Badges <small class="wear-note">Press an earned badge to wear it on the class screen</small></h3>
     <div class="badges" id="badgeList"></div>
   </div>
 </div>
@@ -1024,16 +1029,22 @@ function render(now = performance.now()) {
       ctx.ellipse(rx, ry + cell * .3, cell * .4 * (1 - rover.lift * .4), cell * .14, 0, 0, 7); ctx.fill();
     }
     // A happy hop and spin at the beacon, and a wiggle when someone clicks the rover.
-    let lift = rover.lift, angle = rover.angle;
+    let lift = rover.lift, angle = rover.angle, dx = 0, dy = 0, sx = 1;
     const cheer = CALM || !scene.cheer ? 1 : (now - scene.cheer) / 900;
-    if (cheer < 1) { lift = Math.max(lift, Math.sin(cheer * Math.PI) * .6); angle += ease(cheer) * Math.PI * 2; }
+    if (cheer < 1) {
+      const d = dance(look.dance, cheer);
+      lift = Math.max(lift, d.lift); angle += d.angle; dx = d.dx * cell; dy = d.dy * cell; sx = d.sx;
+      if (d.ring) discoRing(ctx, rx + dx, ry + dy, cell, d.ring, now);
+    }
     const poke = CALM || !scene.poke ? 1 : (now - scene.poke) / 500;
     if (poke < 1) angle += Math.sin(poke * Math.PI * 6) * .35 * (1 - poke);
     if (lift && !rover.lift) {
       ctx.fillStyle = "rgba(10,6,24,.35)"; ctx.beginPath();
-      ctx.ellipse(rx, ry + cell * .3, cell * .4 * (1 - lift * .4), cell * .14, 0, 0, 7); ctx.fill();
+      ctx.ellipse(rx + dx, ry + dy + cell * .3, cell * .4 * (1 - lift * .4), cell * .14, 0, 0, 7); ctx.fill();
     }
-    drawRover(ctx, rx, ry - lift * cell * .6, cell * 1.12 * (1 + lift * .25), angle, 1, look, now);
+    ctx.save(); ctx.translate(rx + dx, ry + dy - lift * cell * .6); ctx.scale(sx || .02, 1);
+    drawRover(ctx, 0, 0, cell * 1.12 * (1 + lift * .25), angle, 1, look, now);
+    ctx.restore();
   }
   if (scene.ring && now - scene.ring < 2000) {
     const u = CALM ? 0 : (now - scene.ring) / 2000;
@@ -1392,7 +1403,10 @@ function onStep(k) {
   else if (f.e === "drill") { SFX.play("bump"); if (f.g) burst(f.g[0], f.g[1], "rock", 16); }
   if (f.m) burst(f.m[1][0], f.m[1][1], "rock", 8);   // a pushed boulder rolls
   else if (f.e === "fell") { SFX.play("fall"); burst(f.r, f.c, "fall", 18); shake(); say(pick(OOPS)); }
-  else if (f.e === "goal" && scene.run && scene.run.mission !== "report") { scene.cheer = performance.now(); say(pick(CHEERS)); }
+  else if (f.e === "goal" && scene.run && scene.run.mission !== "report") {
+    scene.cheer = performance.now(); say(pick(CHEERS));
+    if (look.dance === "firework") { burst(f.r - .8, f.c, "gift", 34); SFX.play("gift"); }
+  }
   else if (f.e === "battery") SFX.play("flat");
   else if (f.e === "wrong" || (f.e === "goal" && scene.run && scene.run.mission === "report")) SFX.play("report");
   else if (sliding) { const pp = scene.frames[k - 2]; if (!pp || pp.t !== f.t) SFX.play("slide"); }
@@ -1409,6 +1423,27 @@ function onStep(k) {
   if (f.fl > (p.fl || 1)) combo(f, "🚩");
   // Samples unloaded at home: a ka-ching and how many.
   if (f.cg != null && p.cg > f.cg) { SFX.play("deliver"); pop(f, `+${p.cg} 📦`, "#ffd36b"); burst(f.r, f.c, "gift", 18); }
+}
+// The victory dance at the beacon, u from 0 to 1: how high, how far round,
+// how far off its square (in squares), and a flip squashes it side to side.
+function dance(kind, u) {
+  const d = {lift: 0, angle: 0, dx: 0, dy: 0, sx: 1, ring: 0};
+  if (kind === "wiggle") { d.angle = Math.sin(u * Math.PI * 8) * .5 * (1 - u); d.lift = Math.abs(Math.sin(u * Math.PI * 4)) * .15; }
+  else if (kind === "flip") { d.lift = Math.sin(u * Math.PI) * .8; d.sx = Math.cos(u * Math.PI * 2); }
+  else if (kind === "moonwalk") { d.dx = -Math.sin(u * Math.PI * 2) * .35; d.angle = Math.sin(u * Math.PI * 4) * .08; }
+  else if (kind === "zoomies") { const a = u * Math.PI * 2; d.dx = Math.sin(a) * .4; d.dy = (Math.cos(a) - 1) * .25; d.angle = a; }
+  else if (kind === "disco") { d.angle = ease(u) * Math.PI * 4; d.lift = Math.sin(u * Math.PI) * .3; d.ring = Math.sin(u * Math.PI); }
+  else if (kind === "firework") { d.lift = Math.sin(u * Math.PI) * .35; d.angle = Math.sin(u * Math.PI * 2) * .2; }
+  else { d.lift = Math.sin(u * Math.PI) * .6; d.angle = ease(u) * Math.PI * 2; }
+  return d;
+}
+// Disco: a ring of colours round the rover while it spins.
+function discoRing(ctx, x, y, cell, k, now) {
+  for (let j = 0; j < 12; j++) {
+    const a = j * Math.PI / 6 + now / 200;
+    ctx.fillStyle = `hsla(${j * 30 + now / 5},90%,65%,${k})`;
+    ctx.beginPath(); ctx.arc(x + Math.cos(a) * cell * .8, y + Math.sin(a) * cell * .8, cell * .13, 0, 7); ctx.fill();
+  }
 }
 // A line for the rover's speech bubble, for a moment.
 const CHEERS = ["Beep boop! Nailed it!", "Mission complete!", "Woohoo!", "Best. Code. Ever.", "We did it!", "Easy peasy!", "Wheee!"];
@@ -2179,19 +2214,22 @@ function garageLoop(ts) {
 function renderGarage() {
   const rank = state.rank;
   $("garageStars").textContent = `★ ${state.total_stars} / ${state.max_stars}` + (rank ? ` · ${rank.icon} ${rank.name}${rank.next ? `, ${rank.need} ★ to ${rank.next_icon} ${rank.next}` : ""}` : "");
-  for (const slot of ["paint", "topper", "trail", "world"]) {
+  for (const slot of ["paint", "topper", "trail", "world", "dance"]) {
     $(slot + "Options").innerHTML = state.garage.filter(i => i.slot === slot).map(i => {
       const sw = slot === "paint" || slot === "world" ? `<span class="sw" style="background:${swatch(slot, i.key)}"></span>` : "";
-      const need = i.open ? "" : `<small>${i.find ? `🎁 ${i.find.toUpperCase()}` : i.stars != null ? `★ ${i.stars}` : i.trophies != null ? `🏆 ${i.trophies}` : `class ★ ${i.class}`}</small>`;
+      const need = i.open ? "" : `<small>${i.find ? `🎁 ${i.find.toUpperCase()}` : i.stars != null ? `★ ${i.stars}` : i.trophies != null ? `🏆 ${i.trophies}` : i.badge ? `🏅 ${esc(i.badge_name)}` : `class ★ ${i.class}`}</small>`;
       const how = i.open ? "" : i.find ? `A mystery gift on ${i.where}: drive over the 🎁 there to find it`
-        : i.stars != null ? `Earn ${i.stars} stars` : i.trophies != null ? `Finish all of a day's missions on ${i.trophies} days`
+        : i.stars != null ? `Earn ${i.stars} stars` : i.trophies != null ? `Finish all of a day's missions on ${i.trophies} day${i.trophies === 1 ? "" : "s"}`
+        : i.badge ? `Earn the ${i.badge_name} badge`
         : `When the class has ${i.class} stars together`;
       return `<button class="option${look[slot] === i.key ? " on" : ""}" data-slot="${slot}" data-key="${i.key}" ${i.open ? "" : "disabled"} title="${esc(how)}">${sw}${esc(i.name)}${need}</button>`;
     }).join("");
   }
   const gifts = state.garage.filter(i => i.find), found = gifts.filter(i => i.open).length;
   $("giftNote").textContent = `🎁 ${found} of ${gifts.length} mystery gifts found. They're hidden on the map: drive over one in a run to open it.`;
-  $("badgeList").innerHTML = state.badges.map(b => `<div class="badge${b.earned ? "" : " no"}"><span class="ico">${b.icon}</span><div>${esc(b.name)}<small>${esc(b.how)}</small></div></div>`).join("");
+  $("badgeList").innerHTML = state.badges.map(b => b.earned
+    ? `<button class="badge${state.showoff === b.key ? " worn" : ""}" onclick="wearBadge('${b.key}')" title="${state.showoff === b.key ? "Worn on the class screen: press to take it off" : "Wear it on the class screen"}"><span class="ico">${b.icon}</span><div>${esc(b.name)}<small>${state.showoff === b.key ? "👕 Wearing it" : esc(b.how)}</small></div></button>`
+    : `<div class="badge no"><span class="ico">${b.icon}</span><div>${esc(b.name)}<small>${esc(b.how)}</small></div></div>`).join("");
   garagePreview();
 }
 function swatch(slot, key) {
@@ -2218,7 +2256,19 @@ function garagePreview(now = performance.now()) {
   const grad = ctx.createRadialGradient(s / 2, s / 2, 20, s / 2, s / 2, s * .7);
   grad.addColorStop(0, "rgba(255,240,220,.12)"); grad.addColorStop(1, "rgba(10,6,24,.5)");
   ctx.fillStyle = grad; ctx.fillRect(0, 0, s, s);
-  drawRover(ctx, s / 2, 84, 96, -Math.PI / 2, 1, look, now);
+  // The chosen dance, every 2.6 seconds.
+  const u = CALM ? 1 : (now % 2600) / 900, d = u < 1 ? dance(look.dance, u) : dance("none", 1);
+  if (d.ring) discoRing(ctx, s / 2 + d.dx * 40, 84 + d.dy * 40, 40, d.ring, now);
+  ctx.save(); ctx.translate(s / 2 + d.dx * 40, 84 + d.dy * 40 - d.lift * 24); ctx.scale(d.sx || .02, 1);
+  drawRover(ctx, 0, 0, 96 * (1 + d.lift * .2), -Math.PI / 2 + d.angle, 1, look, now);
+  ctx.restore();
+}
+// One earned badge on the class screen card, or none (press it again).
+async function wearBadge(key) {
+  const wear = state.showoff === key ? null : key;
+  SFX.wake(); SFX.play("beep");
+  try { await post("/planet/look", {id: me, showoff: wear}); state.showoff = wear; } catch (_) {}
+  renderGarage();
 }
 // A random look from everything this student has unlocked.
 async function surprise() {
@@ -2226,7 +2276,7 @@ async function surprise() {
     const open = state.garage.filter(i => i.slot === slot && i.open);
     return open[Math.floor(Math.random() * open.length)].key;
   };
-  look = {paint: pick("paint"), topper: pick("topper"), trail: pick("trail"), world: pick("world")};
+  look = {paint: pick("paint"), topper: pick("topper"), trail: pick("trail"), world: pick("world"), dance: pick("dance")};
   SFX.wake(); SFX.play("beep");
   try { look = (await post("/planet/look", {id: me, ...look})).look; } catch (_) {}
   state.look = look;

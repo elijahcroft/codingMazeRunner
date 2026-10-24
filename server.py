@@ -2875,8 +2875,16 @@ GARAGE = [
     {"slot": "world", "key": "jungle", "name": "Jungle", "stars": 78},
     {"slot": "world", "key": "clouds", "name": "Cloud Kingdom", "stars": 118},
     {"slot": "world", "key": "starry", "name": "Starry Night", "class": 600},
+    # What the rover does at the beacon. Some are earned with a badge.
+    {"slot": "dance", "key": "spin", "name": "Hop & spin", "stars": 0},
+    {"slot": "dance", "key": "wiggle", "name": "Happy wiggle", "stars": 16},
+    {"slot": "dance", "key": "moonwalk", "name": "Moonwalk", "stars": 40},
+    {"slot": "dance", "key": "firework", "name": "Firework", "stars": 75},
+    {"slot": "dance", "key": "flip", "name": "Backflip", "badge": "triple"},
+    {"slot": "dance", "key": "zoomies", "name": "Zoomies", "badge": "grit"},
+    {"slot": "dance", "key": "disco", "name": "Disco spin", "trophies": 1},
 ]
-GARAGE_SLOTS = ("paint", "topper", "trail", "world")
+GARAGE_SLOTS = ("paint", "topper", "trail", "world", "dance")
 GIFTS = {item["find"]: item for item in GARAGE if "find" in item}
 CLASS_GOALS = sorted({item["class"] for item in GARAGE if "class" in item})
 # What each class goal unlocks, in words, for the projector's meter.
@@ -2914,6 +2922,8 @@ def planet_entry(p):
                        ("look", {"paint": "bone", "topper": "none", "trail": "tracks"})):
         entry.setdefault(key, value)
     entry["look"].setdefault("world", "planet")
+    entry["look"].setdefault("dance", "spin")
+    entry.setdefault("showoff", None)   # a badge worn on the class screen
     return entry
 
 
@@ -2957,6 +2967,9 @@ def garage_for(entry):
             garage.append(dict(item, open=mine >= item["stars"]))
         elif "trophies" in item:
             garage.append(dict(item, open=entry.get("trophies", 0) >= item["trophies"]))
+        elif "badge" in item:
+            garage.append(dict(item, open=item["badge"] in entry["badges"],
+                               badge_name=PLANET_BADGES[item["badge"]][1]))
         elif "class" in item:
             garage.append(dict(item, open=ours >= item["class"]))
         else:
@@ -3017,7 +3030,7 @@ def planet_state(p):
             "badges": [{"key": k, "icon": b[0], "name": b[1], "how": b[2],
                         "earned": k in entry["badges"]}
                        for k, b in PLANET_BADGES.items()],
-            "look": entry["look"], "garage": garage_for(entry),
+            "look": entry["look"], "garage": garage_for(entry), "showoff": entry["showoff"],
             "functions": entry["functions"],
             "class": {"stars": class_stars(), "goals": CLASS_GOALS}}
 
@@ -3254,6 +3267,10 @@ def planet_set_look(p, data):
         choice = str(data.get(slot, entry["look"].get(slot, "")))
         if (slot, choice) in open_items:
             entry["look"][slot] = choice
+    # One earned badge to wear on the class screen, or none.
+    if "showoff" in data:
+        wear = data["showoff"]
+        entry["showoff"] = wear if wear in entry["badges"] else None
     return entry["look"]
 
 def planet_typing(p, key, code):
@@ -3336,6 +3353,7 @@ def planet_class():
                      "stars": star_count(entry),
                      "badges": len(entry["badges"]),
                      "look": entry["look"],
+                     "showoff": PLANET_BADGES[entry["showoff"]][0] if entry["showoff"] else None,
                      "runs_here": entry["runs"].get(key, 0),
                      "hints": sum(entry["hints"].values()),
                      "uncharted": entry["uncharted"],

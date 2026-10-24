@@ -153,14 +153,14 @@ async function refresh() {
   // not a ranking. The meter above is what the stars are for.
   // Each card: where they are, their map and rover, and the code in their editor.
   const ships = [...data.students].sort((a, b) => a.name.localeCompare(b.name));
-  const fleet = JSON.stringify(ships.map(s => [s.name, s.look, s.now]));
+  const fleet = JSON.stringify(ships.map(s => [s.name, s.look, s.now, s.showoff]));
   if (fleet !== lastFleet) {
     lastFleet = fleet;
     $("fleet").innerHTML = ships.length ? ships.map((s, i) => {
       const n = s.now, code = n.code.trim();
       const tag = n.site === "7" ? "Uncharted" : `${n.site.toUpperCase()} · ${n.site_name}`;
       return `<div class="ship${n.end === "goal" ? " won" : ""}">
-        <div class="top"><canvas class="rv" data-i="${i}"></canvas><b>${esc(s.name)}</b><span class="where">${esc(tag)}</span></div>
+        <div class="top"><canvas class="rv" data-i="${i}"></canvas><b>${esc(s.name)}${s.showoff ? ` <span class="worn" title="A badge they earned">${esc(s.showoff)}</span>` : ""}</b><span class="where">${esc(tag)}</span></div>
         <canvas class="map" data-i="${i}"></canvas>
         <pre class="${code ? "" : "empty"}">${code ? esc(n.code) : "(no code yet)"}</pre>
         ${n.end ? `<div class="end">Last run: ${ENDS[n.end] || esc(n.end)}</div>` : ""}

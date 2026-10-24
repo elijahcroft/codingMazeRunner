@@ -107,6 +107,14 @@ lost.
   Each one done is a toast; all three is a 🏆 mission day (the first earns
   the Mission Day badge, three unlock the Gold medal topper). They reset at
   midnight on your laptop's clock.
+- **Victory dances**: a fifth garage slot picks what the rover does at the
+  beacon: Hop & spin, Happy wiggle (16 ★), Moonwalk (40 ★), Firework
+  (75 ★), Backflip (the Triple Star badge), Zoomies (the Never Give Up
+  badge, so sticking with a hard site pays off) and Disco spin (a mission
+  day). The garage preview shows the dance every few seconds.
+- **Wear a badge**: pressing an earned badge in the garage puts its icon
+  next to the student's name on the class screen. One at a time; pressing
+  it again takes it off. It shows something they did, not a score.
 - **Zone cleared**: the last site of a zone gets its own card ("🪂 Landing
   Site cleared!") with a look at the next zone, and the rover cheers ("Beep
   boop! Nailed it!") at every beacon before the card.

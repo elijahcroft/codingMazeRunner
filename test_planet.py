@@ -696,7 +696,8 @@ class GiftTests(unittest.TestCase):
         drawn = {"paint": lambda k: re.search(rf"\b{k}: ", render),
                  "topper": lambda k: k == "none" or f'topper === "{k}"' in render,
                  "trail": lambda k: k == "tracks" or f'look.trail === "{k}"' in page,
-                 "world": lambda k: k == "planet" or re.search(rf"\n  {k}: {{", page)}
+                 "world": lambda k: k == "planet" or re.search(rf"\n  {k}: {{", page),
+                 "dance": lambda k: k == "spin" or f'kind === "{k}"' in page}
         for item in server.GARAGE:
             self.assertTrue(drawn[item["slot"]](item["key"]), item["key"])
 
@@ -1104,6 +1105,22 @@ class ClassroomTests(unittest.TestCase):
         server.players[pid]["planet"]["trophies"] = 3
         state = self.post("/planet/run", {"id": pid, "site": "1a", "code": "east()\n"})["state"]
         self.assertTrue(next(i for i in state["garage"] if i["key"] == "medal")["open"])
+
+    def test_badges_unlock_dances_and_one_can_be_worn(self):
+        pid = self.join()
+        state = self.post("/planet/run", {"id": pid, "site": "1a", "code": "east()\n"})["state"]
+        flip = next(i for i in state["garage"] if i["key"] == "flip")
+        self.assertEqual((flip["open"], flip["badge_name"]), (False, "Triple Star"))
+        # Not earned yet: neither the dance nor wearing the badge takes.
+        look = self.post("/planet/look", {"id": pid, "dance": "flip", "showoff": "triple"})["look"]
+        self.assertEqual(look["dance"], "spin")
+        self.assertIsNone(self.get("/planet/overview")["students"][0]["showoff"])
+        server.players[pid]["planet"]["badges"].append("triple")
+        look = self.post("/planet/look", {"id": pid, "dance": "flip", "showoff": "triple"})["look"]
+        self.assertEqual(look["dance"], "flip")
+        self.assertEqual(self.get("/planet/overview")["students"][0]["showoff"], "🌟")
+        self.post("/planet/look", {"id": pid, "showoff": None})
+        self.assertIsNone(self.get("/planet/overview")["students"][0]["showoff"])
 
     def test_clearing_a_zone_says_whats_next(self):
         pid = self.join()
