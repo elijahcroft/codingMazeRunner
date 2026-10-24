@@ -230,3 +230,24 @@ rock and running out of drills.
 
 Sensors now arrive by zone key (`SENSOR_ARRIVES`, `ZONE_ORDER`), so adding
 a zone can't shift their numbers.
+
+## Zones 13 to 15: push, measure, carry (October 2026)
+
+ej asked for more, and picked boulders, a laser and cargo runs. They follow
+the same four-site shape and come between the Flag Relay and Uncharted:
+
+- **Boulder Yard**: driving into a boulder (`B`) pushes it; pushed into a
+  crater, it fills it. A two-wide trench needs a boulder and a jump, so 13D is
+  Crater Hops' loop again (driving pushes), and jumping at anything that isn't
+  ground fails.
+- **Laser Range**: `distance(way)` counts the open squares up to rock, a
+  crater, a boulder or a gate, and the replay draws the beam. The new 🔢
+  "measured" star wants no typed-in numbers in drives. 14C puts each sample one
+  short of the rock, so `distance() - 1` is the idea and 1C's loops overshoot.
+- **Cargo Run**: the rover starts at home (`H`) and carries 3 samples at most
+  (`cargo()`); the 📦 mission counts samples brought home. 15C needs the loop's
+  `i`; 15D is `go_to()` with an if that picks home or the nearest sample
+  (`sample_x()`, `sample_y()`).
+
+Sample pick-ups are now in the replay frames (`p`), since a full bay drives
+over a sample without taking it.

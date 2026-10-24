@@ -79,7 +79,7 @@ function ago(at) {
 // Each student's site, as they see it, with their rover where it last stopped.
 const GROUND = {"#": "#463c78", ".": "#2c2550", S: "#2c2550", "*": "#2c2550", G: "#2c2550", "~": "#5f86b8",
                 O: "#120e22", "+": "#5a4a2a", P: "#2c2550", D: "#7a4f2a",
-                ">": "#4a4658", "<": "#4a4658", "^": "#4a4658", v: "#4a4658"};
+                ">": "#4a4658", "<": "#4a4658", "^": "#4a4658", v: "#4a4658", H: "#2f6b55"};
 function miniMap(cv, map, pos, paint) {
   const rows = map.length, cols = map[0].length;
   const cell = Math.max(3, Math.min(14, Math.floor(246 / cols), Math.floor(150 / rows)));
@@ -94,6 +94,7 @@ function miniMap(cv, map, pos, paint) {
     if (ch === "G") dot(r, c, "#ffd36b", .38);
     if (ch === "P") dot(r, c, "#b9a3ff", .32);
     if (ch === "k") dot(r, c, "#ffd36b", .22);
+    if (ch === "B") dot(r, c, "#a8a2b0", .4);
     if (ch >= "1" && ch <= "9") dot(r, c, "#ff6f61", .26);
   }));
   dot(pos[0], pos[1], "#120e22", .5);

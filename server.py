@@ -2778,6 +2778,9 @@ GARAGE = [
     {"slot": "paint", "key": "tnt", "name": "TNT", "find": "4c"},
     {"slot": "paint", "key": "copper", "name": "Copper", "find": "10b"},
     {"slot": "paint", "key": "racer", "name": "Sunset Racer", "find": "12b"},
+    {"slot": "paint", "key": "granite", "name": "Granite", "find": "13b"},
+    {"slot": "paint", "key": "laser", "name": "Laser Red", "find": "14b"},
+    {"slot": "paint", "key": "cardboard", "name": "Cardboard Box", "find": "15b"},
     {"slot": "paint", "key": "aurora", "name": "Aurora", "class": 30},
     {"slot": "paint", "key": "nebula", "name": "Nebula", "class": 90},
     {"slot": "paint", "key": "supernova", "name": "Supernova", "class": 180},
@@ -2959,7 +2962,7 @@ def planet_site(p, key):
                     battery=v.get("battery", planet.BATTERY_MAX)
                     if "battery" in zone["rules"] else None,
                     crystals=v.get("crystals", []), goals=planet.goals(s, v),
-                    coach=s["coach"], gift=gift_for(p, key), drills=v.get("drills"),
+                    tips=planet.star_tips(s, v), coach=s["coach"], gift=gift_for(p, key), drills=v.get("drills"),
                     # A zone that brings something new says what it is on its first site.
                     new=zone.get("new") if zone["sites"][0] is s else None)
     return view
@@ -3151,7 +3154,9 @@ def planet_now(q, entry, frontier_key):
         grid = planet_variant(q, key)["map"]
     pos = now.get("pos")
     if not pos:
-        pos = next([r, row.index("S")] for r, row in enumerate(grid) if "S" in row)
+        # The lander, or home where the rover starts there (Cargo Run).
+        pos = next([r, c] for r, row in enumerate(grid) for c, ch in enumerate(row)
+                   if ch in "SH")
     return {"site": key, "site_name": s["name"], "zone": zone["key"], "map": grid,
             "pos": pos, "end": now.get("end"), "code": now.get("code", "")}
 

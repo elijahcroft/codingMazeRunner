@@ -146,6 +146,7 @@ const PAINTS = {bone: "#f2eadb", coral: "#ff8a7a", mint: "#8cf2c6", sky: "#8fc8f
   aurora: ["#7ff0d6", "#8fb8ff", "#c69bff"], nebula: ["#c69bff", "#ff8ad8", "#8fb8ff"],
   supernova: ["#fff6d0", "#ffe08a", "#ff9d5c"],
   copper: "#d9894a", racer: ["#ff6b5a", "#ffb84d", "#ffd36b"],
+  granite: ["#9a9ba6", "#6e7079"], laser: ["#ff3b5c", "#ff8a9e"], cardboard: "#c8a06a",
   galaxy: {base: "#1b1240", swatch: "radial-gradient(circle at 30% 30%, #c69bff, #1b1240 70%)", draw(ctx, s) {
     for (const [x, y, r, color] of [[-.14, -.08, .24, "rgba(198,155,255,.55)"], [.12, .1, .2, "rgba(255,138,216,.4)"]]) {
       const grad = ctx.createRadialGradient(x * s, y * s, 0, x * s, y * s, r * s);

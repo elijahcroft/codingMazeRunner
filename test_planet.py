@@ -128,6 +128,9 @@ BONUS_PROGRAMS = {
     "8a": 'for i in range(4):\n    jump("east")\n',
     "8b": 'def hop():\n    east()\n    jump("east")\n\nfor i in range(5):\n    hop()\neast()\n',
     "9c": "def step():\n    east()\n    south()\n\nfor i in range(5):\n    step()\n",
+    "13c": 'def hop():\n    east(2)\n    jump("east")\n\nfor i in range(4):\n    hop()\neast()\n',
+    "15c": "def trip(n):\n    south(n)\n    east(6)\n    west(6)\n    north(n)\n\n"
+           "for i in range(4):\n    trip(i)\n",
 }
 
 
@@ -155,6 +158,14 @@ class StarTests(unittest.TestCase):
                 earned = [any(star) for star in zip(*(self.earn(s["key"], p, i)
                                                       for p in programs))]
                 self.assertEqual(earned, [True, True, True], (s["key"], i))
+
+    def test_every_star_past_the_mission_has_a_hint(self):
+        for zi, zone, s in sites():
+            for v in s["variants"]:
+                tips = planet.star_tips(s, v)
+                self.assertIsNone(tips[0])
+                self.assertTrue(all(isinstance(t, str) and "{" not in t for t in tips[1:]),
+                                s["key"])
 
     def test_the_bonus_takes_something_extra(self):
         # The plain answer misses these bonuses: they need a detour, a def,
@@ -202,7 +213,8 @@ class SiteClaims(unittest.TestCase):
                 width = len(v["map"][0])
                 self.assertTrue(all(len(row) == width for row in v["map"]), s["key"])
                 text = "".join(v["map"])
-                self.assertEqual(text.count("S"), 1, s["key"])
+                # The lander, or home when the rover starts there.
+                self.assertEqual(text.count("S") + text.count("H"), 1, s["key"])
                 self.assertLessEqual(text.count("G"), 1, s["key"])
                 # Every site has something to do.
                 self.assertTrue("G" in text or "*" in text or "answer" in v, s["key"])
@@ -320,6 +332,18 @@ class SiteClaims(unittest.TestCase):
         # 3B's answer, every 5 ticks, works on nobody's ridge.
         for i, v in enumerate(variants):
             self.assertFalse(run("3c", wind_program(5, v["legs"]), i)["reached"], i)
+
+    def test_the_wind_hints_loop_earns_every_star(self):
+        # The ✂️ hint on 3B and 3C: one loop that picks a move every tick.
+        loop = ("while not at_beacon():\n    if tick() % {0} == {1}:\n        wait()\n"
+                '    elif look("south") != "rock":\n        south()\n    else:\n'
+                "        east()\n")
+        for key in ("3b", "3c"):
+            zi, zone, s = site(key)
+            for i, v in enumerate(s["variants"]):
+                code = loop.format(v["wind"], v["wind"] - 1)
+                self.assertEqual(planet.stars(s, v, run(key, code, i), code),
+                                 [True, True, True], (key, i))
 
     # ---- Zone 4 ----
     def test_4a_in_and_out_the_same_way_falls(self):
@@ -565,6 +589,79 @@ class SiteClaims(unittest.TestCase):
         self.assertGreater(planet.code_lines(route), s["compact"])
         self.assertTrue(planet.stars(s, v, run("12c", s["reference"]), s["reference"])[2])
 
+    # ---- Zones 13 to 15: push, measure, carry ----
+    def test_13_to_15_each_zone_needs_its_new_thing(self):
+        for key, before in (("13d", "12d"), ("14d", "13d"), ("15d", "14d")):
+            code = site(before)[2]["reference"]
+            for i in range(8):
+                self.assertFalse(run(key, code, i)["reached"], (key, i))
+        for key in ("push", "laser", "cargo"):
+            zone = next(z for z in planet.ZONES if z["key"] == key)
+            self.assertEqual(len(zone["sites"]), 4, key)
+            self.assertEqual(set(zone["new"]), {"icon", "what", "example"}, key)
+            self.assertLessEqual(planet.code_lines(zone["sites"][0]["reference"]), 3, key)
+
+    def test_13_to_15_a_route_only_fits_your_own(self):
+        for key in ("13d", "14d", "15d"):
+            zi, zone, s = site(key)
+            fits = 0
+            for i in range(8):
+                route = replay_as_code(run(key, s["reference"], i))
+                self.assertTrue(run(key, route, i)["reached"], (key, i))
+                fits += sum(run(key, route, j)["reached"] for j in range(8) if j != i)
+            self.assertLessEqual(fits / 56, .15, key)
+
+    def test_a_boulder_is_pushed_and_fills_a_crater(self):
+        out = run("13a", "east(4)\n")
+        self.assertIn("tick 2: 🪨 pushed the boulder east", out["log"])
+        self.assertIn("tick 3: 🪨 pushed the boulder into the crater: it's filled in", out["log"])
+        self.assertEqual(out["frames"][3]["m"], [[2, 4, "."], [2, 5, "."]])
+        self.assertEqual(run("13a", 'east()\nprint(look("east"))\n')["prints"][0]["text"], "boulder")
+        # Pushed against rock, it won't move.
+        out = run("13b", "east(4)\nsouth()\nwest(4)\n")
+        self.assertIn("won't move", out["log"][-2])
+        self.assertIn("couldn't move", out["explain"]["what"])
+        # And a two-wide trench can't be jumped.
+        self.assertEqual(run("13b", 'east(3)\nsouth()\njump("south")\n')["end"], "fell")
+
+    def test_13d_jumping_at_a_boulder_falls(self):
+        jump = ('while not at_beacon():\n    if look("east") != "ground":\n'
+                '        jump("east")\n    else:\n        east()\n')
+        for i in range(8):
+            self.assertFalse(run("13d", jump, i)["reached"], i)
+
+    def test_distance_measures_up_to_the_next_thing(self):
+        out = run("14b", 'print(distance("east"), distance("north"), distance("west"))\n')
+        self.assertEqual(out["prints"][0]["text"], "5 1 0")
+        out = run("14a", 'east(distance("east"))\n')
+        self.assertTrue(out["reached"])
+        self.assertEqual(out["frames"][1]["ls"], [1, 13])   # the beam, for the replay
+        self.assertIn('distance("east")', run("14a", "distance()\n")["error"])
+
+    def test_the_measured_star_wants_no_typed_numbers(self):
+        zi, zone, s = site("14a")
+        v = s["variants"][0]
+        for code, met in (("east(13)\n", False), ('east(distance("east"))\n', True)):
+            self.assertEqual(planet.stars(s, v, run("14a", code), code)[1], met, code)
+
+    def test_14c_needs_one_less_than_the_laser(self):
+        # 1C's loops drive right up to the rock, a square past each sample.
+        code = ('for i in range(3):\n    while look("east") != "rock":\n        east()\n'
+                '    while look("south") != "rock":\n        south()\n')
+        self.assertFalse(run("14c", code)["reached"])
+
+    def test_cargo_holds_three_and_counts_at_home(self):
+        out = run("15b", "east(7)\nsouth(2)\nwest(7)\nprint(cargo(), samples_left())\n")
+        self.assertIn("🧪 the cargo bay is full (3): unload at home first", "\n".join(out["log"]))
+        self.assertEqual(out["prints"][0]["text"], "3 3")
+        self.assertIn("cargo bay is full", out["explain"]["what"])
+        self.assertIn("Drive home to x 1, y 1", out["explain"]["next"])
+        out = run("15a", "east(7)\nwest(7)\n")
+        self.assertIn("tick 14: 📦 brought 3 samples home, 0 still out", out["log"])
+        self.assertTrue(out["reached"])
+        self.assertEqual(planet.goals(site("15a")[2], site("15a")[2]["variants"][0])[0],
+                         "📦 Bring every sample home")
+
 class GiftTests(unittest.TestCase):
     def test_every_gift_sits_on_ground_the_rover_can_drive_over(self):
         for key in planet.GIFT_SQUARES:
@@ -654,6 +751,8 @@ class RoverTests(unittest.TestCase):
         self.assertIn("The Quarry", run("9a", 'drill("east")\n')["error"])
         self.assertIn("Gate Station", run("10a", "print(has_key())\n")["error"])
         self.assertIn("Flag Relay", run("11a", "print(next_x())\n")["error"])
+        self.assertIn("Laser Range", run("13a", 'print(distance("east"))\n')["error"])
+        self.assertIn("Cargo Run", run("14a", "print(cargo())\n")["error"])
 
     def test_zone_order_matches_the_zones(self):
         self.assertEqual([z["key"] for z in planet.ZONES], planet.ZONE_ORDER)

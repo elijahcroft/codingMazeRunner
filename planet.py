@@ -63,7 +63,8 @@ COMPASS = {"north": 0, "east": 1, "south": 2, "west": 3}   # index into DIRS
 # The zones in order, by key (a test checks ZONES matches). Each sensor
 # arrives with a zone and stays for every zone after it.
 ZONE_ORDER = ["landing", "ice", "wind", "crumble", "solar", "portals", "signal",
-              "hops", "belts", "drill", "gates", "relay", "uncharted"]
+              "hops", "belts", "drill", "gates", "relay", "push", "laser", "cargo",
+              "uncharted"]
 SENSOR_ARRIVES = {
     "look": "landing", "at_beacon": "landing",
     "x": "ice", "y": "ice", "report": "ice",
@@ -75,6 +76,9 @@ SENSOR_ARRIVES = {
     "drill": "drill", "drills_left": "drill",
     "has_key": "gates", "key_x": "gates", "key_y": "gates",
     "next_x": "relay", "next_y": "relay", "flags_left": "relay",
+    "distance": "laser",
+    "cargo": "cargo", "home_x": "cargo", "home_y": "cargo",
+    "sample_x": "cargo", "sample_y": "cargo",
     "gust_in": "uncharted",
 }
 SENSOR_ZONE = {name: ZONE_ORDER.index(key) for name, key in SENSOR_ARRIVES.items()}
@@ -84,7 +88,8 @@ RELAY_ZONE = ZONE_ORDER.index("relay")
 WORDS = {"#": "rock", ".": "ground", "S": "ground", "G": "beacon", "~": "ice",
          "O": "crater", "*": "ground", "+": "sun", "P": "pad",
          ">": "belt", "<": "belt", "^": "belt", "v": "belt",
-         "k": "ground", "D": "gate", **{str(n): "ground" for n in range(1, 10)}}
+         "k": "ground", "D": "gate", **{str(n): "ground" for n in range(1, 10)},
+         "B": "boulder", "H": "home"}
 BELTS = {"^": 0, ">": 1, "v": 2, "<": 3}   # which way each belt carries, into DIRS
 
 # The maze game's words, each with what to write on this planet instead.
@@ -108,8 +113,13 @@ JUMP_HOW = ('jump() needs a direction in quotes: "north", "south", "east" or '
             '"west", like  jump("east")')
 DRILL_HOW = ('drill() needs a direction in quotes: "north", "south", "east" or '
              '"west", like  drill("east")')
+DISTANCE_HOW = ('distance() needs a direction in quotes: "north", "south", "east" '
+                'or "west", like  distance("east")')
+CARGO_MAX = 3             # samples the rover can carry home at once
+# Squares that stop a slide, a belt ride or a gust, as rock does.
+SOLID = "#DB"
 # Commands that aren't plain driving, so a def can't take their name.
-OWN_COMMANDS = ("look", "report", "jump", "drill")
+OWN_COMMANDS = ("look", "report", "jump", "drill", "distance")
 
 
 def literal(node):
@@ -256,6 +266,8 @@ class Rover(Brain):
             if len(args) > 1:
                 raise BotError(f"{name}() takes one number at most, like  {name}(3)")
             n = self.number(args[0], f"{name}()") if args else 1
+            if args and literal(node.args[0]):
+                world.typed = True   # a number typed in, not measured
             if n < 0 or n > MAX_MOVE:
                 raise BotError(f"{name}() takes a number from 0 to {MAX_MOVE}.")
             for _ in range(n):
@@ -270,6 +282,10 @@ class Rover(Brain):
                 raise BotError(JUMP_HOW)
             world.act("jump", self.direction(node.args[0], frame, JUMP_HOW))
             return None
+        if name == "distance" and name in self.sensors:
+            if len(node.args) != 1:
+                raise BotError(DISTANCE_HOW)
+            return world.distance(self.direction(node.args[0], frame, DISTANCE_HOW))
         if name == "drill" and name in self.sensors:
             if len(node.args) != 1:
                 raise BotError(DRILL_HOW)
@@ -325,7 +341,7 @@ class World:
         self.rules = rules
         self.v = variant
         self.r, self.c = next((r, c) for r, row in enumerate(self.grid)
-                              for c, ch in enumerate(row) if ch == "S")
+                              for c, ch in enumerate(row) if ch in "SH")
         self.goal = next(((r, c) for r, row in enumerate(self.grid)
                           for c, ch in enumerate(row) if ch == "G"), None)
         self.mission = mission_of(variant)
@@ -352,6 +368,14 @@ class World:
         self.drill_out = False  # a drill() found none left
         self.how = None        # how the rover got onto its last square
         self.opened = None     # the square that just turned to ground, for the next frame
+        self.moved = []        # squares a pushed boulder just changed, for the next frame
+        self.stuck = None      # the last boulder that wouldn't move
+        self.typed = False     # a drive was given a typed-in number
+        self.laser = None      # the last distance() measured, for the next frame
+        self.home = next(((r, c) for r, row in enumerate(self.grid)
+                          for c, ch in enumerate(row) if ch == "H"), None)
+        self.cargo = 0         # samples on board, not yet brought home
+        self.picked = None     # the sample just picked up, for the next frame
         self.links = {}
         for a, b in variant.get("pairs", []):
             self.links[tuple(a)] = tuple(b)
@@ -441,6 +465,19 @@ class World:
             if spot is None:
                 return -1
             return spot[1] if name == "key_x" else spot[0]
+        if name == "cargo":
+            return self.cargo
+        if name in ("home_x", "home_y"):
+            if self.home is None:
+                return -1
+            return self.home[1] if name == "home_x" else self.home[0]
+        if name in ("sample_x", "sample_y"):
+            # The nearest sample still out there.
+            spot = min(self.samples, key=lambda p: (abs(p[0] - self.r) + abs(p[1] - self.c), p),
+                       default=None)
+            if spot is None:
+                return -1
+            return spot[1] if name == "sample_x" else spot[0]
         if name == "flags_left":
             return len(self.flags) - self.flag + 1
         if name in ("next_x", "next_y"):
@@ -450,6 +487,16 @@ class World:
                 return -1
             return spot[1] if name == "next_x" else spot[0]
         raise BotError(f"I don't know the sensor '{name}'.")
+
+    def distance(self, way):
+        """How many squares the rover could drive `way` before something is
+        in the way: rock, a crater, a boulder or a gate."""
+        dr, dc = DIRS[COMPASS[way]]
+        n = 0
+        while self.at(self.r + dr * (n + 1), self.c + dc * (n + 1)) not in SOLID + "O":
+            n += 1
+        self.laser = [COMPASS[way], n]
+        return n
 
     def flag_at(self, r, c):
         return next(n for n, p in self.flags.items() if p == (r, c))
@@ -474,6 +521,17 @@ class World:
         if self.opened:
             f["g"] = self.opened   # a gate opened or a rock drilled: ground now
             self.opened = None
+        if self.moved:
+            f["m"] = self.moved    # [r, c, what's there now] for each square
+            self.moved = []
+        if self.laser:
+            f["ls"] = self.laser
+            self.laser = None
+        if self.picked:
+            f["p"] = self.picked
+            self.picked = None
+        if self.home:
+            f["cg"] = self.cargo
         if event:
             f["e"] = event
         return f
@@ -515,8 +573,20 @@ class World:
             self.crystals.discard((r, c))
             self.say("💎 crystal collected")
         if (r, c) in self.samples:
-            self.samples.discard((r, c))
-            self.say(f"🧪 sample collected, {len(self.samples)} left")
+            if self.home and self.cargo >= CARGO_MAX:
+                self.say(f"🧪 the cargo bay is full ({CARGO_MAX}): unload at home first")
+            else:
+                self.samples.discard((r, c))
+                self.picked = [r, c]
+                if self.home:
+                    self.cargo += 1
+                    self.say(f"🧪 sample on board, {self.cargo} of {CARGO_MAX}")
+                else:
+                    self.say(f"🧪 sample collected, {len(self.samples)} left")
+        if (r, c) == self.home and self.cargo:
+            self.say(f"📦 brought {self.cargo} sample{'s' if self.cargo != 1 else ''} home, "
+                     f"{len(self.samples)} still out")
+            self.cargo = 0
         if (r, c) in self.keys:
             self.keys.discard((r, c))
             self.held += 1
@@ -570,6 +640,23 @@ class World:
                      "🧱 a jump can't land on rock")
             self.frames.append(self.frame("bump"))
             return
+        if self.at(r, c) == "B":
+            if squares == 2:
+                self.say("🧱 a jump can't land on a boulder")
+                self.frames.append(self.frame("bump"))
+                return
+            br, bc = r + dr, c + dc
+            if self.at(br, bc) not in ".+O" or (br, bc) in self.cracked:
+                self.stuck = (r, c)
+                self.say("🪨 the boulder won't move: something is behind it")
+                self.frames.append(self.frame("bump"))
+                return
+            filled = self.at(br, bc) == "O"
+            self.grid[r][c] = "."
+            self.grid[br][bc] = "." if filled else "B"
+            self.moved = [[r, c, "."], [br, bc, "." if filled else "B"]]
+            self.say("🪨 pushed the boulder into the crater: it's filled in" if filled
+                     else f"🪨 pushed the boulder {command}")
         if squares == 2 and self.at(self.r + dr, self.c + dc) == "D":
             self.say("🚪 a gate is too tall to jump over")
             self.frames.append(self.frame("bump"))
@@ -594,7 +681,7 @@ class World:
         slid = False
         while "ice" in self.rules and self.at(self.r, self.c) == "~":
             r, c = self.ahead()
-            if self.at(r, c) in "#D":
+            if self.at(r, c) in SOLID:
                 break
             self.enter(r, c, "slide")
             slid = True
@@ -611,7 +698,7 @@ class World:
             seen.add((self.r, self.c))
             dr, dc = DIRS[BELTS[self.at(self.r, self.c)]]
             r, c = self.r + dr, self.c + dc
-            if self.at(r, c) in "#D":
+            if self.at(r, c) in SOLID:
                 break
             self.enter(r, c, "belt")
         if seen:
@@ -648,7 +735,7 @@ class World:
 
     def gust(self):
         r, c = self.r, self.c + 1
-        if self.at(r, c) in "#D":
+        if self.at(r, c) in SOLID:
             self.say("💨 gust, but a rock sheltered the rover")
             return
         self.pushes += 1
@@ -680,6 +767,8 @@ class World:
                 self.finish("goal", "🎉 beacon reached")
         elif self.mission == "samples" and not self.samples:
             self.finish("goal", "🎉 every sample collected")
+        elif self.mission == "deliver" and not self.samples and not self.cargo:
+            self.finish("goal", "🎉 every sample brought home")
 
 
 def n_squares(n, way):
@@ -748,6 +837,13 @@ def explain(world):
         what = f"Your code finished with the rover at {where(at)}"
         if world.mission == "report":
             nxt = "Nothing was sent. Add a last line with report(), like report(4)."
+        elif world.mission == "deliver" and world.cargo >= CARGO_MAX and world.samples:
+            what += f", carrying {CARGO_MAX} samples: the cargo bay is full"
+            nxt = f"Drive home to {where(world.home)} to unload them: {far(at, world.home)}."
+        elif world.mission == "deliver" and world.cargo and not world.samples:
+            what += (f", carrying the last {world.cargo} "
+                     f"sample{'s' if world.cargo != 1 else ''}")
+            nxt = f"Bring them home to {where(world.home)}: {far(at, world.home)}."
         elif world.samples:
             near = min(world.samples, key=lambda p: (abs(p[0] - at[0]) + abs(p[1] - at[1]), p))
             n = len(world.samples)
@@ -768,6 +864,9 @@ def explain(world):
     extra = []
     if world.drill_out:
         extra.append("The rover ran out of drills.")
+    if world.stuck and end in ("stopped", "ticks"):
+        extra.append(f"The boulder at {where(world.stuck)} couldn't move: something "
+                     f"was behind it.")
     if world.bumps and end in ("stopped", "ticks"):
         extra.append(f"The rover bumped into rock {world.bumps} "
                      f"time{'s' if world.bumps != 1 else ''}: when it bumps, it doesn't move.")
@@ -778,12 +877,15 @@ def mission_of(variant):
     """"report" (a field measurement), "beacon" or "samples"."""
     if "answer" in variant:
         return "report"
+    if any("H" in row for row in variant["map"]):
+        return "deliver"
     return "beacon" if any("G" in row for row in variant["map"]) else "samples"
 
 
 ENDED_SHORT = {"report": "🏁 program ended without a report()",
                "beacon": "🏁 program ended away from the beacon",
-               "samples": "🏁 program ended with samples still out there"}
+               "samples": "🏁 program ended with samples still out there",
+               "deliver": "🏁 program ended before every sample was home"}
 
 
 def drive(code, variant, rules, zone):
@@ -820,6 +922,7 @@ def drive(code, variant, rules, zone):
             "computed": world.computed,
             "explain": None if error else explain(world),
             "drills": world.drills if "drills" in variant else None,
+            "typed": world.typed,
             # A def the program actually ran, for the def star and badge.
             "own_function": bool(rover and rover.called),
             "battery": world.battery if "battery" in rules else None}
@@ -1958,13 +2061,270 @@ ZONES.append(
      ]})
 
 
+def boulder_lane(seed):
+    """A long field crossed by crater trenches. A one-wide trench can be
+    jumped; a two-wide one has a boulder in front of it on the lander's row,
+    to push into the near half before jumping the rest."""
+    rng = random.Random(seed)
+    rows, cols = 7, rng.randint(22, 26)
+    grid = open_ground(rows, cols)
+    row = rng.randint(1, rows - 2)
+    kinds, c = [], rng.randint(3, 4)
+    while c < cols - 6:
+        kind = rng.choice("BBO") if len(kinds) > 1 else "BO"[len(kinds) % 2]
+        kinds.append(kind)
+        if kind == "B":
+            for r in range(1, rows - 1):
+                grid[r][c + 1] = grid[r][c + 2] = "O"
+            grid[row][c] = "B"
+            c += 3 + rng.randint(1, 2)
+        else:
+            for r in range(1, rows - 1):
+                grid[r][c] = "O"
+            c += 1 + rng.randint(1, 3)
+    grid[row][1] = "S"
+    grid[row][cols - 3] = "G"
+    return strings(grid)
+
+
+def laser_steps(pairs):
+    """Steps east and south with a sample at every corner, each corner one
+    square short of the rock that ends its stretch: east(distance("east") - 1)."""
+    r = c = 1
+    rocks, stops = [], []
+    for east, south in pairs:
+        c += east
+        rocks.append((r, c + 2))
+        stops.append((r, c))
+        r += south
+        rocks.append((r + 2, c))
+        stops.append((r, c))
+    grid = open_ground(r + 4, max(p[1] for p in rocks) + 2)
+    for rr, cc in rocks:
+        grid[rr][cc] = "#"
+    for rr, cc in stops:
+        grid[rr][cc] = "*"
+    grid[1][1] = "S"
+    return strings(grid)
+
+
+def laser_lane(seed):
+    """A long field crossed by walls of rock and crater trenches, one square
+    thick, with the beacon on the last square before the far edge: drive up
+    to each one with distance() and jump it."""
+    rng = random.Random(seed)
+    rows, cols = 7, rng.randint(22, 26)
+    grid = open_ground(rows, cols)
+    kinds, c = [], rng.randint(3, 5)
+    while c < cols - 4:
+        kind = rng.choice("#O") if len(kinds) > 1 else "#O"[len(kinds) % 2]
+        kinds.append(kind)
+        for r in range(1, rows - 1):
+            grid[r][c] = kind
+        c += 1 + rng.randint(2, 4)
+    row = rng.randint(1, rows - 2)
+    grid[row][1] = "S"
+    grid[row][cols - 2] = "G"
+    return strings(grid)
+
+
+def cargo_field(seed):
+    """Open ground with home somewhere on it and six samples around."""
+    rng = random.Random(seed)
+    rows, cols = rng.randint(9, 10), rng.randint(13, 16)
+    grid = open_ground(rows, cols)
+    inside = [(r, c) for r in range(1, rows - 1) for c in range(1, cols - 1)]
+    home, *samples = rng.sample(inside, 7)
+    for r, c in samples:
+        grid[r][c] = "*"
+    grid[home[0]][home[1]] = "H"
+    return strings(grid)
+
+
+# Three more zones that build on the four before: pushing (with Crater Hops'
+# loop), measuring (numbers from a sensor, worked on with - 1), and carrying
+# (a counter, and go_to() from Gate Station and the Flag Relay).
+ZONES.append(
+    {"key": "push", "name": "Boulder Yard", "rules": set(),
+     "blurb": "Boulders! Drive into one and the rover pushes it. Push it into "
+              "a crater and the crater is filled in.",
+     "new": {"icon": "🪨", "what": "Drive into a boulder to push it one square. "
+                                   "Push it into a crater and you can drive over. "
+                                   "It won't move if something is behind it. "
+                                   "look() says \"boulder\".",
+             "example": "east(8)"},
+     "hints": [
+         "Push from the side you want it to go away from: to push a boulder "
+         "south, drive into it from the north.",
+         "A trench two squares wide is too wide to jump. Push a boulder into "
+         "the near half, drive onto it, then jump the other half.",
+         "Driving into a boulder pushes it, so only craters need a jump:\n\n"
+         "while not at_beacon():\n    if look(\"east\") == \"crater\":\n"
+         "        jump(\"east\")\n    else:\n        east()",
+     ],
+     "sites": [
+         site("13a", "First Push",
+              "Push the boulder into the crater, then drive over to the beacon. "
+              "Try  east(8)",
+              [{"map": ["###########",
+                        "#....O....#",
+                        "#S.B.O...G#",
+                        "#....O....#",
+                        "###########"]}],
+              reference="east(8)\n"),
+         site("13b", "Push South",
+              "The trench is two squares deep: too far to jump. Push the boulder "
+              "into it from above, then jump the rest.",
+              [{"map": ["#########",
+                        "#S......#",
+                        "#...B...#",
+                        "#.......#",
+                        "#OOOOOOO#",
+                        "#OOOOOOO#",
+                        "#...G...#",
+                        "#########"]}],
+              reference="east(3)\nsouth(3)\njump(\"south\")\n"),
+         site("13c", "Boulder Steps",
+              "Four wide trenches, a boulder before each. Every one is the same: "
+              "push, step, jump.",
+              [{"map": ["####################",
+                        "#.OO..OO..OO..OO...#",
+                        "#SBOO.BOO.BOO.BOO.G#",
+                        "#.OO..OO..OO..OO...#",
+                        "####################"]}],
+              reference="for i in range(4):\n    east(2)\n    jump(\"east\")\neast()\n"),
+         site("13d", "Your Boulders",
+              "Reach the beacon across wide and narrow trenches. Yours aren't "
+              "where anyone else's are.",
+              [{"map": boulder_lane(seed)} for seed in (0, 1, 2, 3, 4, 5, 6, 7)],
+              per_student=True,
+              reference="while not at_beacon():\n"
+                        "    if look(\"east\") == \"crater\":\n        jump(\"east\")\n"
+                        "    else:\n        east()\n"),
+     ]})
+
+ZONES.append(
+    {"key": "laser", "name": "Laser Range", "rules": set(),
+     "blurb": "A laser on the rover measures how far it can drive. No more "
+              "counting squares.",
+     "new": {"icon": "🔦", "what": "distance(\"east\") is how many squares the "
+                                   "rover can drive east before rock, a crater, "
+                                   "a boulder or a gate. Put it inside a drive.",
+             "example": "east(distance(\"east\"))"},
+     "hints": [
+         "distance(\"east\") is a number, so it can go inside the ( ) of a "
+         "drive: east(distance(\"east\")) drives right up to the next thing.",
+         "You can do sums with it. To stop one square short of the rock:\n\n"
+         "east(distance(\"east\") - 1)",
+         "Drive up to it, jump it, and again:\n\n"
+         "while not at_beacon():\n    east(distance(\"east\"))\n    jump(\"east\")",
+     ],
+     "sites": [
+         site("14a", "First Laser",
+              "Drive to the beacon at the far end without counting. Try  "
+              "east(distance(\"east\"))",
+              [{"map": ["################",
+                        "#..............#",
+                        "#S............G#",
+                        "#..............#",
+                        "################"]}],
+              reference="east(distance(\"east\"))\n"),
+         site("14b", "Crater Edge",
+              "Two trenches on the way. Drive up to each edge with distance(), "
+              "then jump.",
+              [{"map": ["################",
+                        "#......O...O...#",
+                        "#S.....O...O..G#",
+                        "#......O...O...#",
+                        "################"]}],
+              reference="while not at_beacon():\n    east(distance(\"east\"))\n"
+                        "    jump(\"east\")\n"),
+         site("14c", "Laser Steps",
+              "Collect the samples on the steps. Each one is one square before "
+              "the rock, so drive distance() - 1.",
+              [{"map": laser_steps([(4, 2), (3, 3), (5, 2)])}],
+              reference="for i in range(3):\n    east(distance(\"east\") - 1)\n"
+                        "    south(distance(\"south\") - 1)\n"),
+         site("14d", "Your Range",
+              "Reach the beacon at the far end, past walls and trenches. Yours "
+              "aren't where anyone else's are.",
+              [{"map": laser_lane(seed)} for seed in (0, 1, 2, 3, 4, 5, 6, 7)],
+              per_student=True,
+              reference="while not at_beacon():\n    east(distance(\"east\"))\n"
+                        "    jump(\"east\")\n"),
+     ]})
+
+ZONES.append(
+    {"key": "cargo", "name": "Cargo Run", "rules": set(),
+     "blurb": "Bring the samples home to 📦. The rover only has room for 3 at "
+              "a time.",
+     "new": {"icon": "📦", "what": "Samples go in the cargo bay, 3 at most, and "
+                                   "count when you bring them home to 📦. cargo() "
+                                   "says how many you carry; home_x() and home_y() "
+                                   "say where home is.",
+             "example": "print(cargo())"},
+     "hints": [
+         "With 3 on board the bay is full: the rover drives over a sample "
+         "and leaves it. Go home, then come back for the rest.",
+         "for i in range(4):  counts i = 0, 1, 2, 3. Use i inside the loop "
+         "to go one row further each time, like  south(i).",
+         "Decide each trip with an if, and steer with go_to():\n\n"
+         "while True:\n    if cargo() == 3 or samples_left() == 0:\n"
+         "        go_to(home_x(), home_y())\n    else:\n"
+         "        go_to(sample_x(), sample_y())",
+     ],
+     "sites": [
+         site("15a", "First Load",
+              "Pick up the three samples and bring them home to 📦. Try  "
+              "east(7)  then  west(7)",
+              [{"map": ["############",
+                        "#..........#",
+                        "#H..*.*.*..#",
+                        "#..........#",
+                        "############"]}],
+              reference="east(7)\nwest(7)\n"),
+         site("15b", "Two Trips",
+              "Six samples, but room for only 3 at a time. Bring one row home, "
+              "then go back for the other.",
+              [{"map": ["############",
+                        "#H..*.*.*..#",
+                        "#..........#",
+                        "#...*.*.*..#",
+                        "############"]}],
+              reference="east(7)\nwest(7)\nsouth(2)\neast(7)\nwest(7)\nnorth(2)\n"),
+         site("15c", "Shuttle",
+              "Four rows of samples, one trip each. Every trip goes one row "
+              "further down: use the loop's i.",
+              [{"map": ["#########",
+                        "#H.*.*.*#",
+                        "#..*.*.*#",
+                        "#..*.*.*#",
+                        "#..*.*.*#",
+                        "#########"]}],
+              reference="for i in range(4):\n    south(i)\n    east(6)\n"
+                        "    west(6)\n    north(i)\n"),
+         site("15d", "Your Cargo",
+              "Bring all six samples home, 3 at a time. Your home and samples "
+              "aren't where anyone else's are.",
+              [{"map": cargo_field(seed)} for seed in (0, 1, 2, 3, 4, 5, 6, 7)],
+              per_student=True,
+              reference=GO_TO + "while True:\n"
+                                "    if cargo() == 3 or samples_left() == 0:\n"
+                                "        go_to(home_x(), home_y())\n"
+                                "    else:\n"
+                                "        go_to(sample_x(), sample_y())\n"),
+     ]})
+
+
 # Each site's challenge star and compact-code star. Crystals sit on a fixed
 # site's only planet; on the per-student lakes and portal mazes the compact
-# target follows that student's own shortest route.
+# target follows that student's own shortest route. Where the star needs a
+# loop, def or sensor, the target leaves up to 2 spare lines over the
+# shortest program, but stays under a route counted out by hand.
 CHALLENGES = {
     "1a": {"bonus": {"kind": "crystals"}, "compact": 7, "crystals": [(1, 10)]},
     "1b": {"bonus": {"kind": "def"}, "compact": 3},
-    "1c": {"bonus": {"kind": "no_bump"}, "compact": 5},
+    "1c": {"bonus": {"kind": "no_bump"}, "compact": 7},
     "2a": {"bonus": {"kind": "computed"}, "compact": 3},
     "2b": {"bonus": {"kind": "crystals"}, "compact": 6, "crystals": [(1, 7)]},
     "2c": {"bonus": {"kind": "no_bump"}, "compact": [8, 8, 8, 9, 8, 8, 8, 8]},
@@ -1972,36 +2332,48 @@ CHALLENGES = {
     "3b": {"bonus": {"kind": "no_push"}, "compact": 16},
     "3c": {"bonus": {"kind": "no_push"}, "compact": 17},
     "4a": {"bonus": {"kind": "ticks", "max": 14}, "compact": 5},
-    "4b": {"bonus": {"kind": "def"}, "compact": 8},
-    "4c": {"bonus": {"kind": "no_bump"}, "compact": 8},
+    "4b": {"bonus": {"kind": "def"}, "compact": 10},
+    "4c": {"bonus": {"kind": "no_bump"}, "compact": 9},
     "5a": {"bonus": {"kind": "computed"}, "compact": 4},
-    "5b": {"bonus": {"kind": "ticks", "max": 80}, "compact": 12},
-    "5c": {"bonus": {"kind": "battery", "min": 30}, "compact": 5},
+    "5b": {"bonus": {"kind": "ticks", "max": 80}, "compact": 14},
+    "5c": {"bonus": {"kind": "battery", "min": 30}, "compact": 7},
     "6a": {"bonus": {"kind": "crystals"}, "compact": 4, "crystals": [(4, 1)]},
     "6b": {"bonus": {"kind": "ticks", "max": 8}, "compact": 5},
     "6c": {"bonus": {"kind": "no_bump"}, "compact": [8, 7, 8, 6, 8, 7, 8, 8]},
     "7a": {"bonus": {"kind": "computed"}, "compact": 2},
-    "7b": {"bonus": {"kind": "everywhere"}, "compact": 8},
-    "7c": {"bonus": {"kind": "everywhere"}, "compact": 15},
+    "7b": {"bonus": {"kind": "everywhere"}, "compact": 10},
+    "7c": {"bonus": {"kind": "everywhere"}, "compact": 17},
     "8a": {"bonus": {"kind": "ticks", "max": 4}, "compact": 3},
     "8b": {"bonus": {"kind": "def"}, "compact": 4},
-    "8c": {"bonus": {"kind": "everywhere", "of": "field"}, "compact": 5},
+    "8c": {"bonus": {"kind": "everywhere", "of": "field"}, "compact": 7},
     "9a": {"bonus": {"kind": "ticks", "max": 2}, "compact": 2},
     "9b": {"bonus": {"kind": "ticks", "max": 9}, "compact": 6},
     "9c": {"bonus": {"kind": "def"}, "compact": 3},
-    "9d": {"bonus": {"kind": "everywhere", "of": "field"}, "compact": 5},
+    "9d": {"bonus": {"kind": "everywhere", "of": "field"}, "compact": 7},
     "10a": {"bonus": {"kind": "no_bump"}, "compact": 3},
     "10b": {"bonus": {"kind": "no_bump"}, "compact": 8},
     "10c": {"bonus": {"kind": "drills", "min": 2}, "compact": 3},
-    "10d": {"bonus": {"kind": "drills", "min": 1}, "compact": 7},
+    "10d": {"bonus": {"kind": "drills", "min": 1}, "compact": 9},
     "11a": {"bonus": {"kind": "no_bump"}, "compact": 2},
     "11b": {"bonus": {"kind": "no_bump"}, "compact": 4},
-    "11c": {"bonus": {"kind": "def"}, "compact": 8},
-    "11d": {"bonus": {"kind": "everywhere", "of": "yard"}, "compact": 11},
+    "11c": {"bonus": {"kind": "def"}, "compact": 9},
+    "11d": {"bonus": {"kind": "everywhere", "of": "yard"}, "compact": 13},
     "12a": {"bonus": {"kind": "no_bump"}, "compact": 2},
     "12b": {"bonus": {"kind": "no_bump"}, "compact": 9},
-    "12c": {"bonus": {"kind": "def"}, "compact": 11},
-    "12d": {"bonus": {"kind": "everywhere", "of": "field"}, "compact": 15},
+    "12c": {"bonus": {"kind": "def"}, "compact": 13},
+    "12d": {"bonus": {"kind": "everywhere", "of": "field"}, "compact": 17},
+    "13a": {"bonus": {"kind": "ticks", "max": 8}, "compact": 2},
+    "13b": {"bonus": {"kind": "no_bump"}, "compact": 3},
+    "13c": {"bonus": {"kind": "def"}, "compact": 6},
+    "13d": {"bonus": {"kind": "everywhere", "of": "field"}, "compact": 7},
+    "14a": {"bonus": {"kind": "measured"}, "compact": 2},
+    "14b": {"bonus": {"kind": "measured"}, "compact": 5},
+    "14c": {"bonus": {"kind": "measured"}, "compact": 5},
+    "14d": {"bonus": {"kind": "everywhere", "of": "field"}, "compact": 5},
+    "15a": {"bonus": {"kind": "ticks", "max": 14}, "compact": 2},
+    "15b": {"bonus": {"kind": "no_bump"}, "compact": 6},
+    "15c": {"bonus": {"kind": "def"}, "compact": 7},
+    "15d": {"bonus": {"kind": "everywhere", "of": "field"}, "compact": 16},
 }
 for _zone in ZONES:
     for _s in _zone["sites"]:
@@ -2016,13 +2388,179 @@ for _zone in ZONES:
             _s["variants"][0]["crystals"] = _c["crystals"]
 
 
+# A hint for a star still to earn: shown when a student comes back to a site
+# they've completed, and after a run. It says which idea gets the star, not
+# the code. Bonus stars have one hint per kind unless a site needs its own.
+BONUS_TIPS = {
+    "crystals": "💎 The crystal isn't on the way. Find it on the map and add a "
+                "detour that drives over it.",
+    "def": "🧩 Find lines that repeat. Put them under  def name():  and call "
+           "name() where they were. The def has to run to count.",
+    "no_bump": "🧱 Watch the replay for the 🧱 in the telemetry. Make that drive "
+               "stop one square sooner, or check look() before you move.",
+    "no_push": "💨 Note the ticks the gusts came on. wait() on the tick just "
+               "before each one, and the rover holds on.",
+    "computed": "🔢 Put sensors inside report() instead of a typed number, so "
+                "the rover works it out.",
+    "everywhere": "🌍 Your code is also tried on everyone else's {of}. Steer with "
+                  "sensors instead of counted squares. The telemetry says how "
+                  "many it reached.",
+    "ticks": "⚡ Every square and every wait() is a tick. Find a quicker way.",
+    "drills": "⛏ Only drill a wall you can't go round. Every drill() you skip is "
+              "one to spare.",
+    "measured": "🔢 Put distance() inside the ( ) instead of a number you "
+                "counted, like  east(distance(\"east\")).",
+    "battery": "🔋 Charge for longer in the sun before you leave it.",
+}
+STAR_TIPS = {
+    "1a": {"bonus": "💎 The crystal is in the top right corner. Add a detour "
+                    "that drives over it.",
+           "compact": "One line can drive a whole straight stretch: east(7) "
+                      "instead of seven east() lines. 7 lines means 7 straight "
+                      "drives, so pick the order of samples with the fewest turns."},
+    "1b": {"compact": "The steps repeat: east(), then south(), 8 times. A for "
+                      "loop writes them only once."},
+    "1c": {"compact": "Counting squares takes a line for every drive. A while "
+                      "loop with look() drives up to the next boulder however "
+                      "far it is. One loop east and one loop south, repeated "
+                      "4 times, reaches every boulder."},
+    "2a": {"compact": "Drive once, then report(). Delete any other lines."},
+    "2b": {"bonus": "💎 The crystal is in the top right corner. A slide stops "
+                    "against rock: find one that stops on the crystal.",
+           "compact": "Every line is one slide. Find a route with fewer slides, "
+                      "stopping against different rocks."},
+    "2c": {"compact": "Every line is one slide. Find a route with fewer slides, "
+                      "stopping against different rocks."},
+    "3a": {"compact": "Let a while loop drive south until the push moves the "
+                      "rover off its column, then report the tick."},
+    "3b": {"compact": "Skip counting the legs. One while not at_beacon(): loop "
+                      "can choose every tick: wait() just before a gust, "
+                      "otherwise south() if south isn't rock, otherwise east()."},
+    "3c": {"compact": "Skip counting the legs. One while not at_beacon(): loop "
+                      "can choose every tick: wait() just before a gust, "
+                      "otherwise south() if south isn't rock, otherwise east()."},
+    "4a": {"bonus": "⚡ Drive no square you don't need: down one side of the "
+                    "pit, across, and up the other side.",
+           "compact": "One line can drive a whole straight stretch: east(4) "
+                      "instead of four east() lines. 5 lines means 5 straight "
+                      "drives."},
+    "4b": {"compact": "The three pits are the same. Write one pit's drive once, "
+                      "and repeat it 3 times with a for loop."},
+    "4c": {"compact": "Sweep the field like mowing a lawn. While loops with "
+                      "look() drive to the rock and back, and one more while "
+                      "loop repeats the sweep until samples_left() is 0."},
+    "5a": {"compact": "Four lines are enough: drive into the light, keep the "
+                      "battery in a variable, wait() once, report the difference."},
+    "5b": {"bonus": "⚡ Waiting is slow. Charge only as much as the next stretch "
+                    "needs.",
+           "compact": "Charging is the same job every time: wait() until the "
+                      "battery is high enough. Make a def with a while loop, "
+                      "and each charge is one line."},
+    "5c": {"compact": "One while not at_beacon(): loop can decide every tick: "
+                      "wait() when you're in the sun, otherwise drive east()."},
+    "6a": {"bonus": "💎 The crystal is in the bottom left corner, next to a pad. "
+                    "Get it before you step on a pad.",
+           "compact": "Each line is one straight drive. 4 lines means 4 drives: "
+                      "find the pad that takes you nearest the beacon."},
+    "6b": {"bonus": "⚡ Another pad gets you there sooner. Test the pads you "
+                    "haven't used yet.",
+           "compact": "Each line is one straight drive, like east(3). 5 lines "
+                      "means 5 drives: find the two pads that take you through "
+                      "both walls."},
+    "6c": {"compact": "Each line is one straight drive. Once you know where the "
+                      "pads go, use as few as you can and drive each stretch in "
+                      "one line."},
+    "7a": {"compact": "You don't need to drive. The sensors can work the "
+                      "number out right inside report( )."},
+    "7b": {"compact": "Four while loops, one for each way: keep driving east "
+                      "while x() is less than beacon_x(), and the same for the "
+                      "other three. Nothing else is needed."},
+    "7c": {"compact": "Make a def safe(way) that says whether look(way) is "
+                      "clear. Then one while not at_beacon(): loop with if and "
+                      "elif picks a safe way toward the beacon each step."},
+    "8a": {"bonus": "⚡ A jump covers 2 squares in 1 tick, and works on plain "
+                    "ground too.",
+           "compact": "Drive to the trench in one line, jump, and drive the rest "
+                      "in one line."},
+    "8b": {"compact": "Every hop is the same: east(), then jump(\"east\"). A for "
+                      "loop repeats them, and one more line finishes."},
+    "8c": {"compact": "One while not at_beacon(): loop with an if: jump when "
+                      "look(\"east\") is crater or rock, otherwise drive east()."},
+    "9a": {"compact": "east(2) is all you need. Delete the other lines."},
+    "9b": {"bonus": "⚡ Try the other belt and compare the ticks.",
+           "compact": "Each line is one straight drive, like east(3). The belts "
+                      "do some of the driving for you."},
+    "9c": {"compact": "Each step is the same: east(), then south(). A for loop "
+                      "repeats them 5 times."},
+    "9d": {"compact": "One while not at_beacon(): loop with an if: jump when "
+                      "there's a belt or crater east, otherwise drive east()."},
+    "10a": {"compact": "Drive up to the wall in one line, drill, and drive the "
+                       "rest in one line."},
+    "10b": {"compact": "Each line is one straight drive, like east(4). Drill "
+                       "two walls and go round the one with the gap."},
+    "10c": {"compact": "The tunnel repeats: drill, then drive two. A for loop "
+                       "writes it only once."},
+    "10d": {"compact": "One while not at_beacon(): loop with if, elif and else: "
+                       "drill rock, jump craters, otherwise drive east()."},
+    "11a": {"compact": "One line can do it: drive east all the way, over the key "
+                       "and through the gate."},
+    "11b": {"compact": "Each line is one straight drive. 4 drives are enough: "
+                       "up, across to the key, down, and through the gate."},
+    "11c": {"compact": "The rooms are the same. Make one def room(), call it 3 "
+                       "times in a for loop, then drive to the beacon."},
+    "11d": {"compact": "Make one def go_to(tx, ty) that drives with four while "
+                       "loops. Then call it twice: once for the key, once for "
+                       "the beacon."},
+    "12a": {"compact": "The flags are in a row: 2 straight drives are enough."},
+    "12b": {"compact": "Each line is one straight drive. Go straight on from one "
+                       "flag to the next wherever you can."},
+    "12c": {"compact": "Make def go_to(tx, ty) with four while loops. Then one "
+                       "while not at_beacon(): loop calls go_to(next_x(), next_y())."},
+    "12d": {"compact": "Use your safe(way) idea from Boulder Plain, and steer "
+                       "toward next_x() and next_y() instead of the beacon."},
+    "13a": {"compact": "One line: east(8) pushes the boulder in and drives on."},
+    "13b": {"compact": "3 lines: drive above the boulder, push it south into "
+                       "the trench, then jump."},
+    "13c": {"compact": "Every trench is the same: east(2), then jump(\"east\"). "
+                       "A for loop repeats them, and one more line finishes."},
+    "13d": {"compact": "One while not at_beacon(): loop with an if: jump a "
+                       "crater, otherwise drive east() (that pushes boulders too)."},
+    "14a": {"compact": "One line: east(distance(\"east\"))."},
+    "14b": {"compact": "Drive and jump repeat. Put them in a while not "
+                       "at_beacon(): loop."},
+    "14c": {"compact": "The steps repeat: east to one before the rock, south to "
+                       "one before the rock. A for loop does it 3 times."},
+    "14d": {"compact": "One while not at_beacon(): loop: east(distance(\"east\")), "
+                       "then jump(\"east\")."},
+    "15a": {"compact": "Two straight drives: out east over the samples, and back."},
+    "15b": {"compact": "Each line is one straight drive. Out and back along one "
+                       "row, then down to the other row, out and back, and up home."},
+    "15c": {"compact": "Each trip is the same but one row further down. In "
+                       "for i in range(4):  use south(i) and north(i)."},
+    "15d": {"compact": "Make def go_to(tx, ty). Then a while True: loop with an "
+                       "if: go home when the bay is full or nothing is left, "
+                       "otherwise go to the nearest sample."},
+}
+
+
+def star_tips(s, variant):
+    """A hint for each of the site's three stars (none for the mission: the
+    zone's 📻 hints cover that)."""
+    bonus = variant.get("bonus", s["bonus"])
+    tips = STAR_TIPS.get(s["key"], {})
+    return [None,
+            tips.get("bonus") or BONUS_TIPS[bonus["kind"]].format(of=bonus.get("of", "plain")),
+            "✂️ " + tips["compact"]]
+
+
 # A mystery gift waits on one site in each zone. Driving over it in a
 # transmitted run (the mission needn't be done) finds a garage item. Most sit
 # on a square picked by hand; where every student has their own planet (None)
 # it goes a short detour off the reference route on that planet.
 GIFT_SQUARES = {"1a": (1, 4), "2b": (4, 5), "3b": (13, 9), "4c": None,
                 "5b": (11, 9), "6a": (4, 11), "7b": None, "8b": (3, 10),
-                "9b": (5, 4), "10b": (1, 10), "11b": (1, 9), "12b": (2, 10)}
+                "9b": (5, 4), "10b": (1, 10), "11b": (1, 9), "12b": (2, 10),
+                "13b": (3, 7), "14b": (1, 13), "15b": (2, 10)}
 _gifts = {}
 
 
@@ -2070,12 +2608,14 @@ def bonus_label(bonus):
             "ticks": f"⚡ Done in {bonus.get('max')} ticks or fewer",
             "drills": f"⛏ Finish with {bonus.get('min')} drill"
                       f"{'s' if bonus.get('min') != 1 else ''} to spare",
-            "battery": f"🔋 Finish with {bonus.get('min')} battery or more"}[kind]
+            "battery": f"🔋 Finish with {bonus.get('min')} battery or more",
+            "measured": "🔢 No typed-in numbers: let distance() measure"}[kind]
 
 
 MISSION_LABELS = {"beacon": "🛰 Reach the beacon",
                   "samples": "🧪 Collect every sample",
-                  "report": "📡 Report the right number"}
+                  "report": "📡 Report the right number",
+                  "deliver": "📦 Bring every sample home"}
 
 
 def goals(s, variant):
@@ -2108,6 +2648,8 @@ def stars(s, variant, run, code):
         met = run["ticks"] <= bonus["max"]
     elif kind == "drills":
         met = (run["drills"] or 0) >= bonus["min"]
+    elif kind == "measured":
+        met = not run["typed"]
     else:
         met = (run["battery"] or 0) >= bonus["min"]
     return [True, met, code_lines(code) <= variant.get("compact", s["compact"])]

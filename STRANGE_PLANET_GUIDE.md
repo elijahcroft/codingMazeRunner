@@ -1,4 +1,4 @@
-# Strange Planet: teaching guide (about 5 lessons)
+# Strange Planet: teaching guide (about 6 lessons)
 
 Students drive a rover with Python. Every zone hides **one physics rule**
 that nobody explains: ice, wind, crumbling ground, sunlight, portals. They
@@ -42,7 +42,12 @@ lost.
   (that many lines or fewer, which means loops and functions). Stars add up
   across runs, so one run can grab the crystal and another can be compact.
   Going back for the missing star *is* the practice. The line counter above
-  the editor turns gold when the code is short enough.
+  the editor turns gold when the code is short enough. Where ✂️ needs a loop,
+  `def` or sensor, it leaves up to 2 spare lines over the shortest program,
+  but a route counted out by hand still misses it. A student who comes back to
+  a completed site, or finishes a run without all three stars, gets a 💡 hint
+  for each missing star: the idea that earns it, not the code, and for ✂️ how
+  many lines to cut.
 - **📡 Field measurements**: the first site of most zones asks a question
   ("how many squares does one `east()` slide on the ice?"). Any way of
   finding the number completes the mission; working it out **in code**,
@@ -151,7 +156,7 @@ board while they work.
 |---|---|---|---|
 | 1A Touchdown | 🧪 3 samples | 💎 grab the crystal (a detour) | 7 lines |
 | 1B Crystal Steps | 🧪 8 samples | 🧩 use a function you made with `def` (and call it) | 3 lines |
-| 1C Boulder Run | 🧪 a sample at every boulder | 🧱 never bump into rock | 5 lines |
+| 1C Boulder Run | 🧪 a sample at every boulder | 🧱 never bump into rock | 7 lines |
 | 2A First Frost | 📡 how far one slide goes | 🔢 work the number out in code | 3 lines |
 | 2B Glacier | 🛰 beacon | 💎 crystal in a far corner (one extra slide) | 6 lines |
 | 2C Frozen Lake | 🛰 beacon | 🧱 never bump into rock | the student's shortest route + 1 |
@@ -159,20 +164,20 @@ board while they work.
 | 3B The Ledge | 🛰 beacon | 💨 never get blown off course | 16 lines |
 | 3C Gale Ridge | 🛰 beacon | 💨 never get blown off course | 17 lines |
 | 4A Thin Crust | 🛰 beacon, after the sample | ⚡ done in 14 ticks | 5 lines |
-| 4B Three Pits | 🛰 beacon, after 3 samples | 🧩 use a function you made | 8 lines |
-| 4C Sample Field | 🧪 a sample on every row | 🧱 never bump into rock | 8 lines |
+| 4B Three Pits | 🛰 beacon, after 3 samples | 🧩 use a function you made | 10 lines |
+| 4C Sample Field | 🧪 a sample on every row | 🧱 never bump into rock | 9 lines |
 | 5A First Light | 📡 charge from one tick of sun | 🔢 work the number out in code | 4 lines |
-| 5B Shadow Steps | 🛰 beacon | ⚡ done in 80 ticks | 12 lines |
-| 5C Moving Shadows | 🛰 beacon | 🔋 finish with 30 battery | 5 lines |
+| 5B Shadow Steps | 🛰 beacon | ⚡ done in 80 ticks | 14 lines |
+| 5C Moving Shadows | 🛰 beacon | 🔋 finish with 30 battery | 7 lines |
 | 6A The Pads | 🛰 beacon | 💎 crystal behind a decoy pad | 4 lines |
 | 6B Relay | 🛰 beacon | ⚡ done in 8 ticks (a quicker pad) | 5 lines |
 | 6C Portal Maze | 🛰 beacon | 🧱 never bump into rock | the student's shortest route + 1 |
 | 7A Homing Signal | 📡 how far east the beacon is | 🔢 work the number out in code | 2 lines |
-| 7B Open Plain | 🛰 beacon | 🌍 the same code works on all 8 plains | 8 lines |
-| 7C Boulder Plain | 🛰 beacon | 🌍 the same code works on all 8 plains | 15 lines |
+| 7B Open Plain | 🛰 beacon | 🌍 the same code works on all 8 plains | 10 lines |
+| 7C Boulder Plain | 🛰 beacon | 🌍 the same code works on all 8 plains | 17 lines |
 | 8A The Trench | 🛰 beacon | ⚡ done in 4 ticks (jump all the way) | 3 lines |
 | 8B Stepping Stones | 🛰 beacon | 🧩 use a function you made | 4 lines |
-| 8C Crater Field | 🛰 beacon | 🌍 the same code works on all 8 fields | 5 lines |
+| 8C Crater Field | 🛰 beacon | 🌍 the same code works on all 8 fields | 7 lines |
 | Uncharted | 🛰 beacon on 5 planets | 1, then 3, then all 5 planets in one run | |
 
 `test_planet.py` checks that every star on every planet can be earned.
@@ -247,7 +252,8 @@ works is how to help a neighbour.
 | 2 | **Wind Canyon** (3A–3C) → **Crumbling Crust** (4A–4C) | "How did you find *when* the gusts came? What was your evidence?" |
 | 3 | **Solar Valley** (5A–5C) → **Portal Fields** (6A–6C) | "How did you work out where each portal goes? How many runs did it take?" |
 | 4 | **Signal Plains** (7A–7C): steering by coordinates on calm ground → **Crater Hops** (8A–8C): the new `jump()` | "When does your program jump, and how does it know?" |
-| 5 | **Conveyor Works** (9A–9D) → **The Quarry** (10A–10D) → **Gate Station** (11A–11D) → **Flag Relay** (12A–12D) → **Uncharted**: the same 5 planets every run | "Which new thing changed your program most, and what stayed the same?" |
+| 5 | **Conveyor Works** (9A–9D) → **The Quarry** (10A–10D) → **Gate Station** (11A–11D) → **Flag Relay** (12A–12D) | "Which new thing changed your program most, and what stayed the same?" |
+| 6 | **Boulder Yard** (13A–13D) → **Laser Range** (14A–14D) → **Cargo Run** (15A–15D) → **Uncharted**: the same 5 planets every run | "Where did a variable or a sum save you from counting?" |
 
 Fast students will get ahead. That's fine, because each site opens only when
 the one before is done. Slow students aren't stuck behind a wall: open the
@@ -446,7 +452,7 @@ air, with a 🦘 on the timeline.
 
 Uncharted has `jump()` too: jumping over a rock is another way round it.
 
-### Zones 9 to 12: one new thing each, told and drawn
+### Zones 9 to 15: one new thing each, told and drawn
 These four zones don't hide anything. Each brings one new thing, and the map
 draws it, a line under the goals names it ("🛤 belt: carries you the way its
 arrows point"), and the zone's first site opens with a **🆕 card** that says
@@ -529,6 +535,50 @@ The beacon needs every flag first. Driving over a later flag is harmless
 - **12D Your Relay** (per student, rock in the way): 7C's program with
   `next_x()` and `next_y()` in place of the beacon's. That's most of
   Uncharted's program.
+
+#### 13 · Boulder Yard: drive into a boulder to push it
+A boulder (🪨, `look()` says `"boulder"`) moves one square when the rover
+drives into it, unless something is behind it. Pushed into a crater, it fills
+it in. A jump can't land on one.
+- **13A First Push**: `east(8)` pushes it into the trench and drives on.
+- **13B Push South**: a trench two deep, too far to jump. Get above the
+  boulder: `east(3) south(3) jump("south")`.
+- **13C Boulder Steps**: `for i in range(4): east(2) jump("east")`, then
+  `east()`. The 🧩 star wants it as a function.
+- **13D Your Boulders** (per student): wide trenches with a boulder, narrow
+  ones without. Crater Hops' loop, since driving pushes:
+  `if look("east") == "crater": jump("east") else: east()`. Jumping at
+  anything that isn't ground jumps the boulder into the trench.
+
+#### 14 · Laser Range: `distance("east")` measures how far the rover can drive
+`distance(way)` counts the squares up to rock, a crater, a boulder or a gate.
+Every drive's number can come from it: the 🔢 star wants **no typed-in
+numbers** in the drives. The replay shows the beam.
+- **14A First Laser**: `east(distance("east"))`.
+- **14B Crater Edge**: `while not at_beacon(): east(distance("east")) jump("east")`
+- **14C Laser Steps**: each sample is one square short of the rock:
+  `for i in range(3): east(distance("east") - 1) south(distance("south") - 1)`.
+  1C's while loops overshoot every sample.
+- **14D Your Range** (per student): 14B's loop on every field.
+
+#### 15 · Cargo Run: three samples at a time, brought home to 📦
+The rover starts at home. Samples go in the cargo bay (`cargo()`, 3 at most);
+with a full bay the rover drives over a sample and leaves it. Driving onto
+home unloads. New: `cargo()`, `home_x()`, `home_y()`, and `sample_x()`,
+`sample_y()` (the nearest sample).
+- **15A First Load**: `east(7) west(7)`
+- **15B Two Trips**: one row out and back, then the other: 6 drives.
+- **15C Shuttle**: each trip goes one row further, so the loop's `i` does it:
+  `for i in range(4): south(i) east(6) west(6) north(i)`. The 🧩 star wants
+  `def trip(n)`.
+- **15D Your Cargo** (per student): `go_to()` from 11D, and a decision each trip:
+  ```python
+  while True:
+      if cargo() == 3 or samples_left() == 0:
+          go_to(home_x(), home_y())
+      else:
+          go_to(sample_x(), sample_y())
+  ```
 
 ### Uncharted: the finale
 Every run lands on **the same 5 planets** (they used to be new random ones

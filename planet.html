@@ -99,6 +99,9 @@
   .goal { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 6px; border-radius: 99px; background: var(--dusk); color: var(--haze); font-size: 13px; }
   .goal i { font-style: normal; color: var(--dim); font-size: 15px; line-height: 1; }
   .goal.got { color: var(--bone); background: #3a3218; }
+  button.goal.hint { border: 0; font-family: inherit; cursor: pointer; }
+  button.goal.hint:hover, button.goal.hint:focus-visible { background: var(--panel-2); color: var(--bone); }
+  .goal.hint b { font-weight: normal; }
   .goal.gift { color: #ffd0e6; background: #4a2140; padding-left: 10px; }
   .goal.got i { color: var(--gold); }
   .scope { position: relative; min-height: 0; margin: 0 16px; border-radius: 18px; overflow: hidden; background: #120e22; box-shadow: inset 0 0 0 1px var(--edge); }
@@ -159,7 +162,7 @@
   .cele-note { margin: 0 0 14px; min-height: 22px; font-weight: 650; }
   .cele-note .rec { color: var(--gold); }
   .cele-miss { margin: -6px 0 12px; color: var(--haze); font-size: 14px; }
-  .cele-tip { margin-top: -4px; color: var(--mint); }
+  .cele-tip { margin-top: -4px; color: var(--mint); white-space: pre-line; }
   .cele-tip:empty { display: none; }
   .cele-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 
@@ -373,6 +376,7 @@
             <div class="gauge" id="drillGauge" hidden title="drills_left()"><small>⛏ drills</small><span id="drills">0</span></div>
             <div class="gauge" id="keyGauge" hidden title="Keys the rover holds"><small>🔑 keys</small><span id="keys">0</span></div>
             <div class="gauge" id="flagGauge" hidden title="flags_left()"><small>🚩 flags left</small><span id="flags">0</span></div>
+            <div class="gauge" id="cargoGauge" hidden title="cargo(): samples on board, 3 at most"><small>📦 cargo</small><span id="cargo">0/3</span></div>
           </div>
           <div class="right-hud">
             <div class="status" id="status">Ready</div>
@@ -495,11 +499,12 @@ let scene = null;     // what the canvas shows: map, zone, frames, events
 let pos = 0, playing = false, lastTs = 0, fps = 8, heard = 0;
 let errorLine = 0, errorCount = 0;
 
-const ZONE_ICONS = {landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", uncharted: "🪐"};
+const ZONE_ICONS = {landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", uncharted: "🪐"};
 // Each sensor arrives with a zone (matches planet.SENSOR_ZONE).
 const SENSOR_ZONE = {look: 0, at_beacon: 0, x: 1, y: 1, report: 1, tick: 2, samples_left: 3,
   battery: 4, in_sun: 4, beacon_x: 6, beacon_y: 6, jump: 7, drill: 9, drills_left: 9,
-  has_key: 10, key_x: 10, key_y: 10, next_x: 11, next_y: 11, flags_left: 11, gust_in: 12};
+  has_key: 10, key_x: 10, key_y: 10, next_x: 11, next_y: 11, flags_left: 11, distance: 13,
+  cargo: 14, home_x: 14, home_y: 14, sample_x: 14, sample_y: 14, gust_in: 15};
 const HELP = {
   north: "Drive north (up). north(3) drives 3 squares.", south: "Drive south (down). south(3) drives 3 squares.",
   east: "Drive east (right). east(3) drives 3 squares.", west: "Drive west (left). west(3) drives 3 squares.",
@@ -518,12 +523,15 @@ const HELP = {
   next_x: "The next flag's column (the beacon's once every flag is done).",
   next_y: "The next flag's row (the beacon's once every flag is done).",
   flags_left: "Flags still to reach.",
+  distance: 'How many squares the rover can drive that way before something is in the way: east(distance("east"))',
+  cargo: "Samples on board (3 at most).", home_x: "Home's column.", home_y: "Home's row.",
+  sample_x: "The nearest sample's column.", sample_y: "The nearest sample's row.",
 };
 const COMMANDS = ["north", "south", "east", "west", "wait"];
 // Clicked into the code as a line of its own, like a command.
 const LINE_CHIPS = [...COMMANDS, "report", "jump", "drill"];
 // What a click on each chip types.
-const CHIP_TEXT = {look: 'look("east")', jump: 'jump("east")', drill: 'drill("east")'};
+const CHIP_TEXT = {look: 'look("east")', jump: 'jump("east")', drill: 'drill("east")', distance: 'distance("east")'};
 let look = {paint: "bone", topper: "none", trail: "tracks", world: "planet"};
 
 function esc(value) {
@@ -632,6 +640,9 @@ const GROUND = {
   drill: {ground: "#b8946a", rock: "#5e4632", bed: "#2a1d12"},
   gates: {ground: "#8a9a86", rock: "#424d43", bed: "#1a201b"},
   relay: {ground: "#b08a72", rock: "#5a4335", bed: "#281c15"},
+  push: {ground: "#a08f7d", rock: "#4f4339", bed: "#231c16"},
+  laser: {ground: "#7f7a96", rock: "#3e3a52", bed: "#191726"},
+  cargo: {ground: "#9aa07e", rock: "#4a4f3a", bed: "#1e2117"},
   uncharted: {ground: "#7d8c84", rock: "#3d4945", bed: "#18201d"},
 };
 // The garage's map looks: one palette for every zone in place of the zone's
@@ -916,10 +927,12 @@ function render(now = performance.now()) {
     visited.add(frames[k].r + "," + frames[k].c);
     if (frames[k].x) drawCrack(ctx, frames[k].x[0], frames[k].x[1], cell);
   }
-  const now_map = mapAt(i), nextFlag = f.fl || 1;
+  const now_map = mapAt(i), nextFlag = f.fl || 1, picked = pickedBy(i);
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     const ch = now_map[r][c];
-    if (ch === "*" && !visited.has(r + "," + c)) drawSample(ctx, r, c, cell, now);
+    if (ch === "*" && !picked.has(r + "," + c)) drawSample(ctx, r, c, cell, now);
+    else if (ch === "B") drawBoulder(ctx, r, c, cell);
+    else if (ch === "H") drawHome(ctx, r, c, cell);
     else if (ch === "P") drawPadGlow(ctx, r, c, cell, now);
     else if (ch in BELT_WAY) drawBelt(ctx, r, c, BELT_WAY[ch], cell, now);
     else if (ch === "k" && !visited.has(r + "," + c)) drawKey(ctx, r, c, cell, now);
@@ -942,6 +955,13 @@ function render(now = performance.now()) {
         ctx.fillStyle = "rgba(255,214,120,.16)"; ctx.fillRect(c * cell, 0, cell, worldH);
       }
     }
+  }
+  // The laser: a beam the way distance() measured, just before the drive that used it.
+  const beam = frames[i + 1] && frames[i + 1].ls;
+  if (beam && pos - i < .5) {
+    const [dr, dc] = DIRS[beam[0]], x0 = (f.c + .5) * cell, y0 = (f.r + .5) * cell, len = (beam[1] + .5) * cell;
+    ctx.strokeStyle = "rgba(255,59,92,.85)"; ctx.lineWidth = Math.max(2, cell / 12); ctx.setLineDash([cell * .2, cell * .12]);
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 + dc * len, y0 + dr * len); ctx.stroke(); ctx.setLineDash([]);
   }
   drawTrail(ctx, frames, i, rover, cell, now);
   const G = findChar(map, "G");
@@ -994,10 +1014,11 @@ function render(now = performance.now()) {
   }
   if (scene.samples) {
     let left = scene.samples;
-    for (const [r, c] of scene.sampleSquares) if (visited.has(r + "," + c)) left--;
+    for (const [r, c] of scene.sampleSquares) if (picked.has(r + "," + c)) left--;
     $("samples").textContent = left;
   }
   if (f.dl != null) $("drills").textContent = f.dl;
+  if (f.cg != null) $("cargo").textContent = `${f.cg}/3`;
   $("keyGauge").hidden = !f.k; if (f.k) $("keys").textContent = f.k;
   if (scene.flags) $("flags").textContent = Math.max(0, scene.flags - nextFlag + 1);
   if (scene.crystals.length) {
@@ -1129,13 +1150,39 @@ function drawCrack(ctx, r, c, cell) {
   ctx.stroke();
   ctx.strokeStyle = "rgba(255,220,190,.22)"; ctx.lineWidth = Math.max(1, cell / 30); ctx.stroke();
 }
-// The map as it is at frame i: drilled rock and opened gates are ground now.
+// The map as it is at frame i: drilled rock and opened gates are ground now,
+// and pushed boulders have moved (or filled a crater).
 function mapAt(i) {
-  const changed = scene.frames.slice(0, i + 1).filter(f => f.g);
+  const changed = scene.frames.slice(0, i + 1).filter(f => f.g || f.m);
   if (!changed.length) return scene.map;
   const rows = scene.map.map(row => [...row]);
-  for (const f of changed) rows[f.g[0]][f.g[1]] = ".";
+  for (const f of changed) {
+    if (f.g) rows[f.g[0]][f.g[1]] = ".";
+    for (const [r, c, ch] of f.m || []) rows[r][c] = ch;
+  }
   return rows.map(row => row.join(""));
+}
+// The samples picked up by frame i (a full cargo bay leaves them lying).
+function pickedBy(i) {
+  return new Set(scene.frames.slice(0, i + 1).filter(f => f.p).map(f => f.p.join(",")));
+}
+// A boulder: a round grey rock, lit from the top left.
+function drawBoulder(ctx, r, c, cell) {
+  const cx = (c + .5) * cell, cy = (r + .5) * cell;
+  ctx.fillStyle = "rgba(10,6,24,.35)"; ctx.beginPath(); ctx.ellipse(cx, cy + cell * .3, cell * .38, cell * .12, 0, 0, 7); ctx.fill();
+  const grad = ctx.createRadialGradient(cx - cell * .12, cy - cell * .14, cell * .05, cx, cy, cell * .42);
+  grad.addColorStop(0, "#c9c3cf"); grad.addColorStop(1, "#5f5866");
+  ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(cx, cy, cell * .4, 0, 7); ctx.fill();
+  ctx.strokeStyle = "rgba(30,20,40,.5)"; ctx.lineWidth = Math.max(1, cell / 20);
+  ctx.beginPath(); ctx.moveTo(cx - cell * .15, cy + cell * .05); ctx.lineTo(cx + cell * .05, cy + cell * .18); ctx.stroke();
+}
+// Home: a landing pad with a 📦 crate on it.
+function drawHome(ctx, r, c, cell) {
+  const x = c * cell, y = r * cell;
+  ctx.fillStyle = "rgba(140,242,198,.25)"; ctx.fillRect(x + 2, y + 2, cell - 4, cell - 4);
+  ctx.strokeStyle = "#8cf2c6"; ctx.lineWidth = Math.max(1.5, cell / 14); ctx.strokeRect(x + 3, y + 3, cell - 6, cell - 6);
+  ctx.font = `${Math.round(cell * .5)}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("📦", x + cell / 2, y + cell / 2 + 1);
 }
 const BELT_WAY = {"^": 0, ">": 1, "v": 2, "<": 3};
 // A belt: a dark track with chevrons that point (and, unless calm, roll) its way.
@@ -1269,6 +1316,7 @@ function onStep(k) {
   else if (f.e === "portal") { SFX.play("portal"); burst(p.r, p.c, "portal", 14); burst(f.r, f.c, "portal", 14); }
   else if (f.e === "jump") { SFX.play("jump"); burst(p.r, p.c, "dust", 6); burst(f.r, f.c, "dust", 6); }
   else if (f.e === "drill") { SFX.play("bump"); if (f.g) burst(f.g[0], f.g[1], "rock", 16); }
+  if (f.m) burst(f.m[1][0], f.m[1][1], "rock", 8);   // a pushed boulder rolls
   else if (f.e === "fell") { SFX.play("fall"); burst(f.r, f.c, "fall", 18); shake(); }
   else if (f.e === "goal" && scene.run && scene.run.mission !== "report") scene.cheer = performance.now();
   else if (f.e === "battery") SFX.play("flat");
@@ -1279,7 +1327,7 @@ function onStep(k) {
   if (moved) {
     const key = f.r + "," + f.c, seen = scene.frames.slice(0, k).some(x => x.r === f.r && x.c === f.c);
     if (!seen && scene.crystals.some(([r, c]) => r === f.r && c === f.c)) { SFX.play("crystal"); burst(f.r, f.c, "crystal", 16); }
-    else if (!seen && scene.map[f.r][f.c] === "*") { SFX.play("sample"); burst(f.r, f.c, "sparkle", 12); }
+    else if (f.p) { SFX.play("sample"); burst(f.r, f.c, "sparkle", 12); }
     else if (!seen && !scout && scene.gift && scene.gift[0] === f.r && scene.gift[1] === f.c) { SFX.play("gift"); burst(f.r, f.c, "gift", 22); }
     if (look.trail === "dust" && !sliding) burst(f.r, f.c, "dust", 2);
   }
@@ -1370,10 +1418,12 @@ function markFeed() {
 // and stopping short both depend on what the mission was.
 const DONE = {beacon: ["Beacon reached", t => `🎉 Beacon reached in ${t} ticks`],
   samples: ["Samples collected", t => `🎉 Every sample collected in ${t} ticks`],
-  report: ["Report confirmed", () => "📡 Mission control: that matches what we measured! 🎉"]};
+  report: ["Report confirmed", () => "📡 Mission control: that matches what we measured! 🎉"],
+  deliver: ["Samples home", t => `🎉 Every sample brought home in ${t} ticks`]};
 const SHORT = {beacon: t => `🏁 Ended ${t} ticks in, away from the beacon`,
   samples: t => `🏁 Ended ${t} ticks in, with samples still out there`,
-  report: t => `🏁 Ended ${t} ticks in without a report(). Found the number? Send it with report()`};
+  report: t => `🏁 Ended ${t} ticks in without a report(). Found the number? Send it with report()`,
+  deliver: t => `🏁 Ended ${t} ticks in, before every sample was home`};
 function ending(run) {
   const mission = run.mission || "beacon", t = run.ticks;
   return {
@@ -1418,7 +1468,7 @@ function showRun(run, map, crystals, startAt = 0) {
   const log = parseLog(run).filter(x => !(scout && x.text.startsWith("🏁")));
   const frameAtTick = t => { let k = 0; run.frames.forEach((f, j) => { if (f.t === t) k = j; }); return k; };
   let marks = log.map(ev => ({k: frameAtTick(ev.t), icon: [...ev.text][0], text: ev.text}))
-    .filter(m => "⛸💨✨🧪💎💥🔋⏱🎉🧱📡🦘🎁🛤⛏🔑🔒🚪🚩".includes(m.icon));
+    .filter(m => "⛸💨✨🧪💎💥🔋⏱🎉🧱📡🦘🎁🛤⛏🔑🔒🚪🚩🪨📦".includes(m.icon));
   if (marks.length > 12) marks = marks.filter(m => !["⛸", "🧱", "🦘", "🛤"].includes(m.icon));
   if (marks.length > 12) marks = marks.filter(m => m.icon !== "💨" || /pushed/.test(m.text));
   $("marks").innerHTML = marks.map(m => `<span class="mark" style="left:${last() ? m.k / last() * 100 : 0}%" title="tick ${run.frames[m.k].t}: ${esc(m.text)}" data-k="${m.k}">${m.icon}</span>`).join("");
@@ -1428,6 +1478,7 @@ function showRun(run, map, crystals, startAt = 0) {
   $("crystalGauge").hidden = !scene.crystals.length;
   $("drillGauge").hidden = run.frames[0].dl == null;
   $("flagGauge").hidden = !scene.flags;
+  $("cargoGauge").hidden = run.frames[0].cg == null;
   // Telemetry: events and print() lines in tick order, the error last.
   const prints = run.prints.map(p => ({t: p.t, text: p.text, print: true}));
   const lines = [...log.map(x => ({...x, print: false})), ...prints].map((x, j) => ({...x, j}))
@@ -1441,7 +1492,7 @@ function showRun(run, map, crystals, startAt = 0) {
       return out;
     }, []);
   $("feed").innerHTML = `<div class="feed-head">${scout ? "Scouting telemetry" : "Telemetry"}</div>` + lines.map(x =>
-    `<div class="ev${x.print ? " print" : /🎉|💎|matches/.test(x.text) ? " good" : /💥|🔋|⏱|🔒|different|no drills/.test(x.text) ? " bad" : ""}" data-t="${x.t}" data-end="${x.end}"><span class="t">${x.t}</span><span>${x.print ? "› " : ""}${esc(x.text)}${x.n > 1 ? ` ×${x.n} <small>(until tick ${x.end})</small>` : ""}</span></div>`).join("")
+    `<div class="ev${x.print ? " print" : /🎉|💎|matches/.test(x.text) ? " good" : /💥|🔋|⏱|🔒|different|no drills|won't move|is full/.test(x.text) ? " bad" : ""}" data-t="${x.t}" data-end="${x.end}"><span class="t">${x.t}</span><span>${x.print ? "› " : ""}${esc(x.text)}${x.n > 1 ? ` ×${x.n} <small>(until tick ${x.end})</small>` : ""}</span></div>`).join("")
     + (run.error ? `<div class="err">${esc(run.error)}</div>` : "")
     + (!lines.length && !run.error ? '<div class="empty">No telemetry.</div>' : "");
   hideBanner(); hideCelebrate();
@@ -1525,7 +1576,7 @@ async function celebrate(r, run) {
   $("bigStars").innerHTML = r.stars.map((s, i) => `<div class="big-star${s ? " got" : r.best[i] ? " was" : ""}" title="${esc(goals[i] || "")}"><i>★</i><span>${esc([...(goals[i] || "★")][0])}</span></div>`).join("");
   const missing = goals.filter((g, i) => !r.best[i]);
   $("celeMiss").textContent = missing.length && site.key !== "7" ? `Still to earn: ${missing.join(" · ")}` : "";
-  $("celeTip").textContent = site.key !== "7" && !r.best[2] ? compactTip($("code").value) : "";
+  $("celeTip").textContent = site.key !== "7" ? starTips(r.best, $("code").value).join("\n") : "";
   $("celeNote").innerHTML = "";
   const next = nextSite();
   $("celeActions").innerHTML = (next && site.key !== "7" ? `<button class="go" onclick="openSite('${next}')">Next site ▶</button>` : "")
@@ -1553,12 +1604,22 @@ async function celebrate(r, run) {
   $("celeActions").querySelector("button").focus();
   showToasts(r);
 }
-// One next step toward the ✂️ star, from what the code already uses.
-function compactTip(code) {
-  if (!/\b(for|while)\b/.test(code)) return "💡 Find a chunk of lines that repeats, and put it in a for loop.";
-  if (!/\bwhile\b/.test(code) && site.sensors.includes("look")) return '💡 Instead of counting squares, let a sensor decide:  while look("east") != "rock":';
-  if (!/\bdef\b/.test(code)) return "💡 Give a chunk you use more than once a name with def, then call it.";
-  return "💡 Look for lines that do the same job, and merge them into one loop.";
+// A hint for each star still to earn, from the site's own tips. The ✂️ one
+// also says how many lines the code is over.
+function starTips(best, code) {
+  return (site.tips || []).map((tip, i) => {
+    if (!tip || best[i]) return "";
+    const lines = code.split("\n").filter(line => line.trim() && !line.trim().startsWith("#")).length;
+    const target = Number((/✂️ (\d+)/.exec(site.goals[2] || "") || [])[1]);
+    const over = i === 2 && lines > target ? ` (Your code is ${lines} lines: cut ${lines - target}.)` : "";
+    return tip + over;
+  }).filter(Boolean);
+}
+// The hint for one star, from its goal button.
+function showStarTip(i) {
+  showBanner("", "💡 Hint:");
+  const tip = starTips([true, i !== 1, i !== 2], $("code").value)[0];
+  $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">${esc(tip)}</span>`);
 }
 function hideCelebrate() { $("celebrate").hidden = true; }
 function bumpStars(total) {
@@ -1707,7 +1768,12 @@ async function openSite(key) {
   render();
   hideBanner();
   if (key === "7") showBanner("", "The first of five planets. Every run lands on the same five, and one program has to reach the beacon on all of them: transmit to see the other four. Boulder Plain code that worked on every plain is a good start. Then add what you learned about gusts and charging in the sun.");
-  else {
+  else if (view.stars[0] && !view.stars.every(Boolean)) {
+    // Back on a site they've completed: a hint for each star still to earn.
+    showBanner("", "Back for more stars? Try this:");
+    for (const tip of starTips(view.stars, $("code").value))
+      $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">${esc(tip)}</span>`);
+  } else {
     // A new zone's first site also says what the zone is like.
     const intro = zone.sites[0].key === key && zone.blurb ? `${zone.name}: ${zone.blurb}` : "";
     const text = [intro, view.coach ? view.coach.intro : "", carried ? "Your last site's code is loaded. Will it still work here?" : ""].filter(Boolean).join(" ");
@@ -1719,23 +1785,27 @@ async function openSite(key) {
 // The site as it is before anything has run.
 function resetScene() {
   if (site.map) {
-    const [r, c] = findChar(site.map, "S");
+    const [r, c] = findChar(site.map, "S") || findChar(site.map, "H");
     scene = sceneFor(site.map, [{r, c, d: site.dir, t: 0, b: site.battery, dl: site.drills}], null, site.crystals);
     $("batteryGauge").hidden = site.battery == null;
     $("sampleGauge").hidden = !scene.samples;
     $("crystalGauge").hidden = !scene.crystals.length;
     $("drillGauge").hidden = site.drills == null;
     $("flagGauge").hidden = !scene.flags; $("keyGauge").hidden = true;
+    $("cargoGauge").hidden = !site.map.join("").includes("H"); $("cargo").textContent = "0/3";
     setPos(0); $("clock").textContent = "";
   } else {
     scene = null;
     $("batteryGauge").hidden = true; $("sampleGauge").hidden = true; $("crystalGauge").hidden = true;
-    $("drillGauge").hidden = true; $("flagGauge").hidden = true; $("keyGauge").hidden = true;
+    $("drillGauge").hidden = true; $("flagGauge").hidden = true; $("keyGauge").hidden = true; $("cargoGauge").hidden = true;
   }
 }
 function renderGoals() {
   const best = site.stars || [false, false, false];
-  $("goals").innerHTML = (site.goals || []).map((g, i) => `<span class="goal${best[i] ? " got" : ""}"><i>★</i>${esc(g)}</span>`).join("")
+  // A star still to earn that has a hint is a button: press it for the hint.
+  $("goals").innerHTML = (site.goals || []).map((g, i) => site.tips && site.tips[i] && !best[i]
+    ? `<button class="goal hint" onclick="showStarTip(${i})" title="Press for a hint"><i>★</i>${esc(g)} <b>💡</b></button>`
+    : `<span class="goal${best[i] ? " got" : ""}"><i>★</i>${esc(g)}</span>`).join("")
     + (site.gift ? '<span class="goal gift">🎁 A mystery gift is hidden here: drive over it</span>' : "")
     + legend(site.map || []).map(t => `<span class="goal legend">${esc(t)}</span>`).join("");
 }
@@ -1745,14 +1815,17 @@ function legend(map) {
   return [/[<>^v]/.test(text) && "🛤 belt: carries you the way its arrows point",
           text.includes("k") && "🔑 key: drive over it to pick it up",
           text.includes("D") && "🚪 gate: opens with a key",
-          flags && `🚩 flags 1 to ${flags}: in order`].filter(Boolean);
+          flags && `🚩 flags 1 to ${flags}: in order`,
+          text.includes("B") && "🪨 boulder: drive into it to push it",
+          text.includes("H") && "📦 home: bring samples here, 3 at a time"].filter(Boolean);
 }
 
 // ---- The kit: commands and sensors, one click to add -------------------------------------
 function renderKit(zi) {
   // Uncharted has no samples, nothing to report, no drills, keys or flags, so
   // those would only mislead.
-  const UNUSED = ["samples_left", "report", "drill", "drills_left", "has_key", "key_x", "key_y", "next_x", "next_y", "flags_left"];
+  const UNUSED = ["samples_left", "report", "drill", "drills_left", "has_key", "key_x", "key_y", "next_x", "next_y", "flags_left",
+                  "cargo", "home_x", "home_y", "sample_x", "sample_y"];
   const names = [...COMMANDS, ...site.sensors.filter(n => site.key !== "7" || !UNUSED.includes(n))];
   $("kit").innerHTML = names.map(n => {
     const cmd = LINE_CHIPS.includes(n), fresh = SENSOR_ZONE[n] === zi && zi > 0;
