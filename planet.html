@@ -63,6 +63,12 @@
   .stars-button { display: flex; align-items: center; gap: 6px; border: 0; border-radius: 99px; padding: 6px 12px 6px 10px; background: var(--panel); color: var(--gold); font: 700 15px var(--mono); }
   .stars-button:hover { background: var(--panel-2); }
   .stars-button.bump { animation: bump .5s; }
+  .stars-button { position: relative; }
+  .rank-bar { position: absolute; left: 12px; right: 12px; bottom: 2px; height: 3px; border-radius: 2px; background: rgba(255,211,107,.18); overflow: hidden; }
+  .rank-bar b { display: block; height: 100%; width: 0; background: var(--gold); transition: width .6s; }
+  .fly-star { position: fixed; z-index: 60; margin: -18px 0 0 -14px; font-size: 34px; color: var(--gold); text-shadow: 0 0 14px rgba(255,211,107,.85); pointer-events: none; transition: transform .7s cubic-bezier(.5,-.3,.7,1), opacity .7s; }
+  .cele-note .first { color: #7ff0d6; }
+  .cele-note .rank { color: #ff8ad8; }
   @keyframes bump { 40% { transform: scale(1.25); background: #5a4a20; } }
 
   /* The route: every zone a stretch of trail, every site a waypoint on it. */
@@ -264,6 +270,8 @@
   .pop h3 { margin: 12px 0 6px; font-size: 13px; color: var(--haze); font-weight: 650; }
   .fns { display: grid; gap: 8px; max-height: min(320px, 45vh); overflow: auto; }
   .fn { background: var(--dusk); border-radius: 12px; padding: 8px 10px; }
+  .msg pre { margin: 8px 0 0; padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,.25); font: 13px/1.5 var(--mono); white-space: pre; overflow-x: auto; }
+  .big .msg pre { font-size: 15px; }
   .fn pre { margin: 0; max-height: 96px; overflow: auto; font: 13px/1.5 var(--mono); white-space: pre; }
   .fn .pop-row { margin-top: 6px; }
   .fn-save { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -352,7 +360,7 @@
     <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#352d60"/><rect x="8" y="13" width="16" height="9" rx="2" fill="#f2eadb"/><rect x="6" y="11" width="4" height="4" rx="1" fill="#2a2440"/><rect x="22" y="11" width="4" height="4" rx="1" fill="#2a2440"/><rect x="6" y="20" width="4" height="4" rx="1" fill="#2a2440"/><rect x="22" y="20" width="4" height="4" rx="1" fill="#2a2440"/><circle cx="20" cy="17" r="2.4" fill="#8cf2c6"/></svg>Strange Planet</div>
     <nav class="route" id="route" aria-label="Your route across the planet"></nav>
     <div class="who">
-      <button class="stars-button" id="starsButton" title="Your stars, the garage and your badges">★ <span id="totalStars">0</span></button>
+      <button class="stars-button" id="starsButton" title="Your stars, the garage and your badges"><span id="rankIcon"></span>★ <span id="totalStars">0</span><i class="rank-bar"><b id="rankBar"></b></i></button>
       <b id="driver"></b>
       <button class="quiet round" id="muteButton" title="Sound on or off" aria-label="Sound on or off">🔊</button>
       <button class="quiet round" id="helpButton" title="How it works" aria-label="How it works">?</button>
@@ -371,7 +379,7 @@
           <div class="gauges">
             <div class="gauge" title="Ticks so far: one for every command"><small>tick</small><span id="tick">0</span></div>
             <div class="gauge" id="batteryGauge" hidden title="battery()"><small>battery</small><span class="cell"><i id="batteryBar"></i></span><span id="battery">100</span></div>
-            <div class="gauge" id="sampleGauge" hidden title="samples_left()"><small>samples</small><span id="samples">0</span></div>
+            <div class="gauge" id="sampleGauge" hidden title="samples_left()"><small id="sampleLabel">samples</small><span id="samples">0</span></div>
             <div class="gauge" id="crystalGauge" hidden title="Crystals collected"><small>💎</small><span id="crystals">0</span></div>
             <div class="gauge" id="drillGauge" hidden title="drills_left()"><small>⛏ drills</small><span id="drills">0</span></div>
             <div class="gauge" id="keyGauge" hidden title="Keys the rover holds"><small>🔑 keys</small><span id="keys">0</span></div>
@@ -604,6 +612,11 @@ const SFX = (() => {
     error: () => tone(140, .28, {type: "sawtooth", vol: .13, slide: -30}),
     send: () => notes([440, 660, 880], {vol: .16, dur: .08, gap: .05}),
     report: () => notes([1175, 1568, 1175, 1568], {type: "square", vol: .07, dur: .06, gap: .05}),
+    // Pick-ups in a row climb two semitones each, like coins in a row.
+    combo: n => notes([880, 1175].map(f => f * Math.pow(2, Math.min(n - 1, 10) / 6)), {vol: .3, dur: .2, gap: .07}),
+    deliver: () => notes([1047, 1319, 1568, 2093, 1568, 2093], {type: "square", vol: .1, dur: .1, gap: .05}),
+    rank: () => notes([523, 659, 784, 1047, 784, 1047, 1319], {type: "triangle", vol: .3, dur: .22, gap: .09}),
+    first: () => notes([1568, 2093, 2637], {type: "triangle", vol: .26, dur: .18, gap: .07}),
   };
   return {
     play(name, arg) {
@@ -662,6 +675,10 @@ const WORLDS = {
   blocky: {ground: "#6dbb44", rock: "#505357", bed: "#5b3d24", ice: ["#a9d8ff", "#6fa8e0"], pixel: true},
   factory: {ground: "#7d838c", rock: "#33373e", bed: "#111317", edge: "#ffb84d", seam: "rgba(20,22,26,.35)"},
   sandstone: {ground: "#e0b77e", rock: "#8a5a32", bed: "#3a2414", grit: ["rgba(140,80,40,.18)", "rgba(255,240,210,.2)"]},
+  jungle: {ground: "#5f8f45", rock: "#2e4a26", bed: "#13210f", grit: ["rgba(30,60,20,.28)", "rgba(190,240,120,.2)"]},
+  clouds: {ground: "#eef3ff", rock: "#b9a3ff", bed: "#8fb8ff", grit: ["rgba(255,255,255,.7)", "rgba(150,170,220,.22)"], seam: "rgba(150,170,220,.25)"},
+  starry: {ground: "#1d2a5a", rock: "#0d1330", bed: "#050818", edge: "#ffd36b", rim: "#ffd36b",
+           grit: ["rgba(255,236,170,.85)", "rgba(10,20,50,.3)"], stars: "rgba(255,236,170,.8)"},
 };
 const GRIT = ["rgba(30,10,20,.14)", "rgba(255,240,220,.10)"];
 function palette(zone) { return WORLDS[look.world] || GROUND[zone] || GROUND.landing; }
@@ -956,12 +973,22 @@ function render(now = performance.now()) {
       }
     }
   }
-  // The laser: a beam the way distance() measured, just before the drive that used it.
-  const beam = frames[i + 1] && frames[i + 1].ls;
-  if (beam && pos - i < .5) {
-    const [dr, dc] = DIRS[beam[0]], x0 = (f.c + .5) * cell, y0 = (f.r + .5) * cell, len = (beam[1] + .5) * cell;
-    ctx.strokeStyle = "rgba(255,59,92,.85)"; ctx.lineWidth = Math.max(2, cell / 12); ctx.setLineDash([cell * .2, cell * .12]);
-    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 + dc * len, y0 + dr * len); ctx.stroke(); ctx.setLineDash([]);
+  // The laser: a beam the way distance() measured, from the rover to what it
+  // hit, for as long as the rover drives along it.
+  let lj = 0;
+  for (let j = Math.min(i + 1, frames.length - 1); j > 0 && j > i - 51; j--) if (frames[j].ls) { lj = j; break; }
+  if (lj) {
+    const m = frames[lj - 1], [way, n] = frames[lj].ls, [dr, dc] = DIRS[way];
+    const along = dr ? (rover.r - m.r) * dr : (rover.c - m.c) * dc;
+    const onLine = Math.abs(dr ? rover.c - m.c : rover.r - m.r) < .01;
+    if (onLine && along > -.01 && (n ? i - (lj - 1) < n : pos - i < .5)) {
+      const x0 = (rover.c + .5) * cell, y0 = (rover.r + .5) * cell, len = (n - along + .5) * cell;
+      const x1 = x0 + dc * len, y1 = y0 + dr * len;
+      ctx.strokeStyle = "rgba(255,59,92,.85)"; ctx.lineWidth = Math.max(2, cell / 12); ctx.setLineDash([cell * .2, cell * .12]);
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); ctx.setLineDash([]);
+      // Where it hit.
+      ctx.fillStyle = "rgba(255,59,92,.9)"; ctx.beginPath(); ctx.arc(x1, y1, Math.max(2.5, cell / 10), 0, 7); ctx.fill();
+    }
   }
   drawTrail(ctx, frames, i, rover, cell, now);
   const G = findChar(map, "G");
@@ -1000,6 +1027,7 @@ function render(now = performance.now()) {
     ctx.beginPath(); ctx.arc(rx, ry, cell * (.7 + u * .4), 0, 7); ctx.stroke();
   }
   drawParticles(ctx, cell, dt);
+  drawPops(ctx, cell, now);
   ctx.restore();
   vignette(ctx, w, h);
   const said = speech(f, now);
@@ -1119,6 +1147,37 @@ function drawTrail(ctx, frames, i, rover, cell, now) {
       ctx.fillStyle = colors[Math.floor(hash(k, j, 10) * colors.length)];
       ctx.fillRect((p.c + .5 + (hash(k, j, 11) - .5) * .6) * cell - z / 2, (p.r + .5 + (hash(k, j, 12) - .5) * .6) * cell - z / 2, z, z);
     }
+  } else if (look.trail === "notes") {   // music notes that bob along behind
+    ctx.font = `700 ${Math.round(cell * .46)}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    for (const [, p, k] of segs) {
+      const bob = CALM ? 0 : Math.sin(now / 300 + k) * cell * .05;
+      ctx.fillStyle = ["#ff6fae", "#8fc8ff", "#ffd36b", "#7ff0d6"][k % 4];
+      ctx.fillText(k % 2 ? "♪" : "♫", (p.c + .5 + (hash(k, 17) - .5) * .4) * cell, (p.r + .5) * cell + bob);
+    }
+  } else if (look.trail === "stars") {   // little gold stars that twinkle
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    for (const [, p, k] of segs) {
+      const tw = CALM ? .8 : .45 + .55 * Math.abs(Math.sin(now / 260 + k * 1.3));
+      ctx.globalAlpha = tw; ctx.fillStyle = "#ffd36b";
+      ctx.font = `${Math.round(cell * (.3 + hash(k, 18) * .16))}px system-ui, sans-serif`;
+      ctx.shadowColor = "#ffd36b"; ctx.shadowBlur = cell * .2;
+      ctx.fillText("★", (p.c + .5 + (hash(k, 19) - .5) * .5) * cell, (p.r + .5 + (hash(k, 20) - .5) * .5) * cell);
+    }
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  } else if (look.trail === "fireworks") {   // bursts on the newest squares, glitter behind
+    segs.forEach(([, p, k], n) => {
+      const age = (segs.length - 1 - n) / 6, x = (p.c + .5) * cell, y = (p.r + .5) * cell;
+      const color = ["#ff6fae", "#ffd36b", "#7ff0d6", "#8fc8ff", "#c69bff"][k % 5];
+      ctx.fillStyle = ctx.strokeStyle = color;
+      if (age >= 1) { ctx.globalAlpha = .6; ctx.beginPath(); ctx.arc(x, y, cell * .04, 0, 7); ctx.fill(); ctx.globalAlpha = 1; return; }
+      const r = cell * (.15 + .25 * (CALM ? .5 : age)) ;
+      ctx.lineWidth = Math.max(1, cell * .035); ctx.globalAlpha = 1 - age * .7;
+      for (let j = 0; j < 8; j++) {
+        const a = j * Math.PI / 4 + k;
+        ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r * .4, y + Math.sin(a) * r * .4); ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    });
   } else if (look.trail === "fire") {   // flames on the newest squares, scorch marks behind
     segs.forEach(([, p, k], n) => {
       const age = (segs.length - 1 - n) / 8, x = (p.c + .5) * cell, y = (p.r + .5) * cell;
@@ -1181,7 +1240,8 @@ function drawHome(ctx, r, c, cell) {
   const x = c * cell, y = r * cell;
   ctx.fillStyle = "rgba(140,242,198,.25)"; ctx.fillRect(x + 2, y + 2, cell - 4, cell - 4);
   ctx.strokeStyle = "#8cf2c6"; ctx.lineWidth = Math.max(1.5, cell / 14); ctx.strokeRect(x + 3, y + 3, cell - 6, cell - 6);
-  ctx.font = `${Math.round(cell * .5)}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  // Opaque, or the crate comes out as see-through as the pad.
+  ctx.fillStyle = "#fff"; ctx.font = `${Math.round(cell * .5)}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.fillText("📦", x + cell / 2, y + cell / 2 + 1);
 }
 const BELT_WAY = {"^": 0, ">": 1, "v": 2, "<": 3};
@@ -1327,10 +1387,40 @@ function onStep(k) {
   if (moved) {
     const key = f.r + "," + f.c, seen = scene.frames.slice(0, k).some(x => x.r === f.r && x.c === f.c);
     if (!seen && scene.crystals.some(([r, c]) => r === f.r && c === f.c)) { SFX.play("crystal"); burst(f.r, f.c, "crystal", 16); }
-    else if (f.p) { SFX.play("sample"); burst(f.r, f.c, "sparkle", 12); }
+    else if (f.p) { combo(f, "🧪"); burst(f.r, f.c, "sparkle", 12); }
     else if (!seen && !scout && scene.gift && scene.gift[0] === f.r && scene.gift[1] === f.c) { SFX.play("gift"); burst(f.r, f.c, "gift", 22); }
     if (look.trail === "dust" && !sliding) burst(f.r, f.c, "dust", 2);
   }
+  if (f.k > (p.k || 0)) combo(f, "🔑");
+  if (f.fl > (p.fl || 1)) combo(f, "🚩");
+  // Samples unloaded at home: a ka-ching and how many.
+  if (f.cg != null && p.cg > f.cg) { SFX.play("deliver"); pop(f, `+${p.cg} 📦`, "#ffd36b"); burst(f.r, f.c, "gift", 18); }
+}
+// Pick-ups close together make a combo: each one sounds higher, and from the
+// second on, "×2", "×3" floats up over the rover.
+function combo(f, icon) {
+  const c = scene.combo && f.t - scene.combo.t <= 4 && f.t >= scene.combo.t ? scene.combo.n + 1 : 1;
+  scene.combo = {n: c, t: f.t};
+  SFX.play("combo", c);
+  if (c > 1) pop(f, `${icon} ×${c}${c >= 4 ? "!" : ""}`, c >= 4 ? "#ff8ad8" : "#7ff0d6");
+}
+// A word that floats up from a square and fades.
+function pop(f, text, color) {
+  (scene.pops = scene.pops || []).push({r: f.r, c: f.c, text, color, at: performance.now()});
+}
+function drawPops(ctx, cell, now) {
+  if (!scene.pops) return;
+  scene.pops = scene.pops.filter(p => now - p.at < 1100);
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.font = `800 ${Math.round(Math.max(14, cell * .42))}px system-ui, sans-serif`;
+  for (const p of scene.pops) {
+    const u = (now - p.at) / 1100, rise = CALM ? 0 : u * cell * .9;
+    ctx.globalAlpha = Math.min(1, 2.4 * (1 - u));
+    ctx.lineWidth = 4; ctx.strokeStyle = "rgba(12,9,26,.8)";
+    ctx.strokeText(p.text, (p.c + .5) * cell, (p.r - .15) * cell - rise);
+    ctx.fillStyle = p.color; ctx.fillText(p.text, (p.c + .5) * cell, (p.r - .15) * cell - rise);
+  }
+  ctx.globalAlpha = 1;
 }
 function shake() {
   if (CALM) return;
@@ -1361,7 +1451,7 @@ function frameLoop(ts) {
   }
   // Smooth while anything moves; otherwise just enough for the glows (about
   // 15 frames a second), so an idle tab stays cheap on a Chromebook.
-  const busyFx = particles.length || confetti.length ||
+  const busyFx = particles.length || confetti.length || (scene && scene.pops && scene.pops.length) ||
     (scene && ts - Math.max(scene.cheer || 0, scene.poke || 0) < 900);
   if (!document.hidden && (playing || busyFx || ts - (frameLoop.drawn || 0) > (CALM ? 500 : 66))) {
     render(ts); frameLoop.drawn = ts;
@@ -1507,7 +1597,12 @@ function finished() {
   const run = scene.run;
   if (scout) return scoutFinished(run);
   const anyReached = site.key === "7" ? runs.some(x => x.reached) : run.reached;
-  if (rewards && anyReached) { const r = rewards; rewards = null; return celebrate(r, run); }
+  if (rewards && anyReached) {
+    const r = rewards; rewards = null; celebrate(r, run);
+    // On Uncharted the planet on screen may be one it missed: its banner
+    // waits under the celebration for when that closes.
+    if (site.key !== "7" || run.reached) return;
+  }
   const sitesRewards = rewards; rewards = null;
   if (sitesRewards) showToasts(sitesRewards);
   const [cls, , say] = ending(run);
@@ -1597,11 +1692,19 @@ async function celebrate(r, run) {
   await wait(pause && 300);
   const notes = [];
   if (r.new_stars) notes.push(`+${r.new_stars} ★`);
+  if (r.first_try) notes.push(`<span class="first">🎯 First try!</span>`);
   if (r.record) notes.push(`<span class="rec">🏆 ${r.record.first ? "First to complete it!" : "New class record!"}</span>`);
+  if (r.rank_up) notes.push(`<span class="rank">${esc(r.rank_up.icon)} Rank up: ${esc(r.rank_up.name)}!</span>`);
   $("celeNote").innerHTML = notes.join(" &nbsp; ");
-  if (r.new_stars) bumpStars(r.total_stars);
-  if (got === 3 || r.record) throwConfetti();
+  if (r.first_try) SFX.play("first");
+  if (got === 3 || r.record || r.rank_up) throwConfetti();
   $("celeActions").querySelector("button").focus();
+  if (r.new_stars) await flyStars(stars.filter((el, i) => r.stars[i]).slice(-r.new_stars), r.total_stars);
+  if (r.rank_up) {
+    SFX.play("rank");
+    toast(r.rank_up.icon, `Rank up! You're a ${r.rank_up.name} now`, r.rank_up.next ? `${r.rank_up.need} ★ more to ${r.rank_up.next_icon} ${r.rank_up.next}.` : "Every star on the planet. Legendary!");
+  }
+  r.flown = true;
   showToasts(r);
 }
 // A hint for each star still to earn, from the site's own tips. The ✂️ one
@@ -1622,13 +1725,29 @@ function showStarTip(i) {
   $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">${esc(tip)}</span>`);
 }
 function hideCelebrate() { $("celebrate").hidden = true; }
+// The new stars fly from the card up to the counter, which bumps as they land.
+async function flyStars(from, total) {
+  if (CALM || !from.length) return bumpStars(total);
+  const to = $("totalStars").getBoundingClientRect();
+  from.forEach((el, k) => {
+    const a = el.querySelector("i").getBoundingClientRect(), x = a.left + a.width / 2, y = a.top + a.height / 2;
+    const fly = document.createElement("span");
+    fly.className = "fly-star"; fly.textContent = "★"; fly.style.left = x + "px"; fly.style.top = y + "px";
+    document.body.appendChild(fly);
+    setTimeout(() => { fly.style.transform = `translate(${to.left - x}px, ${to.top + to.height / 2 - y}px) scale(.45)`; fly.style.opacity = ".4"; }, 30 + k * 140);
+    setTimeout(() => { fly.remove(); SFX.play("star", 2); }, 760 + k * 140);
+  });
+  await wait(780 + from.length * 140);
+  bumpStars(total);
+}
 function bumpStars(total) {
   $("totalStars").textContent = total;
+  if (state) renderRank(state.rank);
   const b = $("starsButton"); b.classList.remove("bump"); void b.offsetWidth; b.classList.add("bump");
 }
 // Badges and garage unlocks slide in one after another.
 async function showToasts(r) {
-  if (r.new_stars) bumpStars(r.total_stars);
+  if (r.new_stars && !r.flown) bumpStars(r.total_stars);
   // A handful of badges at once becomes one toast, so they never bury the editor.
   const badges = r.badges.length > 2
     ? [["🏅", `${r.badges.length} new badges!`, `${r.badges.map(b => b.icon).join(" ")}  See them in the garage (★ at the top).`]]
@@ -1690,8 +1809,32 @@ function useState(data) {
   state = data;
   look = data.look || look;
   $("totalStars").textContent = data.total_stars;
+  if (!holdRank) renderRank(data.rank);
+  classUnlocks(data);
   renderRoute();
   renderFunctions();
+}
+
+// The rank beside the stars: its icon, a bar to the next one, and the words on hover.
+let holdRank = false;
+function renderRank(rank) {
+  if (!rank) return;
+  $("rankIcon").textContent = rank.icon;
+  $("rankBar").style.width = `${Math.round(100 * (rank.next ? rank.progress : 1))}%`;
+  $("starsButton").title = `${rank.name}${rank.next ? `: ${rank.need} ★ to ${rank.next_icon} ${rank.next}` : ": every star there is!"}. Press for the garage and your badges.`;
+}
+// Class goals reached since this student last looked: everyone hears about it.
+function classUnlocks(data) {
+  if (!data.class || !me) return;
+  const reached = data.class.goals.filter(g => data.class.stars >= g), key = `planetClassSeen:${me}`;
+  const seen = recall(key);
+  store(key, String(reached.length));
+  if (seen == null) return;   // first visit: nothing to announce
+  for (const goal of reached.slice(Number(seen))) {
+    const item = data.garage.find(i => i.class === goal);
+    SFX.play("rank");
+    toast("🎉", `Class unlock: ${goal} ★ together!`, `Everyone gets ${item ? `${item.name} ${item.slot}` : "something new"}. Fit it in the garage (★ at the top).`);
+  }
 }
 
 // ---- The route --------------------------------------------------------------------------
@@ -1767,7 +1910,7 @@ async function openSite(key) {
   setPlaying(false);
   render();
   hideBanner();
-  if (key === "7") showBanner("", "The first of five planets. Every run lands on the same five, and one program has to reach the beacon on all of them: transmit to see the other four. Boulder Plain code that worked on every plain is a good start. Then add what you learned about gusts and charging in the sun.");
+  if (key === "7") showBanner("", "The first of five planets. Every run lands on the same five, and one program has to reach the beacon on all of them: transmit to see the other four. Your 7C Rocky Plain code that worked on every plain is a good start. Then add what you learned about gusts and charging in the sun.");
   else if (view.stars[0] && !view.stars.every(Boolean)) {
     // Back on a site they've completed: a hint for each star still to earn.
     showBanner("", "Back for more stars? Try this:");
@@ -1789,6 +1932,8 @@ function resetScene() {
     scene = sceneFor(site.map, [{r, c, d: site.dir, t: 0, b: site.battery, dl: site.drills}], null, site.crystals);
     $("batteryGauge").hidden = site.battery == null;
     $("sampleGauge").hidden = !scene.samples;
+    // On a cargo run the samples on board aren't home yet, so say what it counts.
+    $("sampleLabel").textContent = site.mission === "deliver" ? "to pick up" : "samples";
     $("crystalGauge").hidden = !scene.crystals.length;
     $("drillGauge").hidden = site.drills == null;
     $("flagGauge").hidden = !scene.flags; $("keyGauge").hidden = true;
@@ -1822,11 +1967,16 @@ function legend(map) {
 
 // ---- The kit: commands and sensors, one click to add -------------------------------------
 function renderKit(zi) {
-  // Uncharted has no samples, nothing to report, no drills, keys or flags, so
-  // those would only mislead.
-  const UNUSED = ["samples_left", "report", "drill", "drills_left", "has_key", "key_x", "key_y", "next_x", "next_y", "flags_left",
-                  "cargo", "home_x", "home_y", "sample_x", "sample_y"];
-  const names = [...COMMANDS, ...site.sensors.filter(n => site.key !== "7" || !UNUSED.includes(n))];
+  // A sensor for something this map doesn't have (keys, flags, home, drills,
+  // sunlight) would only mislead, so its chip waits for a map that has it.
+  // Typing it still works.
+  const text = (site.map || []).join(""), samples = text.includes("*"), home = text.includes("H");
+  const keys = text.includes("k"), flags = /[1-9]/.test(text);
+  const USEFUL = {samples_left: samples, sample_x: samples, sample_y: samples, report: site.mission === "report",
+                  battery: site.battery != null, in_sun: site.battery != null, beacon_x: text.includes("G"), beacon_y: text.includes("G"),
+                  drill: site.drills != null, drills_left: site.drills != null, has_key: keys, key_x: keys, key_y: keys,
+                  next_x: flags, next_y: flags, flags_left: flags, cargo: home, home_x: home, home_y: home};
+  const names = [...COMMANDS, ...site.sensors.filter(n => USEFUL[n] !== false)];
   $("kit").innerHTML = names.map(n => {
     const cmd = LINE_CHIPS.includes(n), fresh = SENSOR_ZONE[n] === zi && zi > 0;
     return `<button class="chip${cmd ? " cmd" : ""}${fresh ? " new" : ""}" data-name="${n}" title="${esc(HELP[n] || "")}${fresh ? " (new here)" : ""}">${esc(CHIP_TEXT[n] || n + "()")}</button>`;
@@ -1861,7 +2011,12 @@ function replaceText(start, end, text) {
 // ---- Radio ------------------------------------------------------------------------------
 function renderRadio() {
   const zone = zoneOf(site.key);
-  $("hints").innerHTML = zone.hints.length ? zone.hints.map(h => `<div class="msg">${esc(h)}</div>`).join("")
+  // A hint is a sentence, then (after a blank line) code to the end: the code
+  // gets the editor's font, so its indents line up.
+  $("hints").innerHTML = zone.hints.length ? zone.hints.map(h => {
+    const at = h.indexOf("\n\n");
+    return `<div class="msg">${at < 0 ? esc(h) : `${esc(h.slice(0, at))}<pre>${esc(h.slice(at + 2))}</pre>`}</div>`;
+  }).join("")
     : '<div class="msg">Try an experiment first. Ask if you\'re stuck.</div>';
   const left = zone.hint_count - zone.hints.length;
   $("hintsLeft").textContent = left ? `${left} more` : "That's everything.";
@@ -1973,7 +2128,8 @@ function garageLoop(ts) {
   requestAnimationFrame(garageLoop);
 }
 function renderGarage() {
-  $("garageStars").textContent = `★ ${state.total_stars} / ${state.max_stars}`;
+  const rank = state.rank;
+  $("garageStars").textContent = `★ ${state.total_stars} / ${state.max_stars}` + (rank ? ` · ${rank.icon} ${rank.name}${rank.next ? `, ${rank.need} ★ to ${rank.next_icon} ${rank.next}` : ""}` : "");
   for (const slot of ["paint", "topper", "trail", "world"]) {
     $(slot + "Options").innerHTML = state.garage.filter(i => i.slot === slot).map(i => {
       const sw = slot === "paint" || slot === "world" ? `<span class="sw" style="background:${swatch(slot, i.key)}"></span>` : "";
@@ -2087,10 +2243,14 @@ function scoutFinished(run) {
   // the driving help and pad, which would otherwise sit on top of it.
   $("scoutHelp").hidden = true; $("pad").hidden = true;
   const say = {goal: "Your scout made it! Now write code that does the same.",
-               fell: "Lost! What happened there?", battery: "Flat battery! Hmm.",
+               fell: "Lost!", battery: "Flat battery!",
                ticks: "Out of time.", stopped: "Out of scouting moves."}[run.end] || "";
   if (run.end === "goal") SFX.play("win");
-  showBanner("scout", say, `${run.end === "goal" ? `<button class="go" onclick="scoutAsCode()">📋 Use as code</button>` : ""}<button class="quiet" onclick="restartScout()">Scout again (R)</button><button class="quiet" onclick="stopScout()">Stop</button>`);
+  // A lost scout says what happened and one thing to try, like a transmitted run.
+  const ex = ["fell", "battery", "ticks"].includes(run.end) && run.explain;
+  let next = ex ? ex.next : "";
+  if (next.includes("jump(")) next = "Scouting can't jump, but code can. " + next;
+  showBanner("scout", ex ? `${say} ${ex.what}` : say, `${run.end === "goal" ? `<button class="go" onclick="scoutAsCode()">📋 Use as code</button>` : ""}<button class="quiet" onclick="restartScout()">Scout again (R)</button><button class="quiet" onclick="stopScout()">Stop</button>`, next);
 }
 // The hand-driven route, written as code with a few words left for the
 // student to finish: three east() in a row become east(3), a long wait
@@ -2175,7 +2335,9 @@ async function transmit() {
     if (data.error === "join") { localStorage.removeItem("mazeId"); location.reload(); return; }
     if (data.error) { showBanner("lost", data.error); return; }
     runs = data.runs; rewards = data.rewards;
+    holdRank = data.rewards.new_stars > 0;
     useState(data.state);
+    holdRank = false;
     $("totalStars").textContent = data.rewards.total_stars - data.rewards.new_stars;
     site.stars = data.rewards.best;
     site.misses = data.rewards.misses;

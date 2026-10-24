@@ -44,6 +44,7 @@
   .name { font-weight: 700; }
   .site small { display: block; color: var(--muted); font-size: 12px; }
   .stuck { color: var(--amber); font-weight: 700; }
+  .said { display: block; max-width: 320px; margin-top: 3px; color: var(--muted); font-size: 12px; line-height: 1.35; white-space: normal; text-align: left; }
   .very-stuck { color: var(--red); font-weight: 700; }
   .empty { color: var(--muted); padding: 30px 0; }
   .bar { height: 6px; background: #1b2840; width: 120px; margin-top: 5px; }
@@ -105,7 +106,7 @@ async function refresh() {
     <td class="num">${s.stars} ★<small style="display:block;color:var(--muted)">${s.badges} badges</small></td>
     <td class="num ${stuckClass(s.runs_here)}">${s.runs_here}</td>
     <td class="num">${s.hints}</td>
-    <td class="num">${ago(s.active)}</td>
+    <td class="num">${ago(s.active)}${s.now && s.now.said ? `<small class="said">${esc(s.now.site.toUpperCase())}: ${esc(s.now.said)}</small>` : ""}</td>
     <td>${s.site !== "7" ? `<button onclick="unlock('${esc(s.id)}')" title="Open the next site for this student">Unlock next</button>` : ""}</td>
   </tr>`).join("");
 }

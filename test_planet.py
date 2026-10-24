@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import tempfile
 import threading
 import unittest
@@ -8,6 +9,8 @@ from urllib.request import Request, urlopen
 
 import planet
 import server
+
+HERE = os.path.dirname(os.path.abspath(__file__))
 
 COMPASS = ("north()", "south()", "east()", "west()")
 
@@ -686,6 +689,16 @@ class GiftTests(unittest.TestCase):
         top = 3 * len(planet.SITE_ORDER)
         self.assertTrue(all(i["stars"] <= top for i in server.GARAGE if "stars" in i))
 
+    def test_every_garage_item_is_drawn(self):
+        render = open(os.path.join(HERE, "planet_render.js"), encoding="utf-8").read()
+        page = open(os.path.join(HERE, "planet.html"), encoding="utf-8").read()
+        drawn = {"paint": lambda k: re.search(rf"\b{k}: ", render),
+                 "topper": lambda k: k == "none" or f'topper === "{k}"' in render,
+                 "trail": lambda k: k == "tracks" or f'look.trail === "{k}"' in page,
+                 "world": lambda k: k == "planet" or re.search(rf"\n  {k}: {{", page)}
+        for item in server.GARAGE:
+            self.assertTrue(drawn[item["slot"]](item["key"]), item["key"])
+
 
 class UnchartedTests(unittest.TestCase):
     def planets(self, seeds=10):
@@ -773,7 +786,7 @@ class RoverTests(unittest.TestCase):
             ("1a", "east(2)\n", "finished with the rover at x 3, y 1, and 3 samples still out",
              "The closest is at x 2, y 3: 1 square west and 2 squares south."),
             ("7b", "east()\n", "away from the beacon at", "of there."),
-            ("8a", "east(8)\n", "The rover drove into a crater at x 6, y 2", 'look("east") == "crater"'),
+            ("8a", "east(8)\n", "The rover drove into a crater at x 6, y 2", 'jump("east") from x 5, y 2'),
             ("3b", "south(20)\n", "gust pushed the rover into a crater", "wait()"),
             ("4a", "east()\nwest()\n", "had cracked", "own tracks"),
             ("5c", "east(40)\n", "The battery ran out", "sun"),
@@ -798,8 +811,54 @@ class RoverTests(unittest.TestCase):
         self.assertIn("import", run("1a", "import os\n")["error"])
         self.assertIn("Syntax error", run("1a", "east(\n")["error"])
         out = run("1a", "while True:\n    pass\n")
-        self.assertIn("ran too long", out["error"])
+        self.assertIn("rover had stopped at x 1, y 1", out["error"])
         self.assertEqual(out["line"], 1)
+        out = run("1a", "for i in range(99999):\n    for j in range(99):\n        n = i\n")
+        self.assertIn("ran too long", out["error"])
+
+    def test_a_loop_that_stopped_the_rover_says_why(self):
+        out = run("14b", 'while not at_beacon():\n    east(distance("east"))\n')
+        self.assertIn('east(distance("east")) drove 0 squares', out["error"])
+        self.assertIn("Jump it or go round it", out["error"])
+        out = run("15d", planet.GO_TO + "while True:\n    go_to(sample_x(), sample_y())\n")
+        self.assertIn("cargo bay was full", out["error"])
+        steer = ("while not at_beacon():\n    if x() < next_x():\n        east()\n"
+                 "    elif y() < next_y():\n        south()\n")
+        self.assertIn("nothing in your code drives west", run("12c", steer)["error"])
+        out = run("13d", 'while not at_beacon():\n    if look("east") == "ground":\n'
+                         '        east()\n')
+        self.assertIn('look("east") says "boulder"', out["error"])
+
+    def test_stuck_runs_point_at_the_drill_and_the_key(self):
+        self.assertIn('drill("east")', run("10a", "east(10)\n")["explain"]["next"])
+        self.assertIn('drill("east")', run("10d", "while not at_beacon():\n"
+                                                  "    east()\n")["explain"]["next"])
+        out = run("11b", "while not at_beacon():\n    east()\n")
+        self.assertEqual(out["end"], "ticks")
+        self.assertIn("Pick up the key", out["explain"]["next"])
+
+    def test_a_loop_stuck_on_rock_says_where_and_which_way(self):
+        out = run("6c", "while not at_beacon():\n    east()\n")
+        self.assertEqual(out["end"], "ticks")
+        self.assertIn("stuck at x 5, y 1, bumping into rock", out["explain"]["what"])
+        self.assertNotIn("times", out["explain"]["what"])
+        self.assertIn('look("east")', out["explain"]["next"])
+
+    def test_a_flat_battery_says_where_the_sun_was(self):
+        out = run("5c", "east(40)\n")
+        self.assertIn("in the sun at x 16, y 1 on tick 15", out["explain"]["next"])
+        self.assertIn("while in_sun() and battery() < 40: wait()", out["explain"]["next"])
+        out = planet.drive("east(20)\n", planet.UNCHARTED_PLANETS[0],
+                           planet.UNCHARTED_RULES, planet.UNCHARTED_ZONE)
+        self.assertEqual(out["end"], "battery")
+        self.assertIn("in the sun at", out["explain"]["next"])
+
+    def test_a_fall_names_the_way_it_drove_and_a_jump(self):
+        self.assertIn('look("south")', run("13b", "south(5)\n")["explain"]["next"])
+        self.assertIn('jump("south") from x 4, y 4',
+                      run("13b", "east(3)\nsouth(4)\n")["explain"]["next"])
+        # Before jump() arrives, a fall only says to look first.
+        self.assertIn('look("east")', run("3b", "east(9)\n")["explain"]["next"])
 
     def test_beginner_slips_say_what_to_do(self):
         step = "def step():\n    east()\n"
@@ -817,6 +876,10 @@ class RoverTests(unittest.TestCase):
             ("1a", "step()\n" + step, "further down, on line 2", 1),
             ("1a", "def east():\n    wait()\n", "already one of the rover's commands", 1),
             ("1a", "def go(n):\n    east(n)\ngo()\n", "go() needs 1 value in the ( ), like  go(3)", 3),
+            ("15d", "go_to(home_x(), home_y())\n", "def go_to(tx, ty):", 1),
+            ("15a", "east(7)\nhome()\n", "unload by themselves", 2),
+            ("15a", "pickup()\n", "driving over them", 1),
+            ("13a", 'push("east")\n', "Drive into a boulder", 1),
             ("1a", step + "step(2)\n", "made with  def step():", 3),
             ("2a", "x = 3\n", "Pick another name", 1),
             ("2a", 'report("6")\n', "report() sends a whole number", 1),
@@ -961,6 +1024,44 @@ class ClassroomTests(unittest.TestCase):
         row = self.get("/planet/overview")["students"][0]
         self.assertEqual((row["name"], row["site"], row["runs_here"], row["hints"]),
                          ("Ada", "1a", 3, 3))
+        # What the last run's banner said, so the teacher knows before walking over.
+        self.assertIn("3 samples still out", row["now"]["said"])
+        self.post("/planet/run", {"id": pid, "site": "1a", "code": "east(\n"})
+        row = self.get("/planet/overview")["students"][0]
+        self.assertIn("Syntax error", row["now"]["said"])
+
+    def test_first_try_ranks_and_class_goals(self):
+        pid = self.join()
+        ref = lambda key: site(key)[2]["reference"]
+        # A miss first, then a clear: not a first try.
+        self.post("/planet/run", {"id": pid, "site": "1a", "code": "east()\n"})
+        out = self.post("/planet/run", {"id": pid, "site": "1a", "code": ref("1a")})
+        self.assertFalse(out["rewards"]["first_try"])
+        out = self.post("/planet/run", {"id": pid, "site": "1b", "code": ref("1b")})
+        self.assertTrue(out["rewards"]["first_try"])
+        self.assertEqual(out["state"]["rank"]["name"], "Cadet")
+        self.assertGreater(out["state"]["rank"]["need"], 0)
+        # Enough stars for the next rank: the run that gets there says so once.
+        ups = []
+        for key in planet.SITE_ORDER[2:8]:
+            i = planet.variant_index(pid, site(key)[2])
+            code = ref(key) or answer_program(key, i)
+            ups.append(self.post("/planet/run", {"id": pid, "site": key, "code": code})["rewards"]["rank_up"])
+        self.assertEqual([u["name"] for u in ups if u], ["Rookie Pilot"])
+        badges = [b["key"] for b in out["state"]["badges"] if b["earned"]]
+        state = self.post("/planet/run", {"id": pid, "site": "1b", "code": ref("1b")})["state"]
+        self.assertIn("sharp", [b["key"] for b in state["badges"] if b["earned"]])
+        self.assertNotIn("sharp", badges)
+        # Crossing a class goal tells the whole class on the projector.
+        for key in planet.SITE_ORDER[8:]:
+            if state["total_stars"] >= 30:
+                break
+            i = planet.variant_index(pid, site(key)[2])
+            state = self.post("/planet/run", {"id": pid, "site": key,
+                                              "code": ref(key) or answer_program(key, i)})["state"]
+        feed = self.get("/planet/overview")
+        self.assertTrue(any("The class reached 30" in m["text"] for m in feed["feed"]))
+        self.assertEqual(feed["class"]["unlocks"]["30"], "Aurora paint")
 
     def test_teacher_can_unlock_the_next_site(self):
         pid = self.join()
@@ -1140,7 +1241,7 @@ class ClassroomTests(unittest.TestCase):
         # A locked site isn't shown, and nothing in the map gives a rule away.
         self.post("/planet/typing", {"id": pid, "site": "3c", "code": "x"})
         self.assertEqual(self.get("/planet/overview")["students"][0]["now"]["site"], "1a")
-        self.assertEqual(set(now), {"site", "site_name", "zone", "map", "pos", "end", "code"})
+        self.assertEqual(set(now), {"site", "site_name", "zone", "map", "pos", "end", "code", "said"})
 
     def test_progress_survives_a_restart(self):
         pid = self.join()

@@ -2754,6 +2754,7 @@ PLANET_BADGES = {
     "record": ("🏆", "Record Breaker", "Beat a class record"),
     "hopper": ("🪐", "Planet Hopper", "Reach all 5 Uncharted planets in one run"),
     "hunter": ("🎁", "Treasure Hunter", f"Find all {len(planet.GIFT_SQUARES)} mystery gifts"),
+    "sharp": ("🎯", "Sharpshooter", "Complete 5 sites on your first transmit"),
 }
 for _zone in planet.ZONES[:-1]:
     PLANET_BADGES["master_" + _zone["key"]] = (
@@ -2784,6 +2785,11 @@ GARAGE = [
     {"slot": "paint", "key": "aurora", "name": "Aurora", "class": 30},
     {"slot": "paint", "key": "nebula", "name": "Nebula", "class": 90},
     {"slot": "paint", "key": "supernova", "name": "Supernova", "class": 180},
+    {"slot": "paint", "key": "ocean", "name": "Ocean", "stars": 65},
+    {"slot": "paint", "key": "chrome", "name": "Chrome", "stars": 95},
+    {"slot": "paint", "key": "holo", "name": "Hologram", "stars": 140},
+    {"slot": "paint", "key": "comet", "name": "Comet", "class": 300},
+    {"slot": "paint", "key": "legend", "name": "Legendary", "class": 2400},
     {"slot": "topper", "key": "none", "name": "Antenna", "stars": 0},
     {"slot": "topper", "key": "flag", "name": "Flag", "stars": 5},
     {"slot": "topper", "key": "party", "name": "Party hat", "stars": 9},
@@ -2796,6 +2802,10 @@ GARAGE = [
     {"slot": "topper", "key": "pumpkin", "name": "Pumpkin", "stars": 55},
     {"slot": "topper", "key": "propeller", "name": "Propeller cap", "find": "3b"},
     {"slot": "topper", "key": "sword", "name": "Pixel sword", "find": "7b"},
+    {"slot": "topper", "key": "headphones", "name": "Headphones", "stars": 70},
+    {"slot": "topper", "key": "halo", "name": "Halo", "stars": 105},
+    {"slot": "topper", "key": "rocket", "name": "Rocket", "stars": 150},
+    {"slot": "topper", "key": "ufo", "name": "UFO", "class": 1600},
     {"slot": "trail", "key": "tracks", "name": "Tracks", "stars": 0},
     {"slot": "trail", "key": "dust", "name": "Dust", "stars": 10},
     {"slot": "trail", "key": "hearts", "name": "Hearts", "stars": 18},
@@ -2805,6 +2815,9 @@ GARAGE = [
     {"slot": "trail", "key": "rainbow", "name": "Rainbow", "stars": 45},
     {"slot": "trail", "key": "pixels", "name": "Pixel blocks", "stars": 60},
     {"slot": "trail", "key": "fire", "name": "Fire", "find": "5b"},
+    {"slot": "trail", "key": "notes", "name": "Music notes", "stars": 85},
+    {"slot": "trail", "key": "stars", "name": "Star dust", "stars": 130},
+    {"slot": "trail", "key": "fireworks", "name": "Fireworks", "class": 1000},
     {"slot": "world", "key": "planet", "name": "Strange Planet", "stars": 0},
     {"slot": "world", "key": "moon", "name": "Moon", "stars": 6},
     {"slot": "world", "key": "snow", "name": "Snow Day", "stars": 14},
@@ -2815,10 +2828,35 @@ GARAGE = [
     {"slot": "world", "key": "blocky", "name": "Blocky World", "find": "8b"},
     {"slot": "world", "key": "factory", "name": "Old Factory", "find": "9b"},
     {"slot": "world", "key": "sandstone", "name": "Sandstone", "find": "11b"},
+    {"slot": "world", "key": "jungle", "name": "Jungle", "stars": 78},
+    {"slot": "world", "key": "clouds", "name": "Cloud Kingdom", "stars": 118},
+    {"slot": "world", "key": "starry", "name": "Starry Night", "class": 600},
 ]
 GARAGE_SLOTS = ("paint", "topper", "trail", "world")
 GIFTS = {item["find"]: item for item in GARAGE if "find" in item}
 CLASS_GOALS = sorted({item["class"] for item in GARAGE if "class" in item})
+# What each class goal unlocks, in words, for the projector's meter.
+CLASS_UNLOCKS = {item["class"]: f"{item['name']} {item['slot']}" for item in GARAGE if "class" in item}
+
+
+# A title for every few stars, shown on the student's own screen only (the
+# projector never shows who has more). The last one is every star there is.
+RANKS = [(0, "🧑‍🚀", "Cadet"), (10, "🛰", "Rookie Pilot"), (25, "🚀", "Pilot"),
+         (45, "🧭", "Navigator"), (70, "🔭", "Explorer"), (95, "🗺", "Pathfinder"),
+         (120, "🎖", "Commander"), (145, "🌟", "Star Captain"),
+         (3 * len(planet.SITE_ORDER), "👑", "Legend")]
+
+
+def rank_for(stars):
+    """The rank for this many stars, and the next one with the stars it needs."""
+    i = max(k for k, (need, _, _) in enumerate(RANKS) if stars >= need)
+    need, icon, name = RANKS[i]
+    rank = {"icon": icon, "name": name, "level": i + 1}
+    if i + 1 < len(RANKS):
+        nxt = RANKS[i + 1]
+        rank.update(next=nxt[2], next_icon=nxt[1], need=nxt[0] - stars,
+                    progress=(stars - need) / (nxt[0] - need))
+    return rank
 
 
 def planet_entry(p):
@@ -2928,6 +2966,7 @@ def planet_state(p):
             "uncharted": entry["uncharted"],
             "total_stars": star_count(entry),
             "max_stars": 3 * len(planet.SITE_ORDER),
+            "rank": rank_for(star_count(entry)),
             "badges": [{"key": k, "icon": b[0], "name": b[1], "how": b[2],
                         "earned": k in entry["badges"]}
                        for k, b in PLANET_BADGES.items()],
@@ -2998,10 +3037,17 @@ def planet_record(p, key, code, results):
     entry["runs"][key] = entry["runs"].get(key, 0) + 1
     entry["active"] = int(time.time())
     last = results[0]["frames"][-1]
+    # What went wrong, in the student's own banner words, for the teacher's view.
+    first = results[0]
+    said = None if first["reached"] else first["error"] or (first["explain"] or {}).get("what")
     entry["now"] = {"site": key, "code": code, "pos": [last["r"], last["c"]],
-                    "end": results[0]["end"], "map": results[0].get("map")}
+                    "end": first["end"], "map": first.get("map"),
+                    "said": said and short_said(said)}
     before_open = {i["key"] for i in garage_for(entry) if i["open"]}
     before_stars = star_count(entry)
+    before_class = class_stars()
+    # Never completed before, and this is the first transmit here.
+    first_try = entry["runs"][key] == 1 and key not in entry["solved"]
     # A mystery gift opens when the rover drives over it, mission or not.
     found = []
     gift = gift_for(p, key)
@@ -3071,6 +3117,10 @@ def planet_record(p, key, code, results):
             badge("fixer")
         if entry["misses"].get(key, 0) >= 5:
             badge("grit")
+        if first_try:
+            entry["first_tries"] = entry.get("first_tries", 0) + 1
+            if entry["first_tries"] >= 5:
+                badge("sharp")
         entry["misses"][key] = 0
     else:
         entry["misses"][key] = entry["misses"].get(key, 0) + 1
@@ -3092,7 +3142,15 @@ def planet_record(p, key, code, results):
 
     unlocked = [i for i in garage_for(entry)
                 if i["open"] and i["key"] not in before_open and "find" not in i]
+    # A class goal this run reached: the projector's feed says so for everyone.
+    for item in GARAGE:
+        if "class" in item and before_class < item["class"] <= class_stars():
+            feed(f"🎉 The class reached {item['class']} ★ together: everyone "
+                 f"unlocked {item['name']}!")
+    rank = rank_for(star_count(entry))
+    rank_up = rank if rank["name"] != rank_for(before_stars)["name"] else None
     return {"stars": run_stars, "best": stars, "new_stars": new_stars,
+            "first_try": bool(first_try and reached_any), "rank_up": rank_up,
             "badges": earned, "record": record, "found": found,
             "unlocked": [{"slot": i["slot"], "key": i["key"], "name": i["name"]}
                          for i in unlocked],
@@ -3141,6 +3199,14 @@ def planet_save_function(p, code):
     return None
 
 
+def short_said(text, limit=200):
+    """A run's message cut to whole sentences, for the teacher's table."""
+    if len(text) <= limit:
+        return text
+    cut = text.rfind(". ", 0, limit)
+    return text[:cut + 1] if cut > 0 else text[:limit - 1] + "…"
+
+
 def planet_now(q, entry, frontier_key):
     """Where a student's rover is and what's in their editor, for the projector:
     the map is the one they see themselves, without any hidden rule."""
@@ -3158,7 +3224,8 @@ def planet_now(q, entry, frontier_key):
         pos = next([r, c] for r, row in enumerate(grid) for c, ch in enumerate(row)
                    if ch in "SH")
     return {"site": key, "site_name": s["name"], "zone": zone["key"], "map": grid,
-            "pos": pos, "end": now.get("end"), "code": now.get("code", "")}
+            "pos": pos, "end": now.get("end"), "code": now.get("code", ""),
+            "said": now.get("said")}
 
 
 def planet_class():
@@ -3189,7 +3256,7 @@ def planet_class():
     rows.sort(key=lambda x: (x["at"], -x["runs_here"], x["name"].lower()))
     return {"students": rows, "sites": len(planet.SITE_ORDER),
             "zones": [z["name"] for z in planet.ZONES],
-            "class": {"stars": class_stars(), "goals": CLASS_GOALS,
+            "class": {"stars": class_stars(), "goals": CLASS_GOALS, "unlocks": CLASS_UNLOCKS,
                       "max": 3 * len(planet.SITE_ORDER) * max(1, len(rows))},
             "feed": planet_feed[-12:]}
 

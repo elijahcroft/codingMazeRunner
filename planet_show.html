@@ -25,6 +25,10 @@
   .goal { position: absolute; top: -6px; bottom: -6px; width: 3px; background: var(--bone); border-radius: 2px; }
   .goal span { position: absolute; top: 46px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 15px; color: var(--haze); }
   .goal.done span { color: var(--mint); }
+  .unlock { position: fixed; left: 50%; top: 40%; transform: translate(-50%, -50%); z-index: 5; display: grid; gap: 10px; text-align: center; padding: 34px 54px; border-radius: 28px; background: rgba(27,21,52,.96); box-shadow: 0 20px 80px rgba(0,0,0,.6), inset 0 0 0 3px var(--gold, #ffd36b); }
+  .unlock[hidden] { display: none; }
+  .unlock b { font-size: 64px; color: #ffd36b; }
+  .unlock span { font-size: 30px; color: #f2eadb; max-width: 900px; }
   header p { margin-top: 10px; }
   .total { text-align: right; font: 800 clamp(44px, 6vw, 80px)/1 var(--ui); color: var(--gold); letter-spacing: -.03em; }
   .total small { display: block; font: 500 16px var(--ui); color: var(--haze); letter-spacing: 0; margin-top: 4px; }
@@ -57,6 +61,7 @@
   <div class="total"><span id="count">0</span> ★<small>earned together</small></div>
 </header>
 <div class="meter" id="meter"><div class="fill" id="fill"></div></div>
+<div class="unlock" id="unlock" hidden><b>🎉 Class unlock!</b><span id="unlockText"></span></div>
 <main>
   <section><h2>The fleet</h2><div class="fleet" id="fleet"></div></section>
   <section><h2>Just now</h2><div class="moments" id="moments"></div></section>
@@ -70,7 +75,6 @@ function dotColor(paint) {
   const p = PAINTS[paint] || PAINTS.bone;
   return typeof p === "string" ? p : Array.isArray(p) ? p[0] : p.base || "#ff5ad8";
 }
-const UNLOCKS = {30: "Aurora paint", 90: "Nebula paint", 180: "Supernova paint"};
 function esc(v) { return String(v).replace(/[&<>"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch])); }
 function ago(at) {
   const s = Math.max(0, Date.now() / 1000 - at);
@@ -109,21 +113,41 @@ function rover(cv, gear) {
   const g = cv.getContext("2d"); g.scale(dpr, dpr);
   drawRover(g, s / 2, s / 2 + 4, 52, -.35, 1, gear, 0);
 }
-let seen = new Set(), lastFleet = "";
+let seen = new Set(), lastFleet = "", lastTotal = null;
 async function refresh() {
   let data;
   try { data = await (await fetch("/planet/overview")).json(); } catch (_) { return; }
   $("address").textContent = data.address.replace(/^http:\/\//, "");
-  const total = data.class.stars, top = Math.max(data.class.goals[data.class.goals.length - 1] * 1.15, total * 1.05, 1);
-  $("fill").style.width = Math.min(100, total / top * 100) + "%";
+  // One stage at a time: from the last goal reached to the next two, so the
+  // meter visibly fills during a lesson however far the class has come.
+  const total = data.class.stars, goals = data.class.goals, unlocks = data.class.unlocks || {};
+  const done = goals.filter(g => total >= g), ahead = goals.filter(g => total < g).slice(0, 2);
+  const from = done.length ? done[done.length - 1] : 0;
+  const top = ahead.length ? ahead[ahead.length - 1] * 1.04 : Math.max(total, 1);
+  const at = v => (from ? 6 : 0) + (v - from) / Math.max(1, top - from) * (from ? 94 : 100);
+  $("fill").style.width = Math.min(100, at(total)) + "%";
   $("count").textContent = total;
   $("meter").querySelectorAll(".goal").forEach(g => g.remove());
-  for (const goal of data.class.goals) {
+  for (const goal of [...(from ? [from] : []), ...ahead]) {
     const el = document.createElement("div");
     el.className = "goal" + (total >= goal ? " done" : "");
-    el.style.left = goal / top * 100 + "%";
-    el.innerHTML = `<span>${total >= goal ? "✓ " : ""}${goal} ★ unlocks ${UNLOCKS[goal] || "a surprise"}</span>`;
+    el.style.left = at(goal) + "%";
+    el.innerHTML = `<span>${total >= goal ? "✓ " : ""}${goal} ★ unlocks ${esc(unlocks[goal] || "a surprise")}</span>`;
+    // Near an end, the label lines up inward so it stays on screen.
+    const span = el.firstChild, pos = at(goal);
+    if (pos > 80) span.style.transform = "translateX(-100%)";
+    else if (pos < 20) span.style.transform = "none";
     $("meter").appendChild(el);
+  }
+  // A goal crossed since the last look: the whole class sees it.
+  const crossed = lastTotal == null ? [] : goals.filter(g => lastTotal < g && total >= g);
+  lastTotal = total;
+  if (crossed.length) {
+    const g = crossed[crossed.length - 1];
+    $("unlockText").textContent = `The class reached ${g} ★ together. Everyone unlocked ${unlocks[g] || "something new"}!`;
+    $("unlock").hidden = false;
+    clearTimeout(window.unlockTimer);
+    window.unlockTimer = setTimeout(() => { $("unlock").hidden = true; }, 9000);
   }
   // By name, with no one's star count: this is a crew on the class screen,
   // not a ranking. The meter above is what the stars are for.

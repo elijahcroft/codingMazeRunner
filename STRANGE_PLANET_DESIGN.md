@@ -225,8 +225,12 @@ into `{"what", "next"}`: what happened and where (x, y), then one thing to try.
 It never asks a question. The engine records how the rover got onto its last
 square (driving, a jump, a gust, an ice slide, a belt), so a fall says what
 caused it. Stopping short gives the distance to the beacon, the nearest
-sample, the next flag, or the key for a locked gate. It also notes bumps into
-rock and running out of drills.
+sample, the next flag, or the key for a locked gate, or suggests drill() when
+rock stopped a rover that has drills. A fall from driving names the way it
+drove, and once jump() has arrived, a one-square crater says where to jump
+from. It also notes bumps into rock and running out of drills. A while loop
+that exhausts the budget after planet time stopped gets `stalled()` instead of
+"ran too long": where the rover stopped, and the drive that went 0 squares.
 
 Sensors now arrive by zone key (`SENSOR_ARRIVES`, `ZONE_ORDER`), so adding
 a zone can't shift their numbers.
@@ -251,3 +255,28 @@ the same four-site shape and come between the Flag Relay and Uncharted:
 
 Sample pick-ups are now in the replay frames (`p`), since a full bay drives
 over a sample without taking it.
+
+## More rewards (October 2026)
+
+ej saw the class respond to the gifts, garage and talking rover, and asked
+for more. The rule kept: rewards are positive only, never a ranking in front
+of the class, and calm mode removes the motion but keeps the words.
+
+- **A reward all the way up.** Personal unlocks stopped at 60 ★ while a
+  student can earn 159, so zones 9 to 15 paid nothing new. Ten more items
+  now arrive between 65 and 150 ★.
+- **Class goals that last.** The meter's last goal was 180 ★, which a class
+  passes in a lesson. Goals now go to 2400 ★, and the projector shows one
+  stage at a time (last goal reached to the next two), so it always moves.
+  A crossed goal is a projector card and a toast for everyone.
+- **Ranks** (`server.RANKS`, `rank_for`) every 10 to 25 stars, with a bar to
+  the next on the ★ button. Student's own screen only.
+- **First try** (`first_try` in the rewards: first transmit on a site never
+  completed) and the 🎯 Sharpshooter badge for 5.
+- **Combos**: pick-ups within 4 ticks of each other climb in pitch and float
+  "×n"; unloading cargo goes ka-ching. Stars fly to the counter.
+
+While testing, list paints (Aurora, Nebula, Supernova and the rest) turned
+out to have drawn black for a while: arrays have their own `.fill`, so
+`bodyPaint` took them for a fill function. It now checks for an array first.
+A test checks every garage item has drawing code.

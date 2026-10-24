@@ -78,9 +78,26 @@ lost.
   fin, pumpkin...), trails (hearts, paw prints, slime, pixel blocks...) and
   a **map look** that redraws every zone (Moon, Snow Day, Candy Land,
   Volcano, Deep Space). Every map look keeps rock darker than the ground, or
-  outlined in a bright colour, so the map stays readable. The last three
-  paints unlock **for the whole class together** when the class star meter
-  reaches 30, 90 and 180.
+  outlined in a bright colour, so the map stays readable. Personal unlocks
+  keep coming all the way to 150 ★ (Ocean, Chrome and Hologram paints,
+  headphones, a halo and a rocket, music-note and star-dust trails, Jungle
+  and Cloud Kingdom), so the hard zones still pay out. Some unlock **for the
+  whole class together** on the class star meter: paints at 30, 90, 180 and
+  300 ★, Starry Night at 600, a Fireworks trail at 1000, a UFO at 1600 and
+  Legendary paint at 2400. When the class crosses one, the projector shows a
+  big **🎉 Class unlock!** card, and every student gets a toast the next time
+  their page loads or they transmit.
+- **Ranks**: the ★ button at the top shows a rank icon and a thin bar to the
+  next one: Cadet, Rookie Pilot (10 ★), Pilot (25), Navigator (45), Explorer
+  (70), Pathfinder (95), Commander (120), Star Captain (145) and Legend
+  (every star). Ranking up says so on the celebration card with a fanfare.
+  Ranks only show on the student's own screen, never on the projector.
+- **Little wins in a run**: clearing a site on its first transmit says
+  **🎯 First try!** (5 of those earn the 🎯 Sharpshooter badge). Samples,
+  keys and flags picked up close together make a combo: each pick-up sounds
+  a step higher and "×2", "×3" floats up over the rover. Unloading at home
+  goes ka-ching with "+3 📦". New stars fly from the card into the ★ counter.
+  In calm mode none of it moves: the words still appear, without motion.
 - **🎁 Mystery gifts**: one site in each zone has a wrapped gift on the map
   (1A, 2B, 3B, 4C, 5B, 6A, 7B, 8B). A transmitted run that drives over it
   finds a garage item you can't get any other way: Grass Block, Diamond and
@@ -105,7 +122,10 @@ lost.
 - **🕹 Scouting**: drive by hand with the arrow keys (or the on-screen
   N, E, S, W buttons) to *feel* the strange physics. Nothing is saved, and
   only code completes a mission. Students who are stuck on "what is the
-  rule?" should scout.
+  rule?" should scout. A scout that falls or runs flat gets the same
+  what-happened and 👉 next-step line as a transmitted run. Scouting has no
+  jump button, so on jump sites it says "Scouting can't jump, but code can"
+  and where to jump from.
 - **Brute force is allowed, on purpose.** Every site (but Uncharted) can be
   done with a plain list of commands, so nobody is locked out. Scout a
   route by hand (up to 150 moves), then **📋 Use as code** turns it into code
@@ -143,7 +163,9 @@ lost.
   Uncharted, every run says what stopped the other planets ("2 fell in a
   crater · 1 ran flat"), so students know which rule to handle next.
 
-**Project `/planet/show`**: the class star meter with its shared unlocks,
+**Project `/planet/show`**: the class star meter with its shared unlocks
+(it shows one stage at a time, from the last goal reached to the next two,
+so it visibly fills during a lesson),
 a card for every student like Python Quest's big screen (their rover in its
 garage paint and topper, their site, its map
 with their rover where the last run left it, and the code in their editor as
@@ -156,7 +178,7 @@ board while they work.
 |---|---|---|---|
 | 1A Touchdown | 🧪 3 samples | 💎 grab the crystal (a detour) | 7 lines |
 | 1B Crystal Steps | 🧪 8 samples | 🧩 use a function you made with `def` (and call it) | 3 lines |
-| 1C Boulder Run | 🧪 a sample at every boulder | 🧱 never bump into rock | 7 lines |
+| 1C Rock Run | 🧪 a sample in front of every rock | 🧱 never bump into rock | 7 lines |
 | 2A First Frost | 📡 how far one slide goes | 🔢 work the number out in code | 3 lines |
 | 2B Glacier | 🛰 beacon | 💎 crystal in a far corner (one extra slide) | 6 lines |
 | 2C Frozen Lake | 🛰 beacon | 🧱 never bump into rock | the student's shortest route + 1 |
@@ -174,7 +196,7 @@ board while they work.
 | 6C Portal Maze | 🛰 beacon | 🧱 never bump into rock | the student's shortest route + 1 |
 | 7A Homing Signal | 📡 how far east the beacon is | 🔢 work the number out in code | 2 lines |
 | 7B Open Plain | 🛰 beacon | 🌍 the same code works on all 8 plains | 10 lines |
-| 7C Boulder Plain | 🛰 beacon | 🌍 the same code works on all 8 plains | 17 lines |
+| 7C Rocky Plain | 🛰 beacon | 🌍 the same code works on all 8 plains | 17 lines |
 | 8A The Trench | 🛰 beacon | ⚡ done in 4 ticks (jump all the way) | 3 lines |
 | 8B Stepping Stones | 🛰 beacon | 🧩 use a function you made | 4 lines |
 | 8C Crater Field | 🛰 beacon | 🌍 the same code works on all 8 fields | 7 lines |
@@ -194,8 +216,10 @@ board while they work.
 - [ ] Put **`http://localhost:8000/planet/show`** on the projector.
 - [ ] Open **`http://localhost:8000/planet/teacher`** on your laptop. It
       lists every student, the site they're on, **runs on that site**
-      (amber at 8+, red at 15+: go and visit) and hints opened. It
-      refreshes every 5 seconds.
+      (amber at 8+, red at 15+: go and visit) and hints opened. Under
+      **Last run** is what their last missed run told them (the error, or
+      what happened and where), so you know before you walk over. Only you
+      see it: the projector never shows it. It refreshes every 5 seconds.
 - [ ] On a student laptop, join as "Test" and run the starter on 1A.
 - [ ] Decide what to say when a student asks "what's the rule?":
       **"What did your last run show you?"** (see below).
@@ -222,10 +246,26 @@ in plain words, then one thing to try (👉). It never asks a question. For exam
 rover the way their arrows point. Jump over a belt you don't want to ride."*
 Or, for code that stops short: *"Your code finished with the rover at x 4, y 2,
 away from the beacon at x 9, y 2."* 👉 *"The beacon is 5 squares east of there."*
-It also mentions bumping into rock (the rover doesn't move when it bumps) and
-running out of drills. **Show me** jumps the replay to that moment and rings
-the rover. Field measurements still get their step-by-step coach tips, and
-code errors still say the line.
+Where the zone's new idea is the way through, the 👉 says so: rock with drills
+left suggests `drill("east")`, a locked gate points at the key, and once jump()
+has arrived a crater one square wide says where to jump from. A flat battery
+says where and when the rover last stood in the sun, with the loop that
+charges it, and on Uncharted a gust points at `gust_in()`. It also mentions
+bumping into rock (the rover doesn't move when it bumps) and running out of
+drills. **Show me** jumps the replay to that moment and rings the rover. Field
+measurements still get their step-by-step coach tips, and code errors still say
+the line. A while loop that keeps going after the rover stopped moving (often
+`east(distance("east"))` driving 0 squares at a trench edge) says where the
+rover stopped and why, instead of just "ran too long": the drive that went 0
+squares, a way to the target that the code never drives (an `if` with only
+east and south), or what its `look()` saw that no branch handles.
+
+In Laser Range the replay keeps the red beam on while the rover drives the
+distance it measured, ending in a dot on what it hit.
+
+The command buttons under the code only show sensors for things on the current
+map: no key buttons without keys, no cargo buttons without a home. Typing any
+unlocked sensor still works.
 
 Copying is pointless on C sites, because the planet underneath is different:
 each C site has 8 versions, and a classmate's hand-counted route works on
@@ -275,7 +315,7 @@ where students meet compass driving, samples and `look()`.
       east()
       south()
   ```
-- **1C Boulder Run** (per student): a sample waits at each boulder, at
+- **1C Rock Run** (per student): a sample waits in front of each rock, at
   distances that differ for everyone. Drive until the next square is rock:
   ```python
   for i in range(4):
@@ -416,7 +456,7 @@ Uncharted's ideas at a time.
   while y() > beacon_y():
       north()
   ```
-- **7C Boulder Plain** (per student, 8 wide fields of rock ridges and
+- **7C Rocky Plain** (per student, 8 wide fields of rock ridges and
   crater lines). Only drive a way that's `safe()`, and step south or north
   when no good way is: Uncharted's program without the gusts and charging.
   7B's code, or leaving out the crater check or the going round, fails on

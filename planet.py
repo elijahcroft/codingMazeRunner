@@ -107,6 +107,25 @@ MAZE_HABITS = {
     "cracked_ahead": LOOK_INSTEAD,
     "at_goal": "Here it's  at_beacon()",
 }
+# Commands students guess for this planet's own things, which happen by
+# driving (or are theirs to make with def).
+PICK_UP = "Samples are picked up by driving over them: no command needed."
+UNLOAD = ("Samples unload by themselves when the rover drives onto home 📦. "
+          "home_x() and home_y() say where it is.")
+GUESSES = {
+    "pickup": PICK_UP, "pick_up": PICK_UP, "collect": PICK_UP, "grab": PICK_UP,
+    "deliver": UNLOAD, "unload": UNLOAD, "drop": UNLOAD, "home": UNLOAD,
+    "go_home": UNLOAD,
+    "push": "Drive into a boulder to push it: east() pushes a boulder that's "
+            "just east of the rover.",
+    "unlock": "A gate opens when you drive into it holding a key: no command needed.",
+    "open": "A gate opens when you drive into it holding a key: no command needed.",
+    "laser": 'distance("east") measures how many squares the rover can drive east.',
+    "measure": 'distance("east") measures how many squares the rover can drive east.',
+    "go_to": "go_to() isn't built in: make it with  def go_to(tx, ty):  above "
+             "where you use it (📻 Hints shows how). If you saved one, 🧰 "
+             "Functions adds it to your code.",
+}
 LOOK_HOW = ('look() needs a direction in quotes: "north", "south", "east" or '
             '"west", like  look("east")')
 JUMP_HOW = ('jump() needs a direction in quotes: "north", "south", "east" or '
@@ -148,6 +167,10 @@ class Rover(Brain):
         self.budget = PROGRAM_BUDGET
         self.steering = False
         self.depth = 0
+        # When planet time last moved on, and the last drive of 0 squares, to
+        # say why a while loop that stopped the rover never ends.
+        self.seen_t = self.still_since = 0
+        self.zero = None
         if len(code) > MAX_CODE:
             raise BotError(f"Your program is too long: the limit is {MAX_CODE} "
                            f"characters (about 100 lines). Delete some comments "
@@ -173,6 +196,8 @@ class Rover(Brain):
 
     def tick(self):
         self.ops += 1
+        if self.world.t != self.seen_t:
+            self.seen_t, self.still_since = self.world.t, self.ops
         if self.ops > self.budget:
             raise _TooLong("Your program ran too long")
 
@@ -270,6 +295,9 @@ class Rover(Brain):
                 world.typed = True   # a number typed in, not measured
             if n < 0 or n > MAX_MOVE:
                 raise BotError(f"{name}() takes a number from 0 to {MAX_MOVE}.")
+            if n == 0:
+                said = ast.unparse(node.args[0]).replace("'", '"')
+                self.zero = (f"{name}({said})", self.ops)
             for _ in range(n):
                 world.act(name)
             return None
@@ -309,6 +337,8 @@ class Rover(Brain):
                            f"{ZONE_NAMES[SENSOR_ZONE[name]]}.")
         if name in MAZE_HABITS and name not in self.funcs and name not in self.defs:
             raise BotError(MAZE_HABITS[name])
+        if name in GUESSES and name not in self.funcs and name not in self.defs:
+            raise BotError(GUESSES[name])
         if name == "print":
             args = [self.eval(a, frame) for a in node.args]
             line = " ".join(str(a) for a in args)
@@ -366,6 +396,7 @@ class World:
         self.flag = 1          # the next flag to reach
         self.drills = variant.get("drills", 0)
         self.drill_out = False  # a drill() found none left
+        self.sunlit = None      # (tick, square, battery) the last time it stood in sun
         self.how = None        # how the rover got onto its last square
         self.opened = None     # the square that just turned to ground, for the next frame
         self.moved = []        # squares a pushed boulder just changed, for the next frame
@@ -606,6 +637,8 @@ class World:
         """One tick: drive, wait, or jump `way`."""
         if self.end:
             raise _End()
+        if "battery" in self.rules and self.in_sun():
+            self.sunlit = (self.t, (self.r, self.c), self.battery)
         if self.t >= MAX_TICKS:
             self.finish("ticks", f"⏱ out of time ({MAX_TICKS} ticks)")
         if "battery" in self.rules and command != "wait" and self.battery <= 0:
@@ -808,13 +841,36 @@ FELL_NEXT = {"gust": "Gusts come every few ticks. wait() just before one: tick()
                      'if look("east") == "crater":'}
 
 
-def explain(world):
+def locked_gate(world, at):
+    """The next step when a locked gate stopped the rover and a key is still out."""
+    if not (world.locked and world.at(*world.locked) == "D" and world.keys):
+        return ""
+    key = min(world.keys)
+    return (f"The gate at {where(world.locked)} is locked. Pick up the key at "
+            f"{where(key)} first: {far(at, key)}.")
+
+
+def drill_next(world):
+    """The next step when rock stopped the rover and it still has drills."""
+    dr, dc = DIRS[world.d]
+    r, c = world.r + dr, world.c + dc
+    if not (world.bumps and world.drills and world.at(r, c) == "#"
+            and 0 < r < world.rows - 1 and 0 < c < world.cols - 1):
+        return ""
+    way = next(w for w, d in COMPASS.items() if d == world.d)
+    return (f'Rock stopped it going {way}. drill("{way}") turns that rock into '
+            f"ground, then drive on. You have {world.drills} "
+            f"drill{'s' if world.drills != 1 else ''} left.")
+
+
+def explain(world, unlocked=()):
     """What went wrong in plain words, for the banner after a run that didn't
     finish its mission: {"what": what happened, "next": one thing to try}.
     Statements, not questions, and always where it happened."""
     at = (world.r, world.c)
     end = world.end
     what = nxt = ""
+    bumps_said = False
     if end == "fell":
         if at in world.cracked:
             what = (f"The ground at {where(at)} had cracked from driving over it "
@@ -823,13 +879,42 @@ def explain(world):
         else:
             what = f"{FELL.get(world.how, FELL['move'])} at {where(at)}"
             nxt = FELL_NEXT.get(world.how, FELL_NEXT["move"])
+            if world.how == "gust" and "gust_in" in unlocked:
+                nxt = ("gust_in() says how many ticks until the next gust. Before "
+                       "each square:  if gust_in() == 1: wait()")
+            if world.how == "move":
+                # Name the way it was driving, and a crater it could have jumped.
+                way = next(w for w, d in COMPASS.items() if d == world.d)
+                dr, dc = DIRS[world.d]
+                beyond = world.at(at[0] + dr, at[1] + dc)
+                if "jump" in unlocked and beyond not in SOLID and beyond != "O":
+                    nxt = (f'That crater is one square wide: jump("{way}") from '
+                           f"{where((at[0] - dr, at[1] - dc))} goes over it.")
+                else:
+                    nxt = f'Check the square before you drive, like  if look("{way}") == "crater":'
     elif end == "battery":
         what = f"The battery ran out at {where(at)}, on tick {world.t}"
-        nxt = "Driving uses 1 battery a square. Waiting in the sun charges it."
+        if world.sunlit:
+            t, spot, charge = world.sunlit
+            nxt = (f"It was in the sun at {where(spot)} on tick {t} with {charge} "
+                   f"battery, and drove on. Charge up there before you go:  "
+                   f"while in_sun() and battery() < 40: wait()")
+        else:
+            nxt = ("Driving uses 1 battery a square, and the rover never stood in "
+                   "the sun. Waiting in sunlight charges it: in_sun() says when "
+                   "you're there.")
     elif end == "ticks":
         what = f"Your program ran for {world.t} ticks without finishing"
-        nxt = ("A while loop is probably going round forever. Check that what it "
-               "waits for can happen.")
+        nxt = locked_gate(world, at) or drill_next(world)
+        if not nxt and world.bumps * 2 > world.t:
+            # Stuck driving into rock: say where, and which way.
+            way = next(w for w, d in COMPASS.items() if d == world.d)
+            what += f": the rover was stuck at {where(at)}, bumping into rock"
+            nxt = (f'It kept driving {way} into rock. Check look("{way}") first, '
+                   f'and drive another way when it says "rock".')
+            bumps_said = True
+        nxt = nxt or ("A while loop is probably going round forever. Check that "
+                      "what it waits for can happen.")
     elif end == "wrong":
         what = "Mission control measured a different number"
         nxt = "Play the replay and count again."
@@ -852,10 +937,11 @@ def explain(world):
         elif world.flag in world.flags:
             spot = world.flags[world.flag]
             nxt = f"Flag {world.flag} is next, at {where(spot)}: {far(at, spot)}."
-        elif world.goal and world.locked and world.at(*world.locked) == "D" and world.keys:
-            key = min(world.keys)
-            nxt = (f"The gate at {where(world.locked)} is locked. Pick up the key at "
-                   f"{where(key)} first: {far(at, key)}.")
+        elif world.goal and locked_gate(world, at):
+            nxt = locked_gate(world, at)
+        elif world.goal and drill_next(world):
+            what += f", away from the beacon at {where(world.goal)}"
+            nxt = drill_next(world)
         elif world.goal:
             what += f", away from the beacon at {where(world.goal)}"
             nxt = f"The beacon is {far(at, world.goal)} of there."
@@ -867,7 +953,7 @@ def explain(world):
     if world.stuck and end in ("stopped", "ticks"):
         extra.append(f"The boulder at {where(world.stuck)} couldn't move: something "
                      f"was behind it.")
-    if world.bumps and end in ("stopped", "ticks"):
+    if world.bumps and end in ("stopped", "ticks") and not bumps_said:
         extra.append(f"The rover bumped into rock {world.bumps} "
                      f"time{'s' if world.bumps != 1 else ''}: when it bumps, it doesn't move.")
     return {"what": " ".join([what + "."] + extra), "next": nxt}
@@ -888,6 +974,49 @@ ENDED_SHORT = {"report": "🏁 program ended without a report()",
                "deliver": "🏁 program ended before every sample was home"}
 
 
+def stalled(line, world, rover):
+    """Why a while loop went round forever after the rover stopped moving."""
+    text = (f"Line {line}: This while loop kept going round, but the rover had "
+            f"stopped at {where((world.r, world.c))}.")
+    if rover.zero and rover.zero[1] >= rover.still_since:
+        drove = rover.zero[0]
+        if "distance(" in drove:
+            return (f"{text} {drove} drove 0 squares there, because something "
+                    f"is right next to the rover. Jump it or go round it, so the "
+                    f"loop can get further.")
+        return f"{text} {drove} drove 0 squares there, so nothing changed."
+    if world.mission == "deliver" and world.cargo >= CARGO_MAX:
+        return (f"{text} The cargo bay was full, so the sample there stayed put. "
+                f"When cargo() is {CARGO_MAX}, drive home to {where(world.home)} "
+                f"to unload.")
+    # Steering that can't reach where it's going: say which way it never drives.
+    at, spot, what = (world.r, world.c), None, ""
+    if world.samples:
+        spot = min(world.samples, key=lambda p: (abs(p[0] - at[0]) + abs(p[1] - at[1]), p))
+        what = "The closest sample"
+    elif world.flag in world.flags:
+        spot, what = world.flags[world.flag], f"Flag {world.flag}"
+    elif world.goal:
+        spot, what = world.goal, "The beacon"
+    if spot and spot != at:
+        drives = {n.func.id for n in ast.walk(rover.tree) if isinstance(n, ast.Call)
+                  and isinstance(n.func, ast.Name) and n.func.id in COMPASS}
+        need = [w for w, go in (("north", spot[0] < at[0]), ("south", spot[0] > at[0]),
+                                ("east", spot[1] > at[1]), ("west", spot[1] < at[1]))
+                if go and w not in drives]
+        if need:
+            return (f"{text} {what} is {far(at, spot)} of there, but nothing in "
+                    f"your code drives {' or '.join(need)}: add a part that does.")
+    # What its look() checks were seeing there, which no branch drove on.
+    ways = sorted({n.args[0].value for n in ast.walk(rover.tree) if isinstance(n, ast.Call)
+                   and isinstance(n.func, ast.Name) and n.func.id == "look" and n.args
+                   and isinstance(n.args[0], ast.Constant) and n.args[0].value in COMPASS})
+    saw = " ".join(f'look("{w}") says "{world.look(w)}".' for w in ways)
+    return (f"{text} {'There, ' + saw + ' ' if saw else ''}Nothing in the loop moved it "
+            f"then, so the loop could never end. Make sure the loop moves the rover "
+            f"every time round, whatever it sees.")
+
+
 def drive(code, variant, rules, zone):
     """Run one program on one planet. Returns the replay the browser animates."""
     world = World(variant, rules)
@@ -899,6 +1028,10 @@ def drive(code, variant, rules, zone):
         rover.run()
     except _End:
         pass
+    except _TooLong as e:
+        error, line = str(e), e.line
+        if e.in_loop == "while" and rover.ops - rover.still_since > 1000:
+            error = stalled(e.line, world, rover)
     except BotError as e:
         error, line = str(e), e.line or getattr(e, "syntax_line", None)
     except RecursionError:
@@ -920,7 +1053,7 @@ def drive(code, variant, rules, zone):
             "samples": len(world.samples),
             "bumps": world.bumps, "pushes": world.pushes,
             "computed": world.computed,
-            "explain": None if error else explain(world),
+            "explain": None if error else explain(world, sensors),
             "drills": world.drills if "drills" in variant else None,
             "typed": world.typed,
             # A def the program actually ran, for the def star and badge.
@@ -1165,8 +1298,8 @@ ZONES = [
               " one square south, and again.",
               [{"map": STEPS_FIELD}],
               reference="for i in range(8):\n    east()\n    south()\n"),
-         site("1c", "Boulder Run",
-              "Collect a sample at every boulder. Your boulders aren't where "
+         site("1c", "Rock Run",
+              "Collect the sample in front of every rock. Your rocks aren't where "
               "anyone else's are, so let look() find them.",
               [{"map": boulder_run(pairs, i)} for i, pairs in enumerate((
                   [(4, 2), (3, 4), (5, 2), (2, 3)],
@@ -1612,7 +1745,7 @@ ZONES.append(
                    (10, 15, (4, 1), (8, 10)), (10, 15, (1, 7), (8, 9)),
                    (10, 17, (8, 1), (3, 9)), (10, 17, (2, 15), (7, 9))))],
               per_student=True, reference=SIGNAL_STEER),
-         site("7c", "Boulder Plain",
+         site("7c", "Rocky Plain",
               "Reach the beacon across the plain, going round rock and "
               "craters. Yours aren't where anyone else's are.",
               [{"map": boulder_plain(seed)}
@@ -2173,7 +2306,7 @@ ZONES.append(
                         "###########"]}],
               reference="east(8)\n"),
          site("13b", "Push South",
-              "The trench is two squares deep: too far to jump. Push the boulder "
+              "The trench is two squares wide: too far to jump. Push the boulder "
               "into it from above, then jump the rest.",
               [{"map": ["#########",
                         "#S......#",
@@ -2421,9 +2554,9 @@ STAR_TIPS = {
     "1b": {"compact": "The steps repeat: east(), then south(), 8 times. A for "
                       "loop writes them only once."},
     "1c": {"compact": "Counting squares takes a line for every drive. A while "
-                      "loop with look() drives up to the next boulder however "
+                      "loop with look() drives up to the next rock however "
                       "far it is. One loop east and one loop south, repeated "
-                      "4 times, reaches every boulder."},
+                      "4 times, reaches every sample."},
     "2a": {"compact": "Drive once, then report(). Delete any other lines."},
     "2b": {"bonus": "💎 The crystal is in the top right corner. A slide stops "
                     "against rock: find one that stops on the crystal.",
@@ -2516,7 +2649,7 @@ STAR_TIPS = {
                        "flag to the next wherever you can."},
     "12c": {"compact": "Make def go_to(tx, ty) with four while loops. Then one "
                        "while not at_beacon(): loop calls go_to(next_x(), next_y())."},
-    "12d": {"compact": "Use your safe(way) idea from Boulder Plain, and steer "
+    "12d": {"compact": "Use your safe(way) idea from 7C Rocky Plain, and steer "
                        "toward next_x() and next_y() instead of the beacon."},
     "13a": {"compact": "One line: east(8) pushes the boulder in and drives on."},
     "13b": {"compact": "3 lines: drive above the boulder, push it south into "

@@ -13,11 +13,14 @@ function hash(a, b, k = 0) {
 // garage picks the paint and what sits on top.
 function bodyPaint(ctx, s, p, now) {
   if (typeof p === "string") return p;
+  // Before p.fill: every array has a .fill of its own.
+  if (Array.isArray(p)) {
+    const grad = ctx.createLinearGradient(-.32 * s, -.22 * s, .3 * s, .22 * s);
+    p.forEach((c, i) => grad.addColorStop(i / (p.length - 1), c));
+    return grad;
+  }
   if (p.fill) return p.fill(ctx, s, now);
-  if (p.base) return p.base;
-  const grad = ctx.createLinearGradient(-.32 * s, -.22 * s, .3 * s, .22 * s);
-  p.forEach((c, i) => grad.addColorStop(i / (p.length - 1), c));
-  return grad;
+  return p.base;
 }
 // Square pixels across the body, ten along it: `pick` colours each one.
 function pixelArt(ctx, s, pick) {
@@ -128,6 +131,30 @@ function drawTopper(ctx, s, topper, now) {
     art.forEach((row, j) => [...row].forEach((ch, i) => {
       if (colors[ch]) { ctx.fillStyle = colors[ch]; ctx.fillRect(-.32 * s + i * px, -.2 * s + j * px, px + .5, px + .5); }
     }));
+  } else if (topper === "headphones") {   // a band over the camera head, a cup each side
+    ctx.strokeStyle = "#3a3048"; ctx.lineWidth = s * .05;
+    ctx.beginPath(); ctx.arc(.15 * s, 0, s * .15, Math.PI * .1, Math.PI * .9, true); ctx.stroke();
+    for (const y of [-.15, .15]) { ctx.fillStyle = "#ff6fae"; roundRect(ctx, .09 * s, (y - .05) * s, .12 * s, .1 * s, .03 * s); ctx.fill(); }
+  } else if (topper === "halo") {   // a golden ring floating above
+    const bob = CALM ? 0 : Math.sin(now / 400) * s * .02;
+    ctx.strokeStyle = "#ffd36b"; ctx.lineWidth = s * .04; ctx.shadowColor = "#ffd36b"; ctx.shadowBlur = s * .25;
+    ctx.beginPath(); ctx.ellipse(-.02 * s, bob, .2 * s, .08 * s, 0, 0, 7); ctx.stroke(); ctx.shadowBlur = 0;
+  } else if (topper === "rocket") {   // a little rocket on the deck, flame and all
+    const flick = CALM ? 1 : .8 + .3 * Math.sin(now / 60);
+    ctx.fillStyle = "#ff9d3c"; ctx.beginPath(); ctx.moveTo(-.28 * s, -.05 * s); ctx.lineTo((-.28 - .12 * flick) * s, 0); ctx.lineTo(-.28 * s, .05 * s); ctx.fill();
+    ctx.fillStyle = "#f2eadb"; ctx.beginPath(); ctx.moveTo(-.28 * s, -.06 * s); ctx.lineTo(.0 * s, -.06 * s); ctx.quadraticCurveTo(.1 * s, 0, 0, .06 * s); ctx.lineTo(-.28 * s, .06 * s); ctx.fill();
+    ctx.fillStyle = "#ff5a5a"; ctx.beginPath(); ctx.moveTo(-.28 * s, -.06 * s); ctx.lineTo(-.34 * s, -.13 * s); ctx.lineTo(-.2 * s, -.06 * s); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-.28 * s, .06 * s); ctx.lineTo(-.34 * s, .13 * s); ctx.lineTo(-.2 * s, .06 * s); ctx.fill();
+    ctx.fillStyle = "#8fc8ff"; ctx.beginPath(); ctx.arc(-.06 * s, 0, s * .03, 0, 7); ctx.fill();
+  } else if (topper === "ufo") {   // a saucer hovering over the deck, lights blinking
+    const bob = CALM ? 0 : Math.sin(now / 300) * s * .02;
+    ctx.fillStyle = "rgba(143,227,255,.7)"; ctx.beginPath(); ctx.ellipse(-.06 * s, bob - .03 * s, .09 * s, .08 * s, 0, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = "#9aa3b5"; ctx.beginPath(); ctx.ellipse(-.06 * s, bob, .22 * s, .07 * s, 0, 0, 7); ctx.fill();
+    for (let k = 0; k < 5; k++) {
+      const on = CALM || Math.floor(now / 200 + k) % 2;
+      ctx.fillStyle = on ? ["#ff6fae", "#ffd36b", "#7ff0d6"][k % 3] : "#5a6070";
+      ctx.beginPath(); ctx.arc((-.22 + k * .08) * s, bob + .01 * s, s * .02, 0, 7); ctx.fill();
+    }
   } else {
     ctx.strokeStyle = "#6e6290"; ctx.beginPath(); ctx.moveTo(-.05 * s, -.14 * s); ctx.lineTo(-.16 * s, -.36 * s); ctx.stroke();
     ctx.fillStyle = "#ffb547"; ctx.beginPath(); ctx.arc(-.16 * s, -.36 * s, s * .035, 0, 7); ctx.fill();
@@ -147,6 +174,37 @@ const PAINTS = {bone: "#f2eadb", coral: "#ff8a7a", mint: "#8cf2c6", sky: "#8fc8f
   supernova: ["#fff6d0", "#ffe08a", "#ff9d5c"],
   copper: "#d9894a", racer: ["#ff6b5a", "#ffb84d", "#ffd36b"],
   granite: ["#9a9ba6", "#6e7079"], laser: ["#ff3b5c", "#ff8a9e"], cardboard: "#c8a06a",
+  ocean: ["#5ad1ff", "#2a7fd8", "#1b3f8a"], chrome: ["#ffffff", "#c3cad6", "#8a94a3", "#e8edf5"],
+  holo: {swatch: "conic-gradient(#ffb3e6, #b3e6ff, #d9b3ff, #b3ffd9, #ffb3e6)", fill(ctx, s, now) {
+    const h = CALM ? 200 : (now / 20) % 360;
+    const grad = ctx.createLinearGradient(-.32 * s, -.22 * s, .3 * s, .22 * s);
+    [0, 90, 180, 270].forEach((d, i) => grad.addColorStop(i / 3, `hsl(${h + d},90%,82%)`));
+    return grad;
+  }},
+  comet: {base: "#0e1030", swatch: "linear-gradient(120deg, #0e1030 40%, #8fe3ff 55%, #ffffff 62%, #0e1030 75%)", draw(ctx, s) {
+    // A comet streaking across the body, with a few far stars.
+    const grad = ctx.createLinearGradient(-.32 * s, .14 * s, .2 * s, -.1 * s);
+    grad.addColorStop(0, "rgba(143,227,255,0)"); grad.addColorStop(1, "rgba(200,245,255,.9)");
+    ctx.strokeStyle = grad; ctx.lineWidth = s * .09; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-.3 * s, .14 * s); ctx.lineTo(.16 * s, -.08 * s); ctx.stroke();
+    ctx.fillStyle = "#ffffff"; ctx.shadowColor = "#8fe3ff"; ctx.shadowBlur = s * .15;
+    ctx.beginPath(); ctx.arc(.17 * s, -.085 * s, s * .055, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
+    for (let k = 0; k < 10; k++) { ctx.beginPath(); ctx.arc((-.3 + hash(k, 13) * .58) * s, (-.2 + hash(k, 14) * .4) * s, s * .01, 0, 7); ctx.fill(); }
+  }},
+  legend: {swatch: "linear-gradient(135deg, #ffd36b, #ff8ad8, #8fb8ff, #7ff0d6)", fill(ctx, s, now) {
+    const h = CALM ? 0 : (now / 25) % 360;
+    const grad = ctx.createLinearGradient(-.32 * s, -.22 * s, .3 * s, .22 * s);
+    grad.addColorStop(0, "#ffd36b"); grad.addColorStop(.5, `hsl(${320 + h},90%,75%)`); grad.addColorStop(1, `hsl(${180 + h},90%,72%)`);
+    return grad;
+  }, draw(ctx, s, now) {
+    ctx.fillStyle = "#fff6d0";
+    for (let k = 0; k < 6; k++) {
+      const tw = CALM ? .8 : .5 + .5 * Math.sin(now / 220 + k * 1.9);
+      ctx.globalAlpha = tw; ctx.font = `${Math.round(s * .1)}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("✦", (-.26 + hash(k, 15) * .5) * s, (-.16 + hash(k, 16) * .32) * s);
+    }
+    ctx.globalAlpha = 1;
+  }},
   galaxy: {base: "#1b1240", swatch: "radial-gradient(circle at 30% 30%, #c69bff, #1b1240 70%)", draw(ctx, s) {
     for (const [x, y, r, color] of [[-.14, -.08, .24, "rgba(198,155,255,.55)"], [.12, .1, .2, "rgba(255,138,216,.4)"]]) {
       const grad = ctx.createRadialGradient(x * s, y * s, 0, x * s, y * s, r * s);
