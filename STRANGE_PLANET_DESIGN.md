@@ -280,3 +280,10 @@ While testing, list paints (Aurora, Nebula, Supernova and the rest) turned
 out to have drawn black for a while: arrays have their own `.fill`, so
 `bodyPaint` took them for a fill function. It now checks for an array first.
 A test checks every garage item has drawing code.
+
+Then, to give a reason to come back and to keep a stuck student going:
+**today's missions** (`server.MISSIONS`, `todays_missions()` seeded by the
+date so the class shares them; all but a first try work on solved sites),
+mission-day trophies with a medal at 3, a **zone cleared** card with a
+teaser for the next zone, and the rover's cheer at the beacon (a 0.9 s beat
+before the card, none in calm mode).

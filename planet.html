@@ -69,6 +69,8 @@
   .fly-star { position: fixed; z-index: 60; margin: -18px 0 0 -14px; font-size: 34px; color: var(--gold); text-shadow: 0 0 14px rgba(255,211,107,.85); pointer-events: none; transition: transform .7s cubic-bezier(.5,-.3,.7,1), opacity .7s; }
   .cele-note .first { color: #7ff0d6; }
   .cele-note .rank { color: #ff8ad8; }
+  .cele-note .teaser { display: block; margin-top: 10px; color: var(--bone); font-size: 15px; line-height: 1.4; }
+  .cele-note .teaser b { color: #7ff0d6; }
   @keyframes bump { 40% { transform: scale(1.25); background: #5a4a20; } }
 
   /* The route: every zone a stretch of trail, every site a waypoint on it. */
@@ -261,6 +263,13 @@
   @keyframes slideout { to { transform: translateX(120%); opacity: 0; } }
 
   /* ---- Pop-overs and dialogs ------------------------------------------------------ */
+  .goal.today { border: 0; font: inherit; cursor: pointer; background: rgba(127,240,214,.14); color: #7ff0d6; }
+  .goal.today.all { background: rgba(255,211,107,.18); color: var(--gold); }
+  .mission { display: flex; align-items: center; gap: 10px; padding: 9px 10px; margin-bottom: 6px; border-radius: 10px; background: var(--dusk); font-size: 14px; }
+  .mission .ico { font-size: 20px; }
+  .mission small { margin-left: auto; color: var(--muted, #a99fc8); white-space: nowrap; }
+  .mission.done { background: rgba(127,240,214,.14); }
+  .mission.done small { color: #7ff0d6; }
   .pop { position: fixed; z-index: 20; width: min(360px, calc(100vw - 24px)); background: var(--panel); border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,.5), inset 0 0 0 1px var(--edge); padding: 14px; }
   .pop h2 { margin: 0 0 10px; font-size: 16px; }
   .msg { background: var(--dusk); border-radius: 4px 14px 14px 14px; padding: 9px 12px; margin-bottom: 8px; white-space: pre-wrap; font-size: 14px; }
@@ -443,6 +452,11 @@
   <h2 id="radioTitle">Mission control</h2>
   <div id="hints"></div>
   <div class="pop-row"><small id="hintsLeft"></small><button class="quiet" id="hintButton">Ask for a hint</button></div>
+</div>
+<div class="pop" id="todayPop" hidden role="dialog" aria-labelledby="todayTitle">
+  <h2 id="todayTitle">📋 Today's missions</h2>
+  <div id="todayList"></div>
+  <div class="pop-row"><small id="todayNote"></small></div>
 </div>
 <div class="pop" id="fnPop" hidden role="dialog" aria-labelledby="fnTitle">
   <h2 id="fnTitle">Your functions</h2>
@@ -1377,8 +1391,8 @@ function onStep(k) {
   else if (f.e === "jump") { SFX.play("jump"); burst(p.r, p.c, "dust", 6); burst(f.r, f.c, "dust", 6); }
   else if (f.e === "drill") { SFX.play("bump"); if (f.g) burst(f.g[0], f.g[1], "rock", 16); }
   if (f.m) burst(f.m[1][0], f.m[1][1], "rock", 8);   // a pushed boulder rolls
-  else if (f.e === "fell") { SFX.play("fall"); burst(f.r, f.c, "fall", 18); shake(); }
-  else if (f.e === "goal" && scene.run && scene.run.mission !== "report") scene.cheer = performance.now();
+  else if (f.e === "fell") { SFX.play("fall"); burst(f.r, f.c, "fall", 18); shake(); say(pick(OOPS)); }
+  else if (f.e === "goal" && scene.run && scene.run.mission !== "report") { scene.cheer = performance.now(); say(pick(CHEERS)); }
   else if (f.e === "battery") SFX.play("flat");
   else if (f.e === "wrong" || (f.e === "goal" && scene.run && scene.run.mission === "report")) SFX.play("report");
   else if (sliding) { const pp = scene.frames[k - 2]; if (!pp || pp.t !== f.t) SFX.play("slide"); }
@@ -1396,6 +1410,11 @@ function onStep(k) {
   // Samples unloaded at home: a ka-ching and how many.
   if (f.cg != null && p.cg > f.cg) { SFX.play("deliver"); pop(f, `+${p.cg} 📦`, "#ffd36b"); burst(f.r, f.c, "gift", 18); }
 }
+// A line for the rover's speech bubble, for a moment.
+const CHEERS = ["Beep boop! Nailed it!", "Mission complete!", "Woohoo!", "Best. Code. Ever.", "We did it!", "Easy peasy!", "Wheee!"];
+const OOPS = ["Uh oh!", "Whoaaa!", "Oops!", "Bonk!", "Help!"];
+function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
+function say(text) { scene.said = {text, at: performance.now()}; }
 // Pick-ups close together make a combo: each one sounds higher, and from the
 // second on, "×2", "×3" floats up over the rover.
 function combo(f, icon) {
@@ -1598,7 +1617,10 @@ function finished() {
   if (scout) return scoutFinished(run);
   const anyReached = site.key === "7" ? runs.some(x => x.reached) : run.reached;
   if (rewards && anyReached) {
-    const r = rewards; rewards = null; celebrate(r, run);
+    // A beat to see the rover's hop and hear its cheer, then the card (unless
+    // another run started meanwhile).
+    const r = rewards, shown = scene; rewards = null;
+    setTimeout(() => { if (scene === shown) celebrate(r, run); }, CALM || !run.reached ? 0 : 900);
     // On Uncharted the planet on screen may be one it missed: its banner
     // waits under the celebration for when that closes.
     if (site.key !== "7" || run.reached) return;
@@ -1666,7 +1688,8 @@ async function celebrate(r, run) {
   const goals = site.goals || [];
   const titles = ["Mission complete!", "Nice work!", "Perfect run!"];
   const got = r.stars.filter(Boolean).length;
-  $("celeTitle").textContent = site.key === "7" ? `${runs.filter(x => x.reached).length} of 5 planets!` : titles[Math.max(0, got - 1)];
+  $("celeTitle").textContent = site.key === "7" ? `${runs.filter(x => x.reached).length} of 5 planets!`
+    : r.zone_cleared ? `${ZONE_ICONS[r.zone_cleared.key] || "🗺"} ${r.zone_cleared.name} cleared!` : titles[Math.max(0, got - 1)];
   $("celeSub").textContent = site.key === "7" ? unchartedSummary() : run.mission === "report" ? "📡 Report confirmed" : `${run.ticks} ticks`;
   $("bigStars").innerHTML = r.stars.map((s, i) => `<div class="big-star${s ? " got" : r.best[i] ? " was" : ""}" title="${esc(goals[i] || "")}"><i>★</i><span>${esc([...(goals[i] || "★")][0])}</span></div>`).join("");
   const missing = goals.filter((g, i) => !r.best[i]);
@@ -1695,9 +1718,11 @@ async function celebrate(r, run) {
   if (r.first_try) notes.push(`<span class="first">🎯 First try!</span>`);
   if (r.record) notes.push(`<span class="rec">🏆 ${r.record.first ? "First to complete it!" : "New class record!"}</span>`);
   if (r.rank_up) notes.push(`<span class="rank">${esc(r.rank_up.icon)} Rank up: ${esc(r.rank_up.name)}!</span>`);
+  const nz = r.zone_cleared && r.zone_cleared.next;
+  if (nz) notes.push(`<span class="teaser">Next up: ${ZONE_ICONS[nz.key] || "🪐"} <b>${esc(nz.name)}</b>. ${esc(nz.blurb)}</span>`);
   $("celeNote").innerHTML = notes.join(" &nbsp; ");
   if (r.first_try) SFX.play("first");
-  if (got === 3 || r.record || r.rank_up) throwConfetti();
+  if (got === 3 || r.record || r.rank_up || r.zone_cleared) throwConfetti();
   $("celeActions").querySelector("button").focus();
   if (r.new_stars) await flyStars(stars.filter((el, i) => r.stars[i]).slice(-r.new_stars), r.total_stars);
   if (r.rank_up) {
@@ -1754,11 +1779,14 @@ async function showToasts(r) {
     : r.badges.map(b => [b.icon, `Badge: ${b.name}`, b.how]);
   const items = [...r.found.map(u => ["🎁", `You found a mystery gift: ${u.name} ${u.slot}!`, "Try it on in the garage (★ at the top)."]),
                  ...badges,
-                 ...r.unlocked.map(u => ["🔓", `Unlocked: ${u.name} ${u.slot}`, "Fit it in the garage (★ at the top)."])];
+                 ...r.unlocked.map(u => ["🔓", `Unlocked: ${u.name} ${u.slot}`, "Fit it in the garage (★ at the top)."]),
+                 ...(r.missions_done || []).map(m => ["✅", `Mission done: ${m.text}`, r.trophy ? "" : "📋 Today, next to the goals, shows the others."]),
+                 ...(r.trophy ? [["🏆", "All of today's missions done!", "A mission day trophy. Come back tomorrow for three new ones."]] : [])];
   if (r.found.length && site) renderGoals();
+  if ((r.missions_done || []).length && site) renderGoals();
   for (const [icon, title, text] of items) {
     await wait(CALM ? 0 : 500);
-    SFX.play(icon === "🎁" ? "gift" : "badge");
+    SFX.play(icon === "🎁" ? "gift" : icon === "🏆" ? "rank" : "badge");
     toast(icon, title, text);
   }
 }
@@ -1952,7 +1980,28 @@ function renderGoals() {
     ? `<button class="goal hint" onclick="showStarTip(${i})" title="Press for a hint"><i>★</i>${esc(g)} <b>💡</b></button>`
     : `<span class="goal${best[i] ? " got" : ""}"><i>★</i>${esc(g)}</span>`).join("")
     + (site.gift ? '<span class="goal gift">🎁 A mystery gift is hidden here: drive over it</span>' : "")
-    + legend(site.map || []).map(t => `<span class="goal legend">${esc(t)}</span>`).join("");
+    + legend(site.map || []).map(t => `<span class="goal legend">${esc(t)}</span>`).join("")
+    + todayChip();
+}
+// Today's missions: a chip with how many are done, and the list it opens.
+function todayChip() {
+  const m = state && state.missions;
+  if (!m) return "";
+  const done = m.list.filter(x => x.have >= x.need).length;
+  return `<button class="goal today${done === m.list.length ? " all" : ""}" onclick="openToday(this)" title="Three small missions, new every day">📋 Today ${done}/${m.list.length}</button>`;
+}
+function openToday(button) {
+  const m = state.missions;
+  $("todayList").innerHTML = m.list.map(x => `<div class="mission${x.have >= x.need ? " done" : ""}"><span class="ico">${x.have >= x.need ? "✅" : esc(x.icon)}</span>${esc(x.text)}<small>${x.need > 1 ? `${x.have}/${x.need}` : x.have >= x.need ? "done" : ""}</small></div>`).join("");
+  $("todayNote").textContent = `New missions every day, the same for the whole class. 🏆 ${m.trophies} mission day${m.trophies === 1 ? "" : "s"} so far${m.trophies < 3 ? ": 3 unlock the Gold medal topper" : ""}.`;
+  const pop = $("todayPop"), wasOpen = !pop.hidden;
+  closePops();
+  if (wasOpen) return;
+  pop.hidden = false;
+  const r = button.getBoundingClientRect(), pr = pop.getBoundingClientRect();
+  pop.style.left = Math.max(12, Math.min(window.innerWidth - pr.width - 12, r.left)) + "px";
+  pop.style.top = (r.bottom + 8) + "px";
+  pop.focus();
 }
 // The squares on this map that do something new, in words.
 function legend(map) {
@@ -2043,7 +2092,7 @@ function placePop(pop, button) {
   pop.style.left = Math.max(12, Math.min(window.innerWidth - pr.width - 12, r.right - pr.width)) + "px";
   pop.style.top = Math.max(12, r.top - pr.height - 10) + "px";
 }
-function closePops() { $("radioPop").hidden = true; $("fnPop").hidden = true; }
+function closePops() { $("radioPop").hidden = true; $("fnPop").hidden = true; $("todayPop").hidden = true; }
 
 // ---- Saved functions: a def kept for later sites ------------------------------------------
 // Each def at the left edge of the code, with the indented lines under it.
@@ -2133,9 +2182,10 @@ function renderGarage() {
   for (const slot of ["paint", "topper", "trail", "world"]) {
     $(slot + "Options").innerHTML = state.garage.filter(i => i.slot === slot).map(i => {
       const sw = slot === "paint" || slot === "world" ? `<span class="sw" style="background:${swatch(slot, i.key)}"></span>` : "";
-      const need = i.open ? "" : `<small>${i.find ? `🎁 ${i.find.toUpperCase()}` : i.stars != null ? `★ ${i.stars}` : `class ★ ${i.class}`}</small>`;
+      const need = i.open ? "" : `<small>${i.find ? `🎁 ${i.find.toUpperCase()}` : i.stars != null ? `★ ${i.stars}` : i.trophies != null ? `🏆 ${i.trophies}` : `class ★ ${i.class}`}</small>`;
       const how = i.open ? "" : i.find ? `A mystery gift on ${i.where}: drive over the 🎁 there to find it`
-        : i.stars != null ? `Earn ${i.stars} stars` : `When the class has ${i.class} stars together`;
+        : i.stars != null ? `Earn ${i.stars} stars` : i.trophies != null ? `Finish all of a day's missions on ${i.trophies} days`
+        : `When the class has ${i.class} stars together`;
       return `<button class="option${look[slot] === i.key ? " on" : ""}" data-slot="${slot}" data-key="${i.key}" ${i.open ? "" : "disabled"} title="${esc(how)}">${sw}${esc(i.name)}${need}</button>`;
     }).join("");
   }

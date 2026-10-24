@@ -98,6 +98,18 @@ lost.
   a step higher and "×2", "×3" floats up over the rover. Unloading at home
   goes ka-ching with "+3 📦". New stars fly from the card into the ★ counter.
   In calm mode none of it moves: the words still appear, without motion.
+- **📋 Today's missions**: three small goals a day, the same for the whole
+  class, behind the 📋 chip at the end of the goals row. One is progress
+  (earn 3 new stars, complete 2 different sites, or a first try), two are
+  ideas (a mission with a `while` loop, with `print()`, with your own `def`,
+  fixing an error...). Every one but a first try can be done on a site
+  already solved, so a student who is stuck still has something to aim for.
+  Each one done is a toast; all three is a 🏆 mission day (the first earns
+  the Mission Day badge, three unlock the Gold medal topper). They reset at
+  midnight on your laptop's clock.
+- **Zone cleared**: the last site of a zone gets its own card ("🪂 Landing
+  Site cleared!") with a look at the next zone, and the rover cheers ("Beep
+  boop! Nailed it!") at every beacon before the card.
 - **🎁 Mystery gifts**: one site in each zone has a wrapped gift on the map
   (1A, 2B, 3B, 4C, 5B, 6A, 7B, 8B). A transmitted run that drives over it
   finds a garage item you can't get any other way: Grass Block, Diamond and

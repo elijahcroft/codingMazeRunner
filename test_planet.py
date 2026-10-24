@@ -4,6 +4,7 @@ import re
 import tempfile
 import threading
 import unittest
+from unittest import mock
 from collections import deque
 from urllib.request import Request, urlopen
 
@@ -1062,6 +1063,59 @@ class ClassroomTests(unittest.TestCase):
         feed = self.get("/planet/overview")
         self.assertTrue(any("The class reached 30" in m["text"] for m in feed["feed"]))
         self.assertEqual(feed["class"]["unlocks"]["30"], "Aurora paint")
+
+    def test_todays_missions(self):
+        day, keys = server.todays_missions("2026-10-24")
+        self.assertEqual((day, keys), server.todays_missions("2026-10-24"))
+        self.assertEqual(len(set(keys)), 3)
+        self.assertIn(keys[0], server.PROGRESS_MISSIONS)
+        self.assertFalse(set(keys[1:]) & set(server.PROGRESS_MISSIONS))
+        pid = self.join()
+        ref = lambda key: site(key)[2]["reference"]
+        with mock.patch.object(server, "todays_missions",
+                               lambda day=None: ("2026-10-24", ["sites", "loop", "print"])):
+            state = self.post("/planet/run", {"id": pid, "site": "1a", "code": "east()\n"})["state"]
+            self.assertEqual([m["have"] for m in state["missions"]["list"]], [0, 0, 0])
+            out = self.post("/planet/run", {"id": pid, "site": "1a", "code": ref("1a")})
+            self.assertEqual([m["text"] for m in out["rewards"]["missions_done"]], [])
+            self.assertEqual(out["state"]["missions"]["list"][0]["have"], 1)
+            # The same site again doesn't count twice; a loop on another does both.
+            out = self.post("/planet/run", {"id": pid, "site": "1a", "code": ref("1a")})
+            self.assertEqual(out["state"]["missions"]["list"][0]["have"], 1)
+            out = self.post("/planet/run", {"id": pid, "site": "1b", "code": ref("1b")})
+            self.assertEqual(len(out["rewards"]["missions_done"]), 2)
+            self.assertFalse(out["rewards"]["trophy"])
+            out = self.post("/planet/run", {"id": pid, "site": "1b",
+                                            "code": 'print("go")\n' + ref("1b")})
+            self.assertTrue(out["rewards"]["trophy"])
+            self.assertEqual(out["state"]["missions"]["trophies"], 1)
+            self.assertIn("daily", [b["key"] for b in out["state"]["badges"] if b["earned"]])
+            # Nothing more to finish today.
+            out = self.post("/planet/run", {"id": pid, "site": "1b",
+                                            "code": 'print("go")\n' + ref("1b")})
+            self.assertFalse(out["rewards"]["trophy"])
+        # A new day starts afresh; three mission days unlock the medal.
+        with mock.patch.object(server, "todays_missions",
+                               lambda day=None: ("2026-10-25", ["sites", "loop", "print"])):
+            state = self.post("/planet/run", {"id": pid, "site": "1a", "code": "east()\n"})["state"]
+            self.assertEqual([m["have"] for m in state["missions"]["list"]], [0, 0, 0])
+        medal = next(i for i in state["garage"] if i["key"] == "medal")
+        self.assertFalse(medal["open"])
+        server.players[pid]["planet"]["trophies"] = 3
+        state = self.post("/planet/run", {"id": pid, "site": "1a", "code": "east()\n"})["state"]
+        self.assertTrue(next(i for i in state["garage"] if i["key"] == "medal")["open"])
+
+    def test_clearing_a_zone_says_whats_next(self):
+        pid = self.join()
+        for key in ("1a", "1b"):
+            out = self.post("/planet/run", {"id": pid, "site": key, "code": site(key)[2]["reference"]})
+            self.assertIsNone(out["rewards"]["zone_cleared"])
+        i = planet.variant_index(pid, site("1c")[2])
+        out = self.post("/planet/run", {"id": pid, "site": "1c", "code": answer_program("1c", i)})
+        cleared = out["rewards"]["zone_cleared"]
+        self.assertEqual((cleared["name"], cleared["next"]["name"]), ("Landing Site", "Ice Field"))
+        again = self.post("/planet/run", {"id": pid, "site": "1c", "code": answer_program("1c", i)})
+        self.assertIsNone(again["rewards"]["zone_cleared"])
 
     def test_teacher_can_unlock_the_next_site(self):
         pid = self.join()

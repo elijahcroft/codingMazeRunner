@@ -146,6 +146,13 @@ function drawTopper(ctx, s, topper, now) {
     ctx.fillStyle = "#ff5a5a"; ctx.beginPath(); ctx.moveTo(-.28 * s, -.06 * s); ctx.lineTo(-.34 * s, -.13 * s); ctx.lineTo(-.2 * s, -.06 * s); ctx.fill();
     ctx.beginPath(); ctx.moveTo(-.28 * s, .06 * s); ctx.lineTo(-.34 * s, .13 * s); ctx.lineTo(-.2 * s, .06 * s); ctx.fill();
     ctx.fillStyle = "#8fc8ff"; ctx.beginPath(); ctx.arc(-.06 * s, 0, s * .03, 0, 7); ctx.fill();
+  } else if (topper === "medal") {   // a gold medal on a ribbon, across the deck
+    ctx.fillStyle = "#4dc3ff"; ctx.beginPath(); ctx.moveTo(-.3 * s, -.08 * s); ctx.lineTo(-.14 * s, 0); ctx.lineTo(-.3 * s, .08 * s); ctx.fill();
+    ctx.fillStyle = "#ff5a5a"; ctx.beginPath(); ctx.moveTo(-.3 * s, -.02 * s); ctx.lineTo(-.18 * s, 0); ctx.lineTo(-.3 * s, .02 * s); ctx.fill();
+    ctx.fillStyle = "#ffd36b"; ctx.strokeStyle = "#a07a20"; ctx.shadowColor = "#ffd36b"; ctx.shadowBlur = s * .15;
+    ctx.beginPath(); ctx.arc(-.08 * s, 0, s * .09, 0, 7); ctx.fill(); ctx.shadowBlur = 0; ctx.stroke();
+    ctx.fillStyle = "#a07a20"; ctx.font = `900 ${Math.round(s * .1)}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("★", -.08 * s, .005 * s);
   } else if (topper === "ufo") {   // a saucer hovering over the deck, lights blinking
     const bob = CALM ? 0 : Math.sin(now / 300) * s * .02;
     ctx.fillStyle = "rgba(143,227,255,.7)"; ctx.beginPath(); ctx.ellipse(-.06 * s, bob - .03 * s, .09 * s, .08 * s, 0, Math.PI, 0); ctx.fill();

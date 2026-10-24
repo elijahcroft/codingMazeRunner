@@ -2755,7 +2755,50 @@ PLANET_BADGES = {
     "hopper": ("🪐", "Planet Hopper", "Reach all 5 Uncharted planets in one run"),
     "hunter": ("🎁", "Treasure Hunter", f"Find all {len(planet.GIFT_SQUARES)} mystery gifts"),
     "sharp": ("🎯", "Sharpshooter", "Complete 5 sites on your first transmit"),
+    "daily": ("🏆", "Mission Day", "Finish all three of a day's missions"),
 }
+
+# Today's missions: three small goals a day, the same for the whole class (so
+# "did you get today's?" works across the room). One is about progress, two
+# about using an idea, and every one can be done on a site already solved,
+# except a first try.
+MISSIONS = {
+    "stars": ("⭐", "Earn 3 new stars", 3),
+    "sites": ("🗺", "Complete missions on 2 different sites", 2),
+    "first": ("🎯", "Clear a site on your first try", 1),
+    "loop": ("🔁", "Complete a mission using a for loop", 1),
+    "while": ("👀", "Complete a mission using a while loop", 1),
+    "if": ("🔀", "Complete a mission using an if", 1),
+    "def": ("🧩", "Complete a mission with a function you made", 1),
+    "print": ("🔬", "Complete a mission with print() in your code", 1),
+    "triple": ("🌟", "Get all three stars in one run", 1),
+    "fixer": ("🐛", "Fix a code error, then complete the mission", 1),
+}
+PROGRESS_MISSIONS = ("stars", "sites", "first")
+
+
+def todays_missions(day=None):
+    """(day, [three mission keys]) for today, or for `day` ("YYYY-MM-DD")."""
+    day = day or time.strftime("%Y-%m-%d")
+    rng = random.Random(day)
+    skills = [k for k in MISSIONS if k not in PROGRESS_MISSIONS]
+    return day, [rng.choice(PROGRESS_MISSIONS)] + rng.sample(skills, 2)
+
+
+def missions_today(entry):
+    """This student's progress on today's missions, starting the day afresh."""
+    day, keys = todays_missions()
+    if entry.get("today", {}).get("day") != day:
+        entry["today"] = {"day": day, "progress": {}, "sites": []}
+    return keys, entry["today"]
+
+
+def missions_view(entry):
+    keys, today = missions_today(entry)
+    return {"day": today["day"], "trophies": entry.get("trophies", 0),
+            "list": [{"key": k, "icon": MISSIONS[k][0], "text": MISSIONS[k][1],
+                      "need": MISSIONS[k][2], "have": min(MISSIONS[k][2], today["progress"].get(k, 0))}
+                     for k in keys]}
 for _zone in planet.ZONES[:-1]:
     PLANET_BADGES["master_" + _zone["key"]] = (
         "🏅", f"{_zone['name']} Master", f"Earn all {3 * len(_zone['sites'])} stars in {_zone['name']}")
@@ -2806,6 +2849,7 @@ GARAGE = [
     {"slot": "topper", "key": "halo", "name": "Halo", "stars": 105},
     {"slot": "topper", "key": "rocket", "name": "Rocket", "stars": 150},
     {"slot": "topper", "key": "ufo", "name": "UFO", "class": 1600},
+    {"slot": "topper", "key": "medal", "name": "Gold medal", "trophies": 3},
     {"slot": "trail", "key": "tracks", "name": "Tracks", "stars": 0},
     {"slot": "trail", "key": "dust", "name": "Dust", "stars": 10},
     {"slot": "trail", "key": "hearts", "name": "Hearts", "stars": 18},
@@ -2911,6 +2955,8 @@ def garage_for(entry):
     for item in GARAGE:
         if "stars" in item:
             garage.append(dict(item, open=mine >= item["stars"]))
+        elif "trophies" in item:
+            garage.append(dict(item, open=entry.get("trophies", 0) >= item["trophies"]))
         elif "class" in item:
             garage.append(dict(item, open=ours >= item["class"]))
         else:
@@ -2967,6 +3013,7 @@ def planet_state(p):
             "total_stars": star_count(entry),
             "max_stars": 3 * len(planet.SITE_ORDER),
             "rank": rank_for(star_count(entry)),
+            "missions": missions_view(entry),
             "badges": [{"key": k, "icon": b[0], "name": b[1], "how": b[2],
                         "earned": k in entry["badges"]}
                        for k, b in PLANET_BADGES.items()],
@@ -3046,6 +3093,8 @@ def planet_record(p, key, code, results):
     before_open = {i["key"] for i in garage_for(entry) if i["open"]}
     before_stars = star_count(entry)
     before_class = class_stars()
+    zone_done = lambda: all(x["key"] in entry["solved"] for x in zone["sites"])
+    zone_before = zone_done()
     # Never completed before, and this is the first transmit here.
     first_try = entry["runs"][key] == 1 and key not in entry["solved"]
     # A mystery gift opens when the rover drives over it, mission or not.
@@ -3060,6 +3109,7 @@ def planet_record(p, key, code, results):
         feed(f"🎁 {p['name']} found a mystery gift on {s['name']}: {item['name']}")
     earned = []
     record = None
+    fixed = False
 
     def badge(key_):
         if key_ not in entry["badges"]:
@@ -3115,6 +3165,7 @@ def planet_record(p, key, code, results):
                 badge(feature)
         if entry["errored"].get(key):
             badge("fixer")
+            fixed = True
         if entry["misses"].get(key, 0) >= 5:
             badge("grit")
         if first_try:
@@ -3149,8 +3200,45 @@ def planet_record(p, key, code, results):
                  f"unlocked {item['name']}!")
     rank = rank_for(star_count(entry))
     rank_up = rank if rank["name"] != rank_for(before_stars)["name"] else None
+    # The last site of a zone: a moment of its own, and a look at what's next.
+    cleared = None
+    if not zone_before and zone_done():
+        nxt = planet.ZONES[zi + 1] if zi + 1 < len(planet.ZONES) else None
+        cleared = {"name": zone["name"], "key": zone["key"],
+                   "next": nxt and {"name": nxt["name"], "key": nxt["key"],
+                                    "blurb": nxt.get("blurb", "")}}
+        feed(f"🗺 {p['name']} cleared {zone['name']}")
+    # Today's missions this run moved on.
+    keys, today = missions_today(entry)
+    before_missions = {k for k in keys if today["progress"].get(k, 0) >= MISSIONS[k][2]}
+    gains = {"stars": new_stars, "first": int(bool(first_try and reached_any)),
+             "triple": int(all(run_stars))}
+    if reached_any:
+        if key not in today["sites"]:
+            today["sites"].append(key)
+        gains["sites"] = 1 if len(today["sites"]) > today["progress"].get("sites", 0) else 0
+        for feature in code_features(code):
+            if feature != "def" or any(r.get("own_function") for r in results):
+                gains[feature] = 1
+        if fixed:
+            gains["fixer"] = 1
+    for k in keys:
+        if gains.get(k):
+            today["progress"][k] = today["progress"].get(k, 0) + gains[k]
+    done_now = [k for k in keys if today["progress"].get(k, 0) >= MISSIONS[k][2]
+                and k not in before_missions]
+    trophy = bool(done_now) and len(before_missions) + len(done_now) == len(keys)
+    if trophy:
+        entry["trophies"] = entry.get("trophies", 0) + 1
+        badge("daily")
+        feed(f"🏆 {p['name']} finished all of today's missions")
+    if done_now:
+        unlocked = [i for i in garage_for(entry)
+                    if i["open"] and i["key"] not in before_open and "find" not in i]
     return {"stars": run_stars, "best": stars, "new_stars": new_stars,
             "first_try": bool(first_try and reached_any), "rank_up": rank_up,
+            "zone_cleared": cleared, "trophy": trophy,
+            "missions_done": [{"icon": MISSIONS[k][0], "text": MISSIONS[k][1]} for k in done_now],
             "badges": earned, "record": record, "found": found,
             "unlocked": [{"slot": i["slot"], "key": i["key"], "name": i["name"]}
                          for i in unlocked],
