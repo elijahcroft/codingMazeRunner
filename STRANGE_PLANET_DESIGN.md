@@ -291,3 +291,7 @@ before the card, none in calm mode).
 Then choices in the fun moments: a **victory dance** slot (`dance(kind, u)`
 in the page; some dances are earned with a badge, `"badge"` in GARAGE) and
 one earned badge **worn on the class screen** (`entry["showoff"]`).
+
+And a **record ghost**: each student's best route on a shared-map site is
+kept (`entry["routes"]`, up to 400 frames), and `ghost_for()` sends the class
+record's route to anyone who has completed the site, to race in the replay.

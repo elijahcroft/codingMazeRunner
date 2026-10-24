@@ -1122,6 +1122,24 @@ class ClassroomTests(unittest.TestCase):
         self.post("/planet/look", {"id": pid, "showoff": None})
         self.assertIsNone(self.get("/planet/overview")["students"][0]["showoff"])
 
+    def test_the_record_ghost_appears_once_a_site_is_done(self):
+        ada, bo = self.join("Ada"), self.join("Bo")
+        slow = "south(2)\neast()\nsouth()\neast(4)\nnorth(2)\neast(2)\nnorth()\neast(2)\nsouth(4)\nwest()\n"
+        out = self.post("/planet/run", {"id": ada, "site": "1a", "code": slow})
+        ghost = out["ghost"]
+        self.assertEqual((ghost["name"], ghost["ticks"]), ("Ada", out["runs"][0]["ticks"]))
+        self.assertEqual(len(ghost["route"]), len(out["runs"][0]["frames"]))
+        # Bo hasn't done it: no ghost yet, so it gives nothing away.
+        self.assertIsNone(self.get(f"/planet/site?id={bo}&site=1a")["ghost"])
+        out = self.post("/planet/run", {"id": bo, "site": "1a", "code": site("1a")[2]["reference"]})
+        self.assertEqual(out["ghost"]["name"], "Bo" if out["runs"][0]["ticks"] < ghost["ticks"] else "Ada")
+        # A slower run later doesn't replace a student's best route.
+        route = server.players[ada]["planet"]["routes"]["1a"]
+        self.post("/planet/run", {"id": ada, "site": "1a", "code": slow + "north()\nsouth()\n"})
+        self.assertEqual(server.players[ada]["planet"]["routes"]["1a"], route)
+        # Each student's own planet: no ghost to race.
+        self.assertFalse(server.ghostly("1c", site("1c")[2]))
+
     def test_clearing_a_zone_says_whats_next(self):
         pid = self.join()
         for key in ("1a", "1b"):

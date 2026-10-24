@@ -1010,6 +1010,7 @@ function render(now = performance.now()) {
     }
   }
   drawTrail(ctx, frames, i, rover, cell, now);
+  drawGhost(ctx, i, pos, cell, now);
   const G = findChar(map, "G");
   if (G) drawBeacon(ctx, G[0], G[1], cell, now, f.e === "goal");
   // The rover, and whatever just happened to it.
@@ -1444,6 +1445,26 @@ function discoRing(ctx, x, y, cell, k, now) {
     ctx.fillStyle = `hsla(${j * 30 + now / 5},90%,65%,${k})`;
     ctx.beginPath(); ctx.arc(x + Math.cos(a) * cell * .8, y + Math.sin(a) * cell * .8, cell * .13, 0, 7); ctx.fill();
   }
+}
+// The class record's rover, see-through, driving its route step for step with
+// this replay: a race against the record, once the site is done.
+const GHOST_LOOK = {paint: "bone", topper: "none", trail: "tracks", world: "planet"};
+function drawGhost(ctx, i, pos, cell, now) {
+  const g = site && site.ghost;
+  if (!g || !scene.run || scout || site.key === "7") return;
+  const route = g.route, a = route[Math.min(i, route.length - 1)], b = route[Math.min(i + 1, route.length - 1)];
+  const u = CALM ? 0 : ease(Math.max(0, Math.min(1, pos - i)));
+  const step = Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) === 1 ? u : 0;
+  const r = a[0] + (b[0] - a[0]) * step, c = a[1] + (b[1] - a[1]) * step;
+  const x = (c + .5) * cell, y = (r + .5) * cell;
+  const way = b[0] !== a[0] || b[1] !== a[1] ? Math.atan2(b[0] - a[0], b[1] - a[1]) : (drawGhost.angle || 0);
+  drawGhost.angle = way;
+  drawRover(ctx, x, y, cell * 1.12, way, .38, GHOST_LOOK, now);
+  ctx.font = `700 ${Math.round(Math.max(11, cell * .26))}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const tag = `🏁 ${g.name} · ${g.ticks}`;
+  ctx.globalAlpha = .85; ctx.lineWidth = 3; ctx.strokeStyle = "rgba(12,9,26,.8)";
+  ctx.strokeText(tag, x, y - cell * .72); ctx.fillStyle = "#ffd36b"; ctx.fillText(tag, x, y - cell * .72);
+  ctx.globalAlpha = 1;
 }
 // A line for the rover's speech bubble, for a moment.
 const CHEERS = ["Beep boop! Nailed it!", "Mission complete!", "Woohoo!", "Best. Code. Ever.", "We did it!", "Easy peasy!", "Wheee!"];
@@ -2434,7 +2455,7 @@ async function transmit() {
     const data = await post("/planet/run", {id: me, site: site.key, code: $("code").value});
     if (data.error === "join") { localStorage.removeItem("mazeId"); location.reload(); return; }
     if (data.error) { showBanner("lost", data.error); return; }
-    runs = data.runs; rewards = data.rewards;
+    runs = data.runs; rewards = data.rewards; site.ghost = data.ghost;
     holdRank = data.rewards.new_stars > 0;
     useState(data.state);
     holdRank = false;

@@ -112,6 +112,11 @@ lost.
   (75 ★), Backflip (the Triple Star badge), Zoomies (the Never Give Up
   badge, so sticking with a hard site pays off) and Disco spin (a mission
   day). The garage preview shows the dance every few seconds.
+- **🏁 Race the record ghost**: once a student has completed a site, its
+  replay also shows the class record's rover, see-through and tagged with
+  the holder's name and ticks, driving its route step for step. It only
+  appears after they've done the site themselves, so it gives no route
+  away, and never on per-student planets, where the maps differ.
 - **Wear a badge**: pressing an earned badge in the garage puts its icon
   next to the student's name on the class screen. One at a time; pressing
   it again takes it off. It shows something they did, not a score.

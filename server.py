@@ -2918,7 +2918,7 @@ def planet_entry(p):
     # Stars, badges and the garage arrived after some saves did.
     for key, value in (("stars", {}), ("badges", []),
                        ("misses", {}), ("errored", {}), ("functions", []), ("now", None),
-                       ("found", []),
+                       ("found", []), ("routes", {}),
                        ("look", {"paint": "bone", "topper": "none", "trail": "tracks"})):
         entry.setdefault(key, value)
     entry["look"].setdefault("world", "planet")
@@ -2998,6 +2998,34 @@ def class_record(key):
     return best
 
 
+GHOST_MAX = 400   # frames kept of a record route
+
+
+def ghostly(key, s):
+    """Can this site have a record ghost? Only where everyone has the same map."""
+    return key != planet.UNCHARTED["key"] and not s.get("per_student")
+
+
+def class_ghost(key):
+    """The class record's route on a site, to race in the replay: the fewest
+    ticks among students whose best route was kept."""
+    best = None
+    for q in players.values():
+        entry = q.get("planet") or {}
+        ticks, route = entry.get("solved", {}).get(key), entry.get("routes", {}).get(key)
+        if route and ticks is not None and (best is None or ticks < best["ticks"]):
+            best = {"name": q["name"], "ticks": ticks, "route": route}
+    return best
+
+
+def ghost_for(p, key):
+    """The record ghost a student sees: once they've completed the site."""
+    zi, zone, s = planet.find_site(key)
+    if not ghostly(key, s) or key not in planet_entry(p)["solved"] or measuring(p, key):
+        return None
+    return class_ghost(key)
+
+
 def feed(text):
     planet_feed.append({"at": int(time.time()), "text": text})
     del planet_feed[:-40]
@@ -3063,7 +3091,8 @@ def planet_site(p, key):
                     crystals=v.get("crystals", []), goals=planet.goals(s, v),
                     tips=planet.star_tips(s, v), coach=s["coach"], gift=gift_for(p, key), drills=v.get("drills"),
                     # A zone that brings something new says what it is on its first site.
-                    new=zone.get("new") if zone["sites"][0] is s else None)
+                    new=zone.get("new") if zone["sites"][0] is s else None,
+                    ghost=ghost_for(p, key))
     return view
 
 
@@ -3154,6 +3183,9 @@ def planet_record(p, key, code, results):
             previous = class_record(key)
             best = entry["solved"].get(key)
             entry["solved"][key] = run["ticks"] if best is None else min(best, run["ticks"])
+            # The route of a new best, for the record ghost others race.
+            if ghostly(key, s) and not measuring(p, key) and (best is None or run["ticks"] < best):
+                entry["routes"][key] = [[f["r"], f["c"]] for f in run["frames"]][:GHOST_MAX]
             # A measurement takes a tick or two, so it has no records to beat.
             if measuring(p, key):
                 previous = {"ticks": 0}
@@ -4146,6 +4178,7 @@ class Handler(BaseHTTPRequestHandler):
                 rewards = planet_record(p, key, code[:planet.MAX_CODE], runs)
                 save_state()
                 body = json.dumps({"runs": runs, "rewards": rewards,
+                                   "ghost": None if uncharted else ghost_for(p, key),
                                    "state": planet_state(p)}).encode()
             self._send(200, body)
             return
