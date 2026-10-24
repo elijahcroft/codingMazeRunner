@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Strange Planet — Class</title>
 <style>
-  /* The teacher's overview: who's where, who's stuck, and what they think
-     each zone's hidden rule is. Same palette as the student page. */
+  /* The teacher's overview: who's where and who's stuck. Same palette as
+     the student page. */
   :root {
     color-scheme: dark;
     --void: #080c16;
@@ -45,9 +45,6 @@
   .site small { display: block; color: var(--muted); font-size: 12px; }
   .stuck { color: var(--amber); font-weight: 700; }
   .very-stuck { color: var(--red); font-weight: 700; }
-  .notes { display: grid; gap: 4px; max-width: 520px; }
-  .note { font-size: 13px; line-height: 1.4; color: #c9d4e6; }
-  .note b { color: var(--violet); font: 11px var(--editor); margin-right: 6px; }
   .empty { color: var(--muted); padding: 30px 0; }
   .bar { height: 6px; background: #1b2840; width: 120px; margin-top: 5px; }
   .bar span { display: block; height: 100%; background: var(--green); }
@@ -72,7 +69,7 @@
   <div class="summary" id="summary"></div>
   <div class="zones" id="zones"></div>
   <table>
-    <thead><tr><th>STUDENT</th><th>WORKING ON</th><th>STARS</th><th>RUNS HERE</th><th>HINTS</th><th>LAST RUN</th><th>FIELD JOURNAL · THEIR GUESS AT EACH RULE</th><th></th></tr></thead>
+    <thead><tr><th>STUDENT</th><th>WORKING ON</th><th>STARS</th><th>RUNS HERE</th><th>HINTS</th><th>LAST RUN</th><th></th></tr></thead>
     <tbody id="rows"></tbody>
   </table>
   <div class="empty" id="empty" hidden>Nobody has opened Strange Planet yet. Students go to <b>/planet</b> on the same address as Python Quest.</div>
@@ -98,8 +95,7 @@ async function refresh() {
   const students = data.students;
   $("empty").hidden = students.length > 0;
   const stuck = students.filter(s => s.runs_here >= 8 && s.solved < data.sites).length;
-  const notes = students.reduce((n, s) => n + Object.keys(s.journal).length, 0);
-  $("summary").innerHTML = `<div><b>${data.class.stars} ★</b>class stars (<a href="/planet/show" target="_blank" style="color:var(--violet)">project them</a>)</div><div><b>${students.length}</b>explorers</div><div><b>${stuck}</b>stuck (8+ runs on one site)</div><div><b>${notes}</b>journal notes</div>`;
+  $("summary").innerHTML = `<div><b>${data.class.stars} ★</b>class stars (<a href="/planet/show" target="_blank" style="color:var(--violet)">project them</a>)</div><div><b>${students.length}</b>explorers</div><div><b>${stuck}</b>stuck (8+ runs on one site)</div>`;
   const byZone = {};
   for (const s of students) byZone[s.zone] = (byZone[s.zone] || 0) + 1;
   $("zones").innerHTML = data.zones.map(z => `<span class="zone-count">${esc(z)}<b>${byZone[z] || 0}</b></span>`).join("");
@@ -110,7 +106,6 @@ async function refresh() {
     <td class="num ${stuckClass(s.runs_here)}">${s.runs_here}</td>
     <td class="num">${s.hints}</td>
     <td class="num">${ago(s.active)}</td>
-    <td><div class="notes">${Object.entries(s.journal).map(([zone, text]) => `<div class="note"><b>${esc(zone)}</b>${esc(text)}</div>`).join("") || '<span class="note" style="color:var(--muted)">—</span>'}</div></td>
     <td>${s.site !== "7" ? `<button onclick="unlock('${esc(s.id)}')" title="Open the next site for this student">Unlock next</button>` : ""}</td>
   </tr>`).join("");
 }

@@ -52,11 +52,38 @@ def solve(key, variant):
     return None
 
 
+def reach(key, variant, square):
+    """The shortest list of moves (compass commands, and jumps once they've
+    arrived) that drives over `square`, breadth first. A shortest route never
+    crosses its own tracks, so crumbling ground needs nothing extra."""
+    zi, zone, s = site(key)
+    v = s["variants"][variant]
+    moves = list(COMPASS)
+    if zi >= planet.SENSOR_ZONE["jump"]:
+        moves += [f'jump("{w}")' for w in planet.COMPASS]
+    if v.get("drills"):
+        moves += [f'drill("{w}")' for w in planet.COMPASS]
+    queue, seen = deque([[]]), set()
+    while queue:
+        actions = queue.popleft()
+        for move in moves:
+            out = planet.drive("\n".join(actions + [move]), v, zone["rules"], zi)
+            if any((f["r"], f["c"]) == tuple(square) for f in out["frames"]):
+                return actions + [move]
+            last = out["frames"][-1]
+            state = (last["r"], last["c"], out["ticks"] % v["wind"] if v.get("wind") else 0,
+                     last.get("k"), sum("g" in f for f in out["frames"]))
+            if out["end"] == "stopped" and state not in seen:
+                seen.add(state)
+                queue.append(actions + [move])
+    return None
+
+
 def as_code(route):
     """A list of commands as code, runs of the same one joined: east(3)."""
     lines = []
     for a in route:
-        if lines and lines[-1][0] == a:
+        if lines and lines[-1][0] == a and a.endswith("()"):
             lines[-1][1] += 1
         else:
             lines.append([a, 1])
@@ -68,8 +95,13 @@ def replay_as_code(out):
     every frame is one command)."""
     route = []
     for a, b in zip(out["frames"], out["frames"][1:]):
+        way = COMPASS[[0, 2, 1, 3].index(b["d"])]
         if b.get("e") == "wait":
             route.append("wait()")
+        elif b.get("e") == "jump":
+            route.append(f'jump("{way[:-2]}")')
+        elif b.get("e") == "drill":
+            route.append(f'drill("{way[:-2]}")')
         elif b.get("e") not in ("goal", "fell"):
             route.append(COMPASS[[0, 2, 1, 3].index(b["d"])])
     return as_code(route)
@@ -93,6 +125,9 @@ BONUS_PROGRAMS = {
     "2b": "north()\neast()\nsouth()\neast()\nnorth()\nsouth()\nwest()\n",
     "6a": "south(2)\nnorth()\nsouth(2)\nnorth()\nwest(2)\nnorth(2)\neast(2)\n",
     "6b": "south(2)\neast()\nsouth(2)\nnorth(2)\neast()\n",
+    "8a": 'for i in range(4):\n    jump("east")\n',
+    "8b": 'def hop():\n    east()\n    jump("east")\n\nfor i in range(5):\n    hop()\neast()\n',
+    "9c": "def step():\n    east()\n    south()\n\nfor i in range(5):\n    step()\n",
 }
 
 
@@ -130,7 +165,8 @@ class StarTests(unittest.TestCase):
     def test_a_typed_in_number_misses_the_computed_star(self):
         for key, typed in (("2a", "east()\nreport(6)\n"),
                            ("3a", "south(5)\nreport(5)\n"),
-                           ("5a", "report(2)\n")):
+                           ("5a", "report(2)\n"),
+                           ("7a", "report(12)\n")):
             self.assertEqual(self.earn(key, typed, 0)[:2], [True, False], key)
             self.assertEqual(self.earn(key, site(key)[2]["reference"], 0)[:2],
                              [True, True], key)
@@ -174,7 +210,7 @@ class SiteClaims(unittest.TestCase):
     def test_no_site_is_a_maze_of_corridors(self):
         # This isn't the maze game: the opening sites are open ground,
         # where most squares have three or four open neighbours.
-        for key in ("1a", "1b", "1c", "2a", "3a", "4c"):
+        for key in ("1a", "1b", "1c", "2a", "3a", "4c", "7b", "7c"):
             for v in site(key)[2]["variants"]:
                 grid = v["map"]
                 open_ = [(r, c) for r, row in enumerate(grid)
@@ -366,6 +402,193 @@ class SiteClaims(unittest.TestCase):
                 if j != i:
                     self.assertFalse(run("6c", "\n".join(route), j)["reached"], (i, j))
 
+    # ---- Zone 7 ----
+    def test_7a_the_beacon_sensors_say_where_it_is(self):
+        out = run("7a", "print(x(), y(), beacon_x(), beacon_y())\n")
+        self.assertEqual(out["prints"][0]["text"], "1 2 13 2")
+
+    def test_7b_7c_a_route_only_fits_your_own_plain(self):
+        for key in ("7b", "7c"):
+            zi, zone, s = site(key)
+            for i, v in enumerate(s["variants"]):
+                route = replay_as_code(run(key, s["reference"], i))
+                out = run(key, route, i)
+                # A route earns the mission, but not the 🌍 star.
+                self.assertEqual(planet.stars(s, v, out, route)[:2], [True, False], (key, i))
+                self.assertIn("🌍 the same code reached the beacon on 1 of the 8",
+                              out["log"][-1], (key, i))
+
+    def test_7c_needs_safe_ground_and_going_round(self):
+        ref = site("7c")[2]["reference"]
+        side = '    elif safe("south"):\n        south()\n    else:\n        north()\n'
+        self.assertIn(side, ref)
+        for name, code in (("7b's steering", site("7b")[2]["reference"]),
+                           ("craters", ref.replace(' and look(way) != "crater"', "")),
+                           ("going round", ref.replace(side, ""))):
+            for i in range(len(site("7c")[2]["variants"])):
+                self.assertFalse(run("7c", code, i)["reached"], (name, i))
+
+    def test_uncharted_is_7cs_program_with_the_old_rules_added(self):
+        ready = "    ready()\n"
+        self.assertIn(ready, planet.UNCHARTED_REFERENCE)
+        self.assertTrue(planet.UNCHARTED_REFERENCE.replace(ready, "").endswith(
+            site("7c")[2]["reference"].split("\n\n", 1)[1]))
+
+
+    # ---- Zone 8 ----
+    def test_jump_leaps_two_squares_over_anything(self):
+        out = run("8b", 'east()\njump("east")\neast()\njump("east")\n')
+        self.assertEqual((out["frames"][-1]["c"], out["ticks"]), (7, 4))
+        self.assertIn("tick 2: 🦘 jumped east", out["log"])
+        self.assertEqual(out["frames"][2]["e"], "jump")
+
+    def test_a_jump_needs_ground_to_land_on(self):
+        out = run("8b", 'east()\njump("east")\njump("east")\n')   # x 6 is rock
+        self.assertEqual(out["frames"][-1]["c"], 4)
+        self.assertIn("a jump can't land on rock", out["log"][-2])
+        self.assertEqual(run("8b", 'jump("east")\n')["end"], "fell")   # into the trench at x 3
+        self.assertEqual(run("8a", "east(8)\n")["end"], "fell")       # and walking falls in too
+
+    def test_jump_arrives_in_crater_hops(self):
+        self.assertIn("Crater Hops", run("7c", 'jump("east")\n')["error"])
+        self.assertIn('jump("east")', run("8a", "jump()\n")["error"])
+        self.assertIn('jump("east")', run("8a", 'jump("up")\n')["error"])
+
+    def test_8c_a_route_only_fits_your_own_field(self):
+        zi, zone, s = site("8c")
+        for i, v in enumerate(s["variants"]):
+            route = replay_as_code(run("8c", s["reference"], i))
+            out = run("8c", route, i)
+            self.assertEqual(planet.stars(s, v, out, route)[:2], [True, False], i)
+            self.assertIn("🌍 the same code reached the beacon on 1 of the 8 fields",
+                          out["log"][-1], i)
+
+    def test_8c_jumping_at_anything_but_ground_overshoots_the_beacon(self):
+        code = ('while not at_beacon():\n    if look("east") != "ground":\n'
+                '        jump("east")\n    else:\n        east()\n')
+        for i in range(len(site("8c")[2]["variants"])):
+            out = run("8c", code, i)
+            self.assertFalse(out["reached"], i)
+
+
+    # ---- Zones 9 to 12: one new thing each, told and drawn ----
+    def test_every_new_zone_says_what_is_new(self):
+        for key in ("belts", "drill", "gates", "relay"):
+            zone = next(z for z in planet.ZONES if z["key"] == key)
+            self.assertEqual(len(zone["sites"]), 4, key)
+            self.assertEqual(set(zone["new"]), {"icon", "what", "example"}, key)
+            self.assertEqual(len(zone["hints"]), 3, key)
+            # The A site is a try-it: its reference is a line or three.
+            self.assertLessEqual(planet.code_lines(zone["sites"][0]["reference"]), 3, key)
+
+    def test_each_zone_needs_its_new_thing(self):
+        # The last zone's final program fails on this zone's last site.
+        for key, before in (("9d", "8c"), ("10d", "9d"), ("11d", "10d"), ("12d", "11d")):
+            code = site(before)[2]["reference"]
+            for i in range(8):
+                self.assertFalse(run(key, code, i)["reached"], (key, i))
+
+    def test_new_d_sites_a_route_only_fits_your_own(self):
+        for key in ("9d", "10d", "11d", "12d"):
+            zi, zone, s = site(key)
+            fits = 0
+            for i in range(8):
+                route = replay_as_code(run(key, s["reference"], i))
+                self.assertTrue(run(key, route, i)["reached"], (key, i))
+                fits += sum(run(key, route, j)["reached"] for j in range(8) if j != i)
+            self.assertLessEqual(fits / 56, .15, key)
+
+    def test_a_belt_carries_the_rover_to_its_end(self):
+        out = run("9a", "east(2)\n")
+        self.assertTrue(out["reached"])
+        self.assertEqual(out["ticks"], 2)       # the ride is part of one move
+        self.assertIn("tick 2: 🛤 a belt carried the rover to x 1, y 4", out["log"])
+        self.assertEqual(run("9a", 'east()\nprint(look("east"))\n')["prints"][0]["text"], "belt")
+
+    def test_the_wrong_belt_runs_into_a_crater(self):
+        out = run("9b", "east()\n")
+        self.assertEqual(out["end"], "fell")
+        self.assertIn("belt carried the rover into a crater", out["explain"]["what"])
+
+    def test_9c_is_1bs_loop_on_belts(self):
+        self.assertEqual(site("9c")[2]["reference"], site("1b")[2]["reference"].replace("8", "5"))
+
+    def test_drill_turns_rock_into_ground(self):
+        out = run("10a", 'east(3)\ndrill("east")\nprint(drills_left())\n')
+        self.assertIn("tick 4: ⛏ drilled through the rock, 0 drills left", out["log"])
+        self.assertEqual(out["frames"][-1]["g"], [2, 5])
+        self.assertEqual(out["prints"][0]["text"], "0")
+        out = run("10a", 'east(3)\ndrill("east")\ndrill("east")\n')
+        self.assertIn("⛏ nothing to drill there", out["log"][-2])
+        out = run("10b", 'east(2)\ndrill("east")\neast(4)\ndrill("east")\neast(4)\n'
+                         'drill("east")\neast(3)\n')
+        self.assertIn("tick 13: ⛏ no drills left", out["log"])
+        self.assertIn("ran out of drills", out["explain"]["what"])
+        self.assertIn('drill("east")', run("10a", 'drill("up")\n')["error"])
+
+    def test_10b_drilling_the_wall_with_a_gap_leaves_too_few(self):
+        out = run("10b", 'east(2)\ndrill("east")\neast(4)\ndrill("east")\neast(4)\n'
+                         'drill("east")\neast(3)\n')
+        self.assertFalse(out["reached"])
+
+    def test_10d_thick_rock_cant_be_jumped(self):
+        jump = ('while not at_beacon():\n    if look("east") != "ground" and look("east") != "beacon":\n'
+                '        jump("east")\n    else:\n        east()\n')
+        for i in range(8):
+            self.assertFalse(run("10d", jump, i)["reached"], i)
+
+    def test_a_gate_needs_a_key(self):
+        out = run("11b", "east(9)\n")
+        self.assertFalse(out["reached"])
+        self.assertIn("🔒 the gate at x 6, y 3 is locked", out["log"][0])
+        self.assertIn("Pick up the key at x 3, y 1 first", out["explain"]["next"])
+        out = run("11b", 'north(2)\neast(2)\nprint(has_key(), look("south"))\nsouth(2)\n'
+                         'east(3)\nprint(has_key())\n')
+        self.assertEqual([p["text"] for p in out["prints"]], ["True ground", "False"])
+        self.assertIn("tick 9: 🚪 the key opened the gate", out["log"])
+        self.assertEqual(run("11a", 'east()\nprint(look("east"))\n')["prints"][0]["text"], "key")
+        # A gate is too tall to jump over.
+        self.assertIn("too tall", run("11a", 'east(4)\njump("east")\n')["log"][-2])
+
+    def test_flags_count_only_in_order(self):
+        out = run("12b", "north()\n" * 0 + "east(5)\nprint(flags_left(), next_x(), next_y())\n")
+        self.assertIn("🚩 that's flag 3: flag 1 comes first", out["log"][0])
+        self.assertEqual(out["prints"][0]["text"], "4 2 3")
+        self.assertIn("Flag 1 is next, at x 2, y 3", out["explain"]["next"])
+        out = run("12a", "east(11)\nprint(next_x(), next_y())\n")
+        self.assertEqual(out["prints"][0]["text"], "10 3")   # every flag done: the beacon
+
+    def test_12c_go_to_in_a_loop_is_compact(self):
+        zi, zone, s = site("12c")
+        v = s["variants"][0]
+        route = replay_as_code(run("12c", s["reference"]))
+        self.assertGreater(planet.code_lines(route), s["compact"])
+        self.assertTrue(planet.stars(s, v, run("12c", s["reference"]), s["reference"])[2])
+
+class GiftTests(unittest.TestCase):
+    def test_every_gift_sits_on_ground_the_rover_can_drive_over(self):
+        for key in planet.GIFT_SQUARES:
+            zi, zone, s = site(key)
+            for vi, v in enumerate(s["variants"]):
+                r, c = planet.gift_square(key, vi)
+                self.assertIn(v["map"][r][c], ".~", (key, vi))
+                self.assertNotIn((r, c), [tuple(p) for p in v.get("crystals", [])])
+                ref = planet.drive(s["reference"], v, zone["rules"], zi)
+                if (r, c) not in {(f["r"], f["c"]) for f in ref["frames"]}:
+                    self.assertIsNotNone(reach(key, vi, (r, c)), (key, vi))
+
+    def test_one_gift_per_zone_each_with_its_own_garage_item(self):
+        # One for every zone but Uncharted: site keys start with the zone's number.
+        self.assertEqual([k[:-1] for k in planet.GIFT_SQUARES],
+                         [str(n) for n in range(1, len(planet.ZONES))])
+        self.assertEqual(set(server.GIFTS), set(planet.GIFT_SQUARES))
+        keys = [i["key"] for i in server.GARAGE]
+        self.assertEqual(len(keys), len(set(keys)))
+        self.assertTrue(all(i["slot"] in server.GARAGE_SLOTS for i in server.GARAGE))
+        # Everything a star count unlocks can be reached.
+        top = 3 * len(planet.SITE_ORDER)
+        self.assertTrue(all(i["stars"] <= top for i in server.GARAGE if "stars" in i))
+
 
 class UnchartedTests(unittest.TestCase):
     def planets(self, seeds=10):
@@ -390,6 +613,23 @@ class UnchartedTests(unittest.TestCase):
                            ("going round", ref.replace(side, ""))):
             self.assertLess(self.score(code, planets), len(planets) * 0.9, name)
 
+    def test_every_run_lands_on_the_same_five_planets(self):
+        planets = planet.UNCHARTED_PLANETS
+        self.assertEqual(planets, planet.uncharted_planets(2))
+        self.assertEqual(len(planets), planet.PLANETS_PER_RUN)
+        self.assertEqual(planet.UNCHARTED_SAMPLE, planets[0])
+        # 7C's program is a start (the first star), and every idea from the
+        # earlier zones it leaves out wins another planet.
+        self.assertEqual(self.score(planet.SIGNAL_ROUND, planets), 2)
+        ref = planet.UNCHARTED_REFERENCE
+        side = '    elif safe("south"):\n        south()\n    else:\n        north()\n'
+        self.assertEqual(self.score(ref, planets), 5)
+        for name, code in (("sun", ref.replace("battery() < 30", "False")),
+                           ("craters", ref.replace(' and look(way) != "crater"', "")),
+                           ("wind", ref.replace("gust_in() == 1", "False")),
+                           ("going round", ref.replace(side, ""))):
+            self.assertLess(self.score(code, planets), 5, name)
+
     def test_a_route_from_one_planet_fails_on_the_others(self):
         planets = self.planets(4)
         first = planet.drive(planet.UNCHARTED_REFERENCE, planets[0],
@@ -409,6 +649,15 @@ class RoverTests(unittest.TestCase):
         out = run("1a", "print(tick())\n")
         self.assertIn("Wind Canyon", out["error"])
         self.assertIsNone(run("3a", "print(tick())\n")["error"])
+        self.assertIn("Uncharted", run("7c", "print(gust_in())\n")["error"])
+        self.assertIn("Uncharted", run("12d", "print(gust_in())\n")["error"])
+        self.assertIn("The Quarry", run("9a", 'drill("east")\n')["error"])
+        self.assertIn("Gate Station", run("10a", "print(has_key())\n")["error"])
+        self.assertIn("Flag Relay", run("11a", "print(next_x())\n")["error"])
+
+    def test_zone_order_matches_the_zones(self):
+        self.assertEqual([z["key"] for z in planet.ZONES], planet.ZONE_ORDER)
+        self.assertEqual(planet.UNCHARTED_ZONE, planet.ZONE_ORDER.index("uncharted"))
 
     def test_look_names_the_next_square(self):
         out = run("2a", 'print(look("north"))\nprint(look("east"))\n'
@@ -419,6 +668,31 @@ class RoverTests(unittest.TestCase):
     def test_report_is_quiet_where_nothing_is_measured(self):
         out = run("2b", "report(3)\n")
         self.assertEqual((out["end"], out["log"][0]), ("stopped", "tick 0: 📡 report sent: 3"))
+
+    def test_a_run_that_misses_says_what_happened_in_plain_words(self):
+        for key, code, what, nxt in [
+            ("1a", "east(2)\n", "finished with the rover at x 3, y 1, and 3 samples still out",
+             "The closest is at x 2, y 3: 1 square west and 2 squares south."),
+            ("7b", "east()\n", "away from the beacon at", "of there."),
+            ("8a", "east(8)\n", "The rover drove into a crater at x 6, y 2", 'look("east") == "crater"'),
+            ("3b", "south(20)\n", "gust pushed the rover into a crater", "wait()"),
+            ("4a", "east()\nwest()\n", "had cracked", "own tracks"),
+            ("5c", "east(40)\n", "The battery ran out", "sun"),
+            ("1a", "while True:\n    wait()\n", "ran for 1000 ticks", "while loop"),
+            ("1a", "east(20)\n", "bumped into rock", "doesn't move"),
+        ]:
+            out = run(key, code)
+            self.assertIn(what, out["explain"]["what"], code)
+            self.assertIn(nxt, out["explain"]["next"] + out["explain"]["what"], code)
+            # Statements, never questions.
+            self.assertNotIn("?", out["explain"]["what"] + out["explain"]["next"], code)
+        self.assertIsNone(run("1a", "east(\n")["explain"])
+        self.assertIsNone(run("9a", "east(2)\n")["explain"])
+
+    def test_the_place_it_names_is_where_the_rover_ended(self):
+        out = run("7b", "east(3)\nsouth()\n")
+        last = out["frames"][-1]
+        self.assertIn(f"x {last['c']}, y {last['r']}", out["explain"]["what"])
 
     def test_friendly_errors(self):
         self.assertIn("Strange Planet", run("1a", "x = [1, 2]\n")["error"])
@@ -504,6 +778,8 @@ class ClassroomTests(unittest.TestCase):
         for path in ("/planet", "/planet/teacher", "/planet/show"):
             with urlopen(self.base + path) as response:
                 self.assertIn(b"Strange Planet", response.read())
+        with urlopen(self.base + "/planet/render.js") as response:
+            self.assertIn(b"function drawRover", response.read())
 
     def test_sites_open_one_at_a_time(self):
         pid = self.join()
@@ -557,23 +833,35 @@ class ClassroomTests(unittest.TestCase):
         self.assertEqual(len(out["runs"]), planet.PLANETS_PER_RUN)
         self.assertTrue(all(r["reached"] for r in out["runs"]))
         self.assertTrue(all("map" in r for r in out["runs"]))
+        again = self.post("/planet/run", {"id": pid, "site": "7", "code": "east()"})
+        self.assertEqual([r["map"] for r in again["runs"]],
+                         [r["map"] for r in out["runs"]])
         self.post("/planet/run", {"id": pid, "site": "7", "code": "east()"})
         self.assertEqual(self.get(f"/planet/state?id={pid}")["uncharted"]["reached"], 5)
 
-    def test_hints_journal_and_the_teacher_overview(self):
+    def test_the_globe_star_checks_every_plain(self):
+        pid = self.join()
+        server.planet_entry(server.players[pid])["unlocked"] = len(planet.SITE_ORDER)
+        s = site("7b")[2]
+        out = self.transmit(pid, "7b", s["reference"])
+        self.assertEqual(out["rewards"]["stars"], [True, True, True])
+        self.assertIn("8 of the 8 plains", out["runs"][0]["log"][-1])
+        mine = planet.variant_index(pid, s)
+        route = replay_as_code(run("7b", s["reference"], mine))
+        out = self.transmit(pid, "7b", route)
+        self.assertEqual(out["rewards"]["stars"], [True, False, True])
+
+    def test_hints_and_the_teacher_overview(self):
         pid = self.join()
         for _ in range(5):
             state = self.post("/planet/hint", {"id": pid, "zone": "ice"})
         ice = next(z for z in state["zones"] if z["key"] == "ice")
         self.assertEqual(len(ice["hints"]), 3)
-        self.post("/planet/journal", {"id": pid, "zone": "ice",
-                                      "text": "one move slides " + "x" * 300})
         for _ in range(3):
             self.post("/planet/run", {"id": pid, "site": "1a", "code": "east()"})
         row = self.get("/planet/overview")["students"][0]
         self.assertEqual((row["name"], row["site"], row["runs_here"], row["hints"]),
                          ("Ada", "1a", 3, 3))
-        self.assertEqual(len(row["journal"]["Ice Field"]), server.JOURNAL_MAX)
 
     def test_teacher_can_unlock_the_next_site(self):
         pid = self.join()
@@ -614,13 +902,6 @@ class ClassroomTests(unittest.TestCase):
         out = self.transmit(pid, "1b", site("1b")[2]["reference"])
         self.assertIn("Never Give Up", [b["name"] for b in out["rewards"]["badges"]])
 
-    def test_the_first_sighting_of_a_hidden_rule_is_an_anomaly(self):
-        pid = self.join()
-        server.planet_entry(server.players[pid])["unlocked"] = 3
-        out = self.transmit(pid, "2a", "east()\n")
-        self.assertEqual(out["rewards"]["anomaly"], {"zone": "Ice Field", "tick": 1})
-        self.assertIsNone(self.transmit(pid, "2a", "east()\n")["rewards"]["anomaly"])
-
     def test_class_records_and_the_feed(self):
         ada, bo = self.join("Ada"), self.join("Bo")
         slow = "wait()\n" + site("1a")[2]["reference"]
@@ -656,6 +937,51 @@ class ClassroomTests(unittest.TestCase):
         self.assertEqual(self.post("/planet/look", {"id": pid, "paint": "coral"})["look"]["paint"],
                          "coral")
 
+    def test_driving_over_a_gift_finds_a_garage_item(self):
+        pid = self.join()
+        self.assertEqual(self.get(f"/planet/site?id={pid}&site=1a")["gift"], [1, 4])
+        gifts = lambda: {x["key"]: x["gift"] for z in self.get(f"/planet/state?id={pid}")["zones"]
+                         for x in z["sites"]}
+        self.assertEqual((gifts()["1a"], gifts()["1b"]), (True, False))
+        self.assertEqual(self.post("/planet/look", {"id": pid, "paint": "grass"})["look"]["paint"],
+                         "bone")
+        # Scouting past it doesn't open it.
+        self.post("/planet/scout", {"id": pid, "site": "1a", "moves": ["east"] * 3})
+        self.assertEqual(self.get(f"/planet/site?id={pid}&site=1a")["gift"], [1, 4])
+        # A run that drives over it does, mission or not.
+        out = self.transmit(pid, "1a", "east(3)\n")
+        self.assertFalse(out["runs"][0]["reached"])
+        self.assertEqual(out["rewards"]["found"],
+                         [{"slot": "paint", "key": "grass", "name": "Grass Block"}])
+        self.assertEqual(out["rewards"]["unlocked"], [])
+        self.assertIn("tick 3: 🎁 found a mystery gift: Grass Block!", out["runs"][0]["log"])
+        self.assertIsNone(self.get(f"/planet/site?id={pid}&site=1a")["gift"])
+        self.assertFalse(gifts()["1a"])
+        self.assertEqual(self.transmit(pid, "1a", "east(3)\n")["rewards"]["found"], [])
+        self.assertEqual(self.post("/planet/look", {"id": pid, "paint": "grass"})["look"]["paint"],
+                         "grass")
+        self.assertTrue(any("mystery gift" in m["text"] for m in self.get("/planet/overview")["feed"]))
+        # A classmate's gift is still waiting for them.
+        bo = self.join("Bo")
+        self.assertEqual(self.get(f"/planet/site?id={bo}&site=1a")["gift"], [1, 4])
+
+    def test_finding_every_gift_earns_treasure_hunter(self):
+        pid = self.join()
+        entry = server.planet_entry(server.players[pid])
+        entry["found"] = [i["key"] for k, i in server.GIFTS.items() if k != "1a"]
+        out = self.transmit(pid, "1a", "east(3)\n")
+        self.assertIn("Treasure Hunter", [b["name"] for b in out["rewards"]["badges"]])
+
+    def test_the_map_look_is_a_garage_slot(self):
+        pid = self.join()
+        self.assertEqual(self.get(f"/planet/state?id={pid}")["look"]["world"], "planet")
+        self.assertEqual(self.post("/planet/look", {"id": pid, "world": "moon"})["look"]["world"],
+                         "planet")
+        server.planet_entry(server.players[pid])["stars"]["1a"] = [True] * 3
+        server.planet_entry(server.players[pid])["stars"]["1b"] = [True] * 3
+        self.assertEqual(self.post("/planet/look", {"id": pid, "world": "moon"})["look"]["world"],
+                         "moon")
+
     def test_scouting_drives_by_hand_but_saves_nothing(self):
         pid = self.join()
         out = self.post("/planet/scout", {"id": pid, "site": "1a",
@@ -668,6 +994,54 @@ class ClassroomTests(unittest.TestCase):
                                                            "moves": ["east"]}))
         state = self.get(f"/planet/state?id={pid}")
         self.assertEqual((state["total_stars"], state["current"]), (0, "1a"))
+
+    def test_field_measurements_coach_step_by_step(self):
+        pid = self.join()
+        server.planet_entry(server.players[pid])["unlocked"] = len(planet.SITE_ORDER)
+        for key in ("2a", "3a", "5a", "7a"):
+            coach = self.get(f"/planet/site?id={pid}&site={key}")["coach"]
+            self.assertTrue(coach["intro"] and coach["short"])
+            self.assertEqual(len(coach["steps"]), 3)
+            # The last step's code is a program that gets the number.
+            code = coach["steps"][-1].split("\n\n", 1)[1]
+            self.assertTrue(self.transmit(pid, key, code)["runs"][0]["reached"], key)
+        self.assertIn("tick", self.get(f"/planet/site?id={pid}&site=3a")["coach"]["intro"])
+        self.assertIsNone(self.get(f"/planet/site?id={pid}&site=2b")["coach"])
+
+    def test_saved_functions_are_kept_for_later_sites(self):
+        pid = self.join()
+        hop = "def hop(n):\n    east(n)\n    south(n)"
+        self.assertEqual(self.post("/planet/functions", {"id": pid, "code": hop})["functions"],
+                         [{"name": "hop", "code": hop}])
+        better = "def hop(n):\n    east(n)"
+        self.post("/planet/functions", {"id": pid, "code": "def other():\n    wait()"})
+        out = self.post("/planet/functions", {"id": pid, "code": better})
+        self.assertEqual([f["code"] for f in out["functions"]], [better, "def other():\n    wait()"])
+        for broken in ("def hop(:\n    east()", "east()", hop + "\nhop(2)"):
+            self.assertIn("error", self.post("/planet/functions", {"id": pid, "code": broken}))
+        self.post("/planet/functions", {"id": pid, "remove": "other"})
+        server.players.clear()
+        server.load_state()
+        self.assertEqual(self.get(f"/planet/state?id={pid}")["functions"],
+                         [{"name": "hop", "code": better}])
+
+    def test_the_class_screen_shows_each_rover_and_its_code(self):
+        pid = self.join()
+        now = self.get("/planet/overview")["students"]
+        self.assertEqual(now, [])
+        self.post("/planet/typing", {"id": pid, "site": "1a", "code": "east(3)"})
+        now = self.get("/planet/overview")["students"][0]["now"]
+        start = site("1a")[2]["variants"][0]["map"]
+        self.assertEqual((now["site"], now["code"], now["map"]), ("1a", "east(3)", start))
+        self.assertEqual(start[now["pos"][0]][now["pos"][1]], "S")
+        self.post("/planet/run", {"id": pid, "site": "1a", "code": "east(3)\nsouth()"})
+        self.post("/planet/typing", {"id": pid, "site": "1a", "code": "east(3)\nsouth()\n"})
+        now = self.get("/planet/overview")["students"][0]["now"]
+        self.assertEqual((now["pos"], now["end"]), ([2, 4], "stopped"))
+        # A locked site isn't shown, and nothing in the map gives a rule away.
+        self.post("/planet/typing", {"id": pid, "site": "3c", "code": "x"})
+        self.assertEqual(self.get("/planet/overview")["students"][0]["now"]["site"], "1a")
+        self.assertEqual(set(now), {"site", "site_name", "zone", "map", "pos", "end", "code"})
 
     def test_progress_survives_a_restart(self):
         pid = self.join()

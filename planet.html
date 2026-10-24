@@ -83,6 +83,7 @@
   .wp.now.done span { background: var(--mint); }
   .wp.now.gold span { background: var(--gold); }
   .wp.locked { cursor: default; }
+  .wp .gift { position: absolute; top: -6px; right: -6px; font-size: 10px; font-style: normal; line-height: 1; pointer-events: none; }
   .wp.locked span { border-color: var(--dim); background: transparent; width: 7px; height: 7px; }
   .wp:not(.locked):hover span { transform: scale(1.25); }
 
@@ -98,6 +99,7 @@
   .goal { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 6px; border-radius: 99px; background: var(--dusk); color: var(--haze); font-size: 13px; }
   .goal i { font-style: normal; color: var(--dim); font-size: 15px; line-height: 1; }
   .goal.got { color: var(--bone); background: #3a3218; }
+  .goal.gift { color: #ffd0e6; background: #4a2140; padding-left: 10px; }
   .goal.got i { color: var(--gold); }
   .scope { position: relative; min-height: 0; margin: 0 16px; border-radius: 18px; overflow: hidden; background: #120e22; box-shadow: inset 0 0 0 1px var(--edge); }
   .scope.shake { animation: shake .35s; }
@@ -130,7 +132,10 @@
   .planet-tab.on { border-color: var(--bone); transform: scale(1.12); }
   .where { position: absolute; left: 12px; bottom: 12px; font: 12px var(--mono); color: var(--haze); background: rgba(18,13,34,.6); padding: 3px 8px; border-radius: 6px; pointer-events: none; }
   .banner { position: absolute; left: 16px; right: 16px; bottom: 16px; width: fit-content; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 10px 12px 10px 18px; border-radius: 14px; background: rgba(27,21,52,.92); backdrop-filter: blur(6px); box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 1px var(--edge); }
-  .banner p { margin: 0; font-weight: 650; max-width: 62ch; }
+  .banner p { margin: 0; font-weight: 650; max-width: 62ch; white-space: pre-wrap; }
+  .banner p .next { display: block; margin-top: 4px; color: var(--mint); }
+  .banner code { font: 600 .95em var(--mono); color: var(--mint); background: rgba(140,242,198,.1); padding: 1px 6px; border-radius: 6px; }
+  .goal.legend { background: none; padding-left: 4px; color: var(--haze); }
   .banner.win { box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 2px var(--mint); }
   .banner.lost { box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 2px var(--coral); }
   .banner.scout { box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 2px var(--violet); }
@@ -138,10 +143,6 @@
   .banner-actions { display: flex; gap: 8px; flex: none; }
 
   /* The moment a hidden rule first shows itself: the replay stops for it. */
-  .anomaly { position: absolute; left: 16px; right: 16px; bottom: 16px; width: fit-content; margin: 0 auto; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 12px 14px 12px 18px; border-radius: 16px; background: rgba(39,27,72,.94); box-shadow: 0 0 0 2px var(--violet), 0 0 40px rgba(185,163,255,.45); animation: glow 1.4s ease-in-out infinite alternate; }
-  .anomaly b { display: block; font-size: 18px; letter-spacing: -.01em; }
-  .anomaly span { color: var(--haze); font-size: 14px; }
-  @keyframes glow { to { box-shadow: 0 0 0 2px var(--violet), 0 0 70px rgba(185,163,255,.7); } }
 
   /* The stars, revealed one by one. */
   .celebrate { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; background: radial-gradient(circle at 50% 45%, rgba(27,21,52,.35), rgba(12,9,26,.7)); }
@@ -215,6 +216,7 @@
   .ind { box-shadow: inset 1px 0 0 rgba(185,163,255,.22); }
   .err-line { position: absolute; z-index: -1; left: 0; right: 0; height: 1.6em; background: rgba(255,111,97,.18); box-shadow: inset 3px 0 0 var(--coral); }
   .t-cmd { color: var(--mint); } .t-sense { color: #8fc8ff; } .t-own { color: #f0a8ff; } .t-key { color: var(--amber); }
+  .t-blank { color: #1b1733; background: var(--amber); border-radius: 3px; }
   .t-num { color: var(--gold); } .t-text { color: #ffc7a8; } .t-note { color: #8a80b0; }
   .kit { display: flex; flex-wrap: wrap; gap: 5px; padding: 10px 12px 0; }
   .chip { border: 0; border-radius: 7px; padding: 3px 7px; background: var(--panel); color: #d9ccff; font: 12.5px var(--mono); position: relative; }
@@ -256,6 +258,12 @@
   .pop textarea { width: 100%; min-height: 80px; resize: vertical; border-radius: 10px; border: 1px solid var(--edge); background: var(--dusk); padding: 9px; }
   .pop-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
   .pop-row small { color: var(--haze); }
+  .pop h3 { margin: 12px 0 6px; font-size: 13px; color: var(--haze); font-weight: 650; }
+  .fns { display: grid; gap: 8px; max-height: min(320px, 45vh); overflow: auto; }
+  .fn { background: var(--dusk); border-radius: 12px; padding: 8px 10px; }
+  .fn pre { margin: 0; max-height: 96px; overflow: auto; font: 13px/1.5 var(--mono); white-space: pre; }
+  .fn .pop-row { margin-top: 6px; }
+  .fn-save { display: flex; flex-wrap: wrap; gap: 6px; }
   .dialog { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px; background: rgba(12,9,26,.72); overflow: auto; }
   .intro-card, .garage-card { width: min(520px, 100%); background: var(--dusk); border-radius: 20px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.5), inset 0 0 0 1px var(--edge); }
   .intro-card canvas { display: block; width: 100%; height: 170px; }
@@ -268,14 +276,15 @@
   .garage-top canvas { width: 200px; height: 200px; border-radius: 18px; display: block; }
   .garage-card h2 { margin: 0; font-size: 24px; font-weight: 850; letter-spacing: -.02em; }
   .garage-card h3 { margin: 14px 0 6px; font-size: 14px; color: var(--haze); font-weight: 600; }
-  .garage-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
-  .garage-head span { color: var(--gold); font: 700 16px var(--mono); }
+  .garage-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  .garage-head span { color: var(--gold); font: 700 16px var(--mono); margin-right: auto; margin-left: 12px; }
   .options { display: flex; flex-wrap: wrap; gap: 6px; }
   .option { border: 1px solid var(--edge); background: var(--panel); border-radius: 10px; padding: 6px 10px; display: inline-flex; align-items: center; gap: 7px; font-size: 13px; }
   .option.on { border-color: var(--mint); box-shadow: inset 0 0 0 1px var(--mint); }
   .option:disabled { opacity: .5; cursor: default; }
   .option .sw { width: 14px; height: 14px; border-radius: 50%; }
   .option small { color: var(--gold); font-family: var(--mono); }
+  .gift-note { margin: 10px 0 0; color: var(--haze); font-size: 13px; }
   .badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
   .badge { display: grid; grid-template-columns: 30px 1fr; gap: 6px; align-items: center; padding: 8px; border-radius: 12px; background: var(--panel); font-size: 13px; }
   .badge .ico { font-size: 22px; text-align: center; }
@@ -308,11 +317,12 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .wp span, .cell i, .big-star i { transition: none; }
-    .scope.shake, .stars-button.bump, .anomaly, .toast, .toast.out { animation: none; }
+    .scope.shake, .stars-button.bump, .toast, .toast.out { animation: none; }
   }
   .calm .wp span, .calm .cell i, .calm .big-star i { transition: none; }
-  .calm .scope.shake, .calm .stars-button.bump, .calm .anomaly, .calm .toast, .calm .toast.out { animation: none; }
+  .calm .scope.shake, .calm .stars-button.bump, .calm .toast, .calm .toast.out { animation: none; }
   .intro-note, .calm-pick { display: flex; align-items: center; gap: 8px; margin: 0 0 16px; color: var(--haze); font-size: 14px; }
+  .intro-note { display: block; line-height: 1.45; margin-bottom: 12px; }
   .calm-pick { cursor: pointer; }
   .big { --code-size: 17px; }
   .big .feed { font-size: 16px; }
@@ -360,6 +370,9 @@
             <div class="gauge" id="batteryGauge" hidden title="battery()"><small>battery</small><span class="cell"><i id="batteryBar"></i></span><span id="battery">100</span></div>
             <div class="gauge" id="sampleGauge" hidden title="samples_left()"><small>samples</small><span id="samples">0</span></div>
             <div class="gauge" id="crystalGauge" hidden title="Crystals collected"><small>💎</small><span id="crystals">0</span></div>
+            <div class="gauge" id="drillGauge" hidden title="drills_left()"><small>⛏ drills</small><span id="drills">0</span></div>
+            <div class="gauge" id="keyGauge" hidden title="Keys the rover holds"><small>🔑 keys</small><span id="keys">0</span></div>
+            <div class="gauge" id="flagGauge" hidden title="flags_left()"><small>🚩 flags left</small><span id="flags">0</span></div>
           </div>
           <div class="right-hud">
             <div class="status" id="status">Ready</div>
@@ -370,7 +383,6 @@
         <svg class="compass" id="compass" viewBox="0 0 58 58" aria-hidden="true"><circle cx="29" cy="29" r="20" fill="rgba(18,13,34,.6)" stroke="rgba(242,234,219,.25)"/><path d="M29 12 L33 29 L29 26 L25 29 Z" fill="#8cf2c6"/><path d="M29 46 L33 29 L29 32 L25 29 Z" fill="rgba(242,234,219,.4)"/><g font-family="ui-monospace,monospace" font-size="9" font-weight="700" fill="#f2eadb" text-anchor="middle"><text x="29" y="8">N</text><text x="29" y="57">S</text><text x="53" y="32">E</text><text x="5" y="32">W</text></g></svg>
         <div class="where" id="where" hidden></div>
         <div class="banner" id="banner" hidden><p id="bannerText"></p><div class="banner-actions" id="bannerActions"></div></div>
-        <div class="anomaly" id="anomaly" hidden role="status"><div><b>📡 Anomaly detected!</b><span>Something strange just happened. What was it?</span></div><div class="banner-actions"><button class="go" id="anomalyGo">Keep watching ▶</button><button class="quiet" id="anomalyJournal">📓 Guess</button></div></div>
         <div class="scout-help" id="scoutHelp" hidden><b>Scouting</b>: arrow keys drive north, south, east and west · space waits · R restarts. <span id="scoutLeft"></span> Only code completes the mission. <button class="quiet" id="scoutCode" disabled>📋 Use as code</button></div>
         <div class="pad" id="pad" hidden aria-label="Drive by hand">
           <button class="up" data-move="north" aria-label="Drive north">↑<small>N</small></button>
@@ -407,7 +419,7 @@
         <button class="go transmit" id="runButton" title="F5 or Ctrl+Enter">Transmit ▶</button>
         <button class="tool" id="scoutButton" title="Scout: drive by hand to explore" aria-label="Scout: drive by hand">🕹<small>Scout</small></button>
         <button class="tool" id="radioButton" title="Hints from mission control" aria-label="Hints from mission control">📻<small>Hints</small><sup id="radioCount" hidden></sup></button>
-        <button class="tool" id="journalButton" title="Field journal: your guess at this zone's rule" aria-label="Field journal">📓<small>Journal</small></button>
+        <button class="tool" id="fnButton" title="Your saved functions, for any site" aria-label="Your saved functions">🧰<small>Functions</small><sup id="fnCount" hidden></sup></button>
       </div>
       <div class="feed" id="feed" aria-label="Telemetry"></div>
     </section>
@@ -420,20 +432,24 @@
   <div id="hints"></div>
   <div class="pop-row"><small id="hintsLeft"></small><button class="quiet" id="hintButton">Ask for a hint</button></div>
 </div>
-<div class="pop" id="journalPop" hidden role="dialog" aria-labelledby="journalTitle">
-  <h2 id="journalTitle">Field journal</h2>
-  <textarea id="journal" maxlength="140" placeholder="I think… because when I ran…" aria-label="Your guess at this zone's rule"></textarea>
-  <div class="pop-row"><small id="journalState">Your guess at this zone's rule.</small><button class="quiet" id="journalSave">Save</button></div>
+<div class="pop" id="fnPop" hidden role="dialog" aria-labelledby="fnTitle">
+  <h2 id="fnTitle">Your functions</h2>
+  <div class="fns" id="savedFunctions"></div>
+  <h3>Save from this code</h3>
+  <div class="fn-save" id="codeFunctions"></div>
+  <div class="pop-row"><small id="fnState">Saved functions work on every site.</small></div>
 </div>
 <div class="dialog" id="garage" hidden role="dialog" aria-modal="true" aria-labelledby="garageTitle">
   <div class="garage-card">
-    <div class="garage-head"><h2 id="garageTitle">Garage</h2><span id="garageStars"></span><button class="quiet" id="garageClose">Done</button></div>
+    <div class="garage-head"><h2 id="garageTitle">Garage</h2><span id="garageStars"></span><button class="quiet" id="surpriseButton" title="A random look from everything you've unlocked">🎲 Surprise me</button><button class="quiet" id="garageClose">Done</button></div>
     <div class="garage-top">
       <canvas id="garageScene" aria-hidden="true"></canvas>
       <div>
         <h3>Paint</h3><div class="options" id="paintOptions"></div>
         <h3>Topper</h3><div class="options" id="topperOptions"></div>
         <h3>Trail</h3><div class="options" id="trailOptions"></div>
+        <h3>Map look</h3><div class="options" id="worldOptions"></div>
+        <p class="gift-note" id="giftNote"></p>
       </div>
     </div>
     <h3>Badges</h3>
@@ -450,7 +466,8 @@
         <li>Every site is a mission: collect samples, reach the beacon, or measure something strange and <code>report()</code> it.</li>
         <li>Every zone hides a rule. Nobody will tell you.</li>
       </ol>
-      <p class="intro-note">Earn three stars on every site. Stuck? 🕹 Scout drives by hand, 📻 Hints asks mission control.</p>
+      <p class="intro-note">Earn three stars on every site. Stuck? 🕹 Scout drives by hand, 📻 Hints asks mission control. Made a good <code>def</code>? 🧰 Functions keeps it for later sites.</p>
+      <p class="intro-note">Stars unlock paint, hats, trails and new looks for the whole map in the garage (★ at the top). Spot a 🎁 on the map? Drive over it for a secret one. Click your rover to say hi.</p>
       <label class="calm-pick"><input type="checkbox" id="calmPick"> Calm mode: no shaking, confetti or flashing</label>
       <label class="calm-pick"><input type="checkbox" id="bigPick"> Bigger text for the code and telemetry</label>
       <button class="go" id="introClose">Let's explore</button>
@@ -459,6 +476,7 @@
 </div>
 <div class="announce" id="announce" aria-live="polite"></div>
 
+<script src="/planet/render.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]];
@@ -469,19 +487,19 @@ document.body.classList.toggle("calm", CALM);
 document.body.classList.toggle("big", recall("planetBig") === "1");
 let me = null, busy = false;
 let state = null;     // every zone and site, from the server
+let scout = null;     // {moves, over} while driving by hand
 let site = null;      // the site on screen, as the student sees it
 let runs = null;      // the last transmission's results (five for Uncharted)
 let rewards = null;   // what the last transmission earned, shown when its replay ends
 let scene = null;     // what the canvas shows: map, zone, frames, events
 let pos = 0, playing = false, lastTs = 0, fps = 8, heard = 0;
-let anomalyAt = null; // the tick where this replay should stop for an anomaly
-let scout = null;     // {moves, over} while driving by hand
 let errorLine = 0, errorCount = 0;
 
-const ZONE_ICONS = {landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", uncharted: "🪐"};
+const ZONE_ICONS = {landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", uncharted: "🪐"};
 // Each sensor arrives with a zone (matches planet.SENSOR_ZONE).
 const SENSOR_ZONE = {look: 0, at_beacon: 0, x: 1, y: 1, report: 1, tick: 2, samples_left: 3,
-  battery: 4, in_sun: 4, beacon_x: 6, beacon_y: 6, gust_in: 6};
+  battery: 4, in_sun: 4, beacon_x: 6, beacon_y: 6, jump: 7, drill: 9, drills_left: 9,
+  has_key: 10, key_x: 10, key_y: 10, next_x: 11, next_y: 11, flags_left: 11, gust_in: 12};
 const HELP = {
   north: "Drive north (up). north(3) drives 3 squares.", south: "Drive south (down). south(3) drives 3 squares.",
   east: "Drive east (right). east(3) drives 3 squares.", west: "Drive west (left). west(3) drives 3 squares.",
@@ -493,17 +511,20 @@ const HELP = {
   tick: "Ticks so far: one per square or wait.", samples_left: "Samples still to collect.",
   battery: "Charge left, 0 to 100.", in_sun: "True in sunlight.", gust_in: "Ticks until the next gust.",
   beacon_x: "The beacon's column.", beacon_y: "The beacon's row.",
+  jump: 'Leap two squares that way in one tick, over a crater or a rock: jump("east")',
+  drill: 'Turn the rock next to the rover into ground: drill("east"). Uses one drill.',
+  drills_left: "Drills the rover has left.", has_key: "True while the rover holds a key.",
+  key_x: "The nearest key's column.", key_y: "The nearest key's row.",
+  next_x: "The next flag's column (the beacon's once every flag is done).",
+  next_y: "The next flag's row (the beacon's once every flag is done).",
+  flags_left: "Flags still to reach.",
 };
 const COMMANDS = ["north", "south", "east", "west", "wait"];
 // Clicked into the code as a line of its own, like a command.
-const LINE_CHIPS = [...COMMANDS, "report"];
+const LINE_CHIPS = [...COMMANDS, "report", "jump", "drill"];
 // What a click on each chip types.
-const CHIP_TEXT = {look: 'look("east")'};
-// Rover paints: a colour, or a few that sweep across the body.
-const PAINTS = {bone: "#f2eadb", coral: "#ff8a7a", mint: "#8cf2c6", sky: "#8fc8ff", gold: "#ffd36b",
-  aurora: ["#7ff0d6", "#8fb8ff", "#c69bff"], nebula: ["#c69bff", "#ff8ad8", "#8fb8ff"],
-  supernova: ["#fff6d0", "#ffe08a", "#ff9d5c"]};
-let look = {paint: "bone", topper: "none", trail: "tracks"};
+const CHIP_TEXT = {look: 'look("east")', jump: 'jump("east")', drill: 'drill("east")'};
+let look = {paint: "bone", topper: "none", trail: "tracks", world: "planet"};
 
 function esc(value) {
   return String(value).replace(/[&<>\"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
@@ -564,12 +585,14 @@ const SFX = (() => {
     crystal: () => notes([1319, 1568, 2093, 2637], {type: "triangle", vol: .28, dur: .2, gap: .06}),
     sample: () => notes([880, 1175], {vol: .32, dur: .22, gap: .08}),
     portal: () => tone(260, .5, {type: "sawtooth", vol: .12, slide: 1100}),
+    jump: () => { tone(220, .22, {type: "triangle", vol: .3, slide: 500}); tone(700, .16, {type: "triangle", vol: .18, at: .2, slide: -400}); },
     fall: () => { tone(420, .7, {type: "triangle", vol: .4, slide: -360}); noise(.6, {vol: .3, at: .12, from: 500, to: 90}); },
     flat: () => tone(330, .6, {type: "square", vol: .12, slide: -230}),
     win: () => notes([523, 659, 784, 1047], {type: "triangle", vol: .32, dur: .3, gap: .1}),
     star: i => tone([784, 988, 1319][i] || 1319, .3, {type: "triangle", vol: .38}),
     badge: () => notes([659, 784, 988, 1319, 1568], {type: "square", vol: .09, dur: .14, gap: .06}),
-    anomaly: () => notes([880, 622, 880, 622, 1245], {vol: .22, dur: .1, gap: .12}),
+    gift: () => notes([784, 988, 1175, 1568, 1976, 2349], {type: "triangle", vol: .24, dur: .16, gap: .05}),
+    beep: () => notes([880, 1320], {type: "square", vol: .07, dur: .07, gap: .07}),
     error: () => tone(140, .28, {type: "sawtooth", vol: .13, slide: -30}),
     send: () => notes([440, 660, 880], {vol: .16, dur: .08, gap: .05}),
     report: () => notes([1175, 1568, 1175, 1568], {type: "square", vol: .07, dur: .06, gap: .05}),
@@ -589,11 +612,6 @@ const SFX = (() => {
 })();
 
 // ---- Seeded noise, so every square's texture is the same on every redraw -------
-function hash(a, b, k = 0) {
-  let h = (a * 374761393 + b * 668265263 + k * 2147483647) | 0;
-  h = Math.imul(h ^ (h >>> 13), 1274126177);
-  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
-}
 function shade(hex, f) {
   const n = parseInt(hex.slice(1), 16);
   const ch = s => Math.max(0, Math.min(255, Math.round(((n >> s) & 255) * f)));
@@ -608,16 +626,50 @@ const GROUND = {
   crumble: {ground: "#8f7c70", rock: "#4b3f3a", bed: "#211b19"},
   solar: {ground: "#d0a868", rock: "#76552f", bed: "#2d2112"},
   portals: {ground: "#716a8c", rock: "#3c3655", bed: "#1a1729"},
+  signal: {ground: "#a8936a", rock: "#5b4a33", bed: "#272016"},
+  hops: {ground: "#9a8a9e", rock: "#4e4258", bed: "#211a26"},
+  belts: {ground: "#8d8f94", rock: "#46484f", bed: "#1b1c21"},
+  drill: {ground: "#b8946a", rock: "#5e4632", bed: "#2a1d12"},
+  gates: {ground: "#8a9a86", rock: "#424d43", bed: "#1a201b"},
+  relay: {ground: "#b08a72", rock: "#5a4335", bed: "#281c15"},
   uncharted: {ground: "#7d8c84", rock: "#3d4945", bed: "#18201d"},
 };
+// The garage's map looks: one palette for every zone in place of the zone's
+// own. Rock stays much darker than ground (or, on the dark ones, lit along its
+// edge) so the two never blur together. Besides the three colours: ice (light
+// and dark), grit (speck colours), seam (tile lines), edge (rock's lit lip),
+// rim (round a crater), stars (specks in the bedrock) and pixel (blocky).
+const WORLDS = {
+  moon: {ground: "#a3a3ad", rock: "#56565f", bed: "#16161c"},
+  snow: {ground: "#e8eef5", rock: "#5a6a80", bed: "#1d2633", ice: ["#a6e0ff", "#3f8fd0"], seam: "rgba(60,80,110,.2)"},
+  candy: {ground: "#f6b3cf", rock: "#6b3a22", bed: "#2e1810", grit: ["#ff5a7a", "#5ad1ff", "#fff36b", "#8cf2a0", "#ffffff"]},
+  volcano: {ground: "#5e4a46", rock: "#2a1d1c", bed: "#3a0f06", edge: "#ff8a3d", rim: "#ff8a3d", stars: "rgba(255,122,46,.6)"},
+  space: {ground: "#3d3470", rock: "#1a1433", bed: "#07051a", edge: "#b9a3ff", rim: "#b9a3ff",
+          grit: ["rgba(10,6,30,.3)", "rgba(255,255,255,.75)"], stars: "rgba(255,255,255,.7)"},
+  neon: {ground: "#131a3a", rock: "#5a2a8a", bed: "#060914", edge: "#ff4fd8", rim: "#5af0ff",
+         seam: "rgba(90,240,255,.5)", ice: ["#8ff8ff", "#2aa8d8"]},
+  blocky: {ground: "#6dbb44", rock: "#505357", bed: "#5b3d24", ice: ["#a9d8ff", "#6fa8e0"], pixel: true},
+  factory: {ground: "#7d838c", rock: "#33373e", bed: "#111317", edge: "#ffb84d", seam: "rgba(20,22,26,.35)"},
+  sandstone: {ground: "#e0b77e", rock: "#8a5a32", bed: "#3a2414", grit: ["rgba(140,80,40,.18)", "rgba(255,240,210,.2)"]},
+};
+const GRIT = ["rgba(30,10,20,.14)", "rgba(255,240,220,.10)"];
+function palette(zone) { return WORLDS[look.world] || GROUND[zone] || GROUND.landing; }
+// One square as a 4 by 4 of blocks, each a slightly different shade.
+function blocks(g, x, y, cell, r, c, color, spread) {
+  const w = cell / 4;
+  for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) {
+    g.fillStyle = shade(color, 1 - spread / 2 + hash(r * 4 + j, c * 4 + i, 77) * spread);
+    g.fillRect(x + i * w, y + j * w, w + .5, w + .5);
+  }
+}
 
 // The planet's still parts, drawn once per map and size: ground, rock, ice,
 // craters, sunny ground, pads and the lander.
 const terrainCache = {key: null, canvas: null};
 function terrain(map, zone, cell) {
-  const key = `${zone}|${cell}|${map.join("/")}`;
+  const key = `${zone}|${look.world}|${cell}|${map.join("/")}`;
   if (terrainCache.key === key) return terrainCache.canvas;
-  const pal = GROUND[zone] || GROUND.landing;
+  const pal = palette(zone), grit = pal.grit || GRIT;
   const rows = map.length, cols = map[0].length;
   const cv = document.createElement("canvas");
   cv.width = cols * cell; cv.height = rows * cell;
@@ -626,16 +678,23 @@ function terrain(map, zone, cell) {
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     const ch = at(r, c), x = c * cell, y = r * cell;
     // Ground everywhere first, each square a little different.
-    g.fillStyle = shade(pal.ground, .93 + hash(r, c) * .12);
-    g.fillRect(x, y, cell, cell);
-    for (let k = 0; k < 5; k++) {   // grit
-      g.fillStyle = hash(r, c, k + 9) > .5 ? "rgba(255,240,220,.10)" : "rgba(30,10,20,.14)";
-      const s = 1 + hash(r, c, k + 20) * cell * .07;
-      g.fillRect(x + hash(r, c, k + 1) * cell, y + hash(r, c, k + 5) * cell, s, s);
+    if (pal.pixel) blocks(g, x, y, cell, r, c, pal.ground, .25);
+    else {
+      g.fillStyle = shade(pal.ground, .93 + hash(r, c) * .12);
+      g.fillRect(x, y, cell, cell);
+      for (let k = 0; k < 5; k++) {   // grit
+        g.fillStyle = grit[Math.floor(hash(r, c, k + 9) * grit.length)];
+        const s = 1 + hash(r, c, k + 20) * cell * .07;
+        g.fillRect(x + hash(r, c, k + 1) * cell, y + hash(r, c, k + 5) * cell, s, s);
+      }
     }
-    if (ch === "~") {
+    const [iceLight, iceDark] = pal.ice || ["#d8f1fb", "#8cc4dc"];
+    if (ch === "~" && pal.pixel) {
+      blocks(g, x, y, cell, r, c, iceDark, .3);
+      g.fillStyle = iceLight; g.fillRect(x + cell / 4, y + cell / 4, cell / 4, cell / 4); g.fillRect(x + cell / 2, y + cell / 2, cell / 4, cell / 4);
+    } else if (ch === "~") {
       const grad = g.createLinearGradient(x, y, x + cell, y + cell);
-      grad.addColorStop(0, "#d8f1fb"); grad.addColorStop(1, "#8cc4dc");
+      grad.addColorStop(0, iceLight); grad.addColorStop(1, iceDark);
       g.fillStyle = grad; g.fillRect(x, y, cell, cell);
       g.strokeStyle = "rgba(255,255,255,.65)"; g.lineWidth = Math.max(1, cell / 18);
       g.beginPath();
@@ -650,12 +709,12 @@ function terrain(map, zone, cell) {
       const grad = g.createRadialGradient(cx - cell * .08, cy - cell * .08, cell * .05, cx, cy, cell * .46);
       grad.addColorStop(0, "#07040a"); grad.addColorStop(.7, "#1d1016"); grad.addColorStop(1, "rgba(0,0,0,0)");
       g.fillStyle = grad; g.beginPath(); g.arc(cx, cy, cell * .46, 0, 7); g.fill();
-      g.strokeStyle = "rgba(255,230,210,.28)"; g.lineWidth = Math.max(1, cell / 12);
+      g.strokeStyle = pal.rim || "rgba(255,230,210,.28)"; g.lineWidth = Math.max(1, cell / 12);
       g.beginPath(); g.arc(cx, cy, cell * .42, Math.PI * .15, Math.PI * .95); g.stroke();
     }
   }
   // Tile seams on open ground, faint, so squares can be counted.
-  g.strokeStyle = "rgba(40,14,22,.16)"; g.lineWidth = 1;
+  g.strokeStyle = pal.seam || "rgba(40,14,22,.16)"; g.lineWidth = 1;
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     if (at(r, c) !== "#") g.strokeRect(c * cell + .5, r * cell + .5, cell - 1, cell - 1);
   }
@@ -670,6 +729,7 @@ function terrain(map, zone, cell) {
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     if (at(r, c) !== "#") continue;
     const x = c * cell, y = r * cell;
+    if (pal.pixel) { blocks(g, x, y, cell, r, c, pal.rock, .45); continue; }
     g.fillStyle = shade(pal.rock, .62 + hash(r, c, 2) * .08);
     g.fillRect(x, y, cell + .5, cell + .5);
     if (hash(r, c, 29) < .55) {
@@ -687,7 +747,7 @@ function terrain(map, zone, cell) {
       g.beginPath(); g.arc(bx - br * .3, by - br * .3, br * .4, 0, 7); g.fill();
     }
   }
-  g.strokeStyle = shade(pal.rock, 1.35); g.lineWidth = Math.max(1.5, cell * .06); g.lineCap = "round";
+  g.strokeStyle = pal.edge || shade(pal.rock, 1.35); g.lineWidth = Math.max(1.5, cell * .06); g.lineCap = "round";
   g.beginPath();
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     if (at(r, c) !== "#") continue;
@@ -723,85 +783,26 @@ function terrain(map, zone, cell) {
 // past the edge instead of ending in a box.
 const bedCache = {};
 function bedPattern(ctx, zone) {
-  if (!bedCache[zone]) {
-    const pal = GROUND[zone] || GROUND.landing, cv = document.createElement("canvas");
+  const key = `${zone}|${look.world}`;
+  if (!bedCache[key]) {
+    const pal = palette(zone), cv = document.createElement("canvas");
     cv.width = cv.height = 96;
     const g = cv.getContext("2d");
     g.fillStyle = pal.bed; g.fillRect(0, 0, 96, 96);
-    for (let k = 0; k < 90; k++) {
-      g.fillStyle = hash(k, 7) > .5 ? "rgba(255,235,220,.05)" : "rgba(0,0,0,.18)";
-      const s = 1 + hash(k, 3) * 4;
+    if (pal.pixel) for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) {
+      g.fillStyle = shade(pal.bed, .8 + hash(i, j, 5) * .4); g.fillRect(i * 12, j * 12, 12, 12);
+    }
+    else for (let k = 0; k < 90; k++) {
+      const star = pal.stars && hash(k, 7) > .5;
+      g.fillStyle = star ? pal.stars : hash(k, 7) > .5 ? "rgba(255,235,220,.05)" : "rgba(0,0,0,.18)";
+      const s = star ? .5 + hash(k, 3) * 1.2 : 1 + hash(k, 3) * 4;
       g.beginPath(); g.arc(hash(k, 1) * 96, hash(k, 2) * 96, s, 0, 7); g.fill();
     }
-    bedCache[zone] = cv;
+    bedCache[key] = cv;
   }
-  return ctx.createPattern(bedCache[zone], "repeat");
+  return ctx.createPattern(bedCache[key], "repeat");
 }
 
-// ---- The rover --------------------------------------------------------------------
-// Seen from above, facing +x: six wheels, a painted body with a solar deck at
-// the back, and a camera mast at the front with a mint lens. The student's
-// garage picks the paint and what sits on top.
-function bodyPaint(ctx, s, paint) {
-  const p = PAINTS[paint] || PAINTS.bone;
-  if (typeof p === "string") return p;
-  const grad = ctx.createLinearGradient(-.32 * s, -.22 * s, .3 * s, .22 * s);
-  p.forEach((c, i) => grad.addColorStop(i / (p.length - 1), c));
-  return grad;
-}
-function drawRover(ctx, x, y, s, angle, alpha = 1, gear = look, now = performance.now()) {
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.translate(x, y); ctx.rotate(angle);
-  ctx.fillStyle = "rgba(10,4,16,.38)";
-  ctx.beginPath(); ctx.ellipse(s * .05, s * .07, s * .42, s * .36, 0, 0, 7); ctx.fill();
-  ctx.fillStyle = "#26212f";
-  for (const wx of [-.26, 0, .26]) for (const wy of [-.33, .33]) {
-    roundRect(ctx, (wx - .09) * s, (wy - .07) * s, .18 * s, .14 * s, .04 * s); ctx.fill();
-  }
-  ctx.strokeStyle = "#26212f"; ctx.lineWidth = s * .05;
-  ctx.beginPath(); ctx.moveTo(-.3 * s, -.27 * s); ctx.lineTo(.3 * s, -.27 * s); ctx.moveTo(-.3 * s, .27 * s); ctx.lineTo(.3 * s, .27 * s); ctx.stroke();
-  ctx.fillStyle = bodyPaint(ctx, s, gear.paint); ctx.strokeStyle = "#6e6290"; ctx.lineWidth = Math.max(1, s * .03);
-  roundRect(ctx, -.32 * s, -.22 * s, .62 * s, .44 * s, .08 * s); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = "#3f5f96";
-  roundRect(ctx, -.29 * s, -.18 * s, .3 * s, .36 * s, .03 * s); ctx.fill();
-  ctx.strokeStyle = "rgba(200,225,255,.45)"; ctx.lineWidth = Math.max(1, s * .015);
-  ctx.beginPath(); ctx.moveTo(-.14 * s, -.18 * s); ctx.lineTo(-.14 * s, .18 * s); ctx.moveTo(-.29 * s, 0); ctx.lineTo(.01 * s, 0); ctx.stroke();
-  drawTopper(ctx, s, gear.topper, now);
-  ctx.fillStyle = "#e6dccb"; ctx.strokeStyle = "#6e6290"; ctx.lineWidth = Math.max(1, s * .03);
-  ctx.beginPath(); ctx.arc(.15 * s, 0, s * .1, 0, 7); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = "#231d3f"; roundRect(ctx, .18 * s, -.06 * s, .1 * s, .12 * s, .02 * s); ctx.fill();
-  ctx.fillStyle = "#8cf2c6"; ctx.beginPath(); ctx.arc(.25 * s, 0, s * .025, 0, 7); ctx.fill();
-  ctx.restore();
-}
-function drawTopper(ctx, s, topper, now) {
-  ctx.lineWidth = Math.max(1, s * .025);
-  if (topper === "flag") {
-    ctx.strokeStyle = "#e6dccb"; ctx.beginPath(); ctx.moveTo(-.05 * s, -.12 * s); ctx.lineTo(-.05 * s, -.46 * s); ctx.stroke();
-    ctx.fillStyle = "#ff8a7a"; ctx.beginPath(); ctx.moveTo(-.05 * s, -.46 * s); ctx.lineTo(-.3 * s, -.4 * s); ctx.lineTo(-.05 * s, -.33 * s); ctx.fill();
-  } else if (topper === "dish") {
-    ctx.fillStyle = "#e6dccb"; ctx.strokeStyle = "#6e6290";
-    ctx.beginPath(); ctx.arc(-.06 * s, .08 * s, s * .12, 0, 7); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.arc(-.06 * s, .08 * s, s * .04, 0, 7); ctx.stroke();
-  } else if (topper === "light") {
-    const k = CALM ? 1 : .6 + .4 * Math.sin(now / 160);
-    ctx.fillStyle = `rgba(255,181,71,${k})`; ctx.shadowColor = "#ffb547"; ctx.shadowBlur = s * .4 * k;
-    ctx.beginPath(); ctx.arc(-.06 * s, 0, s * .07, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
-  } else if (topper === "crown") {
-    ctx.fillStyle = "#ffd36b"; ctx.strokeStyle = "#a07a20";
-    ctx.beginPath(); ctx.moveTo(-.2 * s, .1 * s);
-    for (const [px, py] of [[-.2, -.12], [-.12, -.02], [-.06, -.16], [0, -.02], [.06, -.12], [.06, .1]]) ctx.lineTo(px * s, py * s);
-    ctx.closePath(); ctx.fill(); ctx.stroke();
-  } else {
-    ctx.strokeStyle = "#6e6290"; ctx.beginPath(); ctx.moveTo(-.05 * s, -.14 * s); ctx.lineTo(-.16 * s, -.36 * s); ctx.stroke();
-    ctx.fillStyle = "#ffb547"; ctx.beginPath(); ctx.arc(-.16 * s, -.36 * s, s * .035, 0, 7); ctx.fill();
-  }
-}
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
-}
 const angleOf = d => (d - 1) * Math.PI / 2;
 
 // ---- Particles: dust, sparkles, wind, confetti ------------------------------------
@@ -810,7 +811,8 @@ function burst(r, c, kind, n = 10) {
   if (CALM) return;
   const colors = {dust: ["#e8d2b8", "#c9a98a"], sparkle: ["#c8fff0", "#8cf2c6", "#ffffff"],
                   crystal: ["#d9ccff", "#b9a3ff", "#ffffff"], portal: ["#b9a3ff", "#e5dcff"],
-                  wind: ["#f0f8ff"], fall: ["#ff8a7a", "#e8d2b8"]}[kind];
+                  wind: ["#f0f8ff"], fall: ["#ff8a7a", "#e8d2b8"], gift: ["#ff6fae", "#ffd36b", "#ffffff"],
+                  rock: ["#8a7a6a", "#5e4632", "#c9a98a"]}[kind];
   for (let i = 0; i < n; i++) {
     const a = Math.random() * Math.PI * 2, sp = kind === "wind" ? 0 : .6 + Math.random() * 1.6;
     particles.push({r: r + .5, c: c + .5 + (kind === "wind" ? -1 - Math.random() : 0),
@@ -857,18 +859,20 @@ function drawConfetti(ctx, dt) {
 // ---- Drawing the scene --------------------------------------------------------------
 function ease(u) { return u < .5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2; }
 // Where the rover is at replay position p: between two frames it rolls (or
-// turns) smoothly, except through a portal.
+// turns) smoothly, except through a portal, and a jump arcs up and over.
 function roverAt(p) {
   const f = scene.frames, i = Math.min(Math.floor(p), f.length - 1), a = f[i], b = f[Math.min(i + 1, f.length - 1)];
   const u = CALM ? 0 : ease(p - i);
   const step = Math.abs(a.r - b.r) + Math.abs(a.c - b.c);
   let r = a.r, c = a.c;
+  let lift = 0;
   if (step === 1 && b.e !== "portal") { r += (b.r - a.r) * u; c += (b.c - a.c) * u; }
   else if (b.e === "portal" && u > .5) { r = b.r; c = b.c; }
+  else if (b.e === "jump") { r += (b.r - a.r) * u; c += (b.c - a.c) * u; lift = Math.sin(u * Math.PI); }
   let turn = angleOf(b.d) - angleOf(a.d);
   if (turn > Math.PI) turn -= 2 * Math.PI;
   if (turn < -Math.PI) turn += 2 * Math.PI;
-  return {r, c, angle: angleOf(a.d) + turn * u, frame: a, i};
+  return {r, c, angle: angleOf(a.d) + turn * u, frame: a, i, lift};
 }
 function layout(canvas) {
   const dpr = window.devicePixelRatio || 1;
@@ -903,20 +907,28 @@ function render(now = performance.now()) {
   const oy = worldH <= roomH ? top + (roomH - worldH) / 2 : clamp(top + roomH / 2 - (rover.r + .5) * cell, top + roomH - worldH, top);
   scene.view = {ox, oy, cell};
   ctx.save(); ctx.translate(ox, oy);
-  ctx.drawImage(terrain(map, zone, cell), 0, 0);
-  drawRulers(ctx, rows, cols, cell);
   const i = rover.i, frames = scene.frames, f = frames[i];
+  ctx.drawImage(terrain(mapAt(i), zone, cell), 0, 0);
+  drawRulers(ctx, rows, cols, cell);
   // Cracks so far, and the samples and crystals not yet picked up.
   const visited = new Set();
   for (let k = 0; k <= i; k++) {
     visited.add(frames[k].r + "," + frames[k].c);
     if (frames[k].x) drawCrack(ctx, frames[k].x[0], frames[k].x[1], cell);
   }
+  const now_map = mapAt(i), nextFlag = f.fl || 1;
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-    if (map[r][c] === "*" && !visited.has(r + "," + c)) drawSample(ctx, r, c, cell, now);
-    if (map[r][c] === "P") drawPadGlow(ctx, r, c, cell, now);
+    const ch = now_map[r][c];
+    if (ch === "*" && !visited.has(r + "," + c)) drawSample(ctx, r, c, cell, now);
+    else if (ch === "P") drawPadGlow(ctx, r, c, cell, now);
+    else if (ch in BELT_WAY) drawBelt(ctx, r, c, BELT_WAY[ch], cell, now);
+    else if (ch === "k" && !visited.has(r + "," + c)) drawKey(ctx, r, c, cell, now);
+    else if (ch === "D") drawGate(ctx, r, c, cell);
+    else if (ch >= "1" && ch <= "9") drawFlag(ctx, r, c, Number(ch), nextFlag, cell, now);
   }
   for (const [r, c] of scene.crystals) if (!visited.has(r + "," + c)) drawCrystal(ctx, r, c, cell, now);
+  // Scouting drives past the gift without opening it: only transmitted code does.
+  if (scene.gift && (scout || !visited.has(scene.gift.join(",")))) drawGift(ctx, scene.gift[0], scene.gift[1], cell, now);
   // Sunlight: in Solar Valley, everything outside the light is in shadow.
   if (scene.zone === "solar") {
     ctx.fillStyle = "rgba(14,8,32,.42)";
@@ -946,11 +958,32 @@ function render(now = performance.now()) {
     if (scene.run && scene.run.mission === "report" && (f.e === "goal" || f.e === "wrong")) {
       drawRadio(ctx, rx, ry, cell, now, f.e === "goal" ? "140,242,198" : "255,138,122");
     }
-    drawRover(ctx, rx, ry, cell * 1.12, rover.angle, 1, look, now);
+    if (rover.lift) {   // mid-jump: a shadow on the ground, the rover up in the air
+      ctx.fillStyle = "rgba(10,6,24,.35)"; ctx.beginPath();
+      ctx.ellipse(rx, ry + cell * .3, cell * .4 * (1 - rover.lift * .4), cell * .14, 0, 0, 7); ctx.fill();
+    }
+    // A happy hop and spin at the beacon, and a wiggle when someone clicks the rover.
+    let lift = rover.lift, angle = rover.angle;
+    const cheer = CALM || !scene.cheer ? 1 : (now - scene.cheer) / 900;
+    if (cheer < 1) { lift = Math.max(lift, Math.sin(cheer * Math.PI) * .6); angle += ease(cheer) * Math.PI * 2; }
+    const poke = CALM || !scene.poke ? 1 : (now - scene.poke) / 500;
+    if (poke < 1) angle += Math.sin(poke * Math.PI * 6) * .35 * (1 - poke);
+    if (lift && !rover.lift) {
+      ctx.fillStyle = "rgba(10,6,24,.35)"; ctx.beginPath();
+      ctx.ellipse(rx, ry + cell * .3, cell * .4 * (1 - lift * .4), cell * .14, 0, 0, 7); ctx.fill();
+    }
+    drawRover(ctx, rx, ry - lift * cell * .6, cell * 1.12 * (1 + lift * .25), angle, 1, look, now);
+  }
+  if (scene.ring && now - scene.ring < 2000) {
+    const u = CALM ? 0 : (now - scene.ring) / 2000;
+    ctx.strokeStyle = "#ffd36b"; ctx.lineWidth = Math.max(2, cell / 10);
+    ctx.beginPath(); ctx.arc(rx, ry, cell * (.7 + u * .4), 0, 7); ctx.stroke();
   }
   drawParticles(ctx, cell, dt);
   ctx.restore();
   vignette(ctx, w, h);
+  const said = speech(f, now);
+  if (said) drawBubble(ctx, ox + rx, oy + ry - (rover.lift * .6 + .55) * cell, said, w);
   drawConfetti(ctx, dt);
   // The heads-up display.
   $("tick").textContent = f.t;
@@ -964,10 +997,36 @@ function render(now = performance.now()) {
     for (const [r, c] of scene.sampleSquares) if (visited.has(r + "," + c)) left--;
     $("samples").textContent = left;
   }
+  if (f.dl != null) $("drills").textContent = f.dl;
+  $("keyGauge").hidden = !f.k; if (f.k) $("keys").textContent = f.k;
+  if (scene.flags) $("flags").textContent = Math.max(0, scene.flags - nextFlag + 1);
   if (scene.crystals.length) {
     $("crystals").textContent = `${scene.crystals.filter(([r, c]) => visited.has(r + "," + c)).length}/${scene.crystals.length}`;
   }
   setStatus(i);
+}
+// What the rover says: a line when it's clicked, else the program's latest
+// print(), for up to 8 ticks so there's time to read it.
+function speech(f, now) {
+  if (scene.said && now - scene.said.at < 1800) return scene.said.text;
+  if (!scene.run || scout) return null;
+  let text = null;
+  for (const p of scene.run.prints) if (p.t <= f.t && p.t >= f.t - 8) text = p.text;
+  return text;
+}
+function drawBubble(ctx, x, y, text, w) {
+  text = String(text);
+  if (text.length > 32) text = text.slice(0, 31) + "…";
+  const size = document.body.classList.contains("big") ? 17 : 14;
+  ctx.font = `600 ${size}px system-ui, sans-serif`;
+  const bw = ctx.measureText(text).width + 22, bh = size + 14;
+  const bx = clamp(x - bw / 2, 8, w - bw - 8), by = Math.max(60, y - bh - 10);
+  const tx = clamp(x, bx + 14, bx + bw - 14);
+  ctx.fillStyle = "#fffaf0"; ctx.shadowColor = "rgba(10,6,24,.4)"; ctx.shadowBlur = 8;
+  roundRect(ctx, bx, by, bw, bh, 10); ctx.fill(); ctx.shadowBlur = 0;
+  ctx.beginPath(); ctx.moveTo(tx - 7, by + bh - 1); ctx.lineTo(tx, by + bh + 9); ctx.lineTo(tx + 7, by + bh - 1); ctx.fill();
+  ctx.fillStyle = "#231d3f"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(text, bx + bw / 2, by + bh / 2 + 1);
 }
 function clamp(v, lo, hi) { return Math.max(Math.min(v, hi), Math.min(lo, hi)); }
 function vignette(ctx, w, h) {
@@ -988,10 +1047,10 @@ function drawTrail(ctx, frames, i, rover, cell, now) {
     const p = pts[k], q = pts[k - 1];
     if (!p.jump && Math.abs(p.r - q.r) + Math.abs(p.c - q.c) <= 1.01 && (p.r !== q.r || p.c !== q.c)) segs.push([q, p, k]);
   }
-  ctx.lineCap = "round"; ctx.lineWidth = Math.max(1.5, cell * .07);
-  for (const side of [-.25, .25]) {
+  ctx.lineCap = "round"; ctx.lineWidth = Math.max(1.5, cell * (look.trail === "slime" ? .16 : .07));
+  for (const side of look.trail === "paws" ? [] : [-.25, .25]) {
     for (const [q, p, k] of segs) {
-      ctx.strokeStyle = look.trail === "rainbow" ? `hsla(${(k * 24) % 360},90%,72%,.7)` : "rgba(30,14,30,.32)";
+      ctx.strokeStyle = look.trail === "rainbow" ? `hsla(${(k * 24) % 360},90%,72%,.7)` : look.trail === "slime" ? "rgba(126,224,74,.6)" : "rgba(30,14,30,.32)";
       const dx = p.c - q.c, dy = p.r - q.r, len = Math.hypot(dx, dy) || 1;
       const nx = -dy / len * side * cell, ny = dx / len * side * cell;
       ctx.beginPath();
@@ -1012,7 +1071,52 @@ function drawTrail(ctx, frames, i, rover, cell, now) {
       ctx.fillStyle = `rgba(255,236,170,${tw * .8})`;
       ctx.beginPath(); ctx.arc((p.c + .5 + (hash(k, 1) - .5) * .5) * cell, (p.r + .5 + (hash(k, 2) - .5) * .5) * cell, Math.max(1, cell * .045), 0, 7); ctx.fill();
     }
+  } else if (look.trail === "hearts") {
+    for (const [, p, k] of segs) {
+      const z = cell * .15 * (CALM ? 1 : 1 + .15 * Math.sin(now / 250 + k));
+      ctx.fillStyle = "rgba(255,111,159,.85)"; heart(ctx, (p.c + .5) * cell, (p.r + .5) * cell, z);
+    }
+  } else if (look.trail === "paws") {   // prints that turn the way the rover went
+    for (const [q, p, k] of segs) {
+      const a = Math.atan2(p.r - q.r, p.c - q.c), side = k % 2 ? .18 : -.18;
+      ctx.save(); ctx.translate((p.c + .5) * cell, (p.r + .5) * cell); ctx.rotate(a); ctx.translate(0, side * cell);
+      ctx.fillStyle = "rgba(60,30,45,.55)";
+      ctx.beginPath(); ctx.ellipse(0, 0, cell * .1, cell * .13, 0, 0, 7); ctx.fill();
+      for (const [tx, ty] of [[.13, -.12], [.17, -.04], [.17, .04], [.13, .12]]) { ctx.beginPath(); ctx.arc(tx * cell, ty * cell, cell * .04, 0, 7); ctx.fill(); }
+      ctx.restore();
+    }
+  } else if (look.trail === "slime") {
+    ctx.fillStyle = "rgba(126,224,74,.7)";
+    for (const [, p, k] of segs) {
+      if (hash(k, 6) < .5) continue;
+      ctx.beginPath(); ctx.arc((p.c + .5 + (hash(k, 7) - .5) * .5) * cell, (p.r + .5 + (hash(k, 8) - .5) * .5) * cell, cell * (.05 + hash(k, 9) * .06), 0, 7); ctx.fill();
+    }
+  } else if (look.trail === "pixels") {   // little blocks dropped along the way
+    const colors = ["#6dbb44", "#7a5230", "#9aa0a6", "#4ee6e0", "#ffd36b"];
+    for (const [, p, k] of segs) for (const j of [0, 1]) {
+      const z = cell * .17;
+      ctx.fillStyle = colors[Math.floor(hash(k, j, 10) * colors.length)];
+      ctx.fillRect((p.c + .5 + (hash(k, j, 11) - .5) * .6) * cell - z / 2, (p.r + .5 + (hash(k, j, 12) - .5) * .6) * cell - z / 2, z, z);
+    }
+  } else if (look.trail === "fire") {   // flames on the newest squares, scorch marks behind
+    segs.forEach(([, p, k], n) => {
+      const age = (segs.length - 1 - n) / 8, x = (p.c + .5) * cell, y = (p.r + .5) * cell;
+      if (age >= 1) {
+        ctx.fillStyle = "rgba(20,8,4,.3)"; ctx.beginPath(); ctx.arc(x, y, cell * .14, 0, 7); ctx.fill();
+        return;
+      }
+      const z = cell * (.12 + .28 * (1 - age)) * (CALM ? 1 : .85 + .3 * hash(k, Math.floor(now / 90)));
+      const grad = ctx.createRadialGradient(x, y, 0, x, y, z);
+      grad.addColorStop(0, "rgba(255,240,150,.95)"); grad.addColorStop(.45, "rgba(255,140,40,.8)"); grad.addColorStop(1, "rgba(220,40,20,0)");
+      ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(x, y, z, 0, 7); ctx.fill();
+    });
   }
+}
+function heart(ctx, x, y, z) {
+  ctx.beginPath(); ctx.moveTo(x, y + z * .9);
+  ctx.bezierCurveTo(x - z * 1.6, y - z * .2, x - z * .6, y - z * 1.3, x, y - z * .4);
+  ctx.bezierCurveTo(x + z * .6, y - z * 1.3, x + z * 1.6, y - z * .2, x, y + z * .9);
+  ctx.fill();
 }
 function drawCrack(ctx, r, c, cell) {
   const x = c * cell, y = r * cell;
@@ -1024,6 +1128,59 @@ function drawCrack(ctx, r, c, cell) {
   ctx.moveTo(x + cell * .45, y + cell * .5); ctx.lineTo(x + cell * .9, y + cell * (.3 + hash(r, c, 3) * .3));
   ctx.stroke();
   ctx.strokeStyle = "rgba(255,220,190,.22)"; ctx.lineWidth = Math.max(1, cell / 30); ctx.stroke();
+}
+// The map as it is at frame i: drilled rock and opened gates are ground now.
+function mapAt(i) {
+  const changed = scene.frames.slice(0, i + 1).filter(f => f.g);
+  if (!changed.length) return scene.map;
+  const rows = scene.map.map(row => [...row]);
+  for (const f of changed) rows[f.g[0]][f.g[1]] = ".";
+  return rows.map(row => row.join(""));
+}
+const BELT_WAY = {"^": 0, ">": 1, "v": 2, "<": 3};
+// A belt: a dark track with chevrons that point (and, unless calm, roll) its way.
+function drawBelt(ctx, r, c, d, cell, now) {
+  const x = c * cell, y = r * cell;
+  ctx.fillStyle = "#2c2a33"; ctx.fillRect(x + 1, y + 1, cell - 2, cell - 2);
+  ctx.save(); ctx.translate(x + cell / 2, y + cell / 2); ctx.rotate(d * Math.PI / 2);
+  ctx.beginPath(); ctx.rect(-cell / 2 + 1, -cell / 2 + 1, cell - 2, cell - 2); ctx.clip();
+  const roll = CALM ? 0 : (now / 700 % 1) * cell / 2;
+  ctx.strokeStyle = "#ffd36b"; ctx.lineWidth = Math.max(2, cell / 10); ctx.lineCap = "round"; ctx.lineJoin = "round";
+  for (let k = -2; k <= 1; k++) {
+    const yy = k * cell / 2 + roll + cell * .12;
+    ctx.beginPath(); ctx.moveTo(-cell * .22, yy + cell * .12); ctx.lineTo(0, yy - cell * .1); ctx.lineTo(cell * .22, yy + cell * .12); ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawKey(ctx, r, c, cell, now) {
+  const cx = (c + .5) * cell, cy = (r + .5) * cell + (CALM ? 0 : Math.sin(now / 350 + c) * cell * .04);
+  ctx.fillStyle = "rgba(255,211,107,.22)"; ctx.beginPath(); ctx.arc(cx, cy, cell * .4, 0, 7); ctx.fill();
+  ctx.strokeStyle = "#ffd36b"; ctx.fillStyle = "#ffd36b"; ctx.lineWidth = Math.max(2, cell / 11);
+  ctx.beginPath(); ctx.arc(cx - cell * .14, cy, cell * .12, 0, 7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - cell * .02, cy); ctx.lineTo(cx + cell * .26, cy); ctx.stroke();
+  ctx.fillRect(cx + cell * .12, cy, cell * .05, cell * .12); ctx.fillRect(cx + cell * .2, cy, cell * .05, cell * .09);
+}
+function drawGate(ctx, r, c, cell) {
+  const x = c * cell, y = r * cell;
+  ctx.fillStyle = "#5a3b22"; ctx.fillRect(x + 1, y + 1, cell - 2, cell - 2);
+  ctx.fillStyle = "#3a2414";
+  for (let k = 1; k < 4; k++) ctx.fillRect(x + k * cell / 4 - cell * .03, y + 2, cell * .06, cell - 4);
+  ctx.strokeStyle = "#ffd36b"; ctx.lineWidth = Math.max(1.5, cell / 16);
+  ctx.strokeRect(x + 2, y + 2, cell - 4, cell - 4);
+  ctx.fillStyle = "#ffd36b"; ctx.fillRect(x + cell * .38, y + cell * .45, cell * .24, cell * .2);   // the lock
+  ctx.beginPath(); ctx.arc(x + cell * .5, y + cell * .45, cell * .08, Math.PI, 0); ctx.stroke();
+}
+// A numbered flag: done ones lie flat and grey, the next one waves.
+function drawFlag(ctx, r, c, n, next, cell, now) {
+  const x = c * cell, y = r * cell, done = n < next;
+  if (n === next) { ctx.fillStyle = `rgba(255,111,97,${CALM ? .25 : .18 + .12 * Math.sin(now / 300)})`; ctx.beginPath(); ctx.arc(x + cell / 2, y + cell / 2, cell * .45, 0, 7); ctx.fill(); }
+  ctx.strokeStyle = done ? "rgba(242,234,219,.4)" : "#f2eadb"; ctx.lineWidth = Math.max(1.5, cell / 18);
+  ctx.beginPath(); ctx.moveTo(x + cell * .3, y + cell * .88); ctx.lineTo(x + cell * .3, y + cell * .12); ctx.stroke();
+  const wave = CALM || done ? 0 : Math.sin(now / 250 + n) * cell * .04;
+  ctx.fillStyle = done ? "rgba(140,130,150,.6)" : "#ff6f61";
+  ctx.beginPath(); ctx.moveTo(x + cell * .3, y + cell * .14); ctx.lineTo(x + cell * .86, y + cell * .3 + wave); ctx.lineTo(x + cell * .3, y + cell * .5); ctx.fill();
+  ctx.fillStyle = done ? "rgba(242,234,219,.6)" : "#fffaf0"; ctx.font = `800 ${Math.round(cell * .3)}px system-ui, sans-serif`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(done ? "✓" : n, x + cell * .5, y + cell * .32 + wave / 2);
 }
 function drawSample(ctx, r, c, cell, now) {
   const cx = (c + .5) * cell, cy = (r + .5) * cell, glow = CALM ? .5 : .5 + .5 * Math.sin(now / 400 + r + c);
@@ -1046,6 +1203,20 @@ function drawCrystal(ctx, r, c, cell, now) {
   ctx.shadowBlur = 0;
   ctx.fillStyle = "#e5dcff";
   ctx.beginPath(); ctx.moveTo(cx, cy - s); ctx.lineTo(cx + s * .7, cy - s * .2); ctx.lineTo(cx, cy - s * .1); ctx.closePath(); ctx.fill();
+}
+// A mystery gift: a wrapped box that bobs and glows until the rover drives over it.
+function drawGift(ctx, r, c, cell, now) {
+  const bob = CALM ? 0 : Math.sin(now / 300 + r + c) * cell * .05;
+  const cx = (c + .5) * cell, cy = (r + .5) * cell + bob, s = cell * .26;
+  ctx.fillStyle = "rgba(255,111,174,.22)"; ctx.beginPath(); ctx.arc(cx, (r + .5) * cell, cell * .45, 0, 7); ctx.fill();
+  ctx.shadowColor = "#ffd36b"; ctx.shadowBlur = cell * .35;
+  ctx.fillStyle = "#ff6fae"; ctx.fillRect(cx - s, cy - s * .6, s * 2, s * 1.6);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "#ff9fcb"; ctx.fillRect(cx - s * 1.12, cy - s * .9, s * 2.24, s * .45);
+  ctx.fillStyle = "#ffd36b"; ctx.fillRect(cx - s * .18, cy - s * .9, s * .36, s * 1.9);
+  for (const side of [-1, 1]) { ctx.beginPath(); ctx.ellipse(cx + side * s * .38, cy - s * 1.1, s * .38, s * .22, side * .5, 0, 7); ctx.fill(); }
+  ctx.strokeStyle = "rgba(90,20,50,.55)"; ctx.lineWidth = Math.max(1, cell / 30);
+  ctx.strokeRect(cx - s, cy - s * .6, s * 2, s * 1.6);
 }
 function drawPadGlow(ctx, r, c, cell, now) {
   const cx = (c + .5) * cell, cy = (r + .5) * cell, k = CALM ? .5 : .5 + .5 * Math.sin(now / 500 + r * 3 + c);
@@ -1096,7 +1267,10 @@ function onStep(k) {
   if (f.e === "bump") { SFX.play("bump"); burst(f.r + DIRS[f.d][0] * .45, f.c + DIRS[f.d][1] * .45, "dust", 8); }
   else if (f.e === "gust") { SFX.play("gust"); burst(f.r, f.c, "wind", 5); }
   else if (f.e === "portal") { SFX.play("portal"); burst(p.r, p.c, "portal", 14); burst(f.r, f.c, "portal", 14); }
+  else if (f.e === "jump") { SFX.play("jump"); burst(p.r, p.c, "dust", 6); burst(f.r, f.c, "dust", 6); }
+  else if (f.e === "drill") { SFX.play("bump"); if (f.g) burst(f.g[0], f.g[1], "rock", 16); }
   else if (f.e === "fell") { SFX.play("fall"); burst(f.r, f.c, "fall", 18); shake(); }
+  else if (f.e === "goal" && scene.run && scene.run.mission !== "report") scene.cheer = performance.now();
   else if (f.e === "battery") SFX.play("flat");
   else if (f.e === "wrong" || (f.e === "goal" && scene.run && scene.run.mission === "report")) SFX.play("report");
   else if (sliding) { const pp = scene.frames[k - 2]; if (!pp || pp.t !== f.t) SFX.play("slide"); }
@@ -1106,12 +1280,9 @@ function onStep(k) {
     const key = f.r + "," + f.c, seen = scene.frames.slice(0, k).some(x => x.r === f.r && x.c === f.c);
     if (!seen && scene.crystals.some(([r, c]) => r === f.r && c === f.c)) { SFX.play("crystal"); burst(f.r, f.c, "crystal", 16); }
     else if (!seen && scene.map[f.r][f.c] === "*") { SFX.play("sample"); burst(f.r, f.c, "sparkle", 12); }
+    else if (!seen && !scout && scene.gift && scene.gift[0] === f.r && scene.gift[1] === f.c) { SFX.play("gift"); burst(f.r, f.c, "gift", 22); }
     if (look.trail === "dust" && !sliding) burst(f.r, f.c, "dust", 2);
   }
-  // The replay stops at the first sighting of the zone's hidden rule, once
-  // that whole tick has played (all of a slide, not its first square).
-  const after = scene.frames[k + 1];
-  if (anomalyAt != null && f.t >= anomalyAt && (!after || after.t > anomalyAt)) { anomalyAt = null; showAnomaly(); }
 }
 function shake() {
   if (CALM) return;
@@ -1142,7 +1313,8 @@ function frameLoop(ts) {
   }
   // Smooth while anything moves; otherwise just enough for the glows (about
   // 15 frames a second), so an idle tab stays cheap on a Chromebook.
-  const busyFx = particles.length || confetti.length;
+  const busyFx = particles.length || confetti.length ||
+    (scene && ts - Math.max(scene.cheer || 0, scene.poke || 0) < 900);
   if (!document.hidden && (playing || busyFx || ts - (frameLoop.drawn || 0) > (CALM ? 500 : 66))) {
     render(ts); frameLoop.drawn = ts;
   }
@@ -1166,11 +1338,17 @@ function togglePlay() {
   if (playing) { setPlaying(false); return; }
   if (pos >= last()) { setPos(0); heard = 0; }
   heard = Math.floor(pos);
-  hideBanner(); hideCelebrate(); $("anomaly").hidden = true;
+  hideBanner(); hideCelebrate();
   setPlaying(true);
 }
+// "Show me": the moment it went wrong, with a ring round the rover, and the
+// banner stays up so its words are still there to read.
+function showMe() {
+  setPlaying(false); setPos(last()); heard = Math.floor(pos);
+  scene.ring = performance.now(); render(); markFeed();
+}
 function jumpTo(p) {
-  setPlaying(false); hideBanner(); hideCelebrate(); $("anomaly").hidden = true;
+  setPlaying(false); hideBanner(); hideCelebrate();
   setPos(p); heard = Math.floor(pos);
   render(); markFeed();
 }
@@ -1215,6 +1393,7 @@ function setStatus(i) {
   else if (scene && scene.run) {
     if (i >= last() && !playing) [cls, text] = ending(scene.run);
     else if (f.e === "wait") [cls, text] = ["hold", "Waiting"];
+    else if (f.e === "jump") [cls, text] = ["go", "Jumping"];
     else [cls, text] = ["go", "Driving"];
   }
   el.className = "status" + (cls ? " s-" + cls : ""); el.textContent = text;
@@ -1229,7 +1408,8 @@ function sceneFor(map, frames, run, crystals) {
   const samples = [];
   map.forEach((row, r) => [...row].forEach((ch, c) => { if (ch === "*") samples.push([r, c]); }));
   return {map, zone: site.zoneKey, frames, run, sunWidth: (run && run.sun_width) || 0,
-          samples: samples.length, sampleSquares: samples, crystals: crystals || []};
+          samples: samples.length, sampleSquares: samples, crystals: crystals || [], gift: site.gift || null,
+          flags: map.join("").replace(/[^1-9]/g, "").length};
 }
 function showRun(run, map, crystals, startAt = 0) {
   scene = sceneFor(map, run.frames, run, crystals);
@@ -1238,27 +1418,30 @@ function showRun(run, map, crystals, startAt = 0) {
   const log = parseLog(run).filter(x => !(scout && x.text.startsWith("🏁")));
   const frameAtTick = t => { let k = 0; run.frames.forEach((f, j) => { if (f.t === t) k = j; }); return k; };
   let marks = log.map(ev => ({k: frameAtTick(ev.t), icon: [...ev.text][0], text: ev.text}))
-    .filter(m => "⛸💨✨🧪💎💥🔋⏱🎉🧱📡".includes(m.icon));
-  if (marks.length > 12) marks = marks.filter(m => m.icon !== "⛸" && m.icon !== "🧱");
+    .filter(m => "⛸💨✨🧪💎💥🔋⏱🎉🧱📡🦘🎁🛤⛏🔑🔒🚪🚩".includes(m.icon));
+  if (marks.length > 12) marks = marks.filter(m => !["⛸", "🧱", "🦘", "🛤"].includes(m.icon));
   if (marks.length > 12) marks = marks.filter(m => m.icon !== "💨" || /pushed/.test(m.text));
   $("marks").innerHTML = marks.map(m => `<span class="mark" style="left:${last() ? m.k / last() * 100 : 0}%" title="tick ${run.frames[m.k].t}: ${esc(m.text)}" data-k="${m.k}">${m.icon}</span>`).join("");
   $("scrub").max = last(); $("scrub").disabled = last() === 0; $("playButton").disabled = last() === 0;
   $("batteryGauge").hidden = run.frames[0].b == null;
   $("sampleGauge").hidden = !scene.samples;
   $("crystalGauge").hidden = !scene.crystals.length;
+  $("drillGauge").hidden = run.frames[0].dl == null;
+  $("flagGauge").hidden = !scene.flags;
   // Telemetry: events and print() lines in tick order, the error last.
   const prints = run.prints.map(p => ({t: p.t, text: p.text, print: true}));
   const lines = [...log.map(x => ({...x, print: false})), ...prints].map((x, j) => ({...x, j}))
     .sort((a, b) => a.t - b.t || a.print - b.print || a.j - b.j)
     // The same event over and over (a rover stuck bumping) reads as one line.
+    // Gusts keep a line each: which tick each one came on is the clue.
     .reduce((out, x) => {
       const prev = out[out.length - 1];
-      if (prev && !x.print && !prev.print && prev.text === x.text) { prev.n++; prev.end = x.t; }
+      if (prev && !x.print && !prev.print && prev.text === x.text && !x.text.startsWith("💨")) { prev.n++; prev.end = x.t; }
       else out.push({...x, n: 1, end: x.t});
       return out;
     }, []);
   $("feed").innerHTML = `<div class="feed-head">${scout ? "Scouting telemetry" : "Telemetry"}</div>` + lines.map(x =>
-    `<div class="ev${x.print ? " print" : /🎉|💎|matches/.test(x.text) ? " good" : /💥|🔋|⏱|different/.test(x.text) ? " bad" : ""}" data-t="${x.t}" data-end="${x.end}"><span class="t">${x.t}</span><span>${x.print ? "› " : ""}${esc(x.text)}${x.n > 1 ? ` ×${x.n} <small>(until tick ${x.end})</small>` : ""}</span></div>`).join("")
+    `<div class="ev${x.print ? " print" : /🎉|💎|matches/.test(x.text) ? " good" : /💥|🔋|⏱|🔒|different|no drills/.test(x.text) ? " bad" : ""}" data-t="${x.t}" data-end="${x.end}"><span class="t">${x.t}</span><span>${x.print ? "› " : ""}${esc(x.text)}${x.n > 1 ? ` ×${x.n} <small>(until tick ${x.end})</small>` : ""}</span></div>`).join("")
     + (run.error ? `<div class="err">${esc(run.error)}</div>` : "")
     + (!lines.length && !run.error ? '<div class="empty">No telemetry.</div>' : "");
   hideBanner(); hideCelebrate();
@@ -1284,8 +1467,8 @@ function finished() {
   } else if (run.end === "error") {
     SFX.play("error");
     if (run.line) buttons.push(`<button class="quiet" onclick="goToLine(${run.line})">Go to line ${run.line}</button>`);
-  } else if (["fell", "battery", "wrong"].includes(run.end) && last() > 1) {
-    buttons.push(`<button class="quiet" onclick="jumpTo(last() - 1)">Show the moment</button>`);
+  } else if (run.end !== "error" && last() > 1) {
+    buttons.push(`<button class="quiet" onclick="showMe()">Show me</button>`);
   }
   // A few misses in a row: offer the two ways to find out more, without
   // waiting for the teacher to come over.
@@ -1297,9 +1480,12 @@ function finished() {
   // A def that never ran is the likeliest reason a program stopped short.
   const unused = run.end === "stopped" && run.log.find(l => l.includes("🧩"));
   // Students watch the map, not the telemetry, so a code error says itself here.
-  let text = unused ? unused.replace(/^tick \d+: /, "") : run.end === "error" ? `⚠️ ${run.error}` : say;
+  // Otherwise: what happened and where, then one thing to try.
+  let text = unused ? unused.replace(/^tick \d+: /, "") : run.end === "error" ? `⚠️ ${run.error}` : coachTip(run);
+  const plain = !text && run.explain;
+  if (!text) text = plain ? run.explain.what : say;
   if (site.key === "7" && runs) text = `${unchartedSummary()} Planet ${runs.indexOf(run) + 1}: ${text}`;
-  showBanner(cls === "win" ? "win" : cls === "lost" ? "lost" : "", text, buttons.join(""));
+  showBanner(cls === "win" ? "win" : cls === "lost" ? "lost" : "", text, buttons.join(""), plain ? run.explain.next : "");
 }
 // What happened across the five planets, so the next thing to handle is clear.
 function unchartedSummary() {
@@ -1309,8 +1495,22 @@ function unchartedSummary() {
   const parts = Object.entries(counts).map(([end, n]) => `${n} ${why[end] || end}`);
   return `${runs.filter(r => r.reached).length} of 5 reached${parts.length ? ` · ${parts.join(" · ")}` : ""}.`;
 }
-function showBanner(cls, text, actions = "") {
+// A field measurement that missed gets a tip, and each new miss gets one that
+// goes a step further, ending with the code. Forgetting report() gets its own
+// tip the first time. Watching the same run again keeps the same tip.
+function coachTip(run) {
+  const c = site.coach;
+  if (!c || !["wrong", "stopped"].includes(run.end)) return "";
+  if (site.coached && site.coached.run === run) return site.coached.text;
+  const step = site.coached ? site.coached.step : 0, short = run.end === "stopped" && !site.toldShort;
+  if (short) site.toldShort = true;
+  const text = short ? c.short : c.steps[Math.min(step, c.steps.length - 1)];
+  site.coached = {run, text, step: short ? step : step + 1};
+  return text;
+}
+function showBanner(cls, text, actions = "", next = "") {
   $("banner").className = "banner " + cls; $("bannerText").textContent = text;
+  if (next) $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">👉 ${esc(next)}</span>`);
   $("bannerActions").innerHTML = actions; $("banner").hidden = false;
 }
 function hideBanner() { $("banner").hidden = true; }
@@ -1372,11 +1572,13 @@ async function showToasts(r) {
   const badges = r.badges.length > 2
     ? [["🏅", `${r.badges.length} new badges!`, `${r.badges.map(b => b.icon).join(" ")}  See them in the garage (★ at the top).`]]
     : r.badges.map(b => [b.icon, `Badge: ${b.name}`, b.how]);
-  const items = [...badges,
+  const items = [...r.found.map(u => ["🎁", `You found a mystery gift: ${u.name} ${u.slot}!`, "Try it on in the garage (★ at the top)."]),
+                 ...badges,
                  ...r.unlocked.map(u => ["🔓", `Unlocked: ${u.name} ${u.slot}`, "Fit it in the garage (★ at the top)."])];
+  if (r.found.length && site) renderGoals();
   for (const [icon, title, text] of items) {
     await wait(CALM ? 0 : 500);
-    SFX.play("badge");
+    SFX.play(icon === "🎁" ? "gift" : "badge");
     toast(icon, title, text);
   }
 }
@@ -1386,12 +1588,6 @@ function toast(icon, title, text) {
   el.innerHTML = `<span class="ico">${icon}</span><div><b>${esc(title)}</b><small>${esc(text)}</small></div>`;
   $("toasts").appendChild(el);
   setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 350); }, 5200);
-}
-function showAnomaly() {
-  setPlaying(false);
-  SFX.play("anomaly");
-  $("anomaly").hidden = false;
-  $("anomalyGo").focus();
 }
 
 // ---- Joining ---------------------------------------------------------------------------
@@ -1434,6 +1630,7 @@ function useState(data) {
   look = data.look || look;
   $("totalStars").textContent = data.total_stars;
   renderRoute();
+  renderFunctions();
 }
 
 // ---- The route --------------------------------------------------------------------------
@@ -1453,8 +1650,9 @@ function renderRoute() {
       ${z.sites.map(s => {
         const n = (s.stars || []).filter(Boolean).length;
         const cls = [site && s.key === site.key ? "now" : "", n === 3 ? "gold" : n ? "done" : "", s.open ? "" : "locked"].join(" ");
-        const label = `${s.key === "7" ? "" : s.key.toUpperCase() + " "}${s.name}${s.open ? `, ${n} of 3 stars` : ", locked"}`;
-        return `<button class="wp ${cls}${s.open ? " reach" : ""}" ${s.open ? `onclick="openSite('${s.key}')"` : "disabled"} title="${esc(label)}" aria-label="${esc(label)}"><span></span></button>`;
+        const gift = s.open && s.gift;
+        const label = `${s.key === "7" ? "" : s.key.toUpperCase() + " "}${s.name}${s.open ? `, ${n} of 3 stars` : ", locked"}${gift ? ", a mystery gift is hidden here" : ""}`;
+        return `<button class="wp ${cls}${s.open ? " reach" : ""}" ${s.open ? `onclick="openSite('${s.key}')"` : "disabled"} title="${esc(label)}" aria-label="${esc(label)}"><span></span>${gift ? '<i class="gift" aria-hidden="true">🎁</i>' : ""}</button>`;
       }).join("")}
       ${isHere ? `<span class="zname">${esc(z.name)}</span>` : ""}
     </div>`;
@@ -1474,7 +1672,7 @@ async function openSite(key) {
   closePops(); stopScout(true);
   const zone = zoneOf(key);
   site = {...view, zoneKey: zone.key};
-  runs = null; rewards = null; anomalyAt = null;
+  runs = null; rewards = null;
   store(`planetSite:${me}`, key);
   $("siteName").textContent = view.name;
   $("siteBrief").textContent = view.brief;
@@ -1494,12 +1692,12 @@ async function openSite(key) {
   errorLine = 0;
   updateEditor();
   renderKit(state.zones.indexOf(zone));
-  renderRadio(); renderJournal();
+  renderRadio();
   renderRoute();
   playing = false;
   $("planets").hidden = true; $("marks").innerHTML = ""; $("clock").textContent = "";
   $("scrub").max = 0; $("scrub").disabled = true; $("playButton").disabled = true;
-  $("anomaly").hidden = true; hideCelebrate();
+  hideCelebrate();
   $("record").hidden = !view.record;
   if (view.record) $("record").textContent = `🏆 Class record: ${view.record.ticks} ticks · ${view.record.name}`;
   $("feed").innerHTML = '<div class="empty">Transmit to see the rover\'s telemetry.</div>';
@@ -1508,12 +1706,13 @@ async function openSite(key) {
   setPlaying(false);
   render();
   hideBanner();
-  if (key === "7") showBanner("", "A sample planet. Every run lands on five new ones, so a list of moves can't work here. beacon_x() and beacon_y() say where the beacon is: compare them with x() and y().");
+  if (key === "7") showBanner("", "The first of five planets. Every run lands on the same five, and one program has to reach the beacon on all of them: transmit to see the other four. Boulder Plain code that worked on every plain is a good start. Then add what you learned about gusts and charging in the sun.");
   else {
     // A new zone's first site also says what the zone is like.
     const intro = zone.sites[0].key === key && zone.blurb ? `${zone.name}: ${zone.blurb}` : "";
-    const text = [intro, carried ? "Your last site's code is loaded. Will it still work here?" : ""].filter(Boolean).join(" ");
+    const text = [intro, view.coach ? view.coach.intro : "", carried ? "Your last site's code is loaded. Will it still work here?" : ""].filter(Boolean).join(" ");
     if (text) showBanner("", text);
+    if (view.new) $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">🆕 ${esc(view.new.icon)} ${esc(view.new.what)}  Try: <code>${esc(view.new.example)}</code></span>`);
   }
   $("status").className = "status"; $("status").textContent = "Ready";
 }
@@ -1521,25 +1720,40 @@ async function openSite(key) {
 function resetScene() {
   if (site.map) {
     const [r, c] = findChar(site.map, "S");
-    scene = sceneFor(site.map, [{r, c, d: site.dir, t: 0, b: site.battery}], null, site.crystals);
+    scene = sceneFor(site.map, [{r, c, d: site.dir, t: 0, b: site.battery, dl: site.drills}], null, site.crystals);
     $("batteryGauge").hidden = site.battery == null;
     $("sampleGauge").hidden = !scene.samples;
     $("crystalGauge").hidden = !scene.crystals.length;
+    $("drillGauge").hidden = site.drills == null;
+    $("flagGauge").hidden = !scene.flags; $("keyGauge").hidden = true;
     setPos(0); $("clock").textContent = "";
   } else {
     scene = null;
     $("batteryGauge").hidden = true; $("sampleGauge").hidden = true; $("crystalGauge").hidden = true;
+    $("drillGauge").hidden = true; $("flagGauge").hidden = true; $("keyGauge").hidden = true;
   }
 }
 function renderGoals() {
   const best = site.stars || [false, false, false];
-  $("goals").innerHTML = (site.goals || []).map((g, i) => `<span class="goal${best[i] ? " got" : ""}"><i>★</i>${esc(g)}</span>`).join("");
+  $("goals").innerHTML = (site.goals || []).map((g, i) => `<span class="goal${best[i] ? " got" : ""}"><i>★</i>${esc(g)}</span>`).join("")
+    + (site.gift ? '<span class="goal gift">🎁 A mystery gift is hidden here: drive over it</span>' : "")
+    + legend(site.map || []).map(t => `<span class="goal legend">${esc(t)}</span>`).join("");
+}
+// The squares on this map that do something new, in words.
+function legend(map) {
+  const text = map.join(""), flags = text.replace(/[^1-9]/g, "").length;
+  return [/[<>^v]/.test(text) && "🛤 belt: carries you the way its arrows point",
+          text.includes("k") && "🔑 key: drive over it to pick it up",
+          text.includes("D") && "🚪 gate: opens with a key",
+          flags && `🚩 flags 1 to ${flags}: in order`].filter(Boolean);
 }
 
 // ---- The kit: commands and sensors, one click to add -------------------------------------
 function renderKit(zi) {
-  // Uncharted has no samples and nothing to report, so those would only mislead.
-  const names = [...COMMANDS, ...site.sensors.filter(n => site.key !== "7" || !["samples_left", "report"].includes(n))];
+  // Uncharted has no samples, nothing to report, no drills, keys or flags, so
+  // those would only mislead.
+  const UNUSED = ["samples_left", "report", "drill", "drills_left", "has_key", "key_x", "key_y", "next_x", "next_y", "flags_left"];
+  const names = [...COMMANDS, ...site.sensors.filter(n => site.key !== "7" || !UNUSED.includes(n))];
   $("kit").innerHTML = names.map(n => {
     const cmd = LINE_CHIPS.includes(n), fresh = SENSOR_ZONE[n] === zi && zi > 0;
     return `<button class="chip${cmd ? " cmd" : ""}${fresh ? " new" : ""}" data-name="${n}" title="${esc(HELP[n] || "")}${fresh ? " (new here)" : ""}">${esc(CHIP_TEXT[n] || n + "()")}</button>`;
@@ -1553,7 +1767,7 @@ function insertChip(name) {
   if (!LINE_CHIPS.includes(name)) return insertAtCursor(CHIP_TEXT[name] || name + "()");
   let indent = (before.match(/^\s*/) || [""])[0];
   if (before.trimEnd().endsWith(":")) indent += "    ";
-  insertAtCursor((before.trim() ? "\n" + indent : "") + name + "()\n" + indent);
+  insertAtCursor((before.trim() ? "\n" + indent : "") + (CHIP_TEXT[name] || name + "()") + "\n" + indent);
 }
 function insertAtCursor(text) {
   const t = $("code");
@@ -1571,7 +1785,7 @@ function replaceText(start, end, text) {
   updateEditor();
 }
 
-// ---- Radio and journal -------------------------------------------------------------------
+// ---- Radio ------------------------------------------------------------------------------
 function renderRadio() {
   const zone = zoneOf(site.key);
   $("hints").innerHTML = zone.hints.length ? zone.hints.map(h => `<div class="msg">${esc(h)}</div>`).join("")
@@ -1588,19 +1802,6 @@ async function askHint() {
   try { useState(await post("/planet/hint", {id: me, zone: zone.key})); } catch (_) { return; }
   renderRadio();
 }
-function renderJournal() {
-  const zone = zoneOf(site.key);
-  $("journalButton").hidden = zone.key === "uncharted";
-  $("journalTitle").textContent = `Field journal: ${zone.name}`;
-  $("journal").value = zone.journal || "";
-  $("journalState").textContent = zone.journal ? "Saved. Your teacher can read it." : "Your guess at this zone's rule.";
-}
-async function saveJournal() {
-  const zone = zoneOf(site.key);
-  try { useState(await post("/planet/journal", {id: me, zone: zone.key, text: $("journal").value})); }
-  catch (_) { $("journalState").textContent = "Not saved: no answer from the game."; return; }
-  renderJournal();
-}
 function openPop(pop, button) {
   const wasOpen = !pop.hidden;
   closePops();
@@ -1614,38 +1815,147 @@ function placePop(pop, button) {
   pop.style.left = Math.max(12, Math.min(window.innerWidth - pr.width - 12, r.right - pr.width)) + "px";
   pop.style.top = Math.max(12, r.top - pr.height - 10) + "px";
 }
-function closePops() { $("radioPop").hidden = true; $("journalPop").hidden = true; }
+function closePops() { $("radioPop").hidden = true; $("fnPop").hidden = true; }
+
+// ---- Saved functions: a def kept for later sites ------------------------------------------
+// Each def at the left edge of the code, with the indented lines under it.
+function defsIn(code) {
+  const lines = code.split("\n"), found = [];
+  lines.forEach((line, i) => {
+    const m = /^def\s+([A-Za-z_]\w*)/.exec(line);
+    if (!m) return;
+    let end = i + 1;
+    while (end < lines.length && (!lines[end].trim() || /^\s/.test(lines[end]))) end++;
+    found.push({name: m[1], code: lines.slice(i, end).join("\n").replace(/\s+$/, "")});
+  });
+  return found;
+}
+function renderFunctions() {
+  const saved = state.functions || [], here = defsIn($("code").value);
+  const inCode = new Set(here.map(d => d.name));
+  $("fnCount").hidden = !saved.length;
+  $("fnCount").textContent = saved.length;
+  if ($("fnPop").hidden) return;
+  $("savedFunctions").innerHTML = saved.length ? saved.map(f => `<div class="fn"><pre>${esc(f.code)}</pre>
+      <div class="pop-row">${inCode.has(f.name) ? "<small>In your code ✓</small>" : `<button class="quiet" data-add="${esc(f.name)}">Add to my code</button>`}
+      <button class="quiet" data-remove="${esc(f.name)}">${removing === f.name ? "Sure? Remove" : "Remove"}</button></div></div>`).join("")
+    : '<div class="msg">Nothing saved yet. Write a function with  def name():  then save it here to use it on any site.</div>';
+  $("codeFunctions").innerHTML = here.map(d => {
+    const kept = saved.find(f => f.name === d.name);
+    if (kept && kept.code === d.code) return `<small>${esc(d.name)}() saved ✓</small>`;
+    return `<button class="quiet" data-save="${esc(d.name)}">${kept ? "Update" : "Save"} ${esc(d.name)}()</button>`;
+  }).join("") || "<small>No def in this code yet.</small>";
+}
+let removing = null;   // a Remove waits for a second click, so one slip can't lose a function
+async function functionsClick(event) {
+  const b = event.target.closest("button");
+  if (!b) return;
+  let body;
+  if (b.dataset.add) {
+    const f = state.functions.find(f => f.name === b.dataset.add);
+    // At the top, so it's made before anything calls it.
+    replaceText(0, 0, f.code + "\n\n");
+    $("fnState").textContent = `${f.name}() is at the top of your code.`;
+    $("fnPop").hidden = false;
+    renderFunctions();
+    return;
+  }
+  if (b.dataset.remove && removing !== b.dataset.remove) {
+    removing = b.dataset.remove; renderFunctions(); return;
+  }
+  if (b.dataset.remove) body = {id: me, remove: b.dataset.remove};
+  else if (b.dataset.save) body = {id: me, code: defsIn($("code").value).find(d => d.name === b.dataset.save).code};
+  else return;
+  removing = null;
+  let data;
+  try { data = await post("/planet/functions", body); }
+  catch (_) { $("fnState").textContent = "Not saved: no answer from the game."; return; }
+  if (data.error) { $("fnState").textContent = data.error; return; }
+  state.functions = data.functions;
+  $("fnState").textContent = body.remove ? `${body.remove}() removed.` : `Saved. Add it on any site from 🧰 Functions.`;
+  if (body.code) SFX.play("star");
+  renderFunctions();
+}
+
+// What's in the editor goes to the class screen as it's typed, like Python Quest.
+let typingTimer = null;
+function sendTyping() {
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(() => {
+    if (me && site) post("/planet/typing", {id: me, site: site.key, code: $("code").value}).catch(() => {});
+  }, 600);
+}
 
 // ---- The garage and the badge cabinet -----------------------------------------------------
 function openGarage() {
   $("garage").hidden = false;
   renderGarage();
   $("garageClose").focus();
+  requestAnimationFrame(garageLoop);
+}
+// The preview moves while the garage is open (propellers spin, fire flickers).
+function garageLoop(ts) {
+  if ($("garage").hidden || CALM) return;
+  if (ts - (garageLoop.drawn || 0) > 60) { garagePreview(ts); garageLoop.drawn = ts; }
+  requestAnimationFrame(garageLoop);
 }
 function renderGarage() {
   $("garageStars").textContent = `★ ${state.total_stars} / ${state.max_stars}`;
-  for (const slot of ["paint", "topper", "trail"]) {
+  for (const slot of ["paint", "topper", "trail", "world"]) {
     $(slot + "Options").innerHTML = state.garage.filter(i => i.slot === slot).map(i => {
-      const sw = slot === "paint" ? `<span class="sw" style="background:${Array.isArray(PAINTS[i.key]) ? `linear-gradient(135deg,${PAINTS[i.key].join(",")})` : PAINTS[i.key]}"></span>` : "";
-      const need = i.open ? "" : `<small>${i.stars != null ? `★ ${i.stars}` : `class ★ ${i.class}`}</small>`;
-      return `<button class="option${look[slot] === i.key ? " on" : ""}" data-slot="${slot}" data-key="${i.key}" ${i.open ? "" : "disabled"} title="${i.open ? "" : i.stars != null ? `Earn ${i.stars} stars` : `When the class has ${i.class} stars together`}">${sw}${esc(i.name)}${need}</button>`;
+      const sw = slot === "paint" || slot === "world" ? `<span class="sw" style="background:${swatch(slot, i.key)}"></span>` : "";
+      const need = i.open ? "" : `<small>${i.find ? `🎁 ${i.find.toUpperCase()}` : i.stars != null ? `★ ${i.stars}` : `class ★ ${i.class}`}</small>`;
+      const how = i.open ? "" : i.find ? `A mystery gift on ${i.where}: drive over the 🎁 there to find it`
+        : i.stars != null ? `Earn ${i.stars} stars` : `When the class has ${i.class} stars together`;
+      return `<button class="option${look[slot] === i.key ? " on" : ""}" data-slot="${slot}" data-key="${i.key}" ${i.open ? "" : "disabled"} title="${esc(how)}">${sw}${esc(i.name)}${need}</button>`;
     }).join("");
   }
+  const gifts = state.garage.filter(i => i.find), found = gifts.filter(i => i.open).length;
+  $("giftNote").textContent = `🎁 ${found} of ${gifts.length} mystery gifts found. They're hidden on the map: drive over one in a run to open it.`;
   $("badgeList").innerHTML = state.badges.map(b => `<div class="badge${b.earned ? "" : " no"}"><span class="ico">${b.icon}</span><div>${esc(b.name)}<small>${esc(b.how)}</small></div></div>`).join("");
   garagePreview();
 }
-function garagePreview() {
+function swatch(slot, key) {
+  if (slot === "world") {
+    const pal = WORLDS[key] || GROUND[site ? site.zoneKey : "landing"];
+    return `linear-gradient(135deg, ${pal.ground} 55%, ${pal.rock} 55%)`;
+  }
+  const p = PAINTS[key];
+  return typeof p === "string" ? p : Array.isArray(p) ? `linear-gradient(135deg,${p.join(",")})` : p.swatch;
+}
+// A patch of ground in the chosen map look, with a little of everything on
+// it, and the rover just arrived along its trail.
+const PREVIEW_MAP = ["#..O.", ".~~..", "....#", ".O...", "....."];
+const PREVIEW_ROUTE = [{r: 4, c: 4}, {r: 4, c: 3}, {r: 4, c: 2}, {r: 3, c: 2}, {r: 2, c: 2}];
+function garagePreview(now = performance.now()) {
   const cv = $("garageScene"), dpr = window.devicePixelRatio || 1, s = 200;
-  cv.width = s * dpr; cv.height = s * dpr;
+  if (cv.width !== s * dpr) { cv.width = s * dpr; cv.height = s * dpr; }
   const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = bedPattern(ctx, site ? site.zoneKey : "landing"); ctx.fillRect(0, 0, s, s);
+  // Its own copy of the ground, so the site's map keeps its cached one.
+  const zone = site ? site.zoneKey : "landing", key = zone + "|" + look.world;
+  if (garagePreview.key !== key) { garagePreview.ground = terrain(PREVIEW_MAP, zone, 40); garagePreview.key = key; }
+  ctx.drawImage(garagePreview.ground, 0, 0);
+  drawTrail(ctx, PREVIEW_ROUTE, PREVIEW_ROUTE.length - 1, {r: 1.6, c: 2}, 40, now);
   const grad = ctx.createRadialGradient(s / 2, s / 2, 20, s / 2, s / 2, s * .7);
   grad.addColorStop(0, "rgba(255,240,220,.12)"); grad.addColorStop(1, "rgba(10,6,24,.5)");
   ctx.fillStyle = grad; ctx.fillRect(0, 0, s, s);
-  drawRover(ctx, s / 2, s / 2, 120, -Math.PI / 2 - .35, 1, look);
+  drawRover(ctx, s / 2, 84, 96, -Math.PI / 2, 1, look, now);
+}
+// A random look from everything this student has unlocked.
+async function surprise() {
+  const pick = slot => {
+    const open = state.garage.filter(i => i.slot === slot && i.open);
+    return open[Math.floor(Math.random() * open.length)].key;
+  };
+  look = {paint: pick("paint"), topper: pick("topper"), trail: pick("trail"), world: pick("world")};
+  SFX.wake(); SFX.play("beep");
+  try { look = (await post("/planet/look", {id: me, ...look})).look; } catch (_) {}
+  state.look = look;
+  renderGarage(); render();
 }
 async function chooseLook(slot, key) {
   look = {...look, [slot]: key};
+  SFX.wake(); SFX.play("beep");
   try { look = (await post("/planet/look", {id: me, ...look})).look; } catch (_) {}
   state.look = look;
   renderGarage(); render();
@@ -1656,10 +1966,10 @@ function toggleScout() {
   if (scout) return stopScout();
   if (!site || !site.map || busy) return;
   scout = {moves: [], queue: [], over: false};
-  rewards = null; anomalyAt = null;
+  rewards = null;
   $("scoutButton").classList.add("on");
   $("scoutHelp").hidden = false; $("pad").hidden = false; $("compass").hidden = true;
-  hideBanner(); hideCelebrate(); $("anomaly").hidden = true;
+  hideBanner(); hideCelebrate();
   $("planets").hidden = true; $("marks").innerHTML = "";
   resetScene(); setPlaying(false); render();
   $("feed").innerHTML = '<div class="empty">Scouting: drive north, south, east and west with the arrow keys or the buttons on the map.</div>';
@@ -1709,37 +2019,82 @@ function scoutFinished(run) {
   if (run.end === "goal") SFX.play("win");
   showBanner("scout", say, `${run.end === "goal" ? `<button class="go" onclick="scoutAsCode()">📋 Use as code</button>` : ""}<button class="quiet" onclick="restartScout()">Scout again (R)</button><button class="quiet" onclick="stopScout()">Stop</button>`);
 }
-// The hand-driven route, written as code: three east() in a row become
-// east(3), and a long wait becomes a for loop, so the first loop a student
-// sees is their own.
+// The hand-driven route, written as code with a few words left for the
+// student to finish: three east() in a row become east(3), a long wait
+// becomes a for loop, and a chunk that repeats becomes a for loop too, so the
+// first loop a student sees is their own route.
 function movesAsCode(moves) {
-  const runs = [];
+  const legs = [];
   for (const m of moves) {
-    const last = runs[runs.length - 1];
-    if (last && last[0] === m) last[1]++; else runs.push([m, 1]);
+    const last = legs[legs.length - 1];
+    if (last && last.m === m) last.n++; else legs.push({m, n: 1});
   }
-  return runs.map(([m, n]) => m === "wait" && n >= 3 ? `for i in range(${n}):\n    wait()`
-    : m === "wait" ? Array(n).fill("wait()").join("\n")
-    : `${m}(${n > 1 ? n : ""})`).join("\n") + "\n";
+  // The repeating chunk that covers the most legs, if there is one.
+  const same = (a, b) => a.m === b.m && a.n === b.n;
+  let loop = null;
+  for (let size = 2; size * 2 <= legs.length; size++) {
+    for (let at = 0; at + size * 2 <= legs.length; at++) {
+      let times = 1;
+      while (at + size * (times + 1) <= legs.length &&
+             legs.slice(at + size * times, at + size * (times + 1)).every((x, i) => same(x, legs[at + i]))) times++;
+      if (times > 1 && (!loop || size * times > loop.size * loop.times)) loop = {at, size, times};
+    }
+  }
+  const leg = (x, pad, i) => x.m === "wait" && x.n >= 3 ? `${pad}for ${i} in range(${x.n}):\n${pad}    wait()`
+    : x.m === "wait" ? Array(x.n).fill(pad + "wait()").join("\n")
+    : `${pad}${x.m}(${x.n > 1 ? x.n : ""})`;
+  const lines = loop ? [...legs.slice(0, loop.at).map(x => leg(x, "", "i")),
+      `for i in range(${loop.times}):`,
+      ...legs.slice(loop.at, loop.at + loop.size).map(x => leg(x, "    ", "j")),
+      ...legs.slice(loop.at + loop.size * loop.times).map(x => leg(x, "", "i"))]
+    : legs.map(x => leg(x, "", "i"));
+  return withBlanks(lines.join("\n") + "\n");
 }
+// A few words cut down to their first letter, with one _ for each missing
+// letter: r____ is range, e___ is east. range first, then commands, then for;
+// never the same word twice, and never every word.
+function withBlanks(code) {
+  const rank = w => w === "range" ? 0 : w === "for" ? 2 : 1;
+  const words = [...code.matchAll(/\b(range|for|north|south|east|west|wait)\b/g)];
+  const picks = [], used = new Set();
+  for (const m of [...words].sort((a, b) => rank(a[1]) - rank(b[1]) || a.index - b.index)) {
+    if (!used.has(m[1])) { used.add(m[1]); picks.push(m); }
+  }
+  return picks.slice(0, Math.max(1, Math.min(3, Math.round(words.length / 3))))
+    .sort((a, b) => b.index - a.index)
+    .reduce((out, m) => out.slice(0, m.index) + m[1][0] + "_".repeat(m[1].length - 1) + out.slice(m.index + m[1].length), code);
+}
+const BLANK = /\b[a-z]_+\b/;
 function scoutAsCode() {
   if (!scout || !scout.moves.length) return;
   const code = movesAsCode(scout.moves);
   stopScout();
   replaceText(0, $("code").value.length, code);
-  const lines = code.split("\n").filter(l => l.trim()).length, m = /✂️ (\d+)/.exec((site.goals || [])[2] || "");
-  const more = m && lines > Number(m[1]) ? ` The ✂️ star wants ${m[1]} or fewer: can a loop do the part that repeats?` : "";
-  toast("📋", "Your drive is now code", `${lines} lines. Transmit it!${more} Ctrl+Z brings back what was there.`);
+  const n = (code.match(new RegExp(BLANK, "g")) || []).length;
+  toast("📋", "Your drive is now code", `Finish the ${n === 1 ? "word" : `${n} words`} with _ in: each _ is one missing letter, and the first letter is a clue. Ctrl+Z brings back what was there.`);
+  goToBlank();
+}
+// Select the _ of the first unfinished word, so typing the rest of it fills them.
+function goToBlank() {
+  const t = $("code"), m = BLANK.exec(t.value);
+  if (!m) return;
+  t.focus(); t.setSelectionRange(m.index + 1, m.index + m[0].length);
 }
 function restartScout() { if (scout) { stopScout(true); toggleScout(); } }
 
 // ---- Transmitting ------------------------------------------------------------------------
 async function transmit() {
   if (busy || !me || !site) return;
+  if (BLANK.test($("code").value)) {
+    showBanner("lost", "Finish each word with _ in it first. Each _ is one missing letter, and the first letter is a clue: the commands under the editor can help.",
+               `<button class="quiet" onclick="goToBlank()">Show me the blank</button>`);
+    goToBlank();
+    return;
+  }
   busy = true;
   stopScout(true);
   SFX.wake(); SFX.play("send");
-  saveCode(); closePops(); hideBanner(); hideCelebrate(); $("anomaly").hidden = true;
+  saveCode(); closePops(); hideBanner(); hideCelebrate();
   $("runButton").disabled = true;
   $("runButton").textContent = site.key === "7" ? "Landing…" : "Transmitting…";
   try {
@@ -1751,7 +2106,6 @@ async function transmit() {
     $("totalStars").textContent = data.rewards.total_stars - data.rewards.new_stars;
     site.stars = data.rewards.best;
     site.misses = data.rewards.misses;
-    anomalyAt = data.rewards.anomaly ? data.rewards.anomaly.tick : null;
     const rec = data.rewards.record;
     if (rec) { site.record = {ticks: rec.ticks, name: rec.name}; $("record").hidden = false; $("record").textContent = `🏆 Class record: ${rec.ticks} ticks · ${rec.name}`; }
     errorLine = runs[0].line || 0;
@@ -1767,6 +2121,7 @@ async function transmit() {
       $("planets").hidden = true;
       showRun(runs[0], site.map, site.crystals);
       announce(ending(runs[0])[2]);
+      if (data.rewards.found.length) site.gift = null;
     }
   } catch (_) {
     showBanner("lost", "No answer from the game. Is the server running?");
@@ -1799,6 +2154,8 @@ function updateEditor() {
   paintCode(code);
   syncPaint();
   saveCode();
+  sendTyping();
+  if (state) renderFunctions();
 }
 function syncPaint() { $("paint").scrollTop = $("code").scrollTop; $("paint").scrollLeft = $("code").scrollLeft; }
 function editorKey(event) {
@@ -1850,7 +2207,7 @@ function paintCode(code) {
     if (comment) return `<i class="t-note">${esc(comment)}</i>`;
     if (text) return `<i class="t-text">${esc(text)}</i>`;
     if (num) return `<i class="t-num">${num}</i>`;
-    const cls = COMMANDS.includes(word) ? "t-cmd" : sensors.has(word) ? "t-sense" : own.has(word) ? "t-own"
+    const cls = BLANK.test(word) ? "t-blank" : COMMANDS.includes(word) || (word === "jump" && sensors.has(word)) ? "t-cmd" : sensors.has(word) ? "t-sense" : own.has(word) ? "t-own"
       : KEYWORDS.has(word) ? "t-key" : "";
     return cls ? `<i class="${cls}">${word}</i>` : word;
   });
@@ -1959,6 +2316,7 @@ $("calmPick").addEventListener("change", e => {
 $("muteButton").addEventListener("click", () => { $("muteButton").textContent = SFX.toggle() ? "🔇" : "🔊"; });
 $("starsButton").addEventListener("click", openGarage);
 $("garageClose").addEventListener("click", () => { $("garage").hidden = true; });
+$("surpriseButton").addEventListener("click", surprise);
 $("garage").addEventListener("click", e => {
   const b = e.target.closest(".option");
   if (b && !b.disabled) chooseLook(b.dataset.slot, b.dataset.key);
@@ -1971,15 +2329,13 @@ $("pad").addEventListener("click", e => { const m = e.target.dataset.move; if (m
 $("playButton").addEventListener("click", togglePlay);
 $("speedButton").addEventListener("click", nextSpeed);
 showSpeed();
-$("anomalyGo").addEventListener("click", () => { $("anomaly").hidden = true; setPlaying(true); });
-$("anomalyJournal").addEventListener("click", () => { $("anomaly").hidden = true; openPop($("journalPop"), $("journalButton")); });
 $("scrub").addEventListener("input", () => jumpTo(Number($("scrub").value)));
 $("marks").addEventListener("click", e => { const k = e.target.dataset.k; if (k != null) jumpTo(Number(k)); });
 $("kit").addEventListener("click", e => { const n = e.target.dataset && e.target.dataset.name; if (n) insertChip(n); });
 $("radioButton").addEventListener("click", () => openPop($("radioPop"), $("radioButton")));
-$("journalButton").addEventListener("click", () => openPop($("journalPop"), $("journalButton")));
 $("hintButton").addEventListener("click", askHint);
-$("journalSave").addEventListener("click", saveJournal);
+$("fnButton").addEventListener("click", () => { removing = null; $("fnState").textContent = "Saved functions work on every site."; openPop($("fnPop"), $("fnButton")); renderFunctions(); placePop($("fnPop"), $("fnButton")); });
+$("fnPop").addEventListener("click", functionsClick);
 $("code").addEventListener("input", updateEditor);
 $("code").addEventListener("scroll", () => { $("lines").scrollTop = $("code").scrollTop; syncPaint(); });
 $("code").addEventListener("keydown", editorKey);
@@ -2001,7 +2357,7 @@ document.addEventListener("keydown", e => {
   else if (e.key === "r" || e.key === "R") restartScout();
 });
 document.addEventListener("pointerdown", e => {
-  if (!e.target.closest(".pop, #radioButton, #journalButton, #anomalyJournal")) closePops();
+  if (!e.target.closest(".pop, #radioButton, #fnButton")) closePops();
 });
 $("map").addEventListener("pointermove", e => {
   if (!scene || !scene.view) return;
@@ -2012,6 +2368,18 @@ $("map").addEventListener("pointermove", e => {
   if (ok) $("where").textContent = `x ${c}, y ${r}`;
 });
 $("map").addEventListener("pointerleave", () => { $("where").hidden = true; });
+// Click the rover and it says hello.
+const POKE_LINES = ["Beep boop!", "Hi there!", "Ready to explore!", "Bzzt!", "Where to next?",
+                    "I like this planet.", "Write me some code!", "Wheee!", "Is that a crystal?"];
+$("map").addEventListener("click", e => {
+  if (!scene || !scene.view) return;
+  const rect = $("map").getBoundingClientRect(), {ox, oy, cell} = scene.view, rover = roverAt(pos);
+  const dx = e.clientX - rect.left - ox - (rover.c + .5) * cell, dy = e.clientY - rect.top - oy - (rover.r + .5) * cell;
+  if (Math.hypot(dx, dy) > cell * .8) return;
+  SFX.wake(); SFX.play("beep");
+  scene.poke = performance.now();
+  scene.said = {at: scene.poke, text: POKE_LINES[Math.floor(Math.random() * POKE_LINES.length)]};
+});
 window.addEventListener("resize", () => render());
 resume();
 </script>

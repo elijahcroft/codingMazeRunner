@@ -28,13 +28,20 @@
   header p { margin-top: 10px; }
   .total { text-align: right; font: 800 clamp(44px, 6vw, 80px)/1 var(--ui); color: var(--gold); letter-spacing: -.03em; }
   .total small { display: block; font: 500 16px var(--ui); color: var(--haze); letter-spacing: 0; margin-top: 4px; }
-  main { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr); gap: 28px; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px; align-items: start; }
   h2 { margin: 0 0 12px; font-size: 20px; color: var(--haze); font-weight: 650; }
-  .fleet { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
-  .ship { background: rgba(35,29,63,.8); border-radius: 16px; padding: 12px; display: grid; grid-template-columns: 54px 1fr; gap: 10px; align-items: center; }
-  .ship canvas { width: 54px; height: 54px; }
-  .ship b { display: block; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ship small { color: var(--amber); font: 600 15px var(--mono); }
+  .fleet { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
+  .ship { background: rgba(35,29,63,.8); border-radius: 16px; padding: 12px; border: 2px solid transparent; min-width: 0; }
+  .ship.won { border-color: var(--mint); }
+  .ship .top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .ship .top canvas { width: 58px; height: 58px; flex: none; margin: -8px 0; }
+  .ship b { flex: 1; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ship .where { color: var(--haze); font: 13px var(--mono); white-space: nowrap; }
+  .ship .map { display: block; margin: 0 auto 8px; border-radius: 6px; }
+  .ship pre { background: #15112a; border-radius: 8px; padding: 8px; margin: 0; font: 12px/1.45 var(--mono); color: var(--gold);
+    min-height: 44px; max-height: 140px; overflow: auto; white-space: pre-wrap; }
+  .ship pre.empty { color: #6f668f; }
+  .ship .end { margin-top: 6px; font-size: 13px; color: var(--haze); }
   .moments { display: grid; gap: 8px; }
   .moment { background: rgba(35,29,63,.8); border-radius: 12px; padding: 10px 14px; font-size: 18px; }
   .moment.fresh { box-shadow: inset 0 0 0 2px var(--mint); }
@@ -54,31 +61,54 @@
   <section><h2>The fleet</h2><div class="fleet" id="fleet"></div></section>
   <section><h2>Just now</h2><div class="moments" id="moments"></div></section>
 </main>
+<script src="/planet/render.js"></script>
 <script>
 const $ = id => document.getElementById(id);
-const PAINT = {bone: "#f2eadb", coral: "#ff8a7a", mint: "#8cf2c6", sky: "#8fc8ff", gold: "#ffd36b",
-               aurora: "#7ff0d6", nebula: "#c69bff", supernova: "#ffe08a"};
+const CALM = true;   // the projector's rovers stay still
+// One colour for a rover's dot on the little maps.
+function dotColor(paint) {
+  const p = PAINTS[paint] || PAINTS.bone;
+  return typeof p === "string" ? p : Array.isArray(p) ? p[0] : p.base || "#ff5ad8";
+}
 const UNLOCKS = {30: "Aurora paint", 90: "Nebula paint", 180: "Supernova paint"};
 function esc(v) { return String(v).replace(/[&<>"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch])); }
 function ago(at) {
   const s = Math.max(0, Date.now() / 1000 - at);
   return s < 60 ? "just now" : s < 3600 ? `${Math.floor(s / 60)} min ago` : `${Math.floor(s / 3600)} h ago`;
 }
-// A little rover from above, in the student's own paint, heading out.
-function rover(cv, paint) {
-  const dpr = devicePixelRatio || 1, s = 54;
+// Each student's site, as they see it, with their rover where it last stopped.
+const GROUND = {"#": "#463c78", ".": "#2c2550", S: "#2c2550", "*": "#2c2550", G: "#2c2550", "~": "#5f86b8",
+                O: "#120e22", "+": "#5a4a2a", P: "#2c2550", D: "#7a4f2a",
+                ">": "#4a4658", "<": "#4a4658", "^": "#4a4658", v: "#4a4658"};
+function miniMap(cv, map, pos, paint) {
+  const rows = map.length, cols = map[0].length;
+  const cell = Math.max(3, Math.min(14, Math.floor(246 / cols), Math.floor(150 / rows)));
+  const dpr = devicePixelRatio || 1;
+  cv.style.width = cols * cell + "px"; cv.style.height = rows * cell + "px";
+  cv.width = cols * cell * dpr; cv.height = rows * cell * dpr;
+  const g = cv.getContext("2d"); g.scale(dpr, dpr);
+  const dot = (r, c, color, size) => { g.fillStyle = color; g.beginPath(); g.arc((c + .5) * cell, (r + .5) * cell, cell * size, 0, 7); g.fill(); };
+  map.forEach((row, r) => [...row].forEach((ch, c) => {
+    g.fillStyle = GROUND[ch] || GROUND["."]; g.fillRect(c * cell, r * cell, cell, cell);
+    if (ch === "*") dot(r, c, "#ffb547", .22);
+    if (ch === "G") dot(r, c, "#ffd36b", .38);
+    if (ch === "P") dot(r, c, "#b9a3ff", .32);
+    if (ch === "k") dot(r, c, "#ffd36b", .22);
+    if (ch >= "1" && ch <= "9") dot(r, c, "#ff6f61", .26);
+  }));
+  dot(pos[0], pos[1], "#120e22", .5);
+  dot(pos[0], pos[1], dotColor(paint), .4);
+}
+const ENDS = {goal: "✓ mission complete", wrong: "wrong number", fell: "fell", battery: "flat battery",
+              ticks: "out of time", stopped: "stopped short", error: "code error"};
+// A little rover from above, in the student's own garage look, heading out.
+function rover(cv, gear) {
+  const dpr = devicePixelRatio || 1, s = 58;
   cv.width = s * dpr; cv.height = s * dpr;
   const g = cv.getContext("2d"); g.scale(dpr, dpr);
-  g.translate(s / 2, s / 2); g.rotate(-.35);
-  g.fillStyle = "#26212f";
-  for (const x of [-14, 0, 14]) for (const y of [-19, 13]) { g.beginPath(); g.roundRect(x - 5, y, 10, 6, 2); g.fill(); }
-  g.fillStyle = PAINT[paint] || PAINT.bone; g.strokeStyle = "#6e6290"; g.lineWidth = 1.5;
-  g.beginPath(); g.roundRect(-18, -13, 34, 26, 5); g.fill(); g.stroke();
-  g.fillStyle = "#3f5f96"; g.beginPath(); g.roundRect(-16, -10, 17, 20, 2); g.fill();
-  g.fillStyle = "#e6dccb"; g.beginPath(); g.arc(9, 0, 6, 0, 7); g.fill(); g.stroke();
-  g.fillStyle = "#8cf2c6"; g.beginPath(); g.arc(13, 0, 2, 0, 7); g.fill();
+  drawRover(g, s / 2, s / 2 + 4, 52, -.35, 1, gear, 0);
 }
-let seen = new Set();
+let seen = new Set(), lastFleet = "";
 async function refresh() {
   let data;
   try { data = await (await fetch("/planet/overview")).json(); } catch (_) { return; }
@@ -96,10 +126,27 @@ async function refresh() {
   }
   // By name, with no one's star count: this is a crew on the class screen,
   // not a ranking. The meter above is what the stars are for.
+  // Each card: where they are, their map and rover, and the code in their editor.
   const ships = [...data.students].sort((a, b) => a.name.localeCompare(b.name));
-  $("fleet").innerHTML = ships.length ? ships.map(s => `<div class="ship"><canvas data-paint="${esc(s.look.paint)}"></canvas><div><b>${esc(s.name)}</b></div></div>`).join("")
-    : '<p class="empty">Nobody has landed yet.</p>';
-  $("fleet").querySelectorAll("canvas").forEach(cv => rover(cv, cv.dataset.paint));
+  const fleet = JSON.stringify(ships.map(s => [s.name, s.look, s.now]));
+  if (fleet !== lastFleet) {
+    lastFleet = fleet;
+    $("fleet").innerHTML = ships.length ? ships.map((s, i) => {
+      const n = s.now, code = n.code.trim();
+      const tag = n.site === "7" ? "Uncharted" : `${n.site.toUpperCase()} · ${n.site_name}`;
+      return `<div class="ship${n.end === "goal" ? " won" : ""}">
+        <div class="top"><canvas class="rv" data-i="${i}"></canvas><b>${esc(s.name)}</b><span class="where">${esc(tag)}</span></div>
+        <canvas class="map" data-i="${i}"></canvas>
+        <pre class="${code ? "" : "empty"}">${code ? esc(n.code) : "(no code yet)"}</pre>
+        ${n.end ? `<div class="end">Last run: ${ENDS[n.end] || esc(n.end)}</div>` : ""}
+      </div>`;
+    }).join("") : '<p class="empty">Nobody has landed yet.</p>';
+    $("fleet").querySelectorAll("canvas.rv").forEach(cv => rover(cv, ships[cv.dataset.i].look));
+    $("fleet").querySelectorAll("canvas.map").forEach(cv => {
+      const s = ships[cv.dataset.i];
+      miniMap(cv, s.now.map, s.now.pos, s.look.paint);
+    });
+  }
   $("moments").innerHTML = data.feed.length ? [...data.feed].reverse().map(m => {
     const key = m.at + m.text, fresh = !seen.has(key);
     seen.add(key);
@@ -107,7 +154,7 @@ async function refresh() {
   }).join("") : '<p class="empty">First missions, records and three-star runs appear here.</p>';
 }
 refresh();
-setInterval(refresh, 4000);
+setInterval(refresh, 1500);
 </script>
 </body>
 </html>

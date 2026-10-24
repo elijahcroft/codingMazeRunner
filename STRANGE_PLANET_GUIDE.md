@@ -1,4 +1,4 @@
-# Strange Planet: teaching guide (about 4 lessons)
+# Strange Planet: teaching guide (about 5 lessons)
 
 Students drive a rover with Python. Every zone hides **one physics rule**
 that nobody explains: ice, wind, crumbling ground, sunlight, portals. They
@@ -48,6 +48,14 @@ lost.
   finding the number completes the mission; working it out **in code**,
   like `report(x() - before)`, earns the 🔢 star. A wrong number ends the run
   with "mission control measured something different", so guessing is slow.
+  These sites **coach step by step**. Opening one says how to read the
+  measurement: x along the top of the map (ice), the battery gauge (sun),
+  and on Wind Canyon what a **tick** is, before the rover is ever pushed.
+  Each wrong number then gets a tip that goes one step further: first where
+  to look, then how to work it out (with made-up numbers), and on the third
+  miss the code that measures it. A run with no `report()` gets its own tip
+  the first time. Each wind push has its own telemetry line, with the tick
+  it came on.
 - **The celebration**: the stars pop in one by one, with confetti for a
   perfect run or a class record.
 - **Badges** for coding habits: first `for` loop, first `while`, first `if`,
@@ -55,12 +63,37 @@ lost.
   mission after 5 tries that didn't (**Never Give Up**), class records, all
   crystals, zone masters. They're all listed, with how to earn them, in the
   garage.
-- **📡 Anomalies**: the first time a zone's hidden rule shows up, the replay
-  stops at that moment and asks *"What was it?"*, with a button to write a
-  guess in the journal. It celebrates noticing without giving the rule away.
-- **The garage** (★ at the top): stars unlock rover paint, toppers and
-  trails. The last three paints unlock **for the whole class together** when
-  the class star meter reaches 30, 90 and 180.
+- **🧰 Functions**: a student who writes a good `def` can save it and add
+  it to their code on any later site with one click. It goes at the top of
+  the program, in plain sight, and counts toward the ✂️ line limit like any
+  other code. Up to 12 saved functions each; saving one with the same name
+  again updates it.
+- **The garage** (★ at the top): stars unlock rover paint (Galaxy, Lava,
+  Pizza, RGB Gamer...), toppers (party hat, cat ears, wizard hat, shark
+  fin, pumpkin...), trails (hearts, paw prints, slime, pixel blocks...) and
+  a **map look** that redraws every zone (Moon, Snow Day, Candy Land,
+  Volcano, Deep Space). Every map look keeps rock darker than the ground, or
+  outlined in a bright colour, so the map stays readable. The last three
+  paints unlock **for the whole class together** when the class star meter
+  reaches 30, 90 and 180.
+- **🎁 Mystery gifts**: one site in each zone has a wrapped gift on the map
+  (1A, 2B, 3B, 4C, 5B, 6A, 7B, 8B). A transmitted run that drives over it
+  finds a garage item you can't get any other way: Grass Block, Diamond and
+  TNT paints, a propeller cap, a pixel sword, a fire trail, and the Neon
+  Grid and Blocky World map looks. The mission doesn't have to be finished,
+  so a student can write a short program just to grab the gift. Scouting
+  by hand drives past it without opening it. On 4C and 7B, where each
+  student has their own planet, the gift is a short detour from the route
+  on that planet. On 3B, 5B and some 4C planets it's on the way. A small 🎁
+  on the route bar marks open sites that still hide one. The garage counts
+  them ("3 of 8 found"), and finding all 8 earns the 🎁 **Treasure Hunter**
+  badge. **🎲 Surprise me** in the garage picks a random look from
+  everything a student has unlocked.
+- **The rover talks**: each `print()` shows in a speech bubble over the
+  rover during the replay, at the tick it happened, so printing a sensor
+  shows *where* it read that value. Clicking the rover makes it beep,
+  wiggle and say hello. At a beacon it does a little hop and spin. Calm
+  mode keeps it still.
 - **Class records**: the fewest ticks on each site, with the holder's name, in
   the corner of the map. Beating one is a big moment. (Field measurements
   have no records: they take a tick or two.)
@@ -71,11 +104,19 @@ lost.
 - **Brute force is allowed, on purpose.** Every site (but Uncharted) can be
   done with a plain list of commands, so nobody is locked out. Scout a
   route by hand (up to 150 moves), then **📋 Use as code** turns it into code
-  (`east()` three times becomes `east(3)`, a long wait becomes a `for` loop).
-  That completes the mission; the ✂️ star is where loops, sensors and
-  functions pay off, and after a win the card suggests one next step ("find
-  a chunk that repeats…"). Uncharted, with new planets every run, is where
-  brute force finally stops working.
+  with **a few words left for the student to finish**: one to three, never
+  all of them, cut to their first letter with one `_` per missing letter
+  (`for i in r____(2):`, `e___(3)`). `east()` three times becomes
+  `east(3)`, a long wait becomes a `for` loop, and a chunk of the route that
+  repeats becomes a `for` loop too; `range` is the first word to go, then
+  the commands, then `for`. Transmit won't send code with an unfinished
+  word in it, and says what to do. That completes the mission; the ✂️ star is
+  where loops, sensors and functions pay off, and after a win the card
+  suggests one next step ("find a chunk that repeats…"). On Signal Plains
+  (7B, 7C) a list of commands still reaches the beacon, but the 🌍 star
+  only goes to code that reaches it on every classmate's plain too (8C
+  does the same with fields). On Uncharted one program has to reach five
+  planets, which is where brute force finally stops working.
 - **Sound**: every event has a synthesized sound effect. It starts **off**
   (a room of laptop speakers is a lot, and sudden sounds are hard for some
   students); 🔇 at the top turns it on, and each browser remembers.
@@ -98,9 +139,12 @@ lost.
   crater · 1 ran flat"), so students know which rule to handle next.
 
 **Project `/planet/show`**: the class star meter with its shared unlocks,
-everyone's rover in their own paint (in name order, with no individual star
-counts, so nobody is ranked in front of the class), and a live feed of first
-missions, records and three-star runs. It's a great thing to have on the
+a card for every student like Python Quest's big screen (their rover in its
+garage paint and topper, their site, its map
+with their rover where the last run left it, and the code in their editor as
+they type), in name order with no individual star counts, so nobody is
+ranked in front of the class, and a live feed of first missions, records and
+three-star runs. It's a great thing to have on the
 board while they work.
 
 | Site | Mission | Challenge star | Compact star |
@@ -123,6 +167,12 @@ board while they work.
 | 6A The Pads | 🛰 beacon | 💎 crystal behind a decoy pad | 4 lines |
 | 6B Relay | 🛰 beacon | ⚡ done in 8 ticks (a quicker pad) | 5 lines |
 | 6C Portal Maze | 🛰 beacon | 🧱 never bump into rock | the student's shortest route + 1 |
+| 7A Homing Signal | 📡 how far east the beacon is | 🔢 work the number out in code | 2 lines |
+| 7B Open Plain | 🛰 beacon | 🌍 the same code works on all 8 plains | 8 lines |
+| 7C Boulder Plain | 🛰 beacon | 🌍 the same code works on all 8 plains | 15 lines |
+| 8A The Trench | 🛰 beacon | ⚡ done in 4 ticks (jump all the way) | 3 lines |
+| 8B Stepping Stones | 🛰 beacon | 🧩 use a function you made | 4 lines |
+| 8C Crater Field | 🛰 beacon | 🌍 the same code works on all 8 fields | 5 lines |
 | Uncharted | 🛰 beacon on 5 planets | 1, then 3, then all 5 planets in one run | |
 
 `test_planet.py` checks that every star on every planet can be earned.
@@ -139,8 +189,8 @@ board while they work.
 - [ ] Put **`http://localhost:8000/planet/show`** on the projector.
 - [ ] Open **`http://localhost:8000/planet/teacher`** on your laptop. It
       lists every student, the site they're on, **runs on that site**
-      (amber at 8+, red at 15+: go and visit), hints opened, and their
-      **field journal** guesses. It refreshes every 5 seconds.
+      (amber at 8+, red at 15+: go and visit) and hints opened. It
+      refreshes every 5 seconds.
 - [ ] On a student laptop, join as "Test" and run the starter on 1A.
 - [ ] Decide what to say when a student asks "what's the rule?":
       **"What did your last run show you?"** (see below).
@@ -161,6 +211,17 @@ still work here?"*
 That's deliberate: running the old program on the new ground is how they
 notice each rule. Ask them to predict out loud before they press **Transmit**.
 
+**When a run misses**, the banner under the map says what happened and where,
+in plain words, then one thing to try (👉). It never asks a question. For example:
+*"A belt carried the rover into a crater at x 12, y 5."* 👉 *"Belts carry the
+rover the way their arrows point. Jump over a belt you don't want to ride."*
+Or, for code that stops short: *"Your code finished with the rover at x 4, y 2,
+away from the beacon at x 9, y 2."* 👉 *"The beacon is 5 squares east of there."*
+It also mentions bumping into rock (the rover doesn't move when it bumps) and
+running out of drills. **Show me** jumps the replay to that moment and rings
+the rover. Field measurements still get their step-by-step coach tips, and
+code errors still say the line.
+
 Copying is pointless on C sites, because the planet underneath is different:
 each C site has 8 versions, and a classmate's hand-counted route works on
 yours only when you happen to share a version. Explaining *why* your code
@@ -170,8 +231,8 @@ works is how to help a neighbour.
 
 | Moment | Say this |
 |---|---|
-| "What's the rule?" | "What did your last run show you? Drag the timeline under the map back to the exact tick where it went wrong. **Show the moment** jumps there." |
-| They have a guess | "Good. Write it in your **field journal** (📓), then design a run that would prove you wrong." |
+| "What's the rule?" | "What did your last run show you? Drag the timeline under the map back to the exact tick where it went wrong. **Show me** jumps there." |
+| They have a guess | "Good. Write it down, then design a run that would prove you wrong." |
 | A field measurement | "Can you make the *rover* measure it? Remember `x()` before, drive, then compare." |
 | They're changing everything at once | "Change one thing. Transmit. What changed?" |
 | They want numbers | "`print()` between commands. The telemetry shows each line with its tick. Pause the replay and that tick's lines light up." |
@@ -184,8 +245,9 @@ works is how to help a neighbour.
 |---|---|---|
 | 1 | **Landing Site** (1A–1C) → **Ice Field** (2A–2C) | "How did you measure the slide? Who made the rover measure it?" |
 | 2 | **Wind Canyon** (3A–3C) → **Crumbling Crust** (4A–4C) | "How did you find *when* the gusts came? What was your evidence?" |
-| 3 | **Solar Valley** (5A–5C) → **Portal Fields** (6A–6C) | "Read us your journal entry for the portals. How many runs did it take?" |
-| 4 | **Uncharted**: 5 random planets each run, steered by coordinates | "Which rule broke your program most often, and what fixed it?" |
+| 3 | **Solar Valley** (5A–5C) → **Portal Fields** (6A–6C) | "How did you work out where each portal goes? How many runs did it take?" |
+| 4 | **Signal Plains** (7A–7C): steering by coordinates on calm ground → **Crater Hops** (8A–8C): the new `jump()` | "When does your program jump, and how does it know?" |
+| 5 | **Conveyor Works** (9A–9D) → **The Quarry** (10A–10D) → **Gate Station** (11A–11D) → **Flag Relay** (12A–12D) → **Uncharted**: the same 5 planets every run | "Which new thing changed your program most, and what stayed the same?" |
 
 Fast students will get ahead. That's fine, because each site opens only when
 the one before is done. Slow students aren't stuck behind a wall: open the
@@ -326,18 +388,158 @@ x and y of both pads, and pointing at any square shows its x and y.
   `east(2) south(2) north(2) east(2)`
 - **6B Relay**: two portals in a chain. `east(3) south(2) east(2) north(2) east()`
   (the ⚡ star wants a quicker pad: 8 ticks).
-- **6C Portal Maze** (per student, 8 wirings, 2–3 trips each). This is a
-  journal site: students should record each pad's destination, then write
-  one function per trip.
+- **6C Portal Maze** (per student, 8 wirings, 2–3 trips each). Students
+  should write down each pad's destination, then write one function per
+  trip.
+
+### 7 · Signal Plains: no strange rule (the ramp to Uncharted)
+Calm ground, so the only new thing is steering. New: `beacon_x()` and
+`beacon_y()`, the beacon's column and row. Each site takes one of
+Uncharted's ideas at a time.
+- **7A Homing Signal**: 📡 how many squares east of the lander is the
+  beacon? `report(beacon_x() - x())` (answer 12).
+- **7B Open Plain** (per student, 8 plains, the beacon in a different
+  direction on each). Nothing is in the way, so comparing is enough:
+  ```python
+  while x() < beacon_x():
+      east()
+  while x() > beacon_x():
+      west()
+  while y() < beacon_y():
+      south()
+  while y() > beacon_y():
+      north()
+  ```
+- **7C Boulder Plain** (per student, 8 wide fields of rock ridges and
+  crater lines). Only drive a way that's `safe()`, and step south or north
+  when no good way is: Uncharted's program without the gusts and charging.
+  7B's code, or leaving out the crater check or the going round, fails on
+  every field.
+
+On 7B and 7C the 🌍 star runs the code on all 8 plains, and the telemetry
+says how many it reached ("1 of the 8 plains (7 stopped short)"), so a
+counted route gets the mission but not the star.
+
+### 8 · Crater Hops: a new trick, not a new rule
+The rover can jump: `jump("east")` leaps two squares in one tick, right over
+whatever is in between (a crater, a rock, a sample it doesn't pick up). It
+needs ground to land on: it can't land on rock (the telemetry says so), and
+landing in a crater is still a fall. The replay shows the rover up in the
+air, with a 🦘 on the timeline.
+- **8A The Trench**: a crater trench from wall to wall.
+  `east(4) jump("east") east(2)`. The ⚡ star wants 4 ticks:
+  `for i in range(4): jump("east")`, jumping all the way.
+- **8B Stepping Stones**: five walls, craters and rock in turn, three
+  squares apart. `for i in range(5): east() jump("east")` then `east()`.
+  The 🧩 star wants it as a function.
+- **8C Crater Field** (per student, 8 fields of walls and trenches). Let
+  `look()` decide:
+  ```python
+  while not at_beacon():
+      if look("east") == "crater" or look("east") == "rock":
+          jump("east")
+      else:
+          east()
+  ```
+  The trap: `if look("east") != "ground"` also jumps when the next square
+  is the **beacon**, and sails right over it.
+
+Uncharted has `jump()` too: jumping over a rock is another way round it.
+
+### Zones 9 to 12: one new thing each, told and drawn
+These four zones don't hide anything. Each brings one new thing, and the map
+draws it, a line under the goals names it ("🛤 belt: carries you the way its
+arrows point"), and the zone's first site opens with a **🆕 card** that says
+what it does and gives a line to try. Each zone has **four** sites, in
+smaller steps than before:
+
+| Site | Job |
+|---|---|
+| **A · Try it** | The new thing once, in 1–3 lines. The brief shows the line. |
+| **B · Use it** | A few times, with a choice to make. |
+| **C · Loop it** | The same step repeats, so a loop or a `def` earns ✂️. |
+| **D · Your planet** | Per student (8 versions) and the last zone's program fails here. |
+
+There are no 📡 field measurements in these zones.
+
+#### 9 · Conveyor Works: belts carry the rover the way their arrows point
+Belts (`> < ^ v` on the map, drawn as rolling chevrons) carry the rover to the
+square after the last arrow, round corners too, all in one tick. `look()`
+says `"belt"`.
+- **9A First Ride**: `east(2)`, and the belt does the rest, round two corners.
+- **9B Two Belts**: one belt carries you to the field, the other into a
+  crater. `west() north() east(3) south(2) east(2)`
+- **9C Belt Steps**: 1B's loop again (`for i in range(5): east() south()`),
+  with belts doing the long part. The 🧩 star wants it as a function.
+- **9D Cross Belts** (per student): belts cross the lane and run into
+  craters. 8C's program with `"belt"` added to the jump test.
+
+#### 10 · The Quarry: `drill("east")` turns the next rock into ground
+Each site has a few drills (the ⛏ gauge, `drills_left()`). Drilling ground
+costs a tick but no drill.
+- **10A First Drill**: `east(3) drill("east") east(5)`
+- **10B Drill or Go Round**: three walls, 2 drills; the middle wall has a gap.
+  Drilling it leaves you one short at the last wall.
+- **10C Tunnel**: `for i in range(6): drill("east") east(2)`. ⛏ star: 2 drills to spare.
+- **10D Your Quarry** (per student): rock walls two thick (too thick to jump)
+  and crater trenches (can't be drilled):
+  ```python
+  while not at_beacon():
+      if look("east") == "rock":
+          drill("east")
+      elif look("east") == "crater":
+          jump("east")
+      else:
+          east()
+  ```
+
+#### 11 · Gate Station: keys open gates
+Driving over a 🔑 picks it up; driving into a 🚪 with a key opens it (and
+uses the key). Without one, the gate stops the rover like rock, and nothing
+can jump a gate. New: `has_key()`, `key_x()`, `key_y()`.
+- **11A The Gate**: `east(9)` picks up the key on the way.
+- **11B Key First**: `north(2) east(2) south(2) east(7)`
+- **11C Three Rooms**: one `def room():` (step in, up for the key, back,
+  through the gate) called three times.
+- **11D Your Key** (per student): Signal Plains' steering twice, as one function:
+  ```python
+  def go_to(tx, ty):
+      while x() < tx:
+          east()
+      while x() > tx:
+          west()
+      while y() < ty:
+          south()
+      while y() > ty:
+          north()
+
+  go_to(key_x(), key_y())
+  go_to(beacon_x(), beacon_y())
+  ```
+
+#### 12 · Flag Relay: flags count only in order
+The beacon needs every flag first. Driving over a later flag is harmless
+(the telemetry says which one comes first). New: `next_x()` and `next_y()`
+(the next flag, or the beacon once every flag is done) and `flags_left()`.
+- **12A First Flags**: `east(9) south(2)`
+- **12B Zig-Zag**: four flags out of order across the field, by hand.
+- **12C Long Relay**: seven flags. `go_to()` from 11D in a loop is 11 lines,
+  where steering by hand is 16:
+  `while not at_beacon(): go_to(next_x(), next_y())`
+- **12D Your Relay** (per student, rock in the way): 7C's program with
+  `next_x()` and `next_y()` in place of the beacon's. That's most of
+  Uncharted's program.
 
 ### Uncharted: the finale
-Every run lands on **5 new random planets**, so a list of moves can't work:
-the program has to sense and decide. New: `beacon_x()` and `beacon_y()`
-(where the beacon is) and `gust_in()` (ticks until the next gust). Rock
+Every run lands on **the same 5 planets** (they used to be new random ones
+every run, which was too hard). Five different planets still mean a list of
+moves can't work: the program has to sense and decide. Students see the
+first planet before they run, and all five after the first run. New:
+`gust_in()` (ticks until the next gust). Rock
 ridges, crater lines, ice, wind and sunlight are all there, the lander
 sits in sunshine with too little battery to cross, and craters lie round
-the beacon. Every planet is checked before it's used: the program below
-reaches its beacon. Scored on planets reached, then ticks.
+the beacon. The program below reaches all five. Scored on planets reached,
+then ticks.
 
 The idea is **compare coordinates**: if `x()` is less than `beacon_x()`,
 the beacon is to the east. Go that way if it's safe, otherwise try another.
@@ -367,18 +569,11 @@ while not at_beacon():
     else:
         north()
 ```
-Each idea students add earns more planets, so there's always a next step:
-
-| The program does | Planets reached (about) |
-|---|---|
-| compare x and y, and drive that way | 1 in 8 |
-| + only drive a way that's `safe()` | 1 in 3 |
-| + go round when no good way is safe | 3 in 8 |
-| + wait out the gusts | 1 in 2 |
-| + charge in the sun | all of them |
-
-The first star (1 planet) comes early; all five in one run needs every idea.
-`test_planet.py` checks that leaving any part out loses planets.
+Students arrive with 7C's program, which already compares, checks
+`safe()` and goes round. On these five planets it reaches **2**, so the
+first star comes on the first run. Waiting out the gusts and charging in
+the sun win the rest, and `test_planet.py` checks that leaving out any idea
+(sun, wind, craters, going round) loses a planet.
 
 **Discussion:** "Your rover ran flat by the lander. Why? What did it need to
 check before it set off?"

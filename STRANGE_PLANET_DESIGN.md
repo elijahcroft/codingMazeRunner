@@ -204,3 +204,29 @@ stayed:
   of hotter or colder.
 - The Landing Site is no longer a skippable warm-up: it's where compass
   driving and `look()` are learnt.
+
+## Zones 9 to 12: one new thing each (October 2026)
+
+ej asked for many more levels whose mechanics scale, are easy for the class,
+are explained simply, and fail with a clearer report. The new zones sit
+between Crater Hops and Uncharted, and each adds **one** thing, told and
+drawn rather than hidden: belts (Conveyor Works), `drill()` (The Quarry),
+keys and gates (Gate Station) and numbered flags with `next_x()`/`next_y()`
+(Flag Relay). Each zone's last site reuses the zone before it with one change
+(8C's jump loop → 9D, plus an `elif` → 10D, Signal Plains' steering as
+`go_to()` → 11D, `go_to()` in a loop and 7C's going round → 12C/12D →
+Uncharted). They have four sites in smaller steps: try it, use it, loop it,
+your planet. There are no 📡 report() sites, which the class found confusing.
+
+Every site's brief now says what to do in plain words.
+
+**Failure messages.** `planet.explain()` turns a run that didn't finish
+into `{"what", "next"}`: what happened and where (x, y), then one thing to try.
+It never asks a question. The engine records how the rover got onto its last
+square (driving, a jump, a gust, an ice slide, a belt), so a fall says what
+caused it. Stopping short gives the distance to the beacon, the nearest
+sample, the next flag, or the key for a locked gate. It also notes bumps into
+rock and running out of drills.
+
+Sensors now arrive by zone key (`SENSOR_ARRIVES`, `ZONE_ORDER`), so adding
+a zone can't shift their numbers.
