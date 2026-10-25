@@ -816,6 +816,17 @@ class RoverTests(unittest.TestCase):
         self.assertIn("smaller numbers", planet.out_of_time("south(50)\n" * 30))
         self.assertIn("while loop", planet.out_of_time("while True:\n    wait()\n"))
 
+    def test_a_def_called_once_says_to_repeat_it(self):
+        # ej's 1B try: the repeat was found, but staircase() ran once.
+        once = "def staircase():\n    east()\n    south()\nstaircase()\n"
+        self.assertIn("staircase() ran once", run("1b", once)["explain"]["next"])
+        looped = "def staircase():\n    east()\n    south()\nfor i in range(3):\n    staircase()\n"
+        self.assertNotIn("ran once", run("1b", looped)["explain"]["next"])
+
+    def test_numbers_a_drive_cant_take_say_what_to_write(self):
+        self.assertIn("use  west(1)", run("1b", "east(-1)\n")["error"])
+        self.assertIn("whole numbers here, like 1 (not 1.5)", run("1b", "east(1.5)\n")["error"])
+
     def test_an_if_on_one_line_says_where_its_commands_go(self):
         for code in ("def i():\n    if tick() % 1 == 0 east() else south()\ni()\n",
                      "while x() < 5 east()\n", "for i in range(3) east()\n"):

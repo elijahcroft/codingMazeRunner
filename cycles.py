@@ -360,6 +360,8 @@ class Brain:
                 return v
             if isinstance(v, str) and len(v) <= 200:
                 return v
+            if isinstance(v, float):
+                raise BotError(f"Use whole numbers here, like {int(v) or 1} (not {v}).")
             raise BotError("Use whole numbers, short text, True/False or None.")
         if isinstance(node, ast.Name):
             return self.lookup(node.id, frame)

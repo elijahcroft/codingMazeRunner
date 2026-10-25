@@ -372,6 +372,10 @@ class Rover(Brain):
             n = self.number(args[0], f"{name}()") if args else 1
             if args and literal(node.args[0]):
                 world.typed = True   # a number typed in, not measured
+            back = {"north": "south", "south": "north", "east": "west", "west": "east"}.get(name)
+            if n < 0 and back:
+                raise BotError(f"{name}() only drives {name}. To go the other way, "
+                               f"use  {back}({-n})")
             if n < 0 or n > MAX_MOVE:
                 raise BotError(f"{name}() takes a number from 0 to {MAX_MOVE}.")
             if n == 0:
@@ -1028,6 +1032,26 @@ def pacing(world, unlocked):
     return what, nxt
 
 
+def called_once(code):
+    """A def of drives called just once, outside any loop: the likeliest
+    reason a program that found the repeat stopped short. Its name, or None."""
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return None
+    calls = [n.func.id for n in ast.walk(tree)
+             if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)]
+    top = [n.value.func.id for n in tree.body if isinstance(n, ast.Expr)
+           and isinstance(n.value, ast.Call) and isinstance(n.value.func, ast.Name)]
+    for d in tree.body:
+        drives = any(isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+                     and n.func.id in COMMANDS for n in ast.walk(d))
+        if isinstance(d, ast.FunctionDef) and drives and calls.count(d.name) == 1 \
+                and d.name in top:
+            return d.name
+    return None
+
+
 def out_of_time(code):
     """What to change when time ran out and nothing else explains it: a while
     loop that never stops, or (with no while in the code) numbers too big."""
@@ -1151,6 +1175,10 @@ def explain(world, unlocked=(), code=""):
                 nxt += (" On ice one move slides until rock stops it, so work "
                         "back from the beacon: find a rock that would stop a "
                         "slide right next to it.")
+    once = end == "stopped" and world.mission != "report" and nxt and called_once(code)
+    if once:
+        nxt = (f"{once}() ran once. To do its moves again, call it again, or put "
+               f"{once}() inside a for loop. {nxt}")
     if not what:
         return None
     extra = []
