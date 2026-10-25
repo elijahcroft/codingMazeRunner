@@ -1133,8 +1133,9 @@ def explain(world, unlocked=(), code=""):
     elif end == "ticks":
         what = f"Your program ran for {world.t} ticks without finishing"
         nxt = locked_gate(world, at) or drill_next(world)
-        if not nxt and world.bumps * 2 > world.t:
-            # Stuck driving into rock: say where, and which way.
+        if not nxt and world.bumps * 3 > world.t:
+            # Stuck driving into rock (a third of the time is plenty, as
+            # waits can fill the rest): say where, and which way.
             way = next(w for w, d in COMPASS.items() if d == world.d)
             what += f": the rover was stuck at {where(at)}, bumping into rock"
             nxt = (f'It kept driving {way} into rock. Check look("{way}") first, '

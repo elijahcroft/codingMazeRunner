@@ -826,6 +826,13 @@ class RoverTests(unittest.TestCase):
         self.assertIn("smaller numbers", planet.out_of_time("south(50)\n" * 30))
         self.assertIn("while loop", planet.out_of_time("while True:\n    wait()\n"))
 
+    def test_bumping_between_waits_still_says_where_it_was_stuck(self):
+        # 5B: waiting in the sun fills half the ticks, bumping the other half.
+        out = run("5b", "while not at_beacon():\n    if in_sun():\n        wait()\n    east()\n")
+        self.assertEqual(out["end"], "ticks")
+        self.assertIn("bumping into rock", out["explain"]["what"])
+        self.assertIn('look("east")', out["explain"]["next"])
+
     def test_a_def_called_once_says_to_repeat_it(self):
         # ej's 1B try: the repeat was found, but staircase() ran once.
         once = "def staircase():\n    east()\n    south()\nstaircase()\n"
