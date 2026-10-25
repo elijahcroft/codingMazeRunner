@@ -408,6 +408,8 @@
   .calm .scope.shake, .calm .stars-button.bump, .calm .toast, .calm .toast.out { animation: none; }
   .intro-note, .calm-pick { display: flex; align-items: center; gap: 8px; margin: 0 0 16px; color: var(--haze); font-size: 14px; }
   .intro-note { display: block; line-height: 1.45; margin-bottom: 12px; }
+  .intro-more { margin: 0 0 14px; }
+  .intro-more summary { cursor: pointer; color: var(--violet); font-weight: 700; font-size: 14px; margin-bottom: 8px; }
   .calm-pick { cursor: pointer; }
   .big { --code-size: 17px; }
   .big .feed { font-size: 16px; }
@@ -556,13 +558,16 @@
     <div class="intro-body">
       <h2 id="introTitle" class="announce">How it works</h2>
       <ol>
+        <li>Write code on the right, press <b>Transmit ▶</b>, and watch your rover try it.</li>
         <li>Your rover drives by compass: <code>north()</code> <code>south()</code> <code>east(3)</code> <code>west()</code>. It never turns.</li>
         <li>Every site is a mission: collect samples, reach the beacon, or measure something strange and <code>report()</code> it.</li>
         <li>Every zone hides a rule. Nobody will tell you.</li>
       </ol>
+      <details class="intro-more"><summary>More tips</summary>
       <p class="intro-note">The editor helps you type: start a word and it suggests commands (Enter or Tab picks one), brackets and quotes close themselves, and a slip gets a ⚠ on its line. Point at a word to see what it does. Ctrl+/ turns lines into notes.</p>
       <p class="intro-note">Earn three stars on every site. Stuck? 🕹 Scout drives by hand, 📻 Hints asks mission control. Made a good <code>def</code>? 🧰 Functions keeps it for later sites.</p>
       <p class="intro-note">Stars unlock paint, hats, trails and new looks for the whole map in the garage (★ at the top). Spot a 🎁 on the map? Drive over it for a secret one. Click your rover to say hi.</p>
+      </details>
       <label class="calm-pick"><input type="checkbox" id="calmPick"> Calm mode: no shaking, confetti or flashing</label>
       <label class="calm-pick"><input type="checkbox" id="bigPick"> Bigger text for the code and telemetry</label>
       <button class="go" id="introClose">Let's explore</button>
