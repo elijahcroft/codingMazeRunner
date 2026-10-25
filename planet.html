@@ -49,6 +49,10 @@
   .go:hover { background: #a6f7d4; }
   .go:active { transform: translateY(2px); box-shadow: 0 1px 0 #4fb38c; }
   .go:disabled { opacity: .6; cursor: wait; }
+  /* Never run yet: Transmit glows until it's pressed. */
+  .go.nudge { animation: go-nudge 1.8s ease-in-out infinite; }
+  @keyframes go-nudge { 50% { box-shadow: 0 3px 0 #4fb38c, 0 0 26px rgba(140,242,198,.85); } }
+  .calm .go.nudge { animation: none; box-shadow: 0 3px 0 #4fb38c, 0 0 0 3px var(--violet); }
   .quiet { border: 1px solid var(--edge); background: transparent; border-radius: 8px; padding: 6px 10px; color: var(--haze); }
   .quiet:hover { color: var(--bone); background: var(--panel-2); }
 
@@ -1763,6 +1767,9 @@ function finished() {
     if (site.key !== "7") buttons.push(`<button class="quiet" onclick="toggleScout()">🕹 Try it by hand</button>`);
     if (zone.hints.length < zone.hint_count) buttons.push(`<button class="quiet" onclick="openPop($('radioPop'), $('radioButton'))">📻 Get a hint</button>`);
   }
+  // Many misses in a row: the next site can open, so nobody stays stuck
+  // in one place (and classmates who cleared it are named below).
+  if (sitesRewards && sitesRewards.can_skip) buttons.push(`<button class="quiet" onclick="skipSite()">⏭ Skip for now</button>`);
   // A def that never ran is the likeliest reason a program stopped short.
   const unused = run.end === "stopped" && run.log.find(l => l.includes("🧩"));
   // Students watch the map, not the telemetry, so a code error says itself here.
@@ -1772,6 +1779,8 @@ function finished() {
   if (!text) text = plain ? run.explain.what : say;
   if (site.key === "7" && runs) text = `${unchartedSummary()} Planet ${runs.indexOf(run) + 1}: ${text}`;
   showBanner(cls === "win" ? "win" : cls === "lost" ? "lost" : "", text, buttons.join(""), plain ? run.explain.next : "");
+  const helpers = sitesRewards && sitesRewards.helpers || [];
+  if (helpers.length) $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">🙋 Ask ${esc(helpers.join(" or "))}: they've cleared this site.</span>`);
 }
 // What happened across the five planets, so the next thing to handle is clear.
 function unchartedSummary() {
@@ -1977,6 +1986,7 @@ async function enter(id) {
 }
 function useState(data) {
   state = data;
+  nudgeFirstRun();
   look = data.look || look;
   $("totalStars").textContent = data.total_stars;
   if (!holdRank) renderRank(data.rank);
@@ -2063,7 +2073,7 @@ async function openSite(key) {
     const order = allSites().map(s => s.key), prev = order[order.indexOf(key) - 1];
     code = prev ? recall(codeKey(prev)) : null;
     carried = !!code;
-    if (!code && key === "1a") code = "# The rover drives by compass. Count the squares first.\nsouth(2)\n";
+    if (!code && key === "1a") code = "# Press Transmit, then add more.\nsouth(2)\n";
   }
   $("code").value = code || "";
   errorLine = 0;
@@ -2227,6 +2237,27 @@ function nudgeHints() {
   const on = !!zone && (site.misses || 0) >= 2 && !(site.stars || [])[0] && zone.hints.length < zone.hint_count;
   $("radioButton").classList.toggle("nudge", on);
   $("radioButton").querySelector("small").textContent = on ? "Get a hint" : "Hints";
+}
+// A student who has never pressed Transmit after 45 seconds on a site is
+// often one who doesn't know how to start: Transmit glows and says so.
+let firstRunTimer = 0;
+function nudgeFirstRun() {
+  if (state.you.ran) { clearTimeout(firstRunTimer); $("runButton").classList.remove("nudge"); return; }
+  if (firstRunTimer) return;
+  firstRunTimer = setTimeout(() => {
+    if (state.you.ran || busy) return;
+    $("runButton").classList.add("nudge");
+    showBanner("", "Press Transmit ▶ to run the code in the editor and watch your rover drive. Then change one thing and run it again.");
+  }, 45000);
+}
+async function skipSite() {
+  const key = site.key, name = site.name;
+  let data;
+  try { data = await post("/planet/skip", {id: me, site: key}); } catch (_) { return; }
+  if (data.error) { showBanner("lost", data.error); return; }
+  useState(data);
+  toast("⏭", `${name} can wait`, `Come back to it any time from the route bar at the top: a fresh look often helps.`);
+  await openSite(nextSite());
 }
 async function askHint() {
   const zone = zoneOf(site.key);
@@ -2544,6 +2575,7 @@ async function transmit() {
     return;
   }
   busy = true;
+  state.you.ran = true; nudgeFirstRun();
   stopScout(true);
   SFX.wake(); SFX.play("send");
   saveCode(); closePops(); hideBanner(); hideCelebrate();

@@ -398,3 +398,34 @@ change goes through the browser's own typing and Ctrl+Z undoes it.
   gust's push stays with the drive it interrupted. The editor lights that
   line during the replay, but only while the code is the code that ran.
 
+## Nobody stuck in one place (October 2026)
+
+The first lesson's save: 6 of 12 students opened the planet and never pressed
+Transmit, Harvey missed Uncharted 59 times in a row, and 3B took 12 to 42 runs.
+Replaying every student's saved code through the current engine found four
+messages that were wrong or empty for real programs.
+
+- **A first-run nudge:** 45 seconds on a site without ever transmitting
+  (`state.you.ran`) makes Transmit glow and the banner say to press it.
+- **Ask a classmate:** from 8 misses in a row (`HELP_AFTER`), a missed run
+  names up to two classmates who cleared the site and ran in the last hour.
+  Names only, on the student's own page; the projector never shows misses.
+- **Skip for now:** from 20 misses in a row (`SKIP_AFTER`) on the site a
+  student is up to, ⏭ opens the next one (`/planet/skip`, recorded in
+  `entry["skipped"]` for the teacher). No stars, and the finale can't be
+  skipped. Brute force stays allowed; this only stops a rut.
+- **The old answers** (2A 6, 3A 5, 7A 12: a variant's `old`) say they were
+  the number before every planet got its own. Copy messages (old or a
+  classmate's) need a typed number (`fixed()`: no sensor or variable, sums
+  like `1+5` count); `report(y())` landing on 5 is only wrong.
+- **Out of time** with no while loop in the code names the for loop's count
+  (`out_of_time()`), instead of "a while loop is probably going round forever".
+- **One-line if/while/for** with a command after the condition (`if x() == 1
+  east()`) says to end the line with `:` and put the commands under it; `: ...
+  else:` on one line says else goes on its own line (shared `LINE_HINTS`).
+- **No real answer in examples:** the no-report tip no longer says
+  `report(4)`, which is someone's 3A answer.
+- **The teacher's page** marks 3 minutes without a run (in the last hour) in
+  amber, with "✎ typing" from `/planet/typing`, and shows skipped sites.
+- **Backups:** each server start copies the save to `.start-<time>`, keeping 5.
+

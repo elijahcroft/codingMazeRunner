@@ -111,6 +111,13 @@ LINE_HINTS = [
     (r"^(north|south|east|west|wait|report)\s+\w", "commands need brackets, like  east(3)"),
     (r"^(move|turn_left|turn_right|turn)\b", "this rover drives by compass: "
                                             "north()  south()  east(3)  west()"),
+    # if / while / for written on one line, like  if x() == 1 east() else south()
+    (r"^(if|elif|while|for)\b.*:\s*\S.*\belse\b", "else  goes on its own line, "
+                                                  "lined up with its  if,  and ends with  :"),
+    (r"^(if|elif|while|for)\b[^:]*\s(north|south|east|west|wait|jump|drill|report|"
+     r"print|move|turn_left|turn_right|return)\b", "end this line with  :  and put the "
+                                           "commands it runs on the lines under it, "
+                                           "pushed in 4 spaces"),
     (r"\)\s*(?!(?:and|or|not|if|else|in|is)\b)[A-Za-z_]\w*\s*\(",
      "put each command on its own line"),
     (r"\brange\s+\d", "range needs brackets round the number, like  range(8)"),

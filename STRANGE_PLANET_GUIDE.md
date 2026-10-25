@@ -72,6 +72,17 @@ The skill you're teaching is as much **experimenting** as coding:
 - **The win card shows the next unlock** (its name and a bar that fills as
   the new stars land, "2 ★ to go"). The buttons under the editor are
   coloured like the code: green commands, blue sensors.
+- **Nobody sits stuck without a way on.** A student who hasn't pressed
+  Transmit after 45 seconds sees Transmit glow and a line saying to press it
+  (half the class never ran in the first lesson). After 8 misses in a row on
+  a site, the banner names up to two classmates who cleared it today ("🙋 Ask
+  Ada"). After 20, **⏭ Skip for now** opens the next site; the skipped one
+  stays on the route bar to come back to, with no stars until it's done.
+- **The first lesson's answers are named:** `report(6)` on 2A (and 5 on 3A,
+  12 on 7A) says "That was the number before every planet got its own".
+- **Clearer slips:** `if x() == 1 east()` on one line says to end it with
+  `:` and put the commands under it; a long `for` loop that runs out of time
+  says so, instead of blaming a while loop.
 
 ## What students see
 
@@ -306,6 +317,12 @@ board while they work.
       on the site they're on: how each ended, what it told them, and the
       code, newest first. It stays open while the page refreshes. After
       class, `scores.json` keeps them for every site (`planet` → `tries`).
+- [ ] **Last run** turns amber when a student hasn't run for 3 minutes, and
+      "✎ typing" says they're still working on it. **Working on** says
+      "skipped 3B" when a student used ⏭ Skip for now.
+- [ ] Each time the server starts it copies `scores.json` to
+      `scores.json.start-<date>-<time>` and keeps the last 5. To undo a bad
+      day, stop the server and copy one back over `scores.json`.
 - [ ] On a student laptop, join as "Test" and run the starter on 1A.
 - [ ] Decide what to say when a student asks "what's the rule?":
       **"What did your last run show you?"** (see below).

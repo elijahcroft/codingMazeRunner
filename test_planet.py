@@ -307,6 +307,20 @@ class SiteClaims(unittest.TestCase):
             self.assertFalse(any(str(v["answer"]) in line.split(":", 1)[1]
                                  for line in out["log"]))
 
+    def test_the_first_lessons_number_is_named_as_the_old_one(self):
+        # Everyone typed report(6) on 2A in the first lesson; no planet has it now.
+        for key, drive, old in (("2a", "east()\n", 6), ("3a", "south(16)\n", 5), ("7a", "", 12)):
+            for i, v in enumerate(site(key)[2]["variants"]):
+                self.assertNotEqual(v["answer"], old, key)
+                out = run(key, drive + f"report({old})\n", i)
+                self.assertEqual(out["end"], "wrong", key)
+                self.assertIn("before every planet got its own", out["log"][-1])
+                self.assertIn("before every planet got its own", out["explain"]["what"])
+                self.assertTrue(out["explain"]["copied"])   # the coach leads with it
+        # Found by the code, it's only wrong: Gl1tchXD's report(y()) landed on 5.
+        out = run("3a", "while y() != 5:\n    south()\nreport(y())\n", 1)
+        self.assertNotIn("copied", out["explain"])
+
     def test_a_classmates_measurement_is_wrong_on_your_planet(self):
         # Every student measures their own number, so copying one fails.
         for key, drive in (("2a", "east()\n"), ("3a", "south(16)\n"), ("7a", "")):
@@ -326,7 +340,7 @@ class SiteClaims(unittest.TestCase):
             self.assertNotIn("copied", out["explain"])
 
     def test_2a_a_wrong_report_ends_the_run(self):
-        out = run("2a", "east()\nreport(6)\nreport(5)\n")
+        out = run("2a", "east()\nreport(3)\nreport(5)\n")
         self.assertEqual(out["end"], "wrong")
         self.assertIn("measured something different", out["log"][-1])
 
@@ -793,6 +807,24 @@ class UnchartedTests(unittest.TestCase):
 
 
 class RoverTests(unittest.TestCase):
+    def test_out_of_time_names_the_loop_it_has(self):
+        # Harvey's 1A: a for loop of 4000 moves was told a while loop was stuck.
+        out = run("1a", "for i in range(1000):\n    south()\n    east()\n    north()\n    west()\n")
+        self.assertEqual(out["end"], "ticks")
+        self.assertIn("for loop", out["explain"]["next"])
+        self.assertNotIn("while", out["explain"]["next"])
+        self.assertIn("smaller numbers", planet.out_of_time("south(50)\n" * 30))
+        self.assertIn("while loop", planet.out_of_time("while True:\n    wait()\n"))
+
+    def test_an_if_on_one_line_says_where_its_commands_go(self):
+        for code in ("def i():\n    if tick() % 1 == 0 east() else south()\ni()\n",
+                     "while x() < 5 east()\n", "for i in range(3) east()\n"):
+            self.assertIn("end this line with  :", run("1b", code)["error"], code)
+        self.assertIn("else  goes on its own line",
+                      run("1b", "if x() == 1: east() else: south()\n")["error"])
+        # A missing colon with the body already below keeps Python's own hint.
+        self.assertIn("has to end with a  :", run("1b", "for i in range(3)\n    east()\n")["error"])
+
     def test_sensors_arrive_zone_by_zone(self):
         out = run("1a", "print(tick())\n")
         self.assertIn("Wind Canyon", out["error"])
@@ -1347,6 +1379,46 @@ class ClassroomTests(unittest.TestCase):
         self.assertEqual(missed["rewards"]["misses"], 5)   # the page offers help from 3
         out = self.transmit(pid, "1b", site("1b")[2]["reference"])
         self.assertIn("Never Give Up", [b["name"] for b in out["rewards"]["badges"]])
+
+    def test_long_miss_runs_name_classmates_then_open_the_next_site(self):
+        ada, bo = self.join("Ada"), self.join("Bo")
+        self.transmit(ada, "1a", site("1a")[2]["reference"])
+        for n in range(1, server.SKIP_AFTER + 1):
+            out = self.transmit(bo, "1a", "east()\n")["rewards"]
+            self.assertEqual(out["helpers"], ["Ada"] if n >= server.HELP_AFTER else [], n)
+            self.assertEqual(out["can_skip"], n >= server.SKIP_AFTER, n)
+        self.assertTrue(self.get(f"/planet/site?id={bo}&site=1a")["can_skip"])
+        state = self.post("/planet/skip", {"id": bo, "site": "1a"})
+        self.assertEqual(state["current"], "1b")
+        self.assertIn("error", self.post("/planet/skip", {"id": bo, "site": "1b"}))
+        row = next(r for r in server.planet_class()["students"] if r["name"] == "Bo")
+        self.assertEqual(row["skipped"], ["1a"])   # the teacher sees it
+        self.post("/planet/typing", {"id": bo, "site": "1b", "code": "east()"})
+        row = next(r for r in server.planet_class()["students"] if r["name"] == "Bo")
+        self.assertIsNotNone(row["typed"])
+        # The finale can't be skipped.
+        server.planet_entry(server.players[bo])["unlocked"] = len(planet.SITE_ORDER)
+        server.planet_entry(server.players[bo])["misses"]["7"] = 99
+        self.assertFalse(server.can_skip(server.players[bo], "7"))
+
+    def test_starting_the_server_keeps_the_last_saves(self):
+        with open(server.STATE_FILE, "w") as f:
+            f.write("{}")
+        hand_made = server.STATE_FILE + ".bak-mine"
+        open(hand_made, "w").close()
+        for n in range(server.BACKUPS_KEPT + 2):
+            with mock.patch("time.strftime", return_value=f"2026102{n}-0900"):
+                server.back_up_state()
+        kept = sorted(f for f in os.listdir(self.folder.name) if ".start-" in f)
+        self.assertEqual(len(kept), server.BACKUPS_KEPT)
+        self.assertTrue(kept[-1].endswith("20261026-0900"))
+        self.assertTrue(os.path.exists(hand_made))
+
+    def test_the_page_knows_whether_you_ever_ran(self):
+        pid = self.join()
+        self.assertFalse(self.get(f"/planet/state?id={pid}")["you"]["ran"])
+        self.transmit(pid, "1a", "east()\n")
+        self.assertTrue(self.get(f"/planet/state?id={pid}")["you"]["ran"])
 
     def test_class_records_and_the_feed(self):
         ada, bo = self.join("Ada"), self.join("Bo")

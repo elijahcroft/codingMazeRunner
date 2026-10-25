@@ -89,6 +89,7 @@ import math
 import os
 import random
 import re
+import shutil
 import socket
 import threading
 import time
@@ -1451,6 +1452,26 @@ def save_state():
                        "cake_class": cake_class}, f)
         os.replace(tmp, STATE_FILE)  # atomic: never leaves a half-written file
     except Exception:
+        pass
+
+
+BACKUPS_KEPT = 5
+
+
+def back_up_state():
+    """Copy the save file aside each time the server starts, keeping the
+    last few, so a bad day can be undone. Hand-made backups are left alone."""
+    if not os.path.exists(STATE_FILE):
+        return
+    prefix = STATE_FILE + ".start-"
+    try:
+        shutil.copy2(STATE_FILE, prefix + time.strftime("%Y%m%d-%H%M%S"))
+        folder = os.path.dirname(prefix) or "."
+        old = sorted(f for f in os.listdir(folder)
+                     if os.path.join(folder, f).startswith(prefix))
+        for name in old[:-BACKUPS_KEPT]:
+            os.remove(os.path.join(folder, name))
+    except OSError:
         pass
 
 
@@ -2946,6 +2967,30 @@ def planet_variant(p, key):
     return s["variants"][planet.variant_index(p["id"], s)]
 
 
+HELP_AFTER = 8    # misses in a row before naming classmates who cleared the site
+SKIP_AFTER = 20   # misses in a row before a site can be skipped for now
+
+
+def planet_helpers(p, key):
+    """Up to two classmates in today's lesson (a run in the last hour) who
+    cleared this site: someone to ask, most recently active first."""
+    since = time.time() - 3600
+    done = [q for q in players.values()
+            if q is not p and q.get("planet") and key in q["planet"].get("solved", {})
+            and (q["planet"].get("active") or 0) > since]
+    done.sort(key=lambda q: -q["planet"]["active"])
+    return [q["name"] for q in done[:2]]
+
+
+def can_skip(p, key):
+    """A long run of misses on the site they're up to (not the finale): the
+    next one may open, so nobody stays stuck in one place."""
+    entry = planet_entry(p)
+    return key != planet.UNCHARTED["key"] and key not in entry["solved"] \
+        and planet.SITE_ORDER.index(key) == planet_frontier(p) \
+        and entry["misses"].get(key, 0) >= SKIP_AFTER
+
+
 def measuring(p, key):
     """Is this site a field measurement (report a number) for this student?"""
     return planet.mission_of(planet_variant(p, key)) == "report"
@@ -3056,7 +3101,7 @@ def planet_state(p):
                        "open": planet.SITE_ORDER.index(s["key"]) <= frontier,
                        "gift": gift_for(p, s["key"]) is not None}
                       for s in zone["sites"]]})
-    return {"you": {"name": p["name"]}, "zones": zones,
+    return {"you": {"name": p["name"], "ran": any(entry["runs"].values())}, "zones": zones,
             "current": planet.SITE_ORDER[frontier],
             "uncharted": entry["uncharted"],
             "total_stars": star_count(entry),
@@ -3082,6 +3127,7 @@ def planet_site(p, key):
             "code": entry["code"].get(key, ""),
             "solved": entry["solved"].get(key),
             "stars": entry["stars"].get(key, [False] * 3),
+            "misses": entry["misses"].get(key, 0), "can_skip": can_skip(p, key),
             "record": None if key == planet.UNCHARTED["key"] or measuring(p, key)
             else class_record(key)}
     if key == planet.UNCHARTED["key"]:
@@ -3302,7 +3348,10 @@ def planet_record(p, key, code, results):
             "unlocked": [{"slot": i["slot"], "key": i["key"], "name": i["name"]}
                          for i in unlocked],
             "total_stars": star_count(entry),
-            "misses": entry["misses"].get(key, 0)}   # runs in a row that didn't get there
+            "misses": entry["misses"].get(key, 0),   # runs in a row that didn't get there
+            "helpers": planet_helpers(p, key) if entry["misses"].get(key, 0) >= HELP_AFTER
+            and key not in entry["solved"] else [],
+            "can_skip": can_skip(p, key)}
 
 
 def planet_set_look(p, data):
@@ -3325,6 +3374,7 @@ def planet_typing(p, key, code):
     entry = planet_entry(p)
     now = entry["now"] if entry["now"] and entry["now"]["site"] == key else {"site": key}
     entry["now"] = dict(now, code=str(code)[:planet.MAX_CODE])
+    entry["typed"] = int(time.time())   # for the teacher: working, or idle?
 
 
 def planet_save_function(p, code):
@@ -3408,7 +3458,8 @@ def planet_class():
                      "now": now,
                      # Their last few tries where they are now, newest last.
                      "tries": entry.get("tries", {}).get(now["site"], []),
-                     "active": entry["active"]})
+                     "active": entry["active"], "typed": entry.get("typed"),
+                     "skipped": [k for k in entry.get("skipped", []) if k not in entry["solved"]]})
     rows.sort(key=lambda x: (x["at"], -x["runs_here"], x["name"].lower()))
     return {"students": rows, "sites": len(planet.SITE_ORDER),
             "zones": [z["name"] for z in planet.ZONES],
@@ -4260,6 +4311,23 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"error": error} if error else
                            {"functions": entry["functions"]})
             return
+        if self.path == "/planet/skip":
+            key = str(data.get("site", ""))
+            with lock:
+                p = players.get(data.get("id"))
+                if not p:
+                    self._send(200, {"error": "join"})
+                    return
+                if key not in planet.SITE_ORDER or not can_skip(p, key):
+                    self._send(200, {"error": "This site can't be skipped yet."})
+                    return
+                entry = planet_entry(p)
+                entry["unlocked"] = max(entry["unlocked"], planet.SITE_ORDER.index(key) + 1)
+                if key not in entry.setdefault("skipped", []):
+                    entry["skipped"].append(key)   # for the teacher's page
+                save_state()
+                self._send(200, planet_state(p))
+            return
         if self.path == "/planet/hint":
             with lock:
                 p = players.get(data.get("id"))
@@ -4544,6 +4612,7 @@ def get_lan_ip():
 
 
 def main():
+    back_up_state()
     load_state()  # bring back the leaderboard and everyone's progress
     ip = get_lan_ip()
     server = ClassroomServer(("0.0.0.0", PORT), Handler)

@@ -182,6 +182,11 @@ def literal(node):
     return isinstance(node, ast.Constant)
 
 
+def fixed(node):
+    """Typed numbers only, maybe summed like 1+5: no sensor or variable in it."""
+    return not any(isinstance(n, (ast.Name, ast.Call)) for n in ast.walk(node))
+
+
 class _End(Exception):
     """The run is over (mission done, fall, flat battery, out of time): stop
     the program."""
@@ -400,7 +405,7 @@ class Rover(Brain):
             if isinstance(value, bool) or not isinstance(value, int):
                 raise BotError(f"report() sends a whole number, like  report(6), "
                                f"not {value!r}.")
-            world.report(value, not literal(node.args[0]))
+            world.report(value, not literal(node.args[0]), fixed(node.args[0]))
             return None
         if name in self.sensors:
             if node.args:
@@ -458,7 +463,8 @@ class World:
         self.bumps = self.pushes = 0
         self.gusted = []        # the ticks a gust pushed the rover
         self.computed = False   # the right report() was worked out by code
-        self.copied = False     # report()ed the answer on a classmate's planet
+        self.copied = False     # report()ed the answer on a classmate's planet,
+                                # or "old": the answer from before each had their own
         self.samples = {(r, c) for r, row in enumerate(self.grid)
                         for c, ch in enumerate(row) if ch == "*"}
         self.keys = {(r, c) for r, row in enumerate(self.grid)
@@ -855,7 +861,7 @@ class World:
         self.say("💨 gust pushed the rover east")
         self.enter(r, c, "gust")
 
-    def report(self, value, computed):
+    def report(self, value, computed, fixed=True):
         if self.end:
             raise _End()
         if self.mission != "report":
@@ -865,7 +871,13 @@ class World:
         if value == self.v["answer"]:
             self.finish("goal", f"📡 you reported {value}. Mission control: "
                                 f"that matches what we measured!")
-        if value in self.v.get("others", ()):
+        # A number the code found itself (report(y())) isn't a copy, even
+        # when it happens to be someone else's.
+        if fixed and value == self.v.get("old"):
+            self.copied = "old"
+            self.finish("wrong", f"📡 you reported {value}. That was the number "
+                                 f"before every planet got its own: measure yours.")
+        if fixed and value in self.v.get("others", ()):
             self.copied = True
             self.finish("wrong", f"📡 you reported {value}. That's the number on "
                                  f"someone else's planet: measure your own.")
@@ -1016,6 +1028,23 @@ def pacing(world, unlocked):
     return what, nxt
 
 
+def out_of_time(code):
+    """What to change when time ran out and nothing else explains it: a while
+    loop that never stops, or (with no while in the code) numbers too big."""
+    try:
+        nodes = list(ast.walk(ast.parse(code)))
+    except SyntaxError:
+        nodes = []
+    if not nodes or any(isinstance(n, ast.While) for n in nodes):
+        return ("A while loop is probably going round forever. Check that "
+                "what it waits for can happen.")
+    if any(isinstance(n, ast.For) for n in nodes):
+        return (f"Your for loop repeats more often than the rover has time for: "
+                f"{MAX_TICKS} ticks in all. Use a smaller number in range().")
+    return (f"Your code asks for more driving than the rover has time for: "
+            f"{MAX_TICKS} ticks in all. Use smaller numbers.")
+
+
 def explain(world, unlocked=(), code=""):
     """What went wrong in plain words, for the banner after a run that didn't
     finish its mission: {"what": what happened, "next": one thing to try}.
@@ -1078,8 +1107,11 @@ def explain(world, unlocked=(), code=""):
         if paced:
             what += paced[0]
             nxt = paced[1]
-        nxt = nxt or ("A while loop is probably going round forever. Check that "
-                      "what it waits for can happen.")
+        nxt = nxt or out_of_time(code)
+    elif end == "wrong" and world.copied == "old":
+        what = "That was the number before every planet got its own"
+        nxt = ("Everyone's planet is different now, so everyone's number is too. "
+               "Measure your own.")
     elif end == "wrong" and world.copied:
         what = "That's the number on someone else's planet"
         nxt = ("Everyone's planet is different, so everyone's number is too. "
@@ -1090,7 +1122,7 @@ def explain(world, unlocked=(), code=""):
     elif end == "stopped":
         what = f"Your code finished with the rover at {where(at)}"
         if world.mission == "report":
-            nxt = "Nothing was sent. Add a last line with report(), like report(4)."
+            nxt = "Nothing was sent. Add a last line with your number inside report( ), and transmit again."
         elif world.mission == "deliver" and world.cargo >= CARGO_MAX and world.samples:
             what += f", carrying {CARGO_MAX} samples: the cargo bay is full"
             nxt = f"Drive home to {where(world.home)} to unload them: {far(at, world.home)}."
@@ -1531,7 +1563,7 @@ ZONES = [
                         "#" + "." * 12 + "#",
                         "#S" + "~" * n + "#" + "." * (10 - n) + "#",
                         "#" + "." * 12 + "#",
-                        "#" * 14], "answer": n}
+                        "#" * 14], "answer": n, "old": 6}
                for n in (5, 7, 8, 9)],
               per_student=True,
               reference="east()\nreport(x() - 1)\n",
@@ -1597,7 +1629,7 @@ ZONES = [
               # and south(16) shows two pushes even at 8.
               [{"map": ["########",
                         "#.S....#"] + ["#......#"] * 16 + ["########"],
-                "dir": 2, "wind": n, "answer": n}
+                "dir": 2, "wind": n, "answer": n, "old": 5}
                for n in (4, 6, 7, 8)],
               per_student=True,
               reference="while x() == 2:\n    south()\nreport(tick())\n",
@@ -1945,7 +1977,7 @@ ZONES.append(
                         "#" + "." * 18 + "#",
                         "#S" + "." * (n - 1) + "G" + "." * (17 - n) + "#",
                         "#" + "." * 18 + "#",
-                        "#" * 20], "answer": n}
+                        "#" * 20], "answer": n, "old": 12}
                for n in (9, 11, 14, 16)],
               per_student=True,
               reference="report(beacon_x() - x())\n",

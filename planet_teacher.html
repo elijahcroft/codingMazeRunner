@@ -45,6 +45,7 @@
   .site small { display: block; color: var(--muted); font-size: 12px; }
   .stuck { color: var(--amber); font-weight: 700; }
   .said { display: block; max-width: 320px; margin-top: 3px; color: var(--muted); font-size: 12px; line-height: 1.35; white-space: normal; text-align: left; }
+  .typing { color: var(--muted); font-size: 11px; }
   .very-stuck { color: var(--red); font-weight: 700; }
   details.tries { margin-top: 6px; max-width: 360px; white-space: normal; text-align: left; font-size: 12px; color: var(--muted); }
   details.tries summary { cursor: pointer; color: var(--violet); }
@@ -107,6 +108,16 @@ function triesHtml(s) {
 }
 // Many runs on one site with no progress: worth a visit. The list already
 // puts the students with least done and most runs first.
+// No run for 3 minutes in this lesson (under an hour ago): maybe stuck,
+// maybe reading. Typing in the last 2 minutes says which.
+const IDLE = 180, LESSON = 3600;
+function idleFor(s) { const t = Date.now() / 1000 - (s.active || 0); return s.active && t >= IDLE && t < LESSON ? t : 0; }
+function typing(s) { return s.typed && Date.now() / 1000 - s.typed < 120; }
+function lastRun(s) {
+  const note = typing(s) ? ` <small class="typing">✎ typing</small>` : "";
+  if (!s.runs_total) return `<span class="stuck">hasn't run yet</span>${note}`;
+  return `<span class="${idleFor(s) ? "stuck" : ""}">${ago(s.active)}</span>${note}`;
+}
 function stuckClass(n) { return n >= 15 ? "very-stuck" : n >= 8 ? "stuck" : ""; }
 async function refresh() {
   let data;
@@ -116,17 +127,18 @@ async function refresh() {
   const stuck = students.filter(s => s.runs_here >= 8 && s.solved < data.sites).length;
   // Opened the planet but never pressed Transmit: often a student who doesn't know how to start.
   const unstarted = students.filter(s => !s.runs_total).length;
-  $("summary").innerHTML = `<div><b>${data.class.stars} ★</b>class stars (<a href="/planet/show" target="_blank" style="color:var(--violet)">project them</a>)</div><div><b>${students.length}</b>explorers</div><div><b>${stuck}</b>stuck (8+ runs on one site)</div>${unstarted ? `<div><b class="stuck">${unstarted}</b>haven't pressed Transmit yet</div>` : ""}`;
+  const idle = students.filter(s => s.runs_total && idleFor(s) && s.solved < data.sites).length;
+  $("summary").innerHTML = `<div><b>${data.class.stars} ★</b>class stars (<a href="/planet/show" target="_blank" style="color:var(--violet)">project them</a>)</div><div><b>${students.length}</b>explorers</div><div><b>${stuck}</b>stuck (8+ runs on one site)</div>${unstarted ? `<div><b class="stuck">${unstarted}</b>haven't pressed Transmit yet</div>` : ""}${idle ? `<div><b class="stuck">${idle}</b>no run for 3+ min</div>` : ""}`;
   const byZone = {};
   for (const s of students) byZone[s.zone] = (byZone[s.zone] || 0) + 1;
   $("zones").innerHTML = data.zones.map(z => `<span class="zone-count">${esc(z)}<b>${byZone[z] || 0}</b></span>`).join("");
   $("rows").innerHTML = students.map(s => `<tr>
     <td class="name">${esc(s.name)}<div class="bar" title="Site ${s.at + 1} of ${data.sites}"><span style="width:${100 * s.at / Math.max(1, data.sites - 1)}%"></span></div></td>
-    <td class="site">${s.site === "7" ? "Uncharted" : `${esc(s.site.toUpperCase())} · ${esc(s.site_name)}`}<small>${s.site === "7" ? (s.uncharted ? `best ${s.uncharted.reached}/5 planets` : "no run yet") : esc(s.zone)}</small></td>
+    <td class="site">${s.site === "7" ? "Uncharted" : `${esc(s.site.toUpperCase())} · ${esc(s.site_name)}`}<small>${s.site === "7" ? (s.uncharted ? `best ${s.uncharted.reached}/5 planets` : "no run yet") : esc(s.zone)}</small>${s.skipped && s.skipped.length ? `<small class="stuck">skipped ${esc(s.skipped.map(k => k.toUpperCase()).join(", "))} (20+ misses)</small>` : ""}</td>
     <td class="num">${s.stars} ★<small style="display:block;color:var(--muted)">${s.badges} badges</small></td>
     <td class="num ${stuckClass(s.runs_here)}">${s.runs_here}</td>
     <td class="num">${s.hints}</td>
-    <td class="num">${s.runs_total ? ago(s.active) : `<span class="stuck">hasn't run yet</span>`}${s.now && s.now.said ? `<small class="said">${esc(s.now.site.toUpperCase())}: ${esc(s.now.said)}</small>` : ""}${triesHtml(s)}</td>
+    <td class="num">${lastRun(s)}${s.now && s.now.said ? `<small class="said">${esc(s.now.site.toUpperCase())}: ${esc(s.now.said)}</small>` : ""}${triesHtml(s)}</td>
     <td>${s.site !== "7" ? `<button onclick="unlock('${esc(s.id)}')" title="Open the next site for this student">Unlock next</button>` : ""}</td>
   </tr>`).join("");
 }
