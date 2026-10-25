@@ -78,6 +78,10 @@ The skill you're teaching is as much **experimenting** as coding:
   a site, the banner names up to two classmates who cleared it today ("🙋 Ask
   Ada"). After 20, **⏭ Skip for now** opens the next site; the skipped one
   stays on the route bar to come back to, with no stars until it's done.
+- **Missed runs that get further say so:** "🔥 Closest yet! 3 of 8 samples
+  (before: 1 of 8)" or "4 squares from the beacon (before: 7)", only when a
+  miss beats the student's best on that site. Long grinds like 3B now show
+  progress before the win.
 - **The first lesson's answers are named:** `report(6)` on 2A (and 5 on 3A,
   12 on 7A) says "That was the number before every planet got its own".
 - **Clearer slips:** `if x() == 1 east()` on one line says to end it with

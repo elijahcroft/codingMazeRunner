@@ -2982,6 +2982,25 @@ def planet_helpers(p, key):
     return [q["name"] for q in done[:2]]
 
 
+def closest_yet(p, key, run):
+    """A missed run that got further than this student's best miss on a site
+    not yet done: words for the toast, like "4 squares from the beacon
+    (before: 7)". The first miss only sets the mark."""
+    entry = planet_entry(p)
+    if run["reached"] or run["error"] or key == planet.UNCHARTED["key"] \
+            or key in entry["solved"]:
+        return None
+    got = planet.progress(planet_variant(p, key), run)
+    if not got:
+        return None
+    way, n, words = got
+    best = entry.setdefault("closest", {}).get(key)
+    if best is None or (n > best["n"] if way == "more" else n < best["n"]):
+        entry["closest"][key] = {"n": n, "words": words}
+        return f"{words} (before: {best['words']})" if best else None
+    return None
+
+
 def can_skip(p, key):
     """A long run of misses on the site they're up to (not the finale): the
     next one may open, so nobody stays stuck in one place."""
@@ -3281,6 +3300,7 @@ def planet_record(p, key, code, results):
     else:
         entry["misses"][key] = entry["misses"].get(key, 0) + 1
     entry["errored"][key] = any(r.get("error") for r in results)
+    closer = closest_yet(p, key, results[0])
     if all(run_stars):
         badge("triple")
         if key != planet.UNCHARTED["key"]:
@@ -3351,7 +3371,7 @@ def planet_record(p, key, code, results):
             "misses": entry["misses"].get(key, 0),   # runs in a row that didn't get there
             "helpers": planet_helpers(p, key) if entry["misses"].get(key, 0) >= HELP_AFTER
             and key not in entry["solved"] else [],
-            "can_skip": can_skip(p, key)}
+            "can_skip": can_skip(p, key), "closer": closer}
 
 
 def planet_set_look(p, data):

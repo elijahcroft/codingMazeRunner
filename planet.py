@@ -1196,6 +1196,36 @@ def explain(world, unlocked=(), code=""):
     return out
 
 
+def progress(variant, run):
+    """How far a missed run got, to compare with the student's best:
+    ("more", n, words) when more is better (samples), ("less", n, words) when
+    less is (squares from the beacon by open ground), or None when distance
+    says little (a map with portal pads) or the mission isn't one of those."""
+    grid = variant["map"]
+    mission = mission_of(variant)
+    if mission == "samples":
+        total = sum(row.count("*") for row in grid)
+        got = total - run["samples"]
+        return ("more", got, f"{got} of {total} samples") if total else None
+    if mission != "beacon" or any("P" in row for row in grid) or not run["frames"]:
+        return None
+    start = (run["frames"][-1]["r"], run["frames"][-1]["c"])
+    seen, edge, d = {start}, [start], 0
+    while edge:
+        if any(grid[r][c] == "G" for r, c in edge):
+            return ("less", d, f"{d} square{'s' if d != 1 else ''} from the beacon")
+        nxt = []
+        for r, c in edge:
+            for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                rr, cc = r + dr, c + dc
+                if 0 <= rr < len(grid) and 0 <= cc < len(grid[rr]) \
+                        and grid[rr][cc] not in "#O" and (rr, cc) not in seen:
+                    seen.add((rr, cc))
+                    nxt.append((rr, cc))
+        edge, d = nxt, d + 1
+    return None
+
+
 def mission_of(variant):
     """"report" (a field measurement), "beacon" or "samples"."""
     if "answer" in variant:

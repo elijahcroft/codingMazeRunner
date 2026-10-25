@@ -440,4 +440,10 @@ messages that were wrong or empty for real programs.
   in the same second, finished in 0.7 s; two minutes of mixed class use
   (Uncharted, stuck while loops, per-student misses, typing every run)
   kept runs under 0.4 s with no errors. The save was 220 KB.
+- **Closest yet:** a missed run on a site not yet done is measured by
+  `planet.progress()` (samples collected, or squares from the beacon by
+  open ground, walking round rock and craters; none on maps with portal
+  pads, report or deliver sites, or Uncharted). Beating the student's best
+  miss (`entry["closest"]`) gives a 🔥 toast with the old mark; the first
+  miss only sets it. A reward for getting further, not for trying again.
 

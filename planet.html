@@ -1928,7 +1928,8 @@ async function showToasts(r) {
   const badges = r.badges.length > 2
     ? [["🏅", `${r.badges.length} new badges!`, `${r.badges.map(b => b.icon).join(" ")}  See them in the garage (★ at the top).`]]
     : r.badges.map(b => [b.icon, `Badge: ${b.name}`, b.how]);
-  const items = [...r.found.map(u => ["🎁", `You found a mystery gift: ${u.name} ${u.slot}!`, "Try it on in the garage (★ at the top)."]),
+  const items = [...(r.closer ? [["🔥", "Closest yet!", `${r.closer}. Keep the part that worked and change the next bit.`]] : []),
+                 ...r.found.map(u => ["🎁", `You found a mystery gift: ${u.name} ${u.slot}!`, "Try it on in the garage (★ at the top)."]),
                  ...badges,
                  ...r.unlocked.map(u => ["🔓", `Unlocked: ${u.name} ${u.slot}`, "Fit it in the garage (★ at the top)."]),
                  ...(r.missions_done || []).map(m => ["✅", `Mission done: ${m.text}`, r.trophy ? "" : "📋 Today, next to the goals, shows the others."]),

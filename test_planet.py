@@ -1441,6 +1441,27 @@ class ClassroomTests(unittest.TestCase):
         self.assertEqual([r["key"] for r in report["sites"]], ["1a"])   # only sites tried
         self.assertEqual(report["zones"][0]["name"], "Landing Site")
 
+    def test_a_miss_that_gets_further_is_the_closest_yet(self):
+        pid = self.join()
+        server.planet_entry(server.players[pid])["unlocked"] = 1
+        first = self.transmit(pid, "1b", "east()\nsouth()\n")["rewards"]
+        self.assertIsNone(first["closer"])        # the first miss only sets the mark
+        better = self.transmit(pid, "1b", "for i in range(3):\n    east()\n    south()\n")["rewards"]
+        self.assertEqual(better["closer"], "3 of 8 samples (before: 1 of 8 samples)")
+        same = self.transmit(pid, "1b", "for i in range(2):\n    east()\n    south()\n")["rewards"]
+        self.assertIsNone(same["closer"])         # not better than 3
+        self.assertIsNone(self.transmit(pid, "1b", site("1b")[2]["reference"])["rewards"]["closer"])
+
+    def test_beacon_progress_counts_squares_round_rock(self):
+        zi, zone, s = site("3b")
+        v = s["variants"][0]
+        near, far = (planet.progress(v, planet.drive(c, v, zone["rules"], zi))
+                     for c in ("south(3)\n", "south()\n"))
+        self.assertEqual(near[0], "less")
+        self.assertLess(near[1], far[1])
+        portal = site("6a")
+        self.assertIsNone(planet.progress(portal[2]["variants"][0], run("6a", "east()\n")))
+
     def test_the_page_knows_whether_you_ever_ran(self):
         pid = self.join()
         self.assertFalse(self.get(f"/planet/state?id={pid}")["you"]["ran"])
