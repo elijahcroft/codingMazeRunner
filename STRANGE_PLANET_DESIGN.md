@@ -446,4 +446,9 @@ messages that were wrong or empty for real programs.
   pads, report or deliver sites, or Uncharted). Beating the student's best
   miss (`entry["closest"]`) gives a 🔥 toast with the old mark; the first
   miss only sets it. A reward for getting further, not for trying again.
+- **Spotlight:** the admin actions `planet_spotlight` (a student's last
+  transmitted code on the site they're on) and `planet_spotlight_off` set
+  `planet_spotlight`, sent with `/planet/overview`. The projector shows it
+  full-screen with the site and whether it works, never the name. It isn't
+  saved: a restart clears it.
 

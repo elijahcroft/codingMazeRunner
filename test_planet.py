@@ -1085,6 +1085,7 @@ class ClassroomTests(unittest.TestCase):
         server.players.clear()
         server.players.update(self.saved[0])
         server.STATE_FILE = self.saved[1]
+        server.planet_spotlight[0] = None
         self.folder.cleanup()
 
     def get(self, path):
@@ -1461,6 +1462,19 @@ class ClassroomTests(unittest.TestCase):
         self.assertLess(near[1], far[1])
         portal = site("6a")
         self.assertIsNone(planet.progress(portal[2]["variants"][0], run("6a", "east()\n")))
+
+    def test_the_teacher_can_put_one_program_on_the_class_screen(self):
+        pid = self.join("Ada")
+        nothing = self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_spotlight", "pid": pid})
+        self.assertIn("hasn't transmitted", nothing["ok"])
+        self.transmit(pid, "1a", site("1a")[2]["reference"])
+        self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_spotlight", "pid": pid})
+        spot = self.get("/planet/overview")["spotlight"]
+        self.assertEqual((spot["site"], spot["done"]), ("1a", True))
+        self.assertEqual(spot["code"], site("1a")[2]["reference"].strip())
+        self.assertNotIn("Ada", json.dumps(spot))   # no name on the projector
+        self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_spotlight_off"})
+        self.assertIsNone(self.get("/planet/overview")["spotlight"])
 
     def test_the_page_knows_whether_you_ever_ran(self):
         pid = self.join()

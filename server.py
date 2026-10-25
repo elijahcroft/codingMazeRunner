@@ -2758,6 +2758,9 @@ SCOUT_MAX = 150     # hand-driven moves in one scouting trip: enough to drive an
 FUNCTIONS_MAX = 12  # saved functions one student keeps
 FUNCTION_MAX = 1500 # characters in one saved function
 planet_feed = []    # the class's recent moments, newest last, for the projector
+# One student's code the teacher put on the class screen, without their name,
+# to talk about together; None when nothing is shown.
+planet_spotlight = [None]
 
 # Badges: (icon, name, how to earn it). Zone masters are added below.
 PLANET_BADGES = {
@@ -3729,6 +3732,20 @@ def admin_action(data):
         key = planet.SITE_ORDER[frontier + 1]
         return (f"Unlocked Strange Planet site {key.upper()} "
                 f"({planet.find_site(key)[2]['name']}) for {q['name']}.")
+    if action == "planet_spotlight":
+        q = players.get(data.get("pid"))
+        entry = q and q.get("planet") and planet_entry(q)
+        key = entry and (entry["now"] or {}).get("site")
+        code = entry and key and entry["code"].get(key, "").strip()
+        if not code:
+            return "That student hasn't transmitted any code here yet."
+        zi, zone, s = planet.find_site(key)
+        planet_spotlight[0] = {"site": key, "site_name": s["name"], "zone": zone["name"],
+                               "code": code, "done": key in entry["solved"]}
+        return f"On the class screen: {q['name']}'s {key.upper()} code (without their name)."
+    if action == "planet_spotlight_off":
+        planet_spotlight[0] = None
+        return "The class screen is back to the fleet."
     if action == "cycles_reset":
         # A new season (or a new class) starts with nobody entered, so last
         # class's bots and ej's own test bot don't ride in its battles. Each
@@ -4188,7 +4205,7 @@ class Handler(BaseHTTPRequestHandler):
             with lock:
                 p = players.get(pid)
                 if path == "/planet/overview":
-                    body = dict(planet_class(), address=address)
+                    body = dict(planet_class(), address=address, spotlight=planet_spotlight[0])
                 elif not p:
                     body = {"you": None}
                 elif path == "/planet/state":

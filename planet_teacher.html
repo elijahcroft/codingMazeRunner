@@ -76,6 +76,7 @@
   <h1>🪐 Strange Planet <small>class overview · live</small></h1>
   <div class="controls">
     <label for="key">admin key</label><input id="key" type="password" placeholder="for unlocking">
+    <button id="spotOff" hidden onclick="admin('planet_spotlight_off')">📽 Stop showing code</button>
     <span id="msg"></span>
   </div>
 </header>
@@ -138,6 +139,7 @@ async function refresh() {
   let data;
   try { data = await (await fetch("/planet/overview")).json(); } catch (_) { return; }
   const students = data.students;
+  $("spotOff").hidden = !data.spotlight;
   $("empty").hidden = students.length > 0;
   const stuck = students.filter(s => s.runs_here >= 8 && s.solved < data.sites).length;
   // Opened the planet but never pressed Transmit: often a student who doesn't know how to start.
@@ -154,7 +156,7 @@ async function refresh() {
     <td class="num ${stuckClass(s.runs_here)}">${s.runs_here}</td>
     <td class="num">${s.hints}</td>
     <td class="num">${lastRun(s)}${s.now && s.now.said ? `<small class="said">${esc(s.now.site.toUpperCase())}: ${esc(s.now.said)}</small>` : ""}${triesHtml(s)}</td>
-    <td>${s.site !== "7" ? `<button onclick="unlock('${esc(s.id)}')" title="Open the next site for this student">Unlock next</button>` : ""}</td>
+    <td>${s.site !== "7" ? `<button onclick="unlock('${esc(s.id)}')" title="Open the next site for this student">Unlock next</button>` : ""}${s.now && s.now.code ? ` <button onclick="admin('planet_spotlight', '${esc(s.id)}')" title="Put this student's last transmitted code on the class screen, without their name">📽 Show code</button>` : ""}</td>
   </tr>`).join("");
 }
 // The after-class table: fetched when opened, and every 30 seconds while open.
@@ -181,6 +183,16 @@ async function refreshReport() {
 $("reportBox").addEventListener("toggle", () => { store("planetReport", $("reportBox").open ? "1" : ""); refreshReport(); });
 $("reportBox").open = recall("planetReport") === "1";
 setInterval(refreshReport, 30000);
+async function admin(action, pid) {
+  const key = $("key").value.trim();
+  if (!key) { $("msg").textContent = "Type the admin key first."; $("key").focus(); return; }
+  store("planetKey", key);
+  try {
+    const data = await (await fetch("/admin", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({key, action, pid})})).json();
+    $("msg").textContent = data.ok || data.error;
+  } catch (_) { $("msg").textContent = "No answer from the server."; }
+  refresh();
+}
 async function unlock(pid) {
   const key = $("key").value.trim();
   if (!key) { $("msg").textContent = "Type the admin key first."; $("key").focus(); return; }

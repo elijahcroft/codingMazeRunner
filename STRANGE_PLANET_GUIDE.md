@@ -329,6 +329,11 @@ board while they work.
       hasn't cleared it, the hints each zone took, and what the game told
       students most often when they missed. Use it to pick where the next
       lesson starts and what to explain on the board.
+- [ ] **📽 Show code** on a student's row puts their last transmitted code
+      on the class screen, big and without their name, with "it works ✓" or
+      "not working yet: can we fix it?". Good for the end-of-lesson
+      discussion. **📽 Stop showing code** at the top brings back the fleet.
+      Both need the admin key, like Unlock next.
 - [ ] Each time the server starts it copies `scores.json` to
       `scores.json.start-<date>-<time>` and keeps the last 5. To undo a bad
       day, stop the server and copy one back over `scores.json`.
