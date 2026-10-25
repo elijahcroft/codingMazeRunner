@@ -295,3 +295,106 @@ one earned badge **worn on the class screen** (`entry["showoff"]`).
 And a **record ghost**: each student's best route on a shared-map site is
 kept (`entry["routes"]`, up to 400 frames), and `ghost_for()` sends the class
 record's route to anyone who has completed the site, to race in the replay.
+
+## Measuring your own planet (October 2026)
+
+The class's saved runs showed the 📡 sites being guessed or copied: every
+student's 2A answer was `report(6)`, Harvey took 85 runs on 5A with
+`report(1+1)`, and one student used a classmate's `tick() % 9` on a 3C
+ridge whose gusts come every 7 (26 runs). (The step-by-step coach landed the
+evening after that lesson, so the class hadn't seen it yet.) ej: "we need
+to explain steps more clearly to them".
+
+- **Per-student numbers** on 2A (ice 5, 7, 8 or 9 long), 3A (gusts every 4,
+  6, 7 or 8) and 7A (beacon 9, 11, 14 or 16 away). The old shared answers
+  are left out. 5A stays at 2 for everyone, because the whole Solar zone
+  runs on it. A test reports each variant's number on every other one.
+- **A classmate's number is named as one.** Each per-student 📡 variant
+  knows the others' answers (`others`, never sent to the page); reporting
+  one says "That's the number on someone else's planet" in the telemetry and
+  at the front of the coach's tip. The briefs say each planet's number is its
+  own. On the other per-student sites, a run that misses but whose code
+  works on classmates' planets (`elsewhere()`, under 100 ms for 7 planets,
+  outside the lock) starts its next step with "This code works on 2 other
+  planets in the class, but yours is different."
+- **Numbered steps in the brief** of all four 📡 sites, one per line
+  (`#siteBrief` keeps the line breaks). The coach still goes further after
+  each miss.
+- **3B's brief says the gusts come every 5 ticks**, since 3A's number is now
+  the student's own, and gives three numbered steps (wait on the tick before
+  a gust, put the check in a def called before every square, drive each part
+  one square at a time): 3B cost 12 to 42 runs even for students who opened
+  every hint. 3C's brief says to measure your gusts and reuse The Ledge's
+  check, in two lines, because a longer brief would make its ridge zoom.
+- **A gust fall reads the code.** When a gust (or a drive after one) ends in
+  a crater, `gust_next()` finds the `tick() % n` in the program: a number
+  from another planet is named as wrong here, with the ticks the gusts come
+  on ("5, 10, 15 and so on", which the telemetry's 💨 lines already show);
+  the right number gets which tick to wait on, and no number gets when they
+  come.
+- **Clearer slips:** an unquoted look() word (`!= rock`), commands joined by
+  a comma, `range 8` and `=!` each say the fix. look() compared with a word
+  it never gives back (`"wall"` from the maze game, `"Rock"`, `"empty"`) is an
+  error that names the right word, instead of a loop that runs into rock
+  until time runs out. A line that works something out and drops it (`x() == 3` on its
+  own) shows where it could go (`if x() == 3:`, `n = ...`), quoting the
+  student's own text, instead of Light Cycles' "Did you mean to return it?".
+  The `!` hint's example is `while not at_beacon():`, not the maze game's
+  `wall_ahead()`. A hint's `...` placeholder, copied in, says to replace it with
+  your own lines. A test runs every code snippet in a hint, coach step or
+  brief on its site. `**` and `^` say to multiply instead (in every game: "That kind of
+  math isn't allowed here" said nothing), and `&` / `|` give a look() example
+  instead of Light Cycles' `wall_ahead()`. A drive command in a sum
+  (`east(2) + south(2)`, `n = east() + 1`) says it gives back no number and
+  to put each command on its own line, instead of `n = ...` or "not None". Huge numbers, `range(999999999)`
+  and runaway recursion were tried too: each stops at once with a message,
+  so one student can't freeze the class's server.
+- **The teacher's page** marks students who haven't pressed Transmit yet.
+- **The last 6 tries on each site are kept** (`entry["tries"]`: code, end,
+  banner words). The first lesson kept only each site's last program, so
+  Harvey's 85 runs on 5A left one line of evidence. The teacher's page shows
+  the tries for the site each student is on (a `<details>` that stays open
+  across its 5-second refresh); student pages never get them.
+- **1C's challenge star is 🌍** (the same code on all 8 rock runs) instead of
+  no-bump: every student who solved 1C counted squares off their own map
+  and never used look(). The 🌍 telemetry line now names the site's
+  mission instead of always saying "reached the beacon".
+- **The coach remembers** misses across a reload: it starts from the
+  server's count of misses in a row.
+- **1B and 1C show the loop's shape** in the brief (a sentence, a blank line,
+  then code in the editor's font, like a hint). No student used `for` on 1B
+  (one typed 100 lines) or `look()` on 1C. The examples aren't the answer:
+  1B's drives east 3 times, 1C's goes east only. The brief sits beside the
+  site's name when there's room, with the code beside its words, so the map
+  keeps its height: measured at 1366×768, every site that showed its whole
+  map before still does, except 3A, whose longer canyon (19 rows, for
+  south(16)) now zooms and follows the rover like 3B.
+- **Out of time on two or three squares** says which squares the rover went
+  back and forth on (`pacing()`), and once jump() has arrived, which crater
+  to jump from: 7C's steering on 8A used to get "a while loop is probably
+  going round forever".
+
+## A real editor, and help in plain sight (October 2026)
+
+ej asked for learning to be easier, help for stuck students to be obvious,
+and the editor to feel like a real one (autocomplete, closing brackets).
+The editor is still a textarea with a coloured copy behind it, so every
+change goes through the browser's own typing and Ctrl+Z undoes it.
+
+- **Suggestions** come from what the student can use here: the zone's
+  commands and sensors, Python's words, the builtins the interpreter allows
+  (`print range abs min max`), and the student's own defs and variables.
+  Each shows its `HELP` line. A word that's already a whole name never opens
+  the list, so Enter after a variable is still a new line.
+- **The rule stays hidden.** Suggestions say what a command *is* (the kit's
+  wording), never how the zone treats it, and the look() words offered are
+  the squares on this map.
+- **Slips while typing** are checked in the page (`problemsIn`) only on lines
+  the cursor has left, and only for things that are always wrong in Python
+  here; anything subtler is still the run's job, whose messages say more.
+  While a run's error is on screen the page's own checks step aside.
+- **Each frame knows its line** (`"ln"` in `World.frame()`, set by
+  `Rover.run_statement`): a drive inside a def is its line in the def, and a
+  gust's push stays with the drive it interrupted. The editor lights that
+  line during the replay, but only while the code is the code that ran.
+

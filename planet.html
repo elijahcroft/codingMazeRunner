@@ -102,7 +102,11 @@
   .site-head { padding: 10px 20px 10px; }
   .title-row { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
   .site-head h1 { margin: 0; font-size: 28px; line-height: 1.1; font-weight: 850; letter-spacing: -.03em; }
-  .site-head p { margin: 0; color: var(--haze); font-size: 16px; }
+  /* Beside the title when there's room, so the map keeps its height. Steps
+     go one to a line; a code example sits beside the words. */
+  #siteBrief { flex: 1 1 380px; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px 16px; margin: 0; color: var(--haze); font-size: 16px; white-space: pre-line; }
+  #siteBrief .words { flex: 1 1 300px; }
+  #siteBrief pre { margin: 0; padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,.25); font: 14px/1.5 var(--mono); white-space: pre; overflow-x: auto; max-width: 100%; }
   .goals { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .goal { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 6px; border-radius: 99px; background: var(--dusk); color: var(--haze); font-size: 13px; }
   .goal i { font-style: normal; color: var(--dim); font-size: 15px; line-height: 1; }
@@ -156,7 +160,7 @@
   /* The moment a hidden rule first shows itself: the replay stops for it. */
 
   /* The stars, revealed one by one. */
-  .celebrate { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; background: radial-gradient(circle at 50% 45%, rgba(27,21,52,.35), rgba(12,9,26,.7)); }
+  .celebrate { position: absolute; inset: 0; display: grid; place-items: safe center; overflow-y: auto; padding: 16px; background: radial-gradient(circle at 50% 45%, rgba(27,21,52,.35), rgba(12,9,26,.7)); }
   .cele-card { width: min(440px, 100%); text-align: center; padding: 22px 22px 18px; border-radius: 22px; background: rgba(35,29,63,.96); box-shadow: 0 30px 80px rgba(0,0,0,.55), inset 0 0 0 1px var(--edge); }
   .cele-card h2 { margin: 0; font-size: 30px; font-weight: 850; letter-spacing: -.03em; }
   .cele-card .sub { margin: 4px 0 0; color: var(--haze); }
@@ -173,6 +177,15 @@
   .cele-tip { margin-top: -4px; color: var(--mint); white-space: pre-line; }
   .cele-tip:empty { display: none; }
   .cele-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  /* What the next stars unlock, with a bar that fills as the new ones land. */
+  .cele-next { display: flex; align-items: center; gap: 8px; margin: 0 auto 14px; max-width: 380px; padding: 6px 12px; border-radius: 99px; background: rgba(0,0,0,.2); font-size: 13.5px; color: var(--haze); white-space: nowrap; }
+  .cele-next[hidden] { display: none; }
+  .cele-next b { color: var(--bone); }
+  .cele-next small { color: var(--gold); font: 700 12px var(--mono); }
+  .cele-next .sw { width: 14px; height: 14px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1px rgba(255,255,255,.25); }
+  .nu-bar { flex: 1; min-width: 50px; height: 7px; border-radius: 4px; background: #3a3260; overflow: hidden; }
+  .nu-fill { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--gold), #fff0b8); transition: width .9s cubic-bezier(.3,.9,.3,1); }
+  .calm .nu-fill { transition: none; }
 
   .timeline { display: flex; align-items: center; gap: 12px; padding: 10px 16px 14px; }
   .play { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--panel-2); font-size: 15px; flex: none; }
@@ -214,6 +227,9 @@
   .uplink-head b { font-weight: 750; }
   .uplink-head span { color: var(--haze); font-size: 13px; }
   .uplink-head span.fits { color: var(--gold); }
+  .uplink-head span.pop { animation: fitpop .7s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes fitpop { 30% { transform: scale(1.3); text-shadow: 0 0 12px rgba(255,211,107,.9); } }
+  .calm .uplink-head span.pop { animation: none; }
   .editor { min-height: 0; margin: 0 12px; display: grid; grid-template-columns: auto 1fr; border-radius: 12px; overflow: hidden; background: #171329; box-shadow: inset 0 0 0 1px var(--edge); }
   .lines { padding: 12px 8px 40px 10px; color: #5d5486; text-align: right; white-space: pre; overflow: hidden; font: var(--code-size)/1.6 var(--mono); user-select: none; }
   .lines .err { color: var(--coral); font-weight: 700; }
@@ -229,10 +245,42 @@
   .t-cmd { color: var(--mint); } .t-sense { color: #8fc8ff; } .t-own { color: #f0a8ff; } .t-key { color: var(--amber); }
   .t-blank { color: #1b1733; background: var(--amber); border-radius: 3px; }
   .t-num { color: var(--gold); } .t-text { color: #ffc7a8; } .t-note { color: #8a80b0; }
+  .lines { min-width: 4.4ch; }
+  .lines .run { color: var(--mint); font-weight: 700; }
+  .lines .warn { color: var(--amber); }
+  /* Behind the text: the cursor's line, the replay's line, a bracket's partner. */
+  .cur-line, .run-line { position: absolute; z-index: -1; left: 0; right: 0; height: 1.6em; }
+  .cur-line { background: rgba(185,163,255,.07); }
+  .run-line { background: rgba(140,242,198,.16); box-shadow: inset 3px 0 0 var(--mint); transition: top .12s; }
+  .calm .run-line { transition: none; }
+  .br-match { position: absolute; z-index: -1; width: 1ch; height: 1.6em; border-radius: 3px; background: rgba(255,211,107,.22); box-shadow: inset 0 0 0 1px rgba(255,211,107,.6); }
+  .squiggle { text-decoration: underline wavy rgba(255,181,71,.85); text-decoration-skip-ink: none; text-underline-offset: 3px; }
+  .lens { font-family: var(--ui); font-size: .82em; font-style: italic; }
+  .lens.warn { color: var(--amber); } .lens.err { color: #ff9c90; }
+  /* The suggestions under the cursor, and what goes in a command's ( ). */
+  .ac { position: absolute; z-index: 6; width: 290px; max-width: calc(100% - 8px); border-radius: 10px; overflow: hidden; background: #2a2350; box-shadow: 0 12px 34px rgba(0,0,0,.5), inset 0 0 0 1px var(--edge); font: 13px var(--mono); }
+  .ac-list { max-height: 184px; overflow-y: auto; padding: 4px; }
+  .ac-item { display: flex; align-items: baseline; gap: 8px; padding: 3px 8px; border-radius: 6px; cursor: pointer; color: var(--bone); }
+  .ac-item.on { background: #43397f; }
+  .ac-item:hover:not(.on) { background: #352d64; }
+  .ac-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ac-item small { font: 11px var(--ui); color: var(--haze); }
+  .ac-help { padding: 7px 10px 8px; border-top: 1px solid var(--edge); font: 12.5px/1.4 var(--ui); color: #ddd3f5; background: #231d44; }
+  .ac-help span { display: block; margin-top: 3px; color: var(--dim); font-size: 11px; }
+  .sig { position: absolute; z-index: 5; max-width: calc(100% - 8px); padding: 6px 10px; border-radius: 8px; background: #2a2350; box-shadow: 0 8px 24px rgba(0,0,0,.45), inset 0 0 0 1px var(--edge); font: 12.5px/1.4 var(--ui); color: #ddd3f5; pointer-events: none; }
+  .sig code { font: 13px var(--mono); color: var(--mint); margin-right: 4px; }
+  .sig b { color: var(--gold); font-weight: 700; }
+  .problem { position: absolute; z-index: 4; right: 10px; bottom: 8px; max-width: calc(100% - 20px); border: 0; border-radius: 99px; padding: 4px 11px; background: rgba(255,181,71,.16); color: #ffd9a0; font: 12.5px var(--ui); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: inset 0 0 0 1px rgba(255,181,71,.4); }
+  .problem::before { content: "⚠ "; }
+  .problem b { color: var(--amber); margin-right: 4px; }
+  .problem:hover { background: rgba(255,181,71,.26); }
+  .big .ac { font-size: 15px; width: 330px; } .big .ac-help, .big .sig { font-size: 14px; }
   .kit { display: flex; flex-wrap: wrap; gap: 5px; padding: 10px 12px 0; }
   .chip { border: 0; border-radius: 7px; padding: 3px 7px; background: var(--panel); color: #d9ccff; font: 12.5px var(--mono); position: relative; }
   .chip:hover { background: var(--panel-2); color: var(--bone); }
-  .chip.cmd { color: var(--bone); }
+  /* The same colours as in the code: commands drive, sensors answer. */
+  .chip.cmd { color: var(--mint); }
+  .chip.sense { color: #8fc8ff; }
   .chip.new::after { content: ""; position: absolute; top: -2px; right: -2px; width: 8px; height: 8px; border-radius: 50%; background: var(--mint); }
   .actions { display: flex; align-items: center; gap: 8px; padding: 10px 12px; }
   .transmit { flex: 1; }
@@ -240,6 +288,11 @@
   .tool:hover { background: var(--panel-2); }
   .tool small { display: block; font: 600 10.5px/1 var(--ui); color: var(--haze); margin-top: 3px; }
   .tool.on small { color: inherit; }
+  /* Stuck: the Hints button glows until it's used. */
+  .tool.nudge { border-color: var(--violet); box-shadow: 0 0 0 1px var(--violet), 0 0 14px rgba(185,163,255,.45); animation: nudge 1.8s ease-in-out infinite; }
+  .tool.nudge small { color: var(--violet); }
+  @keyframes nudge { 50% { box-shadow: 0 0 0 1px var(--violet), 0 0 26px rgba(185,163,255,.85); } }
+  .calm .tool.nudge { animation: none; }
   .tool sup { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--violet); color: #1b1733; font: 700 11px/18px var(--ui); padding: 0 5px; }
   .feed { min-height: 0; overflow: auto; padding: 4px 14px 14px; border-top: 1px solid var(--edge); font-size: 14px; }
   .feed .ev { display: grid; grid-template-columns: 42px 1fr; gap: 6px; padding: 3px 6px; border-radius: 6px; }
@@ -248,6 +301,9 @@
   .feed .ev.good { color: var(--mint); }
   .feed .ev.bad { color: #ffb0a8; }
   .feed .ev.now { background: var(--panel); }
+  .feed .ev { cursor: pointer; }
+  .feed .ev:hover { background: rgba(53,45,96,.6); }
+  .lines.jumps { cursor: pointer; }
   .feed .err { margin: 8px 0; padding: 9px 11px; border-radius: 10px; background: rgba(255,111,97,.12); color: #ffc7c0; font-size: 14px; white-space: pre-wrap; }
   .feed .empty { color: var(--dim); padding: 10px 6px; }
   .feed-head { position: sticky; top: -4px; background: var(--dusk); padding: 8px 6px 4px; color: var(--haze); font-size: 13px; }
@@ -341,7 +397,8 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .wp span, .cell i, .big-star i { transition: none; }
-    .scope.shake, .stars-button.bump, .toast, .toast.out { animation: none; }
+    .scope.shake, .stars-button.bump, .toast, .toast.out, .tool.nudge { animation: none; }
+    .nu-fill, .run-line { transition: none; }
   }
   .calm .wp span, .calm .cell i, .calm .big-star i { transition: none; }
   .calm .scope.shake, .calm .stars-button.bump, .calm .toast, .calm .toast.out { animation: none; }
@@ -351,7 +408,8 @@
   .big { --code-size: 17px; }
   .big .feed { font-size: 16px; }
   .big .chip { font-size: 14.5px; }
-  .big .site-head p, .big .banner p { font-size: 17px; }
+  .big #siteBrief, .big .banner p { font-size: 17px; }
+  .big #siteBrief pre { font-size: 15px; }
   .calm-pick input { width: 18px; height: 18px; accent-color: var(--mint); }
 </style>
 </head>
@@ -383,7 +441,7 @@
   <div class="main">
     <section class="view">
       <div class="site-head">
-        <div class="title-row"><h1 id="siteName">…</h1><p id="siteBrief"></p></div>
+        <div class="title-row"><h1 id="siteName">…</h1><div id="siteBrief"></div></div>
         <div class="goals" id="goals"></div>
       </div>
       <div class="scope" id="scope">
@@ -424,6 +482,7 @@
             <p class="cele-note" id="celeNote"></p>
             <p class="cele-miss" id="celeMiss"></p>
             <p class="cele-miss cele-tip" id="celeTip"></p>
+            <div class="cele-next" id="celeNext" hidden></div>
             <div class="cele-actions" id="celeActions"></div>
           </div>
         </div>
@@ -438,7 +497,7 @@
 
     <section class="uplink">
       <div class="uplink-head"><b id="fileName">rover.py</b><span id="lineCount"></span></div>
-      <div class="editor"><div class="lines" id="lines">1</div><div class="code-wrap"><pre class="paint" id="paint" aria-hidden="true"></pre><textarea id="code" aria-label="Your rover program. Press Escape then Tab to leave it." spellcheck="false"></textarea></div></div>
+      <div class="editor"><div class="lines" id="lines">1</div><div class="code-wrap"><pre class="paint" id="paint" aria-hidden="true"></pre><textarea id="code" aria-label="Your rover program. Press Escape then Tab to leave it." spellcheck="false" autocapitalize="off" autocomplete="off"></textarea><div class="ac" id="ac" hidden></div><div class="sig" id="sig" hidden></div><button class="problem" id="problem" hidden title="Go to that line"></button><div class="sig hover" id="hover" hidden></div></div></div>
       <div class="kit" id="kit" aria-label="Commands and sensors: click one to add it"></div>
       <div class="actions">
         <button class="go transmit" id="runButton" title="F5 or Ctrl+Enter">Transmit ▶</button>
@@ -497,6 +556,7 @@
         <li>Every site is a mission: collect samples, reach the beacon, or measure something strange and <code>report()</code> it.</li>
         <li>Every zone hides a rule. Nobody will tell you.</li>
       </ol>
+      <p class="intro-note">The editor helps you type: start a word and it suggests commands (Enter or Tab picks one), brackets and quotes close themselves, and a slip gets a ⚠ on its line. Point at a word to see what it does. Ctrl+/ turns lines into notes.</p>
       <p class="intro-note">Earn three stars on every site. Stuck? 🕹 Scout drives by hand, 📻 Hints asks mission control. Made a good <code>def</code>? 🧰 Functions keeps it for later sites.</p>
       <p class="intro-note">Stars unlock paint, hats, trails and new looks for the whole map in the garage (★ at the top). Spot a 🎁 on the map? Drive over it for a secret one. Click your rover to say hi.</p>
       <label class="calm-pick"><input type="checkbox" id="calmPick"> Calm mode: no shaking, confetti or flashing</label>
@@ -1509,6 +1569,7 @@ function setPos(p) {
   $("scrub").value = pos;
   $("scrub").style.setProperty("--done", last() ? (pos / last() * 100) + "%" : "0%");
   if (scene) $("clock").textContent = `${scene.frames[Math.floor(pos)].t} / ${scene.frames[last()].t}`;
+  followRun(scene && scene.run && !scout ? scene.frames[Math.floor(pos)].ln : 0);
 }
 function setPlaying(on) {
   playing = on && scene && last() > 0;
@@ -1628,6 +1689,7 @@ function sceneFor(map, frames, run, crystals) {
 }
 function showRun(run, map, crystals, startAt = 0) {
   scene = sceneFor(map, run.frames, run, crystals);
+  scene.code = $("code").value;   // the code that made it, so the replay can follow its lines
   // Timeline marks: what happened, at the frame it happened. On a busy run,
   // slides and bumps make way for the events that matter.
   const log = parseLog(run).filter(x => !(scout && x.text.startsWith("🏁")));
@@ -1726,9 +1788,13 @@ function coachTip(run) {
   const c = site.coach;
   if (!c || !["wrong", "stopped"].includes(run.end)) return "";
   if (site.coached && site.coached.run === run) return site.coached.text;
-  const step = site.coached ? site.coached.step : 0, short = run.end === "stopped" && !site.toldShort;
+  // After a reload, the server's count of misses in a row says how far along to start.
+  const step = site.coached ? site.coached.step : Math.max(0, (site.misses || 0) - 1),
+    short = run.end === "stopped" && !site.toldShort;
   if (short) site.toldShort = true;
-  const text = short ? c.short : c.steps[Math.min(step, c.steps.length - 1)];
+  // A classmate's number: say so first, then the next step.
+  const copied = run.explain && run.explain.copied ? `${run.explain.what} ` : "";
+  const text = copied + (short ? c.short : c.steps[Math.min(step, c.steps.length - 1)]);
   site.coached = {run, text, step: short ? step : step + 1};
   return text;
 }
@@ -1749,8 +1815,8 @@ async function celebrate(r, run) {
   $("celeSub").textContent = site.key === "7" ? unchartedSummary() : run.mission === "report" ? "📡 Report confirmed" : `${run.ticks} ticks`;
   $("bigStars").innerHTML = r.stars.map((s, i) => `<div class="big-star${s ? " got" : r.best[i] ? " was" : ""}" title="${esc(goals[i] || "")}"><i>★</i><span>${esc([...(goals[i] || "★")][0])}</span></div>`).join("");
   const missing = goals.filter((g, i) => !r.best[i]);
-  $("celeMiss").textContent = missing.length && site.key !== "7" ? `Still to earn: ${missing.join(" · ")}` : "";
   $("celeTip").textContent = site.key !== "7" ? starTips(r.best, $("code").value).join("\n") : "";
+  $("celeMiss").textContent = missing.length && site.key !== "7" && !$("celeTip").textContent ? `Still to earn: ${missing.join(" · ")}` : "";
   $("celeNote").innerHTML = "";
   const next = nextSite();
   $("celeActions").innerHTML = (next && site.key !== "7" ? `<button class="go" onclick="openSite('${next}')">Next site ▶</button>` : "")
@@ -1780,7 +1846,9 @@ async function celebrate(r, run) {
   if (r.first_try) SFX.play("first");
   if (got === 3 || r.record || r.rank_up || r.zone_cleared) throwConfetti();
   $("celeActions").querySelector("button").focus();
+  const nextBar = showNextUnlock(r.total_stars, r.total_stars - r.new_stars);
   if (r.new_stars) await flyStars(stars.filter((el, i) => r.stars[i]).slice(-r.new_stars), r.total_stars);
+  if (nextBar) nextBar();
   if (r.rank_up) {
     SFX.play("rank");
     toast(r.rank_up.icon, `Rank up! You're a ${r.rank_up.name} now`, r.rank_up.next ? `${r.rank_up.need} ★ more to ${r.rank_up.next_icon} ${r.rank_up.next}.` : "Every star on the planet. Legendary!");
@@ -1806,6 +1874,24 @@ function showStarTip(i) {
   $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">${esc(tip)}</span>`);
 }
 function hideCelebrate() { $("celebrate").hidden = true; }
+// The next thing stars unlock in the garage, and how close it is. Returns
+// what fills the bar up to the new total, for when the stars land.
+const SLOT_WORD = {paint: "paint", topper: "topper", trail: "trail", world: "map look", dance: "victory dance"};
+const SLOT_ICON = {paint: "🎨", topper: "🎩", trail: "✨", world: "🗺", dance: "💃"};
+function showNextUnlock(total, before) {
+  const box = $("celeNext"), items = ((state && state.garage) || []).filter(g => g.stars != null);
+  const next = items.filter(g => g.stars > total).sort((a, b) => a.stars - b.stars)[0];
+  box.hidden = !next;
+  if (!next) return null;
+  const from = Math.max(0, ...items.filter(g => g.stars <= total).map(g => g.stars));
+  const pct = n => Math.max(0, Math.min(100, (n - from) / (next.stars - from) * 100));
+  const icon = next.slot === "paint" || next.slot === "world" ? `<span class="sw" style="background:${swatch(next.slot, next.key)}"></span>` : SLOT_ICON[next.slot] || "🔓";
+  const need = next.stars - total;
+  box.innerHTML = `${icon}<span>Next: <b>${esc(next.name)}</b> ${SLOT_WORD[next.slot] || ""}</span>`
+    + `<span class="nu-bar"><i class="nu-fill" style="width:${pct(before)}%"></i></span><small>${need} ★ to go</small>`;
+  box.title = `${need} more star${need === 1 ? "" : "s"} unlock${need === 1 ? "s" : ""} ${next.name} in the garage (★ at the top)`;
+  return () => { box.querySelector(".nu-fill").style.width = pct(total) + "%"; };
+}
 // The new stars fly from the card up to the counter, which bumps as they land.
 async function flyStars(from, total) {
   if (CALM || !from.length) return bumpStars(total);
@@ -1963,7 +2049,10 @@ async function openSite(key) {
   runs = null; rewards = null;
   store(`planetSite:${me}`, key);
   $("siteName").textContent = view.name;
-  $("siteBrief").textContent = view.brief;
+  // Like a hint: words, then (after a blank line) code in the editor's font.
+  const codeAt = view.brief.indexOf("\n\n");
+  $("siteBrief").innerHTML = codeAt < 0 ? `<div class="words">${esc(view.brief)}</div>`
+    : `<div class="words">${esc(view.brief.slice(0, codeAt))}</div><pre>${esc(view.brief.slice(codeAt + 2))}</pre>`;
   $("fileName").textContent = `site_${key}.py`;
   renderGoals();
   // This browser's draft, else what was last run here, else the code from the
@@ -2084,7 +2173,7 @@ function renderKit(zi) {
   const names = [...COMMANDS, ...site.sensors.filter(n => USEFUL[n] !== false)];
   $("kit").innerHTML = names.map(n => {
     const cmd = LINE_CHIPS.includes(n), fresh = SENSOR_ZONE[n] === zi && zi > 0;
-    return `<button class="chip${cmd ? " cmd" : ""}${fresh ? " new" : ""}" data-name="${n}" title="${esc(HELP[n] || "")}${fresh ? " (new here)" : ""}">${esc(CHIP_TEXT[n] || n + "()")}</button>`;
+    return `<button class="chip${cmd ? " cmd" : " sense"}${fresh ? " new" : ""}" data-name="${n}" title="${esc(HELP[n] || "")}${fresh ? " (new here)" : ""}">${esc(CHIP_TEXT[n] || n + "()")}</button>`;
   }).join("");
 }
 // A command goes on a line of its own (in line with the one it's typed on),
@@ -2129,6 +2218,15 @@ function renderRadio() {
   $("radioCount").hidden = !zone.hints.length;
   $("radioCount").textContent = zone.hints.length;
   if (!$("radioPop").hidden) placePop($("radioPop"), $("radioButton"));
+  nudgeHints();
+}
+// Two misses in a row on a site not yet done, with hints still to ask for:
+// the Hints button glows, so help is easy to find without waiting for the teacher.
+function nudgeHints() {
+  const zone = site && zoneOf(site.key);
+  const on = !!zone && (site.misses || 0) >= 2 && !(site.stars || [])[0] && zone.hints.length < zone.hint_count;
+  $("radioButton").classList.toggle("nudge", on);
+  $("radioButton").querySelector("small").textContent = on ? "Get a hint" : "Hints";
 }
 async function askHint() {
   const zone = zoneOf(site.key);
@@ -2452,20 +2550,27 @@ async function transmit() {
   $("runButton").disabled = true;
   $("runButton").textContent = site.key === "7" ? "Landing…" : "Transmitting…";
   try {
-    const data = await post("/planet/run", {id: me, site: site.key, code: $("code").value});
+    const sent = $("code").value, again = sent === site.lastSent && site.lastMissed;
+    const data = await post("/planet/run", {id: me, site: site.key, code: sent});
     if (data.error === "join") { localStorage.removeItem("mazeId"); location.reload(); return; }
     if (data.error) { showBanner("lost", data.error); return; }
     runs = data.runs; rewards = data.rewards; site.ghost = data.ghost;
+    site.lastSent = sent; site.lastMissed = !data.runs.every(r => r.reached);
+    // The same code after a miss: the experiment only changes if the code does.
+    if (again && site.lastMissed) toast("🔁", "Same code as last time", "Change one thing, then transmit and watch what's different. (↻ under the map replays without sending.)");
     holdRank = data.rewards.new_stars > 0;
     useState(data.state);
     holdRank = false;
     $("totalStars").textContent = data.rewards.total_stars - data.rewards.new_stars;
     site.stars = data.rewards.best;
     site.misses = data.rewards.misses;
+    nudgeHints();
     const rec = data.rewards.record;
     if (rec) { site.record = {ticks: rec.ticks, name: rec.name}; $("record").hidden = false; $("record").textContent = `🏆 Class record: ${rec.ticks} ticks · ${rec.name}`; }
     errorLine = runs[0].line || 0;
     errorCount = Math.max(1, $("code").value.split("\n").length);
+    errorText = runs[0].error || "";
+    errorLineText = $("code").value.split("\n")[errorLine - 1];
     updateEditor();
     renderGoals();
     if (site.key === "7") {
@@ -2495,53 +2600,481 @@ function selectPlanet(i) {
 }
 
 // ---- Editor --------------------------------------------------------------------------------
+// A small code editor: a textarea with a coloured copy painted behind it. It
+// closes brackets and quotes, suggests names as you type (with what each one
+// does), says what goes in a command's ( ), points out slips on the line where
+// they are, and lights up the line the replay is running.
+let errorText = "", errorLineText = null;   // the last run's error, said on its line
+let runLine = 0;                             // the line the replay is on
+let problems = {};                           // line number -> a slip, in a few words
 function updateEditor() {
   const code = $("code").value;
   const count = Math.max(1, code.split("\n").length);
-  if (count !== errorCount) errorLine = 0;
-  $("lines").innerHTML = Array.from({length: count}, (_, i) =>
-    i + 1 === errorLine ? `<span class="err" title="The error is on this line">▸${i + 1}</span>` : i + 1).join("\n");
+  // The error's line changed (or lines came and went): the error is old news.
+  if (count !== errorCount || (errorLine && code.split("\n")[errorLine - 1] !== errorLineText)) errorLine = 0;
+  runLine = 0;
   const lines = code.split("\n").filter(line => line.trim() && !line.trim().startsWith("#")).length;
   // The compact star's target, right where the lines are counted.
   const m = site && site.goals && /✂️ (\d+)/.exec(site.goals[2] || "");
   const target = m ? Number(m[1]) : null;
-  $("lineCount").textContent = `${lines} line${lines === 1 ? "" : "s"}${target ? ` · ✂️ ${target}` : ""}`;
-  $("lineCount").className = target && lines && lines <= target ? "fits" : "";
-  paintCode(code);
-  syncPaint();
+  const fits = !!(target && lines && lines <= target);
+  $("lineCount").textContent = `${lines} line${lines === 1 ? "" : "s"}${target ? ` · ✂️ ${target}${fits ? " fits!" : ""}` : ""}`;
+  // Cutting the code down to size is a little win of its own, as it happens.
+  const popped = fits && site && site.fitted === false;
+  $("lineCount").className = fits ? "fits" + (popped ? " pop" : "") : "";
+  if (site) site.fitted = fits;
+  refreshEditor();
   saveCode();
   sendTyping();
   if (state) renderFunctions();
 }
-function syncPaint() { $("paint").scrollTop = $("code").scrollTop; $("paint").scrollLeft = $("code").scrollLeft; }
-function editorKey(event) {
-  const t = event.target, start = t.selectionStart, end = t.selectionEnd;
-  if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
-    event.preventDefault(); transmit(); return;
+// The gutter and the painted copy, which follow the cursor as well as the text.
+function refreshEditor() {
+  const t = $("code"), code = t.value, count = Math.max(1, code.split("\n").length);
+  const caret = document.activeElement === t ? code.slice(0, t.selectionStart).split("\n").length : 0;
+  problems = errorLine ? {} : problemsIn(code, caret);
+  const jumps = !!(scene && scene.run && scene.code === code);
+  $("lines").classList.toggle("jumps", jumps);
+  $("lines").title = jumps ? "Click a line number to see when it ran" : "";
+  $("lines").innerHTML = Array.from({length: count}, (_, i) => {
+    const n = i + 1;
+    if (n === errorLine) return `<span class="err" title="The error is on this line">▸${n}</span>`;
+    if (n === runLine) return `<span class="run" title="The replay is running this line">▶${n}</span>`;
+    if (problems[n]) return `<span class="warn" title="${esc(problems[n])}">●${n}</span>`;
+    return n;
+  }).join("\n");
+  paintCode(code, caret);
+  syncPaint();
+  const first = Object.keys(problems)[0];
+  $("problem").hidden = !first;
+  if (first) {
+    $("problem").innerHTML = `<b>Line ${first}</b> ${esc(problems[first])}`;
+    $("problem").dataset.line = first;
   }
+}
+function syncPaint() { $("paint").scrollTop = $("code").scrollTop; $("paint").scrollLeft = $("code").scrollLeft; }
+
+// The replay's frame came from this line: light it up while it plays.
+function followRun(ln) {
+  if (!scene || scene.code !== $("code").value) ln = 0;   // edited since: the lines have moved
+  if ((ln || 0) === runLine) return;
+  runLine = ln || 0;
+  refreshEditor();
+  const t = $("code");
+  if (!runLine || document.activeElement === t) return;
+  const lh = parseFloat(getComputedStyle(t).lineHeight) || 22, top = 12 + (runLine - 1) * lh;
+  if (top < t.scrollTop || top + lh > t.scrollTop + t.clientHeight - 40) t.scrollTop = Math.max(0, top - t.clientHeight / 3);
+}
+
+// ---- Keys ----
+const PAIRS = {"(": ")", "[": "]", '"': '"', "'": "'"};
+function editorKey(event) {
+  const t = event.target, start = t.selectionStart, end = t.selectionEnd, v = t.value;
+  if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+    event.preventDefault(); closeComplete(); transmit(); return;
+  }
+  if (!$("ac").hidden && acKey(event)) return;
+  if (event.key === " " && event.ctrlKey) { event.preventDefault(); complete(true, true); return; }
+  if (event.key === "/" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); toggleComment(); return; }
   // Escape, then Tab, leaves the editor, so the keyboard is never trapped in it.
-  if (event.key === "Escape") { tabLeaves = true; return; }
+  if (event.key === "Escape") { tabLeaves = true; closeComplete(); return; }
   if (event.key === "Tab" && tabLeaves) return;
   tabLeaves = false;
+  if (event.ctrlKey || event.metaKey || event.altKey) return;
+  const lineStart = v.lastIndexOf("\n", start - 1) + 1;
+  let lineEnd = v.indexOf("\n", start); if (lineEnd < 0) lineEnd = v.length;
+  const before = v.slice(lineStart, start), after = v.slice(end, lineEnd), next = v[end] || "";
   if (event.key === "Tab") {
-    event.preventDefault(); replaceText(start, end, "    ");
+    event.preventDefault();
+    if (event.shiftKey) return shiftLines(-1);
+    if (v.slice(start, end).includes("\n")) return shiftLines(1);
+    replaceText(start, end, "    ".slice(before.length % 4));
   } else if (event.key === "Enter") {
     event.preventDefault();
-    const lineStart = t.value.lastIndexOf("\n", start - 1) + 1;
-    const line = t.value.slice(lineStart, start);
-    let indent = (line.match(/^\s*/) || [""])[0];
-    if (line.trimEnd().endsWith(":")) indent += "    ";
-    replaceText(start, end, "\n" + indent);
+    // In front of nothing but closing brackets and a colon, Enter finishes
+    // the line first, so  while not at_beacon(|):  doesn't split.
+    const whole = /^[)\]"']*:?\s*$/.test(after) && after.trim() ? v.slice(lineStart, lineEnd) : before;
+    const at = whole === before ? start : lineEnd;
+    let indent = (whole.match(/^\s*/) || [""])[0];
+    if (mask(whole).text.trimEnd().endsWith(":")) indent += "    ";
+    else if (/^\s*(return\b.*|break|continue|pass)\s*$/.test(whole)) indent = indent.slice(4);
+    replaceText(at, whole === before ? end : lineEnd, "\n" + indent);
   } else if (event.key === "Backspace" && start === end) {
+    // Between a pair the editor closed, both go.
+    if (PAIRS[v[start - 1]] && PAIRS[v[start - 1]] === next) {
+      event.preventDefault(); replaceText(start - 1, start + 1, ""); return;
+    }
     // In the spaces at the start of a line, go back a whole level (4 spaces)
     // so the indentation always lines up.
-    const before = t.value.slice(t.value.lastIndexOf("\n", start - 1) + 1, start);
     if (!before || /[^ ]/.test(before)) return;
     event.preventDefault();
     replaceText(start - ((before.length - 1) % 4 + 1), start, "");
+  } else if (PAIRS[event.key]) {
+    const key = event.key, quote = key === '"' || key === "'";
+    if (start !== end && !v.slice(start, end).includes("\n")) {
+      // Typed round a selection: wrap it.
+      event.preventDefault();
+      replaceText(start, end, key + v.slice(start, end) + PAIRS[key]);
+      t.setSelectionRange(start + 1, end + 1);
+      return;
+    }
+    if (start !== end) return;
+    if (quote && next === key && inString(before, key)) { event.preventDefault(); t.setSelectionRange(start + 1, start + 1); return; }
+    if (quote && (inString(before) || /\w$/.test(before))) return;
+    if (next && !/[\s)\]:,]/.test(next)) return;
+    event.preventDefault();
+    replaceText(start, end, key + PAIRS[key]);
+    t.setSelectionRange(start + 1, start + 1);
+  } else if ((event.key === ")" || event.key === "]" || event.key === ":") && start === end && next === event.key
+             && (event.key !== ":" || after === ":")) {
+    // The closing bracket is already there: step over it.
+    event.preventDefault();
+    t.setSelectionRange(start + 1, start + 1);
+  } else if (event.key === ":" && start === end && !after.trim() && /^\s*(else|elif\b.*)$/.test(before)) {
+    // else and elif line up with their if.
+    const indent = blockIndent(v, lineStart, before);
+    if (indent == null) return;
+    event.preventDefault();
+    replaceText(lineStart, start, indent + before.trim() + ":");
   }
 }
 let tabLeaves = false;
+// Inside quotes on this line? (Of one kind, or either.)
+function inString(before, q) {
+  const open = mask(before).open;
+  return q ? open === q : !!open;
+}
+// The indent an else or elif needs: the if's above it, when it's deeper.
+function blockIndent(v, lineStart, line) {
+  const own = line.match(/^\s*/)[0].length;
+  const above = v.slice(0, lineStart).split("\n").reverse();
+  for (const l of above) {
+    if (!l.trim()) continue;
+    const ind = l.match(/^\s*/)[0].length;
+    if (ind >= own) continue;
+    return /^\s*(if|elif|for|while)\b/.test(l) ? l.match(/^\s*/)[0] : null;
+  }
+  return null;
+}
+// Tab and Shift+Tab on several lines move them all a level.
+function shiftLines(dir) {
+  editLines(lines => lines.map(l => dir > 0 ? (l.trim() ? "    " + l : l) : l.replace(/^ {1,4}/, "")));
+}
+// Ctrl+/ turns lines into notes and back.
+function toggleComment() {
+  editLines(lines => {
+    const used = lines.filter(l => l.trim());
+    if (used.length && used.every(l => /^\s*#/.test(l))) return lines.map(l => l.replace(/^(\s*)# ?/, "$1"));
+    const ind = Math.min(...used.map(l => l.match(/^\s*/)[0].length));
+    return lines.map(l => l.trim() ? l.slice(0, ind) + "# " + l.slice(ind) : l);
+  });
+}
+// Change every line the selection touches, keep them selected (one cursor
+// stays put on its line), and keep it all undoable.
+function editLines(change) {
+  const t = $("code"), v = t.value, s = t.selectionStart, e = t.selectionEnd;
+  const a = v.lastIndexOf("\n", s - 1) + 1;
+  let b = v.indexOf("\n", e > s && v[e - 1] === "\n" ? e - 1 : e); if (b < 0) b = v.length;
+  const old = v.slice(a, b), out = change(old.split("\n")).join("\n");
+  if (out === old) return;
+  replaceText(a, b, out);
+  if (s === e) { const p = Math.max(a, Math.min(a + out.length, s + out.length - old.length)); t.setSelectionRange(p, p); }
+  else t.setSelectionRange(a, a + out.length);
+}
+
+// ---- Suggestions as you type ----
+const BUILTIN_HELP = {
+  print: 'Show words and numbers in the telemetry: print("tick", tick())',
+  range: "Count: for i in range(5): runs the lines under it 5 times, with i going 0, 1, 2, 3, 4.",
+  abs: "A number without its minus sign: abs(-3) is 3.",
+  min: "The smaller number: min(3, battery())", max: "The bigger number: max(3, battery())",
+};
+const KEY_HELP = {
+  if: "Run the lines under it only when a check is True.", else: "Run the lines under it when every check above was False.",
+  elif: "Another check, tried when the if above was False.", while: "Repeat the lines under it while a check is True.",
+  for: "Repeat the lines under it a number of times.", def: "Make your own command out of other lines.",
+  return: "Hand an answer back from your def.", not: "Flips a check: True becomes False.",
+  and: "True when both checks are True.", or: "True when either check is True.", in: "Part of a for loop: for i in range(5):",
+  True: "Yes.", False: "No.", break: "Leave the loop now.", continue: "Skip to the next time round the loop.",
+  pass: "Does nothing: a placeholder for lines to come.",
+};
+// What goes in the ( ), for the hint above a command being typed.
+const ARGS = {north: "squares", south: "squares", east: "squares", west: "squares", wait: "ticks",
+  look: '"way"', jump: '"way"', drill: '"way"', distance: '"way"', report: "number", print: "what to show",
+  range: "how many", abs: "number", min: "a, b", max: "a, b"};
+const WAYS = ["north", "south", "east", "west"];
+const WAY_ARROW = {north: "↑", south: "↓", east: "→", west: "←"};
+// Typed at the start of a line, these come with their shape.
+const SNIPPETS = {for: ["for i in range(", "):"], while: ["while ", ":"], if: ["if ", ":"], elif: ["elif ", ":"], else: ["else:", ""], def: ["def ", "():"]};
+const KIND_WORD = {cmd: "command", sense: "sensor", own: "yours", var: "variable", key: "python", fn: "python", way: "way", word: "look() says"};
+// What look() says about each square (matches planet.WORDS).
+const LOOK_SAYS = {"#": "rock", ".": "ground", "~": "ice", "O": "crater", "+": "sun", "P": "pad", "G": "beacon",
+  ">": "belt", "<": "belt", "^": "belt", "v": "belt", "D": "gate", "B": "boulder", "H": "home"};
+
+function defsWithParams(code) {
+  const out = {};
+  for (const m of code.matchAll(/^\s*def\s+([A-Za-z_]\w*)\s*\(([^)]*)\)/gm))
+    out[m[1]] = m[2].split(",").map(p => p.trim()).filter(Boolean);
+  return out;
+}
+function varsIn(code) {
+  const out = new Set();
+  for (const m of code.matchAll(/^\s*([A-Za-z_]\w*)\s*[-+*/%]?=(?!=)/gm)) out.add(m[1]);
+  for (const m of code.matchAll(/\bfor\s+([A-Za-z_]\w*)\s+in\b/g)) out.add(m[1]);
+  Object.values(defsWithParams(code)).flat().forEach(p => out.add(p));
+  return out;
+}
+function knownNames(code) {
+  const list = [], seen = new Set();
+  const add = (name, kind, help) => { if (!seen.has(name)) { seen.add(name); list.push({name, kind, help}); } };
+  const own = defsWithParams(code);
+  for (const [n, ps] of Object.entries(own)) add(n, "own", `Your own command, made with def: ${n}(${ps.join(", ")})`);
+  for (const v of varsIn(code)) if (!own[v]) add(v, "var", "Your variable.");
+  for (const n of [...COMMANDS, ...((site && site.sensors) || [])]) add(n, LINE_CHIPS.includes(n) ? "cmd" : "sense", HELP[n] || "");
+  for (const [n, h] of Object.entries(KEY_HELP)) add(n, "key", h);
+  for (const [n, h] of Object.entries(BUILTIN_HELP)) add(n, "fn", h);
+  return list;
+}
+// What the cursor is in the middle of: a name, a way in look("..."), or the
+// word a look() is compared with. null when there's nothing to suggest.
+function completionContext() {
+  const t = $("code"), v = t.value, at = t.selectionStart;
+  if (at !== t.selectionEnd) return null;
+  const lineStart = v.lastIndexOf("\n", at - 1) + 1, before = v.slice(lineStart, at), next = v[at] || "";
+  if (/\w/.test(next)) return null;
+  const way = /\b(look|jump|drill|distance)\(\s*(["'])([a-z]*)$/i.exec(before);
+  if (way) return {mode: "way", from: at - way[3].length, word: way[3], quote: way[2]};
+  const said = /\blook\([^)]*\)\s*[!=]=\s*(["'])([a-z]*)$/i.exec(before);
+  if (said) return {mode: "word", from: at - said[2].length, word: said[2], quote: said[1]};
+  const m = mask(before);
+  if (m.open || m.text.trimEnd().length < before.trimEnd().length) return null;   // in words or a note
+  if (/\bdef\s+\w*$/.test(before)) return null;   // naming something new
+  const w = /(^|[^\w.])([A-Za-z_]\w*)$/.exec(before);
+  if (!w) return {mode: "name", from: at, word: "", lineStart, before};
+  return {mode: "name", from: at - w[2].length, word: w[2], lineStart, before};
+}
+let ac = null;   // the open list: {ctx, items, i}
+function complete(open, all) {
+  const ctx = completionContext();
+  if (!ctx) return closeComplete();
+  let items;
+  if (ctx.mode === "way") items = WAYS.map(n => ({name: n, kind: "way", help: `${WAY_ARROW[n]} ${n}`}));
+  else if (ctx.mode === "word") {
+    const said = new Set(["rock", "ground"]);
+    for (const ch of (site && site.map || []).join("")) if (LOOK_SAYS[ch]) said.add(LOOK_SAYS[ch]);
+    if (site && site.zoneKey === "crumble") said.add("crack");
+    items = [...said].map(n => ({name: n, kind: "word", help: `look() gives back "${n}" for this square.`}));
+  } else {
+    // Names only open as you type (or with Ctrl+Space), and never for a word
+    // that's already a whole name: Enter after it should still be a new line.
+    if (!open && !ac) return closeComplete();
+    if (!ctx.word && !all) return closeComplete();
+    items = knownNames($("code").value);
+  }
+  const w = ctx.word.toLowerCase();
+  if (items.some(c => c.name === ctx.word) && ctx.mode === "name") return closeComplete();
+  const starts = items.filter(c => c.name.toLowerCase().startsWith(w));
+  const inside = w.length > 1 ? items.filter(c => !starts.includes(c) && c.name.toLowerCase().includes(w)) : [];
+  const shown = [...starts, ...inside];
+  if (!shown.length || (ctx.mode !== "name" && shown.length === 1 && shown[0].name === ctx.word)) return closeComplete();
+  const keep = ac && ac.items[ac.i] && shown.findIndex(c => c.name === ac.items[ac.i].name);
+  ac = {ctx, items: shown, i: keep > 0 ? keep : 0};
+  $("sig").hidden = true;
+  drawComplete();
+}
+function drawComplete() {
+  const box = $("ac");
+  box.innerHTML = `<div class="ac-list" role="listbox">` + ac.items.map((c, i) =>
+    `<div class="ac-item${i === ac.i ? " on" : ""}" role="option" data-i="${i}"${i === ac.i ? ' aria-selected="true"' : ""}>`
+    + `<span class="ac-name t-${{cmd: "cmd", sense: "sense", own: "own", var: "", key: "key", fn: "key", way: "text", word: "text"}[c.kind]}">${esc(c.name)}</span>`
+    + `<small>${KIND_WORD[c.kind]}</small></div>`).join("") + `</div>`
+    + `<div class="ac-help">${esc(ac.items[ac.i].help || "")}<span>Enter or Tab to use it</span></div>`;
+  box.hidden = false;
+  placeAt(box, ac.ctx.from, true);
+  const on = box.querySelector(".on");
+  if (on) on.scrollIntoView({block: "nearest"});
+}
+function closeComplete() { ac = null; $("ac").hidden = true; }
+// Up, down, Enter, Tab and Escape steer the list while it's open.
+function acKey(event) {
+  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    event.preventDefault();
+    ac.i = (ac.i + (event.key === "ArrowDown" ? 1 : -1) + ac.items.length) % ac.items.length;
+    drawComplete();
+    return true;
+  }
+  if ((event.key === "Enter" || event.key === "Tab") && !event.shiftKey && !event.ctrlKey) {
+    event.preventDefault(); acceptComplete(ac.items[ac.i]); return true;
+  }
+  if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closeComplete(); return true; }
+  return false;
+}
+function acceptComplete(item) {
+  const t = $("code"), ctx = ac.ctx, at = t.selectionStart, v = t.value;
+  closeComplete();
+  if (ctx.mode !== "name") {
+    // The way or word, then past the closing quote (and bracket) it sits in.
+    replaceText(ctx.from, at, item.name);
+    let p = ctx.from + item.name.length;
+    if (t.value[p] === ctx.quote) p++;
+    if (ctx.mode === "way" && t.value[p] === ")") p++;
+    t.setSelectionRange(p, p);
+    return;
+  }
+  const name = item.name, lineEnd = (v.indexOf("\n", at) + 1 || v.length + 1) - 1;
+  const alone = !ctx.before.slice(0, ctx.before.length - ctx.word.length).trim() && !v.slice(at, lineEnd).trim();
+  let text = name, caret = name.length, from = ctx.from;
+  if (SNIPPETS[name] && alone) {
+    const [a, b] = SNIPPETS[name];
+    text = a + b; caret = a.length;
+    if (name === "else" || name === "elif") {
+      const indent = blockIndent(v, ctx.lineStart, ctx.before);
+      if (indent != null) { from = ctx.lineStart; text = indent + text; caret += indent.length; }
+    }
+  } else if (["cmd", "sense", "own", "fn"].includes(item.kind) && v[at] !== "(") {
+    const own = defsWithParams(v)[name];
+    if (["look", "jump", "drill", "distance"].includes(name)) { text = name + '("")'; caret = name.length + 2; }
+    else { text = name + "()"; caret = ARGS[name] || (own && own.length) ? name.length + 1 : text.length; }
+  } else if (["not", "and", "or", "in", "return", "if", "elif", "while", "for", "def"].includes(name) && v[at] !== " ") {
+    text = name + " "; caret = text.length;
+  }
+  replaceText(from, at, text);
+  t.setSelectionRange(from + caret, from + caret);
+  complete(false);
+  showSignature();
+}
+// Where a list or hint goes: under the cursor's line, or over it near the bottom.
+function placeAt(box, index, below) {
+  const t = $("code"), v = t.value, row = v.slice(0, index).split("\n").length - 1;
+  const col = index - v.lastIndexOf("\n", index - 1) - 1;
+  const lh = parseFloat(getComputedStyle(t).lineHeight) || 22;
+  const x = 6 + col * charWidth() - t.scrollLeft, y = 12 + row * lh - t.scrollTop;
+  const wrap = t.parentElement.getBoundingClientRect(), h = box.offsetHeight, w = box.offsetWidth;
+  const under = below && y + lh + h + 4 <= wrap.height || y - h - 4 < 0;
+  box.style.top = (under ? y + lh + 2 : y - h - 2) + "px";
+  box.style.left = Math.max(0, Math.min(wrap.width - w - 4, x - 4)) + "px";
+}
+function charWidth() {
+  const cs = getComputedStyle($("code")), font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  if (charWidth.font !== font) {
+    const c = document.createElement("canvas").getContext("2d");
+    c.font = font; charWidth.font = font; charWidth.w = c.measureText("0000000000").width / 10;
+  }
+  return charWidth.w;
+}
+// Inside a command's ( ): what goes there, and what the command does.
+function showSignature() {
+  const t = $("code"), at = t.selectionStart, sig = $("sig");
+  if (at !== t.selectionEnd || ac || document.activeElement !== t) { sig.hidden = true; return; }
+  const v = t.value, lineStart = v.lastIndexOf("\n", at - 1) + 1, m = mask(v.slice(lineStart, at)).text;
+  let depth = 0, open = -1;
+  for (let i = m.length - 1; i >= 0; i--) {
+    if (m[i] === ")") depth++;
+    else if (m[i] === "(" && !depth--) { open = i; break; }
+  }
+  const name = open > 0 && (/([A-Za-z_]\w*)\s*$/.exec(m.slice(0, open)) || [])[1];
+  const own = name && defsWithParams(v)[name];
+  const args = name && (own && own.length ? own.join(", ") : ARGS[name]);
+  if (!args || KEY_HELP[name]) { sig.hidden = true; return; }
+  const help = own ? "Your own command." : HELP[name] || BUILTIN_HELP[name] || "";
+  sig.innerHTML = `<code>${esc(name)}(<b>${esc(args)}</b>)</code>${help ? ` ${esc(help)}` : ""}`;
+  sig.hidden = false;
+  placeAt(sig, lineStart + open, false);
+}
+
+// Pointing at a word in the code says what it is, after a moment.
+let hoverTimer = 0;
+function hoverWord(event) {
+  clearTimeout(hoverTimer);
+  $("hover").hidden = true;
+  if (event.type !== "mousemove" || event.buttons) return;
+  hoverTimer = setTimeout(() => {
+    const t = $("code"), rect = t.getBoundingClientRect(), lh = parseFloat(getComputedStyle(t).lineHeight) || 22;
+    const row = Math.floor((event.clientY - rect.top + t.scrollTop - 12) / lh);
+    const col = Math.floor((event.clientX - rect.left + t.scrollLeft - 6) / charWidth());
+    const line = t.value.split("\n")[row];
+    if (line == null || col < 0 || col >= line.length || mask(line).text[col] === " ") return;
+    let a = col, b = col;
+    while (a > 0 && /\w/.test(line[a - 1])) a--;
+    while (b < line.length && /\w/.test(line[b])) b++;
+    const word = line.slice(a, b), own = defsWithParams(t.value)[word];
+    const help = own ? `Your own command, made with def: ${word}(${own.join(", ")})` : HELP[word] || KEY_HELP[word] || BUILTIN_HELP[word];
+    if (!help || !/\w/.test(line[col])) return;
+    const box = $("hover");
+    box.innerHTML = `<code>${esc(word)}</code> ${esc(help)}`;
+    box.hidden = false;
+    placeAt(box, t.value.split("\n").slice(0, row).join("\n").length + (row ? 1 : 0) + a, false);
+  }, 450);
+}
+
+// ---- Slips, spotted while typing ----
+// A line with its words and its # note blanked out (the same length), so
+// brackets and colons inside them don't count. open: a quote left open.
+function mask(line) {
+  let out = "", q = null;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (q) { out += ch === q ? ch : " "; if (ch === q) q = null; continue; }
+    if (ch === "#") { out += " ".repeat(line.length - i); break; }
+    if (ch === '"' || ch === "'") q = ch;
+    out += ch;
+  }
+  return {text: out, open: q};
+}
+function nearBy(a, b) {
+  // Two names a letter or two apart (a slip, a swap or a missing letter).
+  if (Math.abs(a.length - b.length) > 2) return false;
+  const d = Array.from({length: a.length + 1}, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length] <= (b.length > 4 ? 2 : 1);
+}
+const MAZE_WORDS = ["move", "turn_left", "turn_right", "turn", "forward", "wall_ahead", "wall_left", "wall_right"];
+// Each line's slip, if it has one, except the line being typed on (a
+// half-typed line isn't wrong yet). The run's own errors say more.
+function problemsIn(code, caret) {
+  const lines = code.split("\n"), out = {};
+  const known = new Set([...COMMANDS, ...((site && site.sensors) || []), ...Object.keys(BUILTIN_HELP), "int", "str",
+                         ...Object.keys(defsWithParams(code))]);
+  const nextUsed = i => { for (let j = i + 1; j < lines.length; j++) if (mask(lines[j]).text.trim()) return j; return -1; };
+  const indentOf = l => l.match(/^\s*/)[0].length;
+  let prev = -1;
+  lines.forEach((line, i) => {
+    const n = i + 1, {text, open} = mask(line), bare = text.trimEnd();
+    if (!bare.trim()) return;
+    const say = msg => { if (n !== caret && !out[n]) out[n] = msg; };
+    if (open) say(`close the words with ${open}`);
+    let depth = 0, first = null;
+    for (const ch of bare) {
+      if (ch === "(" || ch === "[") { depth++; first = first || ch; }
+      if (ch === ")" || ch === "]") depth--;
+    }
+    if (depth > 0) say(`missing ${first === "[" ? "]" : ")"} at the end`);
+    if (depth < 0) say("one ) too many");
+    for (const m of bare.matchAll(/([A-Za-z_]\w*)\s*\(/g)) {
+      const name = m[1];
+      if (known.has(name) || KEY_HELP[name] || SENSOR_ZONE[name] != null) continue;
+      if (MAZE_WORDS.includes(name)) { say("drive by compass here: north() south() east() west()"); break; }
+      const close = [...known].find(k => k.toLowerCase() === name.toLowerCase() || nearBy(name, k));
+      say(close ? `did you mean ${close}()?` : `there's no command called ${name}()`);
+      break;
+    }
+    const bareCmd = /^\s*(north|south|east|west|wait)\s*(\d*)\s*$/.exec(bare);
+    if (bareCmd) say(`add brackets: ${bareCmd[1]}(${bareCmd[2]})`);
+    if (/^\s*(if|elif|while|for|def|else)\b/.test(bare) && !bare.endsWith(":") && depth === 0) say("add : at the end");
+    if (/^\s*(if|elif|while)\b/.test(bare) && /[^=!<>]=[^=]/.test(bare)) say("use == to check if two things are the same");
+    if (bare.endsWith(":") && depth === 0) {
+      const j = nextUsed(i);
+      if (j >= 0 && indentOf(lines[j]) <= indentOf(line) && j + 1 !== caret) say("push the line under it in with Tab");
+    }
+    if (prev < 0 ? indentOf(line) > 0 : indentOf(line) > indentOf(lines[prev]) && !mask(lines[prev]).text.trimEnd().endsWith(":"))
+      say(prev < 0 ? "start this line at the left edge" : "pushed in too far: the line above doesn't end with :");
+    prev = i;
+  });
+  return out;
+}
+
 // Put the cursor at the start of a line and select it, for the error's Line button.
 function goToLine(n) {
   const t = $("code"), lines = t.value.split("\n");
@@ -2555,7 +3088,7 @@ function goToLine(n) {
 // when they're spelt right, so a typo like  turnright()  stays plain.
 const KEYWORDS = new Set(["def", "if", "elif", "else", "while", "for", "in", "range", "not", "and", "or",
   "return", "True", "False", "None", "break", "continue", "pass", "global", "print"]);
-function paintCode(code) {
+function paintCode(code, caret = 0) {
   const own = new Set([...code.matchAll(/^\s*def\s+([A-Za-z_]\w*)/gm)].map(m => m[1]));
   const sensors = new Set((site && site.sensors) || []);
   const token = line => line.replace(/(#.*)|("[^"]*"?|'[^']*'?)|\b(\d+)\b|([A-Za-z_]\w*)|([&<>])/g, (all, comment, text, num, word, ch) => {
@@ -2563,18 +3096,53 @@ function paintCode(code) {
     if (comment) return `<i class="t-note">${esc(comment)}</i>`;
     if (text) return `<i class="t-text">${esc(text)}</i>`;
     if (num) return `<i class="t-num">${num}</i>`;
-    const cls = BLANK.test(word) ? "t-blank" : COMMANDS.includes(word) || (word === "jump" && sensors.has(word)) ? "t-cmd" : sensors.has(word) ? "t-sense" : own.has(word) ? "t-own"
+    const cls = BLANK.test(word) ? "t-blank" : COMMANDS.includes(word) || (LINE_CHIPS.includes(word) && sensors.has(word)) ? "t-cmd" : sensors.has(word) ? "t-sense" : own.has(word) ? "t-own"
       : KEYWORDS.has(word) ? "t-key" : "";
     return cls ? `<i class="${cls}">${word}</i>` : word;
   });
+  // Room to the right of a line for a few words about it.
+  const t = $("code"), cols = Math.floor((t.clientWidth - 20) / charWidth());
+  const lens = (n, len, text, cls) => {
+    const room = cols - len - 4;
+    if (room < 12) return "";
+    return `<i class="lens ${cls}">  ◂ ${esc(text.length > room ? text.slice(0, room - 1).trimEnd() + "…" : text)}</i>`;
+  };
+  const short = errorText.replace(/^(Syntax error on line|Line) \d+: /i, "").split(/(?<=[.!?])\s/)[0];
   // Faint guides in the indentation, one per level, so blocks line up by eye.
-  const html = code.split("\n").map(line => {
-    const lead = line.match(/^ */)[0], levels = Math.floor(lead.length / 4);
-    return '<i class="ind">    </i>'.repeat(levels) + lead.slice(levels * 4) + token(line.slice(lead.length));
+  const html = code.split("\n").map((line, i) => {
+    const lead = line.match(/^ */)[0], levels = Math.floor(lead.length / 4), n = i + 1;
+    const body = token(line.slice(lead.length));
+    return '<i class="ind">    </i>'.repeat(levels) + lead.slice(levels * 4)
+      + (problems[n] ? `<i class="squiggle">${body}</i>${lens(n, line.length, problems[n], "warn")}` : body)
+      + (n === errorLine && short ? lens(n, line.length, short, "err") : "");
   }).join("\n");
-  // The line with the error gets a coral bar behind it.
-  const bar = errorLine ? `<span class="err-line" style="top: calc(12px + ${errorLine - 1} * 1.6em)"></span>` : "";
-  $("paint").innerHTML = bar + html + "\n ";
+  const row = n => `calc(12px + ${n - 1} * 1.6em)`;
+  // Behind the text: the error's coral bar, the replay's line, the cursor's line.
+  let bars = errorLine ? `<span class="err-line" style="top: ${row(errorLine)}"></span>` : "";
+  if (runLine) bars += `<span class="run-line" style="top: ${row(runLine)}"></span>`;
+  if (caret && !runLine) bars += `<span class="cur-line" style="top: ${row(caret)}"></span>`;
+  // The bracket next to the cursor and its partner, boxed.
+  for (const [r, c] of caret ? matchingBrackets(code, t.selectionStart) : [])
+    bars += `<span class="br-match" style="top: ${row(r)}; left: calc(6px + ${c}ch)"></span>`;
+  $("paint").innerHTML = bars + html + "\n ";
+}
+// [[line, column], [line, column]] for the bracket at (or just before) the
+// cursor and the one that closes it.
+function matchingBrackets(code, at) {
+  const m = code.split("\n").map(l => mask(l).text).join("\n");
+  const OPEN = "([", CLOSE = ")]";
+  let i = OPEN.includes(m[at]) || CLOSE.includes(m[at]) ? at : OPEN.includes(m[at - 1]) || CLOSE.includes(m[at - 1]) ? at - 1 : -1;
+  if (i < 0) return [];
+  const opening = OPEN.includes(m[i]), step = opening ? 1 : -1;
+  let depth = 0, j = i;
+  for (; j >= 0 && j < m.length; j += step) {
+    if (OPEN.includes(m[j])) depth += step;
+    if (CLOSE.includes(m[j])) depth -= step;
+    if (!depth) break;
+  }
+  if (j < 0 || j >= m.length) return [];
+  const where = k => { const before = code.slice(0, k).split("\n"); return [before.length, before[before.length - 1].length]; };
+  return [where(i), where(j)];
 }
 
 // ---- Scenes: the join screen and the how-it-works card ------------------------------------
@@ -2687,13 +3255,54 @@ $("speedButton").addEventListener("click", nextSpeed);
 showSpeed();
 $("scrub").addEventListener("input", () => jumpTo(Number($("scrub").value)));
 $("marks").addEventListener("click", e => { const k = e.target.dataset.k; if (k != null) jumpTo(Number(k)); });
+// A telemetry line jumps the replay to its tick.
+$("feed").addEventListener("click", e => {
+  const ev = e.target.closest(".ev");
+  if (!ev || !scene || !scene.run) return;
+  const t = Number(ev.dataset.t), k = scene.frames.findIndex(f => f.t >= t);
+  if (k >= 0) jumpTo(k);
+});
+// A line number jumps the replay to when that line ran (the next time, on
+// each click), so "what did line 3 do?" has an answer on the map.
+$("lines").addEventListener("click", e => {
+  if (!scene || !scene.run || scene.code !== $("code").value) return;
+  const lh = parseFloat(getComputedStyle($("code")).lineHeight) || 22, rect = $("lines").getBoundingClientRect();
+  const n = Math.floor((e.clientY - rect.top + $("lines").scrollTop - 12) / lh) + 1;
+  const ran = scene.frames.map((f, k) => f.ln === n ? k : -1).filter(k => k >= 0);
+  if (!ran.length) return toast("💤", `Line ${n} didn't move the rover`, "In this run, nothing on that line drove, waited or jumped.");
+  jumpTo(ran.find(k => k > pos) ?? ran[0]);
+});
 $("kit").addEventListener("click", e => { const n = e.target.dataset && e.target.dataset.name; if (n) insertChip(n); });
 $("radioButton").addEventListener("click", () => openPop($("radioPop"), $("radioButton")));
 $("hintButton").addEventListener("click", askHint);
 $("fnButton").addEventListener("click", () => { removing = null; $("fnState").textContent = "Saved functions work on every site."; openPop($("fnPop"), $("fnButton")); renderFunctions(); placePop($("fnPop"), $("fnButton")); });
 $("fnPop").addEventListener("click", functionsClick);
-$("code").addEventListener("input", updateEditor);
-$("code").addEventListener("scroll", () => { $("lines").scrollTop = $("code").scrollTop; syncPaint(); });
+$("code").addEventListener("input", e => {
+  updateEditor();
+  complete(e.inputType === "insertText");
+  showSignature();
+});
+// The cursor moved (typing, arrows, a click): the lit line, the brackets and
+// the suggestions follow it, once a frame.
+function onCaret() {
+  if (onCaret.queued) return;
+  onCaret.queued = requestAnimationFrame(() => {
+    onCaret.queued = 0;
+    refreshEditor();
+    if (document.activeElement === $("code")) { complete(false); showSignature(); }
+  });
+}
+document.addEventListener("selectionchange", onCaret);
+for (const type of ["keyup", "mouseup", "focus"]) $("code").addEventListener(type, onCaret);
+$("code").addEventListener("blur", () => { closeComplete(); $("sig").hidden = true; onCaret(); });
+$("ac").addEventListener("mousedown", e => {
+  e.preventDefault();
+  const item = e.target.closest(".ac-item");
+  if (item && ac) acceptComplete(ac.items[Number(item.dataset.i)]);
+});
+$("problem").addEventListener("click", () => goToLine(Number($("problem").dataset.line)));
+for (const type of ["mousemove", "mouseleave", "mousedown", "keydown", "scroll"]) $("code").addEventListener(type, hoverWord);
+$("code").addEventListener("scroll", () => { $("lines").scrollTop = $("code").scrollTop; syncPaint(); closeComplete(); $("sig").hidden = true; });
 $("code").addEventListener("keydown", editorKey);
 document.addEventListener("keydown", e => {
   if (e.key === "F5" && me) { e.preventDefault(); transmit(); return; }
@@ -2736,7 +3345,7 @@ $("map").addEventListener("click", e => {
   scene.poke = performance.now();
   scene.said = {at: scene.poke, text: POKE_LINES[Math.floor(Math.random() * POKE_LINES.length)]};
 });
-window.addEventListener("resize", () => render());
+window.addEventListener("resize", () => { render(); refreshEditor(); });
 resume();
 </script>
 </body>

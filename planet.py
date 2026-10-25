@@ -90,6 +90,40 @@ WORDS = {"#": "rock", ".": "ground", "S": "ground", "G": "beacon", "~": "ice",
          ">": "belt", "<": "belt", "^": "belt", "v": "belt",
          "k": "ground", "D": "gate", **{str(n): "ground" for n in range(1, 10)},
          "B": "boulder", "H": "home"}
+# Every word look() can give back, for spotting one written without quotes.
+LOOK_WORDS = set(WORDS.values()) | {"crack", "sample", "key", "flag", "sun"}
+OPEN_WORDS = {"empty", "open", "space", "free", "clear", "nothing", "floor", ""}
+
+
+def check_look_words(node):
+    """look() compared with a word it never gives back, like "wall" from the
+    maze game or "Rock": the check is never true, so say so before it runs."""
+    sides = [node.left] + node.comparators
+    if not any(isinstance(s, ast.Call) and getattr(s.func, "id", "") == "look"
+               for s in sides):
+        return
+    for s in sides:
+        if isinstance(s, ast.Constant) and isinstance(s.value, str) and \
+                s.value not in LOOK_WORDS:
+            word = s.value.strip().lower()
+            near = difflib.get_close_matches(word, LOOK_WORDS, 1, 0.6)
+            raise BotError(f'look() never gives back "{s.value}". '
+                           + ('An open square is "ground".' if word in OPEN_WORDS else
+                              f'Did you mean "{near[0]}"?' if near else
+                              'It gives back words like "rock", "ground" and '
+                              '"crater", in small letters.'))
+
+
+def check_drive_math(node):
+    """A drive command in a sum, like  east(2) + south(2):  it gives back
+    nothing to add, so say what to write instead of "not None"."""
+    parts = node.values if isinstance(node, ast.BoolOp) else [node.left, node.right]
+    for part in parts:
+        name = getattr(getattr(part, "func", None), "id", "")
+        if isinstance(part, ast.Call) and name in COMMANDS:
+            raise BotError(f"{name}() drives the rover: it doesn't give back a "
+                           f"number to add up. Put each command on its own line, "
+                           f"and to go 3 squares write  {name}(3)")
 BELTS = {"^": 0, ">": 1, "v": 2, "<": 3}   # which way each belt carries, into DIRS
 
 # The maze game's words, each with what to write on this planet instead.
@@ -176,10 +210,13 @@ class Rover(Brain):
                            f"characters (about 100 lines). Delete some comments "
                            f"or lines you don't need.")
         code = code.replace(" ", " ").replace("​", "").replace("﻿", "")
+        self.source = code   # to quote a student's own line back to them
         try:
             self.tree = ast.parse(code)
         except SyntaxError as e:
-            err = BotError(syntax_message(e, "def step():"))
+            # The maze game's sensor isn't on this planet: give one that is.
+            err = BotError(syntax_message(e, "def step():").replace(
+                "if not wall_ahead():", "while not at_beacon():"))
             err.syntax_line = e.lineno   # for the editor; the text already says it
             raise err
         # Every def in the program, so a call above its def can say where it is,
@@ -214,7 +251,19 @@ class Rover(Brain):
             raise BotError("Dots like  random.choice  aren't part of Strange "
                            "Planet — use the commands and sensors, or make your "
                            "own with def.")
+        if isinstance(node, ast.Compare):
+            check_look_words(node)
+        if isinstance(node, (ast.BinOp, ast.BoolOp)):
+            check_drive_math(node)
         return super().eval(node, frame)
+
+    def math(self, op, a, b):
+        # Light Cycles' example uses its wall_ahead(): use this planet's sensor.
+        if isinstance(op, (ast.BitAnd, ast.BitOr)):
+            word = "and" if isinstance(op, ast.BitAnd) else "or"
+            raise BotError(f'Use the word  {word}  to join two checks, like:  '
+                           f'if look("east") == "rock" {word} look("south") == "rock":')
+        return super().math(op, a, b)
 
     def mine(self, name, frame):
         return name in frame.vars or name in self.globals.vars
@@ -227,6 +276,10 @@ class Rover(Brain):
                 raise BotError(f'To drive, write  {name.lower()}()  with brackets. '
                                f'To name the direction, put it in quotes: '
                                f'"{name.lower()}"')
+            if name.lower() in LOOK_WORDS and name not in self.defs:
+                raise BotError(f'Put quotes round words:  "{name.lower()}". look() '
+                               f'gives back a word, like  look("east") == '
+                               f'"{name.lower()}"')
         return super().lookup(name, frame)
 
     def assign(self, name, value, frame):
@@ -237,6 +290,7 @@ class Rover(Brain):
         super().assign(name, value, frame)
 
     def run_statement(self, node, frame):
+        self.world.line = node.lineno
         if isinstance(node, (ast.Import, ast.ImportFrom)):
             raise BotError("import isn't allowed on Strange Planet — "
                            "everything you need is already here.")
@@ -244,6 +298,26 @@ class Rover(Brain):
                 (node.name in COMMANDS or node.name in OWN_COMMANDS):
             raise BotError(f"{node.name}() is already one of the rover's commands — "
                            f"pick another name, like  def hop():")
+        if isinstance(node, ast.Expr) and not isinstance(node.value, (ast.Call, ast.Name, ast.Tuple)) \
+                and not (isinstance(node.value, ast.Constant) and isinstance(node.value.value, str)):
+            if isinstance(node.value, ast.Constant) and node.value.value is Ellipsis:
+                raise BotError("The hints' ... only marks where your own lines go. "
+                               "Replace it with the commands you need.")
+            if isinstance(node.value, (ast.BinOp, ast.BoolOp)):
+                check_drive_math(node.value)
+            # Worked out and then dropped: show where it could go.
+            src = ast.get_source_segment(self.source, node.value) or ast.unparse(node.value)
+            text = (f"That line checks something but doesn't use the answer. Put it "
+                    f"after if or while, like:  if {src}:"
+                    if isinstance(node.value, ast.Compare) else
+                    f"That line works something out but doesn't use it. Keep it in a "
+                    f"variable, like  n = {src}  or put it inside print() or report().")
+            raise BotError(text if frame.module else
+                           text + " Inside a def, return hands it back.")
+        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Tuple) and \
+                all(isinstance(e, ast.Call) for e in node.value.elts):
+            raise BotError("Put each command on its own line, with no comma "
+                           "between them.")
         if isinstance(node, ast.Expr) and isinstance(node.value, ast.Name):
             name = node.value.id
             if name in self.sensors or name in self.defs:
@@ -382,7 +456,9 @@ class World:
         self.crack = None    # the square that just cracked, for the next frame
         self.crystals = {tuple(p) for p in variant.get("crystals", [])}
         self.bumps = self.pushes = 0
+        self.gusted = []        # the ticks a gust pushed the rover
         self.computed = False   # the right report() was worked out by code
+        self.copied = False     # report()ed the answer on a classmate's planet
         self.samples = {(r, c) for r, row in enumerate(self.grid)
                         for c, ch in enumerate(row) if ch == "*"}
         self.keys = {(r, c) for r, row in enumerate(self.grid)
@@ -415,6 +491,7 @@ class World:
             self.links[tuple(a)] = tuple(b)
         self.log = []
         self.prints = []
+        self.line = 0        # the line of code running now, for the editor to follow
         self.frames = [self.frame()]
         self.end = None      # "goal", "wrong", "fell", "battery", "ticks" once it's over
 
@@ -563,6 +640,8 @@ class World:
             self.picked = None
         if self.home:
             f["cg"] = self.cargo
+        if self.line:
+            f["ln"] = self.line
         if event:
             f["e"] = event
         return f
@@ -772,6 +851,7 @@ class World:
             self.say("💨 gust, but a rock sheltered the rover")
             return
         self.pushes += 1
+        self.gusted.append(self.t)
         self.say("💨 gust pushed the rover east")
         self.enter(r, c, "gust")
 
@@ -785,6 +865,10 @@ class World:
         if value == self.v["answer"]:
             self.finish("goal", f"📡 you reported {value}. Mission control: "
                                 f"that matches what we measured!")
+        if value in self.v.get("others", ()):
+            self.copied = True
+            self.finish("wrong", f"📡 you reported {value}. That's the number on "
+                                 f"someone else's planet: measure your own.")
         self.finish("wrong", f"📡 you reported {value}. Mission control "
                              f"measured something different.")
 
@@ -829,9 +913,7 @@ FELL = {"gust": "A 💨 gust pushed the rover into a crater",
         "belt": "A belt carried the rover into a crater",
         "jump": "The rover jumped into a crater",
         "move": "The rover drove into a crater"}
-FELL_NEXT = {"gust": "Gusts come every few ticks. wait() just before one: tick() "
-                     "tells you which tick it is.",
-             "slide": "On ice, one move keeps sliding until rock stops it. Pick a "
+FELL_NEXT = {"slide": "On ice, one move keeps sliding until rock stops it. Pick a "
                       "rock to stop against.",
              "belt": "Belts carry the rover the way their arrows point. Jump over a "
                      "belt you don't want to ride.",
@@ -863,7 +945,78 @@ def drill_next(world):
             f"drill{'s' if world.drills != 1 else ''} left.")
 
 
-def explain(world, unlocked=()):
+def gust_numbers(code):
+    """The numbers a program divides tick() by, like 9 in  tick() % 9 == 8,
+    or in  GUST = 9  then  tick() % GUST."""
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return []
+    named = {t.id: n.value.value for n in ast.walk(tree) if isinstance(n, ast.Assign)
+             and isinstance(n.value, ast.Constant) and type(n.value.value) is int
+             for t in n.targets if isinstance(t, ast.Name)}
+    numbers = []
+    for n in ast.walk(tree):
+        if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Mod) and \
+                isinstance(n.left, ast.Call) and getattr(n.left.func, "id", "") == "tick":
+            if isinstance(n.right, ast.Constant) and type(n.right.value) is int:
+                numbers.append(n.right.value)
+            elif isinstance(n.right, ast.Name) and n.right.id in named:
+                numbers.append(named[n.right.id])
+    return numbers
+
+
+def gust_next(world, code):
+    """The next step after a gust blew the rover into a crater. A number
+    copied from a classmate's planet is the usual reason, so say so."""
+    every, numbers = world.v["wind"], gust_numbers(code)
+    # What the telemetry's 💨 lines show, said plainly.
+    when = f"{every}, {2 * every}, {3 * every} and so on"
+    wrong = [n for n in numbers if n != every]
+    if wrong:
+        return (f"Your code waits with tick() % {wrong[0]}, but the gusts here "
+                f"don't come every {wrong[0]} ticks: they come on ticks {when}.")
+    if numbers:
+        return (f"tick() % {every} is the right number here, but the gust caught "
+                f"the rover driving on tick {world.gusted[-1]}. Check before every single "
+                f"square, and wait() when tick() % {every} == {every - 1}.")
+    return (f"The gusts here come on ticks {when}, and only catch a rover that "
+            f"is driving. wait() just before each one: tick() tells your code "
+            f"which tick it is.")
+
+
+def pacing(world, unlocked):
+    """A rover that ran out of time going to and fro over the same two or three
+    squares: say which, and a crater it could jump from one of them."""
+    spots = []
+    for f in world.frames[-40:]:
+        if (f["r"], f["c"]) not in spots:
+            spots.append((f["r"], f["c"]))
+    if len(world.frames) < 40 or not 2 <= len(spots) <= 3:
+        return None
+    names = [where(p) for p in spots]
+    what = (f": the rover kept going back and forth between {names[0]} and {names[1]}"
+            if len(spots) == 2 else
+            f": the rover kept going round {names[0]}, {names[1]} and {names[2]}")
+    nxt = ("Your loop keeps making the same moves there, because what it checks "
+           "there never changes. Give it another way to go.")
+    if "jump" in unlocked:
+        jumps = []
+        for r, c in spots:
+            for way, d in COMPASS.items():
+                dr, dc = DIRS[d]
+                land = (r + 2 * dr, c + 2 * dc)
+                if world.at(r + dr, c + dc) == "O" and world.at(*land) not in SOLID + "O":
+                    near = abs(land[0] - world.goal[0]) + abs(land[1] - world.goal[1]) \
+                        if world.goal else 0
+                    jumps.append((near, way, (r, c)))
+        if jumps:
+            _, way, frm = min(jumps)
+            nxt = f'A crater is in the way. jump("{way}") from {where(frm)} goes over it.'
+    return what, nxt
+
+
+def explain(world, unlocked=(), code=""):
     """What went wrong in plain words, for the banner after a run that didn't
     finish its mission: {"what": what happened, "next": one thing to try}.
     Statements, not questions, and always where it happened."""
@@ -882,7 +1035,15 @@ def explain(world, unlocked=()):
             if world.how == "gust" and "gust_in" in unlocked:
                 nxt = ("gust_in() says how many ticks until the next gust. Before "
                        "each square:  if gust_in() == 1: wait()")
-            if world.how == "move":
+            elif world.how == "gust":
+                what += f" on tick {world.t}"
+                nxt = gust_next(world, code)
+            elif world.how == "move" and world.gusted and "gust_in" not in unlocked:
+                # Blown off its path earlier, then drove on into the crater.
+                what += (f", after a 💨 gust pushed it off its path on tick "
+                         f"{world.gusted[-1]}")
+                nxt = gust_next(world, code)
+            elif world.how == "move":
                 # Name the way it was driving, and a crater it could have jumped.
                 way = next(w for w, d in COMPASS.items() if d == world.d)
                 dr, dc = DIRS[world.d]
@@ -913,8 +1074,16 @@ def explain(world, unlocked=()):
             nxt = (f'It kept driving {way} into rock. Check look("{way}") first, '
                    f'and drive another way when it says "rock".')
             bumps_said = True
+        paced = None if nxt else pacing(world, unlocked)
+        if paced:
+            what += paced[0]
+            nxt = paced[1]
         nxt = nxt or ("A while loop is probably going round forever. Check that "
                       "what it waits for can happen.")
+    elif end == "wrong" and world.copied:
+        what = "That's the number on someone else's planet"
+        nxt = ("Everyone's planet is different, so everyone's number is too. "
+               "Measure your own.")
     elif end == "wrong":
         what = "Mission control measured a different number"
         nxt = "Play the replay and count again."
@@ -945,6 +1114,11 @@ def explain(world, unlocked=()):
         elif world.goal:
             what += f", away from the beacon at {where(world.goal)}"
             nxt = f"The beacon is {far(at, world.goal)} of there."
+            if "ice" in world.rules and "gust_in" not in unlocked:
+                # Squares to go mean little when one move slides to a rock.
+                nxt += (" On ice one move slides until rock stops it, so work "
+                        "back from the beacon: find a rock that would stop a "
+                        "slide right next to it.")
     if not what:
         return None
     extra = []
@@ -956,7 +1130,10 @@ def explain(world, unlocked=()):
     if world.bumps and end in ("stopped", "ticks") and not bumps_said:
         extra.append(f"The rover bumped into rock {world.bumps} "
                      f"time{'s' if world.bumps != 1 else ''}: when it bumps, it doesn't move.")
-    return {"what": " ".join([what + "."] + extra), "next": nxt}
+    out = {"what": " ".join([what + "."] + extra), "next": nxt}
+    if world.copied:
+        out["copied"] = True   # the coach leads with it
+    return out
 
 
 def mission_of(variant):
@@ -1053,7 +1230,7 @@ def drive(code, variant, rules, zone):
             "samples": len(world.samples),
             "bumps": world.bumps, "pushes": world.pushes,
             "computed": world.computed,
-            "explain": None if error else explain(world, sensors),
+            "explain": None if error else explain(world, sensors, code),
             "drills": world.drills if "drills" in variant else None,
             "typed": world.typed,
             # A def the program actually ran, for the def star and badge.
@@ -1253,6 +1430,10 @@ def site(key, name, brief, variants, per_student=False, reference="",
     either. `coach` walks a field measurement through step by step: an
     `intro` when the site opens, a tip for a run with no report() (`short`),
     and `steps` that go further after each miss."""
+    if per_student and "answer" in variants[0]:
+        # Each planet knows its classmates' numbers, to spot a copied one.
+        for v in variants:
+            v["others"] = sorted({w["answer"] for w in variants} - {v["answer"]})
     return {"key": key, "name": name, "brief": brief, "variants": variants,
             "per_student": per_student, "reference": reference,
             "bonus": bonus or {"kind": "no_bump"}, "compact": compact,
@@ -1295,12 +1476,18 @@ ZONES = [
                         "north(3)\nwest()\n"),
          site("1b", "Crystal Steps",
               "Collect the eight samples. They sit on steps: one square east,"
-              " one square south, and again.",
+              " one square south, and again.\n"
+              "A for loop repeats the lines pushed in under it. This one "
+              "drives east 3 times:\n\n"
+              "for i in range(3):\n    east()",
               [{"map": STEPS_FIELD}],
               reference="for i in range(8):\n    east()\n    south()\n"),
          site("1c", "Rock Run",
               "Collect the sample in front of every rock. Your rocks aren't where "
-              "anyone else's are, so let look() find them.",
+              "anyone else's are, so let look() find them.\n"
+              "look(\"east\") says what's on the next square east. This while "
+              "loop drives east until that's \"rock\":\n\n"
+              "while look(\"east\") != \"rock\":\n    east()",
               [{"map": boulder_run(pairs, i)} for i, pairs in enumerate((
                   [(4, 2), (3, 4), (5, 2), (2, 3)],
                   [(6, 3), (2, 2), (3, 4), (4, 2)],
@@ -1330,13 +1517,23 @@ ZONES = [
      ],
      "sites": [
          site("2a", "First Frost",
-              "📡 Field measurement: how many squares does one east() take "
-              "on the ice? report() the number, like  report(4)",
-              [{"map": ["#############",
-                        "#...........#",
-                        "#S~~~~~~#...#",
-                        "#...........#",
-                        "#############"], "answer": 6}],
+              "📡 Field measurement: how many squares does ONE east() slide "
+              "on your ice? It's not the same length as anyone else's.\n"
+              "1. Write east() and press Transmit.\n"
+              "2. Watch the replay. Which x does the rover stop on? The x "
+              "numbers run along the top of the map.\n"
+              "3. It started on x 1, so take 1 away from that x.\n"
+              "4. Add a last line with your number, like report(4), and Transmit "
+              "again.",
+              # Each student's ice is a different length, so a classmate's
+              # number is wrong here. 4 and 6 (the old answer) are left out.
+              [{"map": ["#" * 14,
+                        "#" + "." * 12 + "#",
+                        "#S" + "~" * n + "#" + "." * (10 - n) + "#",
+                        "#" + "." * 12 + "#",
+                        "#" * 14], "answer": n}
+               for n in (5, 7, 8, 9)],
+              per_student=True,
               reference="east()\nreport(x() - 1)\n",
               coach={
                   "intro": "📡 To measure, use the numbers along the top of "
@@ -1389,10 +1586,20 @@ ZONES = [
      "sites": [
          site("3a", "Canyon Floor",
               "📡 Field measurement: something pushes the rover. How many "
-              "ticks apart are the pushes? report() the number.",
+              "ticks apart are your pushes? Everyone's keep their own time.\n"
+              "1. Write south(16) and press Transmit.\n"
+              "2. Find the 💨 lines in the telemetry. Each one starts with "
+              "its tick.\n"
+              "3. Take the first 💨 tick away from the second one.\n"
+              "4. Add a last line with your number, like report(3), and Transmit "
+              "again.",
+              # Each student's gusts keep their own time. 3B's 5 is left out,
+              # and south(16) shows two pushes even at 8.
               [{"map": ["########",
-                        "#.S....#"] + ["#......#"] * 13 + ["########"],
-                "dir": 2, "wind": 5, "answer": 5}],
+                        "#.S....#"] + ["#......#"] * 16 + ["########"],
+                "dir": 2, "wind": n, "answer": n}
+               for n in (4, 6, 7, 8)],
+              per_student=True,
               reference="while x() == 2:\n    south()\nreport(tick())\n",
               coach={
                   "intro": "⏱ Planet time is counted in ticks. Every command "
@@ -1407,9 +1614,9 @@ ZONES = [
                       "Not quite. In the telemetry, the number at the start "
                       "of each line is the tick it happened on. Find the 💨 "
                       "pushes: which ticks did they come on? Drive far "
-                      "enough to see two of them, like south(12).",
+                      "enough to see two of them, like south(16).",
                       "The pushes come at the same gap every time. If they "
-                      "came on ticks 3 and 7, the gap would be 7 − 3 = 4. "
+                      "came on ticks 3 and 6, the gap would be 6 − 3 = 3. "
                       "Find your two 💨 tick numbers and take one away from "
                       "the other.",
                       "Let the rover measure it: keep driving south until "
@@ -1418,7 +1625,14 @@ ZONES = [
                   ]}),
          site("3b", "The Ledge",
               "Drive down the ledge to the beacon without being pushed into a"
-              " crater. It's too long to dodge by hand: use a loop.",
+              " crater. Here the gusts come every 5 ticks: on ticks 5, 10, 15 "
+              "and so on.\n"
+              "1. A gust only catches a rover that is driving, so wait() on the "
+              "tick just before one: when tick() % 5 is 4.\n"
+              "2. Put that check in your own def, and call it before every "
+              "single square.\n"
+              "3. Drive each part of the ledge one square at a time, with a for "
+              "loop.",
               [{"map": windy_ledge([(2, 6), (1, 5), (2, 6), (1, 4), (2, 5)]),
                 "dir": 2, "wind": 5}],
               reference="def guard():\n    if tick() % 5 == 4:\n        wait()\n\n"
@@ -1429,8 +1643,9 @@ ZONES = [
                         "go_south(6)\ngo_east(5)\ngo_south(6)\ngo_east(4)\n"
                         "go_south(5)\n"),
          site("3c", "Gale Ridge",
-              "Reach the beacon without being blown into a crater. Your gusts"
-              " come at their own timing, not your classmates'.",
+              "Reach the beacon without being blown into a crater. Your gusts "
+              "and your ridge aren't your classmates': measure your gusts as "
+              "on Canyon Floor, then use your number in The Ledge's check.",
               [{"map": windy_ledge(legs), "dir": 2, "wind": n, "legs": legs}
                for legs in ([(2, 5), (1, 7), (2, 4), (1, 3), (2, 7)],
                             [(2, 4), (1, 5), (2, 6), (1, 4), (2, 5)])
@@ -1496,8 +1711,13 @@ ZONES = [
      ],
      "sites": [
          site("5a", "First Light",
-              "📡 Field measurement: how much battery does one tick of "
-              "wait() on the bright ground give? report() the number.",
+              "📡 Field measurement: how much battery does ONE wait() on the "
+              "bright ground give?\n"
+              "1. Write east() and then wait(), and press Transmit.\n"
+              "2. Play the replay and watch the 🔋 gauge at the top left on "
+              "the wait(). How much does it go up?\n"
+              "3. Add a last line with that number, like report(5), and Transmit "
+              "again.",
               [{"map": ["############",
                         "#S++++.....#",
                         "############"], "battery": 12, "answer": 2}],
@@ -1713,12 +1933,21 @@ ZONES.append(
      "sites": [
          site("7a", "Homing Signal",
               "📡 Field measurement: how many squares east of the lander is "
-              "the beacon? report() the number.",
-              [{"map": ["####################",
-                        "#..................#",
-                        "#S...........G.....#",
-                        "#..................#",
-                        "####################"], "answer": 12}],
+              "your beacon? It's not where anyone else's is.\n"
+              "1. Find the lander's x and the beacon's x. The x numbers run "
+              "along the top of the map.\n"
+              "2. Take the lander's x away from the beacon's x.\n"
+              "3. Write report() with that number, like report(5), and press "
+              "Transmit.",
+              # Each student's beacon is a different distance away, so a
+              # classmate's number is wrong here. 12 (the old answer) is left out.
+              [{"map": ["#" * 20,
+                        "#" + "." * 18 + "#",
+                        "#S" + "." * (n - 1) + "G" + "." * (17 - n) + "#",
+                        "#" + "." * 18 + "#",
+                        "#" * 20], "answer": n}
+               for n in (9, 11, 14, 16)],
+              per_student=True,
               reference="report(beacon_x() - x())\n",
               coach={
                   "intro": "🛰 Two new sensors: beacon_x() is the beacon's "
@@ -2457,7 +2686,8 @@ ZONES.append(
 CHALLENGES = {
     "1a": {"bonus": {"kind": "crystals"}, "compact": 7, "crystals": [(1, 10)]},
     "1b": {"bonus": {"kind": "def"}, "compact": 3},
-    "1c": {"bonus": {"kind": "no_bump"}, "compact": 7},
+    # Counting squares off your own map works, so the star wants look().
+    "1c": {"bonus": {"kind": "everywhere", "of": "rock run"}, "compact": 7},
     "2a": {"bonus": {"kind": "computed"}, "compact": 3},
     "2b": {"bonus": {"kind": "crystals"}, "compact": 6, "crystals": [(1, 7)]},
     "2c": {"bonus": {"kind": "no_bump"}, "compact": [8, 8, 8, 9, 8, 8, 8, 8]},
@@ -2788,6 +3018,8 @@ def stars(s, variant, run, code):
     return [True, met, code_lines(code) <= variant.get("compact", s["compact"])]
 
 
+MISSION_DONE = {"beacon": "reached the beacon", "samples": "collected every sample",
+                "deliver": "brought every sample home", "report": "reported the right number"}
 ENDED_WHY = {"fell": "fell in a crater", "battery": "ran flat",
              "ticks": "ran out of time", "stopped": "stopped short",
              "error": "hit a code error"}
@@ -2807,11 +3039,26 @@ def everywhere(s, code, run):
                 missed[end] = missed.get(end, 0) + 1
         why = ", ".join(f"{n} {ENDED_WHY.get(end, end)}" for end, n in missed.items())
         of = s["bonus"].get("of", "plain")
-        run["log"].append(f"tick {run['ticks']}: 🌍 the same code reached the "
-                          f"beacon on {reached} of the {len(ends)} {of}s"
+        did = MISSION_DONE[mission_of(s["variants"][0])]
+        run["log"].append(f"tick {run['ticks']}: 🌍 the same code {did} "
+                          f"on {reached} of the {len(ends)} {of}s"
                           + (f" ({why})" if why else ""))
         run["everywhere"] = reached == len(ends)
     return run["everywhere"]
+
+
+def elsewhere(s, code, run, own):
+    """A run that missed on the student's own planet: if the same code works
+    on classmates' planets, a copied route is the likely reason, so the next
+    step says their planet is different."""
+    zi, zone, _ = find_site(s["key"])
+    n = sum(drive(code, v, zone["rules"], zi)["reached"]
+            for i, v in enumerate(s["variants"]) if i != own)
+    if n:
+        run["explain"]["next"] = (
+            f"This code works on {n} other planet{'s' if n != 1 else ''} in the "
+            f"class, but yours is different. {run['explain']['next'] or ''}").strip()
+    return n
 
 
 # ---- Zone 9: five planets -------------------------------------------------------

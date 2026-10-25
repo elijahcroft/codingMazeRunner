@@ -18,6 +18,61 @@ to write here instead.
 The skill you're teaching is as much **experimenting** as coding:
 *predict → run → watch → explain → change one thing → run again.*
 
+## Since the first lesson (what students will notice)
+
+- **Measuring sites have numbered steps,** and everyone's number is their own
+  (2A ice length, 3A gust timing, 7A beacon distance; 5A is still 2 for
+  everyone). A classmate's number gets "That's the number on someone else's
+  planet". Expect "why is mine different?": that's the point, see the
+  lesson plan below.
+- **1B and 1C show the shape of a loop** in the brief (`for` on 1B, the east
+  half of the `while look()` loop on 1C). In the first lesson nobody used
+  `for` on 1B or `look()` on 1C.
+- **1C's challenge star is 🌍:** the same code must work on all 8 rock runs,
+  so a route counted off the map completes the site but misses the star.
+- **3B lists the method in three steps** (wait on the tick before a gust, a
+  def called before every square, one square at a time). 3B cost 12 to 42
+  runs last time.
+- **Failure messages read the code:** a copied `tick() % 9` on a planet
+  whose gusts come every 7 says so, a copied route says "this code works on
+  1 other planet in the class, but yours is different", and `"wall"` or
+  `"Rock"` in a look() check names the right word.
+- **Your page** shows "hasn't run yet" for students who never pressed
+  Transmit, and each student's last 6 tries (code and messages) one click
+  away, so you know what they tried before you walk over.
+- **Nobody loses anything:** completed sites and stars already earned stay,
+  including 1C's old 🧱 star.
+- **The editor works like a real one now.** Typing a few letters suggests
+  commands, sensors, keywords and the student's own names and variables,
+  each with a line saying what it does (Enter or Tab picks one, Esc closes
+  the list, Ctrl+Space opens it). Picking `for`, `while`, `if` or `def` at
+  the start of a line types its shape (`for i in range():` with the cursor
+  in the brackets). Inside `look("`, `jump("`, `drill("` and `distance("`
+  the four ways are offered, and after `look("east") == "` the words this
+  map can give back. Brackets and quotes close themselves, `else:` and
+  `elif` line up with their `if`, Enter in front of `):` finishes the line
+  first, and Ctrl+/ turns lines into `#` notes. Inside a command's ( ) a
+  tip says what goes there (`east(squares)`), and pointing at a word says
+  what it does.
+- **Slips show before Transmit:** once the cursor leaves a line, a missing
+  `:` or bracket, an unclosed quote, `east 2` without brackets, `=` in an
+  `if`, a line pushed in too far (or not pushed in under a `:`), a typo
+  like `nroth()` ("did you mean north()?") and the maze game's `move()`
+  get a wavy line, a ● in the margin and a few words at the end of the
+  line. A ⚠ pill at the bottom of the editor names the first one and goes
+  to it. A run's code error is also written on its line.
+- **The replay follows the code:** the line that made each move lights up
+  green as the rover drives. Clicking a line number jumps the replay to
+  when that line ran (again for the next time), and clicking a telemetry
+  line jumps to its tick: "what did line 3 do?" now has an answer on the map.
+- **Help is easier to find:** after two misses in a row on a site not yet
+  done, the 📻 button glows and says "Get a hint" until there are no hints
+  left. Transmitting exactly the same code after a miss says "Same code as
+  last time: change one thing".
+- **The win card shows the next unlock** (its name and a bar that fills as
+  the new stars land, "2 ★ to go"). The buttons under the editor are
+  coloured like the code: green commands, blue sensors.
+
 ## What students see
 
 The planet fills the screen: the rover, its wheel tracks and each zone's
@@ -203,7 +258,7 @@ board while they work.
 |---|---|---|---|
 | 1A Touchdown | 🧪 3 samples | 💎 grab the crystal (a detour) | 7 lines |
 | 1B Crystal Steps | 🧪 8 samples | 🧩 use a function you made with `def` (and call it) | 3 lines |
-| 1C Rock Run | 🧪 a sample in front of every rock | 🧱 never bump into rock | 7 lines |
+| 1C Rock Run | 🧪 a sample in front of every rock | 🌍 the same code works on every rock run | 7 lines |
 | 2A First Frost | 📡 how far one slide goes | 🔢 work the number out in code | 3 lines |
 | 2B Glacier | 🛰 beacon | 💎 crystal in a far corner (one extra slide) | 6 lines |
 | 2C Frozen Lake | 🛰 beacon | 🧱 never bump into rock | the student's shortest route + 1 |
@@ -245,6 +300,12 @@ board while they work.
       **Last run** is what their last missed run told them (the error, or
       what happened and where), so you know before you walk over. Only you
       see it: the projector never shows it. It refreshes every 5 seconds.
+      A student who hasn't pressed **Transmit** yet shows "hasn't run yet"
+      in amber.
+- [ ] Under a student's last run, **last tries** opens their last 6 tries
+      on the site they're on: how each ended, what it told them, and the
+      code, newest first. It stays open while the page refreshes. After
+      class, `scores.json` keeps them for every site (`planet` → `tries`).
 - [ ] On a student laptop, join as "Test" and run the starter on 1A.
 - [ ] Decide what to say when a student asks "what's the rule?":
       **"What did your last run show you?"** (see below).
@@ -313,8 +374,8 @@ works is how to help a neighbour.
 
 | Lesson | Zones | Discussion at the end |
 |---|---|---|
-| 1 | **Landing Site** (1A–1C) → **Ice Field** (2A–2C) | "How did you measure the slide? Who made the rover measure it?" |
-| 2 | **Wind Canyon** (3A–3C) → **Crumbling Crust** (4A–4C) | "How did you find *when* the gusts came? What was your evidence?" |
+| 1 | **Landing Site** (1A–1C) → **Ice Field** (2A–2C) | "How did you measure the slide? Who made the rover measure it?" Everyone's 2A slide is a different length: ask two neighbours to compare numbers, then show that `report(x() - 1)` is right for both. |
+| 2 | **Wind Canyon** (3A–3C) → **Crumbling Crust** (4A–4C) | "How did you find *when* the gusts came? What was your evidence?" (Everyone's 3A gusts keep their own time, so the answers differ; the method is the same.) |
 | 3 | **Solar Valley** (5A–5C) → **Portal Fields** (6A–6C) | "How did you work out where each portal goes? How many runs did it take?" |
 | 4 | **Signal Plains** (7A–7C): steering by coordinates on calm ground → **Crater Hops** (8A–8C): the new `jump()` | "When does your program jump, and how does it know?" |
 | 5 | **Conveyor Works** (9A–9D) → **The Quarry** (10A–10D) → **Gate Station** (11A–11D) → **Flag Relay** (12A–12D) | "Which new thing changed your program most, and what stayed the same?" |
@@ -334,14 +395,17 @@ code. `/planet/teacher` shows how many each student opened.
 Normal ground, so Zone 2's surprise has something to compare against. It's
 where students meet compass driving, samples and `look()`.
 - **1A Touchdown**: collect three samples. `south(2) east() south() east(7) south() north(3) west()`
-- **1B Crystal Steps**: eight samples on a diagonal. *Find the repeat* →
+- **1B Crystal Steps**: eight samples on a diagonal. The brief shows a
+  `for` loop that drives east 3 times; students put both steps inside it.
+  (In the first lesson nobody used `for` here.) *Find the repeat* →
   ```python
   for i in range(8):
       east()
       south()
   ```
 - **1C Rock Run** (per student): a sample waits in front of each rock, at
-  distances that differ for everyone. Drive until the next square is rock:
+  distances that differ for everyone. The brief shows the east half of the
+  loop. Drive until the next square is rock:
   ```python
   for i in range(4):
       while look("east") != "rock":
@@ -349,12 +413,17 @@ where students meet compass driving, samples and `look()`.
       while look("south") != "rock":
           south()
   ```
-  A route counted off the map works too, but at 8 lines it misses the ✂️ star.
+  A route counted off the map works too (every student who solved it in the
+  first lesson did that), but it misses the 🌍 star, which tries the code on
+  all 8 rock runs, and at 8 lines the ✂️ star too.
 
 ### 2 · Ice Field: one `east()` slides until something stops it
 New: `x()`, `y()` and `report()`.
-- **2A First Frost** 📡: how many squares does one `east()` slide? (6.)
-  `east()` then `report(6)` completes it; the 🔢 star wants
+- **2A First Frost** 📡: how many squares does one `east()` slide? Each
+  student's ice is a different length (5, 7, 8 or 9), so a neighbour's
+  number is wrong, and the rover says so ("That's the number on someone
+  else's planet"). The brief walks it through in numbered steps; `east()`
+  then `report(` the slide `)` completes it, and the 🔢 star wants
   `before = x()`, `east()`, `report(x() - before)`.
 - **2B Glacier**: the beacon is two squares away, behind a rock. It takes
   **six slides**, using rocks as brakes: `north() east() south() east() south() west()`.
@@ -364,15 +433,19 @@ New: `x()`, `y()` and `report()`.
 
 ### 3 · Wind Canyon: every N ticks a gust pushes a *driving* rover one square east
 New: `tick()`. A rover that `wait()`s holds on. Rock to the east shelters it.
-- **3A Canyon Floor** 📡: how many ticks apart are the gusts? (5.)
-  `south(12)` shows pushes at ticks 5 and 10. The 🔢 answer drives until
+- **3A Canyon Floor** 📡: how many ticks apart are the gusts? Each
+  student's gusts keep their own time (4, 6, 7 or 8), and the brief's
+  numbered steps start with `south(16)`, which shows two pushes on every
+  planet (at 6, pushes on ticks 6 and 12). The 🔢 answer drives until
   it's pushed off its column, then reports the tick:
   ```python
   while x() == 2:
       south()
   report(tick())
   ```
-- **3B The Ledge**: craters along a long ledge. Wait out each gust:
+- **3B The Ledge**: craters along a long ledge, with gusts every 5 ticks
+  for everyone. The brief says so, and lists the three steps of the method
+  without the code. Wait out each gust:
   ```python
   def guard():
       if tick() % 5 == 4:
@@ -421,7 +494,9 @@ until every sample is collected.
 
 ### 5 · Solar Valley: driving costs 1 battery a square; waiting is free; each tick in sunlight adds 2
 New: `battery()` and `in_sun()`.
-- **5A First Light** 📡: how much does one tick of `wait()` in the sun add? (2.)
+- **5A First Light** 📡: how much does one tick of `wait()` in the sun add? (2,
+  the same for everyone, since the whole zone runs on it. The brief gives
+  numbered steps.)
   The 🔢 answer: `east()`, `before = battery()`, `wait()`, `report(battery() - before)`.
 - **5B Shadow Steps**: charge on each sunny corner, just enough for the next
   stretch:
@@ -468,7 +543,8 @@ Calm ground, so the only new thing is steering. New: `beacon_x()` and
 `beacon_y()`, the beacon's column and row. Each site takes one of
 Uncharted's ideas at a time.
 - **7A Homing Signal**: 📡 how many squares east of the lander is the
-  beacon? `report(beacon_x() - x())` (answer 12).
+  beacon? Each student's beacon is a different distance away (9, 11, 14 or
+  16), and the brief gives numbered steps. `report(beacon_x() - x())`.
 - **7B Open Plain** (per student, 8 plains, the beacon in a different
   direction on each). Nothing is in the way, so comparing is enough:
   ```python

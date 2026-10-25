@@ -46,6 +46,11 @@
   .stuck { color: var(--amber); font-weight: 700; }
   .said { display: block; max-width: 320px; margin-top: 3px; color: var(--muted); font-size: 12px; line-height: 1.35; white-space: normal; text-align: left; }
   .very-stuck { color: var(--red); font-weight: 700; }
+  details.tries { margin-top: 6px; max-width: 360px; white-space: normal; text-align: left; font-size: 12px; color: var(--muted); }
+  details.tries summary { cursor: pointer; color: var(--violet); }
+  .try { margin-top: 6px; }
+  .try b { color: var(--text); font-weight: 700; }
+  .try pre { margin: 3px 0 0; padding: 6px 8px; max-height: 120px; overflow: auto; background: #0b1324; border-radius: 6px; font: 11px/1.45 var(--editor); white-space: pre; }
   .empty { color: var(--muted); padding: 30px 0; }
   .bar { height: 6px; background: #1b2840; width: 120px; margin-top: 5px; }
   .bar span { display: block; height: 100%; background: var(--green); }
@@ -87,6 +92,19 @@ function ago(seconds) {
   const s = Math.max(0, Date.now() / 1000 - seconds);
   return s < 60 ? "just now" : s < 3600 ? `${Math.floor(s / 60)} min ago` : `${Math.floor(s / 3600)} h ago`;
 }
+// A student's last tries, opened from their row; kept open across refreshes.
+const openTries = new Set();
+const ENDED = {goal: "✓ done", stopped: "stopped short", fell: "fell", ticks: "out of time",
+               error: "code error", wrong: "wrong number", battery: "flat battery"};
+document.addEventListener("toggle", e => {
+  const d = e.target;
+  if (d.matches && d.matches("details.tries")) d.open ? openTries.add(d.dataset.id) : openTries.delete(d.dataset.id);
+}, true);
+function triesHtml(s) {
+  if (!s.tries || !s.tries.length) return "";
+  const list = s.tries.slice().reverse().map(t => `<div class="try"><b>${esc(ENDED[t.end] || t.end)}</b> ${esc(t.said || "")}<pre>${esc(t.code)}</pre></div>`).join("");
+  return `<details class="tries" data-id="${esc(s.id)}"${openTries.has(s.id) ? " open" : ""}><summary>last ${s.tries.length} tries</summary>${list}</details>`;
+}
 // Many runs on one site with no progress: worth a visit. The list already
 // puts the students with least done and most runs first.
 function stuckClass(n) { return n >= 15 ? "very-stuck" : n >= 8 ? "stuck" : ""; }
@@ -96,7 +114,9 @@ async function refresh() {
   const students = data.students;
   $("empty").hidden = students.length > 0;
   const stuck = students.filter(s => s.runs_here >= 8 && s.solved < data.sites).length;
-  $("summary").innerHTML = `<div><b>${data.class.stars} ★</b>class stars (<a href="/planet/show" target="_blank" style="color:var(--violet)">project them</a>)</div><div><b>${students.length}</b>explorers</div><div><b>${stuck}</b>stuck (8+ runs on one site)</div>`;
+  // Opened the planet but never pressed Transmit: often a student who doesn't know how to start.
+  const unstarted = students.filter(s => !s.runs_total).length;
+  $("summary").innerHTML = `<div><b>${data.class.stars} ★</b>class stars (<a href="/planet/show" target="_blank" style="color:var(--violet)">project them</a>)</div><div><b>${students.length}</b>explorers</div><div><b>${stuck}</b>stuck (8+ runs on one site)</div>${unstarted ? `<div><b class="stuck">${unstarted}</b>haven't pressed Transmit yet</div>` : ""}`;
   const byZone = {};
   for (const s of students) byZone[s.zone] = (byZone[s.zone] || 0) + 1;
   $("zones").innerHTML = data.zones.map(z => `<span class="zone-count">${esc(z)}<b>${byZone[z] || 0}</b></span>`).join("");
@@ -106,7 +126,7 @@ async function refresh() {
     <td class="num">${s.stars} ★<small style="display:block;color:var(--muted)">${s.badges} badges</small></td>
     <td class="num ${stuckClass(s.runs_here)}">${s.runs_here}</td>
     <td class="num">${s.hints}</td>
-    <td class="num">${ago(s.active)}${s.now && s.now.said ? `<small class="said">${esc(s.now.site.toUpperCase())}: ${esc(s.now.said)}</small>` : ""}</td>
+    <td class="num">${s.runs_total ? ago(s.active) : `<span class="stuck">hasn't run yet</span>`}${s.now && s.now.said ? `<small class="said">${esc(s.now.site.toUpperCase())}: ${esc(s.now.said)}</small>` : ""}${triesHtml(s)}</td>
     <td>${s.site !== "7" ? `<button onclick="unlock('${esc(s.id)}')" title="Open the next site for this student">Unlock next</button>` : ""}</td>
   </tr>`).join("");
 }

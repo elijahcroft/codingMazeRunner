@@ -2998,7 +2998,15 @@ def class_record(key):
     return best
 
 
+def code_in(data):
+    """The program a request sent: text, or nothing (never the word "None")."""
+    code = data.get("code", "")
+    return code if isinstance(code, str) else ""
+
+
 GHOST_MAX = 400   # frames kept of a record route
+TRIES_KEPT = 6       # recent tries kept per site
+TRY_CODE_MAX = 1500  # characters of code kept for each
 
 
 def ghostly(key, s):
@@ -3132,6 +3140,12 @@ def planet_record(p, key, code, results):
     entry["now"] = {"site": key, "code": code, "pos": [last["r"], last["c"]],
                     "end": first["end"], "map": first.get("map"),
                     "said": said and short_said(said)}
+    # The last few tries on each site, so it shows where a student got
+    # stuck and not only where they ended up.
+    tries = entry.setdefault("tries", {}).setdefault(key, [])
+    tries.append({"at": entry["active"], "code": code[:TRY_CODE_MAX], "end": first["end"],
+                  "said": said and short_said(said)})
+    del tries[:-TRIES_KEPT]
     before_open = {i["key"] for i in garage_for(entry) if i["open"]}
     before_stars = star_count(entry)
     before_class = class_stars()
@@ -3378,6 +3392,7 @@ def planet_class():
         frontier = planet_frontier(q)
         key = planet.SITE_ORDER[frontier]
         zi, zone, s = planet.find_site(key)
+        now = planet_now(q, entry, key)
         rows.append({"id": q["id"], "name": q["name"], "site": key,
                      "at": frontier,   # sites behind them, unlocked ones included
                      "site_name": s["name"], "zone": zone["name"],
@@ -3387,9 +3402,12 @@ def planet_class():
                      "look": entry["look"],
                      "showoff": PLANET_BADGES[entry["showoff"]][0] if entry["showoff"] else None,
                      "runs_here": entry["runs"].get(key, 0),
+                     "runs_total": sum(entry["runs"].values()),
                      "hints": sum(entry["hints"].values()),
                      "uncharted": entry["uncharted"],
-                     "now": planet_now(q, entry, key),
+                     "now": now,
+                     # Their last few tries where they are now, newest last.
+                     "tries": entry.get("tries", {}).get(now["site"], []),
                      "active": entry["active"]})
     rows.sort(key=lambda x: (x["at"], -x["runs_here"], x["name"].lower()))
     return {"students": rows, "sites": len(planet.SITE_ORDER),
@@ -3991,9 +4009,10 @@ class Handler(BaseHTTPRequestHandler):
         if not length:
             return {}
         try:
-            return json.loads(self.rfile.read(length))
+            data = json.loads(self.rfile.read(length))
         except Exception:
             return {}
+        return data if isinstance(data, dict) else {}   # every route reads an object
 
     def do_GET(self):
         path = self.path.split("?")[0]
@@ -4092,7 +4111,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not p:
                     self._send(200, {"error": "join"})
                     return
-                code = str(data.get("code", ""))
+                code = code_in(data)
                 lang = "cpp" if str(data.get("lang", "")) == "cpp" else "python"
                 p["code"] = code[:2000]
                 p["lang"] = lang
@@ -4140,7 +4159,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"error": "join"})
                 return
             # Race the heats without the lock: other students keep working.
-            code = str(data.get("code", ""))[:cycles.MAX_CODE + 1]
+            code = code_in(data)[:cycles.MAX_CODE + 1]
             heats = cycles.practice(code, name, color)
             with lock:
                 body = json.dumps(cycles_test(p, code, heats)).encode()
@@ -4163,7 +4182,7 @@ class Handler(BaseHTTPRequestHandler):
                                           "one to open it."})
                 return
             # Drive without the lock: other students keep working.
-            code = str(data.get("code", ""))[:planet.MAX_CODE + 1]
+            code = code_in(data)[:planet.MAX_CODE + 1]
             if uncharted:
                 worlds = planet.UNCHARTED_PLANETS
                 runs = [dict(planet.drive(code, w, zone["rules"], zi),
@@ -4174,6 +4193,11 @@ class Handler(BaseHTTPRequestHandler):
                 # where it doesn't hold everyone else up.
                 if s["bonus"]["kind"] == "everywhere" and runs[0]["reached"]:
                     planet.everywhere(s, code, runs[0])
+                # A miss on your own planet that works on a classmate's: often
+                # a copied route, so say yours is different.
+                if s["per_student"] and not runs[0]["reached"] and runs[0]["explain"] \
+                        and "answer" not in variant:
+                    planet.elsewhere(s, code, runs[0], planet.variant_index(p["id"], s))
             with lock:
                 rewards = planet_record(p, key, code[:planet.MAX_CODE], runs)
                 save_state()
@@ -4270,7 +4294,7 @@ class Handler(BaseHTTPRequestHandler):
             with lock:
                 p = players.get(data.get("id"))
                 if p:
-                    p["code"] = str(data.get("code", ""))[:2000]
+                    p["code"] = code_in(data)[:2000]
                 self._send(200, {"ok": True})
             return
         if self.path == "/next":
@@ -4393,7 +4417,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not cake_open(p, key):
                     self._send(200, {"error": "🔒 That level isn't open yet."})
                     return
-        code = str(data.get("code", ""))[:cake.MAX_CODE + 1]
+        code = code_in(data)[:cake.MAX_CODE + 1]
         if path == "/cake/run":
             # Bake without the lock: other students keep working.
             lv = cake.LEVEL_BY_KEY[key]

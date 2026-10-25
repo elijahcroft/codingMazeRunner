@@ -101,6 +101,7 @@ SYNTAX_HINTS = [
 LINE_HINTS = [
     (r"&&", "write  and  (not  &&)"),
     (r"\|\|", "write  or  (not  ||)"),
+    (r"=!", "write  !=  (not  =!)"),
     (r"!(?!=)", "write the word  not  instead of  !  — like:  if not wall_ahead():"),
     (r"=<", "write  <=  (not  =<)"),
     (r"=>", "write  >=  (not  =>)"),
@@ -112,6 +113,7 @@ LINE_HINTS = [
                                             "north()  south()  east(3)  west()"),
     (r"\)\s*(?!(?:and|or|not|if|else|in|is)\b)[A-Za-z_]\w*\s*\(",
      "put each command on its own line"),
+    (r"\brange\s+\d", "range needs brackets round the number, like  range(8)"),
     (r"^(repeat|loop)\b", "to repeat lines, write  for i in range(7):  and push "
                           "the lines to repeat in under it"),
 ]
@@ -312,6 +314,10 @@ class Brain:
             result = a // b if isinstance(op, ast.FloorDiv) else a % b
         elif isinstance(op, ast.Div):
             raise BotError("Use // for whole-number division, like 10 // 2.")
+        elif isinstance(op, (ast.Pow, ast.BitXor)):
+            raise BotError(f"{'**' if isinstance(op, ast.Pow) else '^'} isn't part of the "
+                           f"math here. For a power, multiply: 2 * 2 * 2 is 2 to "
+                           f"the power 3.")
         else:
             raise BotError("That kind of math isn't allowed here.")
         if abs(result) > MAX_INT:
