@@ -1425,6 +1425,22 @@ class ClassroomTests(unittest.TestCase):
         self.assertTrue(kept[-1].endswith("20261026-0900"))
         self.assertTrue(os.path.exists(hand_made))
 
+    def test_the_after_class_report_groups_what_students_were_told(self):
+        ada, bo = self.join("Ada"), self.join("Bo")
+        for pid in (ada, bo):
+            self.transmit(pid, "1a", "east(2)\n")
+            self.transmit(pid, "1a", "south(1)\n")
+        self.transmit(ada, "1a", site("1a")[2]["reference"])
+        report = self.get("/planet/report")
+        row = next(r for r in report["sites"] if r["key"] == "1a")
+        self.assertEqual((row["tried"], row["cleared"]), (2, 1))
+        self.assertEqual(row["not_cleared"], [["Bo", 2, True]])
+        # Messages that differ only in their squares count as one.
+        self.assertEqual(row["said"][0]["students"], 2)
+        self.assertEqual(row["said"][0]["tries"], 4)
+        self.assertEqual([r["key"] for r in report["sites"]], ["1a"])   # only sites tried
+        self.assertEqual(report["zones"][0]["name"], "Landing Site")
+
     def test_the_page_knows_whether_you_ever_ran(self):
         pid = self.join()
         self.assertFalse(self.get(f"/planet/state?id={pid}")["you"]["ran"])

@@ -428,4 +428,16 @@ messages that were wrong or empty for real programs.
 - **The teacher's page** marks 3 minutes without a run (in the last hour) in
   amber, with "✎ typing" from `/planet/typing`, and shows skipped sites.
 - **Backups:** each server start copies the save to `.start-<time>`, keeping 5.
+- **Site by site** (`/planet/report`, a `<details>` on the teacher's page,
+  fetched when opened and every 30 s): tried / cleared, median and most
+  runs, who tried and hasn't cleared it, skips, hints per zone, and the
+  three commonest miss messages from `entry["tries"]`, grouped with their
+  numbers taken out so "at x 2, y 1" and "at x 4, y 1" count as one.
+- **Beginner slips:** a def of drives called once outside a loop
+  (`called_once()`) says it ran once and to call it again or loop it;
+  `east(1.5)` asks for a whole number; `east(-1)` points at `west(1)`.
+- **Load:** 30 students on one server, all transmitting 7C's 🌍 reference
+  in the same second, finished in 0.7 s; two minutes of mixed class use
+  (Uncharted, stuck while loops, per-student misses, typing every run)
+  kept runs under 0.4 s with no errors. The save was 220 KB.
 

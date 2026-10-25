@@ -320,6 +320,11 @@ board while they work.
 - [ ] **Last run** turns amber when a student hasn't run for 3 minutes, and
       "✎ typing" says they're still working on it. **Working on** says
       "skipped 3B" when a student used ⏭ Skip for now.
+- [ ] **Site by site** (under the table, click to open) is for after class:
+      every site someone tried, how many cleared it, typical runs, who
+      hasn't cleared it, the hints each zone took, and what the game told
+      students most often when they missed. Use it to pick where the next
+      lesson starts and what to explain on the board.
 - [ ] Each time the server starts it copies `scores.json` to
       `scores.json.start-<date>-<time>` and keeps the last 5. To undo a bad
       day, stop the server and copy one back over `scores.json`.

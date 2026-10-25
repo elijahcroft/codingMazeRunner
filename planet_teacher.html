@@ -52,6 +52,13 @@
   .try { margin-top: 6px; }
   .try b { color: var(--text); font-weight: 700; }
   .try pre { margin: 3px 0 0; padding: 6px 8px; max-height: 120px; overflow: auto; background: #0b1324; border-radius: 6px; font: 11px/1.45 var(--editor); white-space: pre; }
+  details.report { margin-top: 28px; }
+  details.report > summary { cursor: pointer; color: var(--violet); font-weight: 700; padding: 6px 0; }
+  details.report .note { color: var(--muted); font-size: 12px; margin: 4px 0 10px; max-width: 760px; }
+  details.report td { vertical-align: top; }
+  .zone-row td { color: var(--muted); font-size: 12px; padding-top: 16px; border-bottom: 0; }
+  .said-list { margin: 0; padding-left: 16px; max-width: 460px; white-space: normal; text-align: left; font-size: 12px; color: var(--muted); }
+  .said-list b { color: var(--text); }
   .empty { color: var(--muted); padding: 30px 0; }
   .bar { height: 6px; background: #1b2840; width: 120px; margin-top: 5px; }
   .bar span { display: block; height: 100%; background: var(--green); }
@@ -79,6 +86,14 @@
     <thead><tr><th>STUDENT</th><th>WORKING ON</th><th>STARS</th><th>RUNS HERE</th><th>HINTS</th><th>LAST RUN</th><th></th></tr></thead>
     <tbody id="rows"></tbody>
   </table>
+  <details class="report" id="reportBox">
+    <summary>Site by site: where the class got stuck (for after class)</summary>
+    <p class="note">Every site someone has tried. Runs count every Transmit, including runs for more stars after clearing it. "What it said most" comes from each student's last 6 tries.</p>
+    <table>
+      <thead><tr><th>SITE</th><th>CLEARED</th><th>TYPICAL RUNS</th><th>NOT CLEARED</th><th>WHAT IT SAID MOST</th></tr></thead>
+      <tbody id="report"></tbody>
+    </table>
+  </details>
   <div class="empty" id="empty" hidden>Nobody has opened Strange Planet yet. Students go to <b>/planet</b> on the same address as Python Quest.</div>
 </main>
 <script>
@@ -142,6 +157,30 @@ async function refresh() {
     <td>${s.site !== "7" ? `<button onclick="unlock('${esc(s.id)}')" title="Open the next site for this student">Unlock next</button>` : ""}</td>
   </tr>`).join("");
 }
+// The after-class table: fetched when opened, and every 30 seconds while open.
+async function refreshReport() {
+  if (!$("reportBox").open) return;
+  let data;
+  try { data = await (await fetch("/planet/report")).json(); } catch (_) { return; }
+  const hints = Object.fromEntries(data.zones.map(z => [z.name, z.hints]));
+  let zone = "";
+  $("report").innerHTML = data.sites.map(s => {
+    const head = s.zone !== zone ? `<tr class="zone-row"><td colspan="5">${esc(s.zone)} · ${hints[s.zone] || 0} hints opened</td></tr>` : "";
+    zone = s.zone;
+    const missed = s.not_cleared.map(([name, runs, here]) => `${esc(name)} (${runs}${here ? "" : ", elsewhere now"})`).join(", ");
+    const skipped = s.skipped.length ? `<small class="stuck">skipped: ${esc(s.skipped.join(", "))}</small>` : "";
+    const said = s.said.length ? `<ul class="said-list">${s.said.map(g => `<li>${esc(g.text)} <b>${g.students} student${g.students > 1 ? "s" : ""}, ${g.tries} tries</b></li>`).join("")}</ul>` : "—";
+    return `${head}<tr>
+      <td class="site">${esc(s.key.toUpperCase())} · ${esc(s.name)}</td>
+      <td class="num">${s.cleared} of ${s.tried}</td>
+      <td class="num ${stuckClass(s.runs_median)}">${s.runs_median}<small style="display:block;color:var(--muted)">most ${s.runs_most}</small></td>
+      <td class="site">${missed || "—"}${skipped}</td>
+      <td>${said}</td></tr>`;
+  }).join("") || `<tr><td colspan="5" class="empty">Nobody has run a site yet.</td></tr>`;
+}
+$("reportBox").addEventListener("toggle", () => { store("planetReport", $("reportBox").open ? "1" : ""); refreshReport(); });
+$("reportBox").open = recall("planetReport") === "1";
+setInterval(refreshReport, 30000);
 async function unlock(pid) {
   const key = $("key").value.trim();
   if (!key) { $("msg").textContent = "Type the admin key first."; $("key").focus(); return; }

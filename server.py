@@ -3429,6 +3429,48 @@ def planet_now(q, entry, frontier_key):
             "said": now.get("said")}
 
 
+def planet_report():
+    """Site by site, for after class: how many tried and cleared each site,
+    its runs, who is still on it or skipped it, the hints each zone took, and
+    what the game told students most often when they missed."""
+    entries = [(q, planet_entry(q)) for q in players.values() if q.get("planet")]
+    frontier = {q["id"]: planet.SITE_ORDER[planet_frontier(q)] for q, e in entries}
+    zones, sites = [], []
+    for zone in planet.ZONES:
+        zones.append({"name": zone["name"], "hints": sum(e["hints"].get(zone["key"], 0)
+                                                         for q, e in entries)})
+        for s in zone["sites"]:
+            key = s["key"]
+            tried = [(q, e) for q, e in entries if e["runs"].get(key)]
+            if not tried:
+                continue
+            runs = sorted(e["runs"][key] for q, e in tried)
+            # Messages differ in their squares and ticks: group them without
+            # the numbers, and show one real one.
+            said = {}
+            for q, e in tried:
+                for t in e.get("tries", {}).get(key, []):
+                    if t["end"] != "goal" and t.get("said"):
+                        group = said.setdefault(re.sub(r"\d+", "#", t["said"]),
+                                                {"text": t["said"], "tries": 0, "students": set()})
+                        group["tries"] += 1
+                        group["students"].add(q["name"])
+            common = sorted(said.values(), key=lambda g: (-len(g["students"]), -g["tries"]))[:3]
+            sites.append({
+                "key": key, "name": s["name"], "zone": zone["name"],
+                "tried": len(tried), "cleared": sum(key in e["solved"] for q, e in tried),
+                "runs_median": runs[len(runs) // 2], "runs_most": runs[-1],
+                # Tried and not cleared: still on it, or moved on (unlocked
+                # by the teacher, or skipped).
+                "not_cleared": [[q["name"], e["runs"][key], frontier[q["id"]] == key]
+                                for q, e in tried if key not in e["solved"]],
+                "skipped": [q["name"] for q, e in tried
+                            if key in e.get("skipped", []) and key not in e["solved"]],
+                "said": [{"text": g["text"], "tries": g["tries"], "students": len(g["students"])}
+                         for g in common]})
+    return {"sites": sites, "zones": zones}
+
+
 def planet_class():
     """The teacher's overview and the projector's class view: where everyone
     is, how stuck they are, their stars, their rover and code right now, and
@@ -4111,6 +4153,11 @@ class Handler(BaseHTTPRequestHandler):
                     body = json.dumps(cycles_replay(p)).encode()
                 else:
                     body = json.dumps(cycles_state(p) if p else {"you": None}).encode()
+            self._send(200, body)
+            return
+        if path == "/planet/report":
+            with lock:
+                body = json.dumps(planet_report()).encode()
             self._send(200, body)
             return
         if path in ("/planet/state", "/planet/site", "/planet/overview"):
