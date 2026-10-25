@@ -451,4 +451,8 @@ messages that were wrong or empty for real programs.
   `planet_spotlight`, sent with `/planet/overview`. The projector shows it
   full-screen with the site and whether it works, never the name. It isn't
   saved: a restart clears it.
+- **A reading sent as it was:** `report(battery())`, `report(x())`,
+  `report(beacon_x())` (a bare sensor in `READINGS`) that isn't the answer
+  says it sent what the sensor reads now, not the change (or, for the
+  beacon, not how far away it is), and the coach leads with that.
 

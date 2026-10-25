@@ -321,6 +321,16 @@ class SiteClaims(unittest.TestCase):
         out = run("3a", "while y() != 5:\n    south()\nreport(y())\n", 1)
         self.assertNotIn("copied", out["explain"])
 
+    def test_a_reading_sent_as_it_is_says_to_send_the_change(self):
+        out = run("5a", "east()\nwait()\nreport(battery())\n")
+        self.assertIn("You reported battery() as it was", out["explain"]["what"])
+        self.assertIn("before = battery()", out["explain"]["next"])
+        self.assertTrue(out["explain"]["lead"])     # the coach leads with it
+        self.assertIn("not how much it changed", out["log"][-1])
+        self.assertIn("take the rover's x() away", run("7a", "report(beacon_x())\n")["explain"]["next"])
+        # A reading that is the answer still completes it: 3A's report(tick()).
+        self.assertTrue(run("3a", "while x() == 2:\n    south()\nreport(tick())\n")["reached"])
+
     def test_a_classmates_measurement_is_wrong_on_your_planet(self):
         # Every student measures their own number, so copying one fails.
         for key, drive in (("2a", "east()\n"), ("3a", "south(16)\n"), ("7a", "")):

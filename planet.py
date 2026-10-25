@@ -182,6 +182,9 @@ def literal(node):
     return isinstance(node, ast.Constant)
 
 
+READINGS = ("x", "y", "battery", "beacon_x", "beacon_y")   # where things are, not changes
+
+
 def fixed(node):
     """Typed numbers only, maybe summed like 1+5: no sensor or variable in it."""
     return not any(isinstance(n, (ast.Name, ast.Call)) for n in ast.walk(node))
@@ -409,7 +412,11 @@ class Rover(Brain):
             if isinstance(value, bool) or not isinstance(value, int):
                 raise BotError(f"report() sends a whole number, like  report(6), "
                                f"not {value!r}.")
-            world.report(value, not literal(node.args[0]), fixed(node.args[0]))
+            arg = node.args[0]
+            # report(battery()) sends a reading, not a change: worth naming.
+            reading = arg.func.id if isinstance(arg, ast.Call) and isinstance(arg.func, ast.Name) \
+                and not arg.args and arg.func.id in READINGS else None
+            world.report(value, not literal(arg), fixed(arg), reading)
             return None
         if name in self.sensors:
             if node.args:
@@ -467,6 +474,7 @@ class World:
         self.bumps = self.pushes = 0
         self.gusted = []        # the ticks a gust pushed the rover
         self.computed = False   # the right report() was worked out by code
+        self.reading = None     # (sensor, value) when report() sent a reading as it was
         self.copied = False     # report()ed the answer on a classmate's planet,
                                 # or "old": the answer from before each had their own
         self.samples = {(r, c) for r, row in enumerate(self.grid)
@@ -865,7 +873,7 @@ class World:
         self.say("💨 gust pushed the rover east")
         self.enter(r, c, "gust")
 
-    def report(self, value, computed, fixed=True):
+    def report(self, value, computed, fixed=True, reading=None):
         if self.end:
             raise _End()
         if self.mission != "report":
@@ -881,6 +889,11 @@ class World:
             self.copied = "old"
             self.finish("wrong", f"📡 you reported {value}. That was the number "
                                  f"before every planet got its own: measure yours.")
+        if reading:
+            self.reading = (reading, value)
+            self.finish("wrong", f"📡 you reported {value}: what {reading}() says "
+                                 f"right now, not " + ("how far away it is." if reading.startswith("beacon_")
+                                                       else "how much it changed."))
         if fixed and value in self.v.get("others", ()):
             self.copied = True
             self.finish("wrong", f"📡 you reported {value}. That's the number on "
@@ -1136,6 +1149,16 @@ def explain(world, unlocked=(), code=""):
         what = "That was the number before every planet got its own"
         nxt = ("Everyone's planet is different now, so everyone's number is too. "
                "Measure your own.")
+    elif end == "wrong" and world.reading:
+        name, value = world.reading
+        what = f"You reported {name}() as it was at the end: {value}"
+        if name.startswith("beacon_"):
+            own = name[-1]
+            nxt = (f"Mission control wants how far the beacon is from the rover, not "
+                   f"where it is: take the rover's {own}() away from {name}().")
+        else:
+            nxt = (f"Mission control wants how much it changed. Remember it first, "
+                   f"before = {name}(), then report({name}() - before).")
     elif end == "wrong" and world.copied:
         what = "That's the number on someone else's planet"
         nxt = ("Everyone's planet is different, so everyone's number is too. "
@@ -1193,6 +1216,8 @@ def explain(world, unlocked=(), code=""):
     out = {"what": " ".join([what + "."] + extra), "next": nxt}
     if world.copied:
         out["copied"] = True   # the coach leads with it
+    if world.reading:
+        out["lead"] = True     # so does a reading sent as it was
     return out
 
 

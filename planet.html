@@ -1802,7 +1802,7 @@ function coachTip(run) {
     short = run.end === "stopped" && !site.toldShort;
   if (short) site.toldShort = true;
   // A classmate's number: say so first, then the next step.
-  const copied = run.explain && run.explain.copied ? `${run.explain.what} ` : "";
+  const copied = run.explain && (run.explain.copied || run.explain.lead) ? `${run.explain.what} ` : "";
   const text = copied + (short ? c.short : c.steps[Math.min(step, c.steps.length - 1)]);
   site.coached = {run, text, step: short ? step : step + 1};
   return text;
