@@ -66,6 +66,11 @@
   .round { width: 32px; height: 32px; border-radius: 50%; padding: 0; display: grid; place-items: center; }
   .stars-button { display: flex; align-items: center; gap: 6px; border: 0; border-radius: 99px; padding: 6px 12px 6px 10px; background: var(--panel); color: var(--gold); font: 700 15px var(--mono); }
   .stars-button:hover { background: var(--panel-2); }
+  .garage-word { margin-left: 4px; padding-left: 9px; border-left: 1px solid var(--edge); color: var(--bone); font: 700 14px var(--ui); }
+  /* Something unlocked that the driver hasn't looked at yet: the button glows. */
+  .new-pip { position: absolute; top: -7px; right: -6px; padding: 0 6px; border-radius: 99px; background: #ff8ad8; color: #2a0f24; font: 800 10px/16px var(--ui); font-style: normal; letter-spacing: .05em; box-shadow: 0 0 0 2px var(--dusk); }
+  .stars-button.fresh { animation: garage-glow 1.8s ease-in-out infinite; }
+  @keyframes garage-glow { 50% { box-shadow: 0 0 0 3px rgba(255,138,216,.4), 0 0 20px rgba(255,138,216,.55); } }
   .stars-button.bump { animation: bump .5s; }
   .stars-button { position: relative; }
   .rank-bar { position: absolute; left: 12px; right: 12px; bottom: 2px; height: 3px; border-radius: 2px; background: rgba(255,211,107,.18); overflow: hidden; }
@@ -319,6 +324,11 @@
   .toast .ico { font-size: 30px; text-align: center; }
   .toast b { display: block; }
   .toast small { color: var(--haze); font-size: 13px; }
+  .toast.act { cursor: pointer; }
+  .toast.act:hover { background: rgba(58,49,104,.98); }
+  .toast.act small::after { content: " →"; color: var(--gold); }
+  .toast.r-rare, .toast.r-epic, .toast.r-legendary { box-shadow: 0 16px 40px rgba(0,0,0,.45), inset 0 0 0 2px var(--r), 0 0 24px color-mix(in srgb, var(--r) 45%, transparent); }
+  .toast .tier { display: block; margin-bottom: 1px; }
   @keyframes slidein { from { transform: translateX(120%); } }
   @keyframes slideout { to { transform: translateX(120%); opacity: 0; } }
 
@@ -351,19 +361,48 @@
   .intro-body ol { margin: 0 0 18px; padding-left: 22px; display: grid; gap: 6px; font-size: 17px; }
   .intro-body li::marker { color: var(--mint); font-weight: 800; }
   .intro-body code { font: 600 .9em var(--mono); color: var(--mint); }
-  .garage-card { width: min(720px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 18px 20px 20px; }
-  .garage-top { display: grid; grid-template-columns: 200px 1fr; gap: 18px; align-items: start; }
-  .garage-top canvas { width: 200px; height: 200px; border-radius: 18px; display: block; }
+  .garage-card { width: min(960px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 18px 20px 20px; }
+  .garage-top { display: grid; grid-template-columns: 280px 1fr; gap: 20px; align-items: start; }
+  .stage { position: sticky; top: 0; }
+  .stage canvas { width: 280px; height: 280px; border-radius: 18px; display: block; box-shadow: 0 0 0 1px var(--edge); }
+  .stage-tag { margin: 10px 0 0; text-align: center; color: var(--haze); font-size: 13.5px; line-height: 1.4; }
+  .stage-tag b { display: block; color: var(--bone); font-size: 17px; }
   .garage-card h2 { margin: 0; font-size: 24px; font-weight: 850; letter-spacing: -.02em; }
-  .garage-card h3 { margin: 14px 0 6px; font-size: 14px; color: var(--haze); font-weight: 600; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .tab { position: relative; border: 1px solid var(--edge); background: var(--panel); border-radius: 99px; padding: 5px 11px; font-size: 13.5px; color: var(--haze); }
+  .tab:hover { color: var(--bone); }
+  .tab.on { background: var(--bone); border-color: var(--bone); color: #1b1733; font-weight: 750; }
+  .tab small { margin-left: 4px; font: 600 11px var(--mono); opacity: .75; }
+  .tab.has-new::after { content: ""; position: absolute; top: -2px; right: -2px; width: 10px; height: 10px; border-radius: 50%; background: #ff8ad8; box-shadow: 0 0 0 2px var(--dusk); }
+  /* Rarity: grey, blue, purple, gold. */
+  .r-common { --r: #a99fc8; } .r-rare { --r: #5ab8ff; } .r-epic { --r: #c46bff; } .r-legendary { --r: #ffb547; }
+  .tier { font: 800 10px/1.2 var(--ui); letter-spacing: .08em; text-transform: uppercase; color: var(--r); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 9px; }
+  .card { position: relative; display: grid; justify-items: center; align-content: start; gap: 4px; padding: 8px 6px; border-radius: 14px; color: var(--bone); font: inherit; overflow: hidden;
+          border: 2px solid color-mix(in srgb, var(--r) 55%, transparent);
+          background: linear-gradient(180deg, transparent 55%, color-mix(in srgb, var(--r) 22%, transparent)), var(--panel); transition: transform .12s, box-shadow .12s; }
+  .card:hover, .card:focus-visible { transform: translateY(-3px); box-shadow: 0 8px 22px color-mix(in srgb, var(--r) 45%, transparent); }
+  .card canvas { width: 76px; height: 76px; border-radius: 10px; display: block; }
+  .card .cname { font-size: 12.5px; font-weight: 650; line-height: 1.15; text-align: center; }
+  .card.r-epic .cname, .card.r-legendary .cname { text-shadow: 0 0 10px color-mix(in srgb, var(--r) 70%, transparent); }
+  .card.on { border-color: var(--mint); box-shadow: 0 0 0 2px var(--mint); }
+  .card .worn, .card .new { position: absolute; top: 5px; z-index: 1; border-radius: 99px; padding: 0 6px; font: 800 9.5px/16px var(--ui); letter-spacing: .05em; }
+  .card .worn { left: 5px; background: var(--mint); color: #12302a; }
+  .card .new { right: 5px; }
+  .card.locked { cursor: help; }
+  .card.locked canvas { filter: grayscale(.75) brightness(.5); transition: filter .15s; }
+  .card.locked .lock { position: absolute; top: 34px; font-size: 22px; transition: opacity .15s; }
+  .card.locked .tier { color: var(--gold); font: 700 11px var(--mono); letter-spacing: 0; text-transform: none; }
+  .card.locked:hover canvas, .card.locked:focus-visible canvas { filter: none; }
+  .card.locked:hover .lock, .card.locked:focus-visible .lock { opacity: 0; }
+  /* Legendary cards shine. */
+  .card.r-legendary { background: linear-gradient(110deg, transparent 38%, rgba(255,226,160,.22) 50%, transparent 62%) 0 0 / 250% 100%,
+                      linear-gradient(180deg, transparent 50%, color-mix(in srgb, var(--r) 28%, transparent)), var(--panel); animation: sheen 3.2s linear infinite; }
+  @keyframes sheen { from { background-position: 160% 0, 0 0, 0 0; } to { background-position: -60% 0, 0 0, 0 0; } }
   .garage-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
   .garage-head span { color: var(--gold); font: 700 16px var(--mono); margin-right: auto; margin-left: 12px; }
-  .options { display: flex; flex-wrap: wrap; gap: 6px; }
-  .option { border: 1px solid var(--edge); background: var(--panel); border-radius: 10px; padding: 6px 10px; display: inline-flex; align-items: center; gap: 7px; font-size: 13px; }
-  .option.on { border-color: var(--mint); box-shadow: inset 0 0 0 1px var(--mint); }
-  .option:disabled { opacity: .5; cursor: default; }
-  .option .sw { width: 14px; height: 14px; border-radius: 50%; }
-  .option small { color: var(--gold); font-family: var(--mono); }
+  .card .new, .badge .new { color: #2a0f24; background: #ff8ad8; border-radius: 99px; padding: 0 5px; font: 800 10px/15px var(--ui); letter-spacing: .05em; }
+  .card.fresh, .badge.fresh { box-shadow: inset 0 0 0 2px #ff8ad8; }
   .gift-note { margin: 10px 0 0; color: var(--haze); font-size: 13px; }
   .badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
   .badge { display: grid; grid-template-columns: 30px 1fr; gap: 6px; align-items: center; padding: 8px; border-radius: 12px; background: var(--panel); font-size: 13px; }
@@ -373,7 +412,7 @@
   button.badge { border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
   button.badge:hover { background: var(--panel-2); }
   .badge.worn { box-shadow: inset 0 0 0 2px var(--gold); }
-  .wear-note { font-weight: 400; font-size: 12px; color: var(--muted, #a99fc8); margin-left: 8px; }
+  .wear-note { margin: 0 0 10px; font-size: 13px; color: var(--muted, #a99fc8); }
   .badge.no .ico { filter: grayscale(1); }
   .announce { position: absolute; top: 0; left: 0; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
@@ -396,16 +435,19 @@
     .scope { height: 62vh; min-height: 320px; margin: 0 12px; }
     .uplink { border-left: 0; border-top: 1px solid var(--edge); grid-template-rows: auto 300px auto auto 220px; }
     .site-head { padding: 10px 14px 8px; }
-    .garage-top { grid-template-columns: 1fr; justify-items: center; }
+    .garage-top { grid-template-columns: 1fr; }
+    .stage { position: static; justify-self: center; }
+    .stage canvas { width: min(280px, 100%); height: auto; aspect-ratio: 1; }
     .scout-help { max-width: calc(100% - 28px); bottom: 130px; }
   }
   @media (prefers-reduced-motion: reduce) {
     .wp span, .cell i, .big-star i { transition: none; }
-    .scope.shake, .stars-button.bump, .toast, .toast.out, .tool.nudge { animation: none; }
+    .scope.shake, .stars-button.bump, .stars-button.fresh, .toast, .toast.out, .tool.nudge, .card.r-legendary { animation: none; }
+    .card { transition: none; }
     .nu-fill, .run-line { transition: none; }
   }
   .calm .wp span, .calm .cell i, .calm .big-star i { transition: none; }
-  .calm .scope.shake, .calm .stars-button.bump, .calm .toast, .calm .toast.out { animation: none; }
+  .calm .scope.shake, .calm .stars-button.bump, .calm .stars-button.fresh, .calm .toast, .calm .toast.out, .calm .card.r-legendary { animation: none; }
   .intro-note, .calm-pick { display: flex; align-items: center; gap: 8px; margin: 0 0 16px; color: var(--haze); font-size: 14px; }
   .intro-note { display: block; line-height: 1.45; margin-bottom: 12px; }
   .intro-more { margin: 0 0 14px; }
@@ -437,7 +479,7 @@
     <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#352d60"/><rect x="8" y="13" width="16" height="9" rx="2" fill="#f2eadb"/><rect x="6" y="11" width="4" height="4" rx="1" fill="#2a2440"/><rect x="22" y="11" width="4" height="4" rx="1" fill="#2a2440"/><rect x="6" y="20" width="4" height="4" rx="1" fill="#2a2440"/><rect x="22" y="20" width="4" height="4" rx="1" fill="#2a2440"/><circle cx="20" cy="17" r="2.4" fill="#8cf2c6"/></svg>Strange Planet</div>
     <nav class="route" id="route" aria-label="Your route across the planet"></nav>
     <div class="who">
-      <button class="stars-button" id="starsButton" title="Your stars, the garage and your badges"><span id="rankIcon"></span>★ <span id="totalStars">0</span><i class="rank-bar"><b id="rankBar"></b></i></button>
+      <button class="stars-button" id="starsButton" title="Your stars, the garage and your badges"><span id="rankIcon"></span>★ <span id="totalStars">0</span><span class="garage-word">🔧 Garage</span><i class="new-pip" id="newPip" hidden>NEW</i><i class="rank-bar"><b id="rankBar"></b></i></button>
       <b id="driver"></b>
       <button class="quiet round" id="muteButton" title="Sound on or off" aria-label="Sound on or off">🔊</button>
       <button class="quiet round" id="helpButton" title="How it works" aria-label="How it works">?</button>
@@ -538,18 +580,16 @@
   <div class="garage-card">
     <div class="garage-head"><h2 id="garageTitle">Garage</h2><span id="garageStars"></span><button class="quiet" id="surpriseButton" title="A random look from everything you've unlocked">🎲 Surprise me</button><button class="quiet" id="garageClose">Done</button></div>
     <div class="garage-top">
-      <canvas id="garageScene" aria-hidden="true"></canvas>
+      <div class="stage">
+        <canvas id="garageScene" aria-hidden="true"></canvas>
+        <p class="stage-tag" id="stageTag" aria-live="polite"></p>
+      </div>
       <div>
-        <h3>Paint</h3><div class="options" id="paintOptions"></div>
-        <h3>Topper</h3><div class="options" id="topperOptions"></div>
-        <h3>Trail</h3><div class="options" id="trailOptions"></div>
-        <h3>Map look</h3><div class="options" id="worldOptions"></div>
-        <h3>Victory dance</h3><div class="options" id="danceOptions"></div>
+        <div class="tabs" id="garageTabs"></div>
+        <div id="garageShelf"></div>
         <p class="gift-note" id="giftNote"></p>
       </div>
     </div>
-    <h3>Badges <small class="wear-note">Press an earned badge to wear it on the class screen</small></h3>
-    <div class="badges" id="badgeList"></div>
   </div>
 </div>
 <div class="dialog" id="intro" hidden role="dialog" aria-modal="true" aria-labelledby="introTitle">
@@ -566,7 +606,7 @@
       <details class="intro-more"><summary>More tips</summary>
       <p class="intro-note">The editor helps you type: start a word and it suggests commands (Enter or Tab picks one), brackets and quotes close themselves, and a slip gets a ⚠ on its line. Point at a word to see what it does. Ctrl+/ turns lines into notes.</p>
       <p class="intro-note">Earn three stars on every site. Stuck? 🕹 Scout drives by hand, 📻 Hints asks mission control. Made a good <code>def</code>? 🧰 Functions keeps it for later sites.</p>
-      <p class="intro-note">Stars unlock paint, hats, trails and new looks for the whole map in the garage (★ at the top). Spot a 🎁 on the map? Drive over it for a secret one. Click your rover to say hi.</p>
+      <p class="intro-note">Stars unlock paint, hats, trails and new looks for the whole map in the 🔧 Garage at the top. Spot a 🎁 on the map? Drive over it for a secret one. Click your rover to say hi.</p>
       </details>
       <label class="calm-pick"><input type="checkbox" id="calmPick"> Calm mode: no shaking, confetti or flashing</label>
       <label class="calm-pick"><input type="checkbox" id="bigPick"> Bigger text for the code and telemetry</label>
@@ -705,6 +745,14 @@ const SFX = (() => {
     deliver: () => notes([1047, 1319, 1568, 2093, 1568, 2093], {type: "square", vol: .1, dur: .1, gap: .05}),
     rank: () => notes([523, 659, 784, 1047, 784, 1047, 1319], {type: "triangle", vol: .3, dur: .22, gap: .09}),
     first: () => notes([1568, 2093, 2637], {type: "triangle", vol: .26, dur: .18, gap: .07}),
+    // Horns from the garage: the rover's voice when it's clicked and at the beacon.
+    honk: () => [0, .28].forEach(at => { tone(300, .22, {type: "sawtooth", vol: .16, at}); tone(380, .22, {type: "sawtooth", vol: .12, at}); }),
+    quack: () => [0, .2].forEach(at => tone(640, .15, {type: "sawtooth", vol: .16, slide: -280, at})),
+    pew: () => [0, .2].forEach(at => tone(1900, .18, {type: "square", vol: .09, slide: -1600, at})),
+    moo: () => { tone(150, .9, {type: "sawtooth", vol: .22, slide: -45}); tone(153, .9, {type: "triangle", vol: .2, slide: -50}); },
+    airhorn: () => [0, .28, .56].forEach((at, i) => [415, 466, 554].forEach(f => tone(f, i === 2 ? .7 : .2, {type: "sawtooth", vol: .08, at}))),
+    fanfare: () => notes([392, 523, 659, 784, 659, 784], {type: "square", vol: .1, dur: .16, gap: .13}),
+    icecream: () => notes([784, 659, 523, 659, 784, 784, 784, 880, 784, 659, 523], {type: "triangle", vol: .24, dur: .16, gap: .15}),
   };
   return {
     play(name, arg) {
@@ -1116,6 +1164,11 @@ function render(now = performance.now()) {
     drawRover(ctx, 0, 0, cell * 1.12 * (1 + lift * .25), angle, 1, look, now);
     ctx.restore();
   }
+  // The pet floats along a little behind.
+  if (PETS[look.pet]) {
+    const b = roverAt(Math.max(0, pos - 1.3));
+    drawPet(ctx, (b.c + .5) * cell + cell * .45, (b.r + .5) * cell - cell * .55, cell * 1.4, look.pet, now);
+  }
   if (scene.ring && now - scene.ring < 2000) {
     const u = CALM ? 0 : (now - scene.ring) / 2000;
     ctx.strokeStyle = "#ffd36b"; ctx.lineWidth = Math.max(2, cell / 10);
@@ -1475,6 +1528,7 @@ function onStep(k) {
   else if (f.e === "fell") { SFX.play("fall"); burst(f.r, f.c, "fall", 18); shake(); say(pick(OOPS)); }
   else if (f.e === "goal" && scene.run && scene.run.mission !== "report") {
     scene.cheer = performance.now(); say(pick(CHEERS));
+    setTimeout(() => SFX.play(look.horn || "beep"), 600);
     if (look.dance === "firework") { burst(f.r - .8, f.c, "gift", 34); SFX.play("gift"); }
   }
   else if (f.e === "battery") SFX.play("flat");
@@ -1891,7 +1945,8 @@ function hideCelebrate() { $("celebrate").hidden = true; }
 // The next thing stars unlock in the garage, and how close it is. Returns
 // what fills the bar up to the new total, for when the stars land.
 const SLOT_WORD = {paint: "paint", topper: "topper", trail: "trail", world: "map look", dance: "victory dance"};
-const SLOT_ICON = {paint: "🎨", topper: "🎩", trail: "✨", world: "🗺", dance: "💃"};
+const SLOT_ICON = {paint: "🎨", topper: "🎩", trail: "✨", world: "🗺", dance: "💃", glow: "💡", pet: "🐾", horn: "📯"};
+const RARITY_NAMES = {common: "Common", rare: "Rare", epic: "Epic", legendary: "Legendary"};
 function showNextUnlock(total, before) {
   const box = $("celeNext"), items = ((state && state.garage) || []).filter(g => g.stars != null);
   const next = items.filter(g => g.stars > total).sort((a, b) => a.stars - b.stars)[0];
@@ -1903,7 +1958,7 @@ function showNextUnlock(total, before) {
   const need = next.stars - total;
   box.innerHTML = `${icon}<span>Next: <b>${esc(next.name)}</b> ${SLOT_WORD[next.slot] || ""}</span>`
     + `<span class="nu-bar"><i class="nu-fill" style="width:${pct(before)}%"></i></span><small>${need} ★ to go</small>`;
-  box.title = `${need} more star${need === 1 ? "" : "s"} unlock${need === 1 ? "s" : ""} ${next.name} in the garage (★ at the top)`;
+  box.title = `${need} more star${need === 1 ? "" : "s"} unlock${need === 1 ? "s" : ""} ${next.name} in the 🔧 Garage at the top`;
   return () => { box.querySelector(".nu-fill").style.width = pct(total) + "%"; };
 }
 // The new stars fly from the card up to the counter, which bumps as they land.
@@ -1929,28 +1984,32 @@ function bumpStars(total) {
 // Badges and garage unlocks slide in one after another.
 async function showToasts(r) {
   if (r.new_stars && !r.flown) bumpStars(r.total_stars);
+  markGarageNew();
   // A handful of badges at once becomes one toast, so they never bury the editor.
   const badges = r.badges.length > 2
-    ? [["🏅", `${r.badges.length} new badges!`, `${r.badges.map(b => b.icon).join(" ")}  See them in the garage (★ at the top).`]]
-    : r.badges.map(b => [b.icon, `Badge: ${b.name}`, b.how]);
+    ? [["🏅", `${r.badges.length} new badges!`, `${r.badges.map(b => b.icon).join(" ")}  Press to see them in the garage`, true]]
+    : r.badges.map(b => [b.icon, `Badge: ${b.name}`, b.how, true]);
   const items = [...(r.closer ? [["🔥", "Closest yet!", `${r.closer}. Keep the part that worked and change the next bit.`]] : []),
-                 ...r.found.map(u => ["🎁", `You found a mystery gift: ${u.name} ${u.slot}!`, "Try it on in the garage (★ at the top)."]),
+                 ...r.found.map(u => ["🎁", `You found a mystery gift: ${u.name} ${u.slot}!`, "Press to try it on in the garage", true, u.rarity]),
                  ...badges,
-                 ...r.unlocked.map(u => ["🔓", `Unlocked: ${u.name} ${u.slot}`, "Fit it in the garage (★ at the top)."]),
+                 ...r.unlocked.map(u => [SLOT_ICON[u.slot] || "🔓", `Unlocked: ${u.name} ${u.slot}`, "Press to fit it in the garage", true, u.rarity]),
                  ...(r.missions_done || []).map(m => ["✅", `Mission done: ${m.text}`, r.trophy ? "" : "📋 Today, next to the goals, shows the others."]),
                  ...(r.trophy ? [["🏆", "All of today's missions done!", "A mission day trophy. Come back tomorrow for three new ones."]] : [])];
   if (r.found.length && site) renderGoals();
   if ((r.missions_done || []).length && site) renderGoals();
-  for (const [icon, title, text] of items) {
+  for (const [icon, title, text, garage, rarity] of items) {
     await wait(CALM ? 0 : 500);
-    SFX.play(icon === "🎁" ? "gift" : icon === "🏆" ? "rank" : "badge");
-    toast(icon, title, text);
+    SFX.play(icon === "🎁" || rarity === "legendary" ? "gift" : icon === "🏆" ? "rank" : "badge");
+    toast(icon, title, text, garage, rarity);
   }
 }
-function toast(icon, title, text) {
+// A garage toast opens the garage when pressed.
+function toast(icon, title, text, garage, rarity) {
   const el = document.createElement("div");
-  el.className = "toast";
-  el.innerHTML = `<span class="ico">${icon}</span><div><b>${esc(title)}</b><small>${esc(text)}</small></div>`;
+  el.className = (garage ? "toast act" : "toast") + (rarity ? ` r-${rarity}` : "");
+  const tier = rarity && rarity !== "common" ? `<span class="tier">${RARITY_NAMES[rarity]}</span>` : "";
+  el.innerHTML = `<span class="ico">${icon}</span><div>${tier}<b>${esc(title)}</b><small>${esc(text)}</small></div>`;
+  if (garage) el.addEventListener("click", () => { el.remove(); openGarage(); });
   $("toasts").appendChild(el);
   setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 350); }, 5200);
 }
@@ -1995,7 +2054,7 @@ function useState(data) {
   nudgeFirstRun();
   look = data.look || look;
   $("totalStars").textContent = data.total_stars;
-  if (!holdRank) renderRank(data.rank);
+  if (!holdRank) { renderRank(data.rank); markGarageNew(); }
   classUnlocks(data);
   renderRoute();
   renderFunctions();
@@ -2019,7 +2078,7 @@ function classUnlocks(data) {
   for (const goal of reached.slice(Number(seen))) {
     const item = data.garage.find(i => i.class === goal);
     SFX.play("rank");
-    toast("🎉", `Class unlock: ${goal} ★ together!`, `Everyone gets ${item ? `${item.name} ${item.slot}` : "something new"}. Fit it in the garage (★ at the top).`);
+    toast("🎉", `Class unlock: ${goal} ★ together!`, `Everyone gets ${item ? `${item.name} ${item.slot}` : "something new"}. Press to fit it in the garage`, true);
   }
 }
 
@@ -2355,7 +2414,31 @@ function sendTyping() {
 }
 
 // ---- The garage and the badge cabinet -----------------------------------------------------
+// Everything open in the garage, and what this driver had seen when they last looked.
+function garageKeys() {
+  return [...state.garage.filter(i => i.open).map(i => `${i.slot}:${i.key}`),
+          ...state.badges.filter(b => b.earned).map(b => "badge:" + b.key)];
+}
+function garageSeen() {
+  const seen = recall(`planetGarageSeen:${me}`);
+  return seen == null ? null : new Set(JSON.parse(seen));
+}
+// Never opened, or something new since: NEW on the Garage button.
+function markGarageNew() {
+  const seen = garageSeen(), fresh = !seen || garageKeys().some(k => !seen.has(k));
+  $("newPip").hidden = !fresh;
+  $("starsButton").classList.toggle("fresh", fresh);
+}
+let garageNew = new Set();
 function openGarage() {
+  const seen = garageSeen();
+  garageNew = new Set(seen ? garageKeys().filter(k => !seen.has(k)) : []);
+  store(`planetGarageSeen:${me}`, JSON.stringify(garageKeys()));
+  markGarageNew();
+  // Open on the shelf with something new on it.
+  const fresh = GARAGE_TABS.find(([tab]) => [...garageNew].some(k => k.startsWith((tab === "badges" ? "badge" : tab) + ":")));
+  if (fresh) garageTab = fresh[0];
+  garagePeek = null;
   $("garage").hidden = false;
   renderGarage();
   $("garageClose").focus();
@@ -2367,26 +2450,60 @@ function garageLoop(ts) {
   if (ts - (garageLoop.drawn || 0) > 60) { garagePreview(ts); garageLoop.drawn = ts; }
   requestAnimationFrame(garageLoop);
 }
+// The garage's shelves, one tab each, and the badge cabinet.
+const GARAGE_TABS = [["paint", "Paint"], ["topper", "Hats"], ["pet", "Pets"], ["glow", "Glow"], ["trail", "Trails"],
+                     ["horn", "Horns"], ["dance", "Dances"], ["world", "Map looks"], ["badges", "Badges"]];
+const DANCE_ICONS = {spin: "🌀", wiggle: "〰️", moonwalk: "🕺", firework: "🎆", flip: "🤸", zoomies: "💨", disco: "🪩"};
+const HORN_ICONS = {beep: "🤖", honk: "📢", quack: "🦆", pew: "⚡", moo: "🐄", airhorn: "📯", fanfare: "🎺", icecream: "🍦"};
+let garageTab = "paint", garagePeek = null;
+function itemNeed(i) {
+  return i.find ? `🎁 ${i.find.toUpperCase()}` : i.stars != null ? `★ ${i.stars}` : i.trophies != null ? `🏆 ${i.trophies}`
+    : i.badge ? `🏅 ${i.badge_name}` : `class ★ ${i.class}`;
+}
+function itemHow(i) {
+  return i.find ? `A mystery gift on ${i.where}: drive over the 🎁 there to find it`
+    : i.stars != null ? `Earn ${i.stars} stars` : i.trophies != null ? `Finish all of a day's missions on ${i.trophies} day${i.trophies === 1 ? "" : "s"}`
+    : i.badge ? `Earn the ${i.badge_name} badge`
+    : `When the class has ${i.class} stars together`;
+}
 function renderGarage() {
   const rank = state.rank;
   $("garageStars").textContent = `★ ${state.total_stars} / ${state.max_stars}` + (rank ? ` · ${rank.icon} ${rank.name}${rank.next ? `, ${rank.need} ★ to ${rank.next_icon} ${rank.next}` : ""}` : "");
-  for (const slot of ["paint", "topper", "trail", "world", "dance"]) {
-    $(slot + "Options").innerHTML = state.garage.filter(i => i.slot === slot).map(i => {
-      const sw = slot === "paint" || slot === "world" ? `<span class="sw" style="background:${swatch(slot, i.key)}"></span>` : "";
-      const need = i.open ? "" : `<small>${i.find ? `🎁 ${i.find.toUpperCase()}` : i.stars != null ? `★ ${i.stars}` : i.trophies != null ? `🏆 ${i.trophies}` : i.badge ? `🏅 ${esc(i.badge_name)}` : `class ★ ${i.class}`}</small>`;
-      const how = i.open ? "" : i.find ? `A mystery gift on ${i.where}: drive over the 🎁 there to find it`
-        : i.stars != null ? `Earn ${i.stars} stars` : i.trophies != null ? `Finish all of a day's missions on ${i.trophies} day${i.trophies === 1 ? "" : "s"}`
-        : i.badge ? `Earn the ${i.badge_name} badge`
-        : `When the class has ${i.class} stars together`;
-      return `<button class="option${look[slot] === i.key ? " on" : ""}" data-slot="${slot}" data-key="${i.key}" ${i.open ? "" : "disabled"} title="${esc(how)}">${sw}${esc(i.name)}${need}</button>`;
-    }).join("");
+  $("garageTabs").innerHTML = GARAGE_TABS.map(([tab, name]) => {
+    const items = tab === "badges" ? state.badges : state.garage.filter(i => i.slot === tab);
+    const open = items.filter(i => tab === "badges" ? i.earned : i.open).length;
+    const fresh = items.some(i => garageNew.has(`${tab === "badges" ? "badge" : tab}:${i.key}`));
+    return `<button class="tab${tab === garageTab ? " on" : ""}${fresh ? " has-new" : ""}" data-tab="${tab}">${tab === "badges" ? "🏅" : SLOT_ICON[tab]} ${name}<small>${open}/${items.length}</small></button>`;
+  }).join("");
+  if (garageTab === "badges") {
+    $("garageShelf").innerHTML = `<p class="wear-note">Press an earned badge to wear it on the class screen.</p><div class="badges">` + state.badges.map(b => b.earned
+      ? `<button class="badge${state.showoff === b.key ? " worn" : ""}${garageNew.has("badge:" + b.key) ? " fresh" : ""}" onclick="wearBadge('${b.key}')" title="${state.showoff === b.key ? "Worn on the class screen: press to take it off" : "Wear it on the class screen"}"><span class="ico">${b.icon}</span><div>${esc(b.name)}${garageNew.has("badge:" + b.key) ? ` <span class="new">NEW</span>` : ""}<small>${state.showoff === b.key ? "👕 Wearing it" : esc(b.how)}</small></div></button>`
+      : `<div class="badge no"><span class="ico">${b.icon}</span><div>${esc(b.name)}<small>${esc(b.how)}</small></div></div>`).join("") + "</div>";
+  } else {
+    const RANK = Object.keys(RARITY_NAMES), shelf = state.garage.filter(i => i.slot === garageTab)
+      .sort((a, b) => RANK.indexOf(a.rarity) - RANK.indexOf(b.rarity));   // common first, legendary last
+    $("garageShelf").innerHTML = `<div class="cards">` + shelf.map(i => {
+      const on = look[i.slot] === i.key, fresh = garageNew.has(`${i.slot}:${i.key}`);
+      return `<button class="card r-${i.rarity}${on ? " on" : ""}${fresh ? " fresh" : ""}${i.open ? "" : " locked"}" data-slot="${i.slot}" data-key="${i.key}"
+        ${i.open ? "" : `aria-disabled="true"`} title="${esc(i.open ? i.name : itemHow(i))}">
+        ${on ? `<span class="worn">✓ ON</span>` : ""}${fresh ? `<span class="new">NEW</span>` : ""}
+        <canvas data-key="${i.key}"></canvas>${i.open ? "" : `<span class="lock">🔒</span>`}
+        <span class="cname">${esc(i.name)}</span><span class="tier">${i.open ? RARITY_NAMES[i.rarity] : esc(itemNeed(i))}</span></button>`;
+    }).join("") + "</div>";
+    $("garageShelf").querySelectorAll("canvas").forEach(cv => thumb(cv, garageTab, cv.dataset.key));
   }
   const gifts = state.garage.filter(i => i.find), found = gifts.filter(i => i.open).length;
   $("giftNote").textContent = `🎁 ${found} of ${gifts.length} mystery gifts found. They're hidden on the map: drive over one in a run to open it.`;
-  $("badgeList").innerHTML = state.badges.map(b => b.earned
-    ? `<button class="badge${state.showoff === b.key ? " worn" : ""}" onclick="wearBadge('${b.key}')" title="${state.showoff === b.key ? "Worn on the class screen: press to take it off" : "Wear it on the class screen"}"><span class="ico">${b.icon}</span><div>${esc(b.name)}<small>${state.showoff === b.key ? "👕 Wearing it" : esc(b.how)}</small></div></button>`
-    : `<div class="badge no"><span class="ico">${b.icon}</span><div>${esc(b.name)}<small>${esc(b.how)}</small></div></div>`).join("");
+  stageTag();
   garagePreview();
+}
+// Under the big preview: what's being tried on, and how to get it.
+function stageTag() {
+  const i = garagePeek && state.garage.find(g => g.slot === garagePeek.slot && g.key === garagePeek.key);
+  $("stageTag").innerHTML = !i ? `<b>Your rover</b>Point at anything to try it on.`
+    : `<b>${esc(i.name)}</b><span class="tier r-${i.rarity}">${RARITY_NAMES[i.rarity]} ${i.slot}</span> · `
+      + (!i.open ? `🔒 ${esc(itemHow(i))}` : look[i.slot] === i.key ? "you're wearing it" : "press to fit it")
+      + (i.slot === "horn" ? " · press to hear it" : "");
 }
 function swatch(slot, key) {
   if (slot === "world") {
@@ -2396,28 +2513,80 @@ function swatch(slot, key) {
   const p = PAINTS[key];
   return typeof p === "string" ? p : Array.isArray(p) ? `linear-gradient(135deg,${p.join(",")})` : p.swatch;
 }
-// A patch of ground in the chosen map look, with a little of everything on
-// it, and the rover just arrived along its trail.
-const PREVIEW_MAP = ["#..O.", ".~~..", "....#", ".O...", "....."];
-const PREVIEW_ROUTE = [{r: 4, c: 4}, {r: 4, c: 3}, {r: 4, c: 2}, {r: 3, c: 2}, {r: 2, c: 2}];
+// Draw with another look for a moment (the ground and trails read `look`).
+function withLook(gear, fn) { const was = look; look = gear; fn(); look = was; }
+// A card's picture: the rover wearing that one thing, held still.
+const THUMB_MAP = ["#..", "...", "..O"];
+const THUMB_ROUTE = [{r: 0, c: 0}, {r: 1, c: 0}, {r: 2, c: 0}, {r: 2, c: 1}, {r: 2, c: 2}, {r: 1, c: 2}];
+function thumb(cv, slot, key) {
+  const dpr = window.devicePixelRatio || 1, s = 76, now = 1200;
+  cv.width = cv.height = s * dpr;
+  const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const gear = {...look, [slot]: key}, zone = site ? site.zoneKey : "landing";
+  if (slot === "world" || slot === "trail") {
+    const cell = s / 3;
+    withLook(gear, () => {
+      ctx.drawImage(terrain(THUMB_MAP, zone, cell), 0, 0);
+      if (slot === "trail") drawTrail(ctx, THUMB_ROUTE, THUMB_ROUTE.length - 1, THUMB_ROUTE[THUMB_ROUTE.length - 1], cell, now);
+    });
+    if (slot === "trail") drawRover(ctx, 2.5 * cell, 1.5 * cell, cell, -Math.PI / 2, 1, gear, now);
+    else drawRover(ctx, s / 2, s / 2, cell * 1.1, -Math.PI / 2, 1, gear, now);
+    return;
+  }
+  const grad = ctx.createRadialGradient(s / 2, s / 2, 4, s / 2, s / 2, s * .7);
+  grad.addColorStop(0, "#3a3168"); grad.addColorStop(1, "#16122c");
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, s, s);
+  if (slot === "dance" || slot === "horn") {
+    drawRover(ctx, s * .42, s * .58, s * .55, -Math.PI / 2 + (slot === "dance" ? .5 : 0), 1, look, now);
+    ctx.font = `${Math.round(s * .36)}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText((slot === "dance" ? DANCE_ICONS : HORN_ICONS)[key] || "✨", s * .72, s * .27);
+  } else if (slot === "pet" && PETS[key]) drawPet(ctx, s / 2, s * .44, s * .95, key, now);
+  else drawRover(ctx, s / 2, s / 2 + 3, s * .92, -Math.PI / 2, 1, gear, now);
+}
+// The stage: the rover drives a loop round a patch of ground with its pet
+// behind it, and does its dance at the end of every lap.
+const PREVIEW_MAP = ["#.....O", ".......", "..~~...", "...#...", "...O...", ".......", "O.....#"];
+const PREVIEW_LOOP = [[1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [2, 5], [3, 5], [4, 5], [5, 5], [5, 4], [5, 3], [5, 2], [5, 1], [4, 1], [3, 1], [2, 1]]
+  .map(([r, c]) => ({r, c}));
+const STEP = 280, LAP = PREVIEW_LOOP.length * STEP, DANCE_TIME = 900, REST = 400;
+function loopAt(p) {
+  const n = PREVIEW_LOOP.length, i = Math.floor(p), u = ease(p - i);
+  const a = PREVIEW_LOOP[((i % n) + n) % n], b = PREVIEW_LOOP[(((i + 1) % n) + n) % n];
+  return {r: a.r + (b.r - a.r) * u, c: a.c + (b.c - a.c) * u, angle: Math.atan2(b.r - a.r, b.c - a.c)};
+}
 function garagePreview(now = performance.now()) {
-  const cv = $("garageScene"), dpr = window.devicePixelRatio || 1, s = 200;
+  const cv = $("garageScene"), dpr = window.devicePixelRatio || 1, s = 280, cell = s / 7;
   if (cv.width !== s * dpr) { cv.width = s * dpr; cv.height = s * dpr; }
   const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const gear = garagePeek ? {...look, [garagePeek.slot]: garagePeek.key} : look;
   // Its own copy of the ground, so the site's map keeps its cached one.
-  const zone = site ? site.zoneKey : "landing", key = zone + "|" + look.world;
-  if (garagePreview.key !== key) { garagePreview.ground = terrain(PREVIEW_MAP, zone, 40); garagePreview.key = key; }
+  const zone = site ? site.zoneKey : "landing", key = zone + "|" + gear.world;
+  if (garagePreview.key !== key) { withLook(gear, () => { garagePreview.ground = terrain(PREVIEW_MAP, zone, cell); }); garagePreview.key = key; }
   ctx.drawImage(garagePreview.ground, 0, 0);
-  drawTrail(ctx, PREVIEW_ROUTE, PREVIEW_ROUTE.length - 1, {r: 1.6, c: 2}, 40, now);
-  const grad = ctx.createRadialGradient(s / 2, s / 2, 20, s / 2, s / 2, s * .7);
-  grad.addColorStop(0, "rgba(255,240,220,.12)"); grad.addColorStop(1, "rgba(10,6,24,.5)");
+  const t = CALM ? 0 : (now - (garagePreview.start || 0)) % (LAP + DANCE_TIME + REST), p = Math.min(t, LAP) / STEP;
+  const here = loopAt(p), behind = [];
+  for (let k = Math.floor(p) - 10; k <= Math.floor(p); k++) behind.push(loopAt(k));
+  withLook(gear, () => drawTrail(ctx, behind, behind.length - 1, here, cell, now));
+  const grad = ctx.createRadialGradient(s / 2, s / 2, 30, s / 2, s / 2, s * .7);
+  grad.addColorStop(0, "rgba(255,240,220,.1)"); grad.addColorStop(1, "rgba(10,6,24,.5)");
   ctx.fillStyle = grad; ctx.fillRect(0, 0, s, s);
-  // The chosen dance, every 2.6 seconds.
-  const u = CALM ? 1 : (now % 2600) / 900, d = u < 1 ? dance(look.dance, u) : dance("none", 1);
-  if (d.ring) discoRing(ctx, s / 2 + d.dx * 40, 84 + d.dy * 40, 40, d.ring, now);
-  ctx.save(); ctx.translate(s / 2 + d.dx * 40, 84 + d.dy * 40 - d.lift * 24); ctx.scale(d.sx || .02, 1);
-  drawRover(ctx, 0, 0, 96 * (1 + d.lift * .2), -Math.PI / 2 + d.angle, 1, look, now);
+  const u = (t - LAP) / DANCE_TIME, d = t > LAP && u < 1 ? dance(gear.dance, u) : dance("none", 1);
+  const x = (here.c + .5 + d.dx) * cell, y = (here.r + .5 + d.dy) * cell;
+  if (d.ring) discoRing(ctx, x, y, cell * 1.4, d.ring, now);
+  ctx.save(); ctx.translate(x, y - d.lift * cell * .8); ctx.scale(d.sx || .02, 1);
+  drawRover(ctx, 0, 0, cell * 1.6 * (1 + d.lift * .2), here.angle + d.angle, 1, gear, now);
   ctx.restore();
+  const pet = loopAt(p - 1.4);
+  drawPet(ctx, (pet.c + .5) * cell + cell * .35, (pet.r + .5) * cell - cell * .55, cell * 1.6, gear.pet, now);
+}
+// Try something on in the stage, or go back to what's fitted.
+function peek(card) {
+  const next = card ? {slot: card.dataset.slot, key: card.dataset.key} : null;
+  if (JSON.stringify(next) === JSON.stringify(garagePeek)) return;
+  garagePeek = next;
+  // A dance shows straight away, not at the end of the lap.
+  if (next && next.slot === "dance") garagePreview.start = performance.now() - LAP;
+  stageTag(); garagePreview();
 }
 // One earned badge on the class screen card, or none (press it again).
 async function wearBadge(key) {
@@ -2428,19 +2597,19 @@ async function wearBadge(key) {
 }
 // A random look from everything this student has unlocked.
 async function surprise() {
-  const pick = slot => {
-    const open = state.garage.filter(i => i.slot === slot && i.open);
-    return open[Math.floor(Math.random() * open.length)].key;
-  };
-  look = {paint: pick("paint"), topper: pick("topper"), trail: pick("trail"), world: pick("world"), dance: pick("dance")};
-  SFX.wake(); SFX.play("beep");
+  look = {};
+  for (const i of state.garage) {
+    const open = state.garage.filter(g => g.slot === i.slot && g.open);
+    if (!(i.slot in look)) look[i.slot] = open[Math.floor(Math.random() * open.length)].key;
+  }
+  SFX.wake(); SFX.play(look.horn || "beep");
   try { look = (await post("/planet/look", {id: me, ...look})).look; } catch (_) {}
   state.look = look;
   renderGarage(); render();
 }
 async function chooseLook(slot, key) {
   look = {...look, [slot]: key};
-  SFX.wake(); SFX.play("beep");
+  SFX.wake(); SFX.play(slot === "horn" ? key : "beep");
   try { look = (await post("/planet/look", {id: me, ...look})).look; } catch (_) {}
   state.look = look;
   renderGarage(); render();
@@ -3280,10 +3449,16 @@ $("starsButton").addEventListener("click", openGarage);
 $("garageClose").addEventListener("click", () => { $("garage").hidden = true; });
 $("surpriseButton").addEventListener("click", surprise);
 $("garage").addEventListener("click", e => {
-  const b = e.target.closest(".option");
-  if (b && !b.disabled) chooseLook(b.dataset.slot, b.dataset.key);
+  const tab = e.target.closest(".tab"), card = e.target.closest(".card");
+  if (tab) { garageTab = tab.dataset.tab; garagePeek = null; renderGarage(); }
+  // A locked horn still plays, so it's something to look forward to.
+  if (card && card.classList.contains("locked")) { if (card.dataset.slot === "horn") { SFX.wake(); SFX.play(card.dataset.key); } }
+  else if (card) chooseLook(card.dataset.slot, card.dataset.key);
   if (e.target === $("garage")) $("garage").hidden = true;
 });
+$("garageShelf").addEventListener("pointerover", e => peek(e.target.closest(".card")));
+$("garageShelf").addEventListener("focusin", e => peek(e.target.closest(".card")));
+$("garageShelf").addEventListener("pointerleave", () => peek(null));
 $("runButton").addEventListener("click", transmit);
 $("scoutButton").addEventListener("click", toggleScout);
 $("scoutCode").addEventListener("click", scoutAsCode);
@@ -3379,7 +3554,7 @@ $("map").addEventListener("click", e => {
   const rect = $("map").getBoundingClientRect(), {ox, oy, cell} = scene.view, rover = roverAt(pos);
   const dx = e.clientX - rect.left - ox - (rover.c + .5) * cell, dy = e.clientY - rect.top - oy - (rover.r + .5) * cell;
   if (Math.hypot(dx, dy) > cell * .8) return;
-  SFX.wake(); SFX.play("beep");
+  SFX.wake(); SFX.play(look.horn || "beep");
   scene.poke = performance.now();
   scene.said = {at: scene.poke, text: POKE_LINES[Math.floor(Math.random() * POKE_LINES.length)]};
 });

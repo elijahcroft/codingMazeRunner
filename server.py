@@ -2857,6 +2857,10 @@ GARAGE = [
     {"slot": "paint", "key": "holo", "name": "Hologram", "stars": 140},
     {"slot": "paint", "key": "comet", "name": "Comet", "class": 300},
     {"slot": "paint", "key": "legend", "name": "Legendary", "class": 2400},
+    {"slot": "paint", "key": "matrix", "name": "Code Rain", "stars": 48},
+    {"slot": "paint", "key": "lavalamp", "name": "Lava Lamp", "stars": 62},
+    {"slot": "paint", "key": "glitch", "name": "Glitch", "stars": 80},
+    {"slot": "paint", "key": "plasma", "name": "Plasma Storm", "stars": 112},
     {"slot": "topper", "key": "none", "name": "Antenna", "stars": 0},
     {"slot": "topper", "key": "flag", "name": "Flag", "stars": 5},
     {"slot": "topper", "key": "party", "name": "Party hat", "stars": 9},
@@ -2907,8 +2911,55 @@ GARAGE = [
     {"slot": "dance", "key": "flip", "name": "Backflip", "badge": "triple"},
     {"slot": "dance", "key": "zoomies", "name": "Zoomies", "badge": "grit"},
     {"slot": "dance", "key": "disco", "name": "Disco spin", "trophies": 1},
+    # A light under the rover.
+    {"slot": "glow", "key": "noglow", "name": "No glow", "stars": 0},
+    {"slot": "glow", "key": "mintglow", "name": "Neon Mint", "stars": 4},
+    {"slot": "glow", "key": "pinkglow", "name": "Hot Pink", "stars": 11},
+    {"slot": "glow", "key": "iceglow", "name": "Ice Blue", "stars": 21},
+    {"slot": "glow", "key": "rainbowglow", "name": "Rainbow Pulse", "stars": 33},
+    {"slot": "glow", "key": "plasmaring", "name": "Plasma Ring", "stars": 57},
+    {"slot": "glow", "key": "afterburner", "name": "Afterburner", "stars": 90},
+    {"slot": "glow", "key": "aura", "name": "Shadow Aura", "stars": 120},
+    # A sidekick that floats along behind the rover.
+    {"slot": "pet", "key": "nopet", "name": "Just me", "stars": 0},
+    {"slot": "pet", "key": "drone", "name": "Drone", "stars": 7},
+    {"slot": "pet", "key": "duck", "name": "Rubber duck", "trophies": 2},
+    {"slot": "pet", "key": "spacecat", "name": "Space cat", "stars": 26},
+    {"slot": "pet", "key": "ghost", "name": "Ghost", "stars": 44},
+    {"slot": "pet", "key": "jelly", "name": "Space jelly", "stars": 66},
+    {"slot": "pet", "key": "robodog", "name": "Robo dog", "stars": 82},
+    {"slot": "pet", "key": "dragon", "name": "Baby dragon", "stars": 115},
+    # What the rover says when it's clicked, and at the beacon.
+    {"slot": "horn", "key": "beep", "name": "Beep boop", "stars": 0},
+    {"slot": "horn", "key": "honk", "name": "Honk", "stars": 6},
+    {"slot": "horn", "key": "quack", "name": "Quack", "stars": 9},
+    {"slot": "horn", "key": "pew", "name": "Laser pew", "stars": 19},
+    {"slot": "horn", "key": "moo", "name": "Moo", "stars": 31},
+    {"slot": "horn", "key": "airhorn", "name": "Air horn", "stars": 50},
+    {"slot": "horn", "key": "fanfare", "name": "Fanfare", "stars": 72},
+    {"slot": "horn", "key": "icecream", "name": "Ice cream van", "stars": 100},
 ]
-GARAGE_SLOTS = ("paint", "topper", "trail", "world", "dance")
+GARAGE_SLOTS = ("paint", "topper", "trail", "world", "dance", "glow", "pet", "horn")
+
+
+# How rare an item is, from how hard it is to get. Mystery gifts, badges and
+# trophies are always epic.
+RARITIES = ("common", "rare", "epic", "legendary")
+
+
+def rarity(item):
+    if "stars" in item:
+        n = item["stars"]
+        return "common" if n < 25 else "rare" if n < 60 else "epic" if n < 110 else "legendary"
+    if "class" in item:
+        n = item["class"]
+        return "rare" if n < 100 else "epic" if n < 600 else "legendary"
+    return "epic"
+
+
+for _item in GARAGE:
+    _item["rarity"] = rarity(_item)
+RARITY_OF = {(item["slot"], item["key"]): item["rarity"] for item in GARAGE}
 GIFTS = {item["find"]: item for item in GARAGE if "find" in item}
 CLASS_GOALS = sorted({item["class"] for item in GARAGE if "class" in item})
 # What each class goal unlocks, in words, for the projector's meter.
@@ -2947,6 +2998,9 @@ def planet_entry(p):
         entry.setdefault(key, value)
     entry["look"].setdefault("world", "planet")
     entry["look"].setdefault("dance", "spin")
+    entry["look"].setdefault("glow", "noglow")
+    entry["look"].setdefault("pet", "nopet")
+    entry["look"].setdefault("horn", "beep")
     entry.setdefault("showoff", None)   # a badge worn on the class screen
     return entry
 
@@ -3229,7 +3283,8 @@ def planet_record(p, key, code, results):
         item = GIFTS[key]
         entry["found"].append(item["key"])
         results[0]["log"].append(f"tick {opened['t']}: 🎁 found a mystery gift: {item['name']}!")
-        found.append({"slot": item["slot"], "key": item["key"], "name": item["name"]})
+        found.append({"slot": item["slot"], "key": item["key"], "name": item["name"],
+                      "rarity": item["rarity"]})
         feed(f"🎁 {p['name']} found a mystery gift on {s['name']}: {item['name']}")
     earned = []
     record = None
@@ -3363,13 +3418,17 @@ def planet_record(p, key, code, results):
     if done_now:
         unlocked = [i for i in garage_for(entry)
                     if i["open"] and i["key"] not in before_open and "find" not in i]
+    # Something epic or legendary: the class hears about it.
+    for i in unlocked:
+        if i["rarity"] in ("epic", "legendary") and "class" not in i:
+            feed(f"✨ {p['name']} unlocked {i['name']}, a {i['rarity']} {i['slot']}!")
     return {"stars": run_stars, "best": stars, "new_stars": new_stars,
             "first_try": bool(first_try and reached_any), "rank_up": rank_up,
             "zone_cleared": cleared, "trophy": trophy,
             "missions_done": [{"icon": MISSIONS[k][0], "text": MISSIONS[k][1]} for k in done_now],
             "badges": earned, "record": record, "found": found,
-            "unlocked": [{"slot": i["slot"], "key": i["key"], "name": i["name"]}
-                         for i in unlocked],
+            "unlocked": [{"slot": i["slot"], "key": i["key"], "name": i["name"],
+                          "rarity": i["rarity"]} for i in unlocked],
             "total_stars": star_count(entry),
             "misses": entry["misses"].get(key, 0),   # runs in a row that didn't get there
             "helpers": planet_helpers(p, key) if entry["misses"].get(key, 0) >= HELP_AFTER
@@ -3515,6 +3574,9 @@ def planet_class():
                      "stars": star_count(entry),
                      "badges": len(entry["badges"]),
                      "look": entry["look"],
+                     # The rarest thing they're wearing, for their card's frame.
+                     "flair": max((RARITY_OF.get(kv, "common") for kv in entry["look"].items()),
+                                  key=RARITIES.index),
                      "showoff": PLANET_BADGES[entry["showoff"]][0] if entry["showoff"] else None,
                      "runs_here": entry["runs"].get(key, 0),
                      "runs_total": sum(entry["runs"].values()),

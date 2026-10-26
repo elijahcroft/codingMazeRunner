@@ -36,9 +36,13 @@
   h2 { margin: 0 0 12px; font-size: 20px; color: var(--haze); font-weight: 650; }
   .fleet { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
   .ship { background: rgba(35,29,63,.8); border-radius: 16px; padding: 12px; border: 2px solid transparent; min-width: 0; }
-  .ship.won { border-color: var(--mint); }
   .ship .top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-  .ship .top canvas { width: 58px; height: 58px; flex: none; margin: -8px 0; }
+  .ship .top canvas { width: 84px; height: 72px; flex: none; margin: -12px -4px -12px -8px; }
+  /* The card's edge: the rarest thing in their garage look. */
+  .ship.f-rare { border-color: #5ab8ff; }
+  .ship.f-epic { border-color: #c46bff; box-shadow: 0 0 18px rgba(196,107,255,.35); }
+  .ship.f-legendary { border-color: #ffb547; box-shadow: 0 0 22px rgba(255,181,71,.45); }
+  .ship.won { border-color: var(--mint); }
   .ship b { flex: 1; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ship .where { color: var(--haze); font: 13px var(--mono); white-space: nowrap; }
   .ship .map { display: block; margin: 0 auto 8px; border-radius: 6px; }
@@ -113,12 +117,14 @@ function miniMap(cv, map, pos, paint) {
 }
 const ENDS = {goal: "✓ mission complete", wrong: "wrong number", fell: "fell", battery: "flat battery",
               ticks: "out of time", stopped: "stopped short", error: "code error"};
-// A little rover from above, in the student's own garage look, heading out.
+// A little rover from above, in the student's own garage look, heading out,
+// with its pet beside it.
 function rover(cv, gear) {
-  const dpr = devicePixelRatio || 1, s = 58;
-  cv.width = s * dpr; cv.height = s * dpr;
+  const dpr = devicePixelRatio || 1, w = 84, h = 72;
+  cv.width = w * dpr; cv.height = h * dpr;
   const g = cv.getContext("2d"); g.scale(dpr, dpr);
-  drawRover(g, s / 2, s / 2 + 4, 52, -.35, 1, gear, 0);
+  drawRover(g, 34, h / 2 + 4, 56, -.35, 1, gear, 0);
+  drawPet(g, 66, 30, 42, gear.pet, 0);
 }
 let seen = new Set(), lastFleet = "", lastTotal = null;
 async function refresh() {
@@ -166,13 +172,13 @@ async function refresh() {
   // not a ranking. The meter above is what the stars are for.
   // Each card: where they are, their map and rover, and the code in their editor.
   const ships = [...data.students].sort((a, b) => a.name.localeCompare(b.name));
-  const fleet = JSON.stringify(ships.map(s => [s.name, s.look, s.now, s.showoff]));
+  const fleet = JSON.stringify(ships.map(s => [s.name, s.look, s.now, s.showoff, s.flair]));
   if (fleet !== lastFleet) {
     lastFleet = fleet;
     $("fleet").innerHTML = ships.length ? ships.map((s, i) => {
       const n = s.now, code = n.code.trim();
       const tag = n.site === "7" ? "Uncharted" : `${n.site.toUpperCase()} · ${n.site_name}`;
-      return `<div class="ship${n.end === "goal" ? " won" : ""}">
+      return `<div class="ship f-${s.flair}${n.end === "goal" ? " won" : ""}">
         <div class="top"><canvas class="rv" data-i="${i}"></canvas><b>${esc(s.name)}${s.showoff ? ` <span class="worn" title="A badge they earned">${esc(s.showoff)}</span>` : ""}</b><span class="where">${esc(tag)}</span></div>
         <canvas class="map" data-i="${i}"></canvas>
         <pre class="${code ? "" : "empty"}">${code ? esc(n.code) : "(no code yet)"}</pre>

@@ -757,7 +757,10 @@ class GiftTests(unittest.TestCase):
                  "topper": lambda k: k == "none" or f'topper === "{k}"' in render,
                  "trail": lambda k: k == "tracks" or f'look.trail === "{k}"' in page,
                  "world": lambda k: k == "planet" or re.search(rf"\n  {k}: {{", page),
-                 "dance": lambda k: k == "spin" or f'kind === "{k}"' in page}
+                 "dance": lambda k: k == "spin" or f'kind === "{k}"' in page,
+                 "glow": lambda k: k == "noglow" or re.search(rf"\n  {k}[:(]", render),
+                 "pet": lambda k: k == "nopet" or re.search(rf"\n  {k}\(ctx", render),
+                 "horn": lambda k: re.search(rf"\n    {k}: \(\) =>", page) and k in page.split("HORN_ICONS")[1]}
         for item in server.GARAGE:
             self.assertTrue(drawn[item["slot"]](item["key"]), item["key"])
 
@@ -1530,7 +1533,7 @@ class ClassroomTests(unittest.TestCase):
         self.assertEqual(self.transmit(pid, "1a", site("1a")[2]["reference"])
                          ["rewards"]["unlocked"], [])   # 2 stars: not yet
         out = self.transmit(pid, "1a", BONUS_PROGRAMS["1a"])   # the third star
-        self.assertEqual(out["rewards"]["unlocked"], [{"slot": "paint", "key": "coral", "name": "Coral"}])
+        self.assertEqual(out["rewards"]["unlocked"], [{"slot": "paint", "key": "coral", "name": "Coral", "rarity": "common"}])
         self.assertEqual(self.post("/planet/look", {"id": pid, "paint": "coral"})["look"]["paint"],
                          "coral")
 
@@ -1549,7 +1552,7 @@ class ClassroomTests(unittest.TestCase):
         out = self.transmit(pid, "1a", "east(3)\n")
         self.assertFalse(out["runs"][0]["reached"])
         self.assertEqual(out["rewards"]["found"],
-                         [{"slot": "paint", "key": "grass", "name": "Grass Block"}])
+                         [{"slot": "paint", "key": "grass", "name": "Grass Block", "rarity": "epic"}])
         self.assertEqual(out["rewards"]["unlocked"], [])
         self.assertIn("tick 3: 🎁 found a mystery gift: Grass Block!", out["runs"][0]["log"])
         self.assertIsNone(self.get(f"/planet/site?id={pid}&site=1a")["gift"])

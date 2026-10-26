@@ -34,6 +34,7 @@ function drawRover(ctx, x, y, s, angle, alpha, gear, now = performance.now()) {
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.translate(x, y); ctx.rotate(angle);
+  if (GLOWS[gear.glow]) GLOWS[gear.glow](ctx, s, now);
   ctx.fillStyle = "rgba(10,4,16,.38)";
   ctx.beginPath(); ctx.ellipse(s * .05, s * .07, s * .42, s * .36, 0, 0, 7); ctx.fill();
   ctx.fillStyle = "#26212f";
@@ -167,6 +168,176 @@ function drawTopper(ctx, s, topper, now) {
     ctx.fillStyle = "#ffb547"; ctx.beginPath(); ctx.arc(-.16 * s, -.36 * s, s * .035, 0, 7); ctx.fill();
   }
 }
+// Under the rover: a light on the ground, facing +x like the rover.
+function underglow(ctx, s, rgb, k) {
+  const grad = ctx.createRadialGradient(0, 0, s * .2, 0, 0, s * .7);
+  grad.addColorStop(0, `rgba(${rgb},${.75 * k})`); grad.addColorStop(1, `rgba(${rgb},0)`);
+  ctx.fillStyle = grad; ctx.beginPath(); ctx.ellipse(0, 0, s * .7, s * .58, 0, 0, 7); ctx.fill();
+}
+const pulse = (now, speed) => CALM ? 1 : .7 + .3 * Math.sin(now / speed);
+const GLOWS = {
+  mintglow: (ctx, s, now) => underglow(ctx, s, "140,242,198", pulse(now, 300)),
+  pinkglow: (ctx, s, now) => underglow(ctx, s, "255,111,174", pulse(now, 260)),
+  iceglow: (ctx, s, now) => underglow(ctx, s, "143,227,255", pulse(now, 420)),
+  rainbowglow(ctx, s, now) {
+    const h = CALM ? 280 : (now / 8) % 360;
+    const grad = ctx.createRadialGradient(0, 0, s * .2, 0, 0, s * .72);
+    grad.addColorStop(0, `hsla(${h},100%,65%,.8)`); grad.addColorStop(.6, `hsla(${h + 90},100%,65%,.4)`); grad.addColorStop(1, `hsla(${h + 180},100%,65%,0)`);
+    ctx.fillStyle = grad; ctx.beginPath(); ctx.ellipse(0, 0, s * .72, s * .6, 0, 0, 7); ctx.fill();
+  },
+  plasmaring(ctx, s, now) {   // a spinning ring of electric sparks
+    underglow(ctx, s, "185,140,255", .6);
+    const spin = CALM ? 0 : now / 400;
+    ctx.strokeStyle = "#d9c2ff"; ctx.lineWidth = Math.max(1, s * .035); ctx.shadowColor = "#b98cff"; ctx.shadowBlur = s * .2;
+    ctx.setLineDash([s * .12, s * .08]); ctx.lineDashOffset = -spin * s;
+    ctx.beginPath(); ctx.ellipse(0, 0, s * .56, s * .5, 0, 0, 7); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle = "#ffffff";
+    for (let k = 0; k < 3; k++) {
+      const a = spin * 2.3 + k * 2.1;
+      ctx.beginPath(); ctx.arc(Math.cos(a) * s * .56, Math.sin(a) * s * .5, s * .035, 0, 7); ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+  },
+  afterburner(ctx, s, now) {   // twin jets of flame out of the back
+    for (const y of [-.13, .13]) {
+      const len = s * (.38 + (CALM ? .1 : .14 * hash(Math.floor(now / 60), y * 100)));
+      const grad = ctx.createLinearGradient(-.3 * s, 0, -.3 * s - len, 0);
+      grad.addColorStop(0, "rgba(255,255,220,.95)"); grad.addColorStop(.3, "rgba(120,200,255,.9)"); grad.addColorStop(.7, "rgba(90,90,255,.55)"); grad.addColorStop(1, "rgba(60,40,200,0)");
+      ctx.fillStyle = grad; ctx.shadowColor = "#7fb8ff"; ctx.shadowBlur = s * .25;
+      ctx.beginPath(); ctx.moveTo(-.28 * s, (y - .07) * s); ctx.quadraticCurveTo(-.3 * s - len * .6, y * s, -.3 * s - len, y * s);
+      ctx.quadraticCurveTo(-.3 * s - len * .6, y * s, -.28 * s, (y + .07) * s); ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+  },
+  aura(ctx, s, now) {   // dark smoke curling round the rover, purple at the edges
+    for (let k = 0; k < 7; k++) {
+      const a = (CALM ? 0 : now / 900) + k * .9, r = s * (.42 + .1 * Math.sin((CALM ? 0 : now / 300) + k * 2));
+      const x = Math.cos(a) * r, y = Math.sin(a) * r * .85;
+      const grad = ctx.createRadialGradient(x, y, 0, x, y, s * .3);
+      grad.addColorStop(0, "rgba(40,10,70,.55)"); grad.addColorStop(.6, "rgba(130,60,220,.25)"); grad.addColorStop(1, "rgba(130,60,220,0)");
+      ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(x, y, s * .3, 0, 7); ctx.fill();
+    }
+  },
+};
+
+// The sidekick, floating beside the rover: s is the rover's size, (x, y) the
+// pet's middle. Drawn upright, whichever way the rover faces.
+function drawPet(ctx, x, y, s, pet, now) {
+  if (!PETS[pet]) return;
+  const t = CALM ? 0 : now, bob = Math.sin(t / 320) * s * .05;
+  ctx.save();
+  ctx.fillStyle = "rgba(10,4,16,.3)";
+  ctx.beginPath(); ctx.ellipse(x, y + s * .32, s * .16, s * .05, 0, 0, 7); ctx.fill();
+  ctx.translate(x, y + bob);
+  ctx.lineWidth = Math.max(1, s * .02);
+  PETS[pet](ctx, s * .5, t);
+  ctx.restore();
+}
+function eyes(ctx, s, xs, y, r = .06) {
+  for (const x of xs) {
+    ctx.fillStyle = "#1b1530"; ctx.beginPath(); ctx.arc(x * s, y * s, r * s, 0, 7); ctx.fill();
+    ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc((x + r * .35) * s, (y - r * .35) * s, r * .4 * s, 0, 7); ctx.fill();
+  }
+}
+const PETS = {
+  drone(ctx, s, t) {   // four rotors and a blinking light
+    ctx.strokeStyle = "#4a4466"; ctx.lineWidth = s * .08;
+    ctx.beginPath(); ctx.moveTo(-.4 * s, -.25 * s); ctx.lineTo(.4 * s, .25 * s); ctx.moveTo(.4 * s, -.25 * s); ctx.lineTo(-.4 * s, .25 * s); ctx.stroke();
+    for (const [rx, ry] of [[-.4, -.25], [.4, -.25], [-.4, .25], [.4, .25]]) {
+      const w = Math.abs(Math.cos(t / 30 + rx * 9)) * .2 + .04;
+      ctx.fillStyle = "rgba(200,220,255,.55)"; ctx.beginPath(); ctx.ellipse(rx * s, ry * s - .08 * s, w * s, .05 * s, 0, 0, 7); ctx.fill();
+    }
+    ctx.fillStyle = "#e6dccb"; roundRect(ctx, -.22 * s, -.16 * s, .44 * s, .32 * s, .1 * s); ctx.fill();
+    ctx.fillStyle = "#231d3f"; ctx.beginPath(); ctx.arc(0, .02 * s, .1 * s, 0, 7); ctx.fill();
+    ctx.fillStyle = "#8cf2c6"; ctx.beginPath(); ctx.arc(0, .02 * s, .05 * s, 0, 7); ctx.fill();
+    ctx.fillStyle = Math.floor(t / 400) % 2 ? "#ff5a5a" : "#5a2030";
+    ctx.beginPath(); ctx.arc(0, -.2 * s, .04 * s, 0, 7); ctx.fill();
+  },
+  duck(ctx, s, t) {   // a rubber duck, bobbing as if it's floating
+    ctx.rotate(Math.sin(t / 400) * .12);
+    ctx.fillStyle = "#ffd84d"; ctx.strokeStyle = "#d9a520";
+    ctx.beginPath(); ctx.ellipse(0, .12 * s, .42 * s, .26 * s, 0, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-.42 * s, .05 * s); ctx.lineTo(-.55 * s, -.12 * s); ctx.lineTo(-.3 * s, 0); ctx.fill();
+    ctx.beginPath(); ctx.arc(.18 * s, -.2 * s, .22 * s, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#ff8a1f"; ctx.beginPath(); ctx.ellipse(.43 * s, -.16 * s, .13 * s, .06 * s, 0, 0, 7); ctx.fill();
+    eyes(ctx, s, [.22], -.26, .05);
+    ctx.fillStyle = "#f2b820"; ctx.beginPath(); ctx.ellipse(-.05 * s, .1 * s, .18 * s, .1 * s, -.3, 0, 7); ctx.fill();
+  },
+  spacecat(ctx, s, t) {   // a cat in a glass helmet
+    ctx.fillStyle = "#ff9d4d";
+    for (const x of [-.22, .22]) { ctx.beginPath(); ctx.moveTo((x - .13) * s, -.12 * s); ctx.lineTo(x * 1.3 * s, -.42 * s); ctx.lineTo((x + .13) * s, -.12 * s); ctx.fill(); }
+    ctx.beginPath(); ctx.arc(0, 0, .3 * s, 0, 7); ctx.fill();
+    ctx.fillStyle = "#ffe0c2"; ctx.beginPath(); ctx.ellipse(0, .1 * s, .17 * s, .12 * s, 0, 0, 7); ctx.fill();
+    eyes(ctx, s, [-.11, .11], -.04, .055);
+    ctx.fillStyle = "#ff6f9f"; ctx.beginPath(); ctx.arc(0, .06 * s, .035 * s, 0, 7); ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,.5)"; ctx.lineWidth = s * .03;
+    for (const side of [-1, 1]) { ctx.beginPath(); ctx.moveTo(side * .12 * s, .1 * s); ctx.lineTo(side * .4 * s, (.06 + .03 * Math.sin(t / 200)) * s); ctx.stroke(); }
+    ctx.fillStyle = "rgba(170,230,255,.2)"; ctx.strokeStyle = "rgba(200,240,255,.8)"; ctx.lineWidth = s * .04;
+    ctx.beginPath(); ctx.arc(0, -.02 * s, .5 * s, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = "rgba(255,255,255,.75)"; ctx.beginPath(); ctx.arc(0, -.02 * s, .4 * s, Math.PI * 1.15, Math.PI * 1.45); ctx.stroke();
+  },
+  ghost(ctx, s, t) {   // a friendly ghost with a wavy hem
+    ctx.globalAlpha = .88; ctx.rotate(Math.sin(t / 500) * .1);
+    ctx.fillStyle = "#f4f1ff"; ctx.shadowColor = "#c9b8ff"; ctx.shadowBlur = s * .4;
+    ctx.beginPath(); ctx.moveTo(-.32 * s, .35 * s); ctx.lineTo(-.32 * s, -.05 * s); ctx.arc(0, -.05 * s, .32 * s, Math.PI, 0);
+    ctx.lineTo(.32 * s, .35 * s);
+    for (let k = 0; k < 4; k++) {
+      const x = .32 - (k + 1) * .16, wave = Math.sin(t / 150 + k) * .05;
+      ctx.quadraticCurveTo((x + .08) * s, (.45 + wave) * s, x * s, (.35 - wave) * s);
+    }
+    ctx.fill(); ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    eyes(ctx, s, [-.12, .12], -.06, .07);
+    ctx.fillStyle = "#ff9ec4"; ctx.beginPath(); ctx.ellipse(0, .1 * s, .07 * s, .05 * s, 0, 0, 7); ctx.fill();
+  },
+  jelly(ctx, s, t) {   // a glowing jellyfish, tentacles drifting
+    ctx.strokeStyle = "rgba(255,160,230,.75)"; ctx.lineWidth = s * .05; ctx.lineCap = "round";
+    for (let k = 0; k < 5; k++) {
+      const x = (-.24 + k * .12) * s;
+      ctx.beginPath(); ctx.moveTo(x, .05 * s);
+      for (let j = 1; j <= 4; j++) ctx.lineTo(x + Math.sin(t / 220 + j + k) * .06 * s, (.05 + j * .12) * s);
+      ctx.stroke();
+    }
+    const squish = 1 + Math.sin(t / 250) * .08;
+    ctx.fillStyle = "rgba(255,120,210,.85)"; ctx.shadowColor = "#ff8ad8"; ctx.shadowBlur = s * .5;
+    ctx.beginPath(); ctx.ellipse(0, .05 * s, .36 * s * squish, .36 * s / squish, 0, Math.PI, 0); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.beginPath(); ctx.ellipse(-.12 * s, -.14 * s, .08 * s, .05 * s, -.5, 0, 7); ctx.fill();
+    eyes(ctx, s, [-.1, .1], -.06, .045);
+  },
+  robodog(ctx, s, t) {   // a boxy robot pup, tail wagging
+    ctx.strokeStyle = "#9aa3b5"; ctx.lineWidth = s * .07; ctx.lineCap = "round";
+    const wag = Math.sin(t / 90) * .5;
+    ctx.beginPath(); ctx.moveTo(-.3 * s, 0); ctx.lineTo((-.3 - .2 * Math.cos(wag)) * s, (-.2 * Math.abs(Math.cos(wag)) - .05) * s); ctx.stroke();
+    for (const x of [-.22, -.05, .1, .25]) { ctx.beginPath(); ctx.moveTo(x * s, .1 * s); ctx.lineTo(x * s, .32 * s); ctx.stroke(); }
+    ctx.fillStyle = "#c3cad6"; roundRect(ctx, -.32 * s, -.1 * s, .62 * s, .26 * s, .08 * s); ctx.fill();
+    ctx.fillStyle = "#dfe4ec"; roundRect(ctx, .14 * s, -.36 * s, .32 * s, .3 * s, .07 * s); ctx.fill();
+    ctx.fillStyle = "#6e7a90";
+    ctx.beginPath(); ctx.moveTo(.16 * s, -.34 * s); ctx.lineTo(.1 * s, -.48 * s); ctx.lineTo(.26 * s, -.36 * s); ctx.fill();
+    ctx.fillStyle = "#4dc3ff"; ctx.shadowColor = "#4dc3ff"; ctx.shadowBlur = s * .2;
+    ctx.fillRect(.26 * s, -.27 * s, .12 * s, .06 * s); ctx.shadowBlur = 0;
+    ctx.fillStyle = "#1b1530"; ctx.beginPath(); ctx.arc(.46 * s, -.15 * s, .04 * s, 0, 7); ctx.fill();
+  },
+  dragon(ctx, s, t) {   // a baby dragon, flapping, with a puff of fire now and then
+    const flap = Math.sin(t / 110);
+    ctx.fillStyle = "#3fae6a";
+    for (const side of [-1, 1]) {
+      ctx.save(); ctx.scale(side, 1); ctx.rotate(-.3 + flap * .35);
+      ctx.beginPath(); ctx.moveTo(.08 * s, -.05 * s); ctx.lineTo(.5 * s, -.38 * s); ctx.lineTo(.42 * s, -.12 * s); ctx.lineTo(.5 * s, .02 * s); ctx.closePath();
+      ctx.fillStyle = "#7ee0a0"; ctx.fill(); ctx.restore();
+    }
+    ctx.fillStyle = "#3fae6a"; ctx.beginPath(); ctx.ellipse(0, .1 * s, .22 * s, .26 * s, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#b8f0c8"; ctx.beginPath(); ctx.ellipse(0, .16 * s, .12 * s, .17 * s, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#3fae6a"; ctx.beginPath(); ctx.arc(0, -.22 * s, .2 * s, 0, 7); ctx.fill();
+    ctx.fillStyle = "#ffd36b";
+    for (const x of [-.1, .1]) { ctx.beginPath(); ctx.moveTo((x - .04) * s, -.36 * s); ctx.lineTo(x * 1.4 * s, -.5 * s); ctx.lineTo((x + .04) * s, -.36 * s); ctx.fill(); }
+    eyes(ctx, s, [-.08, .08], -.24, .05);
+    if (Math.floor(t / 1600) % 3 === 0 && t % 1600 < 500) {
+      const k = (t % 1600) / 500, grad = ctx.createRadialGradient(0, -.05 * s, 0, 0, -.05 * s, .3 * s * k + .01);
+      grad.addColorStop(0, "rgba(255,240,150,.95)"); grad.addColorStop(.5, "rgba(255,140,40,.8)"); grad.addColorStop(1, "rgba(220,40,20,0)");
+      ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, (-.05 + k * .12) * s, .3 * s * k + .01, 0, 7); ctx.fill();
+    }
+  },
+};
+
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
@@ -248,6 +419,55 @@ const PAINTS = {bone: "#f2eadb", coral: "#ff8a7a", mint: "#8cf2c6", sky: "#8fc8f
     const grad = ctx.createLinearGradient(-.32 * s, -.22 * s, .3 * s, .22 * s);
     [0, 120, 240].forEach((d, i) => grad.addColorStop(i / 2, `hsl(${h + d},100%,62%)`));
     return grad;
+  }},
+  matrix: {base: "#03150a", swatch: "repeating-linear-gradient(90deg, #03150a 0 4px, #2bff88 4px 6px)", draw(ctx, s, now) {
+    // Green code raining down the body.
+    ctx.font = `700 ${Math.round(s * .09)}px monospace`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    for (let col = 0; col < 7; col++) {
+      const x = (-.28 + col * .09) * s, head = ((CALM ? 0 : now / (180 + hash(col, 30) * 160)) + hash(col, 31) * 9) % 9;
+      for (let j = 0; j < 6; j++) {
+        const fade = 1 - ((head - j + 9) % 9) / 6;
+        if (fade <= 0) continue;
+        ctx.fillStyle = fade > .9 ? "#d8ffe6" : `rgba(43,255,136,${fade})`;
+        ctx.fillText("01<>{}=+"[Math.floor(hash(col, j, Math.floor(head)) * 8)], x, (-.2 + j * .08) * s);
+      }
+    }
+  }},
+  lavalamp: {base: "#3a0a4a", swatch: "radial-gradient(circle at 35% 60%, #ffb347 18%, transparent 20%), radial-gradient(circle at 65% 30%, #ff5fa2 16%, #3a0a4a 18%)", draw(ctx, s, now) {
+    // Blobs that drift up, squash and drift back.
+    const t = CALM ? 0 : now / 1400;
+    for (let k = 0; k < 4; k++) {
+      const x = (-.2 + k * .13 + .04 * Math.sin(t * 1.3 + k)) * s, y = Math.sin(t + k * 1.7) * .14 * s, r = (.07 + .03 * hash(k, 32)) * s;
+      ctx.fillStyle = ["#ffb347", "#ff5fa2", "#ff7a3d", "#ffd36b"][k];
+      ctx.beginPath(); ctx.ellipse(x, y, r * (1 + .25 * Math.sin(t * 3 + k)), r * (1 - .2 * Math.sin(t * 3 + k)), 0, 0, 7); ctx.fill();
+    }
+  }},
+  glitch: {base: "#1a1430", swatch: "linear-gradient(#ff2e88 0 20%, #1a1430 20% 45%, #2ef3ff 45% 60%, #1a1430 60% 80%, #f2eadb 80%)", draw(ctx, s, now) {
+    // Bands that jump sideways, in the colours of a broken screen.
+    const frame = CALM ? 0 : Math.floor(now / 110);
+    for (let j = 0; j < 9; j++) {
+      const shift = (hash(j, frame, 33) - .5) * .2 * s, hit = hash(j, frame, 34);
+      ctx.fillStyle = hit > .8 ? "#ff2e88" : hit > .6 ? "#2ef3ff" : hit > .45 ? "#f2eadb" : "#2a2250";
+      ctx.fillRect(-.32 * s + shift, (-.22 + j * .05) * s, .62 * s, .05 * s);
+    }
+  }},
+  plasma: {base: "#1d0f4a", swatch: "conic-gradient(from 90deg, #4b2cff, #ff2ed1, #2ef3ff, #4b2cff)", draw(ctx, s, now) {
+    // Bolts of plasma crackling across a swirling body.
+    const t = CALM ? 0 : now;
+    for (const [k, color] of [[0, "rgba(75,44,255,.8)"], [1, "rgba(255,46,209,.6)"], [2, "rgba(46,243,255,.55)"]]) {
+      const a = t / (700 + k * 300) + k * 2, x = Math.cos(a) * .15 * s, y = Math.sin(a) * .1 * s;
+      const grad = ctx.createRadialGradient(x, y, 0, x, y, .3 * s);
+      grad.addColorStop(0, color); grad.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = grad; ctx.fillRect(-.32 * s, -.22 * s, .62 * s, .44 * s);
+    }
+    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = Math.max(1, s * .015); ctx.shadowColor = "#2ef3ff"; ctx.shadowBlur = s * .12;
+    const frame = Math.floor(t / 90);
+    for (let b = 0; b < 2; b++) {
+      ctx.beginPath(); ctx.moveTo(-.3 * s, (hash(b, frame, 35) - .5) * .4 * s);
+      for (let j = 1; j <= 5; j++) ctx.lineTo((-.3 + j * .12) * s, (hash(b, frame, j + 40) - .5) * .4 * s);
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
   }},
   // Blocky ones: pixel art across the body.
   grass: {base: "#6dbb44", swatch: "linear-gradient(#6dbb44 50%, #7a5230 50%)", draw(ctx, s) {
