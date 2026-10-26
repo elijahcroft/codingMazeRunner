@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Strange Planet — Class</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>🪐</text></svg>">
 <style>
   /* The teacher's overview: who's where and who's stuck. Same palette as
      the student page. */
@@ -120,7 +121,7 @@ document.addEventListener("toggle", e => {
 function triesHtml(s) {
   if (!s.tries || !s.tries.length) return "";
   const list = s.tries.slice().reverse().map(t => `<div class="try"><b>${esc(ENDED[t.end] || t.end)}</b> ${esc(t.said || "")}<pre>${esc(t.code)}</pre></div>`).join("");
-  return `<details class="tries" data-id="${esc(s.id)}"${openTries.has(s.id) ? " open" : ""}><summary>last ${s.tries.length} tries</summary>${list}</details>`;
+  return `<details class="tries" data-id="${esc(s.id)}"${openTries.has(s.id) ? " open" : ""}><summary>${s.tries.length === 1 ? "last try" : `last ${s.tries.length} tries`}</summary>${list}</details>`;
 }
 // Many runs on one site with no progress: worth a visit. The list already
 // puts the students with least done and most runs first.
@@ -171,7 +172,7 @@ async function refreshReport() {
     zone = s.zone;
     const missed = s.not_cleared.map(([name, runs, here]) => `${esc(name)} (${runs}${here ? "" : ", elsewhere now"})`).join(", ");
     const skipped = s.skipped.length ? `<small class="stuck">skipped: ${esc(s.skipped.join(", "))}</small>` : "";
-    const said = s.said.length ? `<ul class="said-list">${s.said.map(g => `<li>${esc(g.text)} <b>${g.students} student${g.students > 1 ? "s" : ""}, ${g.tries} tries</b></li>`).join("")}</ul>` : "—";
+    const said = s.said.length ? `<ul class="said-list">${s.said.map(g => `<li>${esc(g.text)} <b>${g.students} student${g.students > 1 ? "s" : ""}, ${g.tries} ${g.tries === 1 ? "try" : "tries"}</b></li>`).join("")}</ul>` : "—";
     return `${head}<tr>
       <td class="site">${esc(s.key.toUpperCase())} · ${esc(s.name)}</td>
       <td class="num">${s.cleared} of ${s.tried}</td>

@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Strange Planet</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>🪐</text></svg>">
 <style>
   /* Mission control at dusk: violet chrome, bone-white type, mint telemetry.
      The planet view is the loud part; everything around it stays quiet. */
@@ -44,8 +45,10 @@
   .join-form { display: flex; gap: 10px; flex-wrap: wrap; }
   .join-form input { flex: 1 1 220px; min-width: 0; padding: 14px 16px; font-size: 18px; border-radius: 12px; border: 1px solid rgba(242,234,219,.35); background: rgba(27,23,51,.72); backdrop-filter: blur(6px); }
   .join-form input::placeholder { color: var(--haze); }
+  .join-form input.ask { border-color: var(--amber); }
+  .join-form input.ask::placeholder { color: var(--amber); }
 
-  .go { border: 0; border-radius: 12px; background: var(--mint); color: #12302a; font-weight: 800; padding: 12px 20px; font-size: 16px; box-shadow: 0 3px 0 #4fb38c; }
+  .go { border: 0; border-radius: 12px; background: var(--mint); color: #12302a; font-weight: 800; padding: 12px 20px; font-size: 16px; box-shadow: 0 3px 0 #4fb38c; white-space: nowrap; }
   .go:hover { background: #a6f7d4; }
   .go:active { transform: translateY(2px); box-shadow: 0 1px 0 #4fb38c; }
   .go:disabled { opacity: .6; cursor: wait; }
@@ -62,7 +65,7 @@
   .brand { display: flex; align-items: center; gap: 9px; font-weight: 850; letter-spacing: -.02em; white-space: nowrap; font-size: 17px; }
   .brand svg { width: 30px; height: 30px; }
   .who { margin-left: auto; display: flex; align-items: center; gap: 8px; white-space: nowrap; color: var(--haze); }
-  .who b { color: var(--bone); font-weight: 650; }
+  .who b { color: var(--bone); font-weight: 650; max-width: 13ch; overflow: hidden; text-overflow: ellipsis; }
   .round { width: 32px; height: 32px; border-radius: 50%; padding: 0; display: grid; place-items: center; }
   .stars-button { display: flex; align-items: center; gap: 6px; border: 0; border-radius: 99px; padding: 6px 12px 6px 10px; background: var(--panel); color: var(--gold); font: 700 15px var(--mono); }
   .stars-button:hover { background: var(--panel-2); }
@@ -114,7 +117,7 @@
   /* Beside the title when there's room, so the map keeps its height. Steps
      go one to a line; a code example sits beside the words. */
   #siteBrief { flex: 1 1 380px; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px 16px; margin: 0; color: var(--haze); font-size: 16px; white-space: pre-line; }
-  #siteBrief .words { flex: 1 1 300px; }
+  #siteBrief .words-box { flex: 1 1 300px; min-width: 0; position: relative; }
   #siteBrief pre { margin: 0; padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,.25); font: 14px/1.5 var(--mono); white-space: pre; overflow-x: auto; max-width: 100%; }
   .goals { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .goal { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 6px; border-radius: 99px; background: var(--dusk); color: var(--haze); font-size: 13px; }
@@ -131,9 +134,9 @@
   .scope canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .hud { position: absolute; inset: 12px 12px auto 12px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; pointer-events: none; }
   .gauges { display: flex; gap: 8px; flex-wrap: wrap; }
-  .gauge { display: flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: 10px; background: rgba(18,13,34,.72); backdrop-filter: blur(4px); font: 600 14px var(--mono); font-variant-numeric: tabular-nums; }
+  .gauge { display: flex; align-items: baseline; gap: 7px; padding: 6px 10px; border-radius: 10px; background: rgba(18,13,34,.72); backdrop-filter: blur(4px); font: 600 14px var(--mono); font-variant-numeric: tabular-nums; }
   .gauge small { font: 500 12px var(--ui); color: var(--haze); }
-  .cell { display: inline-block; width: 44px; height: 9px; border-radius: 3px; background: #3a3260; overflow: hidden; }
+  .cell { display: inline-block; align-self: center; width: 44px; height: 9px; border-radius: 3px; background: #3a3260; overflow: hidden; }
   .cell i { display: block; height: 100%; background: var(--mint); transition: width .1s; }
   .gauge.low .cell i { background: var(--coral); }
   .gauge.low { color: var(--coral); }
@@ -147,7 +150,7 @@
   .status.s-lost::before { background: #fff; }
   .status.s-scout { color: #1b1733; background: var(--violet); }
   .status.s-scout::before { background: #1b1733; }
-  .record { font: 600 12px var(--ui); color: var(--gold); background: rgba(18,13,34,.72); padding: 4px 10px; border-radius: 99px; white-space: nowrap; }
+  .record { font: 600 12px var(--ui); color: var(--gold); background: rgba(18,13,34,.72); padding: 4px 10px; border-radius: 99px; white-space: nowrap; max-width: 300px; overflow: hidden; text-overflow: ellipsis; }
   .right-hud { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
   .planets { display: flex; gap: 6px; pointer-events: auto; }
   .planet-tab { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; font: 700 12px var(--mono); display: grid; place-items: center; color: #1b1733; }
@@ -159,6 +162,7 @@
   .banner p { margin: 0; font-weight: 650; max-width: 62ch; white-space: pre-wrap; }
   .banner p .next { display: block; margin-top: 4px; color: var(--mint); }
   .banner code { font: 600 .95em var(--mono); color: var(--mint); background: rgba(140,242,198,.1); padding: 1px 6px; border-radius: 6px; }
+  #siteBrief code, .feed .err code, .msg code, .cele-tip code { font: 600 .92em var(--mono); color: var(--mint); background: rgba(140,242,198,.1); padding: 1px 5px; border-radius: 5px; white-space: nowrap; }
   .goal.legend { background: none; padding-left: 4px; color: var(--haze); }
   .banner.win { box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 2px var(--mint); }
   .banner.lost { box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 2px var(--coral); }
@@ -195,6 +199,16 @@
   .nu-bar { flex: 1; min-width: 50px; height: 7px; border-radius: 4px; background: #3a3260; overflow: hidden; }
   .nu-fill { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--gold), #fff0b8); transition: width .9s cubic-bezier(.3,.9,.3,1); }
   .calm .nu-fill { transition: none; }
+  /* A short screen: the card shrinks so Next site stays in view. */
+  @media (max-height: 680px) {
+    .cele-card { padding: 16px 18px 14px; }
+    .cele-card h2 { font-size: 26px; }
+    .big-stars { margin: 10px 0 8px; }
+    .big-star i { font-size: 44px; }
+    .big-star span { font-size: 17px; }
+    .cele-note { margin-bottom: 10px; }
+    .cele-next { margin-bottom: 10px; }
+  }
 
   .timeline { display: flex; align-items: center; gap: 12px; padding: 10px 16px 14px; }
   .play { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--panel-2); font-size: 15px; flex: none; }
@@ -224,7 +238,7 @@
   .pad .down { grid-column: 2; grid-row: 3; }
   /* Which way is north: the rover drives by compass, never by turning. */
   .compass { position: absolute; left: 12px; bottom: 40px; width: 58px; height: 58px; pointer-events: none; opacity: .9; }
-  .scout-help { position: absolute; left: 14px; bottom: 14px; max-width: calc(100% - 200px); padding: 8px 12px; border-radius: 12px; background: rgba(39,27,72,.9); box-shadow: inset 0 0 0 1px var(--violet); font-size: 13px; color: #e5dcff; }
+  .scout-help { position: absolute; left: 80px; bottom: 14px; max-width: calc(100% - 266px); padding: 8px 12px; border-radius: 12px; background: rgba(39,27,72,.9); box-shadow: inset 0 0 0 1px var(--violet); font-size: 13px; color: #e5dcff; }
   .scout-help b { color: var(--bone); }
   .scout-help .quiet { margin-left: 6px; padding: 3px 9px; color: var(--bone); }
   .scout-help .quiet:disabled { opacity: .45; cursor: default; }
@@ -295,7 +309,7 @@
   .transmit { flex: 1; }
   .tool { position: relative; height: 48px; min-width: 52px; border-radius: 12px; border: 1px solid var(--edge); background: var(--panel); display: grid; place-items: center; align-content: center; font-size: 17px; line-height: 1; padding: 0 8px; }
   .tool:hover { background: var(--panel-2); }
-  .tool small { display: block; font: 600 10.5px/1 var(--ui); color: var(--haze); margin-top: 3px; }
+  .tool small { display: block; font: 600 10.5px/1 var(--ui); color: var(--haze); margin-top: 3px; white-space: nowrap; }
   .tool.on small { color: inherit; }
   /* Stuck: the Hints button glows until it's used. */
   .tool.nudge { border-color: var(--violet); box-shadow: 0 0 0 1px var(--violet), 0 0 14px rgba(185,163,255,.45); animation: nudge 1.8s ease-in-out infinite; }
@@ -326,14 +340,14 @@
   .toast small { color: var(--haze); font-size: 13px; }
   .toast.act { cursor: pointer; }
   .toast.act:hover { background: rgba(58,49,104,.98); }
-  .toast.act small::after { content: " →"; color: var(--gold); }
+  .toast.act small::after { content: "\00a0→"; color: var(--gold); }
   .toast.r-rare, .toast.r-epic, .toast.r-legendary { box-shadow: 0 16px 40px rgba(0,0,0,.45), inset 0 0 0 2px var(--r), 0 0 24px color-mix(in srgb, var(--r) 45%, transparent); }
   .toast .tier { display: block; margin-bottom: 1px; }
   @keyframes slidein { from { transform: translateX(120%); } }
   @keyframes slideout { to { transform: translateX(120%); opacity: 0; } }
 
   /* ---- Pop-overs and dialogs ------------------------------------------------------ */
-  .goal.today { border: 0; font: inherit; cursor: pointer; background: rgba(127,240,214,.14); color: #7ff0d6; }
+  .goal.today { border: 0; font-family: inherit; cursor: pointer; background: rgba(127,240,214,.14); color: #7ff0d6; }
   .goal.today.all { background: rgba(255,211,107,.18); color: var(--gold); }
   .mission { display: flex; align-items: center; gap: 10px; padding: 9px 10px; margin-bottom: 6px; border-radius: 10px; background: var(--dusk); font-size: 14px; }
   .mission .ico { font-size: 20px; }
@@ -354,16 +368,17 @@
   .fn pre { margin: 0; max-height: 96px; overflow: auto; font: 13px/1.5 var(--mono); white-space: pre; }
   .fn .pop-row { margin-top: 6px; }
   .fn-save { display: flex; flex-wrap: wrap; gap: 6px; }
-  .dialog { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px; background: rgba(12,9,26,.72); overflow: auto; }
+  .dialog { position: fixed; inset: 0; z-index: 30; display: grid; place-items: safe center; padding: 16px; background: rgba(12,9,26,.72); overflow: auto; }
   .intro-card, .garage-card { width: min(520px, 100%); background: var(--dusk); border-radius: 20px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.5), inset 0 0 0 1px var(--edge); }
   .intro-card canvas { display: block; width: 100%; height: 170px; }
   .intro-body { padding: 18px 22px 22px; }
   .intro-body ol { margin: 0 0 18px; padding-left: 22px; display: grid; gap: 6px; font-size: 17px; }
   .intro-body li::marker { color: var(--mint); font-weight: 800; }
   .intro-body code { font: 600 .9em var(--mono); color: var(--mint); }
-  .garage-card { width: min(960px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 18px 20px 20px; }
+  /* One height for every tab, so the card doesn't jump when the tab changes. */
+  .garage-card { width: min(960px, 100%); height: min(720px, calc(100vh - 32px)); overflow: auto; padding: 18px 20px 20px; }
   .garage-top { display: grid; grid-template-columns: 280px 1fr; gap: 20px; align-items: start; }
-  .stage { position: sticky; top: 0; }
+  .stage { position: sticky; top: 62px; }
   .stage canvas { width: 280px; height: 280px; border-radius: 18px; display: block; box-shadow: 0 0 0 1px var(--edge); }
   .stage-tag { margin: 10px 0 0; text-align: center; color: var(--haze); font-size: 13.5px; line-height: 1.4; }
   .stage-tag b { display: block; color: var(--bone); font-size: 17px; }
@@ -399,7 +414,8 @@
   .card.r-legendary { background: linear-gradient(110deg, transparent 38%, rgba(255,226,160,.22) 50%, transparent 62%) 0 0 / 250% 100%,
                       linear-gradient(180deg, transparent 50%, color-mix(in srgb, var(--r) 28%, transparent)), var(--panel); animation: sheen 3.2s linear infinite; }
   @keyframes sheen { from { background-position: 160% 0, 0 0, 0 0; } to { background-position: -60% 0, 0 0, 0 0; } }
-  .garage-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  /* Done stays in reach while the shelf scrolls. */
+  .garage-head { position: sticky; top: -18px; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: -18px -20px 6px; padding: 18px 20px 8px; background: var(--dusk); }
   .garage-head span { color: var(--gold); font: 700 16px var(--mono); margin-right: auto; margin-left: 12px; }
   .card .new, .badge .new { color: #2a0f24; background: #ff8ad8; border-radius: 99px; padding: 0 5px; font: 800 10px/15px var(--ui); letter-spacing: .05em; }
   .card.fresh, .badge.fresh { box-shadow: inset 0 0 0 2px #ff8ad8; }
@@ -422,10 +438,18 @@
     .site-head h1 { font-size: 22px; }
     .goals { margin-top: 5px; }
     .timeline { padding: 6px 16px 8px; }
+    /* A long brief folds to four lines, so the map keeps its room. */
+    #siteBrief:not(.open) .words { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; }
   }
+  .brief-more { position: absolute; right: 0; bottom: 0; border: 0; border-radius: 99px; padding: 1px 10px; background: var(--panel); color: var(--bone); font-size: 13px; box-shadow: -14px 0 10px var(--sky); white-space: nowrap; }
+  #siteBrief.open .brief-more { position: static; margin-top: 4px; box-shadow: none; }
+  .brief-more:hover { background: var(--panel-2); }
   @media (max-width: 1100px) and (min-width: 861px) {
     .main { grid-template-columns: minmax(0, 1fr) 340px; }
     .zname { display: none; }
+    .actions { gap: 6px; }
+    .transmit { padding: 12px 10px; }
+    .tool { min-width: 48px; padding: 0 5px; }
   }
   @media (max-width: 860px) {
     .app { height: auto; min-height: 100%; grid-template-rows: auto auto; }
@@ -518,7 +542,7 @@
         <div class="pad" id="pad" hidden aria-label="Drive by hand">
           <button class="up" data-move="north" aria-label="Drive north">↑<small>N</small></button>
           <button class="left" data-move="west" aria-label="Drive west">←<small>W</small></button>
-          <button class="wait" data-move="wait" aria-label="Wait one tick">⏳</button>
+          <button class="wait" data-move="wait" aria-label="Wait one tick">⏳<small>wait</small></button>
           <button class="right" data-move="east" aria-label="Drive east">→<small>E</small></button>
           <button class="down" data-move="south" aria-label="Drive south">↓<small>S</small></button>
         </div>
@@ -672,6 +696,52 @@ let look = {paint: "bone", topper: "none", trail: "tracks", world: "planet"};
 
 function esc(value) {
   return String(value).replace(/[&<>\"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
+}
+// Messages mark code with two spaces each side, like  east(3)  — those bits
+// get the code look; a bit that reads like words stays as words.
+const PY_WORD = /^(?:for|in|if|not|and|or|while|def|is|else|elif|return|global|print|range)$/;
+function depth(s) { let d = 0; for (const ch of s) d += ch === "(" ? 1 : ch === ")" ? -1 : 0; return d; }
+function looksLikeCode(s) {
+  if (!s || s.length > 48) return false;
+  if (s.length > 1 && s.startsWith("(") && depth(s) > 0) return false;
+  const words = s.split(" ");
+  if (words.length === 1)
+    return /^[a-z]+$/i.test(s) ? PY_WORD.test(s) || s.length <= 2 : /[\w()\[\]:="'<>!+\-*\/%&|]/.test(s) && !/^[?—–]+$/.test(s);
+  const [a, b] = words;
+  if (!(PY_WORD.test(a) || /[(\["'<>=!]/.test(a) || /^[<>=!+\-*/%]+=?$/.test(b))) return false;
+  // Two plain words in a row, or three in all, make a sentence, not code.
+  let run = 0, all = 0;
+  for (const w of words) {
+    if (/^\(?[a-z']+[,:.)]*$/i.test(w) && !PY_WORD.test(w)) { if (++run >= 2 || ++all >= 3) return false; } else run = 0;
+  }
+  return true;
+}
+function codeSpans(text) {
+  const parts = String(text).split(/ {2,}/).map(part => {
+    let core = part, after = "";
+    // Words after a comma, and a full stop or ) that ends the sentence, aren't code.
+    let d = 0, q = "";
+    for (let i = 0; i < core.length; i++) {
+      const ch = core[i];
+      if (q) { if (ch === q) q = ""; } else if (ch === '"' || ch === "'") q = ch;
+      else if (ch === "(") d++; else if (ch === ")") d--;
+      else if (ch === "," && core[i + 1] === " " && d === 0) { after = core.slice(i); core = core.slice(0, i); break; }
+    }
+    while (core.length > 1 && (/[.,?]$/.test(core) || core.endsWith(" ") || core.endsWith(")") && depth(core) < 0)) {
+      after = core.slice(-1) + after; core = core.slice(0, -1);
+    }
+    return {part, core, after, code: looksLikeCode(core)};
+  });
+  // "n  or  steps", "True  not  TRUE": a lone or/and/not after code is a
+  // word, and a plain word after it is code like the first.
+  parts.forEach((p, i) => {
+    if (p.code && /^(?:or|and|not)$/.test(p.core) && parts[i - 1]?.code) {
+      p.code = false;
+      const n = parts[i + 1];
+      if (n && /^[a-z_]\w*$/i.test(n.core)) n.code = true;
+    }
+  });
+  return parts.map(p => p.code ? `<code>${esc(p.core)}</code>${esc(p.after)}` : esc(p.part)).join(" ");
 }
 async function post(url, data) {
   const response = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(data)});
@@ -1060,7 +1130,8 @@ function render(now = performance.now()) {
   // Room for the map between the HUD (top) and the result banner (bottom).
   // The whole map shows whenever its squares can be a readable size; a long,
   // thin map zooms in and the view follows the rover along it.
-  const top = 56, bottom = 76, roomW = w - 24, roomH = Math.max(80, h - top - bottom);
+  const top = $("planets").hidden ? 56 : $("planets").offsetTop + $("planets").offsetHeight + 34,
+    bottom = 76, roomW = w - 24, roomH = Math.max(80, h - top - bottom);
   const fitW = roomW / cols, fitH = roomH / rows;
   let cell = Math.min(fitW, fitH);
   if (cell < 20) cell = Math.max(cell, Math.min(fitH, roomW / 15), Math.min(fitW, roomH / 11));
@@ -1783,7 +1854,7 @@ function showRun(run, map, crystals, startAt = 0) {
     }, []);
   $("feed").innerHTML = `<div class="feed-head">${scout ? "Scouting telemetry" : "Telemetry"}</div>` + lines.map(x =>
     `<div class="ev${x.print ? " print" : /🎉|💎|matches/.test(x.text) ? " good" : /💥|🔋|⏱|🔒|different|no drills|won't move|is full/.test(x.text) ? " bad" : ""}" data-t="${x.t}" data-end="${x.end}"><span class="t">${x.t}</span><span>${x.print ? "› " : ""}${esc(x.text)}${x.n > 1 ? ` ×${x.n} <small>(until tick ${x.end})</small>` : ""}</span></div>`).join("")
-    + (run.error ? `<div class="err">${esc(run.error)}</div>` : "")
+    + (run.error ? `<div class="err">${codeSpans(run.error)}</div>` : "")
     + (!lines.length && !run.error ? '<div class="empty">No telemetry.</div>' : "");
   hideBanner(); hideCelebrate();
   fps = scout ? 7 : Math.max(5, Math.min(30, last() / 20));
@@ -1867,11 +1938,28 @@ function coachTip(run) {
   return text;
 }
 function showBanner(cls, text, actions = "", next = "") {
-  $("banner").className = "banner " + cls; $("bannerText").textContent = text;
-  if (next) $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">👉 ${esc(next)}</span>`);
-  $("bannerActions").innerHTML = actions; $("banner").hidden = false;
+  $("banner").className = "banner " + cls; $("bannerText").innerHTML = codeSpans(text);
+  if (next) $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">👉 ${codeSpans(next)}</span>`);
+  // A note with nothing to press can be put away, to see the map under it.
+  $("bannerActions").innerHTML = actions || (cls ? "" : `<button class="quiet" onclick="hideBanner()">OK</button>`);
+  $("banner").hidden = false;
 }
 function hideBanner() { $("banner").hidden = true; }
+// A folded brief (short screens) gets a button to read the rest of it.
+function foldBrief() {
+  const box = $("siteBrief"), words = box.querySelector(".words");
+  let more = box.querySelector(".brief-more");
+  if (!matchMedia("(max-height: 700px) and (min-width: 861px)").matches) box.classList.remove("open");
+  const cut = words && !box.classList.contains("open") && words.scrollHeight > words.clientHeight + 2;
+  if (!cut && !box.classList.contains("open")) { if (more) more.remove(); return; }
+  if (!more) {
+    more = document.createElement("button");
+    more.className = "brief-more";
+    more.addEventListener("click", () => { box.classList.toggle("open"); foldBrief(); render(); });
+    words.after(more);
+  }
+  more.textContent = box.classList.contains("open") ? "less ▴" : "more ▾";
+}
 
 // ---- Celebration: the stars, one by one ------------------------------------------------
 async function celebrate(r, run) {
@@ -1883,7 +1971,7 @@ async function celebrate(r, run) {
   $("celeSub").textContent = site.key === "7" ? unchartedSummary() : run.mission === "report" ? "📡 Report confirmed" : `${run.ticks} ticks`;
   $("bigStars").innerHTML = r.stars.map((s, i) => `<div class="big-star${s ? " got" : r.best[i] ? " was" : ""}" title="${esc(goals[i] || "")}"><i>★</i><span>${esc([...(goals[i] || "★")][0])}</span></div>`).join("");
   const missing = goals.filter((g, i) => !r.best[i]);
-  $("celeTip").textContent = site.key !== "7" ? starTips(r.best, $("code").value).join("\n") : "";
+  $("celeTip").innerHTML = site.key !== "7" ? starTips(r.best, $("code").value).map(codeSpans).join("\n") : "";
   $("celeMiss").textContent = missing.length && site.key !== "7" && !$("celeTip").textContent ? `Still to earn: ${missing.join(" · ")}` : "";
   $("celeNote").innerHTML = "";
   const next = nextSite();
@@ -1939,7 +2027,7 @@ function starTips(best, code) {
 function showStarTip(i) {
   showBanner("", "💡 Hint:");
   const tip = starTips([true, i !== 1, i !== 2], $("code").value)[0];
-  $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">${esc(tip)}</span>`);
+  $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">${codeSpans(tip)}</span>`);
 }
 function hideCelebrate() { $("celebrate").hidden = true; }
 // The next thing stars unlock in the garage, and how close it is. Returns
@@ -1989,19 +2077,34 @@ async function showToasts(r) {
   const badges = r.badges.length > 2
     ? [["🏅", `${r.badges.length} new badges!`, `${r.badges.map(b => b.icon).join(" ")}  Press to see them in the garage`, true]]
     : r.badges.map(b => [b.icon, `Badge: ${b.name}`, b.how, true]);
+  // The same for garage unlocks: a zone cleared can bring four or five.
+  const TIERS = ["common", "rare", "epic", "legendary"];
+  const unlocks = r.unlocked.length > 2
+    ? [["🔓", `${r.unlocked.length} new things in the garage!`, r.unlocked.map(u => `${SLOT_ICON[u.slot] || ""} ${u.name}`).join(" · "), true,
+        r.unlocked.map(u => u.rarity).reduce((a, b) => TIERS.indexOf(b) > TIERS.indexOf(a) ? b : a, "common")]]
+    : r.unlocked.map(u => [SLOT_ICON[u.slot] || "🔓", `Unlocked: ${u.name} ${u.slot}`, "Press to fit it in the garage", true, u.rarity]);
   const items = [...(r.closer ? [["🔥", "Closest yet!", `${r.closer}. Keep the part that worked and change the next bit.`]] : []),
                  ...r.found.map(u => ["🎁", `You found a mystery gift: ${u.name} ${u.slot}!`, "Press to try it on in the garage", true, u.rarity]),
                  ...badges,
-                 ...r.unlocked.map(u => [SLOT_ICON[u.slot] || "🔓", `Unlocked: ${u.name} ${u.slot}`, "Press to fit it in the garage", true, u.rarity]),
+                 ...unlocks,
                  ...(r.missions_done || []).map(m => ["✅", `Mission done: ${m.text}`, r.trophy ? "" : "📋 Today, next to the goals, shows the others."]),
                  ...(r.trophy ? [["🏆", "All of today's missions done!", "A mission day trophy. Come back tomorrow for three new ones."]] : [])];
   if (r.found.length && site) renderGoals();
   if ((r.missions_done || []).length && site) renderGoals();
+  const gen = toastGen;
   for (const [icon, title, text, garage, rarity] of items) {
     await wait(CALM ? 0 : 500);
+    if (gen !== toastGen) return;
     SFX.play(icon === "🎁" || rarity === "legendary" ? "gift" : icon === "🏆" ? "rank" : "badge");
     toast(icon, title, text, garage, rarity);
   }
+}
+// Toasts are for the moment: the next Transmit or site clears them (and any
+// still to come), so they never sit on the Transmit button.
+let toastGen = 0;
+function clearToasts() {
+  toastGen++;
+  for (const t of $("toasts").children) { t.classList.add("out"); setTimeout(() => t.remove(), 350); }
 }
 // A garage toast opens the garage when pressed.
 function toast(icon, title, text, garage, rarity) {
@@ -2010,6 +2113,9 @@ function toast(icon, title, text, garage, rarity) {
   const tier = rarity && rarity !== "common" ? `<span class="tier">${RARITY_NAMES[rarity]}</span>` : "";
   el.innerHTML = `<span class="ico">${icon}</span><div>${tier}<b>${esc(title)}</b><small>${esc(text)}</small></div>`;
   if (garage) el.addEventListener("click", () => { el.remove(); openGarage(); });
+  // Three at most on screen: the oldest makes room.
+  const shown = [...$("toasts").children].filter(t => !t.classList.contains("out"));
+  if (shown.length >= 3) { shown[0].classList.add("out"); setTimeout(() => shown[0].remove(), 350); }
   $("toasts").appendChild(el);
   setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 350); }, 5200);
 }
@@ -2018,7 +2124,7 @@ function toast(icon, title, text, garage, rarity) {
 async function join(event) {
   event.preventDefault();
   const name = $("name").value.trim();
-  if (!name) { $("name").focus(); return; }
+  if (!name) { $("name").placeholder = "Type your name first"; $("name").classList.add("ask"); $("name").focus(); return; }
   SFX.wake();
   try {
     const player = await post("/join", {name});
@@ -2037,7 +2143,7 @@ async function enter(id) {
   catch (_) { return false; }
   if (!data.you) return false;
   me = id; useState(data);
-  $("driver").textContent = data.you.name;
+  $("driver").textContent = data.you.name; $("driver").title = data.you.name;
   $("join").hidden = true; $("app").hidden = false;
   $("muteButton").textContent = SFX.muted ? "🔇" : "🔊";
   const lastSite = recall(`planetSite:${me}`);
@@ -2118,7 +2224,7 @@ async function openSite(key) {
   catch (_) { showBanner("lost", "No answer from the game. Is the server running?"); return; }
   if (view.error) { showBanner("lost", view.error); return; }
   saveCode();
-  closePops(); stopScout(true);
+  closePops(); stopScout(true); clearToasts();
   const zone = zoneOf(key);
   site = {...view, zoneKey: zone.key};
   runs = null; rewards = null;
@@ -2126,8 +2232,10 @@ async function openSite(key) {
   $("siteName").textContent = view.name;
   // Like a hint: words, then (after a blank line) code in the editor's font.
   const codeAt = view.brief.indexOf("\n\n");
-  $("siteBrief").innerHTML = codeAt < 0 ? `<div class="words">${esc(view.brief)}</div>`
-    : `<div class="words">${esc(view.brief.slice(0, codeAt))}</div><pre>${esc(view.brief.slice(codeAt + 2))}</pre>`;
+  $("siteBrief").innerHTML = codeAt < 0 ? `<div class="words-box"><div class="words">${codeSpans(view.brief)}</div></div>`
+    : `<div class="words-box"><div class="words">${codeSpans(view.brief.slice(0, codeAt))}</div></div><pre>${esc(view.brief.slice(codeAt + 2))}</pre>`;
+  $("siteBrief").classList.remove("open");
+  foldBrief();
   $("fileName").textContent = `site_${key}.py`;
   renderGoals();
   // This browser's draft, else what was last run here, else the code from the
@@ -2141,6 +2249,7 @@ async function openSite(key) {
     if (!code && key === "1a") code = "# Press Transmit, then add more.\nsouth(2)\n";
   }
   $("code").value = code || "";
+  $("code").scrollTop = 0; $("lines").scrollTop = 0; syncPaint();
   errorLine = 0;
   updateEditor();
   renderKit(state.zones.indexOf(zone));
@@ -2163,13 +2272,13 @@ async function openSite(key) {
     // Back on a site they've completed: a hint for each star still to earn.
     showBanner("", "Back for more stars? Try this:");
     for (const tip of starTips(view.stars, $("code").value))
-      $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">${esc(tip)}</span>`);
+      $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">${codeSpans(tip)}</span>`);
   } else {
     // A new zone's first site also says what the zone is like.
     const intro = zone.sites[0].key === key && zone.blurb ? `${zone.name}: ${zone.blurb}` : "";
     const text = [intro, view.coach ? view.coach.intro : "", carried ? "Your last site's code is loaded. Will it still work here?" : ""].filter(Boolean).join(" ");
     if (text) showBanner("", text);
-    if (view.new) $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">🆕 ${esc(view.new.icon)} ${esc(view.new.what)}  Try: <code>${esc(view.new.example)}</code></span>`);
+    if (view.new) $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">🆕 ${esc(view.new.icon)} ${codeSpans(view.new.what)}  Try: <code>${esc(view.new.example)}</code></span>`);
   }
   $("status").className = "status"; $("status").textContent = "Ready";
 }
@@ -2284,11 +2393,11 @@ function renderRadio() {
   // gets the editor's font, so its indents line up.
   $("hints").innerHTML = zone.hints.length ? zone.hints.map(h => {
     const at = h.indexOf("\n\n");
-    return `<div class="msg">${at < 0 ? esc(h) : `${esc(h.slice(0, at))}<pre>${esc(h.slice(at + 2))}</pre>`}</div>`;
+    return `<div class="msg">${at < 0 ? codeSpans(h) : `${codeSpans(h.slice(0, at))}<pre>${esc(h.slice(at + 2))}</pre>`}</div>`;
   }).join("")
     : '<div class="msg">Try an experiment first. Ask if you\'re stuck.</div>';
   const left = zone.hint_count - zone.hints.length;
-  $("hintsLeft").textContent = left ? `${left} more` : "That's everything.";
+  $("hintsLeft").textContent = left ? `${left} hint${left === 1 ? "" : "s"} left` : "That's every hint.";
   $("hintButton").hidden = !left;
   $("radioCount").hidden = !zone.hints.length;
   $("radioCount").textContent = zone.hints.length;
@@ -2366,7 +2475,7 @@ function renderFunctions() {
   $("savedFunctions").innerHTML = saved.length ? saved.map(f => `<div class="fn"><pre>${esc(f.code)}</pre>
       <div class="pop-row">${inCode.has(f.name) ? "<small>In your code ✓</small>" : `<button class="quiet" data-add="${esc(f.name)}">Add to my code</button>`}
       <button class="quiet" data-remove="${esc(f.name)}">${removing === f.name ? "Sure? Remove" : "Remove"}</button></div></div>`).join("")
-    : '<div class="msg">Nothing saved yet. Write a function with  def name():  then save it here to use it on any site.</div>';
+    : '<div class="msg">Nothing saved yet. Write a function with <code>def name():</code> then save it here to use it on any site.</div>';
   $("codeFunctions").innerHTML = here.map(d => {
     const kept = saved.find(f => f.name === d.name);
     if (kept && kept.code === d.code) return `<small>${esc(d.name)}() saved ✓</small>`;
@@ -2622,7 +2731,7 @@ function toggleScout() {
   scout = {moves: [], queue: [], over: false};
   rewards = null;
   $("scoutButton").classList.add("on");
-  $("scoutHelp").hidden = false; $("pad").hidden = false; $("compass").hidden = true;
+  $("scoutHelp").hidden = false; $("pad").hidden = false;
   hideBanner(); hideCelebrate();
   $("planets").hidden = true; $("marks").innerHTML = "";
   resetScene(); setPlaying(false); render();
@@ -2634,7 +2743,7 @@ function stopScout(quiet) {
   if (!scout) return;
   scout = null;
   $("scoutButton").classList.remove("on");
-  $("scoutHelp").hidden = true; $("pad").hidden = true; $("compass").hidden = false;
+  $("scoutHelp").hidden = true; $("pad").hidden = true;
   if (!quiet) { hideBanner(); resetScene(); setPlaying(false); render(); $("feed").innerHTML = '<div class="empty">Transmit to see the rover\'s telemetry.</div>'; }
 }
 const SCOUT_MAX = 150;   // matches server.SCOUT_MAX
@@ -2750,6 +2859,7 @@ async function transmit() {
     return;
   }
   busy = true;
+  clearToasts();
   state.you.ran = true; nudgeFirstRun();
   stopScout(true);
   SFX.wake(); SFX.play("send");
@@ -2825,7 +2935,7 @@ function updateEditor() {
   const m = site && site.goals && /✂️ (\d+)/.exec(site.goals[2] || "");
   const target = m ? Number(m[1]) : null;
   const fits = !!(target && lines && lines <= target);
-  $("lineCount").textContent = `${lines} line${lines === 1 ? "" : "s"}${target ? ` · ✂️ ${target}${fits ? " fits!" : ""}` : ""}`;
+  $("lineCount").textContent = `${lines} line${lines === 1 ? "" : "s"}${target ? ` · ✂️ ${target} or fewer${fits ? " ✓" : ""}` : ""}`;
   // Cutting the code down to size is a little win of its own, as it happens.
   const popped = fits && site && site.fitted === false;
   $("lineCount").className = fits ? "fits" + (popped ? " pop" : "") : "";
@@ -3113,7 +3223,7 @@ function acKey(event) {
   if ((event.key === "Enter" || event.key === "Tab") && !event.shiftKey && !event.ctrlKey) {
     event.preventDefault(); acceptComplete(ac.items[ac.i]); return true;
   }
-  if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closeComplete(); return true; }
+  if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closeComplete(); tabLeaves = true; return true; }
   return false;
 }
 function acceptComplete(item) {
@@ -3558,7 +3668,7 @@ $("map").addEventListener("click", e => {
   scene.poke = performance.now();
   scene.said = {at: scene.poke, text: POKE_LINES[Math.floor(Math.random() * POKE_LINES.length)]};
 });
-window.addEventListener("resize", () => { render(); refreshEditor(); });
+window.addEventListener("resize", () => { render(); refreshEditor(); foldBrief(); });
 resume();
 </script>
 </body>

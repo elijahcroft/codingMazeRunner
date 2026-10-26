@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Strange Planet — Class Expedition</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>🪐</text></svg>">
 <style>
   /* For the projector: the class's stars filling one meter together, the
      moments as they happen, and everyone's rover. Big, calm, readable. */
@@ -43,8 +44,8 @@
   .ship.f-epic { border-color: #c46bff; box-shadow: 0 0 18px rgba(196,107,255,.35); }
   .ship.f-legendary { border-color: #ffb547; box-shadow: 0 0 22px rgba(255,181,71,.45); }
   .ship.won { border-color: var(--mint); }
-  .ship b { flex: 1; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ship .where { color: var(--haze); font: 13px var(--mono); white-space: nowrap; }
+  .ship b { flex: 0 1 auto; min-width: 0; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ship .where { flex: 1 1 0; min-width: 0; text-align: right; color: var(--haze); font: 13px var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ship .map { display: block; margin: 0 auto 8px; border-radius: 6px; }
   .ship pre { background: #15112a; border-radius: 8px; padding: 8px; margin: 0; font: 12px/1.45 var(--mono); color: var(--gold);
     min-height: 44px; max-height: 140px; overflow: auto; white-space: pre-wrap; }
