@@ -64,7 +64,7 @@ COMPASS = {"north": 0, "east": 1, "south": 2, "west": 3}   # index into DIRS
 # arrives with a zone and stays for every zone after it.
 ZONE_ORDER = ["landing", "ice", "wind", "crumble", "solar", "portals", "signal",
               "hops", "belts", "drill", "gates", "relay", "push", "laser", "cargo",
-              "uncharted"]
+              "tour", "uncharted"]
 SENSOR_ARRIVES = {
     "look": "landing", "at_beacon": "landing",
     "x": "ice", "y": "ice", "report": "ice",
@@ -2794,6 +2794,115 @@ ZONES.append(
      ]})
 
 
+def expedition(seed):
+    """A long field crossed by one of everything from the zones before, in a
+    different order on every planet: rock two thick (drill), a crater trench
+    (jump), a belt running into a crater (jump), a wide trench with a boulder
+    before it (push, then jump), and a gate with its key lying on the way."""
+    rng = random.Random(seed)
+    rows = 7
+    row = rng.randint(2, rows - 3)   # where every belt wall is still a belt
+    kinds = ["#", "O", "v", "B", "D", rng.choice("#Ov")]
+    rng.shuffle(kinds)
+    width = {"#": 2, "O": 1, "v": 1, "B": 3, "D": 1}
+    walls, c = [], rng.randint(4, 5)
+    for kind in kinds:
+        walls.append((c, kind))
+        c += width[kind] + rng.randint(2, 3)
+    cols = c + 2
+    grid = open_ground(rows, cols)
+    for c, kind in walls:
+        for r in range(1, rows - 1):
+            if kind == "#":
+                grid[r][c] = grid[r][c + 1] = "#"
+            elif kind == "B":
+                grid[r][c + 1] = grid[r][c + 2] = "O"
+            else:
+                grid[r][c] = "#" if kind == "D" else kind
+        if kind == "v":
+            grid[rows - 2][c] = "O"
+        if kind in "BD":
+            grid[row][c] = kind
+        if kind == "D":   # the key lies somewhere on the way to its gate
+            key = rng.randint(2, c - 1)
+            while grid[row][key] != ".":
+                key -= 1
+            grid[row][key] = "k"
+    grid[row][1] = "S"
+    grid[row][cols - 2] = "G"
+    return {"map": strings(grid), "drills": 2 * kinds.count("#")}
+
+
+# The last zone before Uncharted mixes the things from the zones before it,
+# several on every site: nothing new, but more to keep track of at once.
+ZONES.append(
+    {"key": "tour", "name": "Grand Tour", "rules": set(),
+     "blurb": "Everything at once: belts, drills, keys, flags, boulders and the "
+              "laser, all on the same planets.",
+     "hints": [
+         "Plan before you drive. Trace the route on the map with your finger, "
+         "and say what each square needs: drill it, jump it, push it, or "
+         "pick it up first.",
+         "Some things only work one way. A belt never carries you back, so "
+         "pick up anything you need before you ride it.",
+         "One loop can handle every kind of square, with an if for each:\n\n"
+         "while not at_beacon():\n    if look(\"east\") == \"rock\":\n"
+         "        drill(\"east\")\n    elif look(\"east\") == \"crater\":\n"
+         "        jump(\"east\")\n    else:\n        east()",
+     ],
+     "sites": [
+         site("16a", "Locked Workshop",
+              "Reach the beacon. You'll need the key, but it's behind a wall "
+              "and you only have 1 drill. The belt only goes one way!",
+              [{"map": ["################",
+                        "#S...#....k....#",
+                        "#....#.........#",
+                        "#....#.>>>>>>>v#",
+                        "#....#########v#",
+                        "#....#########v#",
+                        "######G..D.....#",
+                        "################"], "drills": 1}],
+              reference="east(3)\ndrill(\"east\")\neast(6)\nsouth(2)\nwest(8)\n"),
+         site("16b", "Bridge Builder",
+              "Visit flags 1, 2 and 3, then reach the beacon. The trench is too "
+              "wide to jump: push a boulder in to make a bridge. Only one "
+              "boulder can get there.",
+              [{"map": ["###############",
+                        "#S....#OO.....#",
+                        "#..B..#OO..2..#",
+                        "#.....BOO.....#",
+                        "#..1..#OO.....#",
+                        "#.....#OO..3G.#",
+                        "###############"]}],
+              reference="south(3)\neast(2)\nnorth()\neast(4)\njump(\"east\")\n"
+                        "north()\neast(2)\nsouth(3)\neast()\n"),
+         site("16c", "Supply Line",
+              "Bring all the samples home to 📦. Every row has a crater in a "
+              "different place, so let distance() find it, then jump.",
+              [{"map": ["################",
+                        "#H...O.***.....#",
+                        "#......O.***...#",
+                        "#..O.***.......#",
+                        "#........O.***.#",
+                        "################"]}],
+              reference="for i in range(4):\n    south(i)\n"
+                        "    east(distance(\"east\"))\n    jump(\"east\")\n"
+                        "    east(distance(\"east\"))\n    west(distance(\"west\"))\n"
+                        "    jump(\"west\")\n    west(distance(\"west\"))\n"
+                        "    north(i)\n"),
+         site("16d", "Your Expedition",
+              "Reach the beacon past rock, craters, belts, a boulder and a "
+              "locked gate. Yours aren't in the same order as anyone else's.",
+              [expedition(seed) for seed in (0, 1, 2, 3, 4, 5, 6, 7)],
+              per_student=True,
+              reference="while not at_beacon():\n"
+                        "    if look(\"east\") == \"rock\":\n        drill(\"east\")\n"
+                        "    elif look(\"east\") == \"crater\" or look(\"east\") == \"belt\":\n"
+                        "        jump(\"east\")\n"
+                        "    else:\n        east()\n"),
+     ]})
+
+
 # Each site's challenge star and compact-code star. Crystals sit on a fixed
 # site's only planet; on the per-student lakes and portal mazes the compact
 # target follows that student's own shortest route. Where the star needs a
@@ -2853,6 +2962,10 @@ CHALLENGES = {
     "15b": {"bonus": {"kind": "no_bump"}, "compact": 6},
     "15c": {"bonus": {"kind": "def"}, "compact": 7},
     "15d": {"bonus": {"kind": "everywhere", "of": "field"}, "compact": 16},
+    "16a": {"bonus": {"kind": "crystals"}, "compact": 5, "crystals": [(1, 14)]},
+    "16b": {"bonus": {"kind": "no_bump"}, "compact": 9},
+    "16c": {"bonus": {"kind": "measured"}, "compact": 11},
+    "16d": {"bonus": {"kind": "everywhere", "of": "field"}, "compact": 9},
 }
 for _zone in ZONES:
     for _s in _zone["sites"]:
@@ -3019,7 +3132,22 @@ STAR_TIPS = {
     "15d": {"compact": "Make def go_to(tx, ty). Then a while True: loop with an "
                        "if: go home when the bay is full or nothing is left, "
                        "otherwise go to the nearest sample."},
+    "16a": {"bonus": "💎 The crystal is in the top right corner. There's a way "
+                     "onto the belt that drives right past it.",
+            "compact": "Each line is one straight drive (or the drill). The belt "
+                       "does the long bit for you: 5 lines are enough."},
+    "16b": {"compact": "Each line is one straight drive, or the jump. Go straight "
+                       "on from one flag to the next wherever you can."},
+    "16c": {"compact": "Every trip is the same, one row further down. Put it in "
+                       "for i in range(4):  with south(i) and north(i)."},
+    "16d": {"compact": "One while not at_beacon(): loop with if, elif and else: "
+                       "drill rock, jump craters and belts, otherwise east()."},
 }
+
+
+def stars_max(s):
+    """How many stars a site gives: three, or one on a practice site."""
+    return s.get("stars_max", 3)
 
 
 def star_tips(s, variant):
@@ -3029,7 +3157,7 @@ def star_tips(s, variant):
     tips = STAR_TIPS.get(s["key"], {})
     return [None,
             tips.get("bonus") or BONUS_TIPS[bonus["kind"]].format(of=bonus.get("of", "plain")),
-            "✂️ " + tips["compact"]]
+            "✂️ " + tips["compact"]][:stars_max(s)]
 
 
 # A mystery gift waits on one site in each zone. Driving over it in a
@@ -3039,7 +3167,8 @@ def star_tips(s, variant):
 GIFT_SQUARES = {"1a": (1, 4), "2b": (4, 5), "3b": (13, 9), "4c": None,
                 "5b": (11, 9), "6a": (4, 11), "7b": None, "8b": (3, 10),
                 "9b": (5, 4), "10b": (1, 10), "11b": (1, 9), "12b": (2, 10),
-                "13b": (3, 7), "14b": (1, 13), "15b": (2, 10)}
+                "13b": (3, 7), "14b": (1, 13), "15b": (2, 10),
+                "16b": (1, 12)}
 _gifts = {}
 
 
@@ -3102,13 +3231,15 @@ def goals(s, variant):
     compact = variant.get("compact", s["compact"])
     return [MISSION_LABELS[mission_of(variant)],
             bonus_label(variant.get("bonus", s["bonus"])),
-            f"✂️ {compact} lines of code or fewer"]
+            f"✂️ {compact} line{'' if compact == 1 else 's'} of code or fewer"][:stars_max(s)]
 
 
 def stars(s, variant, run, code):
     """Which of the site's three stars this run earned."""
     if not run["reached"]:
         return [False, False, False]
+    if stars_max(s) == 1:
+        return [True, False, False]
     bonus = variant.get("bonus", s["bonus"])
     kind = bonus["kind"]
     if kind == "crystals":
@@ -3320,6 +3451,529 @@ ZONES.append({"key": "uncharted", "name": "Uncharted", "rules": UNCHARTED_RULES,
               "sites": [UNCHARTED]})
 SITE_ORDER = [s["key"] for z in ZONES for s in z["sites"]]
 
+# Practice zones: very small first steps for a younger class, before the
+# Landing Site. Only open when the teacher's easy mode is on, and not in
+# SITE_ORDER, so they never stand in anyone else's way. They drive like the
+# Landing Site (zone index 0).
+PRACTICE_PARK = {"key": "practice", "name": "Practice Park", "rules": set(),
+            "blurb": "Easy practice: drive the rover one square at a time.",
+            "hints": [
+                "east() moves the rover one square to the right. west() is "
+                "left, north() is up and south() is down.",
+                "Count the squares on the map first. Then write one line for "
+                "each square, or put the number inside, like east(3).",
+                "Write the lines in the same order the rover drives them: "
+                "first the top of the path, then down.",
+            ],
+            "sites": [
+                site("p1", "Hello Rover",
+                     "Drive to the beacon 🛰. Use the arrow buttons on the map.\n"
+                     "In code, east() moves the rover one square to the right. "
+                     "Three of them get there:\n\n"
+                     "east()\neast()\neast()",
+                     [{"map": ["#######",
+                               "#.....#",
+                               "#S..G.#",
+                               "#.....#",
+                               "#######"]}],
+                     reference="east()\neast()\neast()\n", compact=3),
+                site("p2", "Downhill",
+                     "Drive down to the beacon 🛰. south() moves the rover "
+                     "one square down.",
+                     [{"map": ["#####",
+                               "#.S.#",
+                               "#...#",
+                               "#...#",
+                               "#.G.#",
+                               "#####"]}],
+                     reference="south()\nsouth()\nsouth()\n", compact=3),
+                site("p3", "Round the Corner",
+                     "Drive to the beacon 🛰. Go east first, then south.",
+                     [{"map": ["#######",
+                               "#S...##",
+                               "####.##",
+                               "####.##",
+                               "####G##",
+                               "#######"]}],
+                     reference="east()\neast()\neast()\nsouth()\nsouth()\nsouth()\n",
+                     compact=6),
+                site("p4", "Sample Hunt",
+                     "Collect both samples 🧪. Drive over a sample to pick it up.",
+                     [{"map": ["########",
+                               "#S.*..*#",
+                               "#......#",
+                               "########"]}],
+                     reference="east()\neast()\neast()\neast()\neast()\n",
+                     compact=5),
+                site("p5", "Long Road",
+                     "Drive to the beacon 🛰. It's far! Put a number inside "
+                     "the ( ) to drive many squares in one line. This drives "
+                     "4 squares east:\n\neast(4)",
+                     [{"map": ["############",
+                               "#S........G#",
+                               "############"]}],
+                     reference="east(9)\n", compact=1),
+                site("p6", "Up and Left",
+                     "Drive to the beacon 🛰. north() goes up and west() goes "
+                     "left. Count the squares!",
+                     [{"map": ["#######",
+                               "#G....#",
+                               "#####.#",
+                               "#####.#",
+                               "#####S#",
+                               "#######"]}],
+                     reference="north(3)\nwest(4)\n", compact=2),
+                site("p7", "Snake Path",
+                     "Follow the path to the beacon 🛰. Use a number in each "
+                     "line, like east(4).",
+                     [{"map": ["#######",
+                               "#S....#",
+                               "#####.#",
+                               "#.....#",
+                               "#.#####",
+                               "#....G#",
+                               "#######"]}],
+                     reference="east(4)\nsouth(2)\nwest(4)\nsouth(2)\neast(4)\n",
+                     compact=5),
+                site("p8", "Stairs",
+                     "Collect the samples 🧪 on the stairs: one square east, "
+                     "one square south, again and again.\n"
+                     "A for loop does the lines pushed in under it again. "
+                     "This does east() then south(), 4 times:\n\n"
+                     "for i in range(4):\n    east()\n    south()",
+                     [{"map": ["#######",
+                               "#S....#",
+                               "#.*...#",
+                               "#..*..#",
+                               "#...*.#",
+                               "#....*#",
+                               "#######"]}],
+                     reference="for i in range(4):\n    east()\n    south()\n",
+                     compact=3),
+            ]}
+LOOP_GARDEN = {"key": "garden", "name": "Loop Garden", "rules": set(),
+               "blurb": "More driving, then patterns that repeat: a for loop "
+                        "drives them for you.",
+               "hints": [
+                   "Say the route out loud first: \"east 2, south 2, east 2, "
+                   "south 2...\" The part you say again and again goes in the loop.",
+                   "Lines pushed in under  for i in range(3):  run 3 times. "
+                   "Push them in with 4 spaces (or Tab).",
+                   "Lines that are NOT pushed in run once, after the loop is "
+                   "finished.",
+               ],
+               "sites": [
+                   site("p9", "Corner Samples",
+                        "Collect the 3 samples 🧪 in the corners. Go east, then "
+                        "south, then west.",
+                        [{"map": ["#######",
+                                  "#S...*#",
+                                  "#.###.#",
+                                  "#.###.#",
+                                  "#*...*#",
+                                  "#######"]}],
+                        reference="east(4)\nsouth(3)\nwest(4)\n", compact=3),
+                   site("p10", "Rock in the Way",
+                        "A rock is in the way! Drive round it to the beacon 🛰: "
+                        "north, then east, then south. Don't bump the rock.",
+                        [{"map": ["#########",
+                                  "#.......#",
+                                  "#S..#..G#",
+                                  "#.......#",
+                                  "#########"]}],
+                        reference="north()\neast(6)\nsouth()\n", compact=3),
+                   site("p11", "Sample Train",
+                        "Collect all the samples 🧪. A number works for samples "
+                        "too: one line can pick up a whole row.",
+                        [{"map": ["#########",
+                                  "#.......#",
+                                  "#S******#",
+                                  "#.......#",
+                                  "#########"]}],
+                        reference="east(6)\n", compact=1),
+                   site("p12", "Up the Stairs",
+                        "Collect the samples 🧪 going UP the stairs: north, then "
+                        "east, 5 times. A for loop can do it:\n\n"
+                        "for i in range(5):\n    north()\n    east()",
+                        [{"map": ["########",
+                                  "#.....*#",
+                                  "#....*.#",
+                                  "#...*..#",
+                                  "#..*...#",
+                                  "#.*....#",
+                                  "#S.....#",
+                                  "########"]}],
+                        reference="for i in range(5):\n    north()\n    east()\n",
+                        compact=3),
+                   site("p13", "Giant Steps",
+                        "Collect the samples 🧪 on the big steps: east 2, south 2, "
+                        "3 times. Numbers work inside a loop too:\n\n"
+                        "for i in range(3):\n    east(2)\n    south(2)",
+                        [{"map": ["#########",
+                                  "#S......#",
+                                  "#.......#",
+                                  "#..*....#",
+                                  "#.......#",
+                                  "#....*..#",
+                                  "#.......#",
+                                  "#......*#",
+                                  "#########"]}],
+                        reference="for i in range(3):\n    east(2)\n    south(2)\n",
+                        compact=3),
+                   site("p14", "Long Snake",
+                        "Drive the snake path to the beacon 🛰. It's Snake Path "
+                        "twice! Put the 4 drives in a for loop that goes 2 times.",
+                        [{"map": ["#######",
+                                  "#S....#",
+                                  "#####.#",
+                                  "#.....#",
+                                  "#.#####",
+                                  "#.....#",
+                                  "#####.#",
+                                  "#.....#",
+                                  "#.#####",
+                                  "#G....#",
+                                  "#######"]}],
+                        reference="for i in range(2):\n    east(4)\n    south(2)\n"
+                                  "    west(4)\n    south(2)\n",
+                        compact=5),
+                   site("p15", "Sample Comb",
+                        "Collect the samples 🧪 at the bottom of each gap: down 2, "
+                        "up 2, then east 2. Do that 3 times with a loop.",
+                        [{"map": ["#########",
+                                  "#S......#",
+                                  "#.#.#.#.#",
+                                  "#*#*#*#.#",
+                                  "#########"]}],
+                        reference="for i in range(3):\n    south(2)\n    north(2)\n"
+                                  "    east(2)\n",
+                        compact=4),
+                   site("p16", "Grand Finale",
+                        "Down the steps, then along to the beacon 🛰. Use a loop "
+                        "for the steps, then one more line after it (not pushed "
+                        "in) for the last bit.",
+                        [{"map": ["############",
+                                  "#S..########",
+                                  "###.########",
+                                  "###...######",
+                                  "#####.######",
+                                  "#####...####",
+                                  "#######.####",
+                                  "#######...G#",
+                                  "############"]}],
+                        reference="for i in range(3):\n    east(2)\n    south(2)\n"
+                                  "east(3)\n",
+                        compact=4),
+               ]}
+ICE_RINK = {"key": "rink", "name": "Ice Rink", "rules": {"ice"},
+            "blurb": "Shiny ice! One press and the rover slides until something "
+                     "stops it.",
+            "hints": [
+                "On ice, ONE east() slides and slides. It only stops at a rock, "
+                "or on a square that isn't ice: ground, a sample, the beacon.",
+                "Look for what will stop you. Drive at a rock, and the rock is "
+                "your brake.",
+                "Got stuck? Press R while scouting to start again. Try going a "
+                "different way first.",
+            ],
+            "sites": [
+                site("p17", "Slippery!",
+                     "Drive to the beacon 🛰. This is ice! Press → once and "
+                     "watch: the rover slides all the way.",
+                     [{"map": ["#########",
+                               "#.......#",
+                               "#S~~~~~G#",
+                               "#.......#",
+                               "#########"]}],
+                     reference="east()\n", compact=1),
+                site("p18", "Rock Brake",
+                     "Drive to the beacon 🛰. Rocks stop a slide. Slide east to "
+                     "the rock, then slide south.",
+                     [{"map": ["#######",
+                               "#S~~~~#",
+                               "#####~#",
+                               "#####~#",
+                               "#####G#",
+                               "#######"]}],
+                     reference="east()\nsouth()\n", compact=2),
+                site("p19", "Ground Stops",
+                     "Collect both samples 🧪. A sample sits on ground, and "
+                     "ground stops a slide too.",
+                     [{"map": ["#########",
+                               "#S~~*~~*#",
+                               "#########"]}],
+                     reference="east(2)\n", compact=1),
+                site("p20", "Two Slides",
+                     "Slide to the beacon 🛰. The beacon stops a slide. Can you "
+                     "get there in only 2 slides?",
+                     [{"map": ["########",
+                               "#S~~~~~#",
+                               "#~~~~~~#",
+                               "#~~~G~~#",
+                               "########"]}],
+                     reference="south()\neast()\n", compact=2),
+                site("p21", "Ice Samples",
+                     "Collect both samples 🧪 in the corners. If you slide the "
+                     "wrong way, slide back!",
+                     [{"map": ["#######",
+                               "#S~~~*#",
+                               "#~###~#",
+                               "#~###~#",
+                               "#*~~~~#",
+                               "#######"]}],
+                     reference="east()\nsouth()\nwest()\n", compact=3),
+                site("p22", "Ice Steps",
+                     "Slide down the steps to the beacon 🛰: east, south, 3 "
+                     "times. Your drive turns into a for loop!",
+                     [{"map": ["#########",
+                               "#S~.#####",
+                               "###~#####",
+                               "###.~.###",
+                               "#####~###",
+                               "#####.~.#",
+                               "#######~#",
+                               "#######G#",
+                               "#########"]}],
+                     reference="for i in range(3):\n    east()\n    south()\n",
+                     compact=3),
+                site("p23", "Sample Rink",
+                     "Collect all 3 samples 🧪 on the big rink. Use the rocks "
+                     "and the samples as brakes. Press R to try again.",
+                     [{"map": ["#########",
+                               "#S~~~~~*#",
+                               "#~~~#~~~#",
+                               "#*~~~~~~#",
+                               "#~~~~~#~#",
+                               "#~~*~~~~#",
+                               "#########"]}],
+                     reference="south()\nnorth()\neast()\nsouth()\nwest()\n",
+                     compact=5),
+                site("p24", "Ice Snake",
+                     "Slide the snake path to the beacon 🛰: east, south, west, "
+                     "south, and then the same again. A loop can do it twice!",
+                     [{"map": ["#######",
+                               "#S~~~~#",
+                               "#####~#",
+                               "#~~~~~#",
+                               "#~#####",
+                               "#~~~~~#",
+                               "#####~#",
+                               "#~~~~~#",
+                               "#~#####",
+                               "#G~~~~#",
+                               "#######"]}],
+                     reference="for i in range(2):\n    east()\n    south()\n"
+                               "    west()\n    south()\n",
+                     compact=5),
+            ]}
+PAD_PARK = {"key": "pads", "name": "Pad Park", "rules": set(),
+            "blurb": "Magic pads! Drive onto one and you pop out of its partner.",
+            "hints": [
+                "Drive onto a pad ✨ and the rover pops out of the other pad. "
+                "Then it keeps going the same way.",
+                "Not sure where a pad goes? Scout it: drive onto it and watch "
+                "where the rover comes out.",
+                "Counting squares? The pad you land on counts as one square, "
+                "and the pad you pop out of doesn't.",
+            ],
+            "sites": [
+                site("p25", "Magic Pad",
+                     "Drive to the beacon 🛰 behind the rock. Drive onto the pad "
+                     "✨ and you pop out of the other pad!",
+                     [{"map": ["##########",
+                               "#S.P#P..G#",
+                               "##########"],
+                       "pairs": [[(1, 3), (1, 5)]]}],
+                     reference="east(2)\neast(3)\n", compact=2),
+                site("p26", "Down Under",
+                     "Drive to the beacon 🛰 in the room below. A pad will take "
+                     "you there.",
+                     [{"map": ["#######",
+                               "#S..P.#",
+                               "#######",
+                               "#.P..G#",
+                               "#######"],
+                       "pairs": [[(1, 4), (3, 2)]]}],
+                     reference="east(3)\neast(3)\n", compact=2),
+                site("p27", "Pad Chain",
+                     "Drive to the beacon 🛰. It's two rocks away: hop through "
+                     "two pads.",
+                     [{"map": ["###########",
+                               "#S.P#P.P#G#",
+                               "###########"],
+                       "pairs": [[(1, 3), (1, 5)], [(1, 7), (1, 9)]]}],
+                     reference="east(2)\neast(2)\n", compact=2),
+                site("p28", "Pad Samples",
+                     "Collect both samples 🧪. One is in each room.",
+                     [{"map": ["#######",
+                               "#S.*P#",
+                               "#######",
+                               "#P..*#",
+                               "#######"],
+                       "pairs": [[(1, 4), (3, 1)]]}],
+                     reference="east(3)\neast(3)\n", compact=2),
+                site("p29", "Which Pad?",
+                     "Drive to the beacon 🛰 in the room below. Three pads, and "
+                     "only one goes there! Scout to find it.",
+                     [{"map": ["########",
+                               "#S.....#",
+                               "#.P.P.P#",
+                               "########",
+                               "#.....G#",
+                               "#..P...#",
+                               "########"],
+                       "pairs": [[(2, 4), (5, 3)], [(2, 2), (2, 6)]]}],
+                     reference="east(3)\nsouth()\neast(3)\nnorth()\n", compact=5),
+                site("p30", "Pad Hopper",
+                     "Drive to the beacon 🛰, through three pads in a row. The "
+                     "same drive works in every room: a for loop can do it again "
+                     "and again!",
+                     [{"map": ["#################",
+                               "#S.P#P.P#P.P#P.G#",
+                               "#################"],
+                       "pairs": [[(1, 3), (1, 5)], [(1, 7), (1, 9)], [(1, 11), (1, 13)]]}],
+                     reference="for i in range(4):\n    east(2)\n", compact=2),
+            ]}
+# Jump Park drives like Crater Hops (zone index 7), so jump() works, but its
+# command chips show only what little kids need.
+JUMP_PARK = {"key": "bounce", "name": "Jump Park", "rules": set(),
+             "zi": ZONE_ORDER.index("hops"), "sensors": ["look", "at_beacon", "jump"],
+             "blurb": "Jump! The rover can leap over a crater ⚫ or a rock.",
+             "hints": [
+                 'jump("east") leaps two squares east: right over the square '
+                 'next to the rover. The quotes " " go around the way.',
+                 "A jump has to land on ground. It can't land on rock, and "
+                 "landing in a crater ends the run.",
+                 'While scouting, hold Shift and press an arrow to jump, or '
+                 'use the 🦘 buttons.',
+             ],
+             "sites": [
+                 site("p31", "First Jump",
+                      "Get to the beacon 🛰. A crater ⚫ is in the way: jump over "
+                      "it! This jumps east:\n\njump(\"east\")",
+                      [{"map": ["#######",
+                                "#S.O.G#",
+                                "#######"]}],
+                      reference="east()\njump(\"east\")\neast()\n", compact=3),
+                 site("p32", "Over the Rock",
+                      "Get to the beacon 🛰. A jump goes over a rock too!",
+                      [{"map": ["#######",
+                                "#S.#.G#",
+                                "#######"]}],
+                      reference="east()\njump(\"east\")\neast()\n", compact=3),
+                 site("p33", "Hop Hop Hop",
+                      "Jump over the three craters ⚫ to the beacon 🛰. Three "
+                      "jumps the same: a for loop!",
+                      [{"map": ["##########",
+                                "#SO.O.O.G#",
+                                "##########"]}],
+                      reference="for i in range(3):\n    jump(\"east\")\neast()\n",
+                      compact=3),
+                 site("p34", "Jump Down",
+                      "Jump down to the beacon 🛰. To jump down, the way is "
+                      "\"south\".",
+                      [{"map": ["#####",
+                                "#.S.#",
+                                "#.O.#",
+                                "#...#",
+                                "#.O.#",
+                                "#.G.#",
+                                "#####"]}],
+                      reference="jump(\"south\")\njump(\"south\")\n", compact=2),
+                 site("p35", "Jump Stairs",
+                      "Jump down the stairs to the beacon 🛰: jump east, jump "
+                      "south, and again.",
+                      [{"map": ["#########",
+                                "#SO.#####",
+                                "###O#####",
+                                "###.O.###",
+                                "#####O###",
+                                "#####G###",
+                                "#########"]}],
+                      reference="for i in range(2):\n    jump(\"east\")\n"
+                                "    jump(\"south\")\n", compact=3),
+                 site("p36", "Sample Jumps",
+                      "Collect the 3 samples 🧪. Drive onto a sample, then jump the "
+                      "crater after it.",
+                      [{"map": ["##########",
+                                "#S*O.*O.*#",
+                                "##########"]}],
+                      reference="east()\nfor i in range(2):\n    jump(\"east\")\n"
+                                "    east()\n", compact=4),
+                 site("p37", "Rock Hop",
+                      "Get to the beacon 🛰 past the rocks and craters. Look at "
+                      "each one: drive or jump?",
+                      [{"map": ["#########",
+                                "#S.#..O.#",
+                                "#######.#",
+                                "#######.#",
+                                "#G.O.#..#",
+                                "#########"]}],
+                      reference="east()\njump(\"east\")\neast()\njump(\"east\")\n"
+                                "south(3)\nwest()\njump(\"west\")\njump(\"west\")\n"
+                                "west()\n", compact=9),
+                 site("p38", "Jump Park Finale",
+                      "The big course! Jump three craters, go down, and jump "
+                      "three more to the beacon 🛰.",
+                      [{"map": ["############",
+                                "#S..O.O.O..#",
+                                "##########.#",
+                                "##########.#",
+                                "#G.O.O.O...#",
+                                "############"]}],
+                      reference="east(2)\nfor i in range(3):\n    jump(\"east\")\n"
+                                "east()\nsouth(3)\nwest(2)\nfor i in range(3):\n"
+                                "    jump(\"west\")\nwest()\n", compact=10),
+             ]}
+PRACTICE_ZONES = [PRACTICE_PARK, LOOP_GARDEN, ICE_RINK, PAD_PARK, JUMP_PARK]
+PRACTICE_ORDER = [s["key"] for z in PRACTICE_ZONES for s in z["sites"]]
+# Practice sites are easy, so each gives one star: the mission. (Stars kids
+# earned on them before stay counted.)
+for _z in PRACTICE_ZONES:
+    for _s in _z["sites"]:
+        _s["stars_max"] = 1
+STAR_TIPS.update({
+    "p1": {"compact": "Take out any extra lines: three east() is all it needs."},
+    "p2": {"compact": "Take out any extra lines: three south() is all it needs."},
+    "p3": {"compact": "One line for each square: three east(), then three south()."},
+    "p4": {"compact": "The samples are in one row. Just drive east, one line a square."},
+    "p5": {"compact": "Count the squares to the beacon and put that number in "
+                      "the ( ) of one east()."},
+    "p6": {"compact": "Two lines: one north() with a number, one west() with a number."},
+    "p7": {"compact": "One line for each straight bit of the path, with a number in it."},
+    "p8": {"compact": "Use the for loop from the card: 3 lines in all."},
+    "p9": {"compact": "Three lines, one for each side, with a number in each."},
+    "p10": {"compact": "Three lines: north(), east() with a number, south()."},
+    "p11": {"compact": "Count the samples and put that number in one east()."},
+    "p12": {"compact": "Use the for loop from the card: 3 lines in all."},
+    "p13": {"compact": "Use the for loop from the card: 3 lines in all."},
+    "p14": {"compact": "The 4 drives go in a loop that runs 2 times: 5 lines in all."},
+    "p15": {"compact": "Put south, north and east in a loop that runs 3 times."},
+    "p16": {"compact": "A loop for the steps (3 lines), then one east() after it."},
+    "p17": {"compact": "One east() is enough: the ice does the rest."},
+    "p18": {"compact": "Two slides: one east(), one south()."},
+    "p19": {"compact": "Two east() in a row can be one line: east(2)."},
+    "p20": {"compact": "Slide down first, then east. The beacon stops you."},
+    "p21": {"compact": "Three slides is the fewest: one to each corner sample, and one between."},
+    "p22": {"compact": "east() and south() in a loop that runs 3 times: 3 lines."},
+    "p23": {"compact": "5 slides is the fewest. Grab the sample below the start first."},
+    "p24": {"compact": "The 4 slides go in a loop that runs 2 times: 5 lines in all."},
+    "p25": {"compact": "Two lines: drive east to the pad, then east to the beacon."},
+    "p26": {"compact": "Two lines: east to the pad, then east in the room below."},
+    "p27": {"compact": "Two lines, both east with a number."},
+    "p28": {"compact": "Two lines: east to the pad, then east to the last sample."},
+    "p29": {"compact": "East, then south onto the middle pad. Then east and north to the beacon."},
+    "p30": {"compact": "Every room is east(2). Put it in a for loop that runs 4 times."},
+    "p31": {"compact": "Three lines: east(), jump(\"east\"), east()."},
+    "p32": {"compact": "Three lines: east(), jump(\"east\"), east()."},
+    "p33": {"compact": "Put the jump in a for loop that runs 3 times, then one east()."},
+    "p34": {"compact": "Two jumps south is all it needs."},
+    "p35": {"compact": "Jump east and jump south go in a loop that runs 2 times."},
+    "p36": {"compact": "One east(), then a loop that runs 2 times: jump, then east."},
+    "p37": {"compact": "One line for each drive or jump: 9 in all."},
+    "p38": {"compact": "Use a for loop for each row of 3 jumps."},
+})
+
 
 def find_site(key):
     """(zone index, zone, site) for a site key, or None."""
@@ -3327,6 +3981,10 @@ def find_site(key):
         for s in zone["sites"]:
             if s["key"] == key:
                 return zi, zone, s
+    for zone in PRACTICE_ZONES:
+        for s in zone["sites"]:
+            if s["key"] == key:
+                return zone.get("zi", 0), zone, s
     return None
 
 

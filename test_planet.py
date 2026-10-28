@@ -137,6 +137,7 @@ BONUS_PROGRAMS = {
     "13c": 'def hop():\n    east(2)\n    jump("east")\n\nfor i in range(4):\n    hop()\neast()\n',
     "15c": "def trip(n):\n    south(n)\n    east(6)\n    west(6)\n    north(n)\n\n"
            "for i in range(4):\n    trip(i)\n",
+    "16a": 'east(3)\ndrill("east")\neast(10)\nsouth(2)\nwest(8)\n',
 }
 
 
@@ -675,6 +676,37 @@ class SiteClaims(unittest.TestCase):
                 fits += sum(run(key, route, j)["reached"] for j in range(8) if j != i)
             self.assertLessEqual(fits / 56, .15, key)
 
+    # ---- Zone 16: everything at once ----
+    def test_16d_needs_every_zone_before_it(self):
+        # Each earlier zone's final program misses: 16D takes them together.
+        for before in ("9d", "10d", "13d", "14d", "15d"):
+            code = site(before)[2]["reference"]
+            for i in range(8):
+                self.assertFalse(run("16d", code, i)["reached"], (before, i))
+
+    def test_16d_a_route_only_fits_your_own(self):
+        s = site("16d")[2]
+        fits = 0
+        for i in range(8):
+            route = replay_as_code(run("16d", s["reference"], i))
+            self.assertTrue(run("16d", route, i)["reached"], i)
+            fits += sum(run("16d", route, j)["reached"] for j in range(8) if j != i)
+        self.assertLessEqual(fits / 56, .15)
+
+    def test_16a_the_key_comes_before_the_one_way_belt(self):
+        out = run("16a", 'east(3)\ndrill("east")\neast(3)\nsouth(2)\nwest(8)\n')
+        self.assertIn("locked", out["explain"]["what"] + out["explain"]["next"])
+        # Drilling straight down from the lander needs more drills than there are.
+        self.assertFalse(run("16a", 'south(4)\ndrill("south")\nsouth(2)\neast(5)\n')["reached"])
+
+    def test_16b_only_one_boulder_reaches_the_trench(self):
+        out = run("16b", "south()\neast(5)\n")
+        self.assertIn("🪨 the boulder won't move: something is behind it", "\n".join(out["log"]))
+
+    def test_16c_counted_squares_fall_in(self):
+        out = run("16c", "for i in range(4):\n    south(i)\n    east(14)\n    west(14)\n    north(i)\n")
+        self.assertEqual(out["end"], "fell")
+
     def test_a_boulder_is_pushed_and_fills_a_crater(self):
         out = run("13a", "east(4)\n")
         self.assertIn("tick 2: 🪨 pushed the boulder east", out["log"])
@@ -1094,6 +1126,7 @@ class ClassroomTests(unittest.TestCase):
         self.folder = tempfile.TemporaryDirectory()
         self.saved = dict(server.players), server.STATE_FILE
         server.players.clear()
+        server.planet_runs.clear()
         server.STATE_FILE = os.path.join(self.folder.name, "scores.json")
         self.httpd = server.ClassroomServer(("127.0.0.1", 0), server.Handler)
         threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
@@ -1106,6 +1139,10 @@ class ClassroomTests(unittest.TestCase):
         server.players.update(self.saved[0])
         server.STATE_FILE = self.saved[1]
         server.planet_spotlight[0] = None
+        server.planet_runs.clear()
+        server.planet_class_settings["blanks"] = True
+        server.planet_class_settings["easy"] = False
+        server.planet_class_settings["coach"] = False
         self.folder.cleanup()
 
     def get(self, path):
@@ -1125,6 +1162,8 @@ class ClassroomTests(unittest.TestCase):
         for path in ("/planet", "/planet/teacher", "/planet/show"):
             with urlopen(self.base + path) as response:
                 self.assertIn(b"Strange Planet", response.read())
+        with urlopen(self.base + "/planet/replay.js") as response:
+            self.assertIn(b"function replayStage", response.read())
         with urlopen(self.base + "/planet/render.js") as response:
             self.assertIn(b"function drawRover", response.read())
 
@@ -1356,6 +1395,9 @@ class ClassroomTests(unittest.TestCase):
                                   "pid": pid})
         self.assertIn("1B", ok["ok"])
         self.assertEqual(self.get(f"/planet/state?id={pid}")["current"], "1b")
+        # Clearing the unlocked site goes on past it, with 1A still to do.
+        self.post("/planet/run", {"id": pid, "site": "1b", "code": site("1b")[2]["reference"]})
+        self.assertEqual(self.get(f"/planet/state?id={pid}")["current"], "1c")
 
     def transmit(self, pid, key, code):
         return self.post("/planet/run", {"id": pid, "site": key, "code": code})
@@ -1595,6 +1637,148 @@ class ClassroomTests(unittest.TestCase):
         state = self.get(f"/planet/state?id={pid}")
         self.assertEqual((state["total_stars"], state["current"]), (0, "1a"))
 
+    def test_scouting_jumps_and_drills_once_code_can(self):
+        pid = self.join()
+        server.planet_entry(server.players[pid])["unlocked"] = len(planet.SITE_ORDER)
+        scout = lambda key, moves: self.post("/planet/scout", {"id": pid, "site": key, "moves": moves})
+        self.assertIn("error", scout("7a", ["jump:east"]))      # before Crater Hops
+        self.assertIn("error", scout("8a", ["drill:east"]))     # before The Quarry
+        self.assertIn("error", scout("8a", ["jump:up"]))
+        self.assertIn("error", scout("8a", [["jump", "east"]]))
+        out = scout("10a", ["east"] * 3 + ["drill:east"] + ["east"] * 5)
+        self.assertEqual(out["run"]["end"], "goal")
+        self.assertIn("tick 4: ⛏ drilled through the rock, 0 drills left", out["run"]["log"])
+        self.assertEqual(scout("16b", ["south"] * 2 + ["east"] * 6 + ["jump:east"])["run"]["frames"][-1]["c"], 9)
+
+    def test_teacher_can_remove_a_student(self):
+        ada, bo = self.join("Ada"), self.join("Bo")
+        self.post("/planet/run", {"id": bo, "site": "1a", "code": "east()\n"})
+        bad = self.post("/admin", {"key": "nope", "action": "planet_remove", "pid": bo})
+        self.assertIn("error", bad)
+        ok = self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_remove", "pid": bo})
+        self.assertIn("Bo", ok["ok"])
+        names = [r["name"] for r in self.get("/planet/overview")["students"]]
+        self.assertNotIn("Bo", names)
+        self.assertIn(bo, server.players)   # the other games keep them
+
+    def test_teacher_switches_scouted_code_blanks(self):
+        pid = self.join()
+        scout = lambda: self.post("/planet/scout", {"id": pid, "site": "1a", "moves": ["east"]})
+        self.assertTrue(scout()["blanks"])
+        self.assertTrue(self.get("/planet/overview")["blanks"])
+        self.post("/admin", {"key": "nope", "action": "planet_blanks", "on": False})
+        self.assertTrue(scout()["blanks"])
+        self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_blanks", "on": False})
+        self.assertFalse(scout()["blanks"])
+        self.assertFalse(self.get("/planet/overview")["blanks"])
+        self.assertFalse(json.load(open(server.STATE_FILE))["planet_class"]["blanks"])
+
+    def test_teacher_switches_letter_by_letter_typing(self):
+        pid = self.join()
+        scout = lambda: self.post("/planet/scout", {"id": pid, "site": "1a", "moves": ["east"]})
+        self.assertFalse(scout()["coach"])
+        self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_blanks", "on": False})
+        self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_coach", "on": True})
+        self.assertTrue(scout()["coach"])
+        self.assertTrue(scout()["blanks"])   # letter by letter needs words to finish
+        self.assertTrue(self.get("/planet/overview")["coach"])
+        self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_coach", "on": False})
+        self.assertFalse(scout()["coach"])
+        self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_easy", "on": True})
+        self.assertTrue(scout()["coach"])
+
+    def test_easy_mode_helps_sooner(self):
+        ada, bo = self.join("Ada"), self.join("Bo")
+        self.transmit(ada, "1a", site("1a")[2]["reference"])
+        self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_easy", "on": True})
+        self.assertTrue(self.get("/planet/overview")["easy"])
+        self.assertTrue(self.get("/planet/overview")["blanks"])   # kids finish the words
+        for n in range(1, server.EASY_SKIP_AFTER + 1):
+            out = self.transmit(bo, "1a", "east()\n")["rewards"]
+            self.assertEqual(out["helpers"], ["Ada"] if n >= server.EASY_HELP_AFTER else [], n)
+            self.assertEqual(out["can_skip"], n >= server.EASY_SKIP_AFTER, n)
+        self.assertTrue(json.load(open(server.STATE_FILE))["planet_class"]["easy"])
+        self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_easy", "on": False})
+        self.assertTrue(self.get("/planet/overview")["blanks"])
+        self.assertFalse(self.get(f"/planet/site?id={bo}&site=1a")["can_skip"])
+
+    def test_practice_park_only_in_easy_mode(self):
+        pid = self.join()
+        state = self.get(f"/planet/state?id={pid}")
+        self.assertNotIn("practice", [z["key"] for z in state["zones"]])
+        self.assertIn("error", self.post("/planet/run", {"id": pid, "site": "p1", "code": "east()\n"}))
+        self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_easy", "on": True})
+        state = self.get(f"/planet/state?id={pid}")
+        self.assertEqual(state["zones"][0]["key"], "practice")
+        self.assertEqual(state["current"], "p1")
+        self.assertEqual([z["key"] for z in state["zones"][:6]],
+                         ["practice", "garden", "rink", "pads", "bounce", "landing"])
+        self.assertEqual(state["zones"][5]["zi"], 0)   # the Landing Site keeps its sensors
+        for key in planet.PRACTICE_ORDER:
+            s = planet.find_site(key)[2]
+            out = self.transmit(pid, key, s["reference"])
+            self.assertEqual(out["rewards"]["stars"], [True], key)   # one star: they're easy
+            if key == "p8":
+                self.assertEqual(out["rewards"]["zone_cleared"]["next"]["key"], "garden")
+            if key == "p16":
+                self.assertEqual(out["rewards"]["zone_cleared"]["next"]["key"], "rink")
+            if key == "p24":
+                self.assertEqual(out["rewards"]["zone_cleared"]["next"]["key"], "pads")
+            if key == "p30":
+                self.assertEqual(out["rewards"]["zone_cleared"]["next"]["key"], "bounce")
+        self.assertEqual(out["rewards"]["zone_cleared"]["next"]["key"], "landing")
+        self.assertEqual(out["state"]["current"], "1a")
+        self.assertFalse(self.get(f"/planet/site?id={pid}&site=p1")["can_skip"])
+        self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_easy", "on": False})
+        state = self.get(f"/planet/state?id={pid}")
+        self.assertNotIn("practice", [z["key"] for z in state["zones"]])
+        self.assertEqual(state["current"], "1a")   # nobody's way is blocked
+
+    def test_jump_park_scouts_with_jumps_and_shows_a_short_kit(self):
+        pid = self.join()
+        jump = lambda key: self.post("/planet/scout", {"id": pid, "site": key, "moves": ["east", "jump:east", "east"]})
+        self.assertIn("error", jump("p31"))   # practice sites are closed outside easy mode
+        self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_easy", "on": True})
+        self.assertEqual(jump("p31")["run"]["end"], "goal")
+        self.assertIn("error", jump("p25"))   # Pad Park drives without jumping
+        self.assertEqual(self.get(f"/planet/site?id={pid}&site=p31")["sensors"], ["look", "at_beacon", "jump"])
+        server.planet_entry(server.players[pid])["unlocked"] = len(planet.SITE_ORDER)
+        self.assertIn("tick 2: 🦘 jumped east", jump("8a")["run"]["log"])   # Crater Hops on
+        for key in [k for z in (planet.PAD_PARK, planet.JUMP_PARK) for k in (s["key"] for s in z["sites"])]:
+            s = planet.find_site(key)[2]
+            self.assertEqual(self.transmit(pid, key, s["reference"])["rewards"]["stars"], [True], key)
+
+    def test_practice_sites_give_one_star_and_keep_old_ones(self):
+        pid = self.join()
+        self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_easy", "on": True})
+        entry = server.planet_entry(server.players[pid])
+        entry["stars"]["p2"] = [True, True, True]   # earned before practice gave one
+        before = self.get(f"/planet/state?id={pid}")["total_stars"]
+        out = self.transmit(pid, "p1", planet.find_site("p1")[2]["reference"])
+        self.assertEqual(out["rewards"]["new_stars"], 1)
+        self.assertEqual(out["state"]["total_stars"], before + 1)
+        view = self.get(f"/planet/site?id={pid}&site=p1")
+        self.assertEqual((len(view["goals"]), len(view["tips"]), view["stars"]), (1, 1, [True]))
+        state = self.get(f"/planet/state?id={pid}")
+        self.assertEqual(state["zones"][0]["sites"][1]["stars"], [True])
+        self.assertEqual(entry["stars"]["p2"], [True, True, True])   # nothing taken away
+        self.assertEqual(len(self.get(f"/planet/site?id={pid}&site=1a")["goals"]), 3)
+
+    def test_the_teacher_sees_each_run_with_its_route(self):
+        ada = self.join("Ada")
+        self.assertEqual(self.get("/planet/overview")["runs"], [])
+        self.transmit(ada, "1a", site("1a")[2]["reference"])
+        self.transmit(ada, "1b", "east()\n")
+        runs = self.get("/planet/overview")["runs"]
+        self.assertEqual([(r["name"], r["site"], r["reached"]) for r in runs],
+                         [("Ada", "1a", True), ("Ada", "1b", False)])
+        self.assertEqual(runs[1]["n"], runs[0]["n"] + 1)
+        self.assertEqual(runs[0]["path"][0][:2], [1, 1])
+        self.assertEqual(runs[0]["map"], site("1a")[2]["variants"][0]["map"])
+        self.assertTrue(runs[1]["said"])
+        student = self.get("/planet/overview")["students"][0]
+        self.assertEqual((student["misses"], student["runs_now"], student["practice"]), (1, 1, False))
+
     def test_field_measurements_coach_step_by_step(self):
         pid = self.join()
         server.planet_entry(server.players[pid])["unlocked"] = len(planet.SITE_ORDER)
@@ -1641,7 +1825,7 @@ class ClassroomTests(unittest.TestCase):
         # A locked site isn't shown, and nothing in the map gives a rule away.
         self.post("/planet/typing", {"id": pid, "site": "3c", "code": "x"})
         self.assertEqual(self.get("/planet/overview")["students"][0]["now"]["site"], "1a")
-        self.assertEqual(set(now), {"site", "site_name", "zone", "map", "pos", "end", "code", "said"})
+        self.assertEqual(set(now), {"site", "site_name", "zone", "zone_name", "map", "pos", "end", "code", "said"})
 
     def test_progress_survives_a_restart(self):
         pid = self.join()

@@ -6,159 +6,396 @@
 <title>Strange Planet — Class Expedition</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>🪐</text></svg>">
 <style>
-  /* For the projector: the class's stars filling one meter together, the
-     moments as they happen, and everyone's rover. Big, calm, readable. */
+  /* For the projector: whoever just ran takes the stage, big; the rest of
+     the crew sits beside it with their maps and code; the class's stars
+     fill one meter at the top. One screen, no scrolling, readable from the
+     back of the room. */
   :root {
     color-scheme: dark;
-    --sky: #1b1733; --dusk: #231d3f; --panel: #2c2550; --edge: #463c78;
-    --bone: #f2eadb; --haze: #a89ec8; --mint: #8cf2c6; --amber: #ffb547; --gold: #ffd36b; --violet: #b9a3ff;
+    --sky: #120f24; --dusk: #1b1734; --panel: #231d42; --panel-2: #2d2654; --edge: #3d3470;
+    --bone: #f4eee2; --haze: #a99fca; --dim: #6c6394;
+    --mint: #8cf2c6; --amber: #ffb547; --gold: #ffd36b; --coral: #ff7a6b; --violet: #b9a3ff;
     --ui: system-ui, "Segoe UI", Roboto, "Noto Sans", sans-serif;
     --mono: ui-monospace, "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+    --gap: clamp(12px, 1.4vw, 24px);
   }
   * { box-sizing: border-box; }
-  body { margin: 0; min-height: 100vh; background: radial-gradient(ellipse at 70% -10%, #4a2f63, var(--sky) 60%); color: var(--bone); font: 18px/1.4 var(--ui); padding: clamp(16px, 3vw, 40px); }
-  h1 { margin: 0; font-size: clamp(34px, 5vw, 64px); font-weight: 850; letter-spacing: -.04em; line-height: 1; }
-  header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 28px; }
-  header p { margin: 0; color: var(--haze); font-size: clamp(16px, 1.6vw, 22px); }
-  header b { color: var(--bone); font-family: var(--mono); }
-  .meter { position: relative; height: 34px; border-radius: 17px; background: var(--dusk); box-shadow: inset 0 0 0 1px var(--edge); margin: 0 0 54px; }
-  .fill { position: absolute; inset: 0 auto 0 0; border-radius: 17px; background: linear-gradient(90deg, #ffb547, #ff8a7a 50%, #b9a3ff); transition: width 1s cubic-bezier(.2,.8,.2,1); }
-  .goal { position: absolute; top: -6px; bottom: -6px; width: 3px; background: var(--bone); border-radius: 2px; }
-  .goal span { position: absolute; top: 46px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 15px; color: var(--haze); }
-  .goal.done span { color: var(--mint); }
-  .unlock { position: fixed; left: 50%; top: 40%; transform: translate(-50%, -50%); z-index: 5; display: grid; gap: 10px; text-align: center; padding: 34px 54px; border-radius: 28px; background: rgba(27,21,52,.96); box-shadow: 0 20px 80px rgba(0,0,0,.6), inset 0 0 0 3px var(--gold, #ffd36b); }
-  .unlock[hidden] { display: none; }
-  .unlock b { font-size: 64px; color: #ffd36b; }
-  .unlock span { font-size: 30px; color: #f2eadb; max-width: 900px; }
-  header p { margin-top: 10px; }
-  .total { text-align: right; font: 800 clamp(44px, 6vw, 80px)/1 var(--ui); color: var(--gold); letter-spacing: -.03em; }
-  .total small { display: block; font: 500 16px var(--ui); color: var(--haze); letter-spacing: 0; margin-top: 4px; }
-  main { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px; align-items: start; }
-  h2 { margin: 0 0 12px; font-size: 20px; color: var(--haze); font-weight: 650; }
-  .fleet { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
-  .ship { background: rgba(35,29,63,.8); border-radius: 16px; padding: 12px; border: 2px solid transparent; min-width: 0; }
-  .ship .top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-  .ship .top canvas { width: 84px; height: 72px; flex: none; margin: -12px -4px -12px -8px; }
-  /* The card's edge: the rarest thing in their garage look. */
-  .ship.f-rare { border-color: #5ab8ff; }
-  .ship.f-epic { border-color: #c46bff; box-shadow: 0 0 18px rgba(196,107,255,.35); }
-  .ship.f-legendary { border-color: #ffb547; box-shadow: 0 0 22px rgba(255,181,71,.45); }
-  .ship.won { border-color: var(--mint); }
-  .ship b { flex: 0 1 auto; min-width: 0; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ship .where { flex: 1 1 0; min-width: 0; text-align: right; color: var(--haze); font: 13px var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .ship .map { display: block; margin: 0 auto 8px; border-radius: 6px; }
-  .ship pre { background: #15112a; border-radius: 8px; padding: 8px; margin: 0; font: 12px/1.45 var(--mono); color: var(--gold);
-    min-height: 44px; max-height: 140px; overflow: auto; white-space: pre-wrap; }
-  .ship pre.empty { color: #6f668f; }
-  .ship .end { margin-top: 6px; font-size: 13px; color: var(--haze); }
-  /* The teacher's spotlight: one program, big, with no name on it. */
-  .spot { position: fixed; inset: 4vh 6vw; z-index: 4; display: flex; flex-direction: column; gap: 14px; padding: 30px 40px; border-radius: 28px; background: rgba(27,21,52,.97); box-shadow: 0 30px 90px rgba(0,0,0,.6), inset 0 0 0 2px var(--violet); }
-  .spot[hidden] { display: none; }
-  .spot h2 { margin: 0; font-size: clamp(24px, 3vw, 40px); color: var(--bone); }
-  .spot pre { flex: 1; min-height: 0; overflow: auto; margin: 0; padding: 22px 26px; border-radius: 16px; background: #15112a; color: var(--gold); font: clamp(20px, 2.4vw, 34px)/1.5 var(--mono); white-space: pre-wrap; }
-  .spot p { margin: 0; color: var(--haze); font-size: clamp(18px, 1.8vw, 26px); }
-  .moments { display: grid; gap: 8px; }
-  .moment { background: rgba(35,29,63,.8); border-radius: 12px; padding: 10px 14px; font-size: 18px; }
-  .moment.fresh { box-shadow: inset 0 0 0 2px var(--mint); }
-  .moment time { display: block; color: var(--haze); font-size: 13px; }
-  .empty { color: var(--haze); }
-  @media (max-width: 760px) { main { grid-template-columns: 1fr; } }
-  @media (prefers-reduced-motion: reduce) { .fill { transition: none; } }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin: 0; overflow: hidden; background: radial-gradient(ellipse 80% 60% at 75% -10%, #35255c, transparent 70%), var(--sky); color: var(--bone); font: 18px/1.4 var(--ui); }
+  .app { height: 100vh; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--gap); padding: var(--gap) calc(var(--gap) * 1.4); }
+
+  /* ---- Header: name, where to join, the class meter ---- */
+  header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: calc(var(--gap) * 1.6); }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand .orb { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-size: 30px; background: radial-gradient(circle at 35% 30%, #4c3c86, #221b40); box-shadow: inset 0 0 0 1px var(--edge); }
+  .brand h1 { margin: 0; font-size: clamp(24px, 2.2vw, 38px); font-weight: 850; letter-spacing: -.035em; line-height: 1; }
+  .brand p { margin: 5px 0 0; color: var(--haze); font-size: clamp(14px, 1vw, 17px); }
+  .brand p b { color: var(--gold); font: 700 1.05em var(--mono); }
+  .meter-box { min-width: 0; }
+  .meter-label { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; font-size: clamp(13px, .95vw, 16px); color: var(--haze); white-space: nowrap; overflow: hidden; }
+  .meter-label b { color: var(--bone); font-weight: 650; }
+  .meter { position: relative; height: 14px; border-radius: 7px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--edge); overflow: hidden; }
+  .fill { position: absolute; inset: 0 auto 0 0; border-radius: 7px; background: linear-gradient(90deg, #ffb547, #ff8a7a 55%, #b9a3ff); transition: width 1s cubic-bezier(.2,.8,.2,1); }
+  .total { text-align: right; line-height: 1; }
+  .total b { font: 850 clamp(34px, 3.2vw, 56px)/1 var(--ui); color: var(--gold); letter-spacing: -.03em; }
+  .total small { display: block; margin-top: 4px; color: var(--haze); font-size: 14px; }
+
+  /* ---- Main: the stage and the crew ---- */
+  main { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) clamp(300px, 25vw, 460px); gap: var(--gap); }
+  .stage { min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: var(--gap); padding: var(--gap); border-radius: 28px; background: linear-gradient(165deg, rgba(45,38,84,.92), rgba(27,23,52,.92)); box-shadow: 0 24px 70px rgba(0,0,0,.4), inset 0 0 0 1px var(--edge); transition: box-shadow .4s; }
+  /* Before anyone has run or typed: just the welcome, full size. */
+  .stage.bare { grid-template-rows: minmax(0, 1fr); }
+  .stage.bare .view { grid-template-columns: 1fr; }
+  .stage.bare .code { display: none; }
+  .stage.win { box-shadow: 0 24px 70px rgba(0,0,0,.4), inset 0 0 0 3px var(--mint), 0 0 60px rgba(140,242,198,.18); }
+  .stage.miss { box-shadow: 0 24px 70px rgba(0,0,0,.4), inset 0 0 0 3px rgba(255,181,71,.7); }
+  .who { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: calc(var(--gap) * 1.1); }
+  .who canvas { width: clamp(72px, 6.5vw, 116px); height: clamp(72px, 6.5vw, 116px); border-radius: 26px; background: radial-gradient(circle at 50% 40%, #4a3d86, #211b3e); box-shadow: inset 0 0 0 2px var(--edge); }
+  .who.enter canvas { animation: pop .6s cubic-bezier(.2,1.6,.4,1); }
+  .who.enter .who-text { animation: slide .5s cubic-bezier(.2,.9,.3,1); }
+  @keyframes pop { from { transform: scale(.4) rotate(-20deg); } }
+  @keyframes slide { from { transform: translateX(-30px); opacity: 0; } }
+  .label { display: inline-flex; align-items: center; gap: 9px; font: 800 clamp(12px, .85vw, 15px) var(--ui); letter-spacing: .16em; color: var(--mint); text-transform: uppercase; }
+  .label i { width: 11px; height: 11px; border-radius: 50%; background: currentColor; animation: beat 1.3s infinite; }
+  .label.still i { animation: none; }
+  .label.coding { color: var(--violet); }
+  .label.done { color: var(--haze); }
+  @keyframes beat { 0% { box-shadow: 0 0 0 0 currentColor; } 70%, 100% { box-shadow: 0 0 0 12px transparent; } }
+  .who h2 { margin: 6px 0 0; font-size: clamp(40px, 4.6vw, 88px); font-weight: 900; letter-spacing: -.045em; line-height: .95; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .who h2 .worn { font-size: .55em; margin-left: 10px; vertical-align: middle; }
+  .who p { margin: 8px 0 0; color: var(--haze); font-size: clamp(17px, 1.4vw, 26px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .who p b { color: var(--gold); font-family: var(--mono); margin-right: 8px; }
+  .result { text-align: right; }
+  .stars { font-size: clamp(40px, 4vw, 72px); letter-spacing: 6px; color: #3d3470; white-space: nowrap; line-height: 1; }
+  .stars i { font-style: normal; color: var(--gold); text-shadow: 0 0 22px rgba(255,211,107,.85); display: inline-block; animation: star-in .55s cubic-bezier(.2,1.6,.4,1) both; }
+  .stars i:nth-child(2) { animation-delay: .18s; } .stars i:nth-child(3) { animation-delay: .36s; }
+  @keyframes star-in { from { transform: scale(0) rotate(-120deg); } }
+  .notes { margin-top: 8px; display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  .notes span { padding: 4px 12px; border-radius: 99px; background: rgba(255,211,107,.14); color: var(--gold); font-weight: 700; font-size: clamp(14px, 1vw, 18px); }
+
+  .view { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) clamp(260px, 24vw, 440px); gap: var(--gap); }
+  .screen { position: relative; min-height: 0; border-radius: 20px; overflow: hidden; background: #0c0a19; box-shadow: inset 0 0 0 1px var(--edge); }
+  .screen canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .screen.shake { animation: shake .45s; }
+  @keyframes shake { 20% { transform: translate(-8px, 3px); } 40% { transform: translate(6px, -4px); } 60% { transform: translate(-4px, 2px); } 80% { transform: translate(3px, -1px); } }
+  .tick { position: absolute; left: 14px; top: 14px; padding: 5px 12px; border-radius: 10px; background: rgba(18,15,36,.82); font: 700 15px var(--mono); color: var(--haze); }
+  .stamp { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(.4) rotate(-8deg); opacity: 0; padding: .35em .8em; border-radius: 22px; font: 900 clamp(30px, 3.6vw, 66px)/1 var(--ui); letter-spacing: -.02em; white-space: nowrap; pointer-events: none; transition: transform .5s cubic-bezier(.2,1.6,.4,1), opacity .25s; }
+  .stamp.show { transform: translate(-50%, -50%) scale(1) rotate(-4deg); opacity: 1; }
+  .stamp.win { color: #0f2620; background: var(--mint); box-shadow: 0 0 0 8px rgba(140,242,198,.25), 0 24px 60px rgba(0,0,0,.5); }
+  .stamp.miss { color: #2b1500; background: var(--amber); box-shadow: 0 0 0 8px rgba(255,181,71,.25), 0 24px 60px rgba(0,0,0,.5); }
+  .stamp small { display: block; margin-top: .3em; font-size: .38em; font-weight: 700; letter-spacing: 0; text-align: center; }
+  .code { min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); border-radius: 20px; background: #0c0a19; box-shadow: inset 0 0 0 1px var(--edge); overflow: hidden; }
+  .code-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--edge); color: var(--haze); font: 600 15px var(--mono); }
+  .code-head b { color: var(--bone); }
+  .code pre { margin: 0; padding: 14px 16px 16px; overflow: hidden; font: var(--code-size, 22px)/1.5 var(--mono); color: var(--bone); white-space: pre; counter-reset: ln;
+    -webkit-mask-image: linear-gradient(#000 85%, transparent); mask-image: linear-gradient(#000 85%, transparent); }
+  .code pre span { display: block; }
+  .code pre span::before { counter-increment: ln; content: counter(ln); display: inline-block; width: 1.6em; margin-right: .7em; text-align: right; color: var(--dim); }
+  .code pre i { font-style: normal; }
+  .code pre .kw { color: #ff9ad5; } .code pre .fn { color: var(--mint); } .code pre .str { color: #ffcf8a; } .code pre .num { color: var(--violet); } .code pre .com { color: var(--dim); }
+  .code pre.empty { color: var(--dim); }
+  .code pre.empty span::before { content: none; }
+  .splash { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; }
+  .splash h3 { margin: 0 0 10px; font-size: clamp(30px, 3vw, 56px); font-weight: 850; letter-spacing: -.03em; }
+  .splash p { margin: 0; color: var(--haze); font-size: clamp(18px, 1.5vw, 26px); }
+  .splash p b { color: var(--gold); font-family: var(--mono); }
+
+  /* ---- The crew beside the stage ---- */
+  .crew { min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 12px; }
+  .crew h3 { margin: 0; display: flex; justify-content: space-between; align-items: baseline; font-size: clamp(16px, 1.1vw, 20px); color: var(--haze); font-weight: 650; }
+  .crew h3 small { font-size: .8em; }
+  .ships { min-height: 0; display: grid; gap: 12px; grid-auto-rows: minmax(0, 1fr); overflow: hidden; }
+  .ship { position: relative; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 8px; padding: 12px; border-radius: 18px; background: var(--dusk); box-shadow: inset 0 0 0 1px var(--edge); transition: box-shadow .3s, background .3s; overflow: hidden; }
+  .ship.f-rare { box-shadow: inset 0 0 0 2px #5ab8ff; }
+  .ship.f-epic { box-shadow: inset 0 0 0 2px #c46bff; }
+  .ship.f-legendary { box-shadow: inset 0 0 0 2px #ffb547; }
+  .ship.on-stage { background: #2b2452; box-shadow: inset 0 0 0 3px var(--violet); }
+  .ship.on-stage::after { content: "ON STAGE"; position: absolute; top: 12px; right: 12px; padding: 2px 9px; border-radius: 99px; background: var(--violet); color: #1d1240; font: 800 11px/18px var(--ui); letter-spacing: .08em; }
+  .ship.flash { animation: flash 2.2s ease-out; }
+  @keyframes flash { 0% { background: #2f5a4c; } }
+  .ship-top { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .ship-top canvas { width: 46px; height: 46px; flex: none; border-radius: 13px; background: radial-gradient(circle at 50% 40%, #463a80, #211b3e); }
+  .ship-top > div { min-width: 0; }
+  .ship-top b { display: block; font-size: clamp(17px, 1.2vw, 22px); font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ship.on-stage .ship-top b { padding-right: 80px; }
+  .ship-top .sub { display: block; color: var(--haze); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ship-top .sub em { font-style: normal; color: var(--gold); font-family: var(--mono); margin-right: 6px; }
+  .ship-top .state { color: var(--violet); }
+  .ship-top .state.ok { color: var(--mint); }
+  .ship-body { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 10px; }
+  .ship-body canvas { width: 100%; height: 100%; min-height: 0; border-radius: 10px; background: #0c0a19; }
+  .ship-body pre { margin: 0; min-height: 0; overflow: hidden; padding: 8px 10px; border-radius: 10px; background: #0c0a19; font: 12.5px/1.45 var(--mono); color: var(--gold); white-space: pre;
+    -webkit-mask-image: linear-gradient(#000 75%, transparent); mask-image: linear-gradient(#000 75%, transparent); }
+  .ship-body pre.empty { color: var(--dim); }
+  /* A big class: just name, level and state. */
+  .ships.compact { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: max-content; align-content: start; overflow: auto; scrollbar-width: none; }
+  .ships.compact .ship { grid-template-rows: auto; padding: 9px 10px; }
+  .ships.compact .ship-body { display: none; }
+  .ships.compact .ship-top canvas { width: 36px; height: 36px; }
+  .ships.compact .ship-top b { font-size: 16px; padding-right: 0; }
+  .ships.compact .ship.on-stage::after { display: none; }
+  .empty-crew { color: var(--haze); font-size: 17px; padding: 20px 4px; }
+
+  /* ---- Footer: the class's moments ---- */
+  footer { display: flex; align-items: center; gap: 14px; min-width: 0; height: 44px; padding: 0 16px; border-radius: 14px; background: rgba(27,23,52,.85); box-shadow: inset 0 0 0 1px var(--edge); overflow: hidden; }
+  footer > b { flex: none; font: 800 12px var(--ui); letter-spacing: .14em; color: var(--haze); }
+  .moments { display: flex; gap: 28px; min-width: 0; overflow: hidden; white-space: nowrap; -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); }
+  .moment { font-size: clamp(15px, 1vw, 18px); }
+  .moment time { margin-left: 8px; color: var(--dim); font-size: .85em; }
+  .moment.fresh { color: var(--mint); }
+
+  /* ---- Overlays the teacher or the class sets off ---- */
+  .unlock { position: fixed; left: 50%; top: 45%; transform: translate(-50%, -50%); z-index: 5; display: grid; gap: 12px; text-align: center; padding: 40px 64px; border-radius: 30px; background: rgba(27,21,52,.97); box-shadow: 0 30px 90px rgba(0,0,0,.65), inset 0 0 0 3px var(--gold); }
+  .unlock b { font-size: clamp(44px, 5vw, 80px); color: var(--gold); }
+  .unlock span { font-size: clamp(22px, 2vw, 34px); max-width: 900px; }
+  .spot { position: fixed; inset: 4vh 5vw; z-index: 4; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 16px; padding: 32px 42px; border-radius: 30px; background: rgba(27,21,52,.98); box-shadow: 0 30px 90px rgba(0,0,0,.65), inset 0 0 0 2px var(--violet); }
+  .spot h2 { margin: 0; font-size: clamp(26px, 2.6vw, 44px); }
+  .spot pre { margin: 0; min-height: 0; overflow: auto; padding: 24px 28px; border-radius: 18px; background: #0c0a19; color: var(--gold); font: clamp(22px, 2.3vw, 38px)/1.5 var(--mono); white-space: pre-wrap; }
+  .spot p { margin: 0; color: var(--haze); font-size: clamp(18px, 1.7vw, 28px); }
+
+  @media (max-width: 1100px) { main { grid-template-columns: 1fr; } .crew { display: none; } .view { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) 30%; } }
+  /* A short projector: each crew card is one row, its map beside the name. */
+  @media (max-height: 820px) {
+    .code pre { --code-size: 18px !important; }
+    .ships:not(.compact) .ship { grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 1fr) 40%; align-items: center; }
+    .ships:not(.compact) .ship-body { grid-template-columns: 1fr; height: 100%; }
+    .ship-body pre { display: none; }
+    .ship.on-stage::after { display: none; }
+    .ship.on-stage .ship-top b { padding-right: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
-<header>
-  <div><h1>Class expedition</h1><p>Every star anyone earns fills the meter. Join at <b id="address"></b></p></div>
-  <div class="total"><span id="count">0</span> ★<small>earned together</small></div>
-</header>
-<div class="meter" id="meter"><div class="fill" id="fill"></div></div>
+<div class="app">
+  <header>
+    <div class="brand"><div class="orb" aria-hidden="true">🪐</div><div><h1>Class Expedition</h1><p>Join at <b id="address">…</b></p></div></div>
+    <div class="meter-box"><div class="meter-label"><span id="meterFrom"></span><span id="meterNext"></span></div><div class="meter"><div class="fill" id="fill"></div></div></div>
+    <div class="total"><b><span id="count">0</span> ★</b><small>earned together</small></div>
+  </header>
+  <main>
+    <section class="stage bare" id="stage" aria-live="polite">
+      <div class="who" id="who" hidden>
+        <canvas id="avatar"></canvas>
+        <div class="who-text" style="min-width:0"><span class="label" id="label"><i></i><span id="labelText"></span></span><h2 id="name"></h2><p id="where"></p></div>
+        <div class="result" id="result"></div>
+      </div>
+      <div class="view">
+        <div class="screen" id="screen">
+          <canvas id="map"></canvas>
+          <span class="tick" id="tick" hidden></span>
+          <div class="stamp" id="stamp"></div>
+          <div class="splash" id="splash"><div><h3>🛰 Ready for launch</h3><p>Go to <b id="splashAddress">…</b> and type your name.<br>Every run plays here, big.</p></div></div>
+        </div>
+        <div class="code"><div class="code-head"><b id="file">rover.py</b><span id="lines"></span></div><pre id="code" class="empty">No code yet.</pre></div>
+      </div>
+    </section>
+    <aside class="crew">
+      <h3>The crew <small id="crewCount"></small></h3>
+      <div class="ships" id="ships"></div>
+    </aside>
+  </main>
+  <footer><b>JUST NOW</b><div class="moments" id="moments"></div></footer>
+</div>
 <div class="unlock" id="unlock" hidden><b>🎉 Class unlock!</b><span id="unlockText"></span></div>
 <div class="spot" id="spot" hidden><h2 id="spotTitle"></h2><pre id="spotCode"></pre><p>What does each line do? What would you change?</p></div>
-<main>
-  <section><h2>The fleet</h2><div class="fleet" id="fleet"></div></section>
-  <section><h2>Just now</h2><div class="moments" id="moments"></div></section>
-</main>
+<script>const CALM = true;   // pets and glows stay still; the replay still drives</script>
 <script src="/planet/render.js"></script>
+<script src="/planet/replay.js"></script>
 <script>
 const $ = id => document.getElementById(id);
-const CALM = true;   // the projector's rovers stay still
-// One colour for a rover's dot on the little maps.
-function dotColor(paint) {
-  const p = PAINTS[paint] || PAINTS.bone;
-  return typeof p === "string" ? p : Array.isArray(p) ? p[0] : p.base || "#ff5ad8";
-}
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 function esc(v) { return String(v).replace(/[&<>"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch])); }
 function ago(at) {
   const s = Math.max(0, Date.now() / 1000 - at);
   return s < 60 ? "just now" : s < 3600 ? `${Math.floor(s / 60)} min ago` : `${Math.floor(s / 3600)} h ago`;
 }
-// Each student's site, as they see it, with their rover where it last stopped.
-const GROUND = {"#": "#463c78", ".": "#2c2550", S: "#2c2550", "*": "#2c2550", G: "#2c2550", "~": "#5f86b8",
-                O: "#120e22", "+": "#5a4a2a", P: "#2c2550", D: "#7a4f2a",
-                ">": "#4a4658", "<": "#4a4658", "^": "#4a4658", v: "#4a4658", H: "#2f6b55"};
-function miniMap(cv, map, pos, paint) {
-  const rows = map.length, cols = map[0].length;
-  const cell = Math.max(3, Math.min(14, Math.floor(246 / cols), Math.floor(150 / rows)));
-  const dpr = devicePixelRatio || 1;
-  cv.style.width = cols * cell + "px"; cv.style.height = rows * cell + "px";
-  cv.width = cols * cell * dpr; cv.height = rows * cell * dpr;
-  const g = cv.getContext("2d"); g.scale(dpr, dpr);
-  const dot = (r, c, color, size) => { g.fillStyle = color; g.beginPath(); g.arc((c + .5) * cell, (r + .5) * cell, cell * size, 0, 7); g.fill(); };
-  map.forEach((row, r) => [...row].forEach((ch, c) => {
-    g.fillStyle = GROUND[ch] || GROUND["."]; g.fillRect(c * cell, r * cell, cell, cell);
-    if (ch === "*") dot(r, c, "#ffb547", .22);
-    if (ch === "G") dot(r, c, "#ffd36b", .38);
-    if (ch === "P") dot(r, c, "#b9a3ff", .32);
-    if (ch === "k") dot(r, c, "#ffd36b", .22);
-    if (ch === "B") dot(r, c, "#a8a2b0", .4);
-    if (ch >= "1" && ch <= "9") dot(r, c, "#ff6f61", .26);
-  }));
-  dot(pos[0], pos[1], "#120e22", .5);
-  dot(pos[0], pos[1], dotColor(paint), .4);
+function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
+function tag(site) { return site === "7" ? "🪐" : site.toUpperCase(); }
+function siteName(site, name) { return site === "7" ? "Uncharted" : name; }
+// How a run ended, said kindly: the projector never shows the game's error text.
+const ENDS = {fell: "fell in a crater", battery: "ran out of battery", ticks: "ran out of time",
+              stopped: "stopped short", wrong: "reported a different number", error: "hit a bug in the code"};
+
+// A line of Python, coloured like the student's editor.
+const KEYWORDS = new Set(["for", "in", "range", "while", "if", "elif", "else", "def", "not", "and", "or", "True", "False", "return"]);
+function paint(line) {
+  const hash = line.indexOf("#"), body = hash >= 0 && !/["']/.test(line.slice(0, hash)) ? line.slice(0, hash) : line;
+  const html = body.split(/("[^"]*"|'[^']*'|\b\d+\b|\b[A-Za-z_]\w*\b)/).map(part => {
+    if (!part) return "";
+    if (/^["']/.test(part)) return `<i class="str">${esc(part)}</i>`;
+    if (/^\d+$/.test(part)) return `<i class="num">${esc(part)}</i>`;
+    if (KEYWORDS.has(part)) return `<i class="kw">${esc(part)}</i>`;
+    if (/^[A-Za-z_]\w*$/.test(part)) return `<i class="fn">${esc(part)}</i>`;
+    return esc(part);
+  }).join("");
+  return html + (body !== line ? `<i class="com">${esc(line.slice(hash))}</i>` : "");
 }
-const ENDS = {goal: "✓ mission complete", wrong: "wrong number", fell: "fell", battery: "flat battery",
-              ticks: "out of time", stopped: "stopped short", error: "code error"};
-// A little rover from above, in the student's own garage look, heading out,
-// with its pet beside it.
-function rover(cv, gear) {
-  const dpr = devicePixelRatio || 1, w = 84, h = 72;
+function showCode(code, key) {
+  const text = (code || "").replace(/\s+$/, ""), lines = text ? text.split("\n") : [];
+  $("file").textContent = key ? `site_${key}.py` : "rover.py";
+  $("lines").textContent = lines.length ? plural(lines.length, "line") : "";
+  $("code").classList.toggle("empty", !lines.length);
+  $("code").style.setProperty("--code-size", lines.length > 16 ? "16px" : lines.length > 11 ? "19px" : "23px");
+  $("code").innerHTML = lines.length ? lines.map(l => `<span>${paint(l) || " "}</span>`).join("") : "No code yet.";
+}
+
+// ---- The stage --------------------------------------------------------------------------
+// Every run anyone transmits plays here, one after another. Between runs, it
+// keeps the last one up; before the first, it follows whoever is coding.
+const stage = replayStage($("screen"), $("map"));
+stage.queue = []; stage.lastN = null; stage.until = 0; stage.who = null;
+stage.onFinish = run => {
+  if (run.live) return;
+  const win = run.reached;
+  $("stage").classList.add(win ? "win" : "miss");
+  $("stamp").innerHTML = win ? (run.cleared ? `🗺 ${esc(run.cleared)} cleared!` : "🎉 Mission complete!")
+    : `Not yet!<small>The rover ${esc(ENDS[run.end] || "stopped")} · try again!</small>`;
+  $("stamp").className = `stamp ${win ? "win" : "miss"}`;
+  requestAnimationFrame(() => $("stamp").classList.add("show"));
+  if (win) {
+    const notes = [run.new_stars ? `+${run.new_stars} ★` : "", run.first_try ? "🎯 First try" : "",
+                   run.record ? "🏆 Class record" : ""].filter(Boolean);
+    $("result").innerHTML = `<div class="stars">${run.stars.map(s => s ? "<i>★</i>" : "★").join("")}</div>`
+      + (notes.length ? `<div class="notes">${notes.map(n => `<span>${esc(n)}</span>`).join("")}</div>` : "");
+  } else if (!REDUCED) {
+    $("screen").classList.remove("shake"); void $("screen").offsetWidth; $("screen").classList.add("shake");
+  }
+  setLabel("done", `${run.name}'s run`);
+  // A finished run stays up until another comes, and at least this long.
+  stage.until = performance.now() + (win ? 3000 : 2200);
+};
+function setLabel(kind, text) {
+  $("label").className = `label ${kind}${kind === "done" ? " still" : ""}`;
+  $("labelText").textContent = text;
+}
+function introduce(id, name, showoff, look, where) {
+  const fresh = !stage.who || stage.who !== id;
+  stage.who = id;
+  $("who").hidden = false; $("splash").hidden = true; $("stage").classList.remove("bare");
+  $("name").innerHTML = esc(name) + (showoff ? `<span class="worn" title="A badge they earned">${esc(showoff)}</span>` : "");
+  $("where").innerHTML = where;
+  replayAvatar($("avatar"), look, 116);
+  if (fresh && !REDUCED) { $("who").classList.remove("enter"); void $("who").offsetWidth; $("who").classList.add("enter"); }
+  markStage();
+}
+function playRun(run) {
+  stage.play(run);
+  stage.until = Infinity;
+  const s = students.find(x => x.id === run.id);
+  introduce(run.id, run.name, s && s.showoff, run.look, `<b>${esc(tag(run.site))}</b>${esc(siteName(run.site, run.site_name))} · ${esc(run.zone)}`);
+  setLabel("", "Now running");
+  $("stage").classList.remove("win", "miss");
+  $("stamp").className = "stamp"; $("stamp").innerHTML = "";
+  $("result").innerHTML = "";
+  $("tick").hidden = false;
+  showCode(run.code, run.site);
+}
+// Before anyone has run: the student who typed last, live.
+function followCoder() {
+  const s = students.filter(x => x.typed).sort((a, b) => b.typed - a.typed)[0];
+  if (!s) return;
+  const n = s.now, pos = String(n.pos);
+  if (!stage.run || stage.run.id !== s.id || stage.run.pos !== pos || stage.run.site !== n.site)
+    stage.play({live: true, id: s.id, site: n.site, map: n.map, path: [[n.pos[0], n.pos[1], null]], look: s.look, pos});
+  introduce(s.id, s.name, s.showoff, s.look, `<b>${esc(tag(n.site))}</b>${esc(siteName(n.site, n.site_name))}`);
+  setLabel("coding", "Coding now");
+  $("tick").hidden = true;
+  showCode(n.code, n.site);
+}
+function takeRuns(runs) {
+  runs = runs || [];
+  const top = Math.max(0, ...runs.map(r => r.n));
+  if (stage.lastN == null) {   // just opened: the latest run plays, nothing older
+    stage.lastN = top;
+    if (runs.length) stage.queue.push(runs[runs.length - 1]);
+    return;
+  }
+  stage.queue.push(...runs.filter(r => r.n > stage.lastN));
+  stage.lastN = Math.max(stage.lastN, top);
+  // Four students running at once: the newest few, not a long backlog.
+  stage.queue = stage.queue.slice(-4);
+}
+function frame(now) {
+  const run = stage.run;
+  const free = !run || run.live || (stage.done && now > stage.until);
+  if (stage.queue.length && free && $("spot").hidden && $("unlock").hidden) playRun(stage.queue.shift());
+  if (stage.run) {
+    stage.draw(now);
+    if (!stage.run.live) $("tick").textContent = stage.tick;
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// ---- The crew ---------------------------------------------------------------------------
+// By name, with no one's star count: a crew on the class screen, not a ranking.
+let students = [], lastShips = "", lastActive = {};
+function markStage() {
+  document.querySelectorAll(".ship").forEach(el => el.classList.toggle("on-stage", el.dataset.id === stage.who));
+}
+function mini(cv, s) {
+  const map = s.now.map, rows = map.length, cols = map[0].length;
+  const w = cv.clientWidth, h = cv.clientHeight, dpr = devicePixelRatio || 1;
+  if (!w || !h) return;
   cv.width = w * dpr; cv.height = h * dpr;
-  const g = cv.getContext("2d"); g.scale(dpr, dpr);
-  drawRover(g, 34, h / 2 + 4, 56, -.35, 1, gear, 0);
-  drawPet(g, 66, 30, 42, gear.pet, 0);
+  const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const cell = Math.min((w - 8) / cols, (h - 8) / rows);
+  g.translate((w - cols * cell) / 2, (h - rows * cell) / 2);
+  replayMap(g, map, cell, new Set(), 0);
+  drawRover(g, (s.now.pos[1] + .5) * cell, (s.now.pos[0] + .5) * cell, cell * 1.25, 0, 1, s.look, 0);
 }
-let seen = new Set(), lastFleet = "", lastTotal = null;
-async function refresh() {
-  let data;
-  try { data = await (await fetch("/planet/overview")).json(); } catch (_) { return; }
-  $("address").textContent = data.address.replace(/^http:\/\//, "");
-  const spot = data.spotlight;
-  $("spot").hidden = !spot;
-  if (spot) {
-    $("spotTitle").textContent = `${spot.site === "7" ? "Uncharted" : `${spot.site.toUpperCase()} · ${spot.site_name}`}: code from the class (${spot.done ? "it works ✓" : "not working yet: can we fix it?"})`;
-    $("spotCode").textContent = spot.code;
+function shipState(s) {
+  if (s.typed && Date.now() / 1000 - s.typed < 60) return ["✎ coding", ""];
+  if (s.now.end === "goal") return ["✓ complete", "ok"];
+  if (s.now.end) return ["🔁 trying again", ""];
+  return [s.runs_total ? "ready" : "just landed", ""];
+}
+function renderShips(data) {
+  const ships = [...data.students].sort((a, b) => a.name.localeCompare(b.name));
+  const compact = ships.length > 5;
+  $("ships").classList.toggle("compact", compact);
+  $("crewCount").textContent = ships.length ? plural(ships.length, "explorer") : "";
+  const sig = JSON.stringify([compact, ships.map(s => [s.id, s.name, s.look, s.now, s.showoff, s.flair, shipState(s)])]);
+  if (sig !== lastShips) {
+    lastShips = sig;
+    $("ships").innerHTML = ships.length ? ships.map(s => {
+      const [state, cls] = shipState(s), code = s.now.code.trim();
+      return `<div class="ship f-${s.flair}" data-id="${esc(s.id)}">
+        <div class="ship-top"><canvas></canvas><div><b>${esc(s.name)}${s.showoff ? ` ${esc(s.showoff)}` : ""}</b><span class="sub"><em>${esc(tag(s.now.site))}</em>${esc(siteName(s.now.site, s.now.site_name))}</span><span class="sub state ${cls}">${esc(state)}</span></div></div>
+        <div class="ship-body"><canvas class="mini"></canvas><pre class="${code ? "" : "empty"}">${code ? esc(s.now.code) : "no code yet"}</pre></div>
+      </div>`;
+    }).join("") : '<p class="empty-crew">Nobody has landed yet.</p>';
+    $("ships").querySelectorAll(".ship").forEach((el, i) => {
+      replayAvatar(el.querySelector(".ship-top canvas"), ships[i].look, compact ? 36 : 46);
+      if (!compact) mini(el.querySelector("canvas.mini"), ships[i]);
+    });
+    markStage();
   }
-  // One stage at a time: from the last goal reached to the next two, so the
-  // meter visibly fills during a lesson however far the class has come.
+  // A new run: that student's card lights up.
+  for (const s of ships) {
+    if (lastActive[s.id] != null && s.active > lastActive[s.id] && !REDUCED) {
+      const el = document.querySelector(`.ship[data-id="${CSS.escape(s.id)}"]`);
+      if (el) { el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }
+    }
+    lastActive[s.id] = s.active || 0;
+  }
+}
+addEventListener("resize", () => { lastShips = ""; });
+
+// ---- The class meter and moments ---------------------------------------------------------
+let lastTotal = null;
+function renderMeter(data) {
+  // From the last goal reached to the next, so the meter visibly fills
+  // during a lesson however far the class has come.
   const total = data.class.stars, goals = data.class.goals, unlocks = data.class.unlocks || {};
-  const done = goals.filter(g => total >= g), ahead = goals.filter(g => total < g).slice(0, 2);
+  const done = goals.filter(g => total >= g), next = goals.find(g => total < g);
   const from = done.length ? done[done.length - 1] : 0;
-  const top = ahead.length ? ahead[ahead.length - 1] * 1.04 : Math.max(total, 1);
-  const at = v => (from ? 6 : 0) + (v - from) / Math.max(1, top - from) * (from ? 94 : 100);
-  $("fill").style.width = Math.min(100, at(total)) + "%";
   $("count").textContent = total;
-  $("meter").querySelectorAll(".goal").forEach(g => g.remove());
-  for (const goal of [...(from ? [from] : []), ...ahead]) {
-    const el = document.createElement("div");
-    el.className = "goal" + (total >= goal ? " done" : "");
-    el.style.left = at(goal) + "%";
-    el.innerHTML = `<span>${total >= goal ? "✓ " : ""}${goal} ★ unlocks ${esc(unlocks[goal] || "a surprise")}</span>`;
-    // Near an end, the label lines up inward so it stays on screen.
-    const span = el.firstChild, pos = at(goal);
-    if (pos > 80) span.style.transform = "translateX(-100%)";
-    else if (pos < 20) span.style.transform = "none";
-    $("meter").appendChild(el);
-  }
+  $("fill").style.width = (next ? Math.min(100, Math.max(2, (total - from) / Math.max(1, next - from) * 100)) : 100) + "%";
+  $("meterFrom").innerHTML = from ? `✓ ${from} ★: <b>${esc(unlocks[from] || "unlocked")}</b>` : "Every star anyone earns fills the meter";
+  $("meterNext").innerHTML = next ? `<b>${next - total} ★ to go</b> · ${next} ★ unlocks <b>${esc(unlocks[next] || "a surprise")}</b>` : "<b>Every class goal reached!</b>";
   // A goal crossed since the last look: the whole class sees it.
   const crossed = lastTotal == null ? [] : goals.filter(g => lastTotal < g && total >= g);
   lastTotal = total;
@@ -169,34 +406,34 @@ async function refresh() {
     clearTimeout(window.unlockTimer);
     window.unlockTimer = setTimeout(() => { $("unlock").hidden = true; }, 9000);
   }
-  // By name, with no one's star count: this is a crew on the class screen,
-  // not a ranking. The meter above is what the stars are for.
-  // Each card: where they are, their map and rover, and the code in their editor.
-  const ships = [...data.students].sort((a, b) => a.name.localeCompare(b.name));
-  const fleet = JSON.stringify(ships.map(s => [s.name, s.look, s.now, s.showoff, s.flair]));
-  if (fleet !== lastFleet) {
-    lastFleet = fleet;
-    $("fleet").innerHTML = ships.length ? ships.map((s, i) => {
-      const n = s.now, code = n.code.trim();
-      const tag = n.site === "7" ? "Uncharted" : `${n.site.toUpperCase()} · ${n.site_name}`;
-      return `<div class="ship f-${s.flair}${n.end === "goal" ? " won" : ""}">
-        <div class="top"><canvas class="rv" data-i="${i}"></canvas><b>${esc(s.name)}${s.showoff ? ` <span class="worn" title="A badge they earned">${esc(s.showoff)}</span>` : ""}</b><span class="where">${esc(tag)}</span></div>
-        <canvas class="map" data-i="${i}"></canvas>
-        <pre class="${code ? "" : "empty"}">${code ? esc(n.code) : "(no code yet)"}</pre>
-        ${n.end ? `<div class="end">Last run: ${ENDS[n.end] || esc(n.end)}</div>` : ""}
-      </div>`;
-    }).join("") : '<p class="empty">Nobody has landed yet.</p>';
-    $("fleet").querySelectorAll("canvas.rv").forEach(cv => rover(cv, ships[cv.dataset.i].look));
-    $("fleet").querySelectorAll("canvas.map").forEach(cv => {
-      const s = ships[cv.dataset.i];
-      miniMap(cv, s.now.map, s.now.pos, s.look.paint);
-    });
-  }
-  $("moments").innerHTML = data.feed.length ? [...data.feed].reverse().map(m => {
-    const key = m.at + m.text, fresh = !seen.has(key);
+}
+const seen = new Set();
+function renderMoments(feed) {
+  const first = !seen.size;
+  $("moments").innerHTML = feed.length ? [...feed].reverse().slice(0, 6).map(m => {
+    const key = m.at + m.text, fresh = !first && !seen.has(key);
     seen.add(key);
-    return `<div class="moment${fresh && seen.size > data.feed.length ? " fresh" : ""}">${esc(m.text)}<time>${ago(m.at)}</time></div>`;
-  }).join("") : '<p class="empty">First missions, records and three-star runs appear here.</p>';
+    return `<span class="moment${fresh ? " fresh" : ""}">${esc(m.text)}<time>${ago(m.at)}</time></span>`;
+  }).join("") : '<span class="moment" style="color:var(--haze)">First missions, records and three-star runs show up here.</span>';
+}
+
+async function refresh() {
+  let data;
+  try { data = await (await fetch("/planet/overview")).json(); } catch (_) { return; }
+  const address = data.address.replace(/^http:\/\//, "");
+  $("address").textContent = address; $("splashAddress").textContent = address;
+  students = data.students;
+  const spot = data.spotlight;
+  $("spot").hidden = !spot;
+  if (spot) {
+    $("spotTitle").textContent = `${tag(spot.site)} · ${siteName(spot.site, spot.site_name)}: code from the class (${spot.done ? "it works ✓" : "not working yet: can we fix it?"})`;
+    $("spotCode").textContent = spot.code;
+  }
+  renderMeter(data);
+  renderShips(data);
+  renderMoments(data.feed);
+  takeRuns(data.runs);
+  if (!stage.queue.length && (!stage.run || stage.run.live)) followCoder();
 }
 refresh();
 setInterval(refresh, 1500);

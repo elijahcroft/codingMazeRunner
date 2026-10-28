@@ -3,164 +3,559 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Strange Planet — Class</title>
+<title>Strange Planet — Mission Control</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>🪐</text></svg>">
 <style>
-  /* The teacher's overview: who's where and who's stuck. Same palette as
-     the student page. */
+  /* The teacher's mission control: whoever just pressed Transmit, big and
+     moving, then who needs a visit, then everyone as a card. The student
+     page's palette, turned up. */
   :root {
     color-scheme: dark;
-    --void: #080c16;
-    --chrome: #0d1322;
-    --line: #2a3852;
-    --text: #e8eef8;
-    --muted: #8fa0ba;
-    --cyan: #55dfd2;
-    --amber: #f4c95d;
-    --red: #ff6577;
-    --green: #72e09d;
-    --violet: #b48cff;
-    --editor: ui-monospace, "SFMono-Regular", "Cascadia Code", Menlo, Consolas, monospace;
+    --sky: #14112a; --dusk: #1d1838; --panel: #262046; --panel-2: #302858; --edge: #41376e;
+    --bone: #f2eadb; --haze: #a89ec8; --dim: #6f6596;
+    --mint: #8cf2c6; --amber: #ffb547; --gold: #ffd36b; --coral: #ff6f61; --violet: #b9a3ff; --pink: #ff8ad8;
+    --ui: system-ui, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    --mono: ui-monospace, "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--void); color: var(--text); font-family: Inter, "Segoe UI", Arial, sans-serif; }
-  header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 18px 24px; border-bottom: 1px solid var(--line); background: var(--chrome); }
-  h1 { margin: 0; font-size: 26px; letter-spacing: -.03em; }
-  h1 small { color: var(--violet); font: 13px var(--editor); margin-left: 10px; }
-  .controls { display: flex; align-items: center; gap: 8px; font: 12px var(--editor); color: var(--muted); }
-  input { font: 13px var(--editor); padding: 7px 9px; border: 1px solid var(--line); background: #090e19; color: var(--text); width: 120px; }
-  button { font: 700 12px Inter, "Segoe UI", Arial, sans-serif; border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 6px 10px; cursor: pointer; }
-  button:hover { color: var(--text); background: #172237; }
-  #msg { color: var(--green); }
-  main { padding: 18px 24px 40px; }
-  .summary { display: flex; gap: 28px; flex-wrap: wrap; margin-bottom: 18px; font: 13px var(--editor); color: var(--muted); }
-  .summary b { display: block; color: var(--text); font: 800 28px Inter, "Segoe UI", Arial, sans-serif; }
-  .zones { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
-  .zone-count { border: 1px solid var(--line); padding: 6px 10px; font: 12px var(--editor); color: var(--muted); }
-  .zone-count b { color: var(--text); margin-left: 6px; }
+  [hidden] { display: none !important; }
+  body { margin: 0; min-height: 100vh; background: radial-gradient(ellipse at 80% -20%, #3b2763, var(--sky) 55%) fixed; color: var(--bone); font: 15px/1.4 var(--ui); }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
+  a { color: var(--violet); }
+  .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--edge); background: var(--panel); color: var(--bone); border-radius: 10px; padding: 7px 12px; font-weight: 650; font-size: 14px; text-decoration: none; white-space: nowrap; }
+  .btn:hover { background: var(--panel-2); }
+  .btn.small { padding: 4px 9px; font-size: 12.5px; border-radius: 8px; }
+  .btn.warn:hover { border-color: var(--coral); color: #ffd3cf; }
+
+  /* ---- Top bar ---- */
+  .top { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 14px 24px; background: rgba(20,17,42,.85); border-bottom: 1px solid var(--edge); position: sticky; top: 0; z-index: 10; backdrop-filter: blur(8px); }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand .planet { font-size: 34px; animation: spin 18s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .brand h1 { margin: 0; font-size: 24px; font-weight: 850; letter-spacing: -.03em; line-height: 1; }
+  .brand small { color: var(--haze); font-size: 13px; }
+  .join-at { color: var(--haze); font-size: 14px; }
+  .join-at b { color: var(--gold); font: 700 17px var(--mono); }
+  .top-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .live { display: inline-flex; align-items: center; gap: 7px; font: 800 12px var(--ui); letter-spacing: .12em; color: var(--coral); }
+  .live i { width: 10px; height: 10px; border-radius: 50%; background: var(--coral); box-shadow: 0 0 0 0 rgba(255,111,97,.7); animation: beat 1.6s infinite; }
+  .live.off { color: var(--dim); } .live.off i { background: var(--dim); animation: none; }
+  @keyframes beat { 70% { box-shadow: 0 0 0 10px rgba(255,111,97,0); } 100% { box-shadow: 0 0 0 0 rgba(255,111,97,0); } }
+
+  .settings { margin: 0 24px; padding: 14px 18px; border-radius: 0 0 16px 16px; background: var(--dusk); box-shadow: inset 0 0 0 1px var(--edge); display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; font-size: 14px; }
+  .settings input[type=password] { width: 130px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--edge); background: var(--sky); font-family: var(--mono); }
+  .settings label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+  .switch { position: relative; width: 40px; height: 22px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .switch span { position: absolute; inset: 0; border-radius: 99px; background: var(--edge); transition: background .2s; }
+  .switch span::after { content: ""; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--bone); transition: transform .2s; }
+  .switch input:checked + span { background: var(--mint); }
+  .switch input:checked + span::after { transform: translateX(18px); }
+  .switch input:focus-visible + span { outline: 2px solid var(--mint); outline-offset: 2px; }
+  .msg { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 30; padding: 10px 18px; border-radius: 12px; background: var(--panel-2); box-shadow: 0 10px 40px rgba(0,0,0,.5), inset 0 0 0 1px var(--mint); font-weight: 650; }
+
+  main { padding: 18px 24px 60px; display: grid; gap: 18px; }
+  h2.section { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: -.01em; display: flex; align-items: center; gap: 10px; }
+  h2.section small { color: var(--haze); font-weight: 500; font-size: 13px; }
+
+  /* ---- The live stage ---- */
+  .stage { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr); gap: 18px; padding: 16px; border-radius: 24px; background: linear-gradient(160deg, rgba(48,40,88,.9), rgba(29,24,56,.9)); box-shadow: 0 20px 60px rgba(0,0,0,.35), inset 0 0 0 1px var(--edge); }
+  .screen { position: relative; min-height: 340px; height: clamp(340px, 46vh, 540px); border-radius: 18px; overflow: hidden; background: #0e0b1e; box-shadow: inset 0 0 0 1px var(--edge); }
+  .screen canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .screen.shake { animation: shake .45s; }
+  @keyframes shake { 20% { transform: translate(-8px, 3px); } 40% { transform: translate(6px, -4px); } 60% { transform: translate(-4px, 2px); } 80% { transform: translate(3px, -1px); } }
+  .stamp { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(.4) rotate(-8deg); opacity: 0; padding: 14px 30px; border-radius: 18px; font: 900 clamp(26px, 3.6vw, 52px)/1 var(--ui); letter-spacing: -.02em; white-space: nowrap; pointer-events: none; transition: transform .45s cubic-bezier(.2,1.6,.4,1), opacity .25s; }
+  .stamp.show { transform: translate(-50%, -50%) scale(1) rotate(-4deg); opacity: 1; }
+  .stamp.win { color: #10241e; background: var(--mint); box-shadow: 0 0 0 6px rgba(140,242,198,.3), 0 20px 60px rgba(0,0,0,.5); }
+  .stamp.miss { color: #2b0d0a; background: var(--amber); box-shadow: 0 0 0 6px rgba(255,181,71,.3), 0 20px 60px rgba(0,0,0,.5); }
+  .stamp.err { color: #fff; background: var(--coral); box-shadow: 0 0 0 6px rgba(255,111,97,.3), 0 20px 60px rgba(0,0,0,.5); }
+  .screen .idle { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--haze); font-size: 18px; padding: 20px; }
+  .screen .idle b { display: block; color: var(--bone); font-size: 26px; margin-bottom: 6px; }
+  .tick { position: absolute; left: 12px; top: 12px; padding: 4px 10px; border-radius: 10px; background: rgba(20,17,42,.8); font: 700 13px var(--mono); color: var(--haze); }
+
+  .stage-side { display: grid; grid-template-rows: auto auto auto minmax(0, 1fr) auto; gap: 12px; min-width: 0; }
+  .now-label { display: flex; align-items: center; gap: 8px; font: 800 13px var(--ui); letter-spacing: .14em; color: var(--mint); }
+  .now-label i { width: 10px; height: 10px; border-radius: 50%; background: var(--mint); animation: beat-mint 1.2s infinite; }
+  .now-label.done { color: var(--haze); } .now-label.done i { background: var(--haze); animation: none; }
+  @keyframes beat-mint { 0% { box-shadow: 0 0 0 0 rgba(140,242,198,.7); } 70%, 100% { box-shadow: 0 0 0 10px rgba(140,242,198,0); } }
+  .driver { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .driver canvas { width: 96px; height: 96px; flex: none; border-radius: 22px; background: radial-gradient(circle at 50% 40%, #3c3170, #1d1838); box-shadow: inset 0 0 0 2px var(--edge); }
+  .driver.pop canvas { animation: pop .6s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { 0% { transform: scale(.5); } 100% { transform: scale(1); } }
+  .driver h2 { margin: 0; font-size: clamp(30px, 3.4vw, 52px); font-weight: 900; letter-spacing: -.04em; line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .driver p { margin: 6px 0 0; color: var(--haze); font-size: 16px; }
+  .driver p b { color: var(--gold); font-family: var(--mono); }
+  .verdict { min-height: 54px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 16px; }
+  .verdict .stars { font-size: 34px; letter-spacing: 4px; color: #3f3768; }
+  .verdict .stars i { font-style: normal; color: var(--gold); text-shadow: 0 0 14px rgba(255,211,107,.8); display: inline-block; animation: star-in .5s cubic-bezier(.2,1.6,.4,1) both; }
+  .verdict .stars i:nth-child(2) { animation-delay: .15s; } .verdict .stars i:nth-child(3) { animation-delay: .3s; }
+  @keyframes star-in { from { transform: scale(0) rotate(-90deg); } }
+  .verdict .note { padding: 4px 10px; border-radius: 99px; background: rgba(255,211,107,.15); color: var(--gold); font-weight: 700; font-size: 14px; }
+  .verdict .said { color: #ffd9b0; line-height: 1.35; }
+  .stage-code { margin: 0; min-height: 0; overflow: auto; padding: 12px 14px; border-radius: 14px; background: #0e0b1e; font: 14px/1.55 var(--mono); color: var(--gold); white-space: pre; box-shadow: inset 0 0 0 1px var(--edge); counter-reset: ln; }
+  .stage-code span { display: block; }
+  .stage-code span::before { counter-increment: ln; content: counter(ln); display: inline-block; width: 2.2em; margin-right: 10px; text-align: right; color: var(--dim); }
+  .stage-tip { margin: 0; color: var(--haze); font-size: 15px; line-height: 1.5; align-self: start; }
+  .recent { display: grid; gap: 6px; }
+  .recent small { color: var(--haze); font: 700 11px var(--ui); letter-spacing: .1em; }
+  .recent-list { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { border: 0; border-radius: 99px; padding: 4px 10px; background: var(--panel-2); font-size: 13px; color: var(--bone); white-space: nowrap; }
+  .chip.win { box-shadow: inset 0 0 0 1px var(--mint); }
+  .chip.miss { box-shadow: inset 0 0 0 1px rgba(255,181,71,.6); }
+  .chip.on { background: var(--violet); color: #1d1240; font-weight: 700; }
+  .chip.queued { opacity: .75; border: 1px dashed var(--mint); }
+
+  /* ---- Numbers ---- */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .stat { padding: 14px 16px; border-radius: 18px; background: var(--dusk); box-shadow: inset 0 0 0 1px var(--edge); }
+  .stat b { display: block; font: 900 34px/1 var(--ui); letter-spacing: -.03em; }
+  .stat span { color: var(--haze); font-size: 13.5px; }
+  .stat .ico { float: right; font-size: 26px; }
+  .stat.gold b { color: var(--gold); } .stat.mint b { color: var(--mint); } .stat.red b { color: var(--coral); } .stat.amber b { color: var(--amber); }
+  .stat.alert { box-shadow: inset 0 0 0 2px var(--coral); animation: alert 2s ease-in-out infinite; }
+  @keyframes alert { 50% { background: #3a1d2e; } }
+
+  /* ---- Who needs a visit ---- */
+  .help { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 12px 16px; border-radius: 18px; background: linear-gradient(90deg, rgba(255,111,97,.18), rgba(255,111,97,.05)); box-shadow: inset 0 0 0 1px rgba(255,111,97,.45); }
+  .help > b { color: #ffc2bb; font-size: 15px; margin-right: 4px; }
+  .help .who { border: 0; padding: 6px 12px; border-radius: 12px; background: rgba(20,17,42,.6); color: var(--bone); text-align: left; }
+  .help .who small { display: block; color: var(--haze); font-size: 12px; }
+  .help .who.very { box-shadow: inset 0 0 0 2px var(--coral); }
+
+  /* ---- Where the class is ---- */
+  .where { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+  .zone { padding: 9px 12px; border-radius: 14px; background: var(--dusk); box-shadow: inset 0 0 0 1px var(--edge); font-size: 13.5px; }
+  .zone.empty-zone { opacity: .45; }
+  .zone .zt { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+  .zone .zt b { margin-left: auto; padding: 0 8px; border-radius: 99px; background: var(--violet); color: #1d1240; font-size: 13px; }
+  .zone .zn { margin-top: 4px; color: var(--haze); font-size: 12.5px; line-height: 1.35; }
+
+  /* ---- The crew ---- */
+  .crew-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .crew-head .tools { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .seg { display: inline-flex; border-radius: 10px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--edge); }
+  .seg button { border: 0; background: transparent; padding: 6px 12px; font-size: 13px; color: var(--haze); }
+  .seg button.on { background: var(--violet); color: #1d1240; font-weight: 750; }
+  .crew-head input { padding: 6px 10px; border-radius: 10px; border: 1px solid var(--edge); background: var(--dusk); width: 160px; }
+  .crew { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .card { position: relative; display: grid; gap: 8px; align-content: start; padding: 14px; border-radius: 18px; background: var(--dusk); box-shadow: inset 0 0 0 1px var(--edge); transition: box-shadow .3s, transform .3s; }
+  .card.help-me { box-shadow: inset 0 0 0 2px var(--amber); }
+  .card.very { box-shadow: inset 0 0 0 2px var(--coral); background: #2a1830; }
+  .card.away { opacity: .55; }
+  .card.flash-win { animation: flash-win 2.4s ease-out; }
+  .card.flash-miss { animation: flash-miss 2.4s ease-out; }
+  .card.running { transform: translateY(-3px); box-shadow: inset 0 0 0 3px var(--violet), 0 10px 30px rgba(185,163,255,.35); }
+  @keyframes flash-win { 0% { box-shadow: inset 0 0 0 3px var(--mint), 0 0 40px rgba(140,242,198,.8); background: #1e3b35; } }
+  @keyframes flash-miss { 0% { box-shadow: inset 0 0 0 3px var(--amber), 0 0 30px rgba(255,181,71,.5); } }
+  .card-top { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .card-top canvas { width: 54px; height: 54px; flex: none; border-radius: 14px; background: radial-gradient(circle at 50% 40%, #3c3170, #1d1838); }
+  .card-top .nm { min-width: 0; flex: 1; }
+  .card-top .nm b { display: block; font-size: 18px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pill { display: inline-block; margin-top: 3px; padding: 1px 9px; border-radius: 99px; font-size: 12px; font-weight: 700; background: var(--panel-2); color: var(--haze); }
+  .pill.go { background: rgba(140,242,198,.18); color: var(--mint); }
+  .pill.ran { background: var(--violet); color: #1d1240; }
+  .pill.type { background: rgba(185,163,255,.2); color: var(--violet); }
+  .pill.help { background: rgba(255,181,71,.2); color: var(--amber); }
+  .pill.very { background: var(--coral); color: #fff; }
+  .pill.idle { background: rgba(168,158,200,.15); color: var(--haze); }
+  .pill.new { background: rgba(255,138,216,.18); color: var(--pink); }
+  .card-top .st { text-align: right; font: 800 18px var(--mono); color: var(--gold); white-space: nowrap; }
+  .card-top .st small { display: block; font: 500 11.5px var(--ui); color: var(--haze); }
+  .loc { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+  .loc .tag { padding: 1px 7px; border-radius: 7px; background: var(--panel-2); color: var(--gold); font: 800 13px var(--mono); }
+  .loc .sn { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .loc small { margin-left: auto; color: var(--haze); font-size: 12px; white-space: nowrap; }
+  .loc .mini-stars { color: var(--dim); letter-spacing: 1px; }
+  .loc .mini-stars i { font-style: normal; color: var(--gold); }
+  .prog { height: 8px; border-radius: 4px; background: var(--panel-2); overflow: hidden; }
+  .prog span { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--mint), var(--violet)); }
+  .prog-l { display: flex; justify-content: space-between; color: var(--haze); font-size: 12px; margin-top: -4px; }
+  .misses { display: flex; gap: 3px; align-items: center; font-size: 12px; color: var(--haze); }
+  .misses i { width: 9px; height: 9px; border-radius: 50%; background: var(--amber); }
+  .misses i.red { background: var(--coral); }
+  .card .said { padding: 7px 9px; border-radius: 10px; background: rgba(0,0,0,.22); color: #ffd9b0; font-size: 12.5px; line-height: 1.35; }
+  .card .skip { color: var(--amber); font-size: 12px; font-weight: 700; }
+  .acts { display: flex; flex-wrap: wrap; gap: 6px; }
+  details.tries { font-size: 12.5px; color: var(--haze); }
+  details.tries summary { cursor: pointer; color: var(--violet); font-weight: 650; }
+  .try { margin-top: 8px; }
+  .try b { color: var(--bone); }
+  .try b.ok { color: var(--mint); }
+  .try pre { margin: 4px 0 0; padding: 7px 9px; max-height: 140px; overflow: auto; background: #0e0b1e; border-radius: 8px; font: 11.5px/1.45 var(--mono); white-space: pre; color: var(--gold); }
+
+  details.report { padding: 14px 18px; border-radius: 18px; background: var(--dusk); box-shadow: inset 0 0 0 1px var(--edge); }
+  details.report > summary { cursor: pointer; color: var(--violet); font-weight: 800; }
+  details.report .note { color: var(--haze); font-size: 13px; margin: 6px 0 12px; max-width: 760px; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th { text-align: left; font: 11px var(--editor); color: var(--muted); letter-spacing: .06em; padding: 8px 10px; border-bottom: 1px solid var(--line); }
-  td { padding: 10px; border-bottom: 1px solid #1b2840; vertical-align: top; }
-  td.num { font-family: var(--editor); white-space: nowrap; }
-  .name { font-weight: 700; }
-  .site small { display: block; color: var(--muted); font-size: 12px; }
-  .stuck { color: var(--amber); font-weight: 700; }
-  .said { display: block; max-width: 320px; margin-top: 3px; color: var(--muted); font-size: 12px; line-height: 1.35; white-space: normal; text-align: left; }
-  .typing { color: var(--muted); font-size: 11px; }
-  .very-stuck { color: var(--red); font-weight: 700; }
-  details.tries { margin-top: 6px; max-width: 360px; white-space: normal; text-align: left; font-size: 12px; color: var(--muted); }
-  details.tries summary { cursor: pointer; color: var(--violet); }
-  .try { margin-top: 6px; }
-  .try b { color: var(--text); font-weight: 700; }
-  .try pre { margin: 3px 0 0; padding: 6px 8px; max-height: 120px; overflow: auto; background: #0b1324; border-radius: 6px; font: 11px/1.45 var(--editor); white-space: pre; }
-  details.report { margin-top: 28px; }
-  details.report > summary { cursor: pointer; color: var(--violet); font-weight: 700; padding: 6px 0; }
-  details.report .note { color: var(--muted); font-size: 12px; margin: 4px 0 10px; max-width: 760px; }
-  details.report td { vertical-align: top; }
-  .zone-row td { color: var(--muted); font-size: 12px; padding-top: 16px; border-bottom: 0; }
-  .said-list { margin: 0; padding-left: 16px; max-width: 460px; white-space: normal; text-align: left; font-size: 12px; color: var(--muted); }
-  .said-list b { color: var(--text); }
-  .empty { color: var(--muted); padding: 30px 0; }
-  .bar { height: 6px; background: #1b2840; width: 120px; margin-top: 5px; }
-  .bar span { display: block; height: 100%; background: var(--green); }
-  @media (max-width: 760px) {
-    header, main { padding-left: 16px; padding-right: 16px; }
-    table, tbody, tr, td { display: block; }
-    thead { display: none; }
-    tr { border-bottom: 1px solid var(--line); padding: 8px 0; }
-    td { border: 0; padding: 4px 0; }
-  }
+  th { text-align: left; font: 700 11px var(--ui); color: var(--haze); letter-spacing: .08em; padding: 8px 10px; border-bottom: 1px solid var(--edge); }
+  td { padding: 9px 10px; border-bottom: 1px solid #2a2450; vertical-align: top; }
+  td.num { font-family: var(--mono); white-space: nowrap; }
+  td small { display: block; color: var(--haze); font-size: 12px; }
+  .zone-row td { color: var(--haze); font-size: 12px; padding-top: 16px; border-bottom: 0; }
+  .said-list { margin: 0; padding-left: 16px; max-width: 460px; font-size: 12.5px; color: var(--haze); }
+  .said-list b { color: var(--bone); }
+  .stuck { color: var(--amber); font-weight: 700; } .very-stuck { color: var(--coral); font-weight: 700; }
+  .empty { color: var(--haze); padding: 30px; text-align: center; font-size: 17px; }
+
+  @media (max-width: 980px) { .stage { grid-template-columns: 1fr; } .screen { height: 46vh; } }
+  @media (max-width: 640px) { .top, main { padding-left: 16px; padding-right: 16px; } .settings { margin: 0 16px; } .crew { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
-<header>
-  <h1>🪐 Strange Planet <small>class overview · live</small></h1>
-  <div class="controls">
-    <label for="key">admin key</label><input id="key" type="password" placeholder="for unlocking">
-    <button id="spotOff" hidden onclick="admin('planet_spotlight_off')">📽 Stop showing code</button>
-    <span id="msg"></span>
+<header class="top">
+  <div class="brand"><span class="planet" aria-hidden="true">🪐</span><div><h1>Mission Control</h1><small>Strange Planet · your class, live</small></div></div>
+  <div class="join-at" id="joinAt">Students join at <b id="address">…</b></div>
+  <div class="top-actions">
+    <span class="live" id="live"><i></i>LIVE</span>
+    <a class="btn" href="/planet/show" target="_blank" title="The class screen for the projector">📽 Class screen</a>
+    <button class="btn" id="spotOff" hidden onclick="admin('planet_spotlight_off')">⏹ Stop showing code</button>
+    <button class="btn" id="settingsButton" aria-expanded="false" aria-controls="settings">⚙ Settings</button>
   </div>
 </header>
+<section class="settings" id="settings" hidden>
+  <label>🔑 Admin key <input id="key" type="password" placeholder="from the server" autocomplete="off"></label>
+  <label title="On: 📋 Use as code after scouting leaves a few words for students to finish (r____ for range). Off: the code comes out whole."><span class="switch"><input type="checkbox" id="blanks" onchange="admin('planet_blanks', null, {on: this.checked})"><span></span></span> Scouted code has words to finish</label>
+  <label title="For a younger class. On: five practice zones (Practice Park, Loop Garden, Ice Rink, Pad Park, Jump Park) before the Landing Site, where kids drive by hand first, then finish their code one letter at a time; classmates to ask after 3 misses (not 8), Skip for now after 6 (not 20)."><span class="switch"><input type="checkbox" id="easy" onchange="admin('planet_easy', null, {on: this.checked})"><span></span></span> Easy mode (younger class)</label>
+  <label title="On: after 📋 Use as code, students finish each word one letter at a time on every site: the word shows as keys, the next key lights up, and only the right letter goes in. The practice sites always work this way."><span class="switch"><input type="checkbox" id="coach" onchange="admin('planet_coach', null, {on: this.checked})"><span></span></span> Letter-by-letter typing help</label>
+</section>
+<div class="msg" id="msg" hidden></div>
 <main>
-  <div class="summary" id="summary"></div>
-  <div class="zones" id="zones"></div>
-  <table>
-    <thead><tr><th>STUDENT</th><th>WORKING ON</th><th>STARS</th><th>RUNS HERE</th><th>HINTS</th><th>LAST RUN</th><th></th></tr></thead>
-    <tbody id="rows"></tbody>
-  </table>
+  <section class="stage" aria-label="The last run, replayed">
+    <div class="screen" id="screen">
+      <canvas id="stageMap"></canvas>
+      <span class="tick" id="stageTick" hidden></span>
+      <div class="stamp" id="stamp"></div>
+      <div class="idle" id="stageIdle"><div><b>🛰 Waiting for a Transmit…</b>When a student runs their code, it plays here, big.</div></div>
+    </div>
+    <div class="stage-side">
+      <div class="now-label done" id="nowLabel"><i></i><span id="nowText">NO RUNS YET</span></div>
+      <div class="driver" id="driver" hidden><canvas id="avatar"></canvas><div style="min-width:0"><h2 id="stageName">—</h2><p id="stageSite"></p></div></div>
+      <div class="verdict" id="verdict"></div>
+      <pre class="stage-code" id="stageCode" hidden></pre>
+      <p class="stage-tip" id="stageTip">Every Transmit plays in the big screen: the student, their rover, their code and how the run ended. Several at once queue up. A ✓ means the mission was done.</p>
+      <div class="recent"><small>RECENT RUNS · CLICK ONE TO WATCH IT AGAIN</small><div class="recent-list" id="recent"></div></div>
+    </div>
+  </section>
+
+  <section class="stats" id="stats"></section>
+  <section class="help" id="help" hidden></section>
+
+  <section>
+    <h2 class="section">🗺 Where everyone is <small>by the level they're on now</small></h2>
+    <div class="where" id="where" style="margin-top:10px"></div>
+  </section>
+
+  <section style="display:grid;gap:12px">
+    <div class="crew-head">
+      <h2 class="section">👩‍🚀 The crew <small id="crewCount"></small></h2>
+      <div class="tools">
+        <input id="search" type="search" placeholder="Find a name…" aria-label="Find a student">
+        <div class="seg" id="sort" role="group" aria-label="Sort the crew">
+          <button data-sort="help">Needs help first</button><button data-sort="far">Furthest along</button><button data-sort="name">A–Z</button>
+        </div>
+      </div>
+    </div>
+    <div class="crew" id="crew"></div>
+    <div class="empty" id="empty" hidden>Nobody has opened Strange Planet yet. Students go to <b>/planet</b> on the same address as Python Quest.</div>
+  </section>
+
   <details class="report" id="reportBox">
-    <summary>Site by site: where the class got stuck (for after class)</summary>
-    <p class="note">Every site someone has tried. Runs count every Transmit, including runs for more stars after clearing it. "What it said most" comes from each student's last 6 tries.</p>
+    <summary>📊 Level by level: where the class got stuck (for after class)</summary>
+    <p class="note">Every level someone has tried. Runs count every Transmit, including runs for more stars after clearing it. "What it said most" comes from each student's last 6 tries.</p>
     <table>
-      <thead><tr><th>SITE</th><th>CLEARED</th><th>TYPICAL RUNS</th><th>NOT CLEARED</th><th>WHAT IT SAID MOST</th></tr></thead>
+      <thead><tr><th>LEVEL</th><th>CLEARED</th><th>TYPICAL RUNS</th><th>NOT CLEARED</th><th>WHAT IT SAID MOST</th></tr></thead>
       <tbody id="report"></tbody>
     </table>
   </details>
-  <div class="empty" id="empty" hidden>Nobody has opened Strange Planet yet. Students go to <b>/planet</b> on the same address as Python Quest.</div>
 </main>
+<script>const CALM = false;</script>
+<script src="/planet/render.js"></script>
+<script src="/planet/replay.js"></script>
 <script>
 const $ = id => document.getElementById(id);
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 function esc(value) {
-  return String(value).replace(/[&<>\"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
+  return String(value).replace(/[&<>\"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
 }
 function store(key, value) { try { localStorage.setItem(key, value); } catch (_) {} }
 function recall(key) { try { return localStorage.getItem(key); } catch (_) { return null; } }
+function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
 function ago(seconds) {
   if (!seconds) return "—";
   const s = Math.max(0, Date.now() / 1000 - seconds);
-  return s < 60 ? "just now" : s < 3600 ? `${Math.floor(s / 60)} min ago` : `${Math.floor(s / 3600)} h ago`;
+  return s < 20 ? "just now" : s < 60 ? `${Math.floor(s)} s ago` : s < 3600 ? `${Math.floor(s / 60)} min ago` : `${Math.floor(s / 3600)} h ago`;
 }
-// A student's last tries, opened from their row; kept open across refreshes.
-const openTries = new Set();
+function siteTag(key) { return key === "7" ? "🪐" : key.toUpperCase(); }
+const ZONE_ICONS = {practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐"};
 const ENDED = {goal: "✓ done", stopped: "stopped short", fell: "fell", ticks: "out of time",
                error: "code error", wrong: "wrong number", battery: "flat battery"};
+const STAMP = {goal: ["🎉 MISSION COMPLETE!", "win"], fell: ["💥 FELL IN!", "miss"], stopped: ["🏁 STOPPED SHORT", "miss"],
+               ticks: ["⏰ OUT OF TIME", "miss"], battery: ["🔋 FLAT BATTERY", "miss"], wrong: ["📡 WRONG NUMBER", "miss"],
+               error: ["🐞 CODE ERROR", "err"]};
+
+// ---- Settings and admin actions ---------------------------------------------------------
+$("settingsButton").addEventListener("click", () => {
+  const open = $("settings").hidden;
+  $("settings").hidden = !open;
+  $("settingsButton").setAttribute("aria-expanded", String(open));
+  if (open && !$("key").value) $("key").focus();
+});
+let msgTimer = 0;
+function say(text) {
+  $("msg").textContent = text; $("msg").hidden = false;
+  clearTimeout(msgTimer); msgTimer = setTimeout(() => { $("msg").hidden = true; }, 3500);
+}
+async function admin(action, pid, extra) {
+  const key = $("key").value.trim();
+  if (!key) {
+    say("Type the admin key in ⚙ Settings first.");
+    $("settings").hidden = false; $("key").focus(); refresh(); return;
+  }
+  store("planetKey", key);
+  try {
+    const data = await (await fetch("/admin", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({key, action, pid, ...extra})})).json();
+    say(data.ok || data.error);
+  } catch (_) { say("No answer from the server."); }
+  refresh();
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-remove]");
+  const s = b && lastData && lastData.students.find(x => x.id === b.dataset.remove);
+  if (s && confirm(`Remove ${s.name} from Strange Planet? Their stars and code here are lost.`)) admin("planet_remove", s.id);
+});
+$("key").value = recall("planetKey") || "";
+
+// ---- The live stage: each new run plays here, one after another --------------------------
+const screen = $("screen"), stage = replayStage(screen, $("stageMap"));
+stage.queue = []; stage.lastN = 0; stage.onFinish = finishRun;
+let runsSeen = [];
+function playRun(run) {
+  stage.play(run);
+  $("driver").hidden = false; $("stageCode").hidden = false; $("stageTip").hidden = true;
+  $("stamp").className = "stamp"; $("stamp").textContent = "";
+  $("stageIdle").hidden = true; $("stageTick").hidden = false;
+  $("nowLabel").className = "now-label"; $("nowText").textContent = "NOW RUNNING";
+  $("stageName").textContent = run.name;
+  $("stageSite").innerHTML = `${ZONE_ICONS[run.zone_key] || "🪐"} <b>${esc(siteTag(run.site))}</b> ${esc(run.site_name)} · ${esc(run.zone)} · ${esc(ago(run.at))}`;
+  $("verdict").innerHTML = "";
+  $("stageCode").innerHTML = run.code.replace(/\s+$/, "").split("\n").map(l => `<span>${esc(l) || " "}</span>`).join("");
+  $("driver").classList.remove("pop"); void $("driver").offsetWidth; $("driver").classList.add("pop");
+  replayAvatar($("avatar"), run.look, 96);
+  document.querySelectorAll(".card.running").forEach(c => c.classList.remove("running"));
+  const card = document.querySelector(`.card[data-id="${CSS.escape(run.id)}"]`);
+  if (card) card.classList.add("running");
+  renderRecent();
+}
+function finishRun(run) {
+  const [text, kind] = STAMP[run.end] || [run.end, "miss"];
+  $("stamp").textContent = run.cleared ? `🗺 ${run.cleared.toUpperCase()} CLEARED!` : text;
+  $("stamp").className = `stamp ${kind}`;
+  requestAnimationFrame(() => $("stamp").classList.add("show"));
+  $("nowLabel").className = "now-label done"; $("nowText").textContent = `${run.name.toUpperCase()}'S RUN`;
+  if (run.reached) {
+    const stars = run.stars.map(s => s ? "<i>★</i>" : "★").join("");
+    const notes = [run.new_stars ? `+${run.new_stars} ★` : "", run.first_try ? "🎯 first try" : "", run.record ? "🏆 class record" : ""].filter(Boolean);
+    $("verdict").innerHTML = `<span class="stars">${stars}</span>${notes.map(n => `<span class="note">${esc(n)}</span>`).join("")}`;
+  } else {
+    $("verdict").innerHTML = run.said ? `<span class="said">💬 ${esc(run.said)}</span>` : "";
+    if (!REDUCED) { screen.classList.remove("shake"); void screen.offsetWidth; screen.classList.add("shake"); }
+  }
+  const card = document.querySelector(`.card[data-id="${CSS.escape(run.id)}"]`);
+  if (card) card.classList.remove("running");
+}
+const drawAvatar = (canvas, look, px) => replayAvatar(canvas, look, px);
+function frame(now) {
+  if (stage.run) { stage.draw(now); $("stageTick").textContent = stage.tick; }
+  // A finished run stays up for a few seconds, then the next one in line plays.
+  if (stage.done && stage.queue.length && now - stage.held > 3800) playRun(stage.queue.shift());
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+function takeRuns(runs) {
+  if (!runs || !runs.length) return;
+  const fresh = runs.filter(r => r.n > stage.lastN);
+  // A page that just opened shows the latest run, not a backlog.
+  const first = !stage.lastN;
+  stage.lastN = Math.max(stage.lastN, ...runs.map(r => r.n));
+  runsSeen = runs;
+  if (!fresh.length) { renderRecent(); return; }
+  if (first) { playRun(fresh[fresh.length - 1]); return; }
+  // Keep the queue short: with many runs at once, the newest few.
+  stage.queue.push(...fresh);
+  stage.queue = stage.queue.slice(-4);
+  if (!stage.run || (stage.done && performance.now() - stage.held > 1500)) playRun(stage.queue.shift());
+  renderRecent();
+}
+function renderRecent() {
+  const list = [...runsSeen].reverse().slice(0, 10);
+  const queued = new Set(stage.queue.map(r => r.n));
+  $("recent").innerHTML = list.map(r => `<button class="chip ${r.reached ? "win" : "miss"}${stage.run && stage.run.n === r.n ? " on" : ""}${queued.has(r.n) ? " queued" : ""}" data-n="${r.n}" title="${esc(ago(r.at))}${queued.has(r.n) ? ", playing soon" : ""}">${r.reached ? "✓" : "✗"} ${esc(r.name)} · ${esc(siteTag(r.site))}</button>`).join("")
+    || `<span style="color:var(--haze);font-size:13px">Nothing yet.</span>`;
+}
+$("recent").addEventListener("click", e => {
+  const b = e.target.closest(".chip");
+  if (!b) return;
+  const run = runsSeen.find(r => r.n === Number(b.dataset.n));
+  if (run) playRun(run);
+});
+
+// ---- Everyone ---------------------------------------------------------------------------
+// No run for 3 minutes in this lesson (under an hour ago): maybe stuck,
+// maybe reading. Typing in the last 2 minutes says which.
+const IDLE = 180, LESSON = 3600;
+function since(t) { return t ? Date.now() / 1000 - t : Infinity; }
+function idleFor(s) { const t = since(s.active); return s.active && t >= IDLE && t < LESSON ? t : 0; }
+function typing(s) { return since(s.typed) < 120; }
+let helpAfter = 8;
+// One word for how a student is doing, and how loudly to say it.
+function statusOf(s) {
+  const away = since(Math.max(s.active || 0, s.typed || 0)) > LESSON;
+  if (since(s.active) < 25) return {cls: "ran", text: "🚀 just ran", rank: 5};
+  if (away && s.runs_total) return {cls: "idle", text: `💤 away (${ago(Math.max(s.active || 0, s.typed || 0))})`, rank: 9, away: true};
+  if (s.misses >= helpAfter * 2) return {cls: "very", text: `🆘 ${s.misses} misses in a row`, rank: 0, help: true, very: true};
+  if (s.misses >= helpAfter) return {cls: "help", text: `✋ ${s.misses} misses in a row`, rank: 1, help: true};
+  if (!s.runs_total) return {cls: "new", text: away ? "⏳ not started" : "⏳ hasn't pressed Transmit", rank: away ? 9 : 2, away};
+  if (typing(s)) return {cls: "type", text: "✎ typing", rank: 6};
+  if (idleFor(s)) return {cls: "idle", text: `💤 no run for ${Math.floor(idleFor(s) / 60)} min`, rank: 3};
+  return {cls: "go", text: "🟢 working", rank: 7};
+}
+function whereOf(s, data) {
+  const n = s.now;
+  const practice = s.practice;
+  return {key: n.site, name: n.site_name, zone: n.zone_name || s.zone, zoneKey: n.zone,
+          done: practice ? s.practice_solved : s.solved - s.practice_solved,
+          of: practice ? data.practice_sites : data.sites, practice};
+}
+let sortBy = recall("planetTeacherSort") || "help", lastActive = {}, lastData = null;
+function setSort(by) {
+  sortBy = by; store("planetTeacherSort", by);
+  document.querySelectorAll("#sort button").forEach(b => b.classList.toggle("on", b.dataset.sort === by));
+  if (lastData) renderCrew(lastData);
+}
+document.querySelectorAll("#sort button").forEach(b => b.addEventListener("click", () => setSort(b.dataset.sort)));
+$("search").addEventListener("input", () => lastData && renderCrew(lastData));
+// A student's last tries, opened from their card; kept open across refreshes.
+const openTries = new Set();
 document.addEventListener("toggle", e => {
   const d = e.target;
   if (d.matches && d.matches("details.tries")) d.open ? openTries.add(d.dataset.id) : openTries.delete(d.dataset.id);
 }, true);
 function triesHtml(s) {
   if (!s.tries || !s.tries.length) return "";
-  const list = s.tries.slice().reverse().map(t => `<div class="try"><b>${esc(ENDED[t.end] || t.end)}</b> ${esc(t.said || "")}<pre>${esc(t.code)}</pre></div>`).join("");
-  return `<details class="tries" data-id="${esc(s.id)}"${openTries.has(s.id) ? " open" : ""}><summary>${s.tries.length === 1 ? "last try" : `last ${s.tries.length} tries`}</summary>${list}</details>`;
+  const list = s.tries.slice().reverse().map(t => `<div class="try"><b class="${t.end === "goal" ? "ok" : ""}">${esc(ENDED[t.end] || t.end)}</b> <small>${esc(ago(t.at))}</small> ${esc(t.said || "")}<pre>${esc(t.code)}</pre></div>`).join("");
+  return `<details class="tries" data-id="${esc(s.id)}"${openTries.has(s.id) ? " open" : ""}><summary>${s.tries.length === 1 ? "Last try" : `Last ${s.tries.length} tries`} on this level</summary>${list}</details>`;
 }
-// Many runs on one site with no progress: worth a visit. The list already
-// puts the students with least done and most runs first.
-// No run for 3 minutes in this lesson (under an hour ago): maybe stuck,
-// maybe reading. Typing in the last 2 minutes says which.
-const IDLE = 180, LESSON = 3600;
-function idleFor(s) { const t = Date.now() / 1000 - (s.active || 0); return s.active && t >= IDLE && t < LESSON ? t : 0; }
-function typing(s) { return s.typed && Date.now() / 1000 - s.typed < 120; }
-function lastRun(s) {
-  const note = typing(s) ? ` <small class="typing">✎ typing</small>` : "";
-  if (!s.runs_total) return `<span class="stuck">hasn't run yet</span>${note}`;
-  return `<span class="${idleFor(s) ? "stuck" : ""}">${ago(s.active)}</span>${note}`;
+function cardHtml(s, data, st) {
+  const w = whereOf(s, data), pct = 100 * Math.min(1, w.done / Math.max(1, w.of));
+  const stars = (s.stars_now || []).map(x => x ? "<i>★</i>" : "★").join("");
+  const dots = s.misses ? `<div class="misses">${Array.from({length: Math.min(s.misses, 12)}, (_, i) => `<i class="${i >= helpAfter ? "red" : ""}"></i>`).join("")} ${s.misses} ${s.misses === 1 ? "miss" : "misses"} in a row here</div>` : "";
+  const said = s.now && s.now.said && s.now.end !== "goal" ? `<div class="said">💬 ${esc(s.now.said)}</div>` : "";
+  const skipped = s.skipped && s.skipped.length ? `<div class="skip">⏭ skipped ${esc(s.skipped.map(siteTag).join(", "))}</div>` : "";
+  return `<div class="card-top"><canvas width="108" height="108"></canvas><div class="nm"><b title="${esc(s.name)}">${esc(s.name)}</b><span class="pill ${st.cls}">${esc(st.text)}</span></div><div class="st">★ ${s.stars}<small>${plural(s.badges, "badge")}</small></div></div>
+    <div class="loc"><span class="tag">${esc(siteTag(w.key))}</span><span class="sn">${esc(w.name)}</span><span class="mini-stars">${stars}</span><small>${ZONE_ICONS[w.zoneKey] || ""} ${esc(w.zone)}</small></div>
+    <div class="prog" title="${w.done} of ${w.of} ${w.practice ? "practice " : ""}levels done"><span style="width:${pct}%"></span></div>
+    <div class="prog-l"><span>${w.done} of ${w.of} ${w.practice ? "practice levels" : "levels"}</span><span>last run ${esc(ago(s.active))}</span></div>
+    ${dots}${said}${skipped}
+    <div class="acts">${s.site !== "7" ? `<button class="btn small" onclick="admin('planet_unlock', '${esc(s.id)}')" title="Open the next level of the main route for this student">🔓 Unlock next</button>` : ""}${s.now && s.now.code ? `<button class="btn small" onclick="admin('planet_spotlight', '${esc(s.id)}')" title="Put this student's last transmitted code on the class screen, without their name">📽 Show code</button>` : ""}${s.runs_total ? `<button class="btn small" onclick="replayOf('${esc(s.id)}')" title="Play this student's last run on the big screen above">▶ Replay</button>` : ""}<button class="btn small warn" data-remove="${esc(s.id)}" title="Take this student off Strange Planet (their progress here is lost)">✕</button></div>
+    ${triesHtml(s)}`;
 }
-function stuckClass(n) { return n >= 15 ? "very-stuck" : n >= 8 ? "stuck" : ""; }
+function replayOf(pid) {
+  const run = [...runsSeen].reverse().find(r => r.id === pid);
+  if (run) { playRun(run); window.scrollTo({top: 0, behavior: REDUCED ? "auto" : "smooth"}); }
+  else say("Their last run was before this page opened. It replays after their next Transmit.");
+}
+function renderCrew(data) {
+  const q = $("search").value.trim().toLowerCase();
+  const rows = data.students.map(s => ({s, st: statusOf(s)})).filter(({s}) => !q || s.name.toLowerCase().includes(q));
+  const far = s => s.practice ? s.practice_solved - 1000 : s.at;
+  rows.sort(sortBy === "name" ? (a, b) => a.s.name.localeCompare(b.s.name)
+    : sortBy === "far" ? (a, b) => far(b.s) - far(a.s) || b.s.stars - a.s.stars
+    : (a, b) => a.st.rank - b.st.rank || b.s.misses - a.s.misses || a.s.name.localeCompare(b.s.name));
+  const crew = $("crew"), have = new Map([...crew.children].map(el => [el.dataset.id, el]));
+  for (const {s, st} of rows) {
+    let el = have.get(s.id);
+    if (!el) { el = document.createElement("article"); el.dataset.id = s.id; }
+    const sig = JSON.stringify([s, st.text, helpAfter, Math.floor(Date.now() / 30000)]);
+    if (el.dataset.sig !== sig) {
+      const opened = el.querySelector("details.tries[open]");
+      el.innerHTML = cardHtml(s, data, st);
+      el.dataset.sig = sig;
+      drawAvatar(el.querySelector("canvas"), s.look, 54);
+      if (opened) { const d = el.querySelector("details.tries"); if (d) d.open = true; }
+    }
+    const running = stage.run && !stage.done && stage.run.id === s.id;
+    el.className = `card${st.very ? " very" : st.help ? " help-me" : ""}${st.away ? " away" : ""}${running ? " running" : ""}`;
+    // A new run since the last look: the card flashes green or amber.
+    if (lastActive[s.id] != null && s.active > lastActive[s.id] && !REDUCED) {
+      el.classList.add(s.now.end === "goal" ? "flash-win" : "flash-miss");
+      setTimeout(() => el.classList.remove("flash-win", "flash-miss"), 2500);
+    }
+    lastActive[s.id] = s.active || 0;
+    crew.appendChild(el);   // in sorted order
+    have.delete(s.id);
+  }
+  for (const el of have.values()) el.remove();
+  $("crewCount").textContent = `${data.students.length} explorer${data.students.length === 1 ? "" : "s"}`;
+}
+function renderStats(data) {
+  const S = data.students.map(s => ({s, st: statusOf(s)}));
+  const lesson = S.filter(x => !x.st.away);
+  const active = S.filter(x => since(Math.max(x.s.active || 0, x.s.typed || 0)) < 120).length;
+  const help = S.filter(x => x.st.help).length, idle = S.filter(x => x.st.cls === "idle" && !x.st.away).length;
+  const unstarted = lesson.filter(x => !x.s.runs_total).length;
+  const recentWins = (data.runs || []).filter(r => r.reached && since(r.at) < 600).length;
+  const tile = (cls, ico, n, text, alert) => `<div class="stat ${cls}${alert ? " alert" : ""}"><span class="ico">${ico}</span><b>${n}</b><span>${text}</span></div>`;
+  $("stats").innerHTML = tile("gold", "★", data.class.stars, "class stars together")
+    + tile("", "👩‍🚀", lesson.length, "in today's lesson")
+    + tile("mint", "⚡", active, "active in the last 2 min")
+    + tile("mint", "🎉", recentWins, "missions done (10 min)")
+    + tile("red", "🆘", help, `need help (${helpAfter}+ misses)`, help > 0)
+    + tile("amber", "💤", idle, "no run for 3+ min")
+    + (unstarted ? tile("amber", "⏳", unstarted, "haven't pressed Transmit") : "");
+  const needs = S.filter(x => x.st.help || (x.st.cls === "new" && !x.st.away)).sort((a, b) => a.st.rank - b.st.rank || b.s.misses - a.s.misses);
+  $("help").hidden = !needs.length;
+  $("help").innerHTML = `<b>🙋 Worth a visit:</b>` + needs.slice(0, 10).map(({s, st}) => `<button class="who${st.very ? " very" : ""}" data-id="${esc(s.id)}">${esc(s.name)}<small>${esc(siteTag(s.now.site))} ${esc(s.now.site_name)} · ${esc(st.text.replace(/^\S+ /, ""))}</small></button>`).join("");
+}
+$("help").addEventListener("click", e => {
+  const b = e.target.closest(".who");
+  const card = b && document.querySelector(`.card[data-id="${CSS.escape(b.dataset.id)}"]`);
+  if (card) { card.scrollIntoView({block: "center", behavior: REDUCED ? "auto" : "smooth"}); card.classList.add("flash-miss"); setTimeout(() => card.classList.remove("flash-miss"), 2500); }
+});
+function renderWhere(data) {
+  const by = {};
+  for (const s of data.students) {
+    if (statusOf(s).away) continue;
+    const z = s.now.zone_name || s.zone;
+    (by[z] = by[z] || []).push(s.name);
+  }
+  const zones = [...(data.easy ? data.practice_zones : []), ...data.zones];
+  const keys = data.zone_keys || {};
+  $("where").innerHTML = zones.map(z => {
+    const names = by[z] || [];
+    return `<div class="zone${names.length ? "" : " empty-zone"}"><div class="zt">${ZONE_ICONS[keys[z]] || "🪐"} ${esc(z)}${names.length ? `<b>${names.length}</b>` : ""}</div>${names.length ? `<div class="zn">${names.map(esc).join(", ")}</div>` : ""}</div>`;
+  }).join("");
+}
 async function refresh() {
   let data;
-  try { data = await (await fetch("/planet/overview")).json(); } catch (_) { return; }
-  const students = data.students;
+  try { data = await (await fetch("/planet/overview")).json(); }
+  catch (_) { $("live").classList.add("off"); return; }
+  $("live").classList.remove("off");
+  lastData = data;
+  helpAfter = data.easy ? 3 : 8;
+  $("address").textContent = (data.address || "").replace(/^http:\/\//, "");
   $("spotOff").hidden = !data.spotlight;
-  $("empty").hidden = students.length > 0;
-  const stuck = students.filter(s => s.runs_here >= 8 && s.solved < data.sites).length;
-  // Opened the planet but never pressed Transmit: often a student who doesn't know how to start.
-  const unstarted = students.filter(s => !s.runs_total).length;
-  const idle = students.filter(s => s.runs_total && idleFor(s) && s.solved < data.sites).length;
-  $("summary").innerHTML = `<div><b>${data.class.stars} ★</b>class stars (<a href="/planet/show" target="_blank" style="color:var(--violet)">project them</a>)</div><div><b>${students.length}</b>explorers</div><div><b>${stuck}</b>stuck (8+ runs on one site)</div>${unstarted ? `<div><b class="stuck">${unstarted}</b>haven't pressed Transmit yet</div>` : ""}${idle ? `<div><b class="stuck">${idle}</b>no run for 3+ min</div>` : ""}`;
-  const byZone = {};
-  for (const s of students) byZone[s.zone] = (byZone[s.zone] || 0) + 1;
-  $("zones").innerHTML = data.zones.map(z => `<span class="zone-count">${esc(z)}<b>${byZone[z] || 0}</b></span>`).join("");
-  $("rows").innerHTML = students.map(s => `<tr>
-    <td class="name">${esc(s.name)}<div class="bar" title="Site ${s.at + 1} of ${data.sites}"><span style="width:${100 * s.at / Math.max(1, data.sites - 1)}%"></span></div></td>
-    <td class="site">${s.site === "7" ? "Uncharted" : `${esc(s.site.toUpperCase())} · ${esc(s.site_name)}`}<small>${s.site === "7" ? (s.uncharted ? `best ${s.uncharted.reached}/5 planets` : "no run yet") : esc(s.zone)}</small>${s.skipped && s.skipped.length ? `<small class="stuck">skipped ${esc(s.skipped.map(k => k.toUpperCase()).join(", "))} (20+ misses)</small>` : ""}</td>
-    <td class="num">${s.stars} ★<small style="display:block;color:var(--muted)">${s.badges} badges</small></td>
-    <td class="num ${stuckClass(s.runs_here)}">${s.runs_here}</td>
-    <td class="num">${s.hints}</td>
-    <td class="num">${lastRun(s)}${s.now && s.now.said ? `<small class="said">${esc(s.now.site.toUpperCase())}: ${esc(s.now.said)}</small>` : ""}${triesHtml(s)}</td>
-    <td>${s.site !== "7" ? `<button onclick="unlock('${esc(s.id)}')" title="Open the next site for this student">Unlock next</button>` : ""}${s.now && s.now.code ? ` <button onclick="admin('planet_spotlight', '${esc(s.id)}')" title="Put this student's last transmitted code on the class screen, without their name">📽 Show code</button>` : ""}</td>
-  </tr>`).join("");
+  $("blanks").checked = data.blanks; $("easy").checked = data.easy; $("coach").checked = data.coach;
+  $("empty").hidden = data.students.length > 0;
+  renderStats(data);
+  renderWhere(data);
+  renderCrew(data);
+  takeRuns(data.runs);
 }
 // The after-class table: fetched when opened, and every 30 seconds while open.
+function stuckClass(n) { return n >= 15 ? "very-stuck" : n >= 8 ? "stuck" : ""; }
 async function refreshReport() {
   if (!$("reportBox").open) return;
   let data;
@@ -168,45 +563,26 @@ async function refreshReport() {
   const hints = Object.fromEntries(data.zones.map(z => [z.name, z.hints]));
   let zone = "";
   $("report").innerHTML = data.sites.map(s => {
-    const head = s.zone !== zone ? `<tr class="zone-row"><td colspan="5">${esc(s.zone)} · ${hints[s.zone] || 0} hints opened</td></tr>` : "";
+    const head = s.zone !== zone ? `<tr class="zone-row"><td colspan="5">${esc(s.zone)} · ${plural(hints[s.zone] || 0, "hint")} opened</td></tr>` : "";
     zone = s.zone;
     const missed = s.not_cleared.map(([name, runs, here]) => `${esc(name)} (${runs}${here ? "" : ", elsewhere now"})`).join(", ");
     const skipped = s.skipped.length ? `<small class="stuck">skipped: ${esc(s.skipped.join(", "))}</small>` : "";
-    const said = s.said.length ? `<ul class="said-list">${s.said.map(g => `<li>${esc(g.text)} <b>${g.students} student${g.students > 1 ? "s" : ""}, ${g.tries} ${g.tries === 1 ? "try" : "tries"}</b></li>`).join("")}</ul>` : "—";
+    const said = s.said.length ? `<ul class="said-list">${s.said.map(g => `<li>${esc(g.text)} <b>${plural(g.students, "student")}, ${g.tries} ${g.tries === 1 ? "try" : "tries"}</b></li>`).join("")}</ul>` : "—";
     return `${head}<tr>
-      <td class="site">${esc(s.key.toUpperCase())} · ${esc(s.name)}</td>
+      <td>${esc(siteTag(s.key))} · ${esc(s.name)}</td>
       <td class="num">${s.cleared} of ${s.tried}</td>
-      <td class="num ${stuckClass(s.runs_median)}">${s.runs_median}<small style="display:block;color:var(--muted)">most ${s.runs_most}</small></td>
-      <td class="site">${missed || "—"}${skipped}</td>
+      <td class="num ${stuckClass(s.runs_median)}">${s.runs_median}<small>most ${s.runs_most}</small></td>
+      <td>${missed || "—"}${skipped}</td>
       <td>${said}</td></tr>`;
-  }).join("") || `<tr><td colspan="5" class="empty">Nobody has run a site yet.</td></tr>`;
+  }).join("") || `<tr><td colspan="5" class="empty">Nobody has run a level yet.</td></tr>`;
 }
 $("reportBox").addEventListener("toggle", () => { store("planetReport", $("reportBox").open ? "1" : ""); refreshReport(); });
 $("reportBox").open = recall("planetReport") === "1";
 setInterval(refreshReport, 30000);
-async function admin(action, pid) {
-  const key = $("key").value.trim();
-  if (!key) { $("msg").textContent = "Type the admin key first."; $("key").focus(); return; }
-  store("planetKey", key);
-  try {
-    const data = await (await fetch("/admin", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({key, action, pid})})).json();
-    $("msg").textContent = data.ok || data.error;
-  } catch (_) { $("msg").textContent = "No answer from the server."; }
-  refresh();
-}
-async function unlock(pid) {
-  const key = $("key").value.trim();
-  if (!key) { $("msg").textContent = "Type the admin key first."; $("key").focus(); return; }
-  store("planetKey", key);
-  try {
-    const data = await (await fetch("/admin", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({key, action: "planet_unlock", pid})})).json();
-    $("msg").textContent = data.ok || data.error;
-  } catch (_) { $("msg").textContent = "No answer from the server."; }
-  refresh();
-}
-$("key").value = recall("planetKey") || "";
+setSort(sortBy);
+renderRecent();
 refresh();
-setInterval(refresh, 5000);
+setInterval(refresh, 2000);
 </script>
 </body>
 </html>

@@ -309,22 +309,27 @@ board while they work.
 - [ ] Ask them to join with their **full name**: two students who type the
       same name share one rover and one set of stars.
 - [ ] Put **`http://localhost:8000/planet/show`** on the projector.
-- [ ] Open **`http://localhost:8000/planet/teacher`** on your laptop. It
-      lists every student, the site they're on, **runs on that site**
-      (amber at 8+, red at 15+: go and visit) and hints opened. Under
-      **Last run** is what their last missed run told them (the error, or
-      what happened and where), so you know before you walk over. Only you
-      see it: the projector never shows it. It refreshes every 5 seconds.
-      A student who hasn't pressed **Transmit** yet shows "hasn't run yet"
-      in amber.
-- [ ] Under a student's last run, **last tries** opens their last 6 tries
-      on the site they're on: how each ended, what it told them, and the
-      code, newest first. It stays open while the page refreshes. After
+- [ ] Open **`http://localhost:8000/planet/teacher`** (Mission Control) on
+      your laptop. At the top, every **Transmit** replays big: the student's
+      name and rover, their route on the map, their code, and a stamp for how
+      it ended (🎉 mission complete, 💥 fell in, 🐞 code error…) with what the
+      game told them. Several runs at once queue up; **Recent runs** replays
+      any of them, and so does **▶ Replay** on a student's card. Only you see
+      misses: the projector cheers completed missions only.
+- [ ] Under the replay: the numbers (active now, need help, idle), a
+      **🙋 Worth a visit** strip (misses in a row: 8+, or 3+ in easy mode, and
+      students who haven't pressed Transmit), and **Where everyone is**, zone
+      by zone with names. Each student's card says how they're doing
+      (🚀 just ran, ✎ typing, ✋ misses in a row, 💤 no run for 3+ min), the
+      level they're really on (a practice level in easy mode too), their
+      progress, and what their last missed run told them. A card flashes
+      green or amber when they run. Sort by **Needs help first**, **Furthest
+      along** or **A–Z**, or find a name.
+- [ ] The admin key and the three class switches are under **⚙ Settings**.
+- [ ] On a card, **Last tries on this level** opens their last 6 tries: how
+      each ended, what it told them, and the code, newest first. After
       class, `scores.json` keeps them for every site (`planet` → `tries`).
-- [ ] **Last run** turns amber when a student hasn't run for 3 minutes, and
-      "✎ typing" says they're still working on it. **Working on** says
-      "skipped 3B" when a student used ⏭ Skip for now.
-- [ ] **Site by site** (under the table, click to open) is for after class:
+- [ ] **Level by level** (at the bottom, click to open) is for after class:
       every site someone tried, how many cleared it, typical runs, who
       hasn't cleared it, the hints each zone took, and what the game told
       students most often when they missed. Use it to pick where the next
@@ -410,12 +415,33 @@ works is how to help a neighbour.
 | 3 | **Solar Valley** (5A–5C) → **Portal Fields** (6A–6C) | "How did you work out where each portal goes? How many runs did it take?" |
 | 4 | **Signal Plains** (7A–7C): steering by coordinates on calm ground → **Crater Hops** (8A–8C): the new `jump()` | "When does your program jump, and how does it know?" |
 | 5 | **Conveyor Works** (9A–9D) → **The Quarry** (10A–10D) → **Gate Station** (11A–11D) → **Flag Relay** (12A–12D) | "Which new thing changed your program most, and what stayed the same?" |
-| 6 | **Boulder Yard** (13A–13D) → **Laser Range** (14A–14D) → **Cargo Run** (15A–15D) → **Uncharted**: the same 5 planets every run | "Where did a variable or a sum save you from counting?" |
+| 6 | **Boulder Yard** (13A–13D) → **Laser Range** (14A–14D) → **Cargo Run** (15A–15D) | "Where did a variable or a sum save you from counting?" |
+| 7 | **Grand Tour** (16A–16D): everything at once → **Uncharted**: the same 5 planets every run | "Which square was hardest to plan for, and how did your code tell it apart?" |
 
 Fast students will get ahead. That's fine, because each site opens only when
 the one before is done. Slow students aren't stuck behind a wall: open the
 next site for one student from `/planet/teacher` (type the admin key once,
 then **Unlock next**).
+
+## Easy mode: practice zones for a younger class
+
+Turn on **Easy mode** in ⚙ Settings on `/planet/teacher`. Five practice zones
+come before the Landing Site, every level open, and kids drive by hand first
+(arrow keys or the buttons on the map), press **📋 Use as code**, finish the
+words letter by letter and press **Transmit**:
+
+| Zone | Levels | What's new |
+|---|---|---|
+| 🛝 Practice Park | P1–P8 | one-square drives, then `east(4)`, then a first `for` loop |
+| 🌻 Loop Garden | P9–P16 | corners, a rock to go round, loops with a line after them |
+| ⛸ Ice Rink | P17–P24 | one press slides until something stops it |
+| 🔮 Pad Park | P25–P30 | magic pads: drive onto one, pop out of its partner; P30 is one drive in a loop |
+| 🐸 Jump Park | P31–P38 | `jump("east")` over craters and rocks; while scouting, 🦘 then an arrow (or Shift+arrow) jumps |
+
+Students find every level in the **🗺 Levels** button at the top left: each
+zone with its levels as big tiles, their stars, 🔒 for what's still locked,
+and **▶ Play next**. The ◀ ▶ arrows beside a level's name go to the level
+before or after.
 
 ## Zone by zone
 
@@ -750,6 +776,45 @@ home unloads. New: `cargo()`, `home_x()`, `home_y()`, and `sample_x()`,
           go_to(home_x(), home_y())
       else:
           go_to(sample_x(), sample_y())
+  ```
+
+#### 16 · Grand Tour: everything at once
+Nothing new: every site mixes several things from Zones 9 to 15, so the
+work is planning and telling squares apart.
+- **16A Locked Workshop**: drill into the key room (1 drill), pick up the
+  key, then ride the one-way belt down to the gate:
+  `east(3) drill("east") east(6) south(2) west(8)`. Riding the belt without
+  the key strands the rover by a locked gate. The 💎 is on the other way
+  onto the belt (`east(10)`).
+- **16B Bridge Builder**: flags 1 to 3, a trench two wide, and two boulders.
+  Only the one in the wall's gap can reach the trench (the other jams against
+  rock). Push it in, then jump the other half: 9 drives by hand.
+- **16C Supply Line**: Cargo Run's shuttle, but every row has a crater in a
+  different place, so `distance()` finds it and `jump()` crosses it, both ways.
+  The 🔢 star wants no typed-in numbers:
+  ```python
+  for i in range(4):
+      south(i)
+      east(distance("east"))
+      jump("east")
+      east(distance("east"))
+      west(distance("west"))
+      jump("west")
+      west(distance("west"))
+      north(i)
+  ```
+- **16D Your Expedition** (per student): two-thick rock, a crater trench, a
+  belt into a crater, a boulder before a wide trench and a gate with its key
+  on the way, in a different order on every planet. 9D's, 10D's, 13D's and
+  14D's programs all miss; one loop that tells the squares apart reaches it:
+  ```python
+  while not at_beacon():
+      if look("east") == "rock":
+          drill("east")
+      elif look("east") == "crater" or look("east") == "belt":
+          jump("east")
+      else:
+          east()
   ```
 
 ### Uncharted: the finale

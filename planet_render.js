@@ -336,6 +336,37 @@ const PETS = {
       ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, (-.05 + k * .12) * s, .3 * s * k + .01, 0, 7); ctx.fill();
     }
   },
+  verity(ctx, s, t) {   // Verity, a smiley face that blinks and now and then winks
+    ctx.rotate(Math.sin(t / 600) * .1);
+    const grad = ctx.createRadialGradient(-.12 * s, -.14 * s, .05 * s, 0, 0, .4 * s);
+    grad.addColorStop(0, "#fff38a"); grad.addColorStop(1, "#ffc928");
+    ctx.fillStyle = grad; ctx.strokeStyle = "#d99a12"; ctx.lineWidth = s * .04;
+    ctx.beginPath(); ctx.arc(0, 0, .38 * s, 0, 7); ctx.fill(); ctx.stroke();
+    const blink = t % 3200 > 3060, wink = !blink && t % 9600 > 9000;   // eyes open at t = 0 (calm mode)
+    ctx.fillStyle = ctx.strokeStyle = "#3a2410"; ctx.lineWidth = s * .05; ctx.lineCap = "round";
+    for (const x of [-.13, .13]) {
+      if (blink || (wink && x > 0)) { ctx.beginPath(); ctx.moveTo((x - .06) * s, -.1 * s); ctx.lineTo((x + .06) * s, -.1 * s); ctx.stroke(); }
+      else { ctx.beginPath(); ctx.ellipse(x * s, -.1 * s, .045 * s, .08 * s, 0, 0, 7); ctx.fill(); }
+    }
+    ctx.beginPath(); ctx.arc(0, .02 * s, .22 * s, .15 * Math.PI, .85 * Math.PI); ctx.stroke();
+    ctx.fillStyle = "rgba(255,120,120,.4)";
+    for (const x of [-.25, .25]) { ctx.beginPath(); ctx.ellipse(x * s, .08 * s, .06 * s, .035 * s, 0, 0, 7); ctx.fill(); }
+  },
+  minicrew(ctx, s, t) {   // a little crewmate in a spacesuit, waddling along
+    const step = Math.sin(t / 140);
+    ctx.fillStyle = "#7a0838";
+    roundRect(ctx, -.34 * s, -.12 * s, .14 * s, .3 * s, .05 * s); ctx.fill();          // backpack
+    for (const [x, k] of [[-.13, 1], [.1, -1]]) {
+      roundRect(ctx, x * s, (.22 - Math.max(0, step * k) * .06) * s, .14 * s, .16 * s, .05 * s); ctx.fill();   // legs
+    }
+    ctx.fillStyle = "#c51111";
+    ctx.beginPath(); ctx.moveTo(-.24 * s, .3 * s); ctx.lineTo(-.24 * s, -.12 * s);
+    ctx.arc(0, -.12 * s, .24 * s, Math.PI, 0); ctx.lineTo(.24 * s, .3 * s); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.fillRect(-.24 * s, .18 * s, .48 * s, .12 * s);
+    ctx.fillStyle = "#3f5f7a"; roundRect(ctx, -.02 * s, -.24 * s, .34 * s, .2 * s, .1 * s); ctx.fill();   // visor
+    ctx.fillStyle = "#9ad8f0"; roundRect(ctx, .01 * s, -.24 * s, .3 * s, .16 * s, .08 * s); ctx.fill();
+    ctx.fillStyle = "#ffffff"; roundRect(ctx, .12 * s, -.21 * s, .12 * s, .05 * s, .025 * s); ctx.fill();
+  },
 };
 
 function roundRect(ctx, x, y, w, h, r) {
@@ -352,6 +383,7 @@ const PAINTS = {bone: "#f2eadb", coral: "#ff8a7a", mint: "#8cf2c6", sky: "#8fc8f
   supernova: ["#fff6d0", "#ffe08a", "#ff9d5c"],
   copper: "#d9894a", racer: ["#ff6b5a", "#ffb84d", "#ffd36b"],
   granite: ["#9a9ba6", "#6e7079"], laser: ["#ff3b5c", "#ff8a9e"], cardboard: "#c8a06a",
+  trailblazer: ["#3fb68b", "#f2c14e", "#e4572e"],
   ocean: ["#5ad1ff", "#2a7fd8", "#1b3f8a"], chrome: ["#ffffff", "#c3cad6", "#8a94a3", "#e8edf5"],
   holo: {swatch: "conic-gradient(#ffb3e6, #b3e6ff, #d9b3ff, #b3ffd9, #ffb3e6)", fill(ctx, s, now) {
     const h = CALM ? 200 : (now / 20) % 360;
@@ -468,6 +500,14 @@ const PAINTS = {bone: "#f2eadb", coral: "#ff8a7a", mint: "#8cf2c6", sky: "#8fc8f
       ctx.stroke();
     }
     ctx.shadowBlur = 0;
+  }},
+  crewmate: {base: "#c51111", swatch: "radial-gradient(ellipse 36% 26% at 62% 38%, #9ad8f0 70%, #3f5f7a 72%, #c51111 76%)", draw(ctx, s) {
+    // A crewmate's suit seen from above: a backpack at the back, the visor in the middle.
+    ctx.fillStyle = "rgba(0,0,0,.16)"; ctx.fillRect(-.32 * s, .1 * s, .62 * s, .12 * s);
+    ctx.fillStyle = "#7a0838"; roundRect(ctx, -.32 * s, -.15 * s, .1 * s, .3 * s, .04 * s); ctx.fill();
+    ctx.fillStyle = "#3f5f7a"; roundRect(ctx, -.16 * s, -.16 * s, .22 * s, .32 * s, .1 * s); ctx.fill();
+    ctx.fillStyle = "#9ad8f0"; roundRect(ctx, -.14 * s, -.16 * s, .2 * s, .28 * s, .09 * s); ctx.fill();
+    ctx.fillStyle = "#ffffff"; roundRect(ctx, -.1 * s, -.12 * s, .05 * s, .12 * s, .025 * s); ctx.fill();
   }},
   // Blocky ones: pixel art across the body.
   grass: {base: "#6dbb44", swatch: "linear-gradient(#6dbb44 50%, #7a5230 50%)", draw(ctx, s) {

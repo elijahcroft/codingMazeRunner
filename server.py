@@ -1449,7 +1449,8 @@ def save_state():
         with open(tmp, "w") as f:
             json.dump({"players": players, "next": next_player_num[0],
                        "admin_key": ADMIN_KEY, "cycles_round": cycles_round,
-                       "cake_class": cake_class}, f)
+                       "cake_class": cake_class,
+                       "planet_class": planet_class_settings}, f)
         os.replace(tmp, STATE_FILE)  # atomic: never leaves a half-written file
     except Exception:
         pass
@@ -1514,6 +1515,7 @@ def load_state():
     cycles_round["number"] = int(saved_round.get("number", 0) or 0)
     cycles_round["last"] = saved_round.get("last") or None
     cake_class.update(data.get("cake_class") or {})
+    planet_class_settings.update(data.get("planet_class") or {})
     # Reuse the same admin key across restarts so an open admin page keeps
     # working; fall back to this run's freshly generated one if none was saved.
     ADMIN_KEY = data.get("admin_key") or ADMIN_KEY
@@ -2755,12 +2757,26 @@ def cycles_state(p):
 # Nothing is random and nothing is taken away.
 # ---------------------------------------------------------------------------
 SCOUT_MAX = 150     # hand-driven moves in one scouting trip: enough to drive any site
+# What scouting can do besides drive and wait, once a site has it in code:
+# "jump:east" is jump("east"), "drill:north" is drill("north").
+SCOUT_ACTS = ("jump", "drill")
 FUNCTIONS_MAX = 12  # saved functions one student keeps
 FUNCTION_MAX = 1500 # characters in one saved function
 planet_feed = []    # the class's recent moments, newest last, for the projector
+# Every transmit, newest last, with its route: the teacher's live stage and
+# the projector replay them. Kept in memory only.
+planet_runs = []
+RUNS_KEPT = 30
+RUN_PATH_MAX = 400   # frames of a route kept for the replay
 # One student's code the teacher put on the class screen, without their name,
 # to talk about together; None when nothing is shown.
 planet_spotlight = [None]
+# Class settings the teacher picks. blanks: "📋 Use as code" leaves a few
+# words for the student to finish (off: the scouted code comes out whole).
+# easy: for a younger class, classmates' names and Skip come sooner.
+# coach: those words are typed letter by letter on every site, with the
+# right key shown and only the right letter going in.
+planet_class_settings = {"blanks": True, "easy": False, "coach": False}
 
 # Badges: (icon, name, how to earn it). Zone masters are added below.
 PLANET_BADGES = {
@@ -2839,6 +2855,7 @@ GARAGE = [
     {"slot": "paint", "key": "sky", "name": "Sky", "stars": 15},
     {"slot": "paint", "key": "lava", "name": "Lava", "stars": 22},
     {"slot": "paint", "key": "gold", "name": "Gold", "stars": 30},
+    {"slot": "paint", "key": "crewmate", "name": "Crewmate", "stars": 28},
     {"slot": "paint", "key": "pizza", "name": "Pizza", "stars": 38},
     {"slot": "paint", "key": "rgb", "name": "RGB Gamer", "stars": 50},
     {"slot": "paint", "key": "grass", "name": "Grass Block", "find": "1a"},
@@ -2849,6 +2866,7 @@ GARAGE = [
     {"slot": "paint", "key": "granite", "name": "Granite", "find": "13b"},
     {"slot": "paint", "key": "laser", "name": "Laser Red", "find": "14b"},
     {"slot": "paint", "key": "cardboard", "name": "Cardboard Box", "find": "15b"},
+    {"slot": "paint", "key": "trailblazer", "name": "Trailblazer", "find": "16b"},
     {"slot": "paint", "key": "aurora", "name": "Aurora", "class": 30},
     {"slot": "paint", "key": "nebula", "name": "Nebula", "class": 90},
     {"slot": "paint", "key": "supernova", "name": "Supernova", "class": 180},
@@ -2922,9 +2940,11 @@ GARAGE = [
     {"slot": "glow", "key": "aura", "name": "Shadow Aura", "stars": 120},
     # A sidekick that floats along behind the rover.
     {"slot": "pet", "key": "nopet", "name": "Just me", "stars": 0},
+    {"slot": "pet", "key": "verity", "name": "Verity", "stars": 13},
     {"slot": "pet", "key": "drone", "name": "Drone", "stars": 7},
     {"slot": "pet", "key": "duck", "name": "Rubber duck", "trophies": 2},
     {"slot": "pet", "key": "spacecat", "name": "Space cat", "stars": 26},
+    {"slot": "pet", "key": "minicrew", "name": "Mini crewmate", "stars": 36},
     {"slot": "pet", "key": "ghost", "name": "Ghost", "stars": 44},
     {"slot": "pet", "key": "jelly", "name": "Space jelly", "stars": 66},
     {"slot": "pet", "key": "robodog", "name": "Robo dog", "stars": 82},
@@ -3007,14 +3027,17 @@ def planet_entry(p):
 
 def planet_frontier(p):
     """Index in planet.SITE_ORDER of the furthest site this student may open:
-    the first one they haven't solved, or further if the teacher unlocked it."""
+    the first one they haven't solved, counting from the one the teacher (or
+    a skip) opened, so clearing it goes on even with skipped sites behind."""
     entry = planet_entry(p)
-    first = next((i for i, key in enumerate(planet.SITE_ORDER)
-                  if key not in entry["solved"]), len(planet.SITE_ORDER) - 1)
-    return max(first, min(entry["unlocked"], len(planet.SITE_ORDER) - 1))
+    last = len(planet.SITE_ORDER) - 1
+    return next((i for i in range(min(entry["unlocked"], last), last + 1)
+                 if planet.SITE_ORDER[i] not in entry["solved"]), last)
 
 
 def planet_open(p, key):
+    if key in planet.PRACTICE_ORDER:   # all open at once, in easy mode only
+        return planet_class_settings["easy"]
     return key in planet.SITE_ORDER and \
         planet.SITE_ORDER.index(key) <= planet_frontier(p)
 
@@ -3026,6 +3049,15 @@ def planet_variant(p, key):
 
 HELP_AFTER = 8    # misses in a row before naming classmates who cleared the site
 SKIP_AFTER = 20   # misses in a row before a site can be skipped for now
+EASY_HELP_AFTER, EASY_SKIP_AFTER = 3, 6   # the same, with the teacher's easy mode on
+
+
+def help_after():
+    return EASY_HELP_AFTER if planet_class_settings["easy"] else HELP_AFTER
+
+
+def skip_after():
+    return EASY_SKIP_AFTER if planet_class_settings["easy"] else SKIP_AFTER
 
 
 def planet_helpers(p, key):
@@ -3062,9 +3094,10 @@ def can_skip(p, key):
     """A long run of misses on the site they're up to (not the finale): the
     next one may open, so nobody stays stuck in one place."""
     entry = planet_entry(p)
-    return key != planet.UNCHARTED["key"] and key not in entry["solved"] \
+    return key in planet.SITE_ORDER and key != planet.UNCHARTED["key"] \
+        and key not in entry["solved"] \
         and planet.SITE_ORDER.index(key) == planet_frontier(p) \
-        and entry["misses"].get(key, 0) >= SKIP_AFTER
+        and entry["misses"].get(key, 0) >= skip_after()
 
 
 def measuring(p, key):
@@ -3160,15 +3193,35 @@ def feed(text):
     del planet_feed[:-40]
 
 
+def shown_stars(key, stars):
+    """A site's stars as the student sees them: one on a practice site."""
+    return stars[:planet.stars_max(planet.find_site(key)[2])]
+
+
 def planet_state(p):
     """The student's map of the planet: every zone and site, with stars,
     what's open, hints, saved functions, badges and the garage."""
     entry = planet_entry(p)
     frontier = planet_frontier(p)
+    current = planet.SITE_ORDER[frontier]
     zones = []
-    for zone in planet.ZONES:
+    if planet_class_settings["easy"]:
+        # The practice zones come first, every site open: a younger class starts there.
+        for zone in planet.PRACTICE_ZONES:
+            zones.append({
+                "key": zone["key"], "name": zone["name"], "blurb": zone["blurb"],
+                "zi": zone.get("zi", 0), "practice": True,
+                "hints": zone["hints"][:entry["hints"].get(zone["key"], 0)],
+                "hint_count": len(zone["hints"]),
+                "sites": [{"key": s["key"], "name": s["name"],
+                           "solved": entry["solved"].get(s["key"]),
+                           "stars": shown_stars(s["key"], entry["stars"].get(s["key"], [False] * 3)),
+                           "open": True, "gift": False}
+                          for s in zone["sites"]]})
+        current = next((k for k in planet.PRACTICE_ORDER if k not in entry["solved"]), current)
+    for zi, zone in enumerate(planet.ZONES):
         zones.append({
-            "key": zone["key"], "name": zone["name"], "blurb": zone["blurb"],
+            "key": zone["key"], "name": zone["name"], "blurb": zone["blurb"], "zi": zi,
             "hints": zone["hints"][:entry["hints"].get(zone["key"], 0)],
             "hint_count": len(zone["hints"]),
             "sites": [{"key": s["key"], "name": s["name"],
@@ -3178,10 +3231,11 @@ def planet_state(p):
                        "gift": gift_for(p, s["key"]) is not None}
                       for s in zone["sites"]]})
     return {"you": {"name": p["name"], "ran": any(entry["runs"].values())}, "zones": zones,
-            "current": planet.SITE_ORDER[frontier],
+            "current": current,
             "uncharted": entry["uncharted"],
             "total_stars": star_count(entry),
-            "max_stars": 3 * len(planet.SITE_ORDER),
+            "max_stars": 3 * len(planet.SITE_ORDER)
+            + (len(planet.PRACTICE_ORDER) if planet_class_settings["easy"] else 0),
             "rank": rank_for(star_count(entry)),
             "missions": missions_view(entry),
             "badges": [{"key": k, "icon": b[0], "name": b[1], "how": b[2],
@@ -3199,10 +3253,10 @@ def planet_site(p, key):
     zi, zone, s = planet.find_site(key)
     entry = planet_entry(p)
     view = {"key": key, "name": s["name"], "brief": s["brief"],
-            "zone": zone["name"], "sensors": planet.sensors_for(zi),
+            "zone": zone["name"], "sensors": zone.get("sensors") or planet.sensors_for(zi),
             "code": entry["code"].get(key, ""),
             "solved": entry["solved"].get(key),
-            "stars": entry["stars"].get(key, [False] * 3),
+            "stars": shown_stars(key, entry["stars"].get(key, [False] * 3)),
             "misses": entry["misses"].get(key, 0), "can_skip": can_skip(p, key),
             "record": None if key == planet.UNCHARTED["key"] or measuring(p, key)
             else class_record(key)}
@@ -3386,7 +3440,10 @@ def planet_record(p, key, code, results):
     # The last site of a zone: a moment of its own, and a look at what's next.
     cleared = None
     if not zone_before and zone_done():
-        nxt = planet.ZONES[zi + 1] if zi + 1 < len(planet.ZONES) else None
+        if zone in planet.PRACTICE_ZONES:
+            nxt = (planet.PRACTICE_ZONES + planet.ZONES[:1])[planet.PRACTICE_ZONES.index(zone) + 1]
+        else:
+            nxt = planet.ZONES[zi + 1] if zi + 1 < len(planet.ZONES) else None
         cleared = {"name": zone["name"], "key": zone["key"],
                    "next": nxt and {"name": nxt["name"], "key": nxt["key"],
                                     "blurb": nxt.get("blurb", "")}}
@@ -3422,7 +3479,19 @@ def planet_record(p, key, code, results):
     for i in unlocked:
         if i["rarity"] in ("epic", "legendary") and "class" not in i:
             feed(f"✨ {p['name']} unlocked {i['name']}, a {i['rarity']} {i['slot']}!")
-    return {"stars": run_stars, "best": stars, "new_stars": new_stars,
+    planet_runs.append({
+        "n": (planet_runs[-1]["n"] + 1) if planet_runs else 1, "at": entry["active"],
+        "id": p["id"], "name": p["name"], "site": key, "site_name": s["name"],
+        "zone": zone["name"], "zone_key": zone["key"],
+        "map": first.get("map") or planet_variant(p, key)["map"],
+        "path": [[f["r"], f["c"], f.get("e")] for f in first["frames"]][:RUN_PATH_MAX],
+        "end": first["end"], "reached": bool(reached_any), "code": code[:TRY_CODE_MAX],
+        "stars": shown_stars(key, run_stars), "best": shown_stars(key, stars),
+        "new_stars": new_stars, "said": said and short_said(said),
+        "record": bool(record), "first_try": bool(first_try and reached_any),
+        "cleared": cleared and cleared["name"], "look": dict(entry["look"])})
+    del planet_runs[:-RUNS_KEPT]
+    return {"stars": shown_stars(key, run_stars), "best": shown_stars(key, stars), "new_stars": new_stars,
             "first_try": bool(first_try and reached_any), "rank_up": rank_up,
             "zone_cleared": cleared, "trophy": trophy,
             "missions_done": [{"icon": MISSIONS[k][0], "text": MISSIONS[k][1]} for k in done_now],
@@ -3431,7 +3500,7 @@ def planet_record(p, key, code, results):
                           "rarity": i["rarity"]} for i in unlocked],
             "total_stars": star_count(entry),
             "misses": entry["misses"].get(key, 0),   # runs in a row that didn't get there
-            "helpers": planet_helpers(p, key) if entry["misses"].get(key, 0) >= HELP_AFTER
+            "helpers": planet_helpers(p, key) if entry["misses"].get(key, 0) >= help_after()
             and key not in entry["solved"] else [],
             "can_skip": can_skip(p, key), "closer": closer}
 
@@ -3495,7 +3564,7 @@ def planet_now(q, entry, frontier_key):
     the map is the one they see themselves, without any hidden rule."""
     now = entry["now"] or {"site": frontier_key,
                            "code": entry["code"].get(frontier_key, "")}
-    key = now["site"] if now["site"] in planet.SITE_ORDER else frontier_key
+    key = now["site"] if planet.find_site(now["site"]) else frontier_key
     zi, zone, s = planet.find_site(key)
     if key == planet.UNCHARTED["key"]:
         grid = now.get("map") or planet.UNCHARTED_SAMPLE["map"]
@@ -3506,7 +3575,8 @@ def planet_now(q, entry, frontier_key):
         # The lander, or home where the rover starts there (Cargo Run).
         pos = next([r, c] for r, row in enumerate(grid) for c, ch in enumerate(row)
                    if ch in "SH")
-    return {"site": key, "site_name": s["name"], "zone": zone["key"], "map": grid,
+    return {"site": key, "site_name": s["name"], "zone": zone["key"],
+            "zone_name": zone["name"], "map": grid,
             "pos": pos, "end": now.get("end"), "code": now.get("code", ""),
             "said": now.get("said")}
 
@@ -3567,7 +3637,13 @@ def planet_class():
         key = planet.SITE_ORDER[frontier]
         zi, zone, s = planet.find_site(key)
         now = planet_now(q, entry, key)
+        here = now["site"]
         rows.append({"id": q["id"], "name": q["name"], "site": key,
+                     "practice": here in planet.PRACTICE_ORDER,
+                     "practice_solved": sum(k in entry["solved"] for k in planet.PRACTICE_ORDER),
+                     "misses": entry["misses"].get(here, 0),
+                     "runs_now": entry["runs"].get(here, 0),
+                     "stars_now": shown_stars(here, entry["stars"].get(here, [False] * 3)),
                      "at": frontier,   # sites behind them, unlocked ones included
                      "site_name": s["name"], "zone": zone["name"],
                      "solved": len(entry["solved"]),
@@ -3589,7 +3665,11 @@ def planet_class():
                      "skipped": [k for k in entry.get("skipped", []) if k not in entry["solved"]]})
     rows.sort(key=lambda x: (x["at"], -x["runs_here"], x["name"].lower()))
     return {"students": rows, "sites": len(planet.SITE_ORDER),
+            "practice_sites": len(planet.PRACTICE_ORDER),
             "zones": [z["name"] for z in planet.ZONES],
+            "practice_zones": [z["name"] for z in planet.PRACTICE_ZONES],
+            "zone_keys": {z["name"]: z["key"] for z in planet.PRACTICE_ZONES + planet.ZONES},
+            "runs": planet_runs[-10:],
             "class": {"stars": class_stars(), "goals": CLASS_GOALS, "unlocks": CLASS_UNLOCKS,
                       "max": 3 * len(planet.SITE_ORDER) * max(1, len(rows))},
             "feed": planet_feed[-12:]}
@@ -3808,6 +3888,35 @@ def admin_action(data):
     if action == "planet_spotlight_off":
         planet_spotlight[0] = None
         return "The class screen is back to the fleet."
+    if action == "planet_remove":
+        # Only their Strange Planet progress: the other games keep them.
+        q = players.get(data.get("pid"))
+        if not q or not q.pop("planet", None):
+            return "No such student."
+        return f"Removed {q['name']} from Strange Planet."
+    if action == "planet_blanks":
+        planet_class_settings["blanks"] = bool(data.get("on"))
+        return ("Scouted code now has a few words to finish." if planet_class_settings["blanks"]
+                else "Scouted code now comes out whole, nothing to finish.")
+    if action == "planet_coach":
+        # Letter by letter needs words to finish.
+        planet_class_settings["coach"] = bool(data.get("on"))
+        if planet_class_settings["coach"]:
+            planet_class_settings["blanks"] = True
+        return ("Scouted code is now finished letter by letter, on every site."
+                if planet_class_settings["coach"] else
+                "Letter-by-letter typing help is off (the practice sites keep it).")
+    if action == "planet_easy":
+        # The practice sites are drive by hand, then finish the words, so
+        # easy mode turns the scouted-code blanks on.
+        planet_class_settings["easy"] = bool(data.get("on"))
+        if planet_class_settings["easy"]:
+            planet_class_settings["blanks"] = planet_class_settings["coach"] = True
+        return (f"Easy mode on: {len(planet.PRACTICE_ORDER)} practice sites that start "
+                f"with driving by hand, classmates to ask after {EASY_HELP_AFTER} misses, "
+                f"Skip after {EASY_SKIP_AFTER}."
+                if planet_class_settings["easy"] else
+                f"Easy mode off: classmates after {HELP_AFTER} misses, Skip after {SKIP_AFTER}.")
     if action == "cycles_reset":
         # A new season (or a new class) starts with nobody entered, so last
         # class's bots and ej's own test bot don't ride in its battles. Each
@@ -3885,12 +3994,14 @@ def cake_public(p):
 
 
 def cake_frontier(p):
-    """Index in cake.LEVEL_ORDER of the furthest level this student may open."""
+    """Index in cake.LEVEL_ORDER of the furthest level this student may open:
+    the first one they haven't solved, counting from the one the teacher
+    opened, so baking it goes on even with skipped levels behind."""
     entry = cake_entry(p)
-    first = next((i for i, key in enumerate(cake.LEVEL_ORDER)
-                  if key not in entry["solved"]), len(cake.LEVEL_ORDER) - 1)
-    return max(first, min(max(entry["unlocked"], cake_class.get("open", 0)),
-                          len(cake.LEVEL_ORDER) - 1))
+    last = len(cake.LEVEL_ORDER) - 1
+    start = min(max(entry["unlocked"], cake_class.get("open", 0)), last)
+    return next((i for i in range(start, last + 1)
+                 if cake.LEVEL_ORDER[i] not in entry["solved"]), last)
 
 
 def cake_open(p, key):
@@ -4169,6 +4280,7 @@ PAGES = {
     "/planet/teacher": ("planet_teacher.html", "text/html; charset=utf-8"),
     "/planet/show": ("planet_show.html", "text/html; charset=utf-8"),
     "/planet/render.js": ("planet_render.js", "text/javascript; charset=utf-8"),
+    "/planet/replay.js": ("planet_replay.js", "text/javascript; charset=utf-8"),
     "/cake": ("cake.html", "text/html; charset=utf-8"),
     "/cake/teacher": ("cake_teacher.html", "text/html; charset=utf-8"),
     "/cake/show": ("cake_show.html", "text/html; charset=utf-8"),
@@ -4267,7 +4379,10 @@ class Handler(BaseHTTPRequestHandler):
             with lock:
                 p = players.get(pid)
                 if path == "/planet/overview":
-                    body = dict(planet_class(), address=address, spotlight=planet_spotlight[0])
+                    body = dict(planet_class(), address=address, spotlight=planet_spotlight[0],
+                                blanks=planet_class_settings["blanks"],
+                                coach=planet_class_settings["coach"],
+                                easy=planet_class_settings["easy"])
                 elif not p:
                     body = {"you": None}
                 elif path == "/planet/state":
@@ -4414,13 +4529,20 @@ class Handler(BaseHTTPRequestHandler):
                 if ok:
                     zi, zone, s = planet.find_site(key)
                     variant = planet_variant(p, key)
+            sensors = (zone.get("sensors") or planet.sensors_for(zi)) if ok else ()
+            # A list, not a set: a move sent as a list or dict must fail the
+            # check, not crash it.
+            acts = [f"{a}:{way}" for a in SCOUT_ACTS if a in sensors for way in planet.COMPASS]
             if not ok or not isinstance(moves, list) or \
-                    any(m not in planet.COMMANDS for m in moves):
+                    any(m not in planet.COMMANDS and m not in acts for m in moves):
                 self._send(200, {"error": "Scouting isn't available here."})
                 return
-            code = "".join(f"{m}()\n" for m in moves[:SCOUT_MAX])
+            code = "".join('{}("{}")\n'.format(*m.split(":")) if m in acts else f"{m}()\n"
+                           for m in moves[:SCOUT_MAX])
             self._send(200, {"run": planet.drive(code, variant, zone["rules"], zi),
-                             "left": SCOUT_MAX - min(len(moves), SCOUT_MAX)})
+                             "left": SCOUT_MAX - min(len(moves), SCOUT_MAX),
+                             "blanks": planet_class_settings["blanks"],
+                             "coach": planet_class_settings["coach"]})
             return
         if self.path == "/planet/look":
             with lock:
@@ -4477,7 +4599,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/planet/hint":
             with lock:
                 p = players.get(data.get("id"))
-                zone = next((z for z in planet.ZONES
+                zone = next((z for z in planet.ZONES + planet.PRACTICE_ZONES
                              if z["key"] == data.get("zone")), None)
                 if not p:
                     self._send(200, {"error": "join"})

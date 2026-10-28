@@ -492,6 +492,9 @@ class Classroom(unittest.TestCase):
         self.assertEqual(self.get(f"/cake/state?id={pid}")["current"], "4a")
         self.assertNotIn("error", self.get(f"/cake/level?id={pid}&level=4a"))
         self.assertIn("error", self.get(f"/cake/level?id={pid}&level=4b"))
+        # Baking the opened level goes on past it, with the earlier ones still to do.
+        self.bake(pid, "4a")
+        self.assertEqual(self.get(f"/cake/state?id={pid}")["current"], "4b")
 
     def test_teacher_overview(self):
         pid = self.join()

@@ -88,6 +88,10 @@
   /* The route: every zone a stretch of trail, every site a waypoint on it. */
   .route { display: flex; align-items: center; gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: none; padding: 6px 2px; }
   .route::-webkit-scrollbar { display: none; }
+  /* A faded edge where more of the route is scrolled out of sight. */
+  .route.more-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent); }
+  .route.more-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 40px); mask-image: linear-gradient(90deg, transparent, #000 40px); }
+  .route.more-l.more-r { -webkit-mask-image: linear-gradient(90deg, transparent, #000 40px calc(100% - 40px), transparent); mask-image: linear-gradient(90deg, transparent, #000 40px calc(100% - 40px), transparent); }
   .leg { display: flex; align-items: center; gap: 0; padding: 3px 8px 3px 4px; border-radius: 99px; flex: none; }
   .leg.here { background: var(--panel); }
   .zg { font-size: 16px; width: 24px; text-align: center; filter: saturate(.85); }
@@ -108,6 +112,54 @@
   .wp:not(.locked):hover span { transform: scale(1.25); }
 
   .main { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 420px); }
+
+  /* Levels: a big button in the bar, and a map of every zone and level. */
+  .levels-button { flex: none; display: flex; align-items: center; gap: 7px; border: 0; border-radius: 12px; padding: 7px 14px 7px 11px; background: var(--violet); color: #1d1240; font: 800 15px var(--ui); box-shadow: 0 3px 0 #7b62d6; }
+  .levels-button:hover { background: #cbb9ff; }
+  .levels-button:active { transform: translateY(2px); box-shadow: 0 1px 0 #7b62d6; }
+  .site-nav { display: inline-flex; align-items: center; gap: 4px; align-self: center; }
+  .step-site { width: 30px; height: 30px; border: 1px solid var(--edge); border-radius: 9px; background: var(--dusk); color: var(--haze); font-size: 12px; padding: 0; }
+  .step-site:hover:not(:disabled) { color: var(--bone); background: var(--panel-2); }
+  .step-site:disabled { opacity: .3; cursor: default; }
+  .site-tag { min-width: 38px; padding: 4px 8px; border-radius: 9px; background: var(--panel); color: var(--gold); font: 800 14px var(--mono); text-align: center; }
+  .levels-card { width: min(1040px, 100%); max-height: calc(100vh - 32px); display: grid; grid-template-rows: auto minmax(0, 1fr); background: var(--dusk); border-radius: 22px; box-shadow: 0 30px 80px rgba(0,0,0,.5), inset 0 0 0 1px var(--edge); overflow: hidden; }
+  .levels-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 16px 20px; border-bottom: 1px solid var(--edge); background: var(--panel); }
+  .levels-head h2 { margin: 0; font-size: 26px; font-weight: 850; letter-spacing: -.02em; }
+  .levels-stars { color: var(--gold); font: 700 16px var(--mono); }
+  .levels-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+  .zone-list { overflow: auto; padding: 16px 20px 22px; display: grid; gap: 14px; }
+  .zone-card { border-radius: 18px; background: rgba(53,45,96,.45); box-shadow: inset 0 0 0 1px var(--edge); padding: 14px 16px 16px; }
+  .zone-card.here { box-shadow: inset 0 0 0 2px var(--amber); background: rgba(70,52,40,.35); }
+  .zone-card.locked { padding: 10px 16px; opacity: .6; }
+  .zone-top { display: flex; align-items: center; gap: 12px; }
+  .zone-ico { font-size: 34px; line-height: 1; width: 44px; text-align: center; }
+  .zone-card.locked .zone-ico { filter: grayscale(1); font-size: 24px; }
+  .zone-top h3 { margin: 0; font-size: 19px; font-weight: 800; }
+  .zone-top p { margin: 2px 0 0; color: var(--haze); font-size: 14px; }
+  .zone-prog { margin-left: auto; text-align: right; color: var(--haze); font: 13px var(--mono); white-space: nowrap; }
+  .zone-prog b { display: block; color: var(--gold); font-size: 15px; }
+  .zone-prog .all { color: var(--mint); }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; margin-top: 12px; }
+  .tile { position: relative; display: grid; gap: 3px; justify-items: center; align-content: start; min-height: 104px; padding: 12px 8px 10px; border: 0; border-radius: 16px; background: var(--panel); color: var(--bone); box-shadow: 0 4px 0 #1b1733, inset 0 0 0 1px var(--edge); transition: transform .12s; }
+  .tile:hover:not(:disabled) { transform: translateY(-3px); background: var(--panel-2); }
+  .tile b { font: 850 22px var(--mono); color: var(--violet); }
+  .tile .tname { font-size: 13px; font-weight: 650; line-height: 1.2; text-align: center; }
+  .tile .tstars { font-size: 17px; letter-spacing: 2px; color: #4d4378; }
+  .tile .tstars i { font-style: normal; color: var(--gold); text-shadow: 0 0 8px rgba(255,211,107,.6); }
+  .tile.done b { color: var(--mint); }
+  .tile.gold { box-shadow: 0 4px 0 #1b1733, inset 0 0 0 2px var(--gold); }
+  .tile.gold b { color: var(--gold); }
+  .tile.now { background: #4a3a22; box-shadow: 0 4px 0 #1b1733, inset 0 0 0 3px var(--amber); }
+  .tile.now::before { content: "YOU ARE HERE"; position: absolute; top: -9px; padding: 1px 8px; border-radius: 99px; background: var(--amber); color: #2a1a00; font: 800 10px/16px var(--ui); letter-spacing: .06em; }
+  .tile.next:not(.now) { animation: tile-glow 1.8s ease-in-out infinite; }
+  .tile.next:not(.now)::before { content: "PLAY NEXT"; position: absolute; top: -9px; padding: 1px 8px; border-radius: 99px; background: var(--mint); color: #12302a; font: 800 10px/16px var(--ui); letter-spacing: .06em; }
+  @keyframes tile-glow { 50% { box-shadow: 0 4px 0 #1b1733, inset 0 0 0 2px var(--mint), 0 0 22px rgba(140,242,198,.5); } }
+  .calm .tile.next { animation: none; box-shadow: 0 4px 0 #1b1733, inset 0 0 0 2px var(--mint); }
+  .tile:disabled { cursor: default; opacity: .5; box-shadow: inset 0 0 0 1px var(--edge); background: transparent; }
+  .tile:disabled b { color: var(--dim); }
+  .tile .tgift { position: absolute; top: 6px; right: 8px; font-size: 15px; }
+  .tile .tlock { font-size: 18px; }
+  @media (max-width: 700px) { .tiles { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); } .levels-button span { display: none; } }
 
   /* ---- The planet view ---------------------------------------------------------- */
   .view { min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: var(--sky); }
@@ -151,7 +203,10 @@
   .status.s-scout { color: #1b1733; background: var(--violet); }
   .status.s-scout::before { background: #1b1733; }
   .record { font: 600 12px var(--ui); color: var(--gold); background: rgba(18,13,34,.72); padding: 4px 10px; border-radius: 99px; white-space: nowrap; max-width: 300px; overflow: hidden; text-overflow: ellipsis; }
-  .right-hud { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  /* The record sits beside the status, off the map's numbers; planets go under. */
+  .right-hud { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; min-width: 0; }
+  .right-hud .record { order: -1; }
+  .right-hud .planets { flex-basis: 100%; justify-content: flex-end; }
   .planets { display: flex; gap: 6px; pointer-events: auto; }
   .planet-tab { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; font: 700 12px var(--mono); display: grid; place-items: center; color: #1b1733; }
   .planet-tab.ok { background: radial-gradient(circle at 35% 30%, #c9ffe6, #59c99a); }
@@ -236,6 +291,12 @@
   .pad .wait { grid-column: 2; grid-row: 2; font-size: 15px; }
   .pad .right { grid-column: 3; grid-row: 2; }
   .pad .down { grid-column: 2; grid-row: 3; }
+  .pad .jump { grid-column: 1; grid-row: 1; font-size: 17px; }
+  .pad .drill { grid-column: 3; grid-row: 1; font-size: 17px; }
+  .pad [data-move="jump"], .pad [data-move="drill"] { background: rgba(255,181,71,.3); }
+  .pad button.on { background: var(--amber); color: #2a1a00; }
+  .pad button.on small { color: #2a1a00; }
+  .pad.armed button:is(.up, .left, .right, .down) { box-shadow: 0 3px 0 #1b1733, 0 0 0 3px var(--amber); }
   /* Which way is north: the rover drives by compass, never by turning. */
   .compass { position: absolute; left: 12px; bottom: 40px; width: 58px; height: 58px; pointer-events: none; opacity: .9; }
   .scout-help { position: absolute; left: 80px; bottom: 14px; max-width: calc(100% - 266px); padding: 8px 12px; border-radius: 12px; background: rgba(39,27,72,.9); box-shadow: inset 0 0 0 1px var(--violet); font-size: 13px; color: #e5dcff; }
@@ -299,6 +360,23 @@
   .problem:hover { background: rgba(255,181,71,.26); }
   .big .ac { font-size: 15px; width: 330px; } .big .ac-help, .big .sig { font-size: 14px; }
   .kit { display: flex; flex-wrap: wrap; gap: 5px; padding: 10px 12px 0; }
+  /* Little kids (easy mode, practice sites): four steps, and a coach for the letters. */
+  .steps { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 8px; font-size: 14px; color: var(--dim); }
+  .step { padding: 4px 12px; border: 0; border-radius: 99px; background: var(--dusk); color: var(--haze); font: inherit; }
+  button.step { cursor: pointer; }
+  .step.done { color: var(--mint); }
+  .step.now { background: var(--violet); color: #1b1733; font-weight: 700; }
+  .type-coach { margin: 10px 12px 0; padding: 10px 12px; border-radius: 12px; background: rgba(39,27,72,.9); box-shadow: inset 0 0 0 2px var(--violet); color: #e5dcff; font-size: 16px; line-height: 1.5; }
+  .type-coach .keys { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .type-coach kbd { display: inline-grid; place-items: center; min-width: 34px; height: 40px; padding: 0 6px; border-radius: 8px; background: var(--dusk); color: var(--dim); font: 700 22px var(--mono); }
+  .type-coach kbd.got { background: #2f5a46; color: var(--bone); }
+  .type-coach kbd.next { background: var(--violet); color: #1b1733; animation: nudge 1.4s ease-in-out infinite; }
+  .type-coach .oops { color: var(--amber); }
+  .type-coach.shake { animation: shake .35s; }
+  .calm .type-coach kbd.next, .calm .type-coach.shake { animation: none; }
+  .scout-help .kid { display: none; font-size: 15px; }
+  .scout-help.kids .kid { display: inline; }
+  .scout-help.kids .adult { display: none; }
   .chip { border: 0; border-radius: 7px; padding: 3px 7px; background: var(--panel); color: #d9ccff; font: 12.5px var(--mono); position: relative; }
   .chip:hover { background: var(--panel-2); color: var(--bone); }
   /* The same colours as in the code: commands drive, sensors answer. */
@@ -384,7 +462,7 @@
   .stage-tag b { display: block; color: var(--bone); font-size: 17px; }
   .garage-card h2 { margin: 0; font-size: 24px; font-weight: 850; letter-spacing: -.02em; }
   .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-  .tab { position: relative; border: 1px solid var(--edge); background: var(--panel); border-radius: 99px; padding: 5px 11px; font-size: 13.5px; color: var(--haze); }
+  .tab { position: relative; border: 1px solid var(--edge); background: var(--panel); border-radius: 99px; padding: 8px 14px; font-size: 15px; font-weight: 650; color: var(--haze); }
   .tab:hover { color: var(--bone); }
   .tab.on { background: var(--bone); border-color: var(--bone); color: #1b1733; font-weight: 750; }
   .tab small { margin-left: 4px; font: 600 11px var(--mono); opacity: .75; }
@@ -417,6 +495,16 @@
   /* Done stays in reach while the shelf scrolls. */
   .garage-head { position: sticky; top: -18px; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: -18px -20px 6px; padding: 18px 20px 8px; background: var(--dusk); }
   .garage-head span { color: var(--gold); font: 700 16px var(--mono); margin-right: auto; margin-left: 12px; }
+  .garage-head span small { margin-left: 10px; color: var(--haze); font: 600 13.5px var(--ui); }
+  /* What the next stars unlock, and how to get them. */
+  .garage-next { width: 100%; display: flex; align-items: center; gap: 12px; margin: 0 0 14px; padding: 10px 14px; border: 0; border-radius: 14px; background: linear-gradient(90deg, rgba(255,211,107,.16), rgba(185,163,255,.12)); box-shadow: inset 0 0 0 1px rgba(255,211,107,.35); color: var(--haze); font-size: 14.5px; text-align: left; }
+  .garage-next:hover { box-shadow: inset 0 0 0 2px var(--gold); }
+  .garage-next .big { font-size: 26px; line-height: 1; }
+  .garage-next b { color: var(--bone); }
+  .garage-next .gn-text { flex: 1; min-width: 0; }
+  .garage-next .nu-bar { display: block; margin-top: 6px; height: 9px; }
+  .garage-next .gn-go { flex: none; padding: 6px 12px; border-radius: 10px; background: var(--violet); color: #1d1240; font-weight: 800; }
+  .garage-actions { display: flex; gap: 8px; }
   .card .new, .badge .new { color: #2a0f24; background: #ff8ad8; border-radius: 99px; padding: 0 5px; font: 800 10px/15px var(--ui); letter-spacing: .05em; }
   .card.fresh, .badge.fresh { box-shadow: inset 0 0 0 2px #ff8ad8; }
   .gift-note { margin: 10px 0 0; color: var(--haze); font-size: 13px; }
@@ -461,7 +549,7 @@
     .site-head { padding: 10px 14px 8px; }
     .garage-top { grid-template-columns: 1fr; }
     .stage { position: static; justify-self: center; }
-    .stage canvas { width: min(280px, 100%); height: auto; aspect-ratio: 1; }
+    .stage canvas { width: min(220px, 100%); height: auto; aspect-ratio: 1; }
     .scout-help { max-width: calc(100% - 28px); bottom: 130px; }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -501,6 +589,7 @@
 <main class="app" id="app" hidden>
   <header class="bar">
     <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#352d60"/><rect x="8" y="13" width="16" height="9" rx="2" fill="#f2eadb"/><rect x="6" y="11" width="4" height="4" rx="1" fill="#2a2440"/><rect x="22" y="11" width="4" height="4" rx="1" fill="#2a2440"/><rect x="6" y="20" width="4" height="4" rx="1" fill="#2a2440"/><rect x="22" y="20" width="4" height="4" rx="1" fill="#2a2440"/><circle cx="20" cy="17" r="2.4" fill="#8cf2c6"/></svg>Strange Planet</div>
+    <button class="levels-button" id="levelsButton" title="Every level: pick one to play">🗺<span>Levels</span></button>
     <nav class="route" id="route" aria-label="Your route across the planet"></nav>
     <div class="who">
       <button class="stars-button" id="starsButton" title="Your stars, the garage and your badges"><span id="rankIcon"></span>★ <span id="totalStars">0</span><span class="garage-word">🔧 Garage</span><i class="new-pip" id="newPip" hidden>NEW</i><i class="rank-bar"><b id="rankBar"></b></i></button>
@@ -513,8 +602,9 @@
   <div class="main">
     <section class="view">
       <div class="site-head">
-        <div class="title-row"><h1 id="siteName">…</h1><div id="siteBrief"></div></div>
+        <div class="title-row"><div class="site-nav"><button class="step-site" id="prevSite" title="The level before" aria-label="The level before">◀</button><span class="site-tag" id="siteTag"></span><button class="step-site" id="nextSiteButton" title="The next level" aria-label="The next level">▶</button></div><h1 id="siteName">…</h1><div id="siteBrief"></div></div>
         <div class="goals" id="goals"></div>
+        <div class="steps" id="steps" hidden></div>
       </div>
       <div class="scope" id="scope">
         <canvas id="map" aria-label="The planet surface and the rover"></canvas>
@@ -538,9 +628,11 @@
         <svg class="compass" id="compass" viewBox="0 0 58 58" aria-hidden="true"><circle cx="29" cy="29" r="20" fill="rgba(18,13,34,.6)" stroke="rgba(242,234,219,.25)"/><path d="M29 12 L33 29 L29 26 L25 29 Z" fill="#8cf2c6"/><path d="M29 46 L33 29 L29 32 L25 29 Z" fill="rgba(242,234,219,.4)"/><g font-family="ui-monospace,monospace" font-size="9" font-weight="700" fill="#f2eadb" text-anchor="middle"><text x="29" y="8">N</text><text x="29" y="57">S</text><text x="53" y="32">E</text><text x="5" y="32">W</text></g></svg>
         <div class="where" id="where" hidden></div>
         <div class="banner" id="banner" hidden><p id="bannerText"></p><div class="banner-actions" id="bannerActions"></div></div>
-        <div class="scout-help" id="scoutHelp" hidden><b>Scouting</b>: arrow keys drive north, south, east and west · space waits · R restarts. <span id="scoutLeft"></span> Only code completes the mission. <button class="quiet" id="scoutCode" disabled>📋 Use as code</button></div>
+        <div class="scout-help" id="scoutHelp" hidden><span class="adult"><b>Scouting</b>: arrow keys drive north, south, east and west · space waits<span id="scoutExtra"></span> · R restarts. <span id="scoutLeft"></span> Only code completes the mission.</span><span class="kid" id="scoutKid">🕹 Drive the rover with the arrow buttons <b>↑ ↓ ← →</b>. Made a mistake? Press R to start again.</span> <button class="quiet" id="scoutCode" disabled>📋 Use as code</button></div>
         <div class="pad" id="pad" hidden aria-label="Drive by hand">
+          <button class="jump" data-move="jump" hidden aria-label="Jump: then press an arrow">🦘<small>jump</small></button>
           <button class="up" data-move="north" aria-label="Drive north">↑<small>N</small></button>
+          <button class="drill" data-move="drill" hidden aria-label="Drill: then press an arrow">⛏<small>drill</small></button>
           <button class="left" data-move="west" aria-label="Drive west">←<small>W</small></button>
           <button class="wait" data-move="wait" aria-label="Wait one tick">⏳<small>wait</small></button>
           <button class="right" data-move="east" aria-label="Drive east">→<small>E</small></button>
@@ -570,6 +662,7 @@
     <section class="uplink">
       <div class="uplink-head"><b id="fileName">rover.py</b><span id="lineCount"></span></div>
       <div class="editor"><div class="lines" id="lines">1</div><div class="code-wrap"><pre class="paint" id="paint" aria-hidden="true"></pre><textarea id="code" aria-label="Your rover program. Press Escape then Tab to leave it." spellcheck="false" autocapitalize="off" autocomplete="off"></textarea><div class="ac" id="ac" hidden></div><div class="sig" id="sig" hidden></div><button class="problem" id="problem" hidden title="Go to that line"></button><div class="sig hover" id="hover" hidden></div></div></div>
+      <div class="type-coach" id="typeCoach" hidden aria-live="polite"></div>
       <div class="kit" id="kit" aria-label="Commands and sensors: click one to add it"></div>
       <div class="actions">
         <button class="go transmit" id="runButton" title="F5 or Ctrl+Enter">Transmit ▶</button>
@@ -602,7 +695,8 @@
 </div>
 <div class="dialog" id="garage" hidden role="dialog" aria-modal="true" aria-labelledby="garageTitle">
   <div class="garage-card">
-    <div class="garage-head"><h2 id="garageTitle">Garage</h2><span id="garageStars"></span><button class="quiet" id="surpriseButton" title="A random look from everything you've unlocked">🎲 Surprise me</button><button class="quiet" id="garageClose">Done</button></div>
+    <div class="garage-head"><h2 id="garageTitle">Garage</h2><span id="garageStars"></span><div class="garage-actions"><button class="quiet" id="surpriseButton" title="A random look from everything you've unlocked">🎲 Surprise me</button><button class="quiet" id="garageClose">Done</button></div></div>
+    <button class="garage-next" id="garageNext" hidden></button>
     <div class="garage-top">
       <div class="stage">
         <canvas id="garageScene" aria-hidden="true"></canvas>
@@ -614,6 +708,16 @@
         <p class="gift-note" id="giftNote"></p>
       </div>
     </div>
+  </div>
+</div>
+<div class="dialog" id="levels" hidden role="dialog" aria-modal="true" aria-labelledby="levelsTitle">
+  <div class="levels-card">
+    <div class="levels-head">
+      <h2 id="levelsTitle">🗺 Levels</h2>
+      <span class="levels-stars" id="levelsStars"></span>
+      <div class="levels-actions"><button class="go" id="levelsPlay"></button><button class="quiet" id="levelsClose">Close</button></div>
+    </div>
+    <div class="zone-list" id="zoneList"></div>
   </div>
 </div>
 <div class="dialog" id="intro" hidden role="dialog" aria-modal="true" aria-labelledby="introTitle">
@@ -629,7 +733,7 @@
       </ol>
       <details class="intro-more"><summary>More tips</summary>
       <p class="intro-note">The editor helps you type: start a word and it suggests commands (Enter or Tab picks one), brackets and quotes close themselves, and a slip gets a ⚠ on its line. Point at a word to see what it does. Ctrl+/ turns lines into notes.</p>
-      <p class="intro-note">Earn three stars on every site. Stuck? 🕹 Scout drives by hand, 📻 Hints asks mission control. Made a good <code>def</code>? 🧰 Functions keeps it for later sites.</p>
+      <p class="intro-note">Earn every star you can on each site. Stuck? 🕹 Scout drives by hand, 📻 Hints asks mission control. Made a good <code>def</code>? 🧰 Functions keeps it for later sites.</p>
       <p class="intro-note">Stars unlock paint, hats, trails and new looks for the whole map in the 🔧 Garage at the top. Spot a 🎁 on the map? Drive over it for a secret one. Click your rover to say hi.</p>
       </details>
       <label class="calm-pick"><input type="checkbox" id="calmPick"> Calm mode: no shaking, confetti or flashing</label>
@@ -659,12 +763,12 @@ let scene = null;     // what the canvas shows: map, zone, frames, events
 let pos = 0, playing = false, lastTs = 0, fps = 8, heard = 0;
 let errorLine = 0, errorCount = 0;
 
-const ZONE_ICONS = {landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", uncharted: "🪐"};
+const ZONE_ICONS = {practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐"};
 // Each sensor arrives with a zone (matches planet.SENSOR_ZONE).
 const SENSOR_ZONE = {look: 0, at_beacon: 0, x: 1, y: 1, report: 1, tick: 2, samples_left: 3,
   battery: 4, in_sun: 4, beacon_x: 6, beacon_y: 6, jump: 7, drill: 9, drills_left: 9,
   has_key: 10, key_x: 10, key_y: 10, next_x: 11, next_y: 11, flags_left: 11, distance: 13,
-  cargo: 14, home_x: 14, home_y: 14, sample_x: 14, sample_y: 14, gust_in: 15};
+  cargo: 14, home_x: 14, home_y: 14, sample_x: 14, sample_y: 14, gust_in: 16};
 const HELP = {
   north: "Drive north (up). north(3) drives 3 squares.", south: "Drive south (down). south(3) drives 3 squares.",
   east: "Drive east (right). east(3) drives 3 squares.", west: "Drive west (left). west(3) drives 3 squares.",
@@ -694,6 +798,8 @@ const LINE_CHIPS = [...COMMANDS, "report", "jump", "drill"];
 const CHIP_TEXT = {look: 'look("east")', jump: 'jump("east")', drill: 'drill("east")', distance: 'distance("east")'};
 let look = {paint: "bone", topper: "none", trail: "tracks", world: "planet"};
 
+const NO_ANSWER = "Can't reach the game right now. Your code is safe: try again in a moment, and tell your teacher if it keeps happening.";
+function plural(n, word) { return `${n} ${word}${n === 1 ? "" : "s"}`; }
 function esc(value) {
   return String(value).replace(/[&<>\"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
 }
@@ -847,6 +953,9 @@ function shade(hex, f) {
 
 // ---- What each zone's ground looks like -------------------------------------------
 const GROUND = {
+  practice: {ground: "#6f9a4f", rock: "#3d5a2e", bed: "#1a2a14"},
+  garden: {ground: "#8a9b52", rock: "#56603a", bed: "#20240f"},
+  rink: {ground: "#7f8fa8", rock: "#44506a", bed: "#1c2230"},
   landing: {ground: "#b5683f", rock: "#5a3125", bed: "#2e1912"},
   ice: {ground: "#8e7f93", rock: "#4b4157", bed: "#231d2b"},
   wind: {ground: "#c39457", rock: "#6a4628", bed: "#2f2014"},
@@ -862,6 +971,7 @@ const GROUND = {
   push: {ground: "#a08f7d", rock: "#4f4339", bed: "#231c16"},
   laser: {ground: "#7f7a96", rock: "#3e3a52", bed: "#191726"},
   cargo: {ground: "#9aa07e", rock: "#4a4f3a", bed: "#1e2117"},
+  tour: {ground: "#a7866a", rock: "#53402f", bed: "#241b13"},
   uncharted: {ground: "#7d8c84", rock: "#3d4945", bed: "#18201d"},
 };
 // The garage's map looks: one palette for every zone in place of the zone's
@@ -1776,14 +1886,14 @@ function markFeed() {
 // ---- A run on screen -------------------------------------------------------------------
 // What the end of a run says: [style, status, sentence]. Doing the mission
 // and stopping short both depend on what the mission was.
-const DONE = {beacon: ["Beacon reached", t => `🎉 Beacon reached in ${t} ticks`],
-  samples: ["Samples collected", t => `🎉 Every sample collected in ${t} ticks`],
+const DONE = {beacon: ["Beacon reached", t => `🎉 Beacon reached in ${plural(t, "tick")}`],
+  samples: ["Samples collected", t => `🎉 Every sample collected in ${plural(t, "tick")}`],
   report: ["Report confirmed", () => "📡 Mission control: that matches what we measured! 🎉"],
-  deliver: ["Samples home", t => `🎉 Every sample brought home in ${t} ticks`]};
-const SHORT = {beacon: t => `🏁 Ended ${t} ticks in, away from the beacon`,
-  samples: t => `🏁 Ended ${t} ticks in, with samples still out there`,
-  report: t => `🏁 Ended ${t} ticks in without a report(). Found the number? Send it with report()`,
-  deliver: t => `🏁 Ended ${t} ticks in, before every sample was home`};
+  deliver: ["Samples home", t => `🎉 Every sample brought home in ${plural(t, "tick")}`]};
+const SHORT = {beacon: t => `🏁 Ended ${plural(t, "tick")} in, away from the beacon`,
+  samples: t => `🏁 Ended ${plural(t, "tick")} in, with samples still out there`,
+  report: t => `🏁 Ended ${plural(t, "tick")} in without a report(). Found the number? Send it with report()`,
+  deliver: t => `🏁 Ended ${plural(t, "tick")} in, before every sample was home`};
 function ending(run) {
   const mission = run.mission || "beacon", t = run.ticks;
   return {
@@ -1791,7 +1901,7 @@ function ending(run) {
     wrong: ["lost", "Wrong number", "📡 Mission control measured something different. Watch the replay again: what number did you see?"],
     fell: ["lost", "Fell", `💥 The rover fell at tick ${t}. What happened just before?`],
     battery: ["lost", "Flat battery", `🔋 Battery flat at tick ${t}. What made the gauge go down?`],
-    ticks: ["lost", "Out of time", `⏱ Out of time after ${t} ticks. Is a loop going round forever?`],
+    ticks: ["lost", "Out of time", `⏱ Out of time after ${plural(t, "tick")}. Is a loop going round forever?`],
     stopped: ["hold", "Stopped", SHORT[mission](t)],
     error: ["lost", "Code error", "⚠️ Code error"],
   }[run.end];
@@ -1968,16 +2078,16 @@ async function celebrate(r, run) {
   const got = r.stars.filter(Boolean).length;
   $("celeTitle").textContent = site.key === "7" ? `${runs.filter(x => x.reached).length} of 5 planets!`
     : r.zone_cleared ? `${ZONE_ICONS[r.zone_cleared.key] || "🗺"} ${r.zone_cleared.name} cleared!` : titles[Math.max(0, got - 1)];
-  $("celeSub").textContent = site.key === "7" ? unchartedSummary() : run.mission === "report" ? "📡 Report confirmed" : `${run.ticks} ticks`;
+  $("celeSub").textContent = site.key === "7" ? unchartedSummary() : run.mission === "report" ? "📡 Report confirmed" : plural(run.ticks, "tick");
   $("bigStars").innerHTML = r.stars.map((s, i) => `<div class="big-star${s ? " got" : r.best[i] ? " was" : ""}" title="${esc(goals[i] || "")}"><i>★</i><span>${esc([...(goals[i] || "★")][0])}</span></div>`).join("");
   const missing = goals.filter((g, i) => !r.best[i]);
   $("celeTip").innerHTML = site.key !== "7" ? starTips(r.best, $("code").value).map(codeSpans).join("\n") : "";
   $("celeMiss").textContent = missing.length && site.key !== "7" && !$("celeTip").textContent ? `Still to earn: ${missing.join(" · ")}` : "";
   $("celeNote").innerHTML = "";
   const next = nextSite();
-  $("celeActions").innerHTML = (next && site.key !== "7" ? `<button class="go" onclick="openSite('${next}')">Next site ▶</button>` : "")
+  $("celeActions").innerHTML = (next && site.key !== "7" ? `<button class="go" onclick="openSite('${next}')">Next level ▶</button>` : "")
     + (r.best.every(Boolean) ? `<button class="quiet" onclick="hideCelebrate()">Watch again</button>`
-       : `<button class="quiet" onclick="hideCelebrate();$('code').focus()">Go for ${3 - r.best.filter(Boolean).length} more ★</button>`);
+       : `<button class="quiet" onclick="hideCelebrate();$('code').focus()">Go for ${r.best.length - r.best.filter(Boolean).length} more ★</button>`);
   $("celebrate").hidden = false;
   // Something new earns the full reveal; a re-run with nothing new shows its
   // stars at once, so trying again stays quick.
@@ -2000,7 +2110,7 @@ async function celebrate(r, run) {
   if (nz) notes.push(`<span class="teaser">Next up: ${ZONE_ICONS[nz.key] || "🪐"} <b>${esc(nz.name)}</b>. ${esc(nz.blurb)}</span>`);
   $("celeNote").innerHTML = notes.join(" &nbsp; ");
   if (r.first_try) SFX.play("first");
-  if (got === 3 || r.record || r.rank_up || r.zone_cleared) throwConfetti();
+  if (got === r.stars.length || r.record || r.rank_up || r.zone_cleared) throwConfetti();
   $("celeActions").querySelector("button").focus();
   const nextBar = showNextUnlock(r.total_stars, r.total_stars - r.new_stars);
   if (r.new_stars) await flyStars(stars.filter((el, i) => r.stars[i]).slice(-r.new_stars), r.total_stars);
@@ -2164,6 +2274,7 @@ function useState(data) {
   classUnlocks(data);
   renderRoute();
   renderFunctions();
+  if (site) renderSiteNav();
 }
 
 // The rank beside the stars: its icon, a bar to the next one, and the words on hover.
@@ -2204,9 +2315,9 @@ function renderRoute() {
       <span class="zg" title="${esc(z.name)}" aria-hidden="true">${ZONE_ICONS[z.key] || "•"}</span>
       ${z.sites.map(s => {
         const n = (s.stars || []).filter(Boolean).length;
-        const cls = [site && s.key === site.key ? "now" : "", n === 3 ? "gold" : n ? "done" : "", s.open ? "" : "locked"].join(" ");
+        const cls = [site && s.key === site.key ? "now" : "", n && n === s.stars.length ? "gold" : n ? "done" : "", s.open ? "" : "locked"].join(" ");
         const gift = s.open && s.gift;
-        const label = `${s.key === "7" ? "" : s.key.toUpperCase() + " "}${s.name}${s.open ? `, ${n} of 3 stars` : ", locked"}${gift ? ", a mystery gift is hidden here" : ""}`;
+        const label = `${s.key === "7" ? "" : s.key.toUpperCase() + " "}${s.name}${s.open ? `, ${n} of ${plural(s.stars.length, "star")}` : ", locked"}${gift ? ", a mystery gift is hidden here" : ""}`;
         return `<button class="wp ${cls}${s.open ? " reach" : ""}" ${s.open ? `onclick="openSite('${s.key}')"` : "disabled"} title="${esc(label)}" aria-label="${esc(label)}"><span></span>${gift ? '<i class="gift" aria-hidden="true">🎁</i>' : ""}</button>`;
       }).join("")}
       ${isHere ? `<span class="zname">${esc(z.name)}</span>` : ""}
@@ -2214,6 +2325,62 @@ function renderRoute() {
   }).join("");
   const now = $("route").querySelector(".wp.now");
   if (now) now.scrollIntoView({block: "nearest", inline: "center"});
+  routeEdges();
+}
+// The level before or after this one, if it's open.
+function stepSite(dir) {
+  if (!site || !state) return null;
+  const order = allSites(), i = order.findIndex(s => s.key === site.key), s = order[i + dir];
+  return i >= 0 && s && s.open ? s.key : null;
+}
+function siteLabel(key) { return key === "7" ? "🪐" : key.toUpperCase(); }
+function renderSiteNav() {
+  $("siteTag").textContent = site ? siteLabel(site.key) : "";
+  $("prevSite").disabled = !stepSite(-1);
+  $("nextSiteButton").disabled = !stepSite(1);
+}
+// The first open level without its first star: where to go next.
+function playNext() {
+  const open = allSites().filter(s => s.open);
+  return (open.find(s => !s.solved && !(s.stars || []).some(Boolean)) || open[open.length - 1] || {}).key;
+}
+function openLevels() {
+  if (!state) return;
+  closePops();
+  const next = playNext(), here = site && site.key;
+  const got = n => (n.stars || []).filter(Boolean).length;
+  $("levelsStars").textContent = `★ ${state.total_stars} / ${state.max_stars}`;
+  const nextSite = allSites().find(s => s.key === next);
+  $("levelsPlay").dataset.key = next || "";
+  $("levelsPlay").textContent = next && next !== here ? `▶ Play next: ${siteLabel(next)} ${nextSite.name}` : "▶ Keep playing";
+  $("zoneList").innerHTML = state.zones.map((z, zi) => {
+    const open = z.sites.some(s => s.open), isHere = z.sites.some(s => s.key === here);
+    const done = z.sites.filter(s => s.solved != null || got(s)).length;
+    const stars = z.sites.reduce((n, s) => n + got(s), 0), max = z.sites.reduce((n, s) => n + s.stars.length, 0);
+    const before = state.zones[zi - 1];
+    if (!open) return `<section class="zone-card locked"><div class="zone-top"><span class="zone-ico">${ZONE_ICONS[z.key] || "🪐"}</span><div><h3>🔒 ${esc(z.name)}</h3><p>${before ? `Finish ${esc(before.name)} to open it.` : "Locked."}</p></div></div></section>`;
+    return `<section class="zone-card${isHere ? " here" : ""}" data-zone="${esc(z.key)}">
+      <div class="zone-top"><span class="zone-ico">${ZONE_ICONS[z.key] || "🪐"}</span><div><h3>${esc(z.name)}</h3><p>${esc(z.blurb || "")}</p></div>
+        <div class="zone-prog"><b class="${stars === max ? "all" : ""}">★ ${stars}/${max}</b>${done} of ${z.sites.length} done</div></div>
+      <div class="tiles">${z.sites.map(s => {
+        const n = got(s), cls = [s.key === here ? "now" : "", s.key === next ? "next" : "", n && n === s.stars.length ? "gold" : n || s.solved != null ? "done" : ""].join(" ");
+        const label = `${siteLabel(s.key)} ${s.name}${s.open ? `, ${n} of ${plural(s.stars.length, "star")}` : ", locked"}`;
+        return s.open
+          ? `<button class="tile ${cls}" data-key="${esc(s.key)}" aria-label="${esc(label)}"><b>${siteLabel(s.key)}</b><span class="tname">${esc(s.name)}</span><span class="tstars">${s.stars.map(x => x ? "<i>★</i>" : "★").join("")}</span>${s.gift ? '<span class="tgift" title="A mystery gift is hidden here">🎁</span>' : ""}</button>`
+          : `<button class="tile" disabled aria-label="${esc(label)}"><b>${siteLabel(s.key)}</b><span class="tname">${esc(s.name)}</span><span class="tlock">🔒</span></button>`;
+      }).join("")}</div></section>`;
+  }).join("");
+  $("levels").hidden = false;
+  const focus = $("zoneList").querySelector(".tile.now") || $("zoneList").querySelector(".tile.next");
+  const card = focus && focus.closest(".zone-card");
+  if (card) card.scrollIntoView({block: "start"});
+  $("levelsPlay").focus();
+}
+function closeLevels() { $("levels").hidden = true; }
+function routeEdges() {
+  const r = $("route");
+  r.classList.toggle("more-l", r.scrollLeft > 2);
+  r.classList.toggle("more-r", r.scrollLeft + r.clientWidth < r.scrollWidth - 2);
 }
 
 // ---- Opening a site -----------------------------------------------------------------------
@@ -2221,7 +2388,7 @@ async function openSite(key) {
   if (busy) return;
   let view;
   try { view = await get(`/planet/site?id=${encodeURIComponent(me)}&site=${encodeURIComponent(key)}`); }
-  catch (_) { showBanner("lost", "No answer from the game. Is the server running?"); return; }
+  catch (_) { showBanner("lost", NO_ANSWER); return; }
   if (view.error) { showBanner("lost", view.error); return; }
   saveCode();
   closePops(); stopScout(true); clearToasts();
@@ -2252,15 +2419,16 @@ async function openSite(key) {
   $("code").scrollTop = 0; $("lines").scrollTop = 0; syncPaint();
   errorLine = 0;
   updateEditor();
-  renderKit(state.zones.indexOf(zone));
+  renderKit(zone.zi);
   renderRadio();
   renderRoute();
+  renderSiteNav();
   playing = false;
   $("planets").hidden = true; $("marks").innerHTML = ""; $("clock").textContent = "";
   $("scrub").max = 0; $("scrub").disabled = true; $("playButton").disabled = true;
   hideCelebrate();
   $("record").hidden = !view.record;
-  if (view.record) $("record").textContent = `🏆 Class record: ${view.record.ticks} ticks · ${view.record.name}`;
+  if (view.record) $("record").textContent = `🏆 Class record: ${plural(view.record.ticks, "tick")} · ${view.record.name}`;
   $("feed").innerHTML = '<div class="empty">Transmit to see the rover\'s telemetry.</div>';
   $("scoutButton").hidden = key === "7";
   resetScene();
@@ -2281,6 +2449,9 @@ async function openSite(key) {
     if (view.new) $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">🆕 ${esc(view.new.icon)} ${codeSpans(view.new.what)}  Try: <code>${esc(view.new.example)}</code></span>`);
   }
   $("status").className = "status"; $("status").textContent = "Ready";
+  // Little kids drive by hand first: their drive becomes their code.
+  if (kidsMode() && !view.solved) toggleScout();
+  renderSteps();
 }
 // The site as it is before anything has run.
 function resetScene() {
@@ -2577,7 +2748,7 @@ function itemHow(i) {
 }
 function renderGarage() {
   const rank = state.rank;
-  $("garageStars").textContent = `★ ${state.total_stars} / ${state.max_stars}` + (rank ? ` · ${rank.icon} ${rank.name}${rank.next ? `, ${rank.need} ★ to ${rank.next_icon} ${rank.next}` : ""}` : "");
+  $("garageStars").innerHTML = `★ ${state.total_stars} / ${state.max_stars}` + (rank ? `<small>${rank.icon} ${esc(rank.name)}${rank.next ? ` · ${rank.need} ★ to ${rank.next_icon} ${esc(rank.next)}` : ""}</small>` : "");
   $("garageTabs").innerHTML = GARAGE_TABS.map(([tab, name]) => {
     const items = tab === "badges" ? state.badges : state.garage.filter(i => i.slot === tab);
     const open = items.filter(i => tab === "badges" ? i.earned : i.open).length;
@@ -2603,8 +2774,20 @@ function renderGarage() {
   }
   const gifts = state.garage.filter(i => i.find), found = gifts.filter(i => i.open).length;
   $("giftNote").textContent = `🎁 ${found} of ${gifts.length} mystery gifts found. They're hidden on the map: drive over one in a run to open it.`;
+  renderGarageNext();
   stageTag();
   garagePreview();
+}
+// The next thing stars unlock, with a bar, and a way to go and earn them.
+function renderGarageNext() {
+  const total = state.total_stars, items = state.garage.filter(g => g.stars != null);
+  const next = items.filter(g => g.stars > total).sort((a, b) => a.stars - b.stars)[0];
+  $("garageNext").hidden = !next;
+  if (!next) return;
+  const from = Math.max(0, ...items.filter(g => g.stars <= total).map(g => g.stars));
+  const need = next.stars - total, pct = Math.max(4, Math.min(100, (total - from) / (next.stars - from) * 100));
+  $("garageNext").dataset.slot = next.slot; $("garageNext").dataset.key = next.key;
+  $("garageNext").innerHTML = `<span class="big">${SLOT_ICON[next.slot] || "🔓"}</span><span class="gn-text"><b>${plural(need, "more star")}</b> unlocks <b>${esc(next.name)}</b> (${SLOT_WORD[next.slot] || next.slot}). Finish levels to earn stars!<span class="nu-bar"><i class="nu-fill" style="width:${pct}%"></i></span></span><span class="gn-go">🗺 Levels</span>`;
 }
 // Under the big preview: what's being tried on, and how to get it.
 function stageTag() {
@@ -2728,8 +2911,9 @@ async function chooseLook(slot, key) {
 function toggleScout() {
   if (scout) return stopScout();
   if (!site || !site.map || busy) return;
-  scout = {moves: [], queue: [], over: false};
+  scout = {moves: [], queue: [], over: false, arm: null};
   rewards = null;
+  showJumpPad();
   $("scoutButton").classList.add("on");
   $("scoutHelp").hidden = false; $("pad").hidden = false;
   hideBanner(); hideCelebrate();
@@ -2737,7 +2921,11 @@ function toggleScout() {
   resetScene(); setPlaying(false); render();
   $("feed").innerHTML = '<div class="empty">Scouting: drive north, south, east and west with the arrow keys or the buttons on the map.</div>';
   scoutLeft(SCOUT_MAX); $("scoutCode").disabled = true;
+  $("scoutHelp").classList.toggle("kids", kidsMode());
+  $("scoutKid").innerHTML = scoutCan("jump") ? "🕹 Drive with the arrows <b>↑ ↓ ← →</b>. To jump, press <b>🦘</b> and then an arrow. Made a mistake? Press R."
+    : "🕹 Drive the rover with the arrow buttons <b>↑ ↓ ← →</b>. Made a mistake? Press R to start again.";
   announce("Scouting. Use the arrow keys to drive.");
+  renderSteps();
 }
 function stopScout(quiet) {
   if (!scout) return;
@@ -2745,13 +2933,33 @@ function stopScout(quiet) {
   $("scoutButton").classList.remove("on");
   $("scoutHelp").hidden = true; $("pad").hidden = true;
   if (!quiet) { hideBanner(); resetScene(); setPlaying(false); render(); $("feed").innerHTML = '<div class="empty">Transmit to see the rover\'s telemetry.</div>'; }
+  renderSteps();
 }
 const SCOUT_MAX = 150;   // matches server.SCOUT_MAX
-function scoutLeft(n) { $("scoutLeft").textContent = `${n} moves left.`; }
+function scoutLeft(n) { $("scoutLeft").textContent = `${plural(n, "move")} left.`; }
 // Key presses queue up (a few at most) while the last move is on its way, so
 // quick tapping never gets lost.
+// Once a site has jump() or drill() in code, scouting has them too: their
+// button (or J, or X) gets the next arrow ready, and Shift with an arrow jumps
+// straight away. Little kids' middle button jumps in place of waiting.
+function scoutCan(act) { return !!site && site.sensors.includes(act); }
+function showJumpPad() {
+  const kidJump = kidsMode() && scoutCan("jump"), pad = $("pad"), mid = pad.querySelector(".wait");
+  mid.dataset.move = kidJump ? "jump" : "wait";
+  mid.innerHTML = kidJump ? `🦘<small>jump</small>` : `⏳<small>wait</small>`;
+  mid.setAttribute("aria-label", kidJump ? "Jump: then press an arrow" : "Wait one tick");
+  pad.querySelector(".jump").hidden = kidJump || !scoutCan("jump");
+  pad.querySelector(".drill").hidden = !scoutCan("drill");
+  for (const b of pad.querySelectorAll('[data-move="jump"], [data-move="drill"]')) b.classList.toggle("on", !!scout && scout.arm === b.dataset.move);
+  pad.classList.toggle("armed", !!(scout && scout.arm));
+  $("scoutExtra").textContent = (scoutCan("jump") ? " · J then an arrow jumps (or Shift+arrow)" : "")
+    + (scoutCan("drill") ? " · X then an arrow drills" : "");
+}
 async function scoutMove(move) {
   if (!scout || scout.over) return;
+  if (move === "jump" || move === "drill") { if (scoutCan(move)) { scout.arm = scout.arm === move ? null : move; showJumpPad(); } return; }
+  if (scout.arm && WAYS.includes(move)) { move = `${scout.arm}:${move}`; scout.arm = null; showJumpPad(); }
+  if (move.includes(":") && !scoutCan(move.split(":")[0])) return;
   if (scout.queue.length < 3) scout.queue.push(move);
   if (busy) return;
   busy = true;
@@ -2764,11 +2972,13 @@ async function scoutMove(move) {
       if (!scout) break;
       if (data.error) { showBanner("lost", data.error); break; }
       scoutLeft(data.left); $("scoutCode").disabled = false;
+      scout.blanks = data.blanks;   // the teacher's switches
+      scout.coach = data.coach;
       showRun(data.run, site.map, site.crystals, Math.min(from, data.run.frames.length - 1));
       if (data.run.end !== "stopped" || !data.left) scout.over = true;
     }
   } catch (_) {
-    showBanner("lost", "No answer from the game. Is the server running?");
+    showBanner("lost", NO_ANSWER);
   } finally { busy = false; }
 }
 function scoutFinished(run) {
@@ -2776,21 +2986,25 @@ function scoutFinished(run) {
   // The trip is over: the banner (with its own buttons) takes the place of
   // the driving help and pad, which would otherwise sit on top of it.
   $("scoutHelp").hidden = true; $("pad").hidden = true;
-  const say = {goal: "Your scout made it! Now write code that does the same.",
+  let say = {goal: "Your scout made it! Now write code that does the same.",
                fell: "Lost!", battery: "Flat battery!",
                ticks: "Out of time.", stopped: "Out of scouting moves."}[run.end] || "";
   if (run.end === "goal") SFX.play("win");
+  scout.reached = run.end === "goal";
+  renderSteps();
   // A lost scout says what happened and one thing to try, like a transmitted run.
   const ex = ["fell", "battery", "ticks"].includes(run.end) && run.explain;
   let next = ex ? ex.next : "";
-  if (next.includes("jump(")) next = "Scouting can't jump, but code can. " + next;
+  if (next.includes("jump(") && !scoutCan("jump")) next = "Scouting can't jump, but code can. " + next;
+  if (kidsMode() && scout.reached) say = "🎉 You made it! Now press 📋 Use as code to turn your drive into code.";
   showBanner("scout", ex ? `${say} ${ex.what}` : say, `${run.end === "goal" ? `<button class="go" onclick="scoutAsCode()">📋 Use as code</button>` : ""}<button class="quiet" onclick="restartScout()">Scout again (R)</button><button class="quiet" onclick="stopScout()">Stop</button>`, next);
 }
-// The hand-driven route, written as code with a few words left for the
-// student to finish: three east() in a row become east(3), a long wait
+// The hand-driven route, written as code, with a few words left for the
+// student to finish if the teacher's switch says so (blanks): three east()
+// in a row become east(3), a long wait
 // becomes a for loop, and a chunk that repeats becomes a for loop too, so the
 // first loop a student sees is their own route.
-function movesAsCode(moves) {
+function movesAsCode(moves, blanks) {
   const legs = [];
   for (const m of moves) {
     const last = legs[legs.length - 1];
@@ -2807,7 +3021,10 @@ function movesAsCode(moves) {
       if (times > 1 && (!loop || size * times > loop.size * loop.times)) loop = {at, size, times};
     }
   }
-  const leg = (x, pad, i) => x.m === "wait" && x.n >= 3 ? `${pad}for ${i} in range(${x.n}):\n${pad}    wait()`
+  const act = m => m.replace(/^(\w+):(\w+)$/, '$1("$2")');   // "drill:east" is drill("east")
+  const leg = (x, pad, i) => x.m.includes(":") ? (x.n >= 3 ? `${pad}for ${i} in range(${x.n}):\n${pad}    ${act(x.m)}`
+      : Array(x.n).fill(pad + act(x.m)).join("\n"))
+    : x.m === "wait" && x.n >= 3 ? `${pad}for ${i} in range(${x.n}):\n${pad}    wait()`
     : x.m === "wait" ? Array(x.n).fill(pad + "wait()").join("\n")
     : `${pad}${x.m}(${x.n > 1 ? x.n : ""})`;
   const lines = loop ? [...legs.slice(0, loop.at).map(x => leg(x, "", "i")),
@@ -2815,37 +3032,119 @@ function movesAsCode(moves) {
       ...legs.slice(loop.at, loop.at + loop.size).map(x => leg(x, "    ", "j")),
       ...legs.slice(loop.at + loop.size * loop.times).map(x => leg(x, "", "i"))]
     : legs.map(x => leg(x, "", "i"));
-  return withBlanks(lines.join("\n") + "\n");
+  const code = lines.join("\n") + "\n";
+  return blanks ? withBlanks(code) : code;
 }
 // A few words cut down to their first letter, with one _ for each missing
 // letter: r____ is range, e___ is east. range first, then commands, then for;
 // never the same word twice, and never every word.
+const BLANK_WORDS = ["range", "for", "north", "south", "east", "west", "wait"];
 function withBlanks(code) {
   const rank = w => w === "range" ? 0 : w === "for" ? 2 : 1;
-  const words = [...code.matchAll(/\b(range|for|north|south|east|west|wait)\b/g)];
+  const words = [...code.matchAll(new RegExp(`\\b(${BLANK_WORDS.join("|")})\\b`, "g"))].filter(m => code[m.index - 1] !== '"');
   const picks = [], used = new Set();
   for (const m of [...words].sort((a, b) => rank(a[1]) - rank(b[1]) || a.index - b.index)) {
     if (!used.has(m[1])) { used.add(m[1]); picks.push(m); }
   }
-  return picks.slice(0, Math.max(1, Math.min(3, Math.round(words.length / 3))))
-    .sort((a, b) => b.index - a.index)
+  const cut = picks.slice(0, Math.max(1, Math.min(3, Math.round(words.length / 3))));
+  blanked = cut.map(m => m[1]);
+  return cut.sort((a, b) => b.index - a.index)
     .reduce((out, m) => out.slice(0, m.index) + m[1][0] + "_".repeat(m[1].length - 1) + out.slice(m.index + m[1].length), code);
 }
-const BLANK = /\b[a-z]_+\b/;
+const BLANK = /\b[a-z]+_+\b/;
 function scoutAsCode() {
   if (!scout || !scout.moves.length) return;
-  const code = movesAsCode(scout.moves);
+  const code = movesAsCode(scout.moves, scout.blanks), coached = kidsMode() || !!scout.coach;
   stopScout();
+  site.handed = true; site.coached = coached;
   replaceText(0, $("code").value.length, code);
   const n = (code.match(new RegExp(BLANK, "g")) || []).length;
-  toast("📋", "Your drive is now code", `Finish the ${n === 1 ? "word" : `${n} words`} with _ in: each _ is one missing letter, and the first letter is a clue. Ctrl+Z brings back what was there.`);
+  if (!coached) toast("📋", "Your drive is now code", n ? `Finish the ${n === 1 ? "word" : `${n} words`} with _ in: each _ is one missing letter, and the first letter is a clue. Ctrl+Z brings back what was there.`
+    : "Press Transmit to send it. Ctrl+Z brings back what was there.");
   goToBlank();
 }
-// Select the _ of the first unfinished word, so typing the rest of it fills them.
+// Put the cursor on the first _ of the first unfinished word.
 function goToBlank() {
   const t = $("code"), m = BLANK.exec(t.value);
   if (!m) return;
-  t.focus(); t.setSelectionRange(m.index + 1, m.index + m[0].length);
+  const at = m.index + m[0].indexOf("_");
+  t.focus(); t.setSelectionRange(at, at);
+}
+// In an unfinished word each letter typed fills one _, and backspace gives
+// it back, so the word keeps its length. Only words withBlanks makes, so
+// names like beacon_x type as usual.
+function fillBlank(e) {
+  const t = $("code"), v = t.value, at = t.selectionStart;
+  const typed = e.inputType === "insertText" && /^[a-z]$/i.test(e.data || "");
+  if (at !== t.selectionEnd || !typed && e.inputType !== "deleteContentBackward") return;
+  const start = at - /[a-z_]*$/i.exec(v.slice(0, at))[0].length;
+  const end = at + /^[a-z_]*/i.exec(v.slice(at))[0].length;
+  const word = v.slice(start, end), letters = word.replace(/_/g, "");
+  const gaps = word.length - letters.length + (typed ? -1 : 1);
+  if (!word.includes("_") || !letters || gaps < 0 ||
+      !BLANK_WORDS.some(w => w[0] === letters[0].toLowerCase() && w.length === letters.length + gaps)) return;
+  if (typingHelp() && typed) {
+    // Only the right letter goes in; a wrong one says which key to look for.
+    const before = letters.slice(0, -1), target = blankTarget(before, letters.length + gaps);
+    if (target && !target.startsWith(letters.toLowerCase())) {
+      replaceText(start, end, before + "_".repeat(gaps + 1));
+      t.setSelectionRange(start + before.length, start + before.length);
+      coachOops = target[before.length];
+      $("typeCoach").classList.remove("shake"); void $("typeCoach").offsetWidth; $("typeCoach").classList.add("shake");
+      renderSteps();
+      return;
+    }
+    coachOops = "";
+    replaceText(start, end, letters.toLowerCase() + "_".repeat(gaps));
+    t.setSelectionRange(start + letters.length, start + letters.length);
+    if (!gaps) goToBlank();   // a word done: on to the next one
+    return;
+  }
+  replaceText(start, end, letters + "_".repeat(gaps));
+  t.setSelectionRange(start + letters.length, start + letters.length);
+}
+
+// ---- Little kids: in the teacher's easy mode, the practice sites go step by
+// step. Drive by hand, turn the drive into code, finish its words one letter
+// at a time, then Transmit.
+let blanked = [];      // the words withBlanks cut, for the typing coach
+let coachOops = "";    // the key a wrong letter should have been
+function kidsMode() { const z = site && zoneOf(site.key); return !!(z && z.practice); }
+// Letter by letter: always on the practice sites, and on every site when the
+// teacher's switch was on for the scouted code.
+function typingHelp() { return kidsMode() || !!(site && site.coached); }
+// The word an unfinished one is: it starts with `letters` and has `length` letters.
+function blankTarget(letters, length) {
+  const fits = w => w.length === length && w.startsWith(letters.toLowerCase());
+  return blanked.find(fits) || BLANK_WORDS.find(fits) || null;
+}
+function renderSteps() {
+  const kids = kidsMode(), code = $("code").value, blank = BLANK.exec(code);
+  $("steps").hidden = !kids;
+  $("typeCoach").hidden = true;
+  if (kids) {
+    const now = scout ? (scout.reached ? 2 : 1) : blank ? 3 : site.handed ? 4 : 1;
+    const names = ["🕹 Drive the rover", "📋 Use as code", "✏️ Finish the words", "▶ Transmit"];
+    $("steps").innerHTML = names.map((name, i) => {
+      const cls = `step${i + 1 === now ? " now" : i + 1 < now ? " done" : ""}`;
+      const label = `${i + 1 < now ? "✓" : `${i + 1}.`} ${name}`;
+      return i === 0 && !scout ? `<button class="${cls}" onclick="toggleScout()">${label}</button>` : `<span class="${cls}">${label}</span>`;
+    }).join("<span aria-hidden=\"true\">→</span>");
+  }
+  if (!typingHelp()) return;
+  const coach = $("typeCoach");
+  if (blank) {
+    const word = blank[0], letters = word.replace(/_/g, ""), target = blankTarget(letters, word.length);
+    if (!target) return;
+    coach.innerHTML = `✏️ Finish the word <b>${esc(target)}</b>. Press the keys one at a time:` +
+      `<div class="keys">${[...target].map((ch, i) => `<kbd class="${i < letters.length ? "got" : i === letters.length ? "next" : ""}">${esc(ch)}</kbd>`).join("")}</div>` +
+      (coachOops ? `<div class="oops">Not that one. Find the <b>${esc(coachOops)}</b> key.</div>` : "");
+    coach.hidden = false;
+  } else if (site.handed && !site.lastSent) {
+    coach.innerHTML = "✅ All the words are done! Now press <b>Transmit ▶</b> to send your code to the rover.";
+    coach.hidden = false;
+    $("runButton").classList.add("nudge");
+  }
 }
 function restartScout() { if (scout) { stopScout(true); toggleScout(); } }
 
@@ -2883,7 +3182,7 @@ async function transmit() {
     site.misses = data.rewards.misses;
     nudgeHints();
     const rec = data.rewards.record;
-    if (rec) { site.record = {ticks: rec.ticks, name: rec.name}; $("record").hidden = false; $("record").textContent = `🏆 Class record: ${rec.ticks} ticks · ${rec.name}`; }
+    if (rec) { site.record = {ticks: rec.ticks, name: rec.name}; $("record").hidden = false; $("record").textContent = `🏆 Class record: ${plural(rec.ticks, "tick")} · ${rec.name}`; }
     errorLine = runs[0].line || 0;
     errorCount = Math.max(1, $("code").value.split("\n").length);
     errorText = runs[0].error || "";
@@ -2902,7 +3201,7 @@ async function transmit() {
       if (data.rewards.found.length) site.gift = null;
     }
   } catch (_) {
-    showBanner("lost", "No answer from the game. Is the server running?");
+    showBanner("lost", NO_ANSWER);
   } finally {
     busy = false;
     $("runButton").disabled = false;
@@ -2925,6 +3224,7 @@ let errorText = "", errorLineText = null;   // the last run's error, said on its
 let runLine = 0;                             // the line the replay is on
 let problems = {};                           // line number -> a slip, in a few words
 function updateEditor() {
+  renderSteps();
   const code = $("code").value;
   const count = Math.max(1, code.split("\n").length);
   // The error's line changed (or lines came and went): the error is old news.
@@ -3480,7 +3780,7 @@ function horizon(cv, t, roverX) {
   const dunes = [[.7, "#7a3f45", 30, 1.3], [.78, "#5b2e3d", 22, 2.1], [.88, "#3a1f33", 14, 3.4]];
   for (const [base, color, amp, freq] of dunes) {
     ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(0, h);
-    for (let x = 0; x <= w; x += 8) ctx.lineTo(x, h * base + Math.sin(x / w * Math.PI * freq + base * 9) * amp + Math.sin(x / 90 + base) * 4);
+    for (let x = 0; x < w + 8; x += 8) ctx.lineTo(Math.min(x, w), h * base + Math.sin(Math.min(x, w) / w * Math.PI * freq + base * 9) * amp + Math.sin(Math.min(x, w) / 90 + base) * 4);
     ctx.lineTo(w, h); ctx.fill();
   }
   // The rover on the nearest ridge, seen from the side.
@@ -3539,6 +3839,13 @@ function closeIntro() { $("intro").hidden = true; store("planetIntroSeen", "1");
 
 // ---- Wiring ----------------------------------------------------------------------------------
 $("joinForm").addEventListener("submit", join);
+$("route").addEventListener("scroll", routeEdges);
+window.addEventListener("resize", routeEdges);
+// A mouse wheel scrolls the route sideways.
+$("route").addEventListener("wheel", e => {
+  if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+  e.preventDefault(); $("route").scrollLeft += e.deltaY;
+}, {passive: false});
 $("switchButton").addEventListener("click", () => { localStorage.removeItem("mazeId"); location.reload(); });
 $("helpButton").addEventListener("click", openIntro);
 $("introClose").addEventListener("click", closeIntro);
@@ -3556,8 +3863,23 @@ $("calmPick").addEventListener("change", e => {
 });
 $("muteButton").addEventListener("click", () => { $("muteButton").textContent = SFX.toggle() ? "🔇" : "🔊"; });
 $("starsButton").addEventListener("click", openGarage);
+$("levelsButton").addEventListener("click", openLevels);
+$("levelsClose").addEventListener("click", closeLevels);
+$("levels").addEventListener("click", e => {
+  if (e.target === $("levels")) return closeLevels();
+  const tile = e.target.closest(".tile");
+  if (tile && !tile.disabled) { closeLevels(); openSite(tile.dataset.key); }
+});
+$("levelsPlay").addEventListener("click", () => { const k = $("levelsPlay").dataset.key; closeLevels(); if (k && k !== (site && site.key)) openSite(k); });
+$("prevSite").addEventListener("click", () => { const k = stepSite(-1); if (k) openSite(k); });
+$("nextSiteButton").addEventListener("click", () => { const k = stepSite(1); if (k) openSite(k); });
 $("garageClose").addEventListener("click", () => { $("garage").hidden = true; });
 $("surpriseButton").addEventListener("click", surprise);
+$("garageNext").addEventListener("click", e => {
+  if (e.target.closest(".gn-go")) { $("garage").hidden = true; openLevels(); return; }
+  const {slot, key} = $("garageNext").dataset;
+  garageTab = slot; garagePeek = {slot, key}; renderGarage();
+});
 $("garage").addEventListener("click", e => {
   const tab = e.target.closest(".tab"), card = e.target.closest(".card");
   if (tab) { garageTab = tab.dataset.tab; garagePeek = null; renderGarage(); }
@@ -3601,6 +3923,7 @@ $("hintButton").addEventListener("click", askHint);
 $("fnButton").addEventListener("click", () => { removing = null; $("fnState").textContent = "Saved functions work on every site."; openPop($("fnPop"), $("fnButton")); renderFunctions(); placePop($("fnPop"), $("fnButton")); });
 $("fnPop").addEventListener("click", functionsClick);
 $("code").addEventListener("input", e => {
+  fillBlank(e);
   updateEditor();
   complete(e.inputType === "insertText");
   showSignature();
@@ -3632,16 +3955,22 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
     closePops();
     if (!$("garage").hidden) $("garage").hidden = true;
+    if (!$("levels").hidden) closeLevels();
     else if (!$("intro").hidden) closeIntro();
     else if (!$("celebrate").hidden) hideCelebrate();
     else if (scout) stopScout();
     return;
   }
-  // Scouting keys, unless typing somewhere.
-  if (!scout || e.target.closest("textarea, input")) return;
+  // Scouting keys, unless typing somewhere. Little kids' arrow keys always
+  // drive while scouting, even from the editor.
+  const kidArrow = kidsMode() && e.target.id === "code" && e.key.startsWith("Arrow");
+  if (!scout || e.target.closest("textarea, input") && !kidArrow) return;
   const keys = {ArrowUp: "north", w: "north", ArrowDown: "south", s: "south", ArrowRight: "east", d: "east",
                 ArrowLeft: "west", a: "west", " ": "wait"};
-  if (keys[e.key]) { e.preventDefault(); scoutMove(keys[e.key]); }
+  if (keys[e.key] && e.shiftKey && scoutCan("jump") && WAYS.includes(keys[e.key])) { e.preventDefault(); scoutMove("jump:" + keys[e.key]); }
+  else if (keys[e.key]) { e.preventDefault(); scoutMove(keys[e.key]); }
+  else if ((e.key === "j" || e.key === "J") && scoutCan("jump")) scoutMove("jump");
+  else if ((e.key === "x" || e.key === "X") && scoutCan("drill")) scoutMove("drill");
   else if (e.key === "r" || e.key === "R") restartScout();
 });
 document.addEventListener("pointerdown", e => {
