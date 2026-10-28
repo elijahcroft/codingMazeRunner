@@ -929,6 +929,11 @@ const SFX = (() => {
     airhorn: () => [0, .28, .56].forEach((at, i) => [415, 466, 554].forEach(f => tone(f, i === 2 ? .7 : .2, {type: "sawtooth", vol: .08, at}))),
     fanfare: () => notes([392, 523, 659, 784, 659, 784], {type: "square", vol: .1, dur: .16, gap: .13}),
     icecream: () => notes([784, 659, 523, 659, 784, 784, 784, 880, 784, 659, 523], {type: "triangle", vol: .24, dur: .16, gap: .15}),
+    hiss: () => { noise(1.1, {vol: .3, from: 4500, to: 6500, q: .8}); tone(70, .8, {vol: .6, slide: -40, at: 1.1}); noise(.7, {vol: .5, at: 1.1, from: 400, to: 60}); },
+    spooky: () => { tone(330, .5, {vol: .3, slide: 200}); tone(530, .6, {vol: .3, slide: -250, at: .45}); tone(280, .8, {vol: .3, slide: 140, at: 1}); },
+    roar: () => { tone(110, 1, {type: "sawtooth", vol: .22, slide: -50}); tone(165, 1, {type: "sawtooth", vol: .14, slide: -80}); noise(1, {vol: .3, from: 300, to: 150, q: .5}); },
+    weewoo: () => [0, .5, 1].forEach(at => { tone(950, .25, {type: "square", vol: .07, at}); tone(720, .25, {type: "square", vol: .07, at: at + .25}); }),
+    boom: () => { tone(55, 1.4, {vol: .7, slide: -25}); tone(110, .5, {type: "triangle", vol: .3, slide: -60}); noise(1, {vol: .45, from: 220, to: 50, q: .7}); },
   };
   return {
     play(name, arg) {
@@ -995,6 +1000,14 @@ const WORLDS = {
   clouds: {ground: "#eef3ff", rock: "#b9a3ff", bed: "#8fb8ff", grit: ["rgba(255,255,255,.7)", "rgba(150,170,220,.22)"], seam: "rgba(150,170,220,.25)"},
   starry: {ground: "#1d2a5a", rock: "#0d1330", bed: "#050818", edge: "#ffd36b", rim: "#ffd36b",
            grit: ["rgba(255,236,170,.85)", "rgba(10,20,50,.3)"], stars: "rgba(255,236,170,.8)"},
+  haunted: {ground: "#4a3f63", rock: "#1f1830", bed: "#0b0814", edge: "#9cff6b", rim: "#9cff6b",
+            grit: ["rgba(156,255,107,.3)", "rgba(10,6,20,.3)"], stars: "rgba(156,255,107,.5)"},
+  jurassic: {ground: "#6b8f3a", rock: "#3a2a1c", bed: "#1a120b", edge: "#ff8a3d",
+             grit: ["rgba(40,70,20,.35)", "rgba(220,250,140,.2)"]},
+  underwater: {ground: "#d9c48f", rock: "#2a6f8a", bed: "#0a2a4a", edge: "#8ff0ff", rim: "#5ad1ff",
+               grit: ["rgba(255,255,255,.5)", "rgba(40,120,160,.25)", "rgba(255,120,150,.35)"], ice: ["#b8f0ff", "#4aa8d8"]},
+  deepcave: {ground: "#8a8a8f", rock: "#3a3a42", bed: "#141418", ice: ["#a8fff9", "#2aa3a0"], pixel: true},
+  nether: {ground: "#8a2f2f", rock: "#3a1414", bed: "#1a0606", ice: ["#ffe14d", "#c79a2a"], pixel: true},
 };
 const GRIT = ["rgba(30,10,20,.14)", "rgba(255,240,220,.10)"];
 function palette(zone) { return WORLDS[look.world] || GROUND[zone] || GROUND.landing; }
@@ -1328,10 +1341,10 @@ function render(now = performance.now()) {
       ctx.ellipse(rx, ry + cell * .3, cell * .4 * (1 - rover.lift * .4), cell * .14, 0, 0, 7); ctx.fill();
     }
     // A happy hop and spin at the beacon, and a wiggle when someone clicks the rover.
-    let lift = rover.lift, angle = rover.angle, dx = 0, dy = 0, sx = 1;
+    let lift = rover.lift, angle = rover.angle, dx = 0, dy = 0, sx = 1, fx = null;
     const cheer = CALM || !scene.cheer ? 1 : (now - scene.cheer) / 900;
     if (cheer < 1) {
-      const d = dance(look.dance, cheer);
+      const d = fx = dance(look.dance, cheer);
       lift = Math.max(lift, d.lift); angle += d.angle; dx = d.dx * cell; dy = d.dy * cell; sx = d.sx;
       if (d.ring) discoRing(ctx, rx + dx, ry + dy, cell, d.ring, now);
     }
@@ -1342,8 +1355,9 @@ function render(now = performance.now()) {
       ctx.ellipse(rx + dx, ry + dy + cell * .3, cell * .4 * (1 - lift * .4), cell * .14, 0, 0, 7); ctx.fill();
     }
     ctx.save(); ctx.translate(rx + dx, ry + dy - lift * cell * .6); ctx.scale(sx || .02, 1);
-    drawRover(ctx, 0, 0, cell * 1.12 * (1 + lift * .25), angle, 1, look, now);
+    drawRover(ctx, 0, 0, cell * 1.12 * (1 + lift * .25), angle, fx ? fx.alpha : 1, look, now);
     ctx.restore();
+    if (fx) danceFx(ctx, rx + dx, ry + dy - lift * cell * .6, cell, fx);
   }
   // The pet floats along a little behind.
   if (PETS[look.pet]) {
@@ -1519,6 +1533,49 @@ function drawTrail(ctx, frames, i, rover, cell, now) {
       grad.addColorStop(0, "rgba(255,240,150,.95)"); grad.addColorStop(.45, "rgba(255,140,40,.8)"); grad.addColorStop(1, "rgba(220,40,20,0)");
       ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(x, y, z, 0, 7); ctx.fill();
     });
+  } else if (look.trail === "lightning") {   // bolts crackling between squares, brightest at the front
+    const frame = CALM ? 0 : Math.floor(now / 80);
+    ctx.shadowColor = "#5ac8ff";
+    segs.forEach(([q, p, k], n) => {
+      const age = (segs.length - 1 - n) / 8;
+      if (age >= 1) return;
+      ctx.shadowBlur = cell * .3 * (1 - age);
+      ctx.beginPath(); ctx.moveTo((q.c + .5) * cell, (q.r + .5) * cell);
+      for (let j = 1; j < 4; j++) {
+        const u = j / 4, off = (hash(k, frame, j + 140) - .5) * cell * .35;
+        ctx.lineTo((q.c + .5 + (p.c - q.c) * u) * cell + off * (p.r - q.r ? 1 : 0), (q.r + .5 + (p.r - q.r) * u) * cell + off * (p.c - q.c ? 1 : 0));
+      }
+      ctx.lineTo((p.c + .5) * cell, (p.r + .5) * cell);
+      ctx.strokeStyle = `rgba(90,200,255,${.8 * (1 - age)})`; ctx.lineWidth = Math.max(2, cell * .12); ctx.stroke();
+      ctx.strokeStyle = `rgba(255,255,230,${1 - age * .8})`; ctx.lineWidth = Math.max(1, cell * .045); ctx.stroke();
+    });
+    ctx.shadowBlur = 0;
+  } else if (look.trail === "clones") {   // see-through copies of the rover, a square apart
+    segs.slice(-3).forEach(([q, p], n) => {
+      const alpha = [.12, .2, .3][n + 3 - Math.min(3, segs.length)];
+      drawRover(ctx, (q.c + .5) * cell, (q.r + .5) * cell, cell * 1.12, Math.atan2(p.r - q.r, p.c - q.c), alpha, {...look, glow: "noglow"}, now);
+    });
+  } else if (look.trail === "coins") {   // gold coins spinning where the rover went
+    for (const [, p, k] of segs) {
+      if (hash(k, 150) < .2) continue;
+      const x = (p.c + .5 + (hash(k, 151) - .5) * .4) * cell, y = (p.r + .5 + (hash(k, 152) - .5) * .4) * cell;
+      const w = cell * .18 * (CALM ? 1 : Math.max(.15, Math.abs(Math.cos(now / 260 + k))));
+      ctx.fillStyle = "#ffd36b"; ctx.strokeStyle = "#c79a2a"; ctx.lineWidth = Math.max(1, cell * .03);
+      ctx.shadowColor = "#ffd36b"; ctx.shadowBlur = cell * .15;
+      ctx.beginPath(); ctx.ellipse(x, y, w, cell * .18, 0, 0, 7); ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
+      ctx.beginPath(); ctx.ellipse(x, y, w * .6, cell * .11, 0, 0, 7); ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,.6)"; ctx.beginPath(); ctx.ellipse(x - w * .3, y - cell * .06, w * .25, cell * .04, 0, 0, 7); ctx.fill();
+    }
+  } else if (look.trail === "bubbles") {   // bubbles that wobble and drift up
+    ctx.lineWidth = Math.max(1, cell * .025);
+    for (const [, p, k] of segs) for (const j of [0, 1]) {
+      const rise = CALM ? 0 : ((now / 1800 + hash(k, j, 160)) % 1) * cell * .25;
+      const x = (p.c + .5 + (hash(k, j, 161) - .5) * .6) * cell + (CALM ? 0 : Math.sin(now / 300 + k + j) * cell * .04);
+      const y = (p.r + .5 + (hash(k, j, 162) - .5) * .6) * cell - rise, z = cell * (.06 + hash(k, j, 163) * .07);
+      ctx.strokeStyle = "rgba(200,240,255,.85)"; ctx.fillStyle = "rgba(143,227,255,.18)";
+      ctx.beginPath(); ctx.arc(x, y, z, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,.8)"; ctx.beginPath(); ctx.arc(x - z * .35, y - z * .35, z * .25, 0, 7); ctx.fill();
+    }
   }
 }
 function heart(ctx, x, y, z) {
@@ -1732,15 +1789,55 @@ function onStep(k) {
 // The victory dance at the beacon, u from 0 to 1: how high, how far round,
 // how far off its square (in squares), and a flip squashes it side to side.
 function dance(kind, u) {
-  const d = {lift: 0, angle: 0, dx: 0, dy: 0, sx: 1, ring: 0};
+  const d = {lift: 0, angle: 0, dx: 0, dy: 0, sx: 1, ring: 0, alpha: 1, flash: 0, boom: 0, puff: 0};
   if (kind === "wiggle") { d.angle = Math.sin(u * Math.PI * 8) * .5 * (1 - u); d.lift = Math.abs(Math.sin(u * Math.PI * 4)) * .15; }
   else if (kind === "flip") { d.lift = Math.sin(u * Math.PI) * .8; d.sx = Math.cos(u * Math.PI * 2); }
   else if (kind === "moonwalk") { d.dx = -Math.sin(u * Math.PI * 2) * .35; d.angle = Math.sin(u * Math.PI * 4) * .08; }
   else if (kind === "zoomies") { const a = u * Math.PI * 2; d.dx = Math.sin(a) * .4; d.dy = (Math.cos(a) - 1) * .25; d.angle = a; }
   else if (kind === "disco") { d.angle = ease(u) * Math.PI * 4; d.lift = Math.sin(u * Math.PI) * .3; d.ring = Math.sin(u * Math.PI); }
   else if (kind === "firework") { d.lift = Math.sin(u * Math.PI) * .35; d.angle = Math.sin(u * Math.PI * 2) * .2; }
+  else if (kind === "kaboom") {   // shakes and swells, flashes white, bursts into blocks, pops back
+    if (u < .55) {
+      d.dx = Math.sin(u * 140) * .06 * u / .55; d.sx = 1 + .3 * u / .55;
+      d.flash = u > .25 && Math.floor(u * 24) % 2 ? .8 : 0;
+    } else { d.boom = (u - .55) / .45; d.alpha = d.boom < .6 ? 0 : (d.boom - .6) / .4; }
+  }
+  else if (kind === "smokebomb") {   // poof, gone, poof, back
+    d.puff = u < .35 ? u / .35 : u > .6 && u < .95 ? (u - .6) / .35 : 0;
+    d.alpha = u > .12 && u < .72 ? 0 : 1;
+  }
+  else if (kind === "tornado") { d.angle = ease(u) * Math.PI * 8; d.lift = Math.sin(u * Math.PI) * .5; }
+  else if (kind === "pogo") {
+    const hop = Math.abs(Math.sin(u * Math.PI * 4));
+    d.lift = hop * .45 * (1 - u * .4); d.sx = 1 + .25 * (1 - hop) * (1 - u);
+  }
   else { d.lift = Math.sin(u * Math.PI) * .6; d.angle = ease(u) * Math.PI * 2; }
   return d;
+}
+// What some dances draw over the rover: a white flash, a burst of green
+// blocks, a cloud of smoke. (x, y) is the rover's middle.
+function danceFx(ctx, x, y, cell, d) {
+  if (d.flash) {
+    ctx.fillStyle = `rgba(255,255,255,${d.flash * .7})`;
+    ctx.beginPath(); ctx.arc(x, y, cell * .5, 0, 7); ctx.fill();
+  }
+  if (d.boom) {
+    const r = cell * (.3 + d.boom * .9), grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+    grad.addColorStop(0, `rgba(255,255,255,${1 - d.boom})`); grad.addColorStop(.5, `rgba(255,190,90,${.8 * (1 - d.boom)})`); grad.addColorStop(1, "rgba(255,120,40,0)");
+    ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+    for (let j = 0; j < 12; j++) {
+      const a = j * Math.PI / 6 + hash(j, 170), far = cell * (.2 + Math.sin(d.boom * Math.PI) * 1.1), z = cell * .14;
+      ctx.fillStyle = ["#5dae3f", "#4f9a35", "#6fc24e", "#10200b"][j % 4];
+      ctx.fillRect(x + Math.cos(a) * far - z / 2, y + Math.sin(a) * far - z / 2, z, z);
+    }
+  }
+  if (d.puff) {
+    ctx.fillStyle = `rgba(200,200,215,${.9 * (1 - d.puff * d.puff)})`;
+    for (let j = 0; j < 7; j++) {
+      const a = j * Math.PI * 2 / 7, far = cell * (.15 + d.puff * .35);
+      ctx.beginPath(); ctx.arc(x + Math.cos(a) * far, y + Math.sin(a) * far, cell * (.22 + d.puff * .12), 0, 7); ctx.fill();
+    }
+  }
 }
 // Disco: a ring of colours round the rover while it spins.
 function discoRing(ctx, x, y, cell, k, now) {
@@ -2733,8 +2830,10 @@ function garageLoop(ts) {
 // The garage's shelves, one tab each, and the badge cabinet.
 const GARAGE_TABS = [["paint", "Paint"], ["topper", "Hats"], ["pet", "Pets"], ["glow", "Glow"], ["trail", "Trails"],
                      ["horn", "Horns"], ["dance", "Dances"], ["world", "Map looks"], ["badges", "Badges"]];
-const DANCE_ICONS = {spin: "🌀", wiggle: "〰️", moonwalk: "🕺", firework: "🎆", flip: "🤸", zoomies: "💨", disco: "🪩"};
-const HORN_ICONS = {beep: "🤖", honk: "📢", quack: "🦆", pew: "⚡", moo: "🐄", airhorn: "📯", fanfare: "🎺", icecream: "🍦"};
+const DANCE_ICONS = {spin: "🌀", wiggle: "〰️", moonwalk: "🕺", firework: "🎆", flip: "🤸", zoomies: "💨", disco: "🪩",
+                     kaboom: "💥", smokebomb: "🥷", tornado: "🌪", pogo: "🏀"};
+const HORN_ICONS = {beep: "🤖", honk: "📢", quack: "🦆", pew: "⚡", moo: "🐄", airhorn: "📯", fanfare: "🎺", icecream: "🍦",
+                    hiss: "🐍", spooky: "👻", roar: "🦖", weewoo: "🚨", boom: "💥"};
 let garageTab = "paint", garagePeek = null;
 function itemNeed(i) {
   return i.find ? `🎁 ${i.find.toUpperCase()}` : i.stars != null ? `★ ${i.stars}` : i.trophies != null ? `🏆 ${i.trophies}`
@@ -2743,7 +2842,7 @@ function itemNeed(i) {
 function itemHow(i) {
   return i.find ? `A mystery gift on ${i.where}: drive over the 🎁 there to find it`
     : i.stars != null ? `Earn ${i.stars} stars` : i.trophies != null ? `Finish all of a day's missions on ${i.trophies} day${i.trophies === 1 ? "" : "s"}`
-    : i.badge ? `Earn the ${i.badge_name} badge`
+    : i.badge ? `Earn the ${i.badge_name} badge` + (i.badge_how ? `: ${i.badge_how.charAt(0).toLowerCase()}${i.badge_how.slice(1)}` : "")
     : `When the class has ${i.class} stars together`;
 }
 function renderGarage() {
@@ -2866,8 +2965,9 @@ function garagePreview(now = performance.now()) {
   const x = (here.c + .5 + d.dx) * cell, y = (here.r + .5 + d.dy) * cell;
   if (d.ring) discoRing(ctx, x, y, cell * 1.4, d.ring, now);
   ctx.save(); ctx.translate(x, y - d.lift * cell * .8); ctx.scale(d.sx || .02, 1);
-  drawRover(ctx, 0, 0, cell * 1.6 * (1 + d.lift * .2), here.angle + d.angle, 1, gear, now);
+  drawRover(ctx, 0, 0, cell * 1.6 * (1 + d.lift * .2), here.angle + d.angle, d.alpha, gear, now);
   ctx.restore();
+  danceFx(ctx, x, y - d.lift * cell * .8, cell * 1.4, d);
   const pet = loopAt(p - 1.4);
   drawPet(ctx, (pet.c + .5) * cell + cell * .35, (pet.r + .5) * cell - cell * .55, cell * 1.6, gear.pet, now);
 }

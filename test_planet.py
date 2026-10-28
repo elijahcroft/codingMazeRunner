@@ -796,6 +796,50 @@ class GiftTests(unittest.TestCase):
         for item in server.GARAGE:
             self.assertTrue(drawn[item["slot"]](item["key"]), item["key"])
 
+    def test_dances_have_icons(self):
+        page = open(os.path.join(HERE, "planet.html"), encoding="utf-8").read()
+        icons = page.split("const DANCE_ICONS")[1].split("};")[0]
+        for item in server.GARAGE:
+            if item["slot"] == "dance":
+                self.assertIn(f"{item['key']}:", icons)
+
+
+class ChallengeTests(unittest.TestCase):
+    """The code challenges: badges for one coding trick, that unlock garage items."""
+
+    def met(self, code, jumps=0, ran=True):
+        frames = [{"r": 0, "c": 0, "e": "jump"}] * jumps + [{"r": 0, "c": 1}]
+        return server.challenge_badges(code, [{"frames": frames, "own_function": ran}])
+
+    def test_each_challenge_badge_unlocks_something(self):
+        for key in server.CHALLENGE_BADGES:
+            self.assertTrue(any(i.get("badge") == key for i in server.GARAGE), key)
+
+    def test_a_hiss_is_a_printed_sss(self):
+        self.assertEqual(self.met('print("Sssss!")\neast()\n'), {"hiss"})
+        self.assertEqual(self.met('print("hi", "ssss")\n'), {"hiss"})
+        self.assertEqual(self.met('print("ss")\nsss = 1\n'), set())
+
+    def test_a_loop_inside_a_loop(self):
+        self.assertEqual(self.met("for i in range(2):\n    for j in range(3):\n        east()\n"), {"nested"})
+        self.assertEqual(self.met("while not at_beacon():\n    for i in range(2):\n        east()\n"), {"nested"})
+        self.assertEqual(self.met("for i in range(2):\n    east()\nfor i in range(2):\n    north()\n"), set())
+
+    def test_function_fan_counts_calls_and_calls_in_loops(self):
+        go = "def go():\n    east()\n"
+        self.assertEqual(self.met(go + "go()\ngo()\ngo()\n"), {"fan"})
+        self.assertEqual(self.met(go + "for i in range(4):\n    go()\n"), {"fan"})
+        self.assertEqual(self.met(go + "go()\ngo()\n"), set())
+        # A def that never ran doesn't count.
+        self.assertEqual(self.met(go + "go()\ngo()\ngo()\n", ran=False), set())
+
+    def test_kangaroo_wants_ten_jumps_in_one_run(self):
+        self.assertEqual(self.met("east()\n", jumps=10), {"kangaroo"})
+        self.assertEqual(self.met("east()\n", jumps=9), set())
+
+    def test_broken_code_meets_nothing(self):
+        self.assertEqual(self.met('print("sss"\n'), set())
+
 
 class UnchartedTests(unittest.TestCase):
     def planets(self, seeds=10):
@@ -1357,6 +1401,21 @@ class ClassroomTests(unittest.TestCase):
         self.post("/planet/look", {"id": pid, "showoff": None})
         self.assertIsNone(self.get("/planet/overview")["students"][0]["showoff"])
 
+    def test_a_hiss_in_a_finished_run_unlocks_the_creeper(self):
+        pid = self.join()
+        ref = site("1a")[2]["reference"]
+        # A run that doesn't get there earns nothing.
+        out = self.post("/planet/run", {"id": pid, "site": "1a", "code": 'print("sssss")\neast()\n'})
+        self.assertFalse(next(i for i in out["state"]["garage"] if i["key"] == "creeper")["open"])
+        out = self.post("/planet/run", {"id": pid, "site": "1a", "code": 'print("sssss")\n' + ref})
+        self.assertIn("Sssneaky", [b["name"] for b in out["rewards"]["badges"]])
+        garage = {i["key"]: i for i in out["state"]["garage"]}
+        self.assertTrue(garage["creeper"]["open"] and garage["hiss"]["open"])
+        self.assertIn("creeper", [i["key"] for i in out["rewards"]["unlocked"]])
+        self.assertIn('print("sssss")', garage["creeper"]["badge_how"])
+        look = self.post("/planet/look", {"id": pid, "paint": "creeper", "horn": "hiss"})["look"]
+        self.assertEqual((look["paint"], look["horn"]), ("creeper", "hiss"))
+
     def test_the_record_ghost_appears_once_a_site_is_done(self):
         ada, bo = self.join("Ada"), self.join("Bo")
         slow = "south(2)\neast()\nsouth()\neast(4)\nnorth(2)\neast(2)\nnorth()\neast(2)\nsouth(4)\nwest()\n"
@@ -1439,7 +1498,7 @@ class ClassroomTests(unittest.TestCase):
         self.assertEqual(out["rewards"]["new_stars"], 1)
         out = self.transmit(pid, "1b", BONUS_PROGRAMS["1b"])
         names = {b["name"] for b in out["rewards"]["badges"]}
-        self.assertEqual(names, {"Loop Pilot", "Architect"})
+        self.assertEqual(names, {"Loop Pilot", "Architect", "Function Fan"})
         self.assertEqual(out["state"]["total_stars"], 5)
 
     def test_fixing_a_bug_and_grit_earn_badges(self):

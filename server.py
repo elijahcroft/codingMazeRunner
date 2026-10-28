@@ -2958,8 +2958,64 @@ GARAGE = [
     {"slot": "horn", "key": "airhorn", "name": "Air horn", "stars": 50},
     {"slot": "horn", "key": "fanfare", "name": "Fanfare", "stars": 72},
     {"slot": "horn", "key": "icecream", "name": "Ice cream van", "stars": 100},
+    # The packs in STRANGE_PLANET_SKINS.md. A few come from the code
+    # challenges: badges for one coding trick each (CHALLENGE_BADGES).
+    {"slot": "paint", "key": "creeper", "name": "Creeper", "badge": "hiss"},
+    {"slot": "horn", "key": "hiss", "name": "Hiss… BOOM", "badge": "hiss"},
+    {"slot": "dance", "key": "kaboom", "name": "Kaboom", "stars": 48},
+    {"slot": "pet", "key": "minicreeper", "name": "Mini creeper", "stars": 77},
+    {"slot": "world", "key": "deepcave", "name": "Deep Cave", "stars": 92},
+    {"slot": "world", "key": "nether", "name": "Nether", "stars": 125},
+    {"slot": "paint", "key": "skeleton", "name": "Skeleton", "stars": 52},
+    {"slot": "paint", "key": "zombie", "name": "Zombie", "stars": 34},
+    {"slot": "pet", "key": "bat", "name": "Bat", "stars": 8},
+    {"slot": "glow", "key": "jacko", "name": "Jack-o'-lantern", "stars": 14},
+    {"slot": "world", "key": "haunted", "name": "Haunted", "stars": 41},
+    {"slot": "horn", "key": "spooky", "name": "Spooky ghost", "stars": 17},
+    {"slot": "paint", "key": "ninja", "name": "Ninja", "stars": 74},
+    {"slot": "topper", "key": "ninjaband", "name": "Ninja headband", "stars": 58},
+    {"slot": "trail", "key": "clones", "name": "Shadow clones", "badge": "nested"},
+    {"slot": "dance", "key": "smokebomb", "name": "Smoke bomb", "badge": "fan"},
+    {"slot": "paint", "key": "dino", "name": "Dino scales", "stars": 44},
+    {"slot": "pet", "key": "trex", "name": "Mini T. rex", "stars": 54},
+    {"slot": "horn", "key": "roar", "name": "Dino roar", "stars": 43},
+    {"slot": "world", "key": "jurassic", "name": "Jurassic", "stars": 56},
+    {"slot": "paint", "key": "storm", "name": "Thunderstorm", "stars": 88},
+    {"slot": "trail", "key": "lightning", "name": "Lightning", "stars": 53},
+    {"slot": "glow", "key": "electric", "name": "Electric", "stars": 68},
+    {"slot": "dance", "key": "tornado", "name": "Tornado", "stars": 84},
+    {"slot": "paint", "key": "cottoncandy", "name": "Cotton Candy", "stars": 16},
+    {"slot": "topper", "key": "unicorn", "name": "Unicorn horn", "stars": 31},
+    {"slot": "topper", "key": "wings", "name": "Wings", "badge": "kangaroo"},
+    {"slot": "pet", "key": "axolotl", "name": "Axolotl", "stars": 21},
+    {"slot": "pet", "key": "penguin", "name": "Penguin", "stars": 39},
+    {"slot": "paint", "key": "camo", "name": "Camo", "stars": 10},
+    {"slot": "paint", "key": "watermelon", "name": "Watermelon", "stars": 20},
+    {"slot": "paint", "key": "tiger", "name": "Tiger", "stars": 26},
+    {"slot": "topper", "key": "police", "name": "Police lights", "stars": 23},
+    {"slot": "topper", "key": "viking", "name": "Viking helmet", "stars": 47},
+    {"slot": "topper", "key": "mohawk", "name": "Rainbow mohawk", "stars": 64},
+    {"slot": "pet", "key": "slimecube", "name": "Slime cube", "stars": 29},
+    {"slot": "glow", "key": "toxic", "name": "Toxic", "stars": 37},
+    {"slot": "glow", "key": "blackhole", "name": "Black hole", "stars": 135},
+    {"slot": "trail", "key": "coins", "name": "Gold coins", "stars": 36},
+    {"slot": "trail", "key": "bubbles", "name": "Bubbles", "stars": 12},
+    {"slot": "world", "key": "underwater", "name": "Under the Sea", "stars": 72},
+    {"slot": "dance", "key": "pogo", "name": "Pogo bounce", "stars": 27},
+    {"slot": "horn", "key": "weewoo", "name": "Wee-woo", "stars": 33},
+    {"slot": "horn", "key": "boom", "name": "Dramatic boom", "stars": 61},
 ]
 GARAGE_SLOTS = ("paint", "topper", "trail", "world", "dance", "glow", "pet", "horn")
+
+# The code challenges: one coding trick each, any site, on a run that gets
+# there. See challenge_badges().
+CHALLENGE_BADGES = {
+    "hiss": ("🐍", "Sssneaky", 'Complete a mission with print("sssss") in your code'),
+    "nested": ("🌀", "Loopception", "Complete a mission with a loop inside a loop"),
+    "kangaroo": ("🦘", "Kangaroo", "Jump 10 times in a run that completes its mission"),
+    "fan": ("📣", "Function Fan", "Complete a mission calling a function you made 3 times (a call inside a loop counts)"),
+}
+PLANET_BADGES.update(CHALLENGE_BADGES)
 
 
 # How rare an item is, from how hard it is to get. Mystery gifts, badges and
@@ -3123,7 +3179,8 @@ def garage_for(entry):
             garage.append(dict(item, open=entry.get("trophies", 0) >= item["trophies"]))
         elif "badge" in item:
             garage.append(dict(item, open=item["badge"] in entry["badges"],
-                               badge_name=PLANET_BADGES[item["badge"]][1]))
+                               badge_name=PLANET_BADGES[item["badge"]][1],
+                               badge_how=PLANET_BADGES[item["badge"]][2]))
         elif "class" in item:
             garage.append(dict(item, open=ours >= item["class"]))
         else:
@@ -3301,6 +3358,35 @@ def code_features(code):
     return found
 
 
+def challenge_badges(code, results):
+    """Which code challenges a run that got there met (see CHALLENGE_BADGES)."""
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return set()
+    found = set()
+    loops = (ast.For, ast.While)
+    own = {n.name for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)}
+    is_own_call = lambda n: isinstance(n, ast.Call) and getattr(n.func, "id", None) in own
+    calls = sum(is_own_call(n) for n in ast.walk(tree))
+    for n in ast.walk(tree):
+        if isinstance(n, loops):
+            inside = [m for m in ast.walk(n) if m is not n]
+            if any(isinstance(m, loops) for m in inside):
+                found.add("nested")
+            # A call in a loop runs again and again: it counts as three.
+            calls += 2 * sum(is_own_call(m) for m in inside)
+        elif isinstance(n, ast.Call) and getattr(n.func, "id", None) == "print" and any(
+                isinstance(a, ast.Constant) and isinstance(a.value, str) and "sss" in a.value.lower()
+                for a in n.args):
+            found.add("hiss")
+    if calls >= 3 and any(r.get("own_function") for r in results):
+        found.add("fan")
+    if max(sum(f.get("e") == "jump" for f in r["frames"]) for r in results) >= 10:
+        found.add("kangaroo")
+    return found
+
+
 def planet_record(p, key, code, results):
     """Save a run and work out everything it earned: stars, badges, a class
     record, garage unlocks."""
@@ -3399,6 +3485,8 @@ def planet_record(p, key, code, results):
             # Architect wants a def that ran, not one that only sits there.
             if feature != "def" or any(r.get("own_function") for r in results):
                 badge(feature)
+        for challenge in sorted(challenge_badges(code, results)):
+            badge(challenge)
         if entry["errored"].get(key):
             badge("fixer")
             fixed = True

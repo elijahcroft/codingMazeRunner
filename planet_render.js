@@ -163,6 +163,63 @@ function drawTopper(ctx, s, topper, now) {
       ctx.fillStyle = on ? ["#ff6fae", "#ffd36b", "#7ff0d6"][k % 3] : "#5a6070";
       ctx.beginPath(); ctx.arc((-.22 + k * .08) * s, bob + .01 * s, s * .02, 0, 7); ctx.fill();
     }
+  } else if (topper === "ninjaband") {   // a knot behind the camera head, two tails fluttering back
+    ctx.strokeStyle = "#e3262f"; ctx.lineWidth = s * .055; ctx.lineCap = "round";
+    for (const side of [-1, 1]) {
+      ctx.beginPath(); ctx.moveTo(.04 * s, side * .03 * s);
+      for (let j = 1; j <= 5; j++) {
+        const wave = CALM ? .4 : Math.sin(now / 90 + j * 1.1 + side);
+        ctx.lineTo((.04 - j * .08) * s, (side * (.04 + j * .012) + wave * .015 * j) * s);
+      }
+      ctx.stroke();
+    }
+    ctx.fillStyle = "#b5141c"; ctx.beginPath(); ctx.arc(.04 * s, 0, s * .05, 0, 7); ctx.fill();
+  } else if (topper === "police") {   // a light bar, red and blue taking turns
+    const red = CALM || Math.floor(now / 220) % 2 === 0, blue = CALM || !red;
+    ctx.fillStyle = "#2a2a35"; roundRect(ctx, -.12 * s, -.2 * s, .1 * s, .4 * s, .03 * s); ctx.fill();
+    for (const [y, color, dim, on] of [[-.1, "#ff2e3d", "#5a1a20", red], [.1, "#2e7dff", "#1a2a5a", blue]]) {
+      ctx.fillStyle = on ? color : dim; ctx.shadowColor = color; ctx.shadowBlur = on ? s * .45 : 0;
+      roundRect(ctx, -.11 * s, (y - .08) * s, .08 * s, .16 * s, .03 * s); ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+  } else if (topper === "unicorn") {   // a gold spiral horn out the front, a rainbow mane down the back
+    ["#ff5a7a", "#ffb84d", "#ffe56b", "#7ff07a", "#5ad1ff", "#b07aff"].forEach((color, k) => {
+      ctx.fillStyle = color; ctx.beginPath(); ctx.ellipse((-.28 + k * .055) * s, (k % 2 ? .03 : -.03) * s, .06 * s, .045 * s, 0, 0, 7); ctx.fill();
+    });
+    ctx.fillStyle = "#ffd36b"; ctx.strokeStyle = "#c79a2a"; ctx.lineWidth = Math.max(1, s * .015);
+    ctx.beginPath(); ctx.moveTo(.18 * s, -.06 * s); ctx.lineTo(.52 * s, 0); ctx.lineTo(.18 * s, .06 * s); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath();
+    for (const x of [.27, .35, .43]) { const w = (.52 - x) / .34 * .06; ctx.moveTo(x * s, -w * s); ctx.lineTo((x + .03) * s, w * s); }
+    ctx.stroke();
+  } else if (topper === "wings") {   // feathered wings out the sides, flapping
+    const flap = CALM ? 1 : .75 + .25 * Math.sin(now / 130);
+    for (const side of [-1, 1]) {
+      ctx.save(); ctx.translate(-.06 * s, side * .2 * s); ctx.scale(1, side * flap);
+      ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#c9d6ee"; ctx.lineWidth = Math.max(1, s * .015);
+      ctx.beginPath(); ctx.moveTo(.1 * s, 0); ctx.quadraticCurveTo(.12 * s, .3 * s, -.12 * s, .42 * s);
+      for (let k = 0; k < 4; k++) ctx.quadraticCurveTo((-.14 - k * .03) * s, (.32 - k * .09) * s, (-.18 - k * .02) * s, (.3 - k * .1) * s);
+      ctx.lineTo(-.14 * s, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.beginPath();
+      for (let k = 0; k < 3; k++) { ctx.moveTo(.02 * s, (.06 + k * .08) * s); ctx.lineTo((-.12 - k * .02) * s, (.14 + k * .09) * s); }
+      ctx.stroke(); ctx.restore();
+    }
+  } else if (topper === "viking") {   // a round helmet with a horn each side
+    ctx.lineWidth = Math.max(1, s * .015);
+    for (const side of [-1, 1]) {
+      ctx.fillStyle = "#f2e6c8"; ctx.strokeStyle = "#b8a476";
+      ctx.beginPath(); ctx.moveTo(-.1 * s, side * .1 * s); ctx.quadraticCurveTo(-.12 * s, side * .3 * s, .06 * s, side * .38 * s);
+      ctx.quadraticCurveTo(-.04 * s, side * .26 * s, -.01 * s, side * .1 * s); ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+    ctx.fillStyle = "#9aa3b5"; ctx.strokeStyle = "#5a6070";
+    ctx.beginPath(); ctx.arc(-.06 * s, 0, s * .15, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#c7a05a"; ctx.fillRect(-.09 * s, -.15 * s, .06 * s, .3 * s);
+    ctx.fillStyle = "#e6c98a"; for (const y of [-.1, 0, .1]) { ctx.beginPath(); ctx.arc(-.06 * s, y * s, s * .015, 0, 7); ctx.fill(); }
+  } else if (topper === "mohawk") {   // a row of rainbow spikes down the middle
+    for (let k = 0; k < 7; k++) {
+      const x = -.28 + k * .05, h = .1 + .04 * Math.sin(k * 1.3) + (CALM ? 0 : .015 * Math.sin(now / 150 + k));
+      ctx.fillStyle = `hsl(${k * 50},95%,62%)`;
+      ctx.beginPath(); ctx.moveTo((x - .03) * s, 0); ctx.lineTo((x + .02) * s, -h * s); ctx.lineTo((x + .04) * s, 0); ctx.lineTo((x + .02) * s, h * s); ctx.closePath(); ctx.fill();
+    }
   } else {
     ctx.strokeStyle = "#6e6290"; ctx.beginPath(); ctx.moveTo(-.05 * s, -.14 * s); ctx.lineTo(-.16 * s, -.36 * s); ctx.stroke();
     ctx.fillStyle = "#ffb547"; ctx.beginPath(); ctx.arc(-.16 * s, -.36 * s, s * .035, 0, 7); ctx.fill();
@@ -524,3 +581,253 @@ const PAINTS = {bone: "#f2eadb", coral: "#ff8a7a", mint: "#8cf2c6", sky: "#8fc8f
     ctx.fillStyle = "#1e1a1a"; ctx.font = `900 ${Math.round(s * .13)}px system-ui, sans-serif`;
     ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("TNT", -.12 * s, .005 * s);
   }}};
+
+// ---- The packs from STRANGE_PLANET_SKINS.md: Blocky Boom, Spooky, Ninja,
+// Dino, Thunder, Sparkle and everyday cool. Added here, after the rest, so the
+// lists above stay as they were.
+
+// A face drawn from rows of letters ("#" filled), u the size of one pixel,
+// upright when the rover faces up the screen (the face's top is the front).
+function pixelFace(ctx, s, rows, cx, u, color) {
+  ctx.save(); ctx.translate(cx * s, 0); ctx.rotate(Math.PI / 2);
+  const h = rows.length, w = rows[0].length;
+  ctx.fillStyle = color;
+  rows.forEach((row, j) => [...row].forEach((ch, i) => {
+    if (ch === "#") ctx.fillRect((i - w / 2) * u * s, (j - h / 2) * u * s, u * s + .5, u * s + .5);
+  }));
+  ctx.restore();
+}
+const CREEPER_FACE = ["........", "........", ".##..##.", ".##..##.", "...##...", "..####..", "..####..", "..#..#.."];
+// Little blobs spread over the body, the same every redraw: k picks the place.
+function blobs(ctx, s, n, seed, colors, size) {
+  for (let k = 0; k < n; k++) {
+    ctx.fillStyle = colors[k % colors.length];
+    ctx.beginPath();
+    ctx.ellipse((-.3 + hash(k, seed) * .58) * s, (-.2 + hash(k, seed + 1) * .4) * s,
+                (size + hash(k, seed + 2) * size) * s, (size * .7 + hash(k, seed + 3) * size * .6) * s, hash(k, seed + 4) * 3, 0, 7);
+    ctx.fill();
+  }
+}
+Object.assign(PAINTS, {
+  creeper: {base: "#5dae3f", swatch: "linear-gradient(90deg, #5dae3f 22%, #10200b 22% 40%, #5dae3f 40% 60%, #10200b 60% 78%, #5dae3f 78%)", draw(ctx, s) {
+    pixelArt(ctx, s, (i, j) => ["#5dae3f", "#4f9a35", "#6fc24e", "#8ad66a", "#3f8a2a"][Math.floor(hash(i, j, 50) * 5)]);
+    pixelFace(ctx, s, CREEPER_FACE, -.07, .05, "#10200b");
+  }},
+  skeleton: {base: "#15121c", swatch: "repeating-linear-gradient(90deg, #15121c 0 6px, #e8f4ff 6px 9px)", draw(ctx, s, now) {
+    // A spine down the middle and ribs curving off it, glowing a little.
+    const k = CALM ? 1 : .75 + .25 * Math.sin(now / 350);
+    ctx.strokeStyle = ctx.fillStyle = `rgba(232,244,255,${k})`; ctx.shadowColor = "#bfe3ff"; ctx.shadowBlur = s * .12;
+    ctx.lineWidth = s * .035; ctx.lineCap = "round";
+    for (const x of [-.2, -.12, -.04]) {
+      for (const side of [-1, 1]) {
+        ctx.beginPath(); ctx.moveTo(x * s, side * .03 * s); ctx.quadraticCurveTo((x - .02) * s, side * .17 * s, (x - .09) * s, side * .18 * s); ctx.stroke();
+      }
+    }
+    for (let j = 0; j < 8; j++) { roundRect(ctx, (-.3 + j * .055) * s, -.025 * s, .04 * s, .05 * s, .01 * s); ctx.fill(); }
+    ctx.shadowBlur = 0;
+  }},
+  zombie: {base: "#6f9a52", swatch: "linear-gradient(90deg, #2fa7a7 45%, #6f9a52 45%)", draw(ctx, s) {
+    // A ragged teal shirt over the back half, stitches over the rest.
+    ctx.fillStyle = "#2fa7a7"; ctx.beginPath(); ctx.moveTo(-.32 * s, -.22 * s); ctx.lineTo(-.02 * s, -.22 * s);
+    for (let j = 0; j <= 8; j++) ctx.lineTo((j % 2 ? -.06 : .01) * s, (-.22 + j * .055) * s);
+    ctx.lineTo(-.32 * s, .22 * s); ctx.fill();
+    ctx.fillStyle = "#24898a"; ctx.fillRect(-.2 * s, -.08 * s, .07 * s, .06 * s); ctx.fillRect(-.27 * s, .07 * s, .05 * s, .07 * s);
+    ctx.fillStyle = "#587d40"; ctx.fillRect(.05 * s, .1 * s, .08 * s, .07 * s);
+    ctx.strokeStyle = "#2c1d24"; ctx.lineWidth = Math.max(1, s * .015);
+    ctx.beginPath(); ctx.moveTo(.02 * s, -.16 * s); ctx.lineTo(.2 * s, -.12 * s);
+    for (let k = 0; k < 4; k++) { const x = .05 + k * .045, y = -.153 + k * .01; ctx.moveTo(x * s, (y - .03) * s); ctx.lineTo((x + .01) * s, (y + .03) * s); }
+    ctx.stroke();
+  }},
+  ninja: {base: "#16161d", swatch: "linear-gradient(90deg, #16161d 45%, #e3262f 45% 58%, #16161d 58%)", draw(ctx, s) {
+    // A red band across the middle and a silver throwing star on the back.
+    ctx.fillStyle = "#e3262f"; ctx.fillRect(-.02 * s, -.22 * s, .07 * s, .44 * s);
+    ctx.fillStyle = "#2a2a35"; ctx.fillRect(-.32 * s, -.22 * s, .3 * s, .04 * s); ctx.fillRect(-.32 * s, .18 * s, .3 * s, .04 * s);
+    ctx.save(); ctx.translate(-.17 * s, 0); ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = "#c3cad6";
+    ctx.beginPath();
+    for (let k = 0; k < 8; k++) { const r = (k % 2 ? .035 : .1) * s, a = k * Math.PI / 4; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#16161d"; ctx.beginPath(); ctx.arc(0, 0, s * .018, 0, 7); ctx.fill();
+    ctx.restore();
+  }},
+  dino: {base: "#4caf50", swatch: "radial-gradient(circle at 30% 50%, #ff9d3c 14%, #4caf50 16%)", draw(ctx, s) {
+    // Rows of scales, and orange spikes all down the back.
+    ctx.strokeStyle = "rgba(30,90,40,.55)"; ctx.lineWidth = Math.max(1, s * .015);
+    for (let j = 0; j < 6; j++) for (let i = 0; i < 9; i++) {
+      ctx.beginPath(); ctx.arc((-.31 + i * .07 + (j % 2) * .035) * s, (-.2 + j * .08) * s, .035 * s, 0, Math.PI); ctx.stroke();
+    }
+    ctx.fillStyle = "#ff9d3c"; ctx.strokeStyle = "#c2621a";
+    for (let k = 0; k < 6; k++) {
+      const x = -.3 + k * .07, h = .06 + (k > 0 && k < 5 ? .025 : 0);
+      ctx.beginPath(); ctx.moveTo(x * s, 0); ctx.lineTo((x + .035) * s, -h * s); ctx.lineTo((x + .07) * s, 0); ctx.lineTo((x + .035) * s, h * s); ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+  }},
+  storm: {base: "#2b3350", swatch: "linear-gradient(135deg, #2b3350 40%, #ffe14d 40% 50%, #2b3350 50% 60%, #ffe14d 60% 66%, #2b3350 66%)", draw(ctx, s, now) {
+    // Dark clouds, and a bolt that flashes every so often.
+    blobs(ctx, s, 7, 60, ["#4a5370", "#3b4360", "#5a6382"], .08);
+    const t = CALM ? 0 : now % 1700, k = t < 120 || (t > 220 && t < 300) ? 1 : .45;
+    if (k === 1) { ctx.fillStyle = "rgba(220,235,255,.35)"; ctx.fillRect(-.32 * s, -.22 * s, .62 * s, .44 * s); }
+    ctx.fillStyle = `rgba(255,225,77,${k})`; ctx.shadowColor = "#ffe14d"; ctx.shadowBlur = s * .2 * k;
+    ctx.beginPath();
+    for (const [x, y] of [[.06, -.22], [-.05, -.02], [.02, -.02], [-.1, .22], [.0, .03], [-.06, .03], [.12, -.22]]) ctx.lineTo(x * s, y * s);
+    ctx.fill(); ctx.shadowBlur = 0;
+  }},
+  cottoncandy: {base: "#ffb3d9", swatch: "linear-gradient(135deg, #ffb3d9, #b3e0ff)", fill(ctx, s) {
+    const grad = ctx.createLinearGradient(-.32 * s, -.22 * s, .3 * s, .22 * s);
+    grad.addColorStop(0, "#ffb3d9"); grad.addColorStop(.5, "#e7c6ff"); grad.addColorStop(1, "#b3e0ff");
+    return grad;
+  }, draw(ctx, s) {
+    for (let k = 0; k < 18; k++) {
+      ctx.save(); ctx.translate((-.29 + hash(k, 70) * .56) * s, (-.19 + hash(k, 71) * .38) * s); ctx.rotate(hash(k, 72) * 3);
+      ctx.fillStyle = ["#ff4d8d", "#ffd34d", "#4dc3ff", "#7ff07a", "#ffffff"][k % 5];
+      ctx.fillRect(-.02 * s, -.006 * s, .04 * s, .012 * s + .5);
+      ctx.restore();
+    }
+  }},
+  camo: {base: "#5b6b3a", swatch: "radial-gradient(circle at 30% 35%, #3e4a26 20%, transparent 22%), radial-gradient(circle at 70% 65%, #8a7d4f 20%, #5b6b3a 22%)", draw(ctx, s) {
+    blobs(ctx, s, 12, 80, ["#3e4a26", "#8a7d4f", "#2b2f1c"], .06);
+  }},
+  watermelon: {base: "#ff4f6d", swatch: "radial-gradient(circle, #ff4f6d 50%, #f4ffe0 52% 60%, #3f9a3a 62%)", draw(ctx, s) {
+    roundRect(ctx, -.32 * s, -.22 * s, .62 * s, .44 * s, .08 * s);
+    ctx.strokeStyle = "#3f9a3a"; ctx.lineWidth = s * .1; ctx.stroke();
+    ctx.strokeStyle = "#f4ffe0"; ctx.lineWidth = s * .03;
+    roundRect(ctx, -.27 * s, -.17 * s, .52 * s, .34 * s, .05 * s); ctx.stroke();
+    ctx.fillStyle = "#2a1414";
+    for (const [x, y] of [[-.18, -.06], [-.08, .06], [.0, -.07], [.1, .05], [-.2, .07], [.12, -.06], [-.1, -.03]]) {
+      ctx.beginPath(); ctx.ellipse(x * s, y * s, .013 * s, .022 * s, .5, 0, 7); ctx.fill();
+    }
+  }},
+  tiger: {base: "#ff9a2e", swatch: "repeating-linear-gradient(90deg, #ff9a2e 0 7px, #1e1410 7px 10px)", draw(ctx, s) {
+    // Black stripes that taper in from both sides.
+    ctx.fillStyle = "#1e1410";
+    for (let k = 0; k < 6; k++) for (const side of [-1, 1]) {
+      const x = -.28 + k * .1 + hash(k, side + 90) * .02, d = .11 + hash(k, side + 92) * .05;
+      ctx.beginPath(); ctx.moveTo((x - .025) * s, side * .23 * s); ctx.quadraticCurveTo((x + .03) * s, side * (.23 - d / 2) * s, (x + .01) * s, side * (.23 - d) * s);
+      ctx.lineTo((x + .025) * s, side * .23 * s); ctx.fill();
+    }
+  }},
+});
+
+Object.assign(GLOWS, {
+  jacko(ctx, s, now) {   // an orange glow that flickers like a candle
+    underglow(ctx, s, "255,140,30", CALM ? .9 : .65 + .35 * hash(Math.floor(now / 90), 3));
+  },
+  toxic(ctx, s, now) {   // green goo underneath, bubbles rising and popping
+    underglow(ctx, s, "120,255,60", pulse(now, 340));
+    for (let k = 0; k < 6; k++) {
+      const u = CALM ? .5 : ((now / 1300 + hash(k, 100)) % 1), a = hash(k, 101) * 7;
+      const x = Math.cos(a) * s * .5, y = Math.sin(a) * s * .42 - u * s * .1;
+      ctx.strokeStyle = `rgba(190,255,120,${1 - u})`; ctx.lineWidth = Math.max(1, s * .02);
+      ctx.beginPath(); ctx.arc(x, y, s * (.03 + u * .04), 0, 7); ctx.stroke();
+    }
+  },
+  electric(ctx, s, now) {   // sparks crackling round the rover
+    underglow(ctx, s, "90,200,255", .55);
+    const frame = CALM ? 0 : Math.floor(now / 80);
+    ctx.strokeStyle = "#e6f8ff"; ctx.lineWidth = Math.max(1, s * .02); ctx.shadowColor = "#5ac8ff"; ctx.shadowBlur = s * .2;
+    for (let b = 0; b < 4; b++) {
+      const a = hash(b, frame, 110) * 7, len = .25 + hash(b, frame, 111) * .2;
+      ctx.beginPath();
+      for (let j = 0; j <= 4; j++) {
+        const r = (.38 + j * len / 4) * s, wob = (hash(b, frame, j + 112) - .5) * .5;
+        ctx.lineTo(Math.cos(a + wob * .3) * r, Math.sin(a + wob * .3) * r * .85);
+      }
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+  },
+  blackhole(ctx, s, now) {   // a dark swirl underneath, specks spiralling in
+    const grad = ctx.createRadialGradient(0, 0, s * .1, 0, 0, s * .75);
+    grad.addColorStop(0, "rgba(0,0,0,.9)"); grad.addColorStop(.55, "rgba(60,20,120,.55)"); grad.addColorStop(.75, "rgba(255,140,60,.35)"); grad.addColorStop(1, "rgba(255,140,60,0)");
+    ctx.fillStyle = grad; ctx.beginPath(); ctx.ellipse(0, 0, s * .75, s * .62, 0, 0, 7); ctx.fill();
+    for (let k = 0; k < 10; k++) {
+      const u = CALM ? hash(k, 120) : (now / 2400 + hash(k, 120)) % 1, a = hash(k, 121) * 7 + u * 5, r = s * .75 * (1 - u);
+      ctx.fillStyle = `rgba(255,${200 - k * 8},${160 + k * 8},${u})`;
+      ctx.beginPath(); ctx.arc(Math.cos(a) * r, Math.sin(a) * r * .82, s * .02, 0, 7); ctx.fill();
+    }
+  },
+});
+
+Object.assign(PETS, {
+  bat(ctx, s, t) {   // a little bat, wings beating, fangs out
+    const flap = Math.sin(t / 70);
+    ctx.fillStyle = "#4a2f6b";
+    for (const side of [-1, 1]) {
+      ctx.save(); ctx.scale(side, 1); ctx.rotate(flap * .35);
+      ctx.beginPath(); ctx.moveTo(.1 * s, -.05 * s); ctx.lineTo(.55 * s, -.25 * s);
+      ctx.quadraticCurveTo(.48 * s, -.05 * s, .55 * s, .08 * s); ctx.quadraticCurveTo(.42 * s, .02 * s, .35 * s, .12 * s);
+      ctx.quadraticCurveTo(.25 * s, .05 * s, .1 * s, .1 * s); ctx.fill(); ctx.restore();
+    }
+    ctx.fillStyle = "#3a2356"; ctx.beginPath(); ctx.ellipse(0, 0, .17 * s, .22 * s, 0, 0, 7); ctx.fill();
+    for (const x of [-.1, .1]) { ctx.beginPath(); ctx.moveTo((x - .06) * s, -.12 * s); ctx.lineTo(x * 1.6 * s, -.34 * s); ctx.lineTo((x + .06) * s, -.12 * s); ctx.fill(); }
+    eyes(ctx, s, [-.07, .07], -.05, .045);
+    ctx.fillStyle = "#ffffff";
+    for (const x of [-.04, .04]) { ctx.beginPath(); ctx.moveTo((x - .02) * s, .06 * s); ctx.lineTo(x * s, .12 * s); ctx.lineTo((x + .02) * s, .06 * s); ctx.fill(); }
+  },
+  axolotl(ctx, s, t) {   // pink, smiling, frilly gills that wiggle
+    ctx.fillStyle = "#ff9ec4";
+    ctx.beginPath(); ctx.ellipse(-.05 * s, .22 * s, .3 * s, .12 * s, Math.sin(t / 300) * .15, 0, 7); ctx.fill();
+    for (const side of [-1, 1]) for (let k = 0; k < 3; k++) {
+      const a = side * (.7 + k * .45) - Math.PI / 2 + Math.sin(t / 160 + k) * .12 * side;
+      ctx.strokeStyle = "#e0558f"; ctx.lineWidth = s * .07; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(Math.cos(a) * .22 * s, -.05 * s + Math.sin(a) * .22 * s); ctx.lineTo(Math.cos(a) * .42 * s, -.05 * s + Math.sin(a) * .42 * s); ctx.stroke();
+    }
+    ctx.fillStyle = "#ffb3d2"; ctx.beginPath(); ctx.ellipse(0, -.05 * s, .3 * s, .24 * s, 0, 0, 7); ctx.fill();
+    eyes(ctx, s, [-.13, .13], -.08, .045);
+    ctx.strokeStyle = "#a0335e"; ctx.lineWidth = s * .025;
+    ctx.beginPath(); ctx.arc(0, .0, .08 * s, .2 * Math.PI, .8 * Math.PI); ctx.stroke();
+    ctx.fillStyle = "rgba(255,90,140,.45)";
+    for (const x of [-.2, .2]) { ctx.beginPath(); ctx.arc(x * s, .03 * s, .04 * s, 0, 7); ctx.fill(); }
+  },
+  slimecube(ctx, s, t) {   // a see-through green cube that squishes as it bounces
+    const squish = 1 + Math.sin(t / 160) * .1;
+    ctx.scale(1 / squish, squish);
+    ctx.fillStyle = "rgba(110,210,80,.75)"; roundRect(ctx, -.3 * s, -.3 * s, .6 * s, .6 * s, .06 * s); ctx.fill();
+    ctx.strokeStyle = "#3f8a2a"; ctx.lineWidth = s * .03; ctx.stroke();
+    ctx.fillStyle = "rgba(70,160,50,.8)"; ctx.fillRect(-.16 * s, -.12 * s, .32 * s, .3 * s);
+    ctx.fillStyle = "#1e3a14"; ctx.fillRect(-.14 * s, -.1 * s, .08 * s, .08 * s); ctx.fillRect(.06 * s, -.1 * s, .08 * s, .08 * s);
+    ctx.fillRect(-.03 * s, .06 * s, .06 * s, .04 * s);
+    ctx.fillStyle = "rgba(255,255,255,.45)"; ctx.fillRect(-.26 * s, -.26 * s, .1 * s, .05 * s);
+  },
+  trex(ctx, s, t) {   // a tiny T. rex, jaw chomping, little arms
+    const chomp = Math.max(0, Math.sin(t / 180)) * .25;
+    ctx.fillStyle = "#4caf50";
+    ctx.beginPath(); ctx.moveTo(-.15 * s, .1 * s); ctx.quadraticCurveTo(-.45 * s, .2 * s, -.55 * s, .02 * s); ctx.lineTo(-.15 * s, -.05 * s); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-.05 * s, .1 * s, .2 * s, .22 * s, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#3a8f3e"; for (const x of [-.12, .04]) ctx.fillRect(x * s, .26 * s, .08 * s, .1 * s);
+    ctx.strokeStyle = "#3a8f3e"; ctx.lineWidth = s * .05; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(.1 * s, .08 * s); ctx.lineTo(.18 * s, .14 * s); ctx.stroke();
+    ctx.save(); ctx.translate(.08 * s, -.18 * s);
+    ctx.fillStyle = "#4caf50"; ctx.beginPath(); ctx.ellipse(.08 * s, 0, .2 * s, .13 * s, 0, 0, 7); ctx.fill();
+    ctx.save(); ctx.rotate(chomp); ctx.fillStyle = "#3a8f3e"; ctx.beginPath(); ctx.ellipse(.12 * s, .1 * s, .16 * s, .05 * s, 0, 0, 7); ctx.fill(); ctx.restore();
+    ctx.fillStyle = "#ffffff"; for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.moveTo((.1 + k * .06) * s, .07 * s); ctx.lineTo((.13 + k * .06) * s, .12 * s); ctx.lineTo((.16 + k * .06) * s, .07 * s); ctx.fill(); }
+    eyes(ctx, s, [.06], -.04, .04);
+    ctx.restore();
+  },
+  penguin(ctx, s, t) {   // a penguin, waddling
+    ctx.rotate(Math.sin(t / 180) * .15);
+    ctx.fillStyle = "#ff9d3c"; for (const x of [-.1, .1]) { ctx.beginPath(); ctx.ellipse(x * s, .36 * s, .09 * s, .04 * s, 0, 0, 7); ctx.fill(); }
+    ctx.fillStyle = "#1e1e2e"; ctx.beginPath(); ctx.ellipse(0, .05 * s, .26 * s, .34 * s, 0, 0, 7); ctx.fill();
+    for (const side of [-1, 1]) { ctx.beginPath(); ctx.ellipse(side * .26 * s, .08 * s, .06 * s, .18 * s, side * -.3, 0, 7); ctx.fill(); }
+    ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.ellipse(0, .12 * s, .17 * s, .25 * s, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, -.12 * s, .16 * s, .12 * s, 0, 0, 7); ctx.fill();
+    eyes(ctx, s, [-.07, .07], -.14, .035);
+    ctx.fillStyle = "#ff9d3c"; ctx.beginPath(); ctx.moveTo(-.05 * s, -.07 * s); ctx.lineTo(.05 * s, -.07 * s); ctx.lineTo(0, .0); ctx.fill();
+  },
+  minicreeper(ctx, s, t) {   // a little blocky creeper that flashes white now and then
+    const flash = t % 3000 > 2600 && Math.floor(t / 100) % 2 === 0;
+    ctx.fillStyle = "#3f8a2a"; for (const x of [-.2, .06]) ctx.fillRect(x * s, .26 * s, .14 * s, .12 * s);
+    ctx.fillStyle = flash ? "#ffffff" : "#5dae3f"; ctx.fillRect(-.16 * s, -.05 * s, .32 * s, .34 * s);
+    for (let j = 0; j < 4; j++) for (let i = 0; i < 3; i++) {
+      if (flash) continue;
+      ctx.fillStyle = ["#4f9a35", "#6fc24e", "#5dae3f"][Math.floor(hash(i, j, 130) * 3)];
+      ctx.fillRect((-.16 + i * .107) * s, (-.05 + j * .085) * s, .107 * s + .5, .085 * s + .5);
+    }
+    ctx.fillStyle = flash ? "#ffffff" : "#6fc24e"; ctx.fillRect(-.24 * s, -.5 * s, .48 * s, .46 * s);
+    const u = .06;
+    ctx.fillStyle = "#10200b";
+    CREEPER_FACE.forEach((row, j) => [...row].forEach((ch, i) => {
+      if (ch === "#") ctx.fillRect((-.24 + i * u) * s, (-.5 + j * u * .96) * s, u * s + .5, u * .96 * s + .5);
+    }));
+  },
+});
