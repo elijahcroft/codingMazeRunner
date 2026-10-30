@@ -635,6 +635,74 @@
   .big #siteBrief, .big .banner p { font-size: 17px; }
   .big #siteBrief pre { font-size: 15px; }
   .calm-pick input { width: 18px; height: 18px; accent-color: var(--mint); }
+
+  /* ---- Halloween night: pumpkin orange and ghost green on the dusk violet ---- */
+  :root { --pumpkin: #ff8a1f; --pumpkin-2: #ffb35c; --slime: #9cff6b; --night: #140e22; }
+  .limited { display: inline-block; padding: 1px 9px; border-radius: 99px; background: var(--pumpkin); color: #2a1200; font: 800 11px/18px var(--ui); letter-spacing: .04em; vertical-align: middle; }
+  .candy-button { display: flex; align-items: center; gap: 4px; border: 0; border-radius: 99px; padding: 5px 11px 5px 8px; background: linear-gradient(135deg, #3a1d0a, #2a1838); color: var(--pumpkin-2); font: 750 15px var(--mono);
+    box-shadow: inset 0 0 0 1.5px var(--pumpkin); animation: candy-glow 2.4s ease-in-out infinite; }
+  .candy-button:hover { background: linear-gradient(135deg, #4a2610, #352048); }
+  .candy-button b { color: #fff3e0; }
+  @keyframes candy-glow { 50% { box-shadow: inset 0 0 0 1.5px var(--pumpkin), 0 0 16px rgba(255,138,31,.55); } }
+  .calm .candy-button { animation: none; }
+  .gauge.spooky small { color: var(--pumpkin-2); }
+  .chip.spooky { color: var(--pumpkin-2); box-shadow: inset 0 0 0 1px rgba(255,138,31,.5); }
+  .chip.new.spooky::after { background: var(--pumpkin); }
+  .pad .knock { grid-column: 3; grid-row: 1; font-size: 17px; background: rgba(255,138,31,.35); }
+  .zone-card.spooky { background: linear-gradient(160deg, rgba(58,29,10,.55), rgba(42,24,56,.6)); box-shadow: inset 0 0 0 1.5px rgba(255,138,31,.55); }
+  .zone-card.spooky.here { box-shadow: inset 0 0 0 2.5px var(--pumpkin); }
+  .zone-card.spooky .tile b { color: var(--pumpkin-2); }
+  .zone-card.spooky .tile.done b { color: var(--slime); }
+  .zone-card.spooky .tile.gold b { color: var(--gold); }
+  .zone-card.spooky .tile { background: #2a1d3a; }
+  .zone-card.spooky .tile.now { background: #4a2a12; }
+  .tab.spooky { color: var(--pumpkin-2); border-color: var(--pumpkin); background: #2e1a24; }
+  .tab.spooky.on { background: var(--pumpkin); color: #2a1200; }
+  .shop-door.spooky { background: linear-gradient(120deg, #4a2610, #2a1838); box-shadow: inset 0 0 0 1px var(--pumpkin); }
+  .card .ltd { position: absolute; top: 3px; right: 4px; z-index: 1; font-size: 15px; filter: drop-shadow(0 0 4px rgba(255,138,31,.8)); }
+  .badge .ltd-tag { color: var(--pumpkin-2); font-size: 11px; font-weight: 700; }
+  .candy-note { display: block; margin-top: 10px; color: var(--pumpkin-2); font-size: 16px; }
+  .candy-note small { display: block; color: var(--haze); font-size: 13px; font-weight: 500; }
+  .candy-note.dropped { color: var(--coral); }
+  .nu-fill.candy-fill { background: linear-gradient(90deg, #ffd23f, var(--pumpkin)); }
+  .dialog.spooky { background: rgba(10,6,20,.8); }
+  .invite-card { position: relative; width: min(560px, 100%); padding: 26px 26px 20px; border-radius: 22px; text-align: center; overflow: hidden;
+    background: radial-gradient(circle at 50% -10%, rgba(255,138,31,.35), transparent 55%), linear-gradient(180deg, #2a1838, var(--night));
+    box-shadow: 0 30px 80px rgba(0,0,0,.6), inset 0 0 0 1.5px var(--pumpkin); }
+  .invite-card h2 { margin: 6px 0 10px; font-size: 28px; font-weight: 850; letter-spacing: -.02em; color: #fff3e0; }
+  .invite-card p { margin: 0 0 10px; color: var(--bone); line-height: 1.5; }
+  .invite-card code { font: 600 14px var(--mono); color: var(--pumpkin-2); }
+  .invite-moon { font-size: 66px; line-height: 1; filter: drop-shadow(0 0 22px rgba(255,138,31,.8)); animation: invite-bob 2.2s ease-in-out infinite; }
+  @keyframes invite-bob { 50% { transform: translateY(-8px) rotate(-6deg); } }
+  .calm .invite-moon { animation: none; }
+  .invite-actions { display: flex; gap: 10px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+  .invite-actions .go { background: var(--pumpkin); color: #2a1200; font-size: 17px; padding: 12px 22px; }
+  .invite-later { margin: 10px 0 0 !important; font-size: 13px; color: var(--haze) !important; }
+  .road-card { width: min(860px, 100%); max-height: calc(100vh - 32px); overflow: auto; border-radius: 22px;
+    background: linear-gradient(180deg, #24152f, var(--night)); box-shadow: 0 30px 80px rgba(0,0,0,.6), inset 0 0 0 1.5px var(--pumpkin); }
+  .road-card .levels-head { background: linear-gradient(90deg, #3a1d0a, #2a1838); border-bottom-color: rgba(255,138,31,.5); }
+  .road-card .levels-head .go { background: var(--pumpkin); color: #2a1200; }
+  .road-card h3 { margin: 18px 20px 8px; font-size: 16px; color: var(--pumpkin-2); }
+  .road-bag { margin: 16px 20px 8px; font-size: 17px; }
+  .road-bag b { color: var(--pumpkin-2); font-family: var(--mono); }
+  .road-bar { position: relative; height: 16px; margin: 0 20px; border-radius: 99px; background: #1b1230; box-shadow: inset 0 0 0 1px var(--edge); }
+  .road-bar > i { position: absolute; inset: 0 auto 0 0; border-radius: 99px; background: linear-gradient(90deg, #ffd23f, var(--pumpkin)); box-shadow: 0 0 12px rgba(255,138,31,.6); }
+  .road-bar span i { position: absolute; top: -4px; width: 4px; height: 24px; margin-left: -2px; border-radius: 2px; background: var(--edge); }
+  .road-bar span i.got { background: var(--slime); }
+  .road-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 10px; margin: 0 20px; }
+  .invite-card .road-items { margin: 14px 0 4px; grid-template-columns: repeat(5, 1fr); }
+  .road-item { position: relative; display: grid; justify-items: center; gap: 3px; padding: 8px 4px; border-radius: 14px; background: #241933; box-shadow: inset 0 0 0 1px var(--r, var(--edge)); text-align: center; }
+  .road-item canvas { width: 64px; height: 64px; border-radius: 10px; }
+  .road-item b { font-size: 12px; line-height: 1.15; }
+  .road-item small { font: 650 11px var(--mono); color: var(--pumpkin-2); }
+  .road-item:not(.got) canvas { filter: saturate(.35) brightness(.7); }
+  .road-item.got small { color: var(--slime); }
+  .road-badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 20px; }
+  .rb { display: grid; padding: 7px 11px; border-radius: 12px; background: #241933; box-shadow: inset 0 0 0 1px var(--edge); font-weight: 650; font-size: 14px; opacity: .65; max-width: 260px; }
+  .rb small { font-size: 12px; font-weight: 450; color: var(--haze); }
+  .rb.got { opacity: 1; box-shadow: inset 0 0 0 1.5px var(--slime); }
+  .road-stats { margin: 16px 20px 20px; color: var(--haze); font-size: 14px; }
+  @media (max-width: 560px) { .invite-card .road-items { grid-template-columns: repeat(3, 1fr); } .invite-card h2 { font-size: 23px; } }
 </style>
 </head>
 <body>
@@ -656,6 +724,7 @@
     <button class="levels-button" id="levelsButton" title="Every level: pick one to play">🗺<span>Levels</span></button>
     <nav class="route" id="route" aria-label="Your route across the planet"></nav>
     <div class="who">
+      <button class="candy-button" id="candyButton" hidden aria-label="Halloween night: your candy and the candy road">🎃<b id="candyCount">0</b>🍬</button>
       <button class="stars-button" id="starsButton" title="Your stars, the garage and your badges"><span id="rankIcon"></span>★ <span id="totalStars">0</span><span class="garage-word">🔧 Garage</span><i class="new-pip" id="newPip" hidden>NEW</i><i class="rank-bar"><b id="rankBar"></b></i></button>
       <b id="driver"></b>
       <button class="quiet round" id="muteButton" title="Sound on or off" aria-label="Sound on or off">🔊</button>
@@ -677,11 +746,13 @@
             <div class="gauge" title="Ticks so far: one for every command"><small>tick</small><span id="tick">0</span></div>
             <div class="gauge" id="batteryGauge" hidden title="battery()"><small>battery</small><span class="cell"><i id="batteryBar"></i></span><span id="battery">100</span></div>
             <div class="gauge" id="sampleGauge" hidden title="samples_left()"><small id="sampleLabel">samples</small><span id="samples">0</span></div>
-            <div class="gauge" id="crystalGauge" hidden title="Crystals collected"><small>💎</small><span id="crystals">0</span></div>
+            <div class="gauge" id="crystalGauge" hidden title="Crystals collected"><small id="crystalLabel">💎</small><span id="crystals">0</span></div>
             <div class="gauge" id="drillGauge" hidden title="drills_left()"><small>⛏ drills</small><span id="drills">0</span></div>
             <div class="gauge" id="keyGauge" hidden title="Keys the rover holds"><small>🔑 keys</small><span id="keys">0</span></div>
             <div class="gauge" id="flagGauge" hidden title="flags_left()"><small>🚩 flags left</small><span id="flags">0</span></div>
             <div class="gauge" id="cargoGauge" hidden title="cargo(): samples on board, 3 at most"><small>📦 cargo</small><span id="cargo">0/3</span></div>
+            <div class="gauge spooky" id="candyGauge" hidden title="candy(): candy in the bag"><small>🍬 candy</small><span id="candy">0</span></div>
+            <div class="gauge spooky" id="houseGauge" hidden title="Lit houses still to trick-or-treat"><small>🏠 to go</small><span id="houses">0</span></div>
           </div>
           <div class="right-hud">
             <div class="status" id="status">Ready</div>
@@ -697,6 +768,7 @@
           <button class="jump" data-move="jump" hidden aria-label="Jump: then press an arrow">🦘<small>jump</small></button>
           <button class="up" data-move="north" aria-label="Drive north">↑<small>N</small></button>
           <button class="drill" data-move="drill" hidden aria-label="Drill: then press an arrow">⛏<small>drill</small></button>
+          <button class="knock" data-move="knock" hidden aria-label="Knock: then press the arrow towards the house">🚪<small>knock</small></button>
           <button class="left" data-move="west" aria-label="Drive west">←<small>W</small></button>
           <button class="wait" data-move="wait" aria-label="Wait one tick">⏳<small>wait</small></button>
           <button class="right" data-move="east" aria-label="Drive east">→<small>E</small></button>
@@ -806,6 +878,34 @@
     <div class="zone-list" id="zoneList"></div>
   </div>
 </div>
+<div class="dialog spooky" id="invite" hidden role="dialog" aria-modal="true" aria-labelledby="inviteTitle">
+  <div class="invite-card">
+    <div class="invite-moon" aria-hidden="true">🎃</div>
+    <p class="limited">🕸 Limited time · Halloween only</p>
+    <h2 id="inviteTitle">You're invited to Halloween Night!</h2>
+    <p>Your teacher picked you. Knock on doors with <code>knock("north")</code>, dodge the ghosts, keep away from haunted houses, and fill your bag with candy 🍬.</p>
+    <p>Candy unlocks things for your rover you can only get on Halloween. Whatever you win is yours to keep!</p>
+    <div class="road-items" id="inviteRoad"></div>
+    <div class="invite-actions"><button class="go" id="inviteGo">🎃 Go trick-or-treating!</button><button class="quiet" id="inviteLater">Later</button></div>
+    <p class="invite-later">Later? The 🎃 at the top takes you there.</p>
+  </div>
+</div>
+<div class="dialog spooky" id="candyRoad" hidden role="dialog" aria-modal="true" aria-labelledby="roadTitle">
+  <div class="road-card">
+    <div class="levels-head">
+      <h2 id="roadTitle">🎃 Halloween Night</h2>
+      <span class="limited">Limited time</span>
+      <div class="levels-actions"><button class="go" id="roadPlay"></button><button class="quiet" id="roadClose">Close</button></div>
+    </div>
+    <p class="road-bag" id="roadBag"></p>
+    <div class="road-bar"><i id="roadFill"></i><span id="roadMarks"></span></div>
+    <h3>🍬 The candy road</h3>
+    <div class="road-items" id="roadItems"></div>
+    <h3>🏅 Halloween badges</h3>
+    <div class="road-badges" id="roadBadges"></div>
+    <p class="road-stats" id="roadStats"></p>
+  </div>
+</div>
 <div class="dialog" id="intro" hidden role="dialog" aria-modal="true" aria-labelledby="introTitle">
   <div class="intro-card">
     <canvas id="introScene" aria-hidden="true"></canvas>
@@ -831,6 +931,7 @@
 <div class="announce" id="announce" aria-live="polite"></div>
 
 <script src="/planet/render.js"></script>
+<script src="/planet/halloween.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]];
@@ -849,7 +950,7 @@ let scene = null;     // what the canvas shows: map, zone, frames, events
 let pos = 0, playing = false, lastTs = 0, fps = 8, heard = 0;
 let errorLine = 0, errorCount = 0;
 
-const ZONE_ICONS = {practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", lookout: "👀", forks: "🔀", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐"};
+const ZONE_ICONS = {practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", lookout: "👀", forks: "🔀", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐", street: "🎃", hollow: "👻"};
 // Each sensor arrives with a zone (matches planet.SENSOR_ZONE).
 const SENSOR_ZONE = {look: 0, at_beacon: 0, x: 1, y: 1, report: 1, tick: 2, samples_left: 3,
   battery: 4, in_sun: 4, beacon_x: 6, beacon_y: 6, jump: 7, drill: 9, drills_left: 9,
@@ -876,12 +977,14 @@ const HELP = {
   distance: 'How many squares the rover can drive that way before something is in the way: east(distance("east"))',
   cargo: "Samples on board (3 at most).", home_x: "Home's column.", home_y: "Home's row.",
   sample_x: "The nearest sample's column.", sample_y: "The nearest sample's row.",
+  knock: 'Trick or treat! Knock on the door of the house next to the rover, that way: knock("north"). A lit house gives candy; a haunted one says BOO.',
+  candy: "How much candy is in the bag.",
 };
 const COMMANDS = ["north", "south", "east", "west", "wait"];
 // Clicked into the code as a line of its own, like a command.
-const LINE_CHIPS = [...COMMANDS, "report", "jump", "drill"];
+const LINE_CHIPS = [...COMMANDS, "report", "jump", "drill", "knock"];
 // What a click on each chip types.
-const CHIP_TEXT = {look: 'look("east")', jump: 'jump("east")', drill: 'drill("east")', distance: 'distance("east")'};
+const CHIP_TEXT = {look: 'look("east")', jump: 'jump("east")', drill: 'drill("east")', distance: 'distance("east")', knock: 'knock("north")'};
 let look = {paint: "bone", topper: "none", trail: "tracks", world: "planet"};
 
 const NO_ANSWER = "Can't reach the game right now. Your code is safe: try again in a moment, and tell your teacher if it keeps happening.";
@@ -1114,7 +1217,7 @@ const WORLDS = {
   nether: {ground: "#8a2f2f", rock: "#3a1414", bed: "#1a0606", ice: ["#ffe14d", "#c79a2a"], pixel: true},
 };
 const GRIT = ["rgba(30,10,20,.14)", "rgba(255,240,220,.10)"];
-function palette(zone) { return WORLDS[look.world] || GROUND[zone] || GROUND.landing; }
+function palette(zone) { return (spooky(zone) ? null : WORLDS[look.world]) || GROUND[zone] || GROUND.landing; }
 // One square as a 4 by 4 of blocks, each a slightly different shade.
 function blocks(g, x, y, cell, r, c, color, spread) {
   const w = cell / 4;
@@ -1352,6 +1455,7 @@ function render(now = performance.now()) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const zone = scene ? scene.zone : (site && site.zoneKey) || "landing";
   ctx.fillStyle = bedPattern(ctx, zone); ctx.fillRect(0, 0, w, h);
+  if (spooky(zone)) drawNightSky(ctx, w, h, now);
   if (!scene) { vignette(ctx, w, h); drawConfetti(ctx, dt); return; }
   const map = scene.map, rows = map.length, cols = map[0].length;
   // Room for the map between the HUD (top) and the result banner (bottom).
@@ -1378,10 +1482,11 @@ function render(now = performance.now()) {
     visited.add(frames[k].r + "," + frames[k].c);
     if (frames[k].x) drawCrack(ctx, frames[k].x[0], frames[k].x[1], cell);
   }
-  const now_map = mapAt(i), nextFlag = f.fl || 1, picked = pickedBy(i);
+  const now_map = mapAt(i), nextFlag = f.fl || 1, picked = pickedBy(i), knocked = knockedBy(i);
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     const ch = now_map[r][c];
-    if (ch === "*" && !picked.has(r + "," + c)) drawSample(ctx, r, c, cell, now);
+    if ("hzmc".includes(ch)) drawSpookySquare(ctx, ch, r, c, cell, now, knocked, picked);
+    else if (ch === "*" && !picked.has(r + "," + c)) drawSample(ctx, r, c, cell, now);
     else if (ch === "B") drawBoulder(ctx, r, c, cell);
     else if (ch === "H") drawHome(ctx, r, c, cell);
     else if (ch === "P") drawPadGlow(ctx, r, c, cell, now);
@@ -1390,7 +1495,7 @@ function render(now = performance.now()) {
     else if (ch === "D") drawGate(ctx, r, c, cell);
     else if (ch >= "1" && ch <= "9") drawFlag(ctx, r, c, Number(ch), nextFlag, cell, now);
   }
-  for (const [r, c] of scene.crystals) if (!visited.has(r + "," + c)) drawCrystal(ctx, r, c, cell, now);
+  for (const [r, c] of scene.crystals) if (!visited.has(r + "," + c)) (spooky(scene.zone) ? drawGoldPumpkin : drawCrystal)(ctx, r, c, cell, now);
   // Scouting drives past the gift without opening it: only transmitted code does.
   if (scene.gift && (scout || !visited.has(scene.gift.join(",")))) drawGift(ctx, scene.gift[0], scene.gift[1], cell, now);
   // Sunlight: in Solar Valley, everything outside the light is in shadow.
@@ -1473,7 +1578,10 @@ function render(now = performance.now()) {
     ctx.strokeStyle = "#ffd36b"; ctx.lineWidth = Math.max(2, cell / 10);
     ctx.beginPath(); ctx.arc(rx, ry, cell * (.7 + u * .4), 0, 7); ctx.stroke();
   }
+  drawGhosts(ctx, i, cell, now);
+  if (spooky(scene.zone)) drawMist(ctx, worldW, worldH, cell, now);
   drawParticles(ctx, cell, dt);
+  drawBoo(ctx, cell, now);
   drawPops(ctx, cell, now);
   ctx.restore();
   vignette(ctx, w, h);
@@ -1494,6 +1602,8 @@ function render(now = performance.now()) {
   }
   if (f.dl != null) $("drills").textContent = f.dl;
   if (f.cg != null) $("cargo").textContent = `${f.cg}/3`;
+  if (scene.spooky) $("candy").textContent = f.cy || 0;
+  if (scene.houses) $("houses").textContent = scene.mystery ? "?" : Math.max(0, scene.houses - knocked.size);
   $("keyGauge").hidden = !f.k; if (f.k) $("keys").textContent = f.k;
   if (scene.flags) $("flags").textContent = Math.max(0, scene.flags - nextFlag + 1);
   if (scene.crystals.length) {
@@ -1881,6 +1991,7 @@ function onStep(k) {
   else if (f.e === "portal") { SFX.play("portal"); burst(p.r, p.c, "portal", 14); burst(f.r, f.c, "portal", 14); }
   else if (f.e === "jump") { SFX.play("jump"); burst(p.r, p.c, "dust", 6); burst(f.r, f.c, "dust", 6); }
   else if (f.e === "drill") { SFX.play("bump"); if (f.g) burst(f.g[0], f.g[1], "rock", 16); }
+  if (f.kn || f.e === "spooked") spookyStep(f, p);
   if (f.m) burst(f.m[1][0], f.m[1][1], "rock", 8);   // a pushed boulder rolls
   else if (f.e === "fell") { SFX.play("fall"); burst(f.r, f.c, "fall", 18); shake(); say(pick(OOPS)); }
   else if (f.e === "goal" && scene.run && scene.run.mission !== "report") {
@@ -1896,7 +2007,7 @@ function onStep(k) {
   if (moved) {
     const key = f.r + "," + f.c, seen = scene.frames.slice(0, k).some(x => x.r === f.r && x.c === f.c);
     if (!seen && scene.crystals.some(([r, c]) => r === f.r && c === f.c)) { SFX.play("crystal"); burst(f.r, f.c, "crystal", 16); }
-    else if (f.p) { combo(f, "🧪"); burst(f.r, f.c, "sparkle", 12); }
+    else if (f.p) { combo(f, spooky(scene.zone) ? "🍬" : "🧪"); burst(f.r, f.c, "sparkle", 12); }
     else if (!seen && !scout && scene.gift && scene.gift[0] === f.r && scene.gift[1] === f.c) { SFX.play("gift"); burst(f.r, f.c, "gift", 22); }
     if (look.trail === "dust" && !sliding) burst(f.r, f.c, "dust", 2);
   }
@@ -2109,11 +2220,15 @@ function markFeed() {
 const DONE = {beacon: ["Beacon reached", t => `🎉 Beacon reached in ${plural(t, "tick")}`],
   samples: ["Samples collected", t => `🎉 Every sample collected in ${plural(t, "tick")}`],
   report: ["Report confirmed", () => "📡 Mission control: that matches what we measured! 🎉"],
-  deliver: ["Samples home", t => `🎉 Every sample brought home in ${plural(t, "tick")}`]};
+  deliver: ["Samples home", t => `🎉 Every sample brought home in ${plural(t, "tick")}`],
+  treats: ["Trick or treat!", t => `🎃 Every lit house trick-or-treated in ${plural(t, "tick")}`],
+  candy: ["Candy collected", t => `🍬 Every candy collected in ${plural(t, "tick")}`]};
 const SHORT = {beacon: t => `🏁 Ended ${plural(t, "tick")} in, away from the beacon`,
   samples: t => `🏁 Ended ${plural(t, "tick")} in, with samples still out there`,
   report: t => `🏁 Ended ${plural(t, "tick")} in without a report(). Found the number? Send it with report()`,
-  deliver: t => `🏁 Ended ${plural(t, "tick")} in, before every sample was home`};
+  deliver: t => `🏁 Ended ${plural(t, "tick")} in, before every sample was home`,
+  treats: t => `🏁 Ended ${plural(t, "tick")} in, with lit houses still to visit`,
+  candy: t => `🏁 Ended ${plural(t, "tick")} in, with candy still on the ground`};
 function ending(run) {
   const mission = run.mission || "beacon", t = run.ticks;
   return {
@@ -2121,6 +2236,7 @@ function ending(run) {
     wrong: ["lost", "Wrong number", "📡 Mission control measured something different. Watch the replay again: what number did you see?"],
     fell: ["lost", "Fell", `💥 The rover fell at tick ${t}. What happened just before?`],
     battery: ["lost", "Flat battery", `🔋 Battery flat at tick ${t}. What made the gauge go down?`],
+    spooked: ["lost", "Spooked!", `👻 BOO! The rover got spooked at tick ${t}. What was there?`],
     ticks: ["lost", "Out of time", `⏱ Out of time after ${plural(t, "tick")}. Is a loop going round forever?`],
     stopped: ["hold", "Stopped", SHORT[mission](t)],
     error: ["lost", "Code error", "⚠️ Code error"],
@@ -2134,6 +2250,7 @@ function setStatus(i) {
     if (i >= last() && !playing) [cls, text] = ending(scene.run);
     else if (f.e === "wait") [cls, text] = ["hold", "Waiting"];
     else if (f.e === "jump") [cls, text] = ["go", "Jumping"];
+    else if (f.e === "knock") [cls, text] = ["go", "Knocking"];
     else [cls, text] = ["go", "Driving"];
   }
   el.className = "status" + (cls ? " s-" + cls : ""); el.textContent = text;
@@ -2149,6 +2266,8 @@ function sceneFor(map, frames, run, crystals) {
   map.forEach((row, r) => [...row].forEach((ch, c) => { if (ch === "*") samples.push([r, c]); }));
   return {map, zone: site.zoneKey, frames, run, sunWidth: (run && run.sun_width) || 0,
           samples: samples.length, sampleSquares: samples, crystals: crystals || [], gift: site.gift || null,
+          ghosts: site.ghosts || null, spooky: spooky(site.zoneKey), houses: map.join("").replace(/[^hm]/g, "").length,
+          mystery: map.join("").includes("m"),
           flags: map.join("").replace(/[^1-9]/g, "").length};
 }
 function showRun(run, map, crystals, startAt = 0) {
@@ -2159,7 +2278,7 @@ function showRun(run, map, crystals, startAt = 0) {
   const log = parseLog(run).filter(x => !(scout && x.text.startsWith("🏁")));
   const frameAtTick = t => { let k = 0; run.frames.forEach((f, j) => { if (f.t === t) k = j; }); return k; };
   let marks = log.map(ev => ({k: frameAtTick(ev.t), icon: [...ev.text][0], text: ev.text}))
-    .filter(m => "⛸💨✨🧪💎💥🔋⏱🎉🧱📡🦘🎁🛤⛏🔑🔒🚪🚩🪨📦".includes(m.icon));
+    .filter(m => "⛸💨✨🧪💎💥🔋⏱🎉🧱📡🦘🎁🛤⛏🔑🔒🚪🚩🪨📦🍬👻🎃🏠".includes(m.icon));
   if (marks.length > 12) marks = marks.filter(m => !["⛸", "🧱", "🦘", "🛤"].includes(m.icon));
   if (marks.length > 12) marks = marks.filter(m => m.icon !== "💨" || /pushed/.test(m.text));
   $("marks").innerHTML = marks.map(m => `<span class="mark" style="left:${last() ? m.k / last() * 100 : 0}%" title="tick ${run.frames[m.k].t}: ${esc(m.text)}" data-k="${m.k}">${m.icon}</span>`).join("");
@@ -2170,6 +2289,7 @@ function showRun(run, map, crystals, startAt = 0) {
   $("drillGauge").hidden = run.frames[0].dl == null;
   $("flagGauge").hidden = !scene.flags;
   $("cargoGauge").hidden = run.frames[0].cg == null;
+  $("candyGauge").hidden = !scene.spooky; $("houseGauge").hidden = !scene.houses;
   // Telemetry: events and print() lines in tick order, the error last.
   const prints = run.prints.map(p => ({t: p.t, text: p.text, print: true}));
   const lines = [...log.map(x => ({...x, print: false})), ...prints].map((x, j) => ({...x, j}))
@@ -2183,7 +2303,7 @@ function showRun(run, map, crystals, startAt = 0) {
       return out;
     }, []);
   $("feed").innerHTML = `<div class="feed-head">${scout ? "Scouting telemetry" : "Telemetry"}</div>` + lines.map(x =>
-    `<div class="ev${x.print ? " print" : /🎉|💎|matches/.test(x.text) ? " good" : /💥|🔋|⏱|🔒|different|no drills|won't move|is full/.test(x.text) ? " bad" : ""}" data-t="${x.t}" data-end="${x.end}"><span class="t">${x.t}</span><span>${x.print ? "› " : ""}${esc(x.text)}${x.n > 1 ? ` ×${x.n} <small>(until tick ${x.end})</small>` : ""}</span></div>`).join("")
+    `<div class="ev${x.print ? " print" : /🎉|💎|🍬|🎃|matches/.test(x.text) ? " good" : /💥|🔋|⏱|🔒|👻|different|no drills|won't move|is full/.test(x.text) ? " bad" : ""}" data-t="${x.t}" data-end="${x.end}"><span class="t">${x.t}</span><span>${x.print ? "› " : ""}${esc(x.text)}${x.n > 1 ? ` ×${x.n} <small>(until tick ${x.end})</small>` : ""}</span></div>`).join("")
     + (run.error ? `<div class="err">${codeSpans(run.error)}</div>` : "")
     + (!lines.length && !run.error ? '<div class="empty">No telemetry.</div>' : "");
   hideBanner(); hideCelebrate();
@@ -2209,6 +2329,9 @@ function finished() {
   }
   const sitesRewards = rewards; rewards = null;
   if (sitesRewards) showToasts(sitesRewards);
+  const candy = sitesRewards && sitesRewards.candy;
+  if (candy && candy.dropped) toast("😱", `The rover dropped its ${candy.run} candy!`, "A spooked rover runs away and drops its bag. Only runs without a BOO count.");
+  else if (candy && candy.total > candy.before) toast("🍬", `+${candy.total - candy.before} candy in your bag`, `${candy.total} in all. Finish the level for its stars!`);
   const [cls, , say] = ending(run);
   const buttons = [];
   if (run.end === "goal") {
@@ -2328,11 +2451,12 @@ async function celebrate(r, run) {
   if (r.rank_up) notes.push(`<span class="rank">${esc(r.rank_up.icon)} Rank up: ${esc(r.rank_up.name)}!</span>`);
   const nz = r.zone_cleared && r.zone_cleared.next;
   if (nz) notes.push(`<span class="teaser">Next up: ${ZONE_ICONS[nz.key] || "🪐"} <b>${esc(nz.name)}</b>. ${esc(nz.blurb)}</span>`);
+  if (r.candy) notes.push(candyNote(r.candy));
   $("celeNote").innerHTML = notes.join(" &nbsp; ");
   if (r.first_try) SFX.play("first");
   if (got === r.stars.length || r.record || r.rank_up || r.zone_cleared) throwConfetti();
   $("celeActions").querySelector("button").focus();
-  const nextBar = showNextUnlock(r.total_stars, r.total_stars - r.new_stars);
+  const nextBar = r.candy ? showNextCandy(r.candy) : showNextUnlock(r.total_stars, r.total_stars - r.new_stars);
   if (r.new_stars) await flyStars(stars.filter((el, i) => r.stars[i]).slice(-r.new_stars), r.total_stars);
   if (nextBar) nextBar();
   if (r.rank_up) {
@@ -2480,6 +2604,7 @@ async function enter(id) {
   await openSite(siteOpen(lastSite) ? lastSite : data.current);
   requestAnimationFrame(frameLoop);
   if (recall("planetIntroSeen") !== "1") openIntro();
+  else if (data.halloween && recall(halloweenSeenKey()) !== "1") showInvite();
   // A returning driver sees their own progress, so joining with a classmate's
   // name by mistake shows straight away.
   else if (data.total_stars) toast("👋", `Welcome back, ${data.you.name}!`, `${data.total_stars} ★ so far. Not you? Press Switch.`);
@@ -2492,6 +2617,7 @@ function useState(data) {
   $("totalStars").textContent = data.total_stars;
   if (!holdRank) { renderRank(data.rank); markGarageNew(); }
   classUnlocks(data);
+  renderCandyChip();
   renderRoute();
   renderFunctions();
   if (site) renderSiteNav();
@@ -2585,8 +2711,8 @@ function openLevels() {
     const stars = z.sites.reduce((n, s) => n + got(s), 0), max = z.sites.reduce((n, s) => n + s.stars.length, 0);
     const before = state.zones[zi - 1];
     if (!open) return `<section class="zone-card locked"><div class="zone-top"><span class="zone-ico">${ZONE_ICONS[z.key] || "🪐"}</span><div><h3>🔒 ${esc(z.name)}</h3><p>${before ? `Finish ${esc(before.name)} to open it.` : "Locked."}</p></div></div></section>`;
-    return `<section class="zone-card${isHere ? " here" : ""}" data-zone="${esc(z.key)}">
-      <div class="zone-top"><span class="zone-ico">${ZONE_ICONS[z.key] || "🪐"}</span><div><h3>${esc(z.name)}</h3><p>${esc(z.blurb || "")}</p></div>
+    return `<section class="zone-card${isHere ? " here" : ""}${z.halloween ? " spooky" : ""}" data-zone="${esc(z.key)}">
+      <div class="zone-top"><span class="zone-ico">${ZONE_ICONS[z.key] || "🪐"}</span><div><h3>${esc(z.name)}${z.halloween ? ' <span class="limited">🕸 Limited time</span>' : ""}</h3><p>${esc(z.blurb || "")}</p></div>
         <div class="zone-prog"><b class="${stars === max ? "all" : ""}">★ ${stars}/${max}</b>${done} of ${z.sites.length} done</div></div>
       <div class="tiles">${z.sites.map(s => {
         const n = got(s), cls = [s.key === here ? "now" : "", s.key === next ? "next" : "", n && n === s.stars.length ? "gold" : n || s.solved != null ? "done" : ""].join(" ");
@@ -2692,14 +2818,17 @@ function resetScene() {
     // On a cargo run the samples on board aren't home yet, so say what it counts.
     $("sampleLabel").textContent = site.mission === "deliver" ? "to pick up" : "samples";
     $("crystalGauge").hidden = !scene.crystals.length;
+    $("crystalLabel").textContent = scene.spooky ? "🎃" : "💎";
     $("drillGauge").hidden = site.drills == null;
     $("flagGauge").hidden = !scene.flags; $("keyGauge").hidden = true;
     $("cargoGauge").hidden = !site.map.join("").includes("H"); $("cargo").textContent = "0/3";
+    $("candyGauge").hidden = !scene.spooky; $("houseGauge").hidden = !scene.houses; $("candy").textContent = 0;
     setPos(0); $("clock").textContent = "";
   } else {
     scene = null;
     $("batteryGauge").hidden = true; $("sampleGauge").hidden = true; $("crystalGauge").hidden = true;
     $("drillGauge").hidden = true; $("flagGauge").hidden = true; $("keyGauge").hidden = true; $("cargoGauge").hidden = true;
+    $("candyGauge").hidden = $("houseGauge").hidden = true;
   }
 }
 function renderGoals() {
@@ -2740,7 +2869,12 @@ function legend(map) {
           text.includes("D") && "🚪 gate: opens with a key",
           flags && `🚩 flags 1 to ${flags}: in order`,
           text.includes("B") && "🪨 boulder: drive into it to push it",
-          text.includes("H") && "📦 home: bring samples here, 3 at a time"].filter(Boolean);
+          text.includes("H") && "📦 home: bring samples here, 3 at a time",
+          text.includes("h") && '🏠 lit house: knock("way") for candy',
+          text.includes("z") && "🏚 haunted house: don't knock!",
+          text.includes("m") && "❓ mystery house: lit or haunted, new every run",
+          site.ghosts && "👻 ghost: never drive into one",
+          text.includes("c") && "🍬 candy: drive over it"].filter(Boolean);
 }
 
 // ---- The kit: commands and sensors, one click to add -------------------------------------
@@ -2756,8 +2890,8 @@ function renderKit(zi) {
                   next_x: flags, next_y: flags, flags_left: flags, cargo: home, home_x: home, home_y: home};
   const names = [...COMMANDS, ...site.sensors.filter(n => USEFUL[n] !== false)];
   $("kit").innerHTML = names.map(n => {
-    const cmd = LINE_CHIPS.includes(n), fresh = SENSOR_ZONE[n] === zi && zi > 0;
-    return `<button class="chip${cmd ? " cmd" : " sense"}${fresh ? " new" : ""}" data-name="${n}" title="${esc(HELP[n] || "")}${fresh ? " (new here)" : ""}">${esc(CHIP_TEXT[n] || n + "()")}</button>`;
+    const cmd = LINE_CHIPS.includes(n), fresh = SENSOR_ZONE[n] === zi && zi > 0 || n === "knock" && site.key === "h1";
+    return `<button class="chip${cmd ? " cmd" : " sense"}${fresh ? " new" : ""}${n === "knock" || n === "candy" ? " spooky" : ""}" data-name="${n}" title="${esc(HELP[n] || "")}${fresh ? " (new here)" : ""}">${esc(CHIP_TEXT[n] || n + "()")}</button>`;
   }).join("");
 }
 // A command goes on a line of its own (in line with the one it's typed on),
@@ -2970,11 +3104,12 @@ const HORN_ICONS = {beep: "🤖", honk: "📢", quack: "🦆", pew: "⚡", moo: 
                     dingdong: "🔔", scream: "😱", cackle: "🧙"};
 let garageTab = "paint", garagePeek = null;
 function itemNeed(i) {
-  return i.shop ? "🎨 Paint Shop" : i.find ? `🎁 ${i.find.toUpperCase()}` : i.stars != null ? `★ ${i.stars}` : i.trophies != null ? `🏆 ${i.trophies}`
+  return i.shop ? "🎨 Paint Shop" : i.candy != null ? `🍬 ${i.candy}` : i.find ? `🎁 ${i.find.toUpperCase()}` : i.stars != null ? `★ ${i.stars}` : i.trophies != null ? `🏆 ${i.trophies}`
     : i.badge ? `🏅 ${i.badge_name}` : `class ★ ${i.class}`;
 }
 function itemHow(i) {
-  return i.shop ? "Paint it yourself, with code, in the 🎨 Paint Shop" : i.find ? `A mystery gift on ${i.where}: drive over the 🎁 there to find it`
+  if (i.limited && !i.open) return `🎃 Halloween only! ${itemHow({...i, limited: null})}` + (i.candy != null ? " on Halloween night" : "");
+  return i.shop ? "Paint it yourself, with code, in the 🎨 Paint Shop" : i.candy != null ? `Collect ${i.candy} candy` : i.find ? `A mystery gift on ${i.where}: drive over the 🎁 there to find it`
     : i.stars != null ? `Earn ${i.stars} stars` : i.trophies != null ? `Finish all of a day's missions on ${i.trophies} day${i.trophies === 1 ? "" : "s"}`
     : i.badge ? `Earn the ${i.badge_name} badge` + (i.badge_how ? `: ${i.badge_how.charAt(0).toLowerCase()}${i.badge_how.slice(1)}` : "")
     : `When the class has ${i.class} stars together`;
@@ -2982,29 +3117,34 @@ function itemHow(i) {
 function renderGarage() {
   const rank = state.rank;
   $("garageStars").innerHTML = `★ ${state.total_stars} / ${state.max_stars}` + (rank ? `<small>${rank.icon} ${esc(rank.name)}${rank.next ? ` · ${rank.need} ★ to ${rank.next_icon} ${esc(rank.next)}` : ""}</small>` : "");
-  $("garageTabs").innerHTML = GARAGE_TABS.map(([tab, name]) => {
-    const items = tab === "badges" ? state.badges : state.garage.filter(i => i.slot === tab);
+  // Halloween night's things have a tab of their own while there are any to show.
+  const tabs = state.garage.some(i => i.limited) ? [["halloween", "Halloween"], ...GARAGE_TABS] : GARAGE_TABS;
+  if (!tabs.some(([tab]) => tab === garageTab)) garageTab = "paint";
+  const onTab = (i, tab) => tab === "halloween" ? !!i.limited : i.slot === tab;
+  $("garageTabs").innerHTML = tabs.map(([tab, name]) => {
+    const items = tab === "badges" ? state.badges : state.garage.filter(i => onTab(i, tab));
     const open = items.filter(i => tab === "badges" ? i.earned : i.open).length;
-    const fresh = items.some(i => garageNew.has(`${tab === "badges" ? "badge" : tab}:${i.key}`));
-    return `<button class="tab${tab === garageTab ? " on" : ""}${fresh ? " has-new" : ""}" data-tab="${tab}">${tab === "badges" ? "🏅" : SLOT_ICON[tab]} ${name}<small>${open}/${items.length}</small></button>`;
+    const fresh = items.some(i => garageNew.has(`${tab === "badges" ? "badge" : i.slot}:${i.key}`));
+    return `<button class="tab${tab === garageTab ? " on" : ""}${fresh ? " has-new" : ""}${tab === "halloween" ? " spooky" : ""}" data-tab="${tab}">${tab === "badges" ? "🏅" : tab === "halloween" ? "🎃" : SLOT_ICON[tab]} ${name}<small>${open}/${items.length}</small></button>`;
   }).join("");
   if (garageTab === "badges") {
     $("garageShelf").innerHTML = `<p class="wear-note">Press an earned badge to wear it on the class screen.</p><div class="badges">` + state.badges.map(b => b.earned
       ? `<button class="badge${state.showoff === b.key ? " worn" : ""}${garageNew.has("badge:" + b.key) ? " fresh" : ""}" onclick="wearBadge('${b.key}')" title="${state.showoff === b.key ? "Worn on the class screen: press to take it off" : "Wear it on the class screen"}"><span class="ico">${b.icon}</span><div>${esc(b.name)}${garageNew.has("badge:" + b.key) ? ` <span class="new">NEW</span>` : ""}<small>${state.showoff === b.key ? "👕 Wearing it" : esc(b.how)}</small></div></button>`
-      : `<div class="badge no"><span class="ico">${b.icon}</span><div>${esc(b.name)}<small>${esc(b.how)}</small></div></div>`).join("") + "</div>";
+      : `<div class="badge no${b.limited ? " ltd" : ""}"><span class="ico">${b.icon}</span><div>${esc(b.name)}${b.limited ? ` <span class="ltd-tag">🎃 Halloween</span>` : ""}<small>${esc(b.how)}</small></div></div>`).join("") + "</div>";
   } else {
-    const RANK = Object.keys(RARITY_NAMES), shelf = state.garage.filter(i => i.slot === garageTab)
+    const RANK = Object.keys(RARITY_NAMES), shelf = state.garage.filter(i => onTab(i, garageTab))
       .sort((a, b) => RANK.indexOf(a.rarity) - RANK.indexOf(b.rarity));   // common first, legendary last
-    const door = garageTab !== "paint" ? "" : `<button class="shop-door" id="shopDoor"><span class="big">🎨</span><span><b>Paint Shop</b>Code your own paint: <code>paint(3, 2, "red")</code></span><span class="gn-go">Open ▶</span></button>`;
+    const door = garageTab === "halloween" ? `<button class="shop-door spooky" id="roadDoor"><span class="big">🎃</span><span><b>Halloween only!</b>${state.halloween ? `${state.halloween.candy} 🍬 in your bag. Candy, gifts and badges on Halloween night unlock these. Yours to keep.` : "Halloween night is over. These are yours to keep."}</span>${state.halloween ? '<span class="gn-go">🍬 Candy road ▶</span>' : ""}</button>`
+      : garageTab !== "paint" ? "" : `<button class="shop-door" id="shopDoor"><span class="big">🎨</span><span><b>Paint Shop</b>Code your own paint: <code>paint(3, 2, "red")</code></span><span class="gn-go">Open ▶</span></button>`;
     $("garageShelf").innerHTML = door + `<div class="cards">` + shelf.map(i => {
       const on = look[i.slot] === i.key, fresh = garageNew.has(`${i.slot}:${i.key}`);
       return `<button class="card r-${i.rarity}${on ? " on" : ""}${fresh ? " fresh" : ""}${i.open ? "" : " locked"}" data-slot="${i.slot}" data-key="${i.key}"
         ${i.open ? "" : `aria-disabled="true"`} title="${esc(i.open ? i.name : itemHow(i))}">
-        ${on ? `<span class="worn">✓ ON</span>` : ""}${fresh ? `<span class="new">NEW</span>` : ""}
+        ${on ? `<span class="worn">✓ ON</span>` : ""}${fresh ? `<span class="new">NEW</span>` : ""}${i.limited && !on && !fresh ? `<span class="ltd" title="Halloween only">🎃</span>` : ""}
         <canvas data-key="${i.key}"></canvas>${i.open ? "" : `<span class="lock">🔒</span>`}
         <span class="cname">${esc(i.name)}</span><span class="tier">${i.open ? RARITY_NAMES[i.rarity] : esc(itemNeed(i))}</span></button>`;
     }).join("") + "</div>";
-    $("garageShelf").querySelectorAll("canvas").forEach(cv => thumb(cv, garageTab, cv.dataset.key));
+    $("garageShelf").querySelectorAll("canvas").forEach(cv => thumb(cv, cv.closest(".card").dataset.slot, cv.dataset.key));
   }
   const gifts = state.garage.filter(i => i.find), found = gifts.filter(i => i.open).length;
   $("giftNote").textContent = `🎁 ${found} of ${gifts.length} mystery gifts found. They're hidden on the map: drive over one in a run to open it.`;
@@ -3433,6 +3573,7 @@ function toggleScout() {
   scoutLeft(SCOUT_MAX); $("scoutCode").disabled = true;
   $("scoutHelp").classList.toggle("kids", kidsMode());
   $("scoutKid").innerHTML = scoutCan("jump") ? "🕹 Drive with the arrows <b>↑ ↓ ← →</b>. To jump, press <b>🦘</b> and then an arrow. Made a mistake? Press R."
+    : scoutCan("knock") ? "🕹 Drive with the arrows <b>↑ ↓ ← →</b>. To knock on a door, press <b>🚪</b> and then the arrow towards the house."
     : "🕹 Drive the rover with the arrow buttons <b>↑ ↓ ← →</b>. Made a mistake? Press R to start again.";
   announce("Scouting. Use the arrow keys to drive.");
   renderSteps();
@@ -3460,14 +3601,16 @@ function showJumpPad() {
   mid.setAttribute("aria-label", kidJump ? "Jump: then press an arrow" : "Wait one tick");
   pad.querySelector(".jump").hidden = kidJump || !scoutCan("jump");
   pad.querySelector(".drill").hidden = !scoutCan("drill");
-  for (const b of pad.querySelectorAll('[data-move="jump"], [data-move="drill"]')) b.classList.toggle("on", !!scout && scout.arm === b.dataset.move);
+  pad.querySelector(".knock").hidden = !scoutCan("knock");
+  for (const b of pad.querySelectorAll('[data-move="jump"], [data-move="drill"], [data-move="knock"]')) b.classList.toggle("on", !!scout && scout.arm === b.dataset.move);
   pad.classList.toggle("armed", !!(scout && scout.arm));
   $("scoutExtra").textContent = (scoutCan("jump") ? " · J then an arrow jumps (or Shift+arrow)" : "")
-    + (scoutCan("drill") ? " · X then an arrow drills" : "");
+    + (scoutCan("drill") ? " · X then an arrow drills" : "")
+    + (scoutCan("knock") ? " · K then an arrow knocks" : "");
 }
 async function scoutMove(move) {
   if (!scout || scout.over) return;
-  if (move === "jump" || move === "drill") { if (scoutCan(move)) { scout.arm = scout.arm === move ? null : move; showJumpPad(); } return; }
+  if (move === "jump" || move === "drill" || move === "knock") { if (scoutCan(move)) { scout.arm = scout.arm === move ? null : move; showJumpPad(); } return; }
   if (scout.arm && WAYS.includes(move)) { move = `${scout.arm}:${move}`; scout.arm = null; showJumpPad(); }
   if (move.includes(":") && !scoutCan(move.split(":")[0])) return;
   if (scout.queue.length < 3) scout.queue.push(move);
@@ -3497,13 +3640,13 @@ function scoutFinished(run) {
   // the driving help and pad, which would otherwise sit on top of it.
   $("scoutHelp").hidden = true; $("pad").hidden = true;
   let say = {goal: "Your scout made it! Now write code that does the same.",
-               fell: "Lost!", battery: "Flat battery!",
+               fell: "Lost!", battery: "Flat battery!", spooked: "BOO! Spooked!",
                ticks: "Out of time.", stopped: "Out of scouting moves."}[run.end] || "";
   if (run.end === "goal") SFX.play("win");
   scout.reached = run.end === "goal";
   renderSteps();
   // A lost scout says what happened and one thing to try, like a transmitted run.
-  const ex = ["fell", "battery", "ticks"].includes(run.end) && run.explain;
+  const ex = ["fell", "battery", "ticks", "spooked"].includes(run.end) && run.explain;
   let next = ex ? ex.next : "";
   if (next.includes("jump(") && !scoutCan("jump")) next = "Scouting can't jump, but code can. " + next;
   if (kidsMode() && scout.reached) say = "🎉 You made it! Now press 📋 Use as code to turn your drive into code.";
@@ -3706,7 +3849,7 @@ async function transmit() {
       announce(`${reached} of 5 planets reached.`);
     } else {
       $("planets").hidden = true;
-      showRun(runs[0], site.map, site.crystals);
+      showRun(runs[0], runs[0].map || site.map, site.crystals);
       announce(ending(runs[0])[2]);
       if (data.rewards.found.length) site.gift = null;
     }
@@ -3927,7 +4070,7 @@ const KEY_HELP = {
 };
 // What goes in the ( ), for the hint above a command being typed.
 const ARGS = {north: "squares", south: "squares", east: "squares", west: "squares", wait: "ticks",
-  look: '"way"', jump: '"way"', drill: '"way"', distance: '"way"', report: "number", print: "what to show",
+  look: '"way"', jump: '"way"', drill: '"way"', distance: '"way"', knock: '"way"', report: "number", print: "what to show",
   range: "how many", abs: "number", min: "a, b", max: "a, b"};
 const WAYS = ["north", "south", "east", "west"];
 const WAY_ARROW = {north: "↑", south: "↓", east: "→", west: "←"};
@@ -3936,7 +4079,8 @@ const SNIPPETS = {for: ["for i in range(", "):"], while: ["while ", ":"], if: ["
 const KIND_WORD = {cmd: "command", sense: "sensor", own: "yours", var: "variable", key: "python", fn: "python", way: "way", word: "look() says"};
 // What look() says about each square (matches planet.WORDS).
 const LOOK_SAYS = {"#": "rock", ".": "ground", "~": "ice", "O": "crater", "+": "sun", "P": "pad", "G": "beacon",
-  ">": "belt", "<": "belt", "^": "belt", "v": "belt", "D": "gate", "B": "boulder", "H": "home"};
+  ">": "belt", "<": "belt", "^": "belt", "v": "belt", "D": "gate", "B": "boulder", "H": "home",
+  "h": "house", "z": "haunted", "c": "candy"};
 
 function defsWithParams(code) {
   const out = {};
@@ -4345,7 +4489,10 @@ function openIntro() {
   terrainCache.key = null;   // the intro's little map isn't the site's
   $("introClose").focus();
 }
-function closeIntro() { $("intro").hidden = true; store("planetIntroSeen", "1"); $("code").focus(); }
+function closeIntro() {
+  $("intro").hidden = true; store("planetIntroSeen", "1");
+  if (state && state.halloween && recall(halloweenSeenKey()) !== "1") showInvite(); else $("code").focus();
+}
 
 // ---- Wiring ----------------------------------------------------------------------------------
 $("joinForm").addEventListener("submit", join);
@@ -4397,6 +4544,7 @@ $("garage").addEventListener("click", e => {
   if (pick) return pickReward(pick.dataset.pick);
   const tab = e.target.closest(".tab"), card = e.target.closest(".card");
   if (tab) { garageTab = tab.dataset.tab; garagePeek = null; renderGarage(); }
+  if (e.target.closest("#roadDoor")) { if (state.halloween) { $("garage").hidden = true; openCandyRoad(); } return; }
   if (e.target.closest(".shop-door") || card && card.dataset.key === "mine" && card.classList.contains("locked")) return openPaintShop();
   // A locked horn still plays, so it's something to look forward to.
   if (card && card.classList.contains("locked")) { if (card.dataset.slot === "horn") { SFX.wake(); SFX.play(card.dataset.key); } }
@@ -4471,6 +4619,8 @@ document.addEventListener("keydown", e => {
     closePops();
     if (!$("garage").hidden) $("garage").hidden = true;
     if (!$("paintShop").hidden) closePaintShop(true);
+    if (!$("invite").hidden) closeInvite();
+    if (!$("candyRoad").hidden) closeCandyRoad();
     if (!$("levels").hidden) closeLevels();
     else if (!$("intro").hidden) closeIntro();
     else if (!$("celebrate").hidden) hideCelebrate();
@@ -4487,6 +4637,7 @@ document.addEventListener("keydown", e => {
   else if (keys[e.key]) { e.preventDefault(); scoutMove(keys[e.key]); }
   else if ((e.key === "j" || e.key === "J") && scoutCan("jump")) scoutMove("jump");
   else if ((e.key === "x" || e.key === "X") && scoutCan("drill")) scoutMove("drill");
+  else if ((e.key === "k" || e.key === "K") && scoutCan("knock")) scoutMove("knock");
   else if (e.key === "r" || e.key === "R") restartScout();
 });
 document.addEventListener("pointerdown", e => {
@@ -4514,6 +4665,13 @@ $("map").addEventListener("click", e => {
   scene.said = {at: scene.poke, text: POKE_LINES[Math.floor(Math.random() * POKE_LINES.length)]};
 });
 window.addEventListener("resize", () => { render(); refreshEditor(); foldBrief(); });
+$("candyButton").addEventListener("click", openCandyRoad);
+$("inviteGo").addEventListener("click", playHalloween);
+$("inviteLater").addEventListener("click", closeInvite);
+$("roadPlay").addEventListener("click", playHalloween);
+$("roadClose").addEventListener("click", closeCandyRoad);
+for (const id of ["invite", "candyRoad"]) $(id).addEventListener("click", e => { if (e.target === $(id)) $(id).hidden = true; });
+setInterval(pingHalloween, 20000);
 resume();
 </script>
 </body>

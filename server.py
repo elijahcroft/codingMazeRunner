@@ -4721,6 +4721,7 @@ PAGES = {
     "/planet/show": ("planet_show.html", "text/html; charset=utf-8"),
     "/planet/render.js": ("planet_render.js", "text/javascript; charset=utf-8"),
     "/planet/replay.js": ("planet_replay.js", "text/javascript; charset=utf-8"),
+    "/planet/halloween.js": ("planet_halloween.js", "text/javascript; charset=utf-8"),
     "/cake": ("cake.html", "text/html; charset=utf-8"),
     "/cake/teacher": ("cake_teacher.html", "text/html; charset=utf-8"),
     "/cake/show": ("cake_show.html", "text/html; charset=utf-8"),

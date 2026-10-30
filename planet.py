@@ -951,7 +951,7 @@ class World:
             self.again += 1
             self.say("🚪 knock knock… nobody comes: you already got candy here")
         else:
-            n = treats(r, c)
+            n = self.v.get("treats", {}).get(f"{r},{c}") or treats(r, c)
             self.knocked.add((r, c))
             self.candy += n
             self.knock_at = [r, c, n]
@@ -4729,7 +4729,8 @@ TRICK_STREET = {
              "It's Halloween night! 🎃 Drive along the road until the lit house is "
              "right above the rover, then knock on its door. Up on the map is north:\n\n"
              'knock("north")',
-             [{"map": lane(7, {5: "h"}), "crystals": [(2, 7)]}],
+             # A full-size bar from the first door, to start the night well.
+             [{"map": lane(7, {5: "h"}), "crystals": [(2, 7)], "treats": {"1,5": 5}}],
              reference='east(4)\nknock("north")\n', bonus={"kind": "pumpkin"}, compact=2),
         site("h2", "Candy Lane",
              "Five lit houses in a row, two squares apart. Knock on every door! "
