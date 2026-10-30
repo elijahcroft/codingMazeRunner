@@ -493,6 +493,65 @@ zone with its levels as big tiles, their stars, 🔒 for what's still locked,
 and **▶ Play next**. The ◀ ▶ arrows beside a level's name go to the level
 before or after.
 
+## 🎃 Halloween night: a limited-time event
+
+Ten trick-or-treat levels for the students **you** pick. Nobody sees them
+until you invite them, so it works as a treat for students who are doing
+well, while everyone else carries on with the main route.
+
+**To send a student:** on `/planet/teacher` press **🎃 Invite** on their
+card (or **🎃 Invite everyone** in the orange Halloween panel above the
+crew). Within 20 seconds their screen shows an invitation with **🎃 Go
+trick-or-treating!**; after that, the 🎃 candy counter at the top of their
+screen takes them there. Press **🎃 Invited ✓** again to take an invitation
+back. **Put it away** (or the 🎃 switch in ⚙ Settings) closes Halloween night
+for everyone. Whatever students earned stays theirs; what they didn't earn
+leaves the garage with it.
+
+**The new command:** `knock("north")` knocks on the door of the house next to
+the rover, that way. A lit house 🏠 gives candy (2 to 5, a surprise each
+time). A haunted house 🏚 says **BOO!** and the run ends. Ghosts 👻 float to
+and fro across the road: they drift straight through a rover that waits,
+but driving *into* one is a BOO too. `look()` says `"house"`, `"haunted"`,
+`"ghost"` and `"candy"`, and `candy()` says how much is in the bag. Scouting
+can knock too (🚪 then an arrow, or K then an arrow).
+
+| Zone | Level | What it asks for |
+|---|---|---|
+| 🎃 Trick-or-Treat Street | H1 Knock Knock | `east(4)` and one `knock("north")`; the 🎃 star is a golden pumpkin off the route |
+| | H2 Candy Lane | five houses in a row: a `for` loop; the 🍬 star picks up candy in the nooks under them |
+| | H3 Both Sides | knock north *and* south at every stop; the 🧩 star puts the two knocks in a `def` (a 🎁 gift here) |
+| | H4 Spooky House | one or two haunted houses, different for each student: `if look("north") == "house":` |
+| | H5 Ghost Crossing | three ghosts cross the road, timed differently for each student: `while look("east") == "ghost": wait()` |
+| 👻 Haunted Hollow | H6 Pumpkin Patch | a field of 31 candies: sweep it with a loop (a breather, and lots of candy) |
+| | H7 Long Street | a street of a different length for everyone: `while look("east") != "rock":` with an `if` inside |
+| | H8 Trick or Trick | houses both sides, some haunted: two `if`s, or one `def visit(way):` for the 🧩 star (a 🎁 gift here) |
+| | H9 Ghost Parade | ghosts *and* haunted houses: wait, drive, check, knock |
+| | H10 Haunted Mansion | every house is a ❓ mystery and 4 are haunted, **new ones every run**: only code that checks every house gets round |
+
+The 🌍 star on H4, H5, H7 and H9 tries the same code on every classmate's
+street, so a route timed by hand for one street doesn't get it. Worth asking
+the class: "how did your code know that house was haunted?"
+
+**What they win.** Every level has its three stars (counted on their own, so
+the event never changes ranks or the class star meter). Candy fills the
+**🍬 candy road** (press the candy counter): a witch hat at 10 candy, then
+Candy Corn paint, a black cat, a candy trail, pumpkin wheels, Mummy paint,
+spooky fog, the Graveyard map, and Vampire paint at 175. Candy counts the
+best run on each level, and a run that ends in a BOO drops its bag, so
+grinding doesn't help but careful code does. Halloween badges give more:
+Knock Knock (a doorbell horn), Boo'd! for getting spooked (a scream horn:
+the funny one everyone gets), Haunt Detector for checking `look()` against
+`"house"` (Ghost costume paint), Ghost Dodger (Zombie shuffle dance), Say
+Boo for `print("boo")` in a finished mission (a witch's cackle), Mansion
+Master (a haunted top hat) and, for every Halloween star, **Pumpkin King**:
+the legendary Jack-o'-lantern paint. All of it is marked 🎃 in the garage,
+which has a Halloween tab while the event is out.
+
+On your page, invited students' cards show their Halloween levels and candy,
+and a run on a Halloween level plays on the big screen like any other, with
+its houses and ghosts.
+
 ## Zone by zone
 
 Each zone has three hints on the **mission control radio** (📻), from a nudge to partial
