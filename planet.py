@@ -89,9 +89,11 @@ WORDS = {"#": "rock", ".": "ground", "S": "ground", "G": "beacon", "~": "ice",
          "O": "crater", "*": "ground", "+": "sun", "P": "pad",
          ">": "belt", "<": "belt", "^": "belt", "v": "belt",
          "k": "ground", "D": "gate", **{str(n): "ground" for n in range(1, 10)},
-         "B": "boulder", "H": "home"}
+         "B": "boulder", "H": "home",
+         # Halloween night: a lit house, a haunted one, candy on the ground.
+         "h": "house", "z": "haunted", "c": "ground"}
 # Every word look() can give back, for spotting one written without quotes.
-LOOK_WORDS = set(WORDS.values()) | {"crack", "sample", "key", "flag", "sun"}
+LOOK_WORDS = set(WORDS.values()) | {"crack", "sample", "key", "flag", "sun", "candy", "ghost"}
 OPEN_WORDS = {"empty", "open", "space", "free", "clear", "nothing", "floor", ""}
 
 
@@ -159,6 +161,10 @@ GUESSES = {
     "go_to": "go_to() isn't built in: make it with  def go_to(tx, ty):  above "
              "where you use it (📻 Hints shows how). If you saved one, 🧰 "
              "Functions adds it to your code.",
+    "knock": "knock() only works on Halloween night, where there are doors to knock on. 🎃",
+    "candy": "candy() only works on Halloween night, where there's candy to count. 🎃",
+    "trick_or_treat": 'To trick-or-treat, drive next to a house and knock on its '
+                      'door, like  knock("north")',
 }
 LOOK_HOW = ('look() needs a direction in quotes: "north", "south", "east" or '
             '"west", like  look("east")')
@@ -168,11 +174,14 @@ DRILL_HOW = ('drill() needs a direction in quotes: "north", "south", "east" or '
              '"west", like  drill("east")')
 DISTANCE_HOW = ('distance() needs a direction in quotes: "north", "south", "east" '
                 'or "west", like  distance("east")')
+KNOCK_HOW = ('knock() needs the way to the door in quotes: "north", "south", '
+             '"east" or "west", like  knock("north")')
 CARGO_MAX = 3             # samples the rover can carry home at once
 # Squares that stop a slide, a belt ride or a gust, as rock does.
-SOLID = "#DB"
+SOLID = "#DBhz"
+HOUSES = "hz"   # a lit house and a haunted one: the rover can't drive in
 # Commands that aren't plain driving, so a def can't take their name.
-OWN_COMMANDS = ("look", "report", "jump", "drill", "distance")
+OWN_COMMANDS = ("look", "report", "jump", "drill", "distance", "knock")
 
 
 def literal(node):
@@ -405,6 +414,11 @@ class Rover(Brain):
                 raise BotError(DRILL_HOW)
             world.act("drill", self.direction(node.args[0], frame, DRILL_HOW))
             return None
+        if name == "knock" and name in self.sensors:
+            if len(node.args) != 1:
+                raise BotError(KNOCK_HOW)
+            world.act("knock", self.direction(node.args[0], frame, KNOCK_HOW))
+            return None
         if name == "report" and name in self.sensors:
             if len(node.args) != 1:
                 raise BotError("report() sends one number, like  report(6)")
@@ -501,6 +515,27 @@ class World:
                           for c, ch in enumerate(row) if ch == "H"), None)
         self.cargo = 0         # samples on board, not yet brought home
         self.picked = None     # the sample just picked up, for the next frame
+        # Halloween night. Mystery houses ("m") are lit or haunted, picked
+        # afresh for every run from the variant's seed.
+        mystery = [(r, c) for r, row in enumerate(self.grid)
+                   for c, ch in enumerate(row) if ch == "m"]
+        if mystery:
+            haunted = set(random.Random(variant.get("seed", 0)).sample(mystery, variant.get("haunts", 1)))
+            for r, c in mystery:
+                self.grid[r][c] = "z" if (r, c) in haunted else "h"
+        self.start_map = ["".join(row) for row in self.grid] if mystery else None
+        self.houses = {(r, c) for r, row in enumerate(self.grid)
+                       for c, ch in enumerate(row) if ch == "h"}
+        self.knocked = set()   # lit houses that have given their candy
+        self.candies = {(r, c) for r, row in enumerate(self.grid)
+                        for c, ch in enumerate(row) if ch == "c"}
+        self.candy = 0         # candy in the bag
+        self.no_door = 0       # knock()s with no house there
+        self.again = 0         # knock()s on a house that already gave its candy
+        self.spooked = None    # "ghost" or "haunted": what scared the rover off
+        self.knock_at = None   # the house just knocked on, for the next frame
+        self.ghosts = [g["path"] for g in variant.get("ghosts", [])]
+        self.ghost_start = [g.get("start", 0) for g in variant.get("ghosts", [])]
         self.links = {}
         for a, b in variant.get("pairs", []):
             self.links[tuple(a)] = tuple(b)
@@ -545,9 +580,23 @@ class World:
             return 0
         return every - self.t % every
 
+    def ghost_squares(self, t):
+        """Where every ghost is on tick t. A ghost floats to and fro along
+        its path, a square a tick, starting `start` squares in."""
+        spots = set()
+        for path, start in zip(self.ghosts, self.ghost_start):
+            span = 2 * (len(path) - 1) or 1
+            i = (start + t) % span
+            spots.add(tuple(path[i if i < len(path) else span - i]))
+        return spots
+
     def look(self, way):
         dr, dc = DIRS[COMPASS[way]]
         r, c = self.r + dr, self.c + dc
+        if (r, c) in self.ghost_squares(self.t):
+            return "ghost"
+        if (r, c) in self.candies:
+            return "candy"
         if (r, c) in self.cracked:
             return "crack"
         if (r, c) in self.samples:
@@ -570,6 +619,8 @@ class World:
             return self.t
         if name == "samples_left":
             return len(self.samples)
+        if name == "candy":
+            return self.candy
         if name == "battery":
             return self.battery
         if name == "in_sun":
@@ -656,6 +707,13 @@ class World:
         if self.picked:
             f["p"] = self.picked
             self.picked = None
+        if self.ghosts:
+            f["gh"] = [list(p) for p in sorted(self.ghost_squares(self.t))]
+        if self.knock_at:
+            f["kn"] = self.knock_at   # [r, c, candy given]
+            self.knock_at = None
+        if self.houses or self.candies or self.candy:
+            f["cy"] = self.candy
         if self.home:
             f["cg"] = self.cargo
         if self.line:
@@ -699,7 +757,13 @@ class World:
             self.finish("fell", "💥 fell into a crater")
         if (r, c) in self.crystals:
             self.crystals.discard((r, c))
-            self.say("💎 crystal collected")
+            self.say("🎃 golden pumpkin collected" if self.houses or self.candies
+                     else "💎 crystal collected")
+        if (r, c) in self.candies:
+            self.candies.discard((r, c))
+            self.candy += 1
+            self.picked = [r, c]
+            self.say(f"🍬 picked up a candy, {self.candy} in the bag")
         if (r, c) in self.samples:
             if self.home and self.cargo >= CARGO_MAX:
                 self.say(f"🧪 the cargo bay is full ({CARGO_MAX}): unload at home first")
@@ -748,6 +812,9 @@ class World:
         elif command == "drill":
             self.d = COMPASS[way]
             self.drill()
+        elif command == "knock":
+            self.d = COMPASS[way]
+            self.knock()
         else:
             self.d = COMPASS[way or command]
             self.drive(way or command, 2 if command == "jump" else 1)
@@ -764,6 +831,12 @@ class World:
         the square beyond."""
         dr, dc = DIRS[self.d]
         r, c = self.r + dr * squares, self.c + dc * squares
+        if self.at(r, c) in HOUSES:
+            self.bumps += 1
+            self.say("🏠 bumped into a house: knock() on its door instead" if squares == 1
+                     else "🏠 a jump can't land on a house")
+            self.frames.append(self.frame("bump"))
+            return
         if self.at(r, c) == "#":
             self.bumps += 1
             self.say("🧱 bumped into rock" if squares == 1 else
@@ -803,6 +876,13 @@ class World:
             self.grid[r][c] = "."
             self.opened = [r, c]
             self.say("🚪 the key opened the gate")
+        if (r, c) in self.ghost_squares(self.t - 1):
+            # Ghosts float through a rover that waits, but drive into one and BOO.
+            self.r, self.c = r, c
+            self.spooked = "ghost"
+            self.frames.append(self.frame("spooked"))
+            self.finish("spooked", f"👻 BOO! The rover drove right into a ghost at "
+                                   f"x {c}, y {r}, and ran away screaming")
         if squares == 2:
             self.say(f"🦘 jumped {command}")
         self.enter(r, c, "jump" if squares == 2 else "move")
@@ -851,6 +931,34 @@ class World:
             self.say(f"⛏ drilled through the rock, {self.drills} "
                      f"drill{'s' if self.drills != 1 else ''} left")
         self.frames.append(self.frame("drill"))
+
+    def knock(self):
+        """knock(way): trick or treat at the house next to the rover that way."""
+        dr, dc = DIRS[self.d]
+        r, c = self.r + dr, self.c + dc
+        ch = self.at(r, c)
+        if ch == "z":
+            self.spooked = "haunted"
+            self.knock_at = [r, c, -1]
+            self.frames.append(self.frame("knock"))
+            self.finish("spooked", f"👻 BOO! The house at x {c}, y {r} was haunted. "
+                                   f"The rover ran away screaming")
+        if ch != "h":
+            self.no_door += 1
+            self.say("🚪 knock knock… but there's no door there" if ch not in "#O"
+                     else f"🚪 knock knock… on {WORDS.get(ch, 'rock')}: no door there")
+        elif (r, c) in self.knocked:
+            self.again += 1
+            self.say("🚪 knock knock… nobody comes: you already got candy here")
+        else:
+            n = treats(r, c)
+            self.knocked.add((r, c))
+            self.candy += n
+            self.knock_at = [r, c, n]
+            left = len(self.houses - self.knocked)
+            self.say(f"🍬 trick or treat! +{n} candy, {self.candy} in the bag"
+                     + (f" ({left} lit house{'s' if left != 1 else ''} to go)" if left else ""))
+        self.frames.append(self.frame("knock"))
 
     def portal(self):
         if self.at(self.r, self.c) != "P":
@@ -903,7 +1011,10 @@ class World:
 
     def check_goal(self):
         if self.mission == "beacon" and (self.r, self.c) == self.goal:
-            if self.samples:
+            left = len(self.houses - self.knocked)
+            if left:
+                self.say(f"🛰 the beacon needs every lit house first ({left} to go)")
+            elif self.samples:
                 self.say(f"🛰 the beacon needs every sample first "
                          f"({len(self.samples)} left)")
             elif self.flag in self.flags:
@@ -915,6 +1026,15 @@ class World:
             self.finish("goal", "🎉 every sample collected")
         elif self.mission == "deliver" and not self.samples and not self.cargo:
             self.finish("goal", "🎉 every sample brought home")
+        elif self.mission == "treats" and self.houses <= self.knocked:
+            self.finish("goal", "🎉 every lit house trick-or-treated")
+        elif self.mission == "candy" and not self.candies:
+            self.finish("goal", "🎉 every candy collected")
+
+
+def treats(r, c):
+    """How much candy the house at (r, c) gives: 2 to 5, the same every night."""
+    return 2 + zlib.crc32(f"treat {r},{c}".encode()) % 4
 
 
 def n_squares(n, way):
@@ -1119,6 +1239,19 @@ def explain(world, unlocked=(), code=""):
                            f"{where((at[0] - dr, at[1] - dc))} goes over it.")
                 else:
                     nxt = f'Check the square before you drive, like  if look("{way}") == "crater":'
+    elif end == "spooked" and world.spooked == "haunted":
+        dr, dc = DIRS[world.d]
+        way = next(w for w, d in COMPASS.items() if d == world.d)
+        what = f"The house at {where((at[0] + dr, at[1] + dc))} was haunted 👻"
+        nxt = (f'Check before you knock: look("{way}") says "haunted" for a haunted '
+               f'house and "house" for a lit one, so  if look("{way}") == "house":  '
+               f'then knock("{way}").')
+    elif end == "spooked":
+        way = next(w for w, d in COMPASS.items() if d == world.d)
+        what = f"A ghost was at {where(at)} on tick {world.t - 1}, and the rover drove right into it"
+        nxt = (f'Ghosts float through a rover that waits, but never drive into one. '
+               f'look("{way}") says "ghost" when one is there:  while look("{way}") '
+               f'== "ghost":  wait()')
     elif end == "battery":
         what = f"The battery ran out at {where(at)}, on tick {world.t}"
         if world.sunlit:
@@ -1186,6 +1319,18 @@ def explain(world, unlocked=(), code=""):
         elif world.flag in world.flags:
             spot = world.flags[world.flag]
             nxt = f"Flag {world.flag} is next, at {where(spot)}: {far(at, spot)}."
+        elif world.houses - world.knocked:
+            left = world.houses - world.knocked
+            near = min(left, key=lambda p: (abs(p[0] - at[0]) + abs(p[1] - at[1]), p))
+            n = len(left)
+            what += f", with {n} lit house{'s' if n != 1 else ''} still to visit"
+            nxt = (f"The closest is at {where(near)}. Drive next to it and "
+                   f"knock() on it, the way the house is from the rover.")
+        elif world.mission == "candy" and world.candies:
+            near = min(world.candies, key=lambda p: (abs(p[0] - at[0]) + abs(p[1] - at[1]), p))
+            n = len(world.candies)
+            what += f", and {n} cand{'ies' if n != 1 else 'y'} still on the ground"
+            nxt = f"The closest is at {where(near)}: {far(at, near)}."
         elif world.goal and locked_gate(world, at):
             nxt = locked_gate(world, at)
         elif world.goal and drill_next(world):
@@ -1211,6 +1356,10 @@ def explain(world, unlocked=(), code=""):
     if world.stuck and end in ("stopped", "ticks"):
         extra.append(f"The boulder at {where(world.stuck)} couldn't move: something "
                      f"was behind it.")
+    if world.no_door and end in ("stopped", "ticks"):
+        extra.append(f"knock() found no door {world.no_door} "
+                     f"time{'s' if world.no_door != 1 else ''}: knock the way the "
+                     f"house is from the rover, right next to it.")
     if world.bumps and end in ("stopped", "ticks") and not bumps_said:
         extra.append(f"The rover bumped into rock {world.bumps} "
                      f"time{'s' if world.bumps != 1 else ''}: when it bumps, it doesn't move.")
@@ -1229,6 +1378,13 @@ def progress(variant, run):
     says little (a map with portal pads) or the mission isn't one of those."""
     grid = variant["map"]
     mission = mission_of(variant)
+    if mission == "treats" and "houses" in run:
+        got, total = run["houses"]
+        return ("more", got, f"{got} of {total} houses") if total else None
+    if mission == "candy":
+        total = sum(row.count("c") for row in grid)
+        got = total - run.get("candy_left", total)
+        return ("more", got, f"{got} of {total} candies") if total else None
     if mission == "samples":
         total = sum(row.count("*") for row in grid)
         got = total - run["samples"]
@@ -1258,10 +1414,16 @@ def mission_of(variant):
         return "report"
     if any("H" in row for row in variant["map"]):
         return "deliver"
-    return "beacon" if any("G" in row for row in variant["map"]) else "samples"
+    if any("G" in row for row in variant["map"]):
+        return "beacon"
+    if any(ch in row for row in variant["map"] for ch in "hm"):
+        return "treats"
+    return "candy" if any("c" in row for row in variant["map"]) else "samples"
 
 
 ENDED_SHORT = {"report": "🏁 program ended without a report()",
+               "treats": "🏁 program ended with lit houses still to visit",
+               "candy": "🏁 program ended with candy still on the ground",
                "beacon": "🏁 program ended away from the beacon",
                "samples": "🏁 program ended with samples still out there",
                "deliver": "🏁 program ended before every sample was home"}
@@ -1315,6 +1477,8 @@ def drive(code, variant, rules, zone):
     world = World(variant, rules)
     sensors = {name: None for name, z in SENSOR_ZONE.items() if z <= zone}
     sensors.update({name: None for name in COMMANDS})
+    if "spooky" in rules:   # Halloween night
+        sensors.update(knock=None, candy=None)
     error = line = rover = None
     try:
         rover = Rover(str(code)[:MAX_CODE + 1], world, sensors)
@@ -1335,7 +1499,7 @@ def drive(code, variant, rules, zone):
             world.say(f"🧩 {name}() was made with def but never used. Add a "
                       f"line  {name}()  to run it.")
         world.say(ENDED_SHORT[world.mission])
-    return {"reached": world.end == "goal", "end": "error" if error else world.end,
+    out = {"reached": world.end == "goal", "end": "error" if error else world.end,
             "mission": world.mission,
             "ticks": world.t, "error": error, "line": line,
             "frames": world.frames, "log": world.log, "prints": world.prints,
@@ -1351,7 +1515,15 @@ def drive(code, variant, rules, zone):
             "typed": world.typed,
             # A def the program actually ran, for the def star and badge.
             "own_function": bool(rover and rover.called),
-            "battery": world.battery if "battery" in rules else None}
+            "battery": world.battery if "battery" in rules else None,
+            # Halloween night: the candy in the bag, lit houses visited of all
+            # of them, candy left on the ground, and this run's houses when
+            # they were picked for it.
+            "candy": world.candy, "houses": [len(world.knocked), len(world.houses)],
+            "candy_left": len(world.candies), "spooked": world.spooked}
+    if world.start_map:
+        out["map"] = world.start_map
+    return out
 
 
 # ---- The Paint Shop: code your own rover paint --------------------------------
@@ -3224,6 +3396,10 @@ BONUS_TIPS = {
     "measured": "🔢 Put distance() inside the ( ) instead of a number you "
                 "counted, like  east(distance(\"east\")).",
     "battery": "🔋 Charge for longer in the sun before you leave it.",
+    "pumpkin": "🎃 The golden pumpkin isn't on the way. Drive over it before "
+               "your last knock: the mission ends there.",
+    "candy": "🍬 Some candy lies on the ground off the road. Drive over every "
+             "piece before your last knock: the mission ends there.",
 }
 STAR_TIPS = {
     "1a": {"bonus": "💎 The crystal is in the top right corner. Add a detour "
@@ -3472,10 +3648,14 @@ def bonus_label(bonus):
             "drills": f"⛏ Finish with {bonus.get('min')} drill"
                       f"{'s' if bonus.get('min') != 1 else ''} to spare",
             "battery": f"🔋 Finish with {bonus.get('min')} battery or more",
-            "measured": "🔢 No typed-in numbers: let distance() measure"}[kind]
+            "measured": "🔢 No typed-in numbers: let distance() measure",
+            "pumpkin": "🎃 Grab the golden pumpkin",
+            "candy": "🍬 Pick up every candy on the ground"}[kind]
 
 
 MISSION_LABELS = {"beacon": "🛰 Reach the beacon",
+                  "treats": "🏠 Trick-or-treat at every lit house",
+                  "candy": "🍬 Collect every candy",
                   "samples": "🧪 Collect every sample",
                   "report": "📡 Report the right number",
                   "deliver": "📦 Bring every sample home"}
@@ -3484,7 +3664,10 @@ MISSION_LABELS = {"beacon": "🛰 Reach the beacon",
 def goals(s, variant):
     """The three stars a site offers, as the student sees them."""
     compact = variant.get("compact", s["compact"])
-    return [MISSION_LABELS[mission_of(variant)],
+    mission = MISSION_LABELS[mission_of(variant)]
+    if mission_of(variant) == "beacon" and any(ch in row for row in variant["map"] for ch in "hm"):
+        mission = "🏠 Every lit house, then 🛰 the beacon"
+    return [mission,
             bonus_label(variant.get("bonus", s["bonus"])),
             f"✂️ {compact} line{'' if compact == 1 else 's'} of code or fewer"][:stars_max(s)]
 
@@ -3515,14 +3698,19 @@ def stars(s, variant, run, code):
         met = (run["drills"] or 0) >= bonus["min"]
     elif kind == "measured":
         met = not run["typed"]
+    elif kind == "pumpkin":
+        met = run["crystals"][0] == run["crystals"][1]
+    elif kind == "candy":
+        met = run["candy_left"] == 0
     else:
         met = (run["battery"] or 0) >= bonus["min"]
     return [True, met, code_lines(code) <= variant.get("compact", s["compact"])]
 
 
 MISSION_DONE = {"beacon": "reached the beacon", "samples": "collected every sample",
+                "treats": "trick-or-treated every lit house", "candy": "collected every candy",
                 "deliver": "brought every sample home", "report": "reported the right number"}
-ENDED_WHY = {"fell": "fell in a crater", "battery": "ran flat",
+ENDED_WHY = {"fell": "fell in a crater", "battery": "ran flat", "spooked": "got spooked",
              "ticks": "ran out of time", "stopped": "stopped short",
              "error": "hit a code error"}
 
@@ -4422,13 +4610,258 @@ STAR_TIPS.update({
 })
 
 
+# ---- Halloween night: a limited-time event ----------------------------------------
+# Two zones the teacher opens for the students they pick (see the server's
+# planet_halloween). The rover goes trick-or-treating: knock("north") on the
+# door of a lit house next to it fills its bag with candy (candy() counts it),
+# a haunted house says BOO and ends the run, and ghosts float to and fro: they
+# drift through a rover that waits, but driving into one is a BOO too. Same
+# Python as the main route (loops, if, while, def), new things to point it at.
+# Not in SITE_ORDER, so nothing here stands in anyone's way.
+
+def lane(length, north=None, south=None):
+    """A street: S at the west end of a road `length` squares long (row 2),
+    with what's along its north side (row 1) and south side (row 3) by
+    column, rock everywhere else. A "c" is candy, a "." an open nook."""
+    rows = [["#"] * (length + 2) for _ in range(5)]
+    for c in range(1, length + 1):
+        rows[2][c] = "."
+    rows[2][1] = "S"
+    for row, side in ((1, north or {}), (3, south or {})):
+        for c, ch in side.items():
+            rows[row][c] = ch
+    return ["".join(row) for row in rows]
+
+
+def crossing(cols, starts, top=0, bottom=4):
+    """Ghosts that float north and south across the road, one in each column,
+    from row `top` to row `bottom` and back."""
+    return [{"path": [[r, c] for r in range(top, bottom + 1)], "start": s}
+            for c, s in zip(cols, starts)]
+
+
+def long_street(seed):
+    """A street of a different length for every seed, with lit houses,
+    haunted ones and gaps along the north side, and candy in a few nooks on
+    the south side before the last lit house."""
+    rng = random.Random(f"long street {seed}")
+    length = 8 + seed % 6
+    while True:
+        north = {c: rng.choice("hhhhzz##") for c in range(2, length + 1)}
+        lit = [c for c, ch in north.items() if ch == "h"]
+        if len(lit) >= 3 and "z" in north.values() and max(lit) >= 5:
+            break
+    nooks = rng.sample(range(2, max(lit)), 2)
+    return lane(length, north, {c: "c" for c in nooks})
+
+
+def two_sides(seed):
+    """Five stops two squares apart, a house (lit or haunted) or rock on each
+    side of every stop, and a nook by the start."""
+    rng = random.Random(f"two sides {seed}")
+    while True:
+        north = {c: rng.choice("hhhz#") for c in (3, 5, 7, 9, 11)}
+        south = {c: rng.choice("hhhz#") for c in (3, 5, 7, 9, 11)}
+        sides = list(north.values()) + list(south.values())
+        if sides.count("h") >= 5 and sides.count("z") >= 2:
+            break
+    north[2] = "."   # where the mystery gift waits
+    return lane(11, north, south)
+
+
+def parade(seed):
+    """A row of houses right along the north side, and ghosts rising out of
+    the graves on the south side to float across the road."""
+    rng = random.Random(f"parade {seed}")
+    while True:
+        north = {c: rng.choice("hhhzz#") for c in range(2, 12)}
+        if list(north.values()).count("h") < 4 or "z" not in north.values():
+            continue
+        cols = sorted(rng.sample(range(3, 11), 3))
+        v = {"map": lane(11, north, {c: "." for c in cols}),
+             "ghosts": crossing(cols, [rng.randrange(4) for _ in cols], top=2, bottom=4)}
+        # Somewhere on the way a ghost has to be waited for.
+        if drive(PARADE_RUSH, v, {"spooky"}, 0)["end"] == "spooked":
+            return v
+
+
+PARADE_RUSH = 'for i in range(10):\n    east()\n    if look("north") == "house":\n        knock("north")\n'
+
+
+def mansion():
+    """The streets round the haunted mansion: east along the top, south down
+    the side, west along the bottom to the beacon, every house a mystery."""
+    rows = [list("#" * 15) for _ in range(11)]
+    for c in range(1, 13):
+        rows[2][c] = rows[8][c] = "."
+    for r in range(2, 9):
+        rows[r][12] = "."
+    for c in range(2, 13, 2):
+        rows[1][c] = "m"
+    for r in (3, 5, 7):
+        rows[r][13] = "m"
+    for c in range(1, 12, 2):
+        rows[9][c] = "m"
+    rows[2][1], rows[8][1] = "S", "G"
+    return ["".join(row) for row in rows]
+
+
+VISIT = 'def visit(way):\n    if look(way) == "house":\n        knock(way)\n'
+HALLOWEEN_SENSORS = ["look", "at_beacon", "knock", "candy"]
+TRICK_STREET = {
+    "key": "street", "name": "Trick-or-Treat Street", "rules": {"spooky"},
+    "sensors": HALLOWEEN_SENSORS, "halloween": True,
+    "blurb": "Halloween night! 🎃 Drive next to a lit house and knock() on its "
+             "door: candy goes in your bag. Don't knock on a haunted one…",
+    "new": {"icon": "🚪", "what": "knock(way) knocks on the door of the house next "
+                                  "to the rover, that way. candy() says how much candy is in the bag.",
+            "example": 'knock("north")'},
+    "hints": [
+        'knock("north") knocks on the door of the house just north of the rover '
+        "(above it on the map). The rover has to be right next to the house.",
+        "A street of houses repeats: drive, knock, drive, knock. Put one drive "
+        'and one knock in a for loop:\n\nfor i in range(5):\n    east(2)\n    knock("north")',
+        'look("north") says "house" for a lit house and "haunted" for a haunted '
+        'one. Only knock on lit ones:\n\nif look("north") == "house":\n    knock("north")',
+    ],
+    "sites": [
+        site("h1", "Knock Knock",
+             "It's Halloween night! 🎃 Drive along the road until the lit house is "
+             "right above the rover, then knock on its door. Up on the map is north:\n\n"
+             'knock("north")',
+             [{"map": lane(7, {5: "h"}), "crystals": [(2, 7)]}],
+             reference='east(4)\nknock("north")\n', bonus={"kind": "pumpkin"}, compact=2),
+        site("h2", "Candy Lane",
+             "Five lit houses in a row, two squares apart. Knock on every door! "
+             "Drive two, knock, drive two, knock… a for loop can do that for you.",
+             [{"map": lane(11, {c: "h" for c in (3, 5, 7, 9, 11)},
+                           {c: "c" for c in (3, 5, 7, 9, 11)})}],
+             reference='for i in range(5):\n    east(2)\n    knock("north")\n',
+             bonus={"kind": "candy"}, compact=3),
+        site("h3", "Both Sides",
+             "Houses on both sides of the street! At every stop, knock north and "
+             'knock south: knock("south") knocks on the house below the rover.',
+             [{"map": lane(13, {2: ".", 4: "h", 7: "h", 10: "h", 13: "h"},
+                           {4: "h", 7: "h", 10: "h", 13: "h"})}],
+             reference='for i in range(4):\n    east(3)\n    knock("north")\n    knock("south")\n',
+             bonus={"kind": "def"}, compact=4),
+        site("h4", "Spooky House",
+             "One of these houses is haunted 👻, and knocking on it ends the night! "
+             "Your street isn't the same as your neighbour's. look() tells them apart:\n\n"
+             'if look("north") == "house":\n    knock("north")',
+             [{"map": lane(13, {c: "z" if c in haunted else "h" for c in (3, 5, 7, 9, 11, 13)})}
+              for haunted in ((5,), (9,), (3, 11), (7,), (5, 13), (11,))],
+             per_student=True,
+             reference='for i in range(6):\n    east(2)\n    if look("north") == "house":\n'
+                       '        knock("north")\n',
+             bonus={"kind": "everywhere", "of": "street"}, compact=4),
+        site("h5", "Ghost Crossing",
+             "Ghosts float across the road 👻. They drift right through a rover "
+             "that waits, but drive into one and BOO! Get to the house at the end "
+             "and knock. look(\"east\") says \"ghost\" when one is in the way:\n\n"
+             'while look("east") == "ghost":\n    wait()',
+             # Ghost timings where driving straight through always meets one,
+             # and the waits that fit one street fit no other.
+             [{"map": lane(13, {13: "h"}), "ghosts": crossing((4, 7, 10), starts, top=1, bottom=3)}
+              for starts in ((1, 3, 0), (3, 1, 3), (0, 0, 0), (3, 0, 2), (3, 2, 1), (0, 1, 1))],
+             per_student=True,
+             reference='for i in range(12):\n    while look("east") == "ghost":\n        wait()\n'
+                       '    east()\nknock("north")\n',
+             bonus={"kind": "everywhere", "of": "street"}, compact=5),
+    ]}
+HAUNTED_HOLLOW = {
+    "key": "hollow", "name": "Haunted Hollow", "rules": {"spooky"},
+    "sensors": HALLOWEEN_SENSORS, "halloween": True,
+    "blurb": "Deeper into the night: a field of candy, streets of every length, "
+             "a ghost parade, and the Haunted Mansion.",
+    "hints": [
+        'Ghosts drift through a rover that waits, but never drive into one. '
+        'look("east") says "ghost" when one is there:\n\nwhile look("east") == "ghost":\n'
+        "    wait()\neast()",
+        "Everyone's street is a different length. Let look() find the end:\n\n"
+        'while look("east") != "rock":\n    east()',
+        "A function can take the way to look and knock:\n\n" + VISIT +
+        '\nThen visit("north") checks and knocks north, visit("south") south.',
+    ],
+    "sites": [
+        site("h6", "Pumpkin Patch",
+             "A whole field of candy! 🍬 Pick up every piece by driving over it. "
+             "Sweep it row by row: east to the end, down one, west to the end, "
+             "down one… and that repeats.",
+             [{"map": ["##########", "#S" + "c" * 7 + "#", "#" + "c" * 8 + "#",
+                       "#" + "c" * 8 + "#", "#" + "c" * 8 + "#", "##########"]}],
+             reference="for i in range(2):\n    east(7)\n    south()\n    west(7)\n    south()\n",
+             bonus={"kind": "ticks", "max": 31}, compact=5),
+        site("h7", "Long Street",
+             "Your street is longer or shorter than anyone else's, with lit houses, "
+             "haunted ones and gaps. Drive to the very end, knocking on every lit "
+             "door on the way. A while loop drives until the rock:\n\n"
+             'while look("east") != "rock":\n    east()',
+             [{"map": long_street(seed)} for seed in range(6)],
+             per_student=True,
+             reference='while look("east") != "rock":\n    east()\n'
+                       '    if look("north") == "house":\n        knock("north")\n',
+             bonus={"kind": "everywhere", "of": "street"}, compact=4),
+        site("h8", "Trick or Trick",
+             "Houses on both sides again, and some are haunted. At every stop, "
+             "check north and check south before you knock.",
+             [{"map": two_sides(seed)} for seed in range(6)],
+             per_student=True,
+             reference='for i in range(5):\n    east(2)\n'
+                       '    if look("north") == "house":\n        knock("north")\n'
+                       '    if look("south") == "house":\n        knock("south")\n',
+             bonus={"kind": "def"}, compact=7),
+        site("h9", "Ghost Parade",
+             "A row of houses, and ghosts rising out of the graveyard across the "
+             "road. Wait for each ghost, drive on, and knock on every lit door.",
+             [parade(seed) for seed in range(6)],
+             per_student=True,
+             reference='for i in range(10):\n    while look("east") == "ghost":\n        wait()\n'
+                       '    east()\n    if look("north") == "house":\n        knock("north")\n',
+             bonus={"kind": "everywhere", "of": "street"}, compact=6),
+        site("h10", "Haunted Mansion",
+             "The big one! 🏚 Every house round the mansion is a mystery: the ghosts "
+             "pick 4 new ones to haunt every night (every run). Go round the "
+             "streets, knock on every lit door, and finish at the beacon 🛰. "
+             "Only code that checks every house can do it.",
+             [{"map": mansion(), "haunts": 4}],
+             reference=VISIT + 'while look("east") != "rock":\n    east()\n    visit("north")\n'
+                       'while look("south") != "rock":\n    south()\n    visit("east")\n'
+                       'while look("west") != "rock":\n    west()\n    visit("south")\n',
+             bonus={"kind": "def"}, compact=12),
+    ]}
+HALLOWEEN_ZONES = [TRICK_STREET, HAUNTED_HOLLOW]
+HALLOWEEN_ORDER = [s["key"] for z in HALLOWEEN_ZONES for s in z["sites"]]
+# Sites whose houses are picked afresh for every run: the server gives each
+# run a seed of its own.
+NIGHTLY = {"h10"}
+GIFT_SQUARES.update({"h3": (1, 2), "h8": (1, 2)})
+STAR_TIPS.update({
+    "h1": {"compact": "Two lines: one east() with a number, then the knock."},
+    "h2": {"compact": "A for loop that runs 5 times, with east(2) and the knock in it: 3 lines."},
+    "h3": {"bonus": "🧩 Put the two knocks in a function:  def both():  then call both() "
+                    "at every stop.",
+           "compact": "A for loop that runs 4 times: east(3), then a knock each way."},
+    "h4": {"compact": "A for loop with east(2) and an if inside it."},
+    "h5": {"compact": "A for loop of 12 squares: wait while there's a ghost, then east(). "
+                      "Then one knock."},
+    "h6": {"compact": "Four drives repeat twice: east(7), south(), west(7), south()."},
+    "h7": {"compact": "The while loop from the card, with east() and an if in it."},
+    "h8": {"bonus": "🧩 One function for both sides:  def visit(way):  that checks "
+                    "look(way) and knocks that way. Then visit(\"north\") and visit(\"south\").",
+           "compact": "Two ifs, or one visit() function called twice."},
+    "h9": {"compact": "A for loop: wait for ghosts, east(), then an if to knock."},
+    "h10": {"compact": "A visit(way) function, then three while loops: east, south, west."},
+})
+
+
 def find_site(key):
     """(zone index, zone, site) for a site key, or None."""
     for zi, zone in enumerate(ZONES):
         for s in zone["sites"]:
             if s["key"] == key:
                 return zi, zone, s
-    for zone in PRACTICE_ZONES:
+    for zone in PRACTICE_ZONES + HALLOWEEN_ZONES:
         for s in zone["sites"]:
             if s["key"] == key:
                 return zone.get("zi", 0), zone, s

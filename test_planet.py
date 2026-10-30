@@ -804,8 +804,9 @@ class GiftTests(unittest.TestCase):
         # One for every zone but Uncharted: site keys start with the zone's number.
         self.assertEqual([k[:-1] for k in server.MAIN_GIFTS],
                          [str(n) for n in range(1, len(planet.ZONES))])
-        # And one in each practice zone.
-        practice = [k for k in planet.GIFT_SQUARES if k not in server.MAIN_GIFTS]
+        # And one in each practice zone (Halloween night has its own, see HalloweenTests).
+        practice = [k for k in planet.GIFT_SQUARES if k not in server.MAIN_GIFTS
+                    and k not in planet.HALLOWEEN_ORDER]
         self.assertEqual([next(z["key"] for z in planet.PRACTICE_ZONES if k in [x["key"] for x in z["sites"]])
                           for k in practice], [z["key"] for z in planet.PRACTICE_ZONES])
         self.assertEqual(set(server.GIFTS), set(planet.GIFT_SQUARES))

@@ -2758,8 +2758,9 @@ def cycles_state(p):
 # ---------------------------------------------------------------------------
 SCOUT_MAX = 150     # hand-driven moves in one scouting trip: enough to drive any site
 # What scouting can do besides drive and wait, once a site has it in code:
-# "jump:east" is jump("east"), "drill:north" is drill("north").
-SCOUT_ACTS = ("jump", "drill")
+# "jump:east" is jump("east"), "drill:north" is drill("north"), "knock:north"
+# is knock("north").
+SCOUT_ACTS = ("jump", "drill", "knock")
 FUNCTIONS_MAX = 12  # saved functions one student keeps
 FUNCTION_MAX = 1500 # characters in one saved function
 planet_feed = []    # the class's recent moments, newest last, for the projector
@@ -2776,7 +2777,8 @@ planet_spotlight = [None]
 # easy: for a younger class, classmates' names and Skip come sooner.
 # coach: those words are typed letter by letter on every site, with the
 # right key shown and only the right letter going in.
-planet_class_settings = {"blanks": True, "easy": False, "coach": False}
+# halloween: Halloween night is out (for the students the teacher invites).
+planet_class_settings = {"blanks": True, "easy": False, "coach": False, "halloween": True}
 # The mystery gifts on the main route. The practice zones' gifts are extra, for
 # a younger class, so Treasure Hunter doesn't wait on them.
 MAIN_GIFTS = [k for k in planet.GIFT_SQUARES if k in planet.SITE_ORDER]
@@ -3068,6 +3070,50 @@ CHALLENGE_BADGES = {
 PRINT_CHALLENGES = {"sss": "hiss", "moo": "moo"}
 PLANET_BADGES.update(CHALLENGE_BADGES)
 
+# Halloween night (planet.HALLOWEEN_ZONES): a limited-time event. The
+# teacher invites the students it's for (planet_halloween_open), and while
+# it's on they go trick-or-treating for candy. Candy counts the best run on
+# each site that didn't end in a BOO (a spooked rover drops its bag), and
+# fills the candy road: garage items that are only out for Halloween, with
+# badges of their own. Whatever a student earns stays theirs after the
+# event closes; what they haven't earned disappears with it.
+HALLOWEEN_BADGES = {
+    "h_knock": ("🚪", "Knock Knock", "Trick-or-treat at your first lit house"),
+    "h_boo": ("😱", "Boo'd!", "Get spooked by a ghost or a haunted house"),
+    "h_detector": ("🔦", "Haunt Detector", 'Complete a Halloween mission with  if look(...) == "house"'),
+    "h_dodger": ("🦇", "Ghost Dodger", "Get past the ghosts on Ghost Crossing or Ghost Parade"),
+    "h_boo_print": ("📣", "Say Boo", 'Complete a Halloween mission with print("boo") in your code'),
+    "h_mansion": ("🏚", "Mansion Master", "Complete the Haunted Mansion"),
+    "h_king": ("🎃", "Pumpkin King", "Earn every star of Halloween night"),
+}
+PLANET_BADGES.update(HALLOWEEN_BADGES)
+HALLOWEEN_GARAGE = [
+    # The candy road: candy in the bag unlocks them, in this order.
+    {"slot": "topper", "key": "witchhat", "name": "Witch hat", "candy": 10},
+    {"slot": "paint", "key": "candycorn", "name": "Candy Corn", "candy": 25},
+    {"slot": "pet", "key": "blackcat", "name": "Black cat", "candy": 40},
+    {"slot": "trail", "key": "candytrail", "name": "Candy trail", "candy": 60},
+    {"slot": "wheels", "key": "pumpkinwheels", "name": "Pumpkin wheels", "candy": 80},
+    {"slot": "paint", "key": "mummy", "name": "Mummy", "candy": 100},
+    {"slot": "glow", "key": "spookyfog", "name": "Spooky fog", "candy": 125},
+    {"slot": "world", "key": "graveyard", "name": "Graveyard", "candy": 150},
+    {"slot": "paint", "key": "vampire", "name": "Vampire", "candy": 175},
+    # Mystery gifts on Halloween night, and the Halloween badges.
+    {"slot": "topper", "key": "candybucket", "name": "Candy bucket", "find": "h3"},
+    {"slot": "pet", "key": "spider", "name": "Spider", "find": "h8"},
+    {"slot": "horn", "key": "dingdong", "name": "Ding-dong", "badge": "h_knock"},
+    {"slot": "horn", "key": "scream", "name": "Scream", "badge": "h_boo"},
+    {"slot": "paint", "key": "ghostsheet", "name": "Ghost costume", "badge": "h_detector"},
+    {"slot": "dance", "key": "zombieshuffle", "name": "Zombie shuffle", "badge": "h_dodger"},
+    {"slot": "horn", "key": "cackle", "name": "Witch's cackle", "badge": "h_boo_print"},
+    {"slot": "topper", "key": "tophat", "name": "Haunted top hat", "badge": "h_mansion"},
+    {"slot": "paint", "key": "jackolantern", "name": "Jack-o'-lantern", "badge": "h_king", "legend": True},
+]
+for _item in HALLOWEEN_GARAGE:
+    _item["limited"] = "halloween"
+GARAGE.extend(HALLOWEEN_GARAGE)
+CANDY_ROAD = [i for i in HALLOWEEN_GARAGE if "candy" in i]
+
 
 # How rare an item is, from how hard it is to get. Mystery gifts, badges and
 # trophies are always epic.
@@ -3075,6 +3121,9 @@ RARITIES = ("common", "rare", "epic", "legendary")
 
 
 def rarity(item):
+    if "candy" in item:
+        n = item["candy"]
+        return "common" if n < 40 else "rare" if n < 100 else "epic" if n < 150 else "legendary"
     if "stars" in item:
         n = item["stars"]
         return "common" if n < 25 else "rare" if n < 60 else "epic" if n < 110 else "legendary"
@@ -3172,7 +3221,28 @@ def planet_frontier(p):
                  and not (order[i] in planet.LATE_SITES and i < later)), last)
 
 
+def halloween_on(entry):
+    """Is Halloween night out for this student: the event on, and invited?"""
+    return bool(planet_class_settings["halloween"] and entry.get("invited"))
+
+
+def candy_total(entry):
+    """The candy in a student's Halloween bag: the best haul on each site."""
+    return sum(entry.get("candy", {}).values())
+
+
+def halloween_frontier(entry):
+    """Index in planet.HALLOWEEN_ORDER of the furthest Halloween site open:
+    the first one not done (or skipped). They open one after another."""
+    order = planet.HALLOWEEN_ORDER
+    passed = set(entry["solved"]) | set(entry.get("skipped", []))
+    return next((i for i, k in enumerate(order) if k not in passed), len(order) - 1)
+
+
 def planet_open(p, key):
+    if key in planet.HALLOWEEN_ORDER:
+        entry = planet_entry(p)
+        return halloween_on(entry) and planet.HALLOWEEN_ORDER.index(key) <= halloween_frontier(entry)
     if key in planet.PRACTICE_ORDER:   # all open at once, in easy mode only
         return planet_class_settings["easy"]
     return key in planet.SITE_ORDER and \
@@ -3231,6 +3301,10 @@ def can_skip(p, key):
     """A long run of misses on the site they're up to (not the finale): the
     next one may open, so nobody stays stuck in one place."""
     entry = planet_entry(p)
+    if key in planet.HALLOWEEN_ORDER:
+        return key not in entry["solved"] and key != planet.HALLOWEEN_ORDER[-1] \
+            and planet.HALLOWEEN_ORDER.index(key) == halloween_frontier(entry) \
+            and entry["misses"].get(key, 0) >= skip_after()
     return key in planet.SITE_ORDER and key != planet.UNCHARTED["key"] \
         and key not in entry["solved"] \
         and planet.SITE_ORDER.index(key) == planet_frontier(p) \
@@ -3243,7 +3317,13 @@ def measuring(p, key):
 
 
 def star_count(entry):
-    return sum(sum(v) for v in entry["stars"].values())
+    """Stars on the planet. Halloween night's are counted on their own
+    (halloween_stars), so the event never moves ranks or the class meter."""
+    return sum(sum(v) for k, v in entry["stars"].items() if k not in planet.HALLOWEEN_ORDER)
+
+
+def halloween_stars(entry):
+    return sum(sum(entry["stars"].get(k, [])) for k in planet.HALLOWEEN_ORDER)
 
 
 def class_stars():
@@ -3252,9 +3332,22 @@ def class_stars():
 
 def garage_for(entry):
     mine, ours = star_count(entry), class_stars()
+    candy, spooky = candy_total(entry), halloween_on(entry)
     garage = []
     for item in GARAGE:
-        if "stars" in item:
+        if "limited" in item:
+            open_ = (candy >= item["candy"] if "candy" in item else
+                     item["badge"] in entry["badges"] if "badge" in item else
+                     item["key"] in entry["found"])
+            # Out of the garage once Halloween is over, unless it's theirs.
+            if not open_ and not spooky:
+                continue
+            extra = {"where": f"{planet.find_site(item['find'])[2]['name']} ({item['find'].upper()})"} \
+                if "find" in item else \
+                {"badge_name": PLANET_BADGES[item["badge"]][1],
+                 "badge_how": PLANET_BADGES[item["badge"]][2]} if "badge" in item else {}
+            garage.append(dict(item, open=open_, **extra))
+        elif "stars" in item:
             garage.append(dict(item, open=mine >= item["stars"]
                                or item["key"] in entry.get("picked", [])))
         elif "trophies" in item:
@@ -3310,7 +3403,8 @@ TRY_CODE_MAX = 1500  # characters of code kept for each
 
 def ghostly(key, s):
     """Can this site have a record ghost? Only where everyone has the same map."""
-    return key != planet.UNCHARTED["key"] and not s.get("per_student")
+    return key != planet.UNCHARTED["key"] and not s.get("per_student") \
+        and key not in planet.NIGHTLY
 
 
 def class_ghost(key):
@@ -3377,6 +3471,21 @@ def planet_state(p):
                        "open": planet.SITE_ORDER.index(s["key"]) <= frontier,
                        "gift": gift_for(p, s["key"]) is not None}
                       for s in zone["sites"]]})
+    spooky = halloween_on(entry)
+    if spooky:
+        frontier_h = halloween_frontier(entry)
+        for zone in planet.HALLOWEEN_ZONES:
+            zones.append({
+                "key": zone["key"], "name": zone["name"], "blurb": zone["blurb"],
+                "zi": zone.get("zi", 0), "halloween": True,
+                "hints": zone["hints"][:entry["hints"].get(zone["key"], 0)],
+                "hint_count": len(zone["hints"]),
+                "sites": [{"key": s["key"], "name": s["name"],
+                           "solved": entry["solved"].get(s["key"]),
+                           "stars": entry["stars"].get(s["key"], [False] * 3),
+                           "open": planet.HALLOWEEN_ORDER.index(s["key"]) <= frontier_h,
+                           "gift": gift_for(p, s["key"]) is not None}
+                          for s in zone["sites"]]})
     # Rewards to pick, while there's something left to pick.
     choices = pick_choices(entry) if picks_left(entry) > 0 else []
     return {"you": {"name": p["name"], "ran": any(entry["runs"].values())}, "zones": zones,
@@ -3390,11 +3499,28 @@ def planet_state(p):
             "pick_choices": choices,
             "missions": missions_view(entry),
             "badges": [{"key": k, "icon": b[0], "name": b[1], "how": b[2],
-                        "earned": k in entry["badges"]}
-                       for k, b in PLANET_BADGES.items()],
+                        "earned": k in entry["badges"], "limited": k in HALLOWEEN_BADGES}
+                       for k, b in PLANET_BADGES.items()
+                       if k not in HALLOWEEN_BADGES or spooky or k in entry["badges"]],
+            "halloween": halloween_view(entry) if spooky else None,
             "look": entry["look"], "garage": garage_for(entry), "showoff": entry["showoff"],
             "functions": entry["functions"], "paint_code": entry.get("paint_code"),
             "class": {"stars": class_stars(), "goals": CLASS_GOALS}}
+
+
+def halloween_view(entry):
+    """Halloween night as the student sees it: the candy in the bag, the
+    candy road, and the stars and sites done."""
+    candy = candy_total(entry)
+    return {"candy": candy, "stars": halloween_stars(entry),
+            "max_stars": 3 * len(planet.HALLOWEEN_ORDER),
+            "done": sum(k in entry["solved"] for k in planet.HALLOWEEN_ORDER),
+            "sites": len(planet.HALLOWEEN_ORDER),
+            "first": planet.HALLOWEEN_ORDER[0],
+            "next": planet.HALLOWEEN_ORDER[halloween_frontier(entry)],
+            "road": [{"slot": i["slot"], "key": i["key"], "name": i["name"],
+                      "candy": i["candy"], "rarity": i["rarity"], "open": candy >= i["candy"]}
+                     for i in CANDY_ROAD]}
 
 
 def planet_site(p, key):
@@ -3427,7 +3553,8 @@ def planet_site(p, key):
                     tips=planet.star_tips(s, v), coach=s["coach"], gift=gift_for(p, key), drills=v.get("drills"),
                     # A zone that brings something new says what it is on its first site.
                     new=zone.get("new") if zone["sites"][0] is s else None,
-                    ghost=ghost_for(p, key))
+                    ghost=ghost_for(p, key), ghosts=v.get("ghosts"),
+                    halloween=key in planet.HALLOWEEN_ORDER)
     return view
 
 
@@ -3606,6 +3733,9 @@ def planet_record(p, key, code, results):
         badge("crystals")
     if all(GIFTS[k]["key"] in entry["found"] for k in MAIN_GIFTS):
         badge("hunter")
+    candy = None
+    if key in planet.HALLOWEEN_ORDER:
+        candy = halloween_rewards(p, entry, key, code, results[0], badge)
     for z in planet.ZONES[:-1]:
         if all(all(entry["stars"].get(x["key"], [False])) for x in z["sites"]):
             badge("master_" + z["key"])
@@ -3622,7 +3752,9 @@ def planet_record(p, key, code, results):
     # The last site of a zone: a moment of its own, and a look at what's next.
     cleared = None
     if not zone_before and zone_done():
-        if zone in planet.PRACTICE_ZONES:
+        if zone in planet.HALLOWEEN_ZONES:
+            nxt = (planet.HALLOWEEN_ZONES + [None])[planet.HALLOWEEN_ZONES.index(zone) + 1]
+        elif zone in planet.PRACTICE_ZONES:
             nxt = (planet.PRACTICE_ZONES + planet.ZONES[:1])[planet.PRACTICE_ZONES.index(zone) + 1]
         else:
             nxt = planet.ZONES[zi + 1] if zi + 1 < len(planet.ZONES) else None
@@ -3677,7 +3809,7 @@ def planet_record(p, key, code, results):
             "first_try": bool(first_try and reached_any), "rank_up": rank_up,
             "zone_cleared": cleared, "trophy": trophy,
             "missions_done": [{"icon": MISSIONS[k][0], "text": MISSIONS[k][1]} for k in done_now],
-            "badges": earned, "record": record, "found": found,
+            "badges": earned, "record": record, "found": found, "candy": candy,
             "unlocked": [{"slot": i["slot"], "key": i["key"], "name": i["name"],
                           "rarity": i["rarity"]} for i in unlocked],
             "total_stars": star_count(entry),
@@ -3685,6 +3817,65 @@ def planet_record(p, key, code, results):
             "helpers": planet_helpers(p, key) if entry["misses"].get(key, 0) >= help_after()
             and key not in entry["solved"] else [],
             "can_skip": can_skip(p, key), "closer": closer}
+
+
+def looks_for_houses(code):
+    """Does the code check look(...) against "house" or "haunted"?"""
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return False
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Compare):
+            sides = [n.left] + n.comparators
+            if any(isinstance(x, ast.Call) and getattr(x.func, "id", "") == "look" for x in sides) \
+                    and any(isinstance(x, ast.Constant) and x.value in ("house", "haunted") for x in sides):
+                return True
+    return False
+
+
+def says_boo(code):
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return False
+    return any(isinstance(n, ast.Call) and getattr(n.func, "id", None) == "print"
+               and any(isinstance(a, ast.Constant) and isinstance(a.value, str)
+                       and "boo" in a.value.lower() for a in n.args)
+               for n in ast.walk(tree))
+
+
+def halloween_rewards(p, entry, key, code, run, badge):
+    """A Halloween night run: bank its candy (unless the rover was spooked
+    and dropped it) and give out the Halloween badges. Returns the candy
+    news for the celebration: this run's haul, the bag before and after."""
+    before = candy_total(entry)
+    bag = entry.setdefault("candy", {})
+    dropped = bool(run.get("spooked"))
+    if not dropped and run["candy"] > bag.get(key, 0):
+        bag[key] = run["candy"]
+    if run["houses"][0]:
+        badge("h_knock")
+    if dropped:
+        badge("h_boo")
+    if run["reached"]:
+        if looks_for_houses(code):
+            badge("h_detector")
+        if says_boo(code):
+            badge("h_boo_print")
+        if planet.find_site(key)[2]["variants"][0].get("ghosts"):
+            badge("h_dodger")
+        if key == planet.HALLOWEEN_ORDER[-1]:
+            badge("h_mansion")
+    if halloween_stars(entry) == 3 * len(planet.HALLOWEEN_ORDER):
+        badge("h_king")
+    after = candy_total(entry)
+    if after >= 100 > before:
+        feed(f"🍬 {p['name']} has 100 candy in the Halloween bag!")
+    nxt = next((i for i in CANDY_ROAD if i["candy"] > after), None)
+    return {"run": run["candy"], "dropped": dropped and run["candy"] > 0, "before": before,
+            "total": after, "best": bag.get(key, 0),
+            "next": nxt and {"name": nxt["name"], "slot": nxt["slot"], "candy": nxt["candy"]}}
 
 
 def planet_set_look(p, data):
@@ -3845,6 +4036,9 @@ def planet_class():
         here = now["site"]
         rows.append({"id": q["id"], "name": q["name"], "site": key,
                      "practice": here in planet.PRACTICE_ORDER,
+                     "halloween": {"invited": bool(entry.get("invited")), "now": here in planet.HALLOWEEN_ORDER,
+                                   "candy": candy_total(entry), "stars": halloween_stars(entry),
+                                   "done": sum(k in entry["solved"] for k in planet.HALLOWEEN_ORDER)},
                      "practice_solved": sum(k in entry["solved"] for k in planet.PRACTICE_ORDER),
                      "misses": entry["misses"].get(here, 0),
                      "runs_now": entry["runs"].get(here, 0),
@@ -3873,7 +4067,9 @@ def planet_class():
             "practice_sites": len(planet.PRACTICE_ORDER),
             "zones": [z["name"] for z in planet.ZONES],
             "practice_zones": [z["name"] for z in planet.PRACTICE_ZONES],
-            "zone_keys": {z["name"]: z["key"] for z in planet.PRACTICE_ZONES + planet.ZONES},
+            "zone_keys": {z["name"]: z["key"] for z in planet.PRACTICE_ZONES + planet.ZONES
+                          + planet.HALLOWEEN_ZONES},
+            "halloween_sites": len(planet.HALLOWEEN_ORDER),
             "runs": planet_runs[-10:],
             "class": {"stars": class_stars(), "goals": CLASS_GOALS, "unlocks": CLASS_UNLOCKS,
                       "max": 3 * len(planet.SITE_ORDER) * max(1, len(rows))},
@@ -4109,6 +4305,35 @@ def admin_action(data):
         if look["paint"] == "mine":
             look["paint"] = "bone"
         return f"Wiped {q['name']}'s Paint Shop paint."
+    if action == "planet_halloween":
+        # Halloween night out (for the students invited) or put away. What
+        # students earned stays theirs either way.
+        planet_class_settings["halloween"] = bool(data.get("on"))
+        invited = sum(1 for q in players.values() if (q.get("planet") or {}).get("invited"))
+        return (f"🎃 Halloween night is out for the {invited} student{'s' if invited != 1 else ''} "
+                f"you've invited. Press 🎃 on a student's card to invite them."
+                if planet_class_settings["halloween"] else
+                "Halloween night is put away. Everything students earned there stays theirs.")
+    if action == "planet_invite":
+        q = players.get(data.get("pid"))
+        if not q or not q.get("planet"):
+            return "No such student."
+        entry = planet_entry(q)
+        entry["invited"] = bool(data.get("on", not entry.get("invited")))
+        if not entry["invited"]:
+            return f"{q['name']} is back to the main route (their Halloween candy is kept)."
+        opened = "" if planet_class_settings["halloween"] else " Halloween night was off, so it's on now."
+        planet_class_settings["halloween"] = True
+        return f"🎃 Invited {q['name']} to Halloween night: it opens on their screen.{opened}"
+    if action == "planet_invite_all":
+        on = bool(data.get("on", True))
+        names = [q for q in players.values() if q.get("planet")]
+        for q in names:
+            planet_entry(q)["invited"] = on
+        if on:
+            planet_class_settings["halloween"] = True
+        return (f"🎃 Invited all {len(names)} students to Halloween night." if on else
+                "Nobody is invited to Halloween night now (their candy is kept).")
     if action == "planet_blanks":
         planet_class_settings["blanks"] = bool(data.get("on"))
         return ("Scouted code now has a few words to finish." if planet_class_settings["blanks"]
@@ -4586,7 +4811,7 @@ class Handler(BaseHTTPRequestHandler):
                 body = json.dumps(planet_report()).encode()
             self._send(200, body)
             return
-        if path in ("/planet/state", "/planet/site", "/planet/overview"):
+        if path in ("/planet/state", "/planet/site", "/planet/overview", "/planet/ping"):
             address = f"http://{get_lan_ip()}:{PORT}/planet" if path == "/planet/overview" else ""
             query = parse_qs(urlsplit(self.path).query)
             pid = query.get("id", [""])[0]
@@ -4597,9 +4822,14 @@ class Handler(BaseHTTPRequestHandler):
                     body = dict(planet_class(), address=address, spotlight=planet_spotlight[0],
                                 blanks=planet_class_settings["blanks"],
                                 coach=planet_class_settings["coach"],
-                                easy=planet_class_settings["easy"])
+                                easy=planet_class_settings["easy"],
+                                halloween=planet_class_settings["halloween"])
                 elif not p:
                     body = {"you": None}
+                elif path == "/planet/ping":
+                    # A student page asks now and then: has Halloween night opened
+                    # (or closed) for me since the page loaded?
+                    body = {"halloween": halloween_on(planet_entry(p))}
                 elif path == "/planet/state":
                     body = planet_state(p)
                 elif not planet_open(p, key):
@@ -4701,12 +4931,15 @@ class Handler(BaseHTTPRequestHandler):
                     zi, zone, s = planet.find_site(key)
                     uncharted = key == planet.UNCHARTED["key"]
                     variant = None if uncharted else planet_variant(p, key)
+                    if key in planet.NIGHTLY:   # its houses are picked afresh every run
+                        variant = dict(variant, seed=random.randrange(1 << 30))
             if not p:
                 self._send(200, {"error": "join"})
                 return
             if not planet_open(p, key):
-                self._send(200, {"error": "🔒 Complete the site before this "
-                                          "one to open it."})
+                self._send(200, {"error": "🎃 Halloween night is closed now." if key in planet.HALLOWEEN_ORDER
+                                 and not halloween_on(planet_entry(p)) else
+                                 "🔒 Complete the site before this one to open it."})
                 return
             # Drive without the lock: other students keep working.
             code = code_in(data)[:planet.MAX_CODE + 1]
@@ -4825,11 +5058,12 @@ class Handler(BaseHTTPRequestHandler):
                 if not p:
                     self._send(200, {"error": "join"})
                     return
-                if key not in planet.SITE_ORDER or not can_skip(p, key):
+                if key not in planet.SITE_ORDER + planet.HALLOWEEN_ORDER or not can_skip(p, key):
                     self._send(200, {"error": "This site can't be skipped yet."})
                     return
                 entry = planet_entry(p)
-                entry["unlocked"] = max(entry["unlocked"], planet.SITE_ORDER.index(key) + 1)
+                if key in planet.SITE_ORDER:
+                    entry["unlocked"] = max(entry["unlocked"], planet.SITE_ORDER.index(key) + 1)
                 if key not in entry.setdefault("skipped", []):
                     entry["skipped"].append(key)   # for the teacher's page
                 save_state()
@@ -4838,7 +5072,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/planet/hint":
             with lock:
                 p = players.get(data.get("id"))
-                zone = next((z for z in planet.ZONES + planet.PRACTICE_ZONES
+                zone = next((z for z in planet.ZONES + planet.PRACTICE_ZONES + planet.HALLOWEEN_ZONES
                              if z["key"] == data.get("zone")), None)
                 if not p:
                     self._send(200, {"error": "join"})
