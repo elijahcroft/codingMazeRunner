@@ -2245,6 +2245,29 @@ class HalloweenTests(unittest.TestCase):
                 self.assertEqual(v["map"][r + 1][c], ".", (key, vi))
 
 
+class PageScriptTests(unittest.TestCase):
+    """Every script the planet pages run parses, so one slip can't leave a
+    student with a blank page."""
+
+    def test_every_page_script_parses(self):
+        import shutil
+        import subprocess
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("node isn't installed")
+        with tempfile.TemporaryDirectory() as folder:
+            for name in ("planet.html", "planet_teacher.html", "planet_show.html", "planet_render.js",
+                         "planet_replay.js", "planet_halloween.js"):
+                text = open(os.path.join(HERE, name), encoding="utf-8").read()
+                parts = re.findall(r"<script>(.*?)</script>", text, re.S) if name.endswith(".html") else [text]
+                for i, part in enumerate(parts):
+                    path = os.path.join(folder, f"{name}.{i}.js")
+                    with open(path, "w", encoding="utf-8") as f:
+                        f.write(part)
+                    out = subprocess.run([node, "--check", path], capture_output=True, text=True)
+                    self.assertEqual(out.returncode, 0, f"{name}: {out.stderr[:400]}")
+
+
 class HalloweenClassroomTests(unittest.TestCase):
     """Halloween night in the classroom: the teacher invites students, candy
     fills the candy road, and limited-time things stay with whoever won them."""

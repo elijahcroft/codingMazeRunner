@@ -125,6 +125,46 @@ function drawGoldPumpkin(ctx, r, c, cell, now) {
   ctx.fillStyle = "#3f8a2e"; ctx.fillRect(cx - z * .1, cy - z * 1.25, z * .2, z * .35);
   ctx.fillStyle = "rgba(255,255,255,.7)"; ctx.beginPath(); ctx.ellipse(cx - z * .5, cy - z * .4, z * .2, z * .12, -.5, 0, 7); ctx.fill();
 }
+// The Haunted Mansion itself, filling the rock between H10's streets (rows 3
+// to 7, columns 1 to 11): towers, a crooked roof, windows flickering green
+// and orange, and now and then a ghost at one of them.
+function drawMansion(ctx, cell, now) {
+  const X = c => c * cell, Y = r => r * cell, t = CALM ? 0 : now;
+  ctx.save();
+  ctx.fillStyle = "rgba(6,4,12,.55)"; ctx.fillRect(X(1.3), Y(7.85), X(10), cell * .12);
+  const body = "#1a1426", roof = "#0e0a16", trim = "rgba(185,140,255,.35)";
+  // The wings and the middle, then the towers, then their roofs.
+  ctx.fillStyle = body;
+  ctx.fillRect(X(1.5), Y(5.2), X(3.6), Y(2.7)); ctx.fillRect(X(7.9), Y(5.2), X(3.6), Y(2.7));
+  ctx.fillRect(X(4.6), Y(4.2), X(3.8), Y(3.7));
+  ctx.fillRect(X(2.2), Y(4.1), X(1.2), Y(1.2)); ctx.fillRect(X(9.6), Y(4.3), X(1.1), Y(1));
+  ctx.fillStyle = roof;
+  const peak = (x0, x1, base, top, lean = 0) => { ctx.beginPath(); ctx.moveTo(X(x0), Y(base)); ctx.lineTo(X((x0 + x1) / 2 + lean), Y(top)); ctx.lineTo(X(x1), Y(base)); ctx.fill(); };
+  peak(1.3, 5.3, 5.3, 4.4); peak(7.7, 11.7, 5.3, 4.5, .2); peak(4.4, 8.6, 4.3, 3.15);
+  peak(2.0, 3.6, 4.15, 3.1, -.15); peak(9.4, 10.9, 4.35, 3.4, .2);
+  ctx.strokeStyle = trim; ctx.lineWidth = Math.max(1, cell * .04);
+  ctx.strokeRect(X(1.5), Y(5.2), X(3.6), Y(2.7)); ctx.strokeRect(X(7.9), Y(5.2), X(3.6), Y(2.7)); ctx.strokeRect(X(4.6), Y(4.2), X(3.8), Y(3.7));
+  // Windows, each flickering in its own time.
+  const spots = [[2.1, 5.7], [3.0, 5.7], [4.0, 5.7], [2.1, 6.7], [4.0, 6.7], [8.5, 5.7], [9.5, 5.7], [10.5, 5.7], [8.5, 6.7], [10.5, 6.7],
+                 [5.1, 4.8], [6.2, 4.8], [7.3, 4.8], [5.1, 5.9], [7.3, 5.9], [2.55, 4.4], [10.0, 4.6]];
+  spots.forEach(([cx, cy], k) => {
+    const on = CALM ? k % 3 !== 0 : Math.sin(t / (700 + k * 90) + k * 1.7) > -.3;
+    const green = k % 4 === 1;
+    ctx.fillStyle = on ? (green ? "rgba(156,255,107,.85)" : "rgba(255,190,90,.85)") : "#0b0812";
+    if (on) { ctx.shadowColor = green ? "#9cff6b" : "#ffb547"; ctx.shadowBlur = cell * .4; }
+    ctx.beginPath(); ctx.moveTo(X(cx), Y(cy + .55)); ctx.lineTo(X(cx), Y(cy + .15)); ctx.arc(X(cx + .25), Y(cy + .15), cell * .25, Math.PI, 0); ctx.lineTo(X(cx + .5), Y(cy + .55)); ctx.fill();
+    ctx.shadowBlur = 0;
+  });
+  // The front door, arched, and its steps.
+  ctx.fillStyle = "#3a2410"; ctx.beginPath(); ctx.moveTo(X(5.95), Y(7.85)); ctx.lineTo(X(5.95), Y(7.0)); ctx.arc(X(6.5), Y(7.0), cell * .55, Math.PI, 0); ctx.lineTo(X(7.05), Y(7.85)); ctx.fill();
+  ctx.fillStyle = "#ffd36b"; ctx.beginPath(); ctx.arc(X(6.85), Y(7.4), cell * .06, 0, 7); ctx.fill();
+  // Now and then a ghost drifts past a window of the middle tower.
+  if (!CALM) {
+    const u = (now % 9000) / 9000;
+    if (u < .3) drawSpook(ctx, X(5.1 + u / .3 * 2.6), Y(5.05), cell * .7, now, .65 * Math.sin(u / .3 * Math.PI));
+  }
+  ctx.restore();
+}
 // The houses visited by frame i.
 function knockedBy(i) {
   return new Set(scene.frames.slice(0, i + 1).filter(f => f.kn && f.kn[2] >= 0).map(f => f.kn[0] + "," + f.kn[1]));
@@ -250,7 +290,16 @@ function openCandyRoad() {
   $("roadPlay").focus();
 }
 function closeCandyRoad() { $("candyRoad").hidden = true; }
-// The invitation, the first time Halloween night opens for this student.
+// The invitation, the first time Halloween night opens for this student
+// (on another laptop, a student who has already started gets a toast instead).
+function welcomeHalloween() {
+  const h = state && state.halloween;
+  if (!h || recall(halloweenSeenKey()) === "1") return;
+  if (h.done || h.candy) {
+    store(halloweenSeenKey(), "1");
+    toast("🎃", "Halloween night is still on!", `${h.candy} 🍬 in your bag. Press the 🎃 at the top for the candy road.`);
+  } else showInvite();
+}
 function showInvite() {
   const h = state.halloween;
   if (!h) return;
@@ -279,8 +328,8 @@ async function pingHalloween() {
   if (!fresh.you) return;
   useState(fresh);
   if (fresh.halloween) {
-    if (recall(halloweenSeenKey()) !== "1") showInvite();
-    else toast("🎃", "Halloween night is open!", "Press the 🍬 at the top for the candy road.");
+    if (recall(halloweenSeenKey()) !== "1") welcomeHalloween();
+    else toast("🎃", "Halloween night is open!", "Press the 🎃 at the top for the candy road.");
   } else if (site && spooky(site.zoneKey)) {
     toast("🌙", "Halloween night is over", "Your candy prizes are yours to keep. Back to the planet!");
     openSite(fresh.current);

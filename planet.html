@@ -702,7 +702,8 @@
   .rb small { font-size: 12px; font-weight: 450; color: var(--haze); }
   .rb.got { opacity: 1; box-shadow: inset 0 0 0 1.5px var(--slime); }
   .road-stats { margin: 16px 20px 20px; color: var(--haze); font-size: 14px; }
-  @media (max-width: 560px) { .invite-card .road-items { grid-template-columns: repeat(3, 1fr); } .invite-card h2 { font-size: 23px; } }
+  @media (max-width: 560px) { .invite-card .road-items { grid-template-columns: repeat(3, 1fr); } .invite-card h2 { font-size: 23px; }
+    .candy-button { padding: 4px 8px; font-size: 13px; } .candy-button .cw { display: none; } }
 </style>
 </head>
 <body>
@@ -724,7 +725,7 @@
     <button class="levels-button" id="levelsButton" title="Every level: pick one to play">🗺<span>Levels</span></button>
     <nav class="route" id="route" aria-label="Your route across the planet"></nav>
     <div class="who">
-      <button class="candy-button" id="candyButton" hidden aria-label="Halloween night: your candy and the candy road">🎃<b id="candyCount">0</b>🍬</button>
+      <button class="candy-button" id="candyButton" hidden aria-label="Halloween night: your candy and the candy road">🎃<b id="candyCount">0</b><span class="cw">🍬</span></button>
       <button class="stars-button" id="starsButton" title="Your stars, the garage and your badges"><span id="rankIcon"></span>★ <span id="totalStars">0</span><span class="garage-word">🔧 Garage</span><i class="new-pip" id="newPip" hidden>NEW</i><i class="rank-bar"><b id="rankBar"></b></i></button>
       <b id="driver"></b>
       <button class="quiet round" id="muteButton" title="Sound on or off" aria-label="Sound on or off">🔊</button>
@@ -1483,6 +1484,7 @@ function render(now = performance.now()) {
     if (frames[k].x) drawCrack(ctx, frames[k].x[0], frames[k].x[1], cell);
   }
   const now_map = mapAt(i), nextFlag = f.fl || 1, picked = pickedBy(i), knocked = knockedBy(i);
+  if (site.key === "h10") drawMansion(ctx, cell, now);
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     const ch = now_map[r][c];
     if ("hzmc".includes(ch)) drawSpookySquare(ctx, ch, r, c, cell, now, knocked, picked);
@@ -2420,6 +2422,7 @@ async function celebrate(r, run) {
   const titles = ["Mission complete!", "Nice work!", "Perfect run!"];
   const got = r.stars.filter(Boolean).length;
   $("celeTitle").textContent = site.key === "7" ? `${runs.filter(x => x.reached).length} of 5 planets!`
+    : r.zone_cleared && spooky(r.zone_cleared.key) && !r.zone_cleared.next ? "🎃 Halloween night complete!"
     : r.zone_cleared ? `${ZONE_ICONS[r.zone_cleared.key] || "🗺"} ${r.zone_cleared.name} cleared!` : titles[Math.max(0, got - 1)];
   $("celeSub").textContent = site.key === "7" ? unchartedSummary() : run.mission === "report" ? "📡 Report confirmed" : plural(run.ticks, "tick");
   $("bigStars").innerHTML = r.stars.map((s, i) => `<div class="big-star${s ? " got" : r.best[i] ? " was" : ""}" title="${esc(goals[i] || "")}"><i>★</i><span>${esc([...(goals[i] || "★")][0])}</span></div>`).join("");
@@ -2604,10 +2607,10 @@ async function enter(id) {
   await openSite(siteOpen(lastSite) ? lastSite : data.current);
   requestAnimationFrame(frameLoop);
   if (recall("planetIntroSeen") !== "1") openIntro();
-  else if (data.halloween && recall(halloweenSeenKey()) !== "1") showInvite();
   // A returning driver sees their own progress, so joining with a classmate's
   // name by mistake shows straight away.
   else if (data.total_stars) toast("👋", `Welcome back, ${data.you.name}!`, `${data.total_stars} ★ so far. Not you? Press Switch.`);
+  if (recall("planetIntroSeen") === "1") welcomeHalloween();
   return true;
 }
 function useState(data) {
@@ -4491,7 +4494,8 @@ function openIntro() {
 }
 function closeIntro() {
   $("intro").hidden = true; store("planetIntroSeen", "1");
-  if (state && state.halloween && recall(halloweenSeenKey()) !== "1") showInvite(); else $("code").focus();
+  $("code").focus();
+  welcomeHalloween();
 }
 
 // ---- Wiring ----------------------------------------------------------------------------------

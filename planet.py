@@ -1361,8 +1361,8 @@ def explain(world, unlocked=(), code=""):
                      f"time{'s' if world.no_door != 1 else ''}: knock the way the "
                      f"house is from the rover, right next to it.")
     if world.bumps and end in ("stopped", "ticks") and not bumps_said:
-        extra.append(f"The rover bumped into rock {world.bumps} "
-                     f"time{'s' if world.bumps != 1 else ''}: when it bumps, it doesn't move.")
+        extra.append(f"The rover bumped into {'a house or rock' if world.houses else 'rock'} "
+                     f"{world.bumps} time{'s' if world.bumps != 1 else ''}: when it bumps, it doesn't move.")
     out = {"what": " ".join([what + "."] + extra), "next": nxt}
     if world.copied:
         out["copied"] = True   # the coach leads with it
