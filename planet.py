@@ -90,8 +90,9 @@ WORDS = {"#": "rock", ".": "ground", "S": "ground", "G": "beacon", "~": "ice",
          ">": "belt", "<": "belt", "^": "belt", "v": "belt",
          "k": "ground", "D": "gate", **{str(n): "ground" for n in range(1, 10)},
          "B": "boulder", "H": "home",
-         # Halloween night: a lit house, a haunted one, candy on the ground.
-         "h": "house", "z": "haunted", "c": "ground"}
+         # Halloween night: a lit house, a haunted one, candy on the ground,
+         # and a grave (ground with a tombstone on it, where ghosts rise).
+         "h": "house", "z": "haunted", "c": "ground", "g": "ground"}
 # Every word look() can give back, for spotting one written without quotes.
 LOOK_WORDS = set(WORDS.values()) | {"crack", "sample", "key", "flag", "sun", "candy", "ghost"}
 OPEN_WORDS = {"empty", "open", "space", "free", "clear", "nothing", "floor", ""}
@@ -4678,7 +4679,7 @@ def parade(seed):
         if list(north.values()).count("h") < 4 or "z" not in north.values():
             continue
         cols = sorted(rng.sample(range(3, 11), 3))
-        v = {"map": lane(11, north, {c: "." for c in cols}),
+        v = {"map": lane(11, north, {c: "g" for c in cols}),
              "ghosts": crossing(cols, [rng.randrange(4) for _ in cols], top=2, bottom=4)}
         # Somewhere on the way a ghost has to be waited for.
         if drive(PARADE_RUSH, v, {"spooky"}, 0)["end"] == "spooked":

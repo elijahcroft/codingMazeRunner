@@ -6,7 +6,7 @@ const REPLAY_REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const REPLAY_TILE = {"#": "#1d1736", ".": "#4f4386", S: "#4f4386", "*": "#4f4386", G: "#4f4386", "~": "#7fb2e6",
                      O: "#4f4386", "+": "#7a6430", P: "#4f4386", D: "#7a4f2a", ">": "#4a4766", "<": "#4a4766",
                      "^": "#4a4766", v: "#4a4766", H: "#2f7a60", k: "#4f4386", B: "#4f4386",
-                     h: "#1d1736", z: "#1d1736", m: "#1d1736", c: "#4f4386"};
+                     h: "#1d1736", z: "#1d1736", m: "#1d1736", c: "#4f4386", g: "#4f4386"};
 const REPLAY_BELT = {"^": -Math.PI / 2, ">": 0, v: Math.PI / 2, "<": Math.PI};
 
 // The map, with what the rover has already picked up (`taken`) gone.
@@ -59,6 +59,8 @@ function replayMap(g, map, cell, taken, now) {
       if (ch === "h" && taken.has("knock " + at)) { g.font = `800 ${cell * .4}px system-ui`; g.fillStyle = "#8cf2c6"; g.fillText("✓", cx + cell * .28, cy - cell * .28); }
     } else if (ch === "c" && !taken.has(at)) {
       g.font = `${cell * .55}px serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("🍬", cx, cy);
+    } else if (ch === "g") {
+      g.font = `${cell * .55}px serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("🪦", cx, cy);
     }
   }));
 }

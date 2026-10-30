@@ -114,6 +114,18 @@ function drawMystery(ctx, r, c, cell, now) {
   ctx.font = `900 ${Math.round(s * .3)}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.fillText("?", x + s * .5, y + s * .58); ctx.shadowBlur = 0;
 }
+// A grave: a mossy tombstone, a mound of earth, and a faint glow where a
+// ghost comes up.
+function drawGrave(ctx, r, c, cell, now) {
+  const x = c * cell, y = r * cell, s = cell, k = CALM ? .5 : .5 + .5 * Math.sin(now / 600 + c);
+  ctx.fillStyle = `rgba(185,163,255,${.08 + .1 * k})`; ctx.beginPath(); ctx.ellipse(x + s * .5, y + s * .78, s * .38, s * .14, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#3a2e26"; ctx.beginPath(); ctx.ellipse(x + s * .5, y + s * .8, s * .3, s * .1, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#8a8597"; ctx.beginPath(); ctx.moveTo(x + s * .3, y + s * .78); ctx.lineTo(x + s * .3, y + s * .38);
+  ctx.arc(x + s * .5, y + s * .38, s * .2, Math.PI, 0); ctx.lineTo(x + s * .7, y + s * .78); ctx.fill();
+  ctx.fillStyle = "rgba(90,140,70,.6)"; ctx.fillRect(x + s * .3, y + s * .68, s * .4, s * .1);
+  ctx.fillStyle = "#4a4558"; ctx.font = `800 ${Math.round(s * .16)}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("RIP", x + s * .5, y + s * .48);
+}
 function drawCandy(ctx, r, c, cell, now) {
   const bob = CALM ? 0 : Math.sin(now / 380 + r * 2 + c) * cell * .04;
   ctx.fillStyle = "rgba(255,138,31,.16)"; ctx.beginPath(); ctx.arc((c + .5) * cell, (r + .5) * cell, cell * .34, 0, 7); ctx.fill();
@@ -181,6 +193,7 @@ function drawSpookySquare(ctx, ch, r, c, cell, now, knocked, picked) {
   else if (ch === "z") drawHaunted(ctx, r, c, cell, now);
   else if (ch === "m") drawMystery(ctx, r, c, cell, now);
   else if (ch === "c" && !picked.has(r + "," + c)) drawCandy(ctx, r, c, cell, now);
+  else if (ch === "g") drawGrave(ctx, r, c, cell, now);
 }
 // The ghosts, over everything else on the map.
 function drawGhosts(ctx, i, cell, now) {

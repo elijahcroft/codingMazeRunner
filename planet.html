@@ -1488,7 +1488,7 @@ function render(now = performance.now()) {
   if (site.key === "h10") drawMansion(ctx, cell, now);
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     const ch = now_map[r][c];
-    if ("hzmc".includes(ch)) drawSpookySquare(ctx, ch, r, c, cell, now, knocked, picked);
+    if ("hzmcg".includes(ch)) drawSpookySquare(ctx, ch, r, c, cell, now, knocked, picked);
     else if (ch === "*" && !picked.has(r + "," + c)) drawSample(ctx, r, c, cell, now);
     else if (ch === "B") drawBoulder(ctx, r, c, cell);
     else if (ch === "H") drawHome(ctx, r, c, cell);
@@ -4086,7 +4086,7 @@ const KIND_WORD = {cmd: "command", sense: "sensor", own: "yours", var: "variable
 // What look() says about each square (matches planet.WORDS).
 const LOOK_SAYS = {"#": "rock", ".": "ground", "~": "ice", "O": "crater", "+": "sun", "P": "pad", "G": "beacon",
   ">": "belt", "<": "belt", "^": "belt", "v": "belt", "D": "gate", "B": "boulder", "H": "home",
-  "h": "house", "z": "haunted", "c": "candy"};
+  "h": "house", "z": "haunted", "c": "candy", "g": "ground"};
 
 function defsWithParams(code) {
   const out = {};
