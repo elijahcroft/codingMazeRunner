@@ -301,6 +301,37 @@ function drawTopper(ctx, s, topper, now) {
       ctx.fillStyle = ["#ffffff", "#ffd34d", "#4dc3ff", "#7ff07a", "#b07aff"][k % 5];
       ctx.fillRect(-.018 * s, -.006 * s, .036 * s, .012 * s + .5); ctx.restore();
     }
+  } else if (topper === "witchhat") {   // a crooked witch's hat, an orange band and a gold buckle
+    ctx.fillStyle = "#2a1838"; ctx.beginPath(); ctx.ellipse(-.07 * s, .06 * s, .22 * s, .06 * s, 0, 0, 7); ctx.fill();
+    const tip = CALM ? 0 : Math.sin(now / 600) * .03;
+    ctx.fillStyle = "#3d2352"; ctx.beginPath(); ctx.moveTo(-.2 * s, .05 * s); ctx.lineTo(.06 * s, .05 * s);
+    ctx.quadraticCurveTo(-.02 * s, -.22 * s, -.1 * s, -.34 * s);
+    ctx.quadraticCurveTo((-.2 + tip) * s, -.42 * s, (-.3 + tip) * s, -.36 * s);
+    ctx.quadraticCurveTo(-.2 * s, -.3 * s, -.16 * s, -.18 * s); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#ff8a1f"; ctx.beginPath(); ctx.moveTo(-.19 * s, .03 * s); ctx.lineTo(.05 * s, .03 * s);
+    ctx.lineTo(.03 * s, -.03 * s); ctx.lineTo(-.18 * s, -.03 * s); ctx.fill();
+    ctx.strokeStyle = "#ffd36b"; ctx.lineWidth = Math.max(1, s * .02); ctx.strokeRect(-.1 * s, -.035 * s, .06 * s, .07 * s);
+  } else if (topper === "candybucket") {   // a jack-o'-lantern pail, its handle up, candy heaped in it
+    ctx.strokeStyle = "#3a2410"; ctx.lineWidth = Math.max(1, s * .025);
+    ctx.beginPath(); ctx.arc(-.1 * s, -.02 * s, .2 * s, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+    ctx.fillStyle = "#ff8a1f"; ctx.strokeStyle = "#c25a0c";
+    ctx.beginPath(); ctx.arc(-.1 * s, .02 * s, .15 * s, 0, 7); ctx.fill(); ctx.stroke();
+    for (let k = 0; k < 7; k++) {
+      ctx.fillStyle = ["#ff4f7a", "#ffe14d", "#7ff07a", "#b07aff", "#4dc3ff"][k % 5];
+      ctx.beginPath(); ctx.arc((-.18 + k * .028) * s, (-.06 - hash(k, 31) * .05) * s, .035 * s, 0, 7); ctx.fill();
+    }
+    ctx.fillStyle = "#2a1408";
+    for (const x of [-.15, -.05]) { ctx.beginPath(); ctx.moveTo((x - .03) * s, .06 * s); ctx.lineTo((x + .03) * s, .06 * s); ctx.lineTo(x * s, .01 * s); ctx.fill(); }
+    ctx.fillRect(-.16 * s, .1 * s, .12 * s, .025 * s);
+  } else if (topper === "tophat") {   // a tall black hat, a purple band, and a little ghost peeking out
+    const peek = CALM ? .5 : .5 + .5 * Math.sin(now / 700);
+    ctx.fillStyle = "#18121f"; ctx.beginPath(); ctx.ellipse(-.08 * s, .06 * s, .2 * s, .055 * s, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#f4f1ff"; ctx.globalAlpha = .9;
+    ctx.beginPath(); ctx.arc(-.08 * s, (-.28 - peek * .08) * s, .075 * s, Math.PI, 0); ctx.lineTo(-.005 * s, -.22 * s); ctx.lineTo(-.155 * s, -.22 * s); ctx.fill();
+    ctx.globalAlpha = 1; eyes(ctx, s, [-.105, -.055], -.28 - peek * .08, .016);
+    ctx.fillStyle = "#231a2c"; ctx.fillRect(-.19 * s, -.26 * s, .22 * s, .32 * s);
+    ctx.fillStyle = "#7a3fc0"; ctx.fillRect(-.19 * s, -.03 * s, .22 * s, .06 * s);
+    ctx.fillStyle = "#2e2338"; ctx.beginPath(); ctx.ellipse(-.08 * s, -.26 * s, .11 * s, .03 * s, 0, 0, 7); ctx.fill();
   } else {
     ctx.strokeStyle = "#6e6290"; ctx.beginPath(); ctx.moveTo(-.05 * s, -.14 * s); ctx.lineTo(-.16 * s, -.36 * s); ctx.stroke();
     ctx.fillStyle = "#ffb547"; ctx.beginPath(); ctx.arc(-.16 * s, -.36 * s, s * .035, 0, 7); ctx.fill();
@@ -1433,3 +1464,118 @@ Object.assign(PETS, {
     ctx.restore();
   },
 });
+
+// Halloween night's limited-time things: the candy road, the gifts and badges.
+Object.assign(PAINTS, {
+  candycorn: {base: "#ffd23f", swatch: "linear-gradient(90deg, #ffd23f 36%, #ff8a1f 36% 68%, #fff6e8 68%)", fill(ctx, s) {
+    // Yellow at the back, orange in the middle, white at the tip, and a shine along it.
+    const grad = ctx.createLinearGradient(-.32 * s, 0, .3 * s, 0);
+    grad.addColorStop(0, "#ffd23f"); grad.addColorStop(.36, "#ffd23f"); grad.addColorStop(.37, "#ff8a1f");
+    grad.addColorStop(.68, "#ff8a1f"); grad.addColorStop(.69, "#fff6e8"); grad.addColorStop(1, "#fff6e8");
+    return grad;
+  }, draw(ctx, s) {
+    ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.fillRect(-.32 * s, -.17 * s, .62 * s, .05 * s);
+    ctx.fillStyle = "rgba(120,50,0,.12)"; ctx.fillRect(-.32 * s, .12 * s, .62 * s, .1 * s);
+  }},
+  mummy: {base: "#e9e0c9", swatch: "repeating-linear-gradient(160deg, #e9e0c9 0 5px, #b8ab8a 5px 6px)", draw(ctx, s) {
+    // Bandages wound round and round, one loose end, and two eyes peeping out at the front.
+    for (let k = 0; k < 9; k++) {
+      const x = (-.4 + k * .085) * s, tilt = (hash(k, 61) - .5) * .12 * s;
+      ctx.fillStyle = k % 2 ? "#ded3b8" : "#f1e9d4";
+      ctx.beginPath(); ctx.moveTo(x, -.24 * s); ctx.lineTo(x + .07 * s, -.24 * s); ctx.lineTo(x + .14 * s + tilt, .24 * s); ctx.lineTo(x + .07 * s + tilt, .24 * s); ctx.fill();
+      ctx.strokeStyle = "rgba(120,100,70,.35)"; ctx.lineWidth = Math.max(1, s * .008); ctx.stroke();
+    }
+    ctx.fillStyle = "#14101c"; ctx.fillRect(.06 * s, -.1 * s, .2 * s, .07 * s);
+    for (const y of [-.14, .06]) {
+      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(.17 * s, (y + .075) * s, .035 * s, 0, 7); ctx.fill();
+    }
+    ctx.fillStyle = "#14101c";
+    for (const y of [-.14, .06]) { ctx.beginPath(); ctx.arc(.18 * s, (y + .075) * s, .017 * s, 0, 7); ctx.fill(); }
+  }},
+  vampire: {base: "#16101c", swatch: "linear-gradient(90deg, #b3122e 0 22%, #16101c 22% 78%, #f4f1ff 78%)", draw(ctx, s, now) {
+    // A high red collar at the back, a bat on the cape, and fangs at the front.
+    ctx.fillStyle = "#b3122e";
+    ctx.beginPath(); ctx.moveTo(-.32 * s, -.22 * s); ctx.lineTo(-.16 * s, -.22 * s); ctx.lineTo(-.24 * s, 0); ctx.lineTo(-.16 * s, .22 * s); ctx.lineTo(-.32 * s, .22 * s); ctx.fill();
+    ctx.fillStyle = "#6e0a1c"; ctx.beginPath(); ctx.moveTo(-.32 * s, -.12 * s); ctx.lineTo(-.24 * s, 0); ctx.lineTo(-.32 * s, .12 * s); ctx.fill();
+    const flap = CALM ? 1 : .8 + .2 * Math.sin(now / 160);
+    ctx.fillStyle = "#c8203c"; ctx.beginPath(); ctx.ellipse(-.04 * s, 0, .03 * s, .04 * s, 0, 0, 7); ctx.fill();
+    for (const side of [-1, 1]) {
+      ctx.beginPath(); ctx.moveTo(-.04 * s, 0); ctx.quadraticCurveTo(-.06 * s, side * .1 * flap * s, -.02 * s, side * .14 * flap * s);
+      ctx.quadraticCurveTo(-.01 * s, side * .08 * s, .02 * s, side * .1 * flap * s); ctx.lineTo(-.02 * s, 0); ctx.fill();
+    }
+    ctx.fillStyle = "#f4f1ff";
+    for (const y of [-.08, .08]) { ctx.beginPath(); ctx.moveTo(.3 * s, (y - .03) * s); ctx.lineTo(.3 * s, (y + .03) * s); ctx.lineTo(.22 * s, y * s); ctx.fill(); }
+  }},
+  ghostsheet: {base: "#f4f1ff", swatch: "radial-gradient(ellipse 10% 14% at 40% 45%, #1b1530 90%, transparent 100%), radial-gradient(ellipse 10% 14% at 64% 45%, #1b1530 90%, #f4f1ff 100%)", draw(ctx, s, now) {
+    // A bedsheet costume: soft folds, and two eye holes that blink now and then.
+    ctx.strokeStyle = "rgba(160,150,200,.35)"; ctx.lineWidth = Math.max(1, s * .02);
+    for (const y of [-.14, 0, .14]) { ctx.beginPath(); ctx.moveTo(-.32 * s, y * s); ctx.bezierCurveTo(-.15 * s, (y + .05) * s, -.05 * s, (y - .05) * s, .1 * s, y * s); ctx.stroke(); }
+    const blink = !CALM && now % 4200 > 4050;
+    ctx.fillStyle = "#1b1530";
+    for (const y of [-.08, .08]) { ctx.beginPath(); ctx.ellipse(.16 * s, y * s, .035 * s, blink ? .008 * s : .045 * s, 0, 0, 7); ctx.fill(); }
+  }},
+  jackolantern: {base: "#ff8a1f", swatch: "radial-gradient(circle at 50% 55%, #fff27a 12%, #ff8a1f 15% 60%, #c25a0c 62%)", draw(ctx, s, now) {
+    // A carved pumpkin with a candle inside: ribs, a stalk, and a face that flickers.
+    const k = CALM ? 1 : .75 + .25 * Math.sin(now / 90) * Math.sin(now / 230);
+    ctx.strokeStyle = "rgba(150,60,0,.55)"; ctx.lineWidth = Math.max(1, s * .02);
+    for (const y of [-.14, -.05, .05, .14]) { ctx.beginPath(); ctx.ellipse(-.01 * s, y * s, .34 * s, .05 * s, 0, 0, 7); ctx.stroke(); }
+    ctx.fillStyle = "#3f8a2e"; ctx.fillRect(-.34 * s, -.03 * s, .06 * s, .06 * s);
+    ctx.fillStyle = `rgba(255,236,120,${k})`; ctx.shadowColor = "#ffd34d"; ctx.shadowBlur = s * .25 * k;
+    for (const y of [-.1, .1]) { ctx.beginPath(); ctx.moveTo(.2 * s, (y - .05) * s); ctx.lineTo(.2 * s, (y + .05) * s); ctx.lineTo(.12 * s, y * s); ctx.fill(); }
+    ctx.beginPath(); ctx.moveTo(.0, -.12 * s);
+    for (let j = 0; j <= 6; j++) ctx.lineTo((j % 2 ? .04 : -.01) * s, (-.12 + j * .04) * s);
+    ctx.lineTo(-.08 * s, .1 * s); ctx.lineTo(-.08 * s, -.1 * s); ctx.fill();
+    ctx.shadowBlur = 0;
+  }},
+});
+Object.assign(PETS, {
+  blackcat(ctx, s, t) {   // a black cat with green eyes, its tail swishing, an ear flicking now and then
+    const swish = Math.sin(t / 380) * .25, flick = t % 3000 > 2850 ? .08 : 0;
+    ctx.strokeStyle = "#16121c"; ctx.lineWidth = s * .09; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-.2 * s, .22 * s); ctx.quadraticCurveTo(-.55 * s, (.1 + swish) * s, -.42 * s, (-.25 + swish) * s); ctx.stroke();
+    ctx.fillStyle = "#16121c";
+    ctx.beginPath(); ctx.ellipse(-.02 * s, .2 * s, .28 * s, .18 * s, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(.14 * s, -.1 * s, .22 * s, 0, 7); ctx.fill();
+    for (const [x, f] of [[.0, flick], [.26, 0]]) { ctx.beginPath(); ctx.moveTo((x - .04) * s, -.2 * s); ctx.lineTo((x + .02 - f) * s, (-.42 + f) * s); ctx.lineTo((x + .12) * s, -.24 * s); ctx.fill(); }
+    ctx.fillStyle = "#7dff6b";
+    for (const x of [.06, .22]) { ctx.beginPath(); ctx.ellipse(x * s, -.12 * s, .05 * s, .065 * s, 0, 0, 7); ctx.fill(); }
+    ctx.fillStyle = "#16121c";
+    for (const x of [.06, .22]) { ctx.beginPath(); ctx.ellipse(x * s, -.12 * s, .015 * s, .05 * s, 0, 0, 7); ctx.fill(); }
+    ctx.fillStyle = "#ff9ec4"; ctx.beginPath(); ctx.arc(.14 * s, -.03 * s, .025 * s, 0, 7); ctx.fill();
+  },
+  spider(ctx, s, t) {   // a fuzzy spider on its thread, bobbing up and down, legs wiggling
+    const drop = Math.sin(t / 600) * .12;
+    ctx.strokeStyle = "rgba(240,240,255,.7)"; ctx.lineWidth = Math.max(1, s * .015);
+    ctx.beginPath(); ctx.moveTo(0, -.9 * s); ctx.lineTo(0, (-.2 + drop) * s); ctx.stroke();
+    ctx.translate(0, drop * s);
+    ctx.strokeStyle = "#1a1420"; ctx.lineWidth = s * .045; ctx.lineCap = "round";
+    for (let k = 0; k < 4; k++) for (const side of [-1, 1]) {
+      const wig = Math.sin(t / 120 + k * 1.3 + side) * .04, y = (-.08 + k * .07) * s;
+      ctx.beginPath(); ctx.moveTo(side * .08 * s, y); ctx.quadraticCurveTo(side * .3 * s, y - .14 * s, side * .38 * s, y + (.12 + wig) * s); ctx.stroke();
+    }
+    ctx.fillStyle = "#2a1f33"; ctx.beginPath(); ctx.ellipse(0, .04 * s, .2 * s, .22 * s, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#ff8a1f"; ctx.beginPath(); ctx.moveTo(0, .02 * s); ctx.lineTo(.06 * s, .12 * s); ctx.lineTo(0, .2 * s); ctx.lineTo(-.06 * s, .12 * s); ctx.fill();
+    eyes(ctx, s, [-.07, .07], -.08, .055);
+  },
+});
+Object.assign(GLOWS, {
+  spookyfog(ctx, s, now) {   // purple and green mist curling round underneath
+    const t = CALM ? 0 : now / 900;
+    for (let k = 0; k < 7; k++) {
+      const a = t + k * Math.PI * 2 / 7, r = (.42 + .08 * Math.sin(t * 2 + k)) * s;
+      const grad = ctx.createRadialGradient(Math.cos(a) * r, Math.sin(a) * r * .8, 0, Math.cos(a) * r, Math.sin(a) * r * .8, .3 * s);
+      grad.addColorStop(0, k % 2 ? "rgba(156,255,107,.32)" : "rgba(170,110,255,.38)"); grad.addColorStop(1, "rgba(120,80,200,0)");
+      ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(Math.cos(a) * r, Math.sin(a) * r * .8, .3 * s, 0, 7); ctx.fill();
+    }
+  },
+});
+Object.assign(WHEELS, {
+  pumpkinwheels(ctx, s, now) {   // every wheel a little pumpkin, ribs turning, a green stalk for a hub
+    axles(ctx, s, "#2a3a1c");
+    tyres(ctx, s, "#ff8a1f", .2, .16, .07);
+    treadLines(ctx, s, now, "rgba(150,60,0,.6)", .2, .16, 4);
+    ctx.fillStyle = "#3f8a2e";
+    wheelSpots((wx, wy) => { ctx.beginPath(); ctx.arc(wx * s, wy * s, .025 * s, 0, 7); ctx.fill(); });
+  },
+});
+SETS.push({name: "Trick-or-Treat", icon: "🎃", items: {topper: "witchhat", paint: "candycorn", pet: "blackcat", trail: "candytrail"}});
