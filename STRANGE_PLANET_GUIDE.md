@@ -501,7 +501,7 @@ well, while everyone else carries on with the main route.
 
 **To send a student:** on `/planet/teacher` press **🎃 Invite** on their
 card (or **🎃 Invite everyone** in the orange Halloween panel above the
-crew). Within 20 seconds their screen shows an invitation with **🎃 Go
+crew). Within 15 seconds their screen shows an invitation with **🎃 Go
 trick-or-treating!**; after that, the 🎃 candy counter at the top of their
 screen takes them there. Press **🎃 Invited ✓** again to take an invitation
 back. **Put it away** (or the 🎃 switch in ⚙ Settings) closes Halloween night

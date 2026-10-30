@@ -568,7 +568,7 @@ function renderSpooky(data) {
   const there = inv.filter(s => s.halloween.now).length, candy = inv.reduce((n, s) => n + s.halloween.candy, 0);
   $("spookyLine").textContent = inv.length
     ? `${inv.length} of ${data.students.length} invited · ${there} trick-or-treating now · ${candy} candy collected together. Press 🎃 on a card to invite or uninvite.`
-    : "Nobody is invited yet. Press 🎃 Invite on a student's card to send them, or invite everyone. It opens on their screen within 20 seconds.";
+    : "Nobody is invited yet. Press 🎃 Invite on a student's card to send them, or invite everyone. It opens on their screen within 15 seconds.";
 }
 async function refresh() {
   let data;
