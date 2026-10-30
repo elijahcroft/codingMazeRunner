@@ -95,6 +95,12 @@ function drawHaunted(ctx, r, c, cell, now) {
   for (let j = 0; j < 4; j++) { const a = Math.PI / 2 + j * Math.PI / 6; ctx.moveTo(wx, wy); ctx.lineTo(wx + Math.cos(a) * s * .2, wy + Math.sin(a) * s * .2); }
   for (const rr of [.08, .15]) { ctx.moveTo(wx, wy + s * rr); ctx.quadraticCurveTo(wx - s * rr * .5, wy + s * rr * .5, wx - s * rr, wy); }
   ctx.stroke();
+  // Now and then a wisp of a ghost rises off the roof and fades (not where
+  // real ghosts float about, so the two never get mixed up).
+  if (!CALM && !scene.ghosts) {
+    const u = ((now + c * 2300 + r * 900) % 8000) / 8000;
+    if (u < .18) drawSpook(ctx, x + s * .5, y + s * (.15 - u * 2), s * .4, now, .55 * Math.sin(u / .18 * Math.PI));
+  }
 }
 // A mystery house on the Haunted Mansion's streets: lit or haunted, nobody
 // knows until the run. A dark house with a ? glowing in its window.

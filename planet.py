@@ -4722,7 +4722,9 @@ TRICK_STREET = {
         "A street of houses repeats: drive, knock, drive, knock. Put one drive "
         'and one knock in a for loop:\n\nfor i in range(5):\n    east(2)\n    knock("north")',
         'look("north") says "house" for a lit house and "haunted" for a haunted '
-        'one. Only knock on lit ones:\n\nif look("north") == "house":\n    knock("north")',
+        'one, and look("east") says "ghost" when a ghost is in the way. Check first:'
+        '\n\nif look("north") == "house":\n    knock("north")\n'
+        'while look("east") == "ghost":\n    wait()',
     ],
     "sites": [
         site("h1", "Knock Knock",
