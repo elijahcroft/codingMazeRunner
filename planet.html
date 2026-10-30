@@ -4140,6 +4140,8 @@ function complete(open, all) {
     const said = new Set(["rock", "ground"]);
     for (const ch of (site && site.map || []).join("")) if (LOOK_SAYS[ch]) said.add(LOOK_SAYS[ch]);
     if (site && site.zoneKey === "crumble") said.add("crack");
+    if (site && site.ghosts) said.add("ghost");
+    if (site && (site.map || []).join("").includes("m")) { said.add("house"); said.add("haunted"); }
     items = [...said].map(n => ({name: n, kind: "word", help: `look() gives back "${n}" for this square.`}));
   } else {
     // Names only open as you type (or with Ctrl+Space), and never for a word
