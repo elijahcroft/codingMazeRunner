@@ -178,6 +178,16 @@
   .card .said { padding: 7px 9px; border-radius: 10px; background: rgba(0,0,0,.22); color: #ffd9b0; font-size: 12.5px; line-height: 1.35; }
   .card .skip { color: var(--amber); font-size: 12px; font-weight: 700; }
   .acts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .spooky-panel { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 12px 16px; border-radius: 18px;
+    background: linear-gradient(90deg, rgba(255,138,31,.22), rgba(42,24,56,.5)); box-shadow: inset 0 0 0 1.5px rgba(255,138,31,.6); }
+  .spooky-panel.off { background: rgba(53,45,96,.35); box-shadow: inset 0 0 0 1px var(--edge); }
+  .spooky-panel .sp-text { display: grid; gap: 2px; flex: 1 1 320px; }
+  .spooky-panel .sp-text b { font-size: 16px; color: #ffcf9a; }
+  .spooky-panel .sp-text span { color: var(--bone); font-size: 13.5px; }
+  .spooky-panel .sp-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn.invite { box-shadow: inset 0 0 0 1px #ff8a1f; color: #ffcf9a; }
+  .btn.invite.on { background: #ff8a1f; color: #2a1200; font-weight: 750; }
+  .card .spooky-line { color: #ffcf9a; font-size: 12.5px; font-weight: 650; }
   details.tries { font-size: 12.5px; color: var(--haze); }
   details.tries summary { cursor: pointer; color: var(--violet); font-weight: 650; }
   .try { margin-top: 8px; }
@@ -220,6 +230,7 @@
   <label title="On: 📋 Use as code after scouting leaves a few words for students to finish (r____ for range). Off: the code comes out whole."><span class="switch"><input type="checkbox" id="blanks" onchange="admin('planet_blanks', null, {on: this.checked})"><span></span></span> Scouted code has words to finish</label>
   <label title="For a younger class. On: seven practice zones (Practice Park, Loop Garden, Ice Rink, Pad Park, Jump Park, Look-Out Point, Fork Road) before the Landing Site, where kids drive by hand first, then finish their code one letter at a time; classmates to ask after 3 misses (not 8), Skip for now after 6 (not 20)."><span class="switch"><input type="checkbox" id="easy" onchange="admin('planet_easy', null, {on: this.checked})"><span></span></span> Easy mode (younger class)</label>
   <label title="On: after 📋 Use as code, students finish each word one letter at a time on every site: the word shows as keys, the next key lights up, and only the right letter goes in. The practice sites always work this way."><span class="switch"><input type="checkbox" id="coach" onchange="admin('planet_coach', null, {on: this.checked})"><span></span></span> Letter-by-letter typing help</label>
+  <label title="A limited-time event: ten trick-or-treat levels for the students you invite (🎃 on their card). Off puts it away for everyone; what they earned stays theirs."><span class="switch"><input type="checkbox" id="halloween" onchange="admin('planet_halloween', null, {on: this.checked})"><span></span></span> 🎃 Halloween night</label>
 </section>
 <div class="msg" id="msg" hidden></div>
 <main>
@@ -246,6 +257,15 @@
   <section>
     <h2 class="section">🗺 Where everyone is <small>by the level they're on now</small></h2>
     <div class="where" id="where" style="margin-top:10px"></div>
+  </section>
+
+  <section class="spooky-panel" id="spooky" hidden>
+    <div class="sp-text"><b>🎃 Halloween night</b><span id="spookyLine"></span></div>
+    <div class="sp-acts"><button class="btn" onclick="admin('planet_invite_all', null, {on: true})" title="Open Halloween night for every student on Strange Planet">🎃 Invite everyone</button><button class="btn" onclick="admin('planet_invite_all', null, {on: false})" title="Close it for everyone (their candy and prizes stay theirs)">Uninvite everyone</button><button class="btn" onclick="admin('planet_halloween', null, {on: false})" title="Put Halloween night away for the whole class">Put it away</button></div>
+  </section>
+  <section class="spooky-panel off" id="spookyOff" hidden>
+    <div class="sp-text"><b>🎃 Halloween night is put away</b><span>Ten trick-or-treat levels, for the students you pick. Students keep anything they earned.</span></div>
+    <div class="sp-acts"><button class="btn" onclick="admin('planet_halloween', null, {on: true})">🎃 Bring it out</button></div>
   </section>
 
   <section style="display:grid;gap:12px">
@@ -289,12 +309,12 @@ function ago(seconds) {
   return s < 20 ? "just now" : s < 60 ? `${Math.floor(s)} s ago` : s < 3600 ? `${Math.floor(s / 60)} min ago` : `${Math.floor(s / 3600)} h ago`;
 }
 function siteTag(key) { return key === "7" ? "🪐" : key.toUpperCase(); }
-const ZONE_ICONS = {practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", lookout: "👀", forks: "🔀", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐"};
+const ZONE_ICONS = {practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", lookout: "👀", forks: "🔀", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐", street: "🎃", hollow: "👻"};
 const ENDED = {goal: "✓ done", stopped: "stopped short", fell: "fell", ticks: "out of time",
-               error: "code error", wrong: "wrong number", battery: "flat battery"};
+               error: "code error", wrong: "wrong number", battery: "flat battery", spooked: "spooked 👻"};
 const STAMP = {goal: ["🎉 MISSION COMPLETE!", "win"], fell: ["💥 FELL IN!", "miss"], stopped: ["🏁 STOPPED SHORT", "miss"],
                ticks: ["⏰ OUT OF TIME", "miss"], battery: ["🔋 FLAT BATTERY", "miss"], wrong: ["📡 WRONG NUMBER", "miss"],
-               error: ["🐞 CODE ERROR", "err"]};
+               error: ["🐞 CODE ERROR", "err"], spooked: ["👻 BOO! SPOOKED", "miss"]};
 
 // ---- Settings and admin actions ---------------------------------------------------------
 $("settingsButton").addEventListener("click", () => {
@@ -424,10 +444,11 @@ function statusOf(s) {
 }
 function whereOf(s, data) {
   const n = s.now;
-  const practice = s.practice;
+  const practice = s.practice, spooky = s.halloween && s.halloween.now;
   return {key: n.site, name: n.site_name, zone: n.zone_name || s.zone, zoneKey: n.zone,
-          done: practice ? s.practice_solved : s.solved - s.practice_solved,
-          of: practice ? data.practice_sites : data.sites, practice};
+          done: spooky ? s.halloween.done : practice ? s.practice_solved : s.solved - s.practice_solved - s.halloween.done,
+          of: spooky ? data.halloween_sites : practice ? data.practice_sites : data.sites, practice,
+          what: spooky ? "Halloween levels" : practice ? "practice levels" : "levels"};
 }
 let sortBy = recall("planetTeacherSort") || "help", lastActive = {}, lastData = null;
 function setSort(by) {
@@ -456,10 +477,10 @@ function cardHtml(s, data, st) {
   const skipped = s.skipped && s.skipped.length ? `<div class="skip">⏭ skipped ${esc(s.skipped.map(siteTag).join(", "))}</div>` : "";
   return `<div class="card-top"><canvas width="108" height="108"></canvas><div class="nm"><b title="${esc(s.name)}">${esc(s.name)}</b><span class="pill ${st.cls}">${esc(st.text)}</span></div><div class="st">★ ${s.stars}<small>${plural(s.badges, "badge")}</small></div></div>
     <div class="loc"><span class="tag">${esc(siteTag(w.key))}</span><span class="sn">${esc(w.name)}</span><span class="mini-stars">${stars}</span><small>${ZONE_ICONS[w.zoneKey] || ""} ${esc(w.zone)}</small></div>
-    <div class="prog" title="${w.done} of ${w.of} ${w.practice ? "practice " : ""}levels done"><span style="width:${pct}%"></span></div>
-    <div class="prog-l"><span>${w.done} of ${w.of} ${w.practice ? "practice levels" : "levels"}</span><span>last run ${esc(ago(s.active))}</span></div>
-    ${dots}${said}${skipped}
-    <div class="acts">${s.site !== "7" ? `<button class="btn small" onclick="admin('planet_unlock', '${esc(s.id)}')" title="Open the next level of the main route for this student">🔓 Unlock next</button>` : ""}${s.now && s.now.code ? `<button class="btn small" onclick="admin('planet_spotlight', '${esc(s.id)}')" title="Put this student's last transmitted code on the class screen, without their name">📽 Show code</button>` : ""}${s.runs_total ? `<button class="btn small" onclick="replayOf('${esc(s.id)}')" title="Play this student's last run on the big screen above">▶ Replay</button>` : ""}${s.look && s.look.art ? `<button class="btn small" onclick="admin('planet_wipe_paint', '${esc(s.id)}')" title="Take off the paint this student made in the Paint Shop (back to Moonstone). Use it if it isn't right for the class screen.">🧽 Wipe paint</button>` : ""}<button class="btn small warn" data-remove="${esc(s.id)}" title="Take this student off Strange Planet (their progress here is lost)">✕</button></div>
+    <div class="prog" title="${w.done} of ${w.of} ${w.what} done"><span style="width:${pct}%"></span></div>
+    <div class="prog-l"><span>${w.done} of ${w.of} ${w.what}</span><span>last run ${esc(ago(s.active))}</span></div>
+    ${dots}${said}${skipped}${s.halloween.invited || s.halloween.candy ? `<div class="spooky-line">🎃 ${w.what === "Halloween levels" ? `★ ${s.halloween.stars} Halloween stars` : `${s.halloween.done} of ${data.halloween_sites} Halloween levels`} · 🍬 ${s.halloween.candy} candy${s.halloween.invited ? "" : " · not invited now"}</div>` : ""}
+    <div class="acts">${data.halloween ? `<button class="btn small invite${s.halloween.invited ? " on" : ""}" onclick="admin('planet_invite', '${esc(s.id)}', {on: ${!s.halloween.invited}})" title="${s.halloween.invited ? "Invited to Halloween night. Press to take the invitation back (their candy stays)." : "Invite this student to Halloween night: ten trick-or-treat levels open on their screen."}">${s.halloween.invited ? "🎃 Invited ✓" : "🎃 Invite"}</button>` : ""}${s.site !== "7" ? `<button class="btn small" onclick="admin('planet_unlock', '${esc(s.id)}')" title="Open the next level of the main route for this student">🔓 Unlock next</button>` : ""}${s.now && s.now.code ? `<button class="btn small" onclick="admin('planet_spotlight', '${esc(s.id)}')" title="Put this student's last transmitted code on the class screen, without their name">📽 Show code</button>` : ""}${s.runs_total ? `<button class="btn small" onclick="replayOf('${esc(s.id)}')" title="Play this student's last run on the big screen above">▶ Replay</button>` : ""}${s.look && s.look.art ? `<button class="btn small" onclick="admin('planet_wipe_paint', '${esc(s.id)}')" title="Take off the paint this student made in the Paint Shop (back to Moonstone). Use it if it isn't right for the class screen.">🧽 Wipe paint</button>` : ""}<button class="btn small warn" data-remove="${esc(s.id)}" title="Take this student off Strange Planet (their progress here is lost)">✕</button></div>
     ${triesHtml(s)}`;
 }
 function replayOf(pid) {
@@ -531,12 +552,23 @@ function renderWhere(data) {
     const z = s.now.zone_name || s.zone;
     (by[z] = by[z] || []).push(s.name);
   }
-  const zones = [...(data.easy ? data.practice_zones : []), ...data.zones];
+  const zones = [...(data.easy ? data.practice_zones : []), ...data.zones,
+                 ...Object.keys(data.zone_keys || {}).filter(z => ["street", "hollow"].includes(data.zone_keys[z]) && by[z])];
   const keys = data.zone_keys || {};
   $("where").innerHTML = zones.map(z => {
     const names = by[z] || [];
     return `<div class="zone${names.length ? "" : " empty-zone"}"><div class="zt">${ZONE_ICONS[keys[z]] || "🪐"} ${esc(z)}${names.length ? `<b>${names.length}</b>` : ""}</div>${names.length ? `<div class="zn">${names.map(esc).join(", ")}</div>` : ""}</div>`;
   }).join("");
+}
+// Halloween night: who's invited, how they're doing, and the buttons for it.
+function renderSpooky(data) {
+  $("spooky").hidden = !data.halloween; $("spookyOff").hidden = data.halloween || !data.students.length;
+  if (!data.halloween) return;
+  const inv = data.students.filter(s => s.halloween.invited);
+  const there = inv.filter(s => s.halloween.now).length, candy = inv.reduce((n, s) => n + s.halloween.candy, 0);
+  $("spookyLine").textContent = inv.length
+    ? `${inv.length} of ${data.students.length} invited · ${there} trick-or-treating now · ${candy} candy collected together. Press 🎃 on a card to invite or uninvite.`
+    : "Nobody is invited yet. Press 🎃 Invite on a student's card to send them, or invite everyone. It opens on their screen within 20 seconds.";
 }
 async function refresh() {
   let data;
@@ -548,6 +580,8 @@ async function refresh() {
   $("address").textContent = (data.address || "").replace(/^http:\/\//, "");
   $("spotOff").hidden = !data.spotlight;
   $("blanks").checked = data.blanks; $("easy").checked = data.easy; $("coach").checked = data.coach;
+  $("halloween").checked = data.halloween;
+  renderSpooky(data);
   $("empty").hidden = data.students.length > 0;
   renderStats(data);
   renderWhere(data);

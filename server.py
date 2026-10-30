@@ -3798,7 +3798,10 @@ def planet_record(p, key, code, results):
         "id": p["id"], "name": p["name"], "site": key, "site_name": s["name"],
         "zone": zone["name"], "zone_key": zone["key"],
         "map": first.get("map") or planet_variant(p, key)["map"],
-        "path": [[f["r"], f["c"], f.get("e")] for f in first["frames"]][:RUN_PATH_MAX],
+        "path": [[f["r"], f["c"], f.get("e")] + ([f["kn"][:2]] if f.get("kn") else [])
+                 for f in first["frames"]][:RUN_PATH_MAX],
+        "ghosts": planet.find_site(key)[2]["variants"][planet.variant_index(p["id"], s)].get("ghosts")
+        if key != planet.UNCHARTED["key"] else None,
         "end": first["end"], "reached": bool(reached_any), "code": code[:TRY_CODE_MAX],
         "stars": shown_stars(key, run_stars), "best": shown_stars(key, stars),
         "new_stars": new_stars, "said": said and short_said(said),

@@ -5,7 +5,8 @@
 const REPLAY_REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const REPLAY_TILE = {"#": "#1d1736", ".": "#4f4386", S: "#4f4386", "*": "#4f4386", G: "#4f4386", "~": "#7fb2e6",
                      O: "#4f4386", "+": "#7a6430", P: "#4f4386", D: "#7a4f2a", ">": "#4a4766", "<": "#4a4766",
-                     "^": "#4a4766", v: "#4a4766", H: "#2f7a60", k: "#4f4386", B: "#4f4386"};
+                     "^": "#4a4766", v: "#4a4766", H: "#2f7a60", k: "#4f4386", B: "#4f4386",
+                     h: "#1d1736", z: "#1d1736", m: "#1d1736", c: "#4f4386"};
 const REPLAY_BELT = {"^": -Math.PI / 2, ">": 0, v: Math.PI / 2, "<": Math.PI};
 
 // The map, with what the rover has already picked up (`taken`) gone.
@@ -52,6 +53,12 @@ function replayMap(g, map, cell, taken, now) {
       g.font = `${cell * .55}px serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("📦", cx, cy);
     } else if (ch === "D") {
       g.fillStyle = "#3a2410"; g.fillRect(x + cell * .2, y + cell * .1, cell * .6, cell * .8);
+    } else if (ch === "h" || ch === "z" || ch === "m") {   // Halloween night's houses
+      g.font = `${cell * .7}px serif`; g.textAlign = "center"; g.textBaseline = "middle";
+      g.fillText(ch === "h" ? "🏠" : ch === "z" ? "🏚" : "❓", cx, cy);
+      if (ch === "h" && taken.has("knock " + at)) { g.font = `800 ${cell * .4}px system-ui`; g.fillStyle = "#8cf2c6"; g.fillText("✓", cx + cell * .28, cy - cell * .28); }
+    } else if (ch === "c" && !taken.has(at)) {
+      g.font = `${cell * .55}px serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("🍬", cx, cy);
     }
   }));
 }
@@ -92,7 +99,10 @@ function replayStage(screen, canvas) {
     const u = st.done ? total : Math.max(0, Math.min(total, (now - st.started) / st.step));
     const pos = replayAt(path, u);
     const taken = new Set();
-    for (let k = 0; k <= pos.i; k++) taken.add(path[k][0] + "," + path[k][1]);
+    for (let k = 0; k <= pos.i; k++) {
+      taken.add(path[k][0] + "," + path[k][1]);
+      if (path[k][3]) taken.add(`knock ${path[k][3][0]},${path[k][3][1]}`);   // a door knocked on
+    }
     g.save(); g.translate(ox, oy);
     replayMap(g, map, cell, taken, now);
     // The trail so far, broken where a pad sent the rover somewhere else.
@@ -116,6 +126,13 @@ function replayStage(screen, canvas) {
     const hop = party ? Math.abs(Math.sin((now - st.held) / 160)) * cell * .25 : 0;
     drawRover(g, x, y - hop, cell * 1.15 * (1 + pos.lift * .3) * shrink, st.angle + (party ? (now - st.held) / 300 : 0), 1, run.look, now);
     if (run.look.pet && run.look.pet !== "nopet") drawPet(g, x + cell * .55, y - cell * .55, cell * 1.2, run.look.pet, now);
+    // Halloween night's ghosts, floating to and fro (a square a tick, as on the planet).
+    for (const gh of run.ghosts || []) {
+      const n = gh.path.length, span = 2 * (n - 1) || 1, t = u, k = Math.floor(t), f = t - k;
+      const at = j => { const i = ((gh.start || 0) + j) % span; return gh.path[i < n ? i : span - i]; };
+      const a = at(k), b = at(k + 1), gx = (a[1] + (b[1] - a[1]) * f + .5) * cell, gy = (a[0] + (b[0] - a[0]) * f + .45) * cell;
+      g.globalAlpha = .85; g.font = `${cell * .8}px serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("👻", gx, gy); g.globalAlpha = 1;
+    }
     g.restore();
     st.tick = `tick ${Math.round(u)} / ${total}`;
     for (const p of st.confetti) {

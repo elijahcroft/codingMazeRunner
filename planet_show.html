@@ -216,7 +216,8 @@ function tag(site) { return site === "7" ? "🪐" : site.toUpperCase(); }
 function siteName(site, name) { return site === "7" ? "Uncharted" : name; }
 // How a run ended, said kindly: the projector never shows the game's error text.
 const ENDS = {fell: "fell in a crater", battery: "ran out of battery", ticks: "ran out of time",
-              stopped: "stopped short", wrong: "reported a different number", error: "hit a bug in the code"};
+              stopped: "stopped short", wrong: "reported a different number", error: "hit a bug in the code",
+              spooked: "got spooked by a ghost 👻"};
 
 // A line of Python, coloured like the student's editor.
 const KEYWORDS = new Set(["for", "in", "range", "while", "if", "elif", "else", "def", "not", "and", "or", "True", "False", "return"]);
