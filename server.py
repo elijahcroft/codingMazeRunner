@@ -3239,8 +3239,9 @@ def candy_total(entry):
 
 
 def halloween_frontier(entry):
-    """Index in planet.HALLOWEEN_ORDER of the furthest Halloween site open:
-    the first one not done (or skipped). They open one after another."""
+    """Index in planet.HALLOWEEN_ORDER of the site to play next: the first
+    one not done (or skipped). Every Halloween site is open at once, so a
+    hard one can wait."""
     order = planet.HALLOWEEN_ORDER
     passed = set(entry["solved"]) | set(entry.get("skipped", []))
     return next((i for i, k in enumerate(order) if k not in passed), len(order) - 1)
@@ -3249,7 +3250,7 @@ def halloween_frontier(entry):
 def planet_open(p, key):
     if key in planet.HALLOWEEN_ORDER:
         entry = planet_entry(p)
-        return halloween_on(entry) and planet.HALLOWEEN_ORDER.index(key) <= halloween_frontier(entry)
+        return halloween_on(entry)
     if key in planet.PRACTICE_ORDER:   # all open at once, in easy mode only
         return planet_class_settings["easy"]
     return key in planet.SITE_ORDER and \
@@ -3263,6 +3264,7 @@ def planet_variant(p, key):
 
 HELP_AFTER = 8    # misses in a row before naming classmates who cleared the site
 SKIP_AFTER = 20   # misses in a row before a site can be skipped for now
+HALLOWEEN_SKIP_AFTER = 3   # Halloween sites are all open, so skipping one is no big step
 EASY_HELP_AFTER, EASY_SKIP_AFTER = 3, 6   # the same, with the teacher's easy mode on
 
 
@@ -3310,8 +3312,7 @@ def can_skip(p, key):
     entry = planet_entry(p)
     if key in planet.HALLOWEEN_ORDER:
         return key not in entry["solved"] and key != planet.HALLOWEEN_ORDER[-1] \
-            and planet.HALLOWEEN_ORDER.index(key) == halloween_frontier(entry) \
-            and entry["misses"].get(key, 0) >= skip_after()
+            and entry["misses"].get(key, 0) >= HALLOWEEN_SKIP_AFTER
     return key in planet.SITE_ORDER and key != planet.UNCHARTED["key"] \
         and key not in entry["solved"] \
         and planet.SITE_ORDER.index(key) == planet_frontier(p) \
@@ -3480,7 +3481,6 @@ def planet_state(p):
                       for s in zone["sites"]]})
     spooky = halloween_on(entry)
     if spooky:
-        frontier_h = halloween_frontier(entry)
         for zone in planet.HALLOWEEN_ZONES:
             zones.append({
                 "key": zone["key"], "name": zone["name"], "blurb": zone["blurb"],
@@ -3490,7 +3490,7 @@ def planet_state(p):
                 "sites": [{"key": s["key"], "name": s["name"],
                            "solved": entry["solved"].get(s["key"]),
                            "stars": entry["stars"].get(s["key"], [False] * 3),
-                           "open": planet.HALLOWEEN_ORDER.index(s["key"]) <= frontier_h,
+                           "open": True,
                            "gift": gift_for(p, s["key"]) is not None}
                           for s in zone["sites"]]})
     # Rewards to pick, while there's something left to pick.
@@ -3761,7 +3761,9 @@ def planet_record(p, key, code, results):
     cleared = None
     if not zone_before and zone_done():
         if zone in planet.HALLOWEEN_ZONES:
-            nxt = (planet.HALLOWEEN_ZONES + [None])[planet.HALLOWEEN_ZONES.index(zone) + 1]
+            # They're all open, so the next is the first with a site still to do.
+            nxt = next((z for z in planet.HALLOWEEN_ZONES
+                        if any(t["key"] not in entry["solved"] for t in z["sites"])), None)
         elif zone in planet.PRACTICE_ZONES:
             nxt = (planet.PRACTICE_ZONES + planet.ZONES[:1])[planet.PRACTICE_ZONES.index(zone) + 1]
         else:

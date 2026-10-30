@@ -508,6 +508,10 @@ back. **Put it away** (or the 🎃 switch in ⚙ Settings) closes Halloween nigh
 for everyone. Whatever students earned stays theirs; what they didn't earn
 leaves the garage with it.
 
+Every Halloween level is open from the start, so a student can play them in
+any order and leave a hard one for later. **⏭ Skip for now** shows after 3
+misses on a Halloween level.
+
 **The new command:** `knock("north")` knocks on the door of the house next to
 the rover, that way. A lit house 🏠 gives candy (2 to 5, a surprise each
 time). A haunted house 🏚 says **BOO!** and the run ends. Ghosts 👻 float to
