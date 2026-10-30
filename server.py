@@ -3071,7 +3071,7 @@ PRINT_CHALLENGES = {"sss": "hiss", "moo": "moo"}
 PLANET_BADGES.update(CHALLENGE_BADGES)
 
 # Halloween night (planet.HALLOWEEN_ZONES): a limited-time event. The
-# teacher invites the students it's for (planet_halloween_open), and while
+# teacher invites the students it's for (halloween_on), and while
 # it's on they go trick-or-treating for candy. Candy counts the best run on
 # each site that didn't end in a BOO (a spooked rover drops its bag), and
 # fills the candy road: garage items that are only out for Halloween, with

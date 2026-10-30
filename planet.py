@@ -532,7 +532,6 @@ class World:
                         for c, ch in enumerate(row) if ch == "c"}
         self.candy = 0         # candy in the bag
         self.no_door = 0       # knock()s with no house there
-        self.again = 0         # knock()s on a house that already gave its candy
         self.spooked = None    # "ghost" or "haunted": what scared the rover off
         self.knock_at = None   # the house just knocked on, for the next frame
         self.ghosts = [g["path"] for g in variant.get("ghosts", [])]
@@ -949,7 +948,6 @@ class World:
             self.say("🚪 knock knock… but there's no door there" if ch not in "#O"
                      else f"🚪 knock knock… on {WORDS.get(ch, 'rock')}: no door there")
         elif (r, c) in self.knocked:
-            self.again += 1
             self.say("🚪 knock knock… nobody comes: you already got candy here")
         else:
             n = self.v.get("treats", {}).get(f"{r},{c}") or treats(r, c)
