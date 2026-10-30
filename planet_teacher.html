@@ -309,7 +309,7 @@ function ago(seconds) {
   return s < 20 ? "just now" : s < 60 ? `${Math.floor(s)} s ago` : s < 3600 ? `${Math.floor(s / 60)} min ago` : `${Math.floor(s / 3600)} h ago`;
 }
 function siteTag(key) { return key === "7" ? "🪐" : key.toUpperCase(); }
-const ZONE_ICONS = {practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", lookout: "👀", forks: "🔀", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐", street: "🎃", hollow: "👻"};
+const ZONE_ICONS = {practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", lookout: "👀", forks: "🔀", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐", street: "🎃", hollow: "👻", woods: "🧙"};
 const ENDED = {goal: "✓ done", stopped: "stopped short", fell: "fell", ticks: "out of time",
                error: "code error", wrong: "wrong number", battery: "flat battery", spooked: "spooked 👻"};
 const STAMP = {goal: ["🎉 MISSION COMPLETE!", "win"], fell: ["💥 FELL IN!", "miss"], stopped: ["🏁 STOPPED SHORT", "miss"],
@@ -553,7 +553,7 @@ function renderWhere(data) {
     (by[z] = by[z] || []).push(s.name);
   }
   const zones = [...(data.easy ? data.practice_zones : []), ...data.zones,
-                 ...Object.keys(data.zone_keys || {}).filter(z => ["street", "hollow"].includes(data.zone_keys[z]) && by[z])];
+                 ...Object.keys(data.zone_keys || {}).filter(z => ["street", "hollow", "woods"].includes(data.zone_keys[z]) && by[z])];
   const keys = data.zone_keys || {};
   $("where").innerHTML = zones.map(z => {
     const names = by[z] || [];

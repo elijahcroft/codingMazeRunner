@@ -2175,14 +2175,15 @@ class HalloweenTests(unittest.TestCase):
     def test_shortcuts_that_dont_check_get_spooked(self):
         cases = {"h4": 'for i in range(6):\n    east(2)\n    knock("north")\n',
                  "h5": 'east(12)\nknock("north")\n',
-                 "h9": planet.PARADE_RUSH}
+                 "h9": planet.PARADE_RUSH,
+                 "h13": planet.GHOST_WALK_RUSH}
         for key, code in cases.items():
             zone, s = next((z, x) for z, x in halloween_sites() if x["key"] == key)
             for vi, v in enumerate(s["variants"]):
                 self.assertEqual(spooky(code, v)["end"], "spooked", (key, vi))
 
     def test_a_route_timed_for_one_street_fails_on_the_others(self):
-        for key in ("h4", "h5", "h7", "h9"):
+        for key in ("h4", "h5", "h7", "h9", "h12", "h13"):
             zone, s = next((z, x) for z, x in halloween_sites() if x["key"] == key)
             own = spooky(s["reference"], s["variants"][0])
             moves = []
@@ -2246,6 +2247,39 @@ class HalloweenTests(unittest.TestCase):
             total += min(spooky(s["reference"], v)["candy"] for v in nights)
         self.assertGreaterEqual(total, max(i["candy"] for i in server.CANDY_ROAD))
 
+    def test_the_witch_wants_her_count_worked_out_in_code(self):
+        zone, s = next((z, x) for z, x in halloween_sites() if x["key"] == "h11")
+        answers = [v["answer"] for v in s["variants"]]
+        self.assertEqual(len(set(answers)), len(answers))   # every street its own total
+        v = s["variants"][0]
+        knocks = 'for i in range(5):\n    east(2)\n    knock("north")\n'
+        own = spooky(knocks + f"report({v['answer']})", v)
+        self.assertTrue(own["reached"])
+        self.assertEqual(planet.stars(s, v, own, knocks + "report(1)"), [True, False, True])
+        copied = spooky(knocks + f"report({answers[1]})", v)
+        self.assertEqual(copied["end"], "wrong")
+        self.assertIn("someone else's street", copied["explain"]["what"])
+        early = spooky("report(candy())", v)
+        self.assertIn("5 lit houses still had candy", early["explain"]["what"])
+        self.assertEqual(planet.goals(s, v)[0], "🧙 Tell the witch your candy count")
+        # The party: a different count every night, so only candy() gets it.
+        zone, s = next((z, x) for z, x in halloween_sites() if x["key"] == "h14")
+        night = spooky(s["reference"], dict(s["variants"][0], seed=5))
+        typed = s["reference"].replace("report(candy())", f"report({night['candy']})")
+        ends = [spooky(typed, dict(s["variants"][0], seed=seed))["end"] for seed in range(20)]
+        self.assertIn("wrong", ends)
+
+    def test_the_witchs_path_never_hides_a_house_east_of_the_path(self):
+        zone, s = next((z, x) for z, x in halloween_sites() if x["key"] == "h12")
+        for v in s["variants"]:
+            m = v["map"]
+            for r, row in enumerate(m):
+                for c, ch in enumerate(row):
+                    if ch in "hz":
+                        self.assertIn(m[r + 1][c], ".G", (r, c))   # right above the path
+                        self.assertNotIn(m[r][c - 1], ".SG", (r, c))   # nothing to walk into
+            self.assertEqual("".join(m).count("z"), 1)
+
     def test_every_halloween_gift_is_on_open_ground_next_to_the_road(self):
         for key in ("h3", "h8"):
             zone, s = next((z, x) for z, x in halloween_sites() if x["key"] == key)
@@ -2305,7 +2339,7 @@ class HalloweenClassroomTests(unittest.TestCase):
         self.assertTrue(self.get(f"/planet/ping?id={ada}")["halloween"])
         state = self.get(f"/planet/state?id={ada}")
         spooky_zones = [z for z in state["zones"] if z.get("halloween")]
-        self.assertEqual([z["key"] for z in spooky_zones], ["street", "hollow"])
+        self.assertEqual([z["key"] for z in spooky_zones], ["street", "hollow", "woods"])
         self.assertEqual([x["open"] for x in spooky_zones[0]["sites"]], [True, False, False, False, False])
         self.assertEqual(state["halloween"]["next"], "h1")
         self.assertIsNone(self.get(f"/planet/state?id={bo}")["halloween"])

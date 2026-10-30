@@ -1578,4 +1578,21 @@ Object.assign(WHEELS, {
     wheelSpots((wx, wy) => { ctx.beginPath(); ctx.arc(wx * s, wy * s, .025 * s, 0, 7); ctx.fill(); });
   },
 });
+Object.assign(PETS, {
+  cauldron(ctx, s, t) {   // a witch's cauldron on little legs, green brew bubbling over
+    ctx.fillStyle = "#1a1620";
+    for (const x of [-.22, .22]) { ctx.fillRect((x - .04) * s, .22 * s, .08 * s, .16 * s); }
+    ctx.beginPath(); ctx.ellipse(0, .08 * s, .38 * s, .3 * s, 0, 0, Math.PI); ctx.lineTo(-.38 * s, .08 * s); ctx.fill();
+    ctx.fillRect(-.38 * s, -.02 * s, .76 * s, .12 * s);
+    ctx.fillStyle = "#2c2634"; ctx.beginPath(); ctx.ellipse(0, -.02 * s, .42 * s, .08 * s, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#7dff5a"; ctx.shadowColor = "#7dff5a"; ctx.shadowBlur = s * .3;
+    ctx.beginPath(); ctx.ellipse(0, -.03 * s, .34 * s, .055 * s, 0, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
+    for (let k = 0; k < 4; k++) {   // bubbles rising and popping
+      const u = ((t / 900 + k * .27) % 1), x = (-.2 + k * .13 + Math.sin(t / 300 + k) * .03) * s;
+      ctx.strokeStyle = `rgba(160,255,130,${1 - u})`; ctx.lineWidth = Math.max(1, s * .025);
+      ctx.beginPath(); ctx.arc(x, (-.06 - u * .4) * s, (.04 + u * .03) * s, 0, 7); ctx.stroke();
+    }
+    eyes(ctx, s, [-.1, .1], .1, .05);
+  },
+});
 SETS.push({name: "Trick-or-Treat", icon: "🎃", items: {topper: "witchhat", paint: "candycorn", pet: "blackcat", trail: "candytrail"}});

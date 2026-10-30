@@ -495,7 +495,7 @@ before or after.
 
 ## 🎃 Halloween night: a limited-time event
 
-Ten trick-or-treat levels for the students **you** pick. Nobody sees them
+Ten trick-or-treat levels (and four bonus ones) for the students **you** pick. Nobody sees them
 until you invite them, so it works as a treat for students who are doing
 well, while everyone else carries on with the main route.
 
@@ -528,6 +528,10 @@ can knock too (🚪 then an arrow, or K then an arrow).
 | | H8 Trick or Trick | houses both sides, some haunted: two `if`s, or one `def visit(way):` for the 🧩 star (a 🎁 gift here) |
 | | H9 Ghost Parade | ghosts *and* haunted houses: wait, drive, check, knock |
 | | H10 Haunted Mansion | every house is a ❓ mystery and 4 are haunted, **new ones every run**: only code that checks every house gets round |
+| 🧙 Witch's Woods (bonus) | H11 Candy Count | knock every door, then `report(candy())`: each student's street gives a different total, so a classmate's number fails |
+| | H12 Witch's Path | a winding path, different for everyone, with houses along it: a path-follower (`while not at_beacon():` with `if`/`else`) that knocks too |
+| | H13 Ghost Walk | ghosts walk *along* the road, coming at the rover or floating away: the same wait-then-drive loop, now it really matters |
+| | H14 Witch's Party | mystery houses both sides, 3 haunted, new every run, then `report(candy())`: a function, a loop and a sensor together |
 
 The 🌍 star on H4, H5, H7 and H9 tries the same code on every classmate's
 street, so a route timed by hand for one street doesn't get it. Worth asking
@@ -545,7 +549,8 @@ Knock Knock (a doorbell horn), Boo'd! for getting spooked (a scream horn:
 the funny one everyone gets), Haunt Detector for checking `look()` against
 `"house"` (Ghost costume paint), Ghost Dodger (Zombie shuffle dance), Say
 Boo for `print("boo")` in a finished mission (a witch's cackle), Mansion
-Master (a haunted top hat) and, for every Halloween star, **Pumpkin King**:
+Master (a haunted top hat), Witch's Apprentice for the witch's party (a
+bubbling cauldron pet) and, for every Halloween star, **Pumpkin King**:
 the legendary Jack-o'-lantern paint. All of it is marked 🎃 in the garage,
 which has a Halloween tab while the event is out.
 

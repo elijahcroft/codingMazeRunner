@@ -3084,6 +3084,7 @@ HALLOWEEN_BADGES = {
     "h_dodger": ("🦇", "Ghost Dodger", "Get past the ghosts on Ghost Crossing or Ghost Parade"),
     "h_boo_print": ("📣", "Say Boo", 'Complete a Halloween mission with print("boo") in your code'),
     "h_mansion": ("🏚", "Mansion Master", "Complete the Haunted Mansion"),
+    "h_witch": ("🧙", "Witch's Apprentice", "Tell the witch the right candy count at her party (H14)"),
     "h_king": ("🎃", "Pumpkin King", "Earn every star of Halloween night"),
 }
 PLANET_BADGES.update(HALLOWEEN_BADGES)
@@ -3109,6 +3110,7 @@ HALLOWEEN_GARAGE = [
     {"slot": "dance", "key": "zombieshuffle", "name": "Zombie shuffle", "badge": "h_dodger"},
     {"slot": "horn", "key": "cackle", "name": "Witch's cackle", "badge": "h_boo_print"},
     {"slot": "topper", "key": "tophat", "name": "Haunted top hat", "badge": "h_mansion"},
+    {"slot": "pet", "key": "cauldron", "name": "Bubbling cauldron", "badge": "h_witch"},
     {"slot": "paint", "key": "jackolantern", "name": "Jack-o'-lantern", "badge": "h_king", "legend": True},
 ]
 for _item in HALLOWEEN_GARAGE:
@@ -3873,8 +3875,10 @@ def halloween_rewards(p, entry, key, code, run, badge):
             badge("h_boo_print")
         if planet.find_site(key)[2]["variants"][0].get("ghosts"):
             badge("h_dodger")
-        if key == planet.HALLOWEEN_ORDER[-1]:
+        if key == "h10":
             badge("h_mansion")
+        if key == planet.HALLOWEEN_ORDER[-1]:
+            badge("h_witch")
     if halloween_stars(entry) == 3 * len(planet.HALLOWEEN_ORDER):
         badge("h_king")
     after = candy_total(entry)

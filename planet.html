@@ -952,7 +952,7 @@ let scene = null;     // what the canvas shows: map, zone, frames, events
 let pos = 0, playing = false, lastTs = 0, fps = 8, heard = 0;
 let errorLine = 0, errorCount = 0;
 
-const ZONE_ICONS = {practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", lookout: "👀", forks: "🔀", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐", street: "🎃", hollow: "👻"};
+const ZONE_ICONS = {practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", lookout: "👀", forks: "🔀", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐", street: "🎃", hollow: "👻", woods: "🧙"};
 // Each sensor arrives with a zone (matches planet.SENSOR_ZONE).
 const SENSOR_ZONE = {look: 0, at_beacon: 0, x: 1, y: 1, report: 1, tick: 2, samples_left: 3,
   battery: 4, in_sun: 4, beacon_x: 6, beacon_y: 6, jump: 7, drill: 9, drills_left: 9,
@@ -1185,6 +1185,8 @@ const GROUND = {
            grit: ["rgba(255,154,60,.22)", "rgba(10,6,20,.3)"], stars: "rgba(255,210,150,.55)"},
   hollow: {ground: "#33402f", rock: "#191c22", bed: "#07080c", edge: "#9cff6b", rim: "#b98cff",
            grit: ["rgba(156,255,107,.2)", "rgba(10,6,20,.35)"], stars: "rgba(185,140,255,.6)"},
+  woods: {ground: "#2e3a3c", rock: "#121a17", bed: "#06090a", edge: "#c08cff", rim: "#7dff5a",
+          grit: ["rgba(125,255,90,.18)", "rgba(192,140,255,.22)", "rgba(6,9,10,.35)"], stars: "rgba(192,140,255,.6)"},
 };
 // The garage's map looks: one palette for every zone in place of the zone's
 // own. Rock stays much darker than ground (or, on the dark ones, lit along its
@@ -2234,9 +2236,11 @@ const SHORT = {beacon: t => `🏁 Ended ${plural(t, "tick")} in, away from the b
   candy: t => `🏁 Ended ${plural(t, "tick")} in, with candy still on the ground`};
 function ending(run) {
   const mission = run.mission || "beacon", t = run.ticks;
+  const witch = mission === "report" && scene && scene.spooky;   // the witch's candy counts
   return {
-    goal: ["win", DONE[mission][0], DONE[mission][1](t)],
-    wrong: ["lost", "Wrong number", "📡 Mission control measured something different. Watch the replay again: what number did you see?"],
+    goal: witch ? ["win", "The witch agrees!", "🧙 The witch counted exactly the same! 🎉"] : ["win", DONE[mission][0], DONE[mission][1](t)],
+    wrong: witch ? ["lost", "Wrong count", "🧙 The witch counted something different. Did every lit house get a knock first?"]
+      : ["lost", "Wrong number", "📡 Mission control measured something different. Watch the replay again: what number did you see?"],
     fell: ["lost", "Fell", `💥 The rover fell at tick ${t}. What happened just before?`],
     battery: ["lost", "Flat battery", `🔋 Battery flat at tick ${t}. What made the gauge go down?`],
     spooked: ["lost", "Spooked!", `👻 BOO! The rover got spooked at tick ${t}. What was there?`],
@@ -2426,7 +2430,7 @@ async function celebrate(r, run) {
   $("celeTitle").textContent = site.key === "7" ? `${runs.filter(x => x.reached).length} of 5 planets!`
     : r.zone_cleared && spooky(r.zone_cleared.key) && !r.zone_cleared.next ? "🎃 Halloween night complete!"
     : r.zone_cleared ? `${ZONE_ICONS[r.zone_cleared.key] || "🗺"} ${r.zone_cleared.name} cleared!` : titles[Math.max(0, got - 1)];
-  $("celeSub").textContent = site.key === "7" ? unchartedSummary() : run.mission === "report" ? "📡 Report confirmed" : plural(run.ticks, "tick");
+  $("celeSub").textContent = site.key === "7" ? unchartedSummary() : run.mission === "report" ? (scene.spooky ? "🧙 The witch agrees" : "📡 Report confirmed") : plural(run.ticks, "tick");
   $("bigStars").innerHTML = r.stars.map((s, i) => `<div class="big-star${s ? " got" : r.best[i] ? " was" : ""}" title="${esc(goals[i] || "")}"><i>★</i><span>${esc([...(goals[i] || "★")][0])}</span></div>`).join("");
   const missing = goals.filter((g, i) => !r.best[i]);
   $("celeTip").innerHTML = site.key !== "7" ? starTips(r.best, $("code").value).map(codeSpans).join("\n") : "";

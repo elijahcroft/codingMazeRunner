@@ -4,7 +4,7 @@
 // event's own screens: the invitation and the candy road. The page's script
 // calls into this; it uses the page's helpers (hash, esc, plural, look...).
 
-const SPOOKY_ZONES = ["street", "hollow"];
+const SPOOKY_ZONES = ["street", "hollow", "woods"];
 function spooky(zone) { return SPOOKY_ZONES.includes(zone); }
 
 // ---- On the map ---------------------------------------------------------------------
