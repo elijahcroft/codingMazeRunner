@@ -1354,6 +1354,123 @@ def drive(code, variant, rules, zone):
             "battery": world.battery if "battery" in rules else None}
 
 
+# ---- The Paint Shop: code your own rover paint --------------------------------
+# paint(x, y, "red") colours one square of the rover's body, seen from above
+# with the front on the right, like the rover at the start of a map. x runs
+# 1 to 10 back to front, y 1 to 7 top to bottom. The paint is kept as 70
+# letters, a row at a time ("." is unpainted).
+
+ART_COLS, ART_ROWS = 10, 7
+ART_COLORS = {"red": "r", "orange": "o", "yellow": "y", "lime": "l", "green": "g",
+              "mint": "m", "cyan": "c", "blue": "b", "navy": "v", "purple": "p",
+              "pink": "k", "brown": "d", "gold": "a", "white": "w", "gray": "e",
+              "grey": "e", "black": "n"}
+PAINT_STEPS = 700   # paint() calls kept for the page to animate
+COLOR_LIST = ", ".join(f'"{c}"' for c in ART_COLORS if c != "grey")
+
+
+def blank_art():
+    return "." * (ART_COLS * ART_ROWS)
+
+
+class Easel:
+    """What a Painter paints on, standing in for the World: planet time never
+    moves, and there's nothing to drive into."""
+    t = 0
+
+    def __init__(self):
+        self.line = None
+        self.typed = False
+        self.prints = []
+        self.art = list(blank_art())
+        self.steps = []
+
+    def note(self, line):
+        self.prints.append(line)
+        del self.prints[:-MAX_PRINTS]
+
+    def put(self, i, letter):
+        if self.art[i] != letter and len(self.steps) < PAINT_STEPS:
+            self.steps.append([i, letter])
+        self.art[i] = letter
+
+
+class Painter(Rover):
+    """A program in the Paint Shop: the rover stays put and gets painted."""
+
+    def __init__(self, code):
+        super().__init__(code, Easel(), {"paint": None, "fill": None})
+
+    def lookup(self, name, frame):
+        if not self.mine(name, frame) and name.lower() in ART_COLORS:
+            raise BotError(f'Put quotes round colours:  "{name.lower()}"')
+        return super().lookup(name, frame)
+
+    def run_statement(self, node, frame):
+        if isinstance(node, ast.FunctionDef) and node.name in ("paint", "fill"):
+            raise BotError(f"{node.name}() is already a Paint Shop command — pick "
+                           f"another name, like  def stripe(y, colour):")
+        super().run_statement(node, frame)
+
+    def colour(self, value, how):
+        if not isinstance(value, str) or value.strip().lower() not in ART_COLORS:
+            said = f'"{value}"' if isinstance(value, str) else repr(value)
+            raise BotError(f"{said} isn't one of the paints. {how} The colours: {COLOR_LIST}.")
+        return ART_COLORS[value.strip().lower()]
+
+    def square(self, value, what, top):
+        n = self.number(value, "paint()")
+        if not 1 <= n <= top:
+            hint = (f" range({top}) counts 0 to {top - 1}: range(1, {top + 1}) counts 1 to {top}."
+                    if n in (0, top) else "")
+            raise BotError(f"{what} {n} is off the rover: {what} goes from 1 to {top}.{hint}")
+        return n
+
+    def call(self, node, frame):
+        name = node.func.id if isinstance(node.func, ast.Name) else None
+        if name == "paint":
+            if len(node.args) != 3:
+                raise BotError('paint() needs three things: x, y and a colour, like  '
+                               'paint(3, 2, "red")')
+            x, y, color = [self.eval(a, frame) for a in node.args]
+            x = self.square(x, "x", ART_COLS)
+            y = self.square(y, "y", ART_ROWS)
+            self.world.put((y - 1) * ART_COLS + x - 1,
+                           self.colour(color, 'Like  paint(3, 2, "red").'))
+            return None
+        if name == "fill":
+            if len(node.args) != 1:
+                raise BotError('fill() needs one colour, like  fill("navy")')
+            letter = self.colour(self.eval(node.args[0], frame), 'Like  fill("navy").')
+            for i in range(ART_COLS * ART_ROWS):
+                self.world.put(i, letter)
+            return None
+        if name in COMMANDS or name in SENSOR_ZONE or name in OWN_COMMANDS:
+            raise BotError(f"{name}() is for missions on the planet. In the Paint Shop "
+                           f'there\'s paint(x, y, colour) and fill(colour), like  '
+                           f'paint(3, 2, "red")')
+        return super().call(node, frame)
+
+
+def paint_shop(code):
+    """Run a Paint Shop program. Returns the paint and the order it went on."""
+    error = line = painter = None
+    try:
+        painter = Painter(str(code)[:MAX_CODE + 1])
+        painter.run()
+    except _TooLong as e:
+        error, line = str(e), e.line
+    except BotError as e:
+        error, line = str(e), e.line or getattr(e, "syntax_line", None)
+    except RecursionError:
+        error = "Your functions call each other too deeply."
+    easel = painter.world if painter else Easel()
+    return {"art": "".join(easel.art), "steps": easel.steps, "error": error,
+            "line": line, "prints": easel.prints,
+            "loops": bool(painter) and any(isinstance(n, (ast.For, ast.While))
+                                           for n in ast.walk(painter.tree))}
+
+
 # ---- building planets --------------------------------------------------------
 
 def path_map(legs, pad=1):
@@ -2903,6 +3020,102 @@ ZONES.append(
      ]})
 
 
+# A mix at the end of Zones 8 to 15: the zone's new thing with one or two from
+# before, on a small planet with more than one way through. Any way earns the
+# mission; the challenge star picks out one of them.
+MIX_SITES = {
+    "hops": site("8d", "Hop or Pad",
+                 "Reach the beacon. Hop over the trenches, or find the pad that "
+                 "goes round them. Either way works!",
+                 [{"map": ["##############",
+                           "#S.O..O..O...#",
+                           "#..O..O..O...#",
+                           "#..O..O..O.G.#",
+                           "#P.O..O..O..P#",
+                           "##############"], "pairs": [[[4, 1], [4, 12]]]}],
+                 reference="south(3)\nnorth()\nwest()\n"),
+    "belts": site("9e", "Belt and Hop",
+                  "Reach the beacon. Ride the belt and hop the trench, or drive "
+                  "the long way round.",
+                  [{"map": ["##############",
+                            "#S>>>>>>>.O..#",
+                            "#.........O..#",
+                            "#.........O..#",
+                            "#.........O.G#",
+                            "#............#",
+                            "##############"]}],
+                  reference="east()\njump(\"east\")\nsouth(3)\neast()\n"),
+    "drill": site("10e", "Through or Round",
+                  "Reach the beacon. Drill through the wall, or let the belt "
+                  "carry you round it.",
+                  [{"map": ["#############",
+                            "#S....#....G#",
+                            "#.....#.....#",
+                            "#.....#.....#",
+                            "#>>>>>>>>>>^#",
+                            "#############"], "drills": 1}],
+                  reference="south(3)\nnorth(2)\n"),
+    "gates": site("11e", "Two Ways In",
+                  "The beacon is in a locked box. Fetch the key for the gate, or "
+                  "drill your way in. Your choice!",
+                  [{"map": ["#############",
+                            "#S.........k#",
+                            "#...........#",
+                            "#...#####...#",
+                            "#...#.G.#...#",
+                            "#...#...D...#",
+                            "#...#####...#",
+                            "#...........#",
+                            "#############"], "drills": 1}],
+                  reference="east(10)\nsouth(4)\nwest(4)\nnorth()\nwest()\n"),
+    "relay": site("12e", "Flag Express",
+                  "Drive over flags 1, 2 and 3, then reach the beacon. Drive "
+                  "all the way, or let the belt carry you to flag 3.",
+                  [{"map": ["##############",
+                            "#S....1......#",
+                            "#............#",
+                            "#.>>>>>>>>>v.#",
+                            "#..........v.#",
+                            "#2.........3G#",
+                            "##############"]}],
+                  reference="east(5)\nwest(5)\nsouth(4)\nnorth(2)\neast(2)\n"),
+    "push": site("13e", "Bridge or Tunnel",
+                 "Cross the trench to the beacon. Push the boulder in for a "
+                 "bridge, or drill through the rock below the trench.",
+                 [{"map": ["#############",
+                           "#S.B.OO....G#",
+                           "#....OO.....#",
+                           "#....OO.....#",
+                           "#....##.....#",
+                           "#############"], "drills": 2}],
+                 reference="east(4)\njump(\"east\")\neast(4)\n"),
+    "laser": site("14e", "Laser Locks",
+                  "Pick up the key, open the gate and jump the trench. Count "
+                  "the squares, or let distance() measure them.",
+                  [{"map": ["##################",
+                            "#.......#....O...#",
+                            "#S..k...D....O..G#",
+                            "#.......#....O...#",
+                            "##################"]}],
+                  reference="east(distance(\"east\"))\neast()\n"
+                            "east(distance(\"east\"))\njump(\"east\")\n"
+                            "east(distance(\"east\"))\n"),
+    "cargo": site("15e", "Express Delivery",
+                  "Bring the three samples home to 📦. Drive back the way you "
+                  "came, or ride the belt.",
+                  [{"map": ["#############",
+                            "#H....O....*#",
+                            "#.....O....*#",
+                            "#.....O....*#",
+                            "#<<<<<<<<<<<#",
+                            "#############"]}],
+                  reference="east(4)\njump(\"east\")\neast(4)\nsouth(3)\nnorth(3)\n"),
+}
+for _zone in ZONES:
+    if _zone["key"] in MIX_SITES:
+        _zone["sites"].append(MIX_SITES[_zone["key"]])
+
+
 # Each site's challenge star and compact-code star. Crystals sit on a fixed
 # site's only planet; on the per-student lakes and portal mazes the compact
 # target follows that student's own shortest route. Where the star needs a
@@ -2962,6 +3175,14 @@ CHALLENGES = {
     "15b": {"bonus": {"kind": "no_bump"}, "compact": 6},
     "15c": {"bonus": {"kind": "def"}, "compact": 7},
     "15d": {"bonus": {"kind": "everywhere", "of": "field"}, "compact": 16},
+    "8d": {"bonus": {"kind": "ticks", "max": 5}, "compact": 5},
+    "9e": {"bonus": {"kind": "ticks", "max": 6}, "compact": 4},
+    "10e": {"bonus": {"kind": "drills", "min": 1}, "compact": 3},
+    "11e": {"bonus": {"kind": "drills", "min": 1}, "compact": 5},
+    "12e": {"bonus": {"kind": "ticks", "max": 18}, "compact": 6},
+    "13e": {"bonus": {"kind": "ticks", "max": 9}, "compact": 4},
+    "14e": {"bonus": {"kind": "measured"}, "compact": 5},
+    "15e": {"bonus": {"kind": "ticks", "max": 15}, "compact": 5},
     "16a": {"bonus": {"kind": "crystals"}, "compact": 5, "crystals": [(1, 14)]},
     "16b": {"bonus": {"kind": "no_bump"}, "compact": 9},
     "16c": {"bonus": {"kind": "measured"}, "compact": 11},
@@ -3132,6 +3353,36 @@ STAR_TIPS = {
     "15d": {"compact": "Make def go_to(tx, ty). Then a while True: loop with an "
                        "if: go home when the bay is full or nothing is left, "
                        "otherwise go to the nearest sample."},
+    "8d": {"bonus": "⚡ Hopping is quick, but a pad is quicker. Where does the "
+                    "bottom left pad take you?",
+           "compact": "Each line is one straight drive, a jump, or a for loop. "
+                      "The pad route is only 3 lines."},
+    "9e": {"bonus": "⚡ The long way round is slow. Ride the belt, then hop the "
+                    "trench where the belt drops you.",
+           "compact": "The belt does the long drive for you: east() onto it, "
+                      "a jump, and two short drives."},
+    "10e": {"bonus": "⛏ Drilling isn't the only way through. Where does the belt "
+                     "along the bottom take you?",
+            "compact": "Each line is one straight drive or a drill. 3 lines "
+                       "is enough either way."},
+    "11e": {"bonus": "⛏ Keep your drill: the key opens the gate. Or can a jump "
+                     "get you over the wall?",
+            "compact": "Each line is one straight drive. Go straight on from the "
+                       "key to the gate wherever you can."},
+    "12e": {"bonus": "⚡ Driving all the way to flag 3 is slow. After flag 2, "
+                     "the belt carries you there in one tick.",
+            "compact": "Each line is one straight drive. The belt does the long "
+                       "drive to flag 3 for you."},
+    "13e": {"bonus": "⚡ The tunnel is the long way. Push the boulder into the "
+                     "trench and jump the rest.",
+            "compact": "3 lines: push the boulder in as you drive east, jump, and "
+                       "drive on to the beacon."},
+    "14e": {"compact": "Drive with distance() up to the gate, one more east() "
+                       "to open it, then the same up to the trench, jump, and on."},
+    "15e": {"bonus": "⚡ Driving back over the trench is slow. Ride the belt "
+                     "along the bottom: it goes all the way home.",
+            "compact": "Out east with one jump, down the samples, and the belt "
+                       "takes you home. 5 lines."},
     "16a": {"bonus": "💎 The crystal is in the top right corner. There's a way "
                      "onto the belt that drives right past it.",
             "compact": "Each line is one straight drive (or the drill). The belt "
@@ -3168,7 +3419,11 @@ GIFT_SQUARES = {"1a": (1, 4), "2b": (4, 5), "3b": (13, 9), "4c": None,
                 "5b": (11, 9), "6a": (4, 11), "7b": None, "8b": (3, 10),
                 "9b": (5, 4), "10b": (1, 10), "11b": (1, 9), "12b": (2, 10),
                 "13b": (3, 7), "14b": (1, 13), "15b": (2, 10),
-                "16b": (1, 12)}
+                "16b": (1, 12),
+                # One in each practice zone, a square or so off the way, for
+                # the younger class (easy mode).
+                "p2": (2, 3), "p10": (3, 4), "p17": (1, 4), "p26": (3, 1), "p34": (3, 1),
+                "p43": None, "p47": None}
 _gifts = {}
 
 
@@ -3450,6 +3705,9 @@ ZONES.append({"key": "uncharted", "name": "Uncharted", "rules": UNCHARTED_RULES,
               ],
               "sites": [UNCHARTED]})
 SITE_ORDER = [s["key"] for z in ZONES for s in z["sites"]]
+# Sites added once classes were already playing. One counts as passed for a
+# student who has solved a site after it, so nobody is sent back for it.
+LATE_SITES = {s["key"] for s in MIX_SITES.values()} | {"16a", "16b", "16c", "16d"}
 
 # Practice zones: very small first steps for a younger class, before the
 # Landing Site. Only open when the teacher's easy mode is on, and not in
@@ -3925,7 +4183,183 @@ JUMP_PARK = {"key": "bounce", "name": "Jump Park", "rules": set(),
                                 "east()\nsouth(3)\nwest(2)\nfor i in range(3):\n"
                                 "    jump(\"west\")\nwest()\n", compact=10),
              ]}
-PRACTICE_ZONES = [PRACTICE_PARK, LOOP_GARDEN, ICE_RINK, PAD_PARK, JUMP_PARK]
+
+
+def carve(legs, marks=None):
+    """A one-square-wide path from S at (1, 1) along `legs` [(direction,
+    squares)] to the beacon at its end, walled all round. `marks` puts other
+    squares on it: {(row, col): "*"}."""
+    r, c = 1, 1
+    cells = [(r, c)]
+    for way, n in legs:
+        dr, dc = DIRS[COMPASS[way]]
+        for _ in range(n):
+            r, c = r + dr, c + dc
+            cells.append((r, c))
+    rows = [["#"] * (max(c for _, c in cells) + 2) for _ in range(max(r for r, _ in cells) + 2)]
+    for cell in cells:
+        rows[cell[0]][cell[1]] = "."
+    rows[1][1], rows[r][c] = "S", "G"
+    for (mr, mc), ch in (marks or {}).items():
+        rows[mr][mc] = ch
+    return ["".join(row) for row in rows]
+
+
+def staircase(seed):
+    """A path of east and south steps, different for every seed."""
+    rng = random.Random(seed)
+    legs, way = [], "east"
+    while sum(n for _, n in legs) < 11:
+        legs.append((way, rng.randint(1, 3)))
+        way = "south" if way == "east" else "east"
+    return carve(legs)
+
+
+# Look-Out Point and Fork Road come after Jump Park: look() and while, then
+# if, on paths of a different length for each student, so counting squares
+# doesn't help and a sensor does. Landing Site rules (zone index 0).
+LOOKOUT = {"key": "lookout", "name": "Look-Out Point", "rules": set(), "sensors": ["look", "at_beacon"],
+           "blurb": "look() tells the rover what's next to it, and a while loop "
+                    "keeps driving until it's time to stop.",
+           "hints": [
+               'look("east") says what\'s on the next square east: "rock", '
+               '"ground", "sample", "beacon"... It looks, it doesn\'t move.',
+               'A while loop runs its lines again and again, as long as its check '
+               'is True:\n\nwhile look("east") != "rock":\n    east()\n\n'
+               '!= means "is not".',
+               "Everyone's paths are a different length, so counting squares "
+               "won't help. Let look() or at_beacon() tell the rover when to stop.",
+           ],
+           "sites": [
+               site("p39", "Look Out!",
+                    "Drive east to the beacon 🛰. Your path isn't the same length as "
+                    "anyone else's! look(\"east\") says what's on the next square. "
+                    "This keeps driving east until the next square is rock:\n\n"
+                    "while look(\"east\") != \"rock\":\n    east()",
+                    [{"map": carve([("east", n)])} for n in (3, 4, 5, 6, 7, 8)],
+                    per_student=True,
+                    reference='while look("east") != "rock":\n    east()\n', compact=2),
+               site("p40", "Deep Well",
+                    "Drive down to the beacon 🛰 at the bottom of the well. How deep "
+                    "is yours? Let look(\"south\") find out.",
+                    [{"map": carve([("south", n)])} for n in (3, 4, 5, 6)],
+                    per_student=True,
+                    reference='while look("south") != "rock":\n    south()\n', compact=2),
+               site("p41", "Round the Bend",
+                    "Drive east until the rock, then south until the rock: that's the "
+                    "beacon 🛰. Two while loops, one after the other.",
+                    [{"map": carve([("east", a), ("south", b)])}
+                     for a, b in ((3, 2), (5, 3), (4, 4), (6, 2), (2, 5))],
+                    per_student=True,
+                    reference='while look("east") != "rock":\n    east()\n'
+                              'while look("south") != "rock":\n    south()\n', compact=4),
+               site("p42", "Sample Tunnel",
+                    "Collect every sample 🧪 in the tunnel. The last one is at the end, "
+                    "wherever your end is.",
+                    [{"map": carve([("east", n)], {(1, c): "*" for c in cols})}
+                     for n, cols in ((4, (2, 4)), (6, (3, 5, 6)), (5, (2, 3, 5)), (7, (4, 7)))],
+                    per_student=True,
+                    reference='while look("east") != "rock":\n    east()\n', compact=2),
+               site("p43", "Beacon Hunt",
+                    "The beacon 🛰 is somewhere east, and there's no rock to stop at. "
+                    "at_beacon() is True when the rover is on it:\n\n"
+                    "while not at_beacon():\n    east()",
+                    [{"map": ["#############", "#...........#",
+                              "#S" + "." * (k - 2) + "G" + "." * (10 - k) + "#",
+                              "#...........#", "#############"]} for k in (4, 6, 7, 9, 10)],
+                    per_student=True,
+                    reference="while not at_beacon():\n    east()\n", compact=2),
+               site("p44", "Zig Zag",
+                    "East to the rock, down 2, west to the rock, down 2, and east to "
+                    "the beacon 🛰. Mix while loops with ordinary lines!",
+                    [{"map": carve([("east", a), ("south", 2), ("west", b), ("south", 2), ("east", c)])}
+                     for a, b, c in ((4, 3, 5), (6, 6, 3), (5, 2, 4), (3, 3, 6))],
+                    per_student=True,
+                    reference='while look("east") != "rock":\n    east()\nsouth(2)\n'
+                              'while look("west") != "rock":\n    west()\nsouth(2)\n'
+                              'while look("east") != "rock":\n    east()\n', compact=8),
+               site("p45", "Crater Stop",
+                    "Drive east until the next square is a crater ⚫. Then go round it "
+                    "the top way: the beacon 🛰 is just past it.",
+                    [{"map": ["############", "#..........#",
+                              "#S" + "." * (k - 2) + "OG" + "." * (8 - k) + "#",
+                              "#..........#", "############"]} for k in (3, 5, 6, 8)],
+                    per_student=True,
+                    reference='while look("east") != "crater":\n    east()\n'
+                              "north()\neast(2)\nsouth()\n", compact=5),
+               site("p46", "Look-Out Tour",
+                    "The big one! East to the rock, south to the rock, then west to "
+                    "the rock: that's the beacon 🛰.",
+                    [{"map": carve([("east", a), ("south", b), ("west", c)])}
+                     for a, b, c in ((5, 3, 4), (7, 2, 7), (4, 4, 2), (6, 3, 5))],
+                    per_student=True,
+                    reference='while look("east") != "rock":\n    east()\n'
+                              'while look("south") != "rock":\n    south()\n'
+                              'while look("west") != "rock":\n    west()\n', compact=6),
+           ]}
+FORK_ROAD = {"key": "forks", "name": "Fork Road", "rules": set(), "sensors": ["look", "at_beacon"],
+             "blurb": "if lets the rover decide: do this, or else do that.",
+             "hints": [
+                 'An if runs its lines only when its check is True. else runs '
+                 'when it isn\'t:\n\nif look("north") == "rock":\n    south(2)\n'
+                 'else:\n    north(2)',
+                 '== means "is the same as" (two = signs). != means "is not".',
+                 "Your map may not match your neighbour's. Write code that checks, "
+                 "so it would work on both!",
+             ],
+             "sites": [
+                 site("p47", "Which Way?",
+                      "The beacon 🛰 is 2 squares up or 2 squares down, and rock is the "
+                      "other way. Your map might not match your neighbour's! Check "
+                      "first:\n\nif look(\"north\") == \"rock\":\n    south(2)\n"
+                      "else:\n    north(2)",
+                      [{"map": ["#####", "#.G.#", "#...#", "#.S.#", "#####"]},
+                       {"map": ["#####", "#.S.#", "#...#", "#.G.#", "#####"]}],
+                      per_student=True,
+                      reference='if look("north") == "rock":\n    south(2)\nelse:\n    north(2)\n',
+                      compact=4),
+                 site("p48", "Left or Right?",
+                      "The beacon 🛰 is 3 squares east or 3 squares west. Which way "
+                      "is the rock? Use if and else.",
+                      [{"map": ["######", "#S..G#", "######"]},
+                       {"map": ["######", "#G..S#", "######"]}],
+                      per_student=True,
+                      reference='if look("east") == "rock":\n    west(3)\nelse:\n    east(3)\n',
+                      compact=4),
+                 site("p49", "Sample Check",
+                      "Drive east along the top. Under some squares there's a sample "
+                      "🧪: when there is, pop down and back up to grab it.\n\n"
+                      "for i in range(7):\n    east()\n    if look(\"south\") == \"sample\":\n"
+                      "        south()\n        north()",
+                      [{"map": ["##########", "#S.......#",
+                                "#" + "".join("*" if c in cols else "#" for c in range(1, 9)) + "#",
+                                "##########"]}
+                       for cols in ((3, 5, 8), (2, 6, 7), (4, 8), (2, 3, 5, 8))],
+                      per_student=True,
+                      reference='for i in range(7):\n    east()\n    if look("south") == "sample":\n'
+                                "        south()\n        north()\n", compact=6),
+                 site("p50", "Look Up",
+                      "The beacon 🛰 is in the row above, somewhere. Drive east until "
+                      "the beacon is right above you, then go up.",
+                      [{"map": ["#########", "#" + "#" * (k - 1) + "G" + "#" * (7 - k) + "#",
+                                "#S......#", "#########"]} for k in (3, 5, 6, 7)],
+                      per_student=True,
+                      reference='while look("north") != "beacon":\n    east()\nnorth()\n',
+                      compact=3),
+                 site("p51", "Path Finder",
+                      "Follow the path to the beacon 🛰. Everyone's path is different, "
+                      "and this works on every one of them:\n\n"
+                      "while not at_beacon():\n    if look(\"east\") != \"rock\":\n"
+                      "        east()\n    else:\n        south()",
+                      [{"map": staircase(seed)} for seed in range(6)],
+                      per_student=True,
+                      reference='while not at_beacon():\n    if look("east") != "rock":\n'
+                                "        east()\n    else:\n        south()\n", compact=5),
+             ]}
+PRACTICE_ZONES = [PRACTICE_PARK, LOOP_GARDEN, ICE_RINK, PAD_PARK, JUMP_PARK, LOOKOUT, FORK_ROAD]
+# Added once a younger class was already playing: nobody who has moved on
+# to the main route is sent back for them (see the server's planet_state).
+LATE_PRACTICE = {s["key"] for z in (LOOKOUT, FORK_ROAD) for s in z["sites"]}
 PRACTICE_ORDER = [s["key"] for z in PRACTICE_ZONES for s in z["sites"]]
 # Practice sites are easy, so each gives one star: the mission. (Stars kids
 # earned on them before stay counted.)
@@ -3972,6 +4406,19 @@ STAR_TIPS.update({
     "p36": {"compact": "One east(), then a loop that runs 2 times: jump, then east."},
     "p37": {"compact": "One line for each drive or jump: 9 in all."},
     "p38": {"compact": "Use a for loop for each row of 3 jumps."},
+    "p39": {"compact": "The while loop from the card: 2 lines."},
+    "p40": {"compact": "The same as Look Out!, but south: 2 lines."},
+    "p41": {"compact": "Two while loops, 2 lines each."},
+    "p42": {"compact": "One while loop drives to the end of the tunnel."},
+    "p43": {"compact": "The while not at_beacon() loop from the card."},
+    "p44": {"compact": "Three while loops with a south(2) between them."},
+    "p45": {"compact": "A while loop to the crater, then north, east and south."},
+    "p46": {"compact": "Three while loops, one for each way."},
+    "p47": {"compact": "The if and else from the card: 4 lines."},
+    "p48": {"compact": "An if and an else, with west(3) and east(3)."},
+    "p49": {"compact": "A for loop with an if inside it."},
+    "p50": {"compact": "A while loop, then one north()."},
+    "p51": {"compact": "The while loop with an if and else inside, from the card."},
 })
 
 

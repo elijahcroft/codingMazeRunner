@@ -24,7 +24,9 @@ def sites():
 
 
 def site(key):
-    return next((zi, zone, s) for zi, zone, s in sites() if s["key"] == key)
+    # A practice site (easy mode) is found the planet's own way.
+    return next(((zi, zone, s) for zi, zone, s in sites() if s["key"] == key), None) \
+        or planet.find_site(key)
 
 
 def run(key, code, variant=0):
@@ -564,7 +566,7 @@ class SiteClaims(unittest.TestCase):
     def test_every_new_zone_says_what_is_new(self):
         for key in ("belts", "drill", "gates", "relay"):
             zone = next(z for z in planet.ZONES if z["key"] == key)
-            self.assertEqual(len(zone["sites"]), 4, key)
+            self.assertEqual(len(zone["sites"]), 5, key)   # A to D, and a mix
             self.assertEqual(set(zone["new"]), {"icon", "what", "example"}, key)
             self.assertEqual(len(zone["hints"]), 3, key)
             # The A site is a try-it: its reference is a line or three.
@@ -662,7 +664,7 @@ class SiteClaims(unittest.TestCase):
                 self.assertFalse(run(key, code, i)["reached"], (key, i))
         for key in ("push", "laser", "cargo"):
             zone = next(z for z in planet.ZONES if z["key"] == key)
-            self.assertEqual(len(zone["sites"]), 4, key)
+            self.assertEqual(len(zone["sites"]), 5, key)   # A to D, and a mix
             self.assertEqual(set(zone["new"]), {"icon", "what", "example"}, key)
             self.assertLessEqual(planet.code_lines(zone["sites"][0]["reference"]), 3, key)
 
@@ -706,6 +708,34 @@ class SiteClaims(unittest.TestCase):
     def test_16c_counted_squares_fall_in(self):
         out = run("16c", "for i in range(4):\n    south(i)\n    east(14)\n    west(14)\n    north(i)\n")
         self.assertEqual(out["end"], "fell")
+
+    # ---- The mixes that end Zones 8 to 15 ----
+    def test_every_mix_has_more_than_one_way_through(self):
+        # Each way uses something different; every one completes the mission.
+        ways = {
+            "8d": ['for i in range(3):\n    east()\n    jump("east")\nsouth(2)\neast()\n',
+                   "south(3)\nnorth()\nwest()\n"],
+            "9e": ['east()\njump("east")\nsouth(3)\neast()\n', "south(4)\neast(11)\nnorth()\n"],
+            "10e": ['east(4)\ndrill("east")\neast(6)\n', "south(3)\nnorth(2)\n"],
+            "11e": ['south()\neast(5)\ndrill("south")\nsouth(2)\n',
+                    "east(10)\nsouth(4)\nwest(4)\nnorth()\nwest()\n"],
+            "12e": ["east(5)\nwest(5)\nsouth(4)\neast(11)\n",
+                    "east(5)\nwest(5)\nsouth(4)\nnorth(2)\neast(2)\n"],
+            "13e": ['east(4)\njump("east")\neast(4)\n',
+                    'south(3)\neast(3)\ndrill("east")\neast()\ndrill("east")\neast(2)\n'
+                    "north(3)\neast(4)\n"],
+            "14e": ['east(distance("east"))\neast()\neast(distance("east"))\njump("east")\n'
+                    'east(distance("east"))\n', 'east(11)\njump("east")\neast(2)\n'],
+            "15e": ['east(4)\njump("east")\neast(4)\nsouth(3)\nnorth(3)\n',
+                    'east(4)\njump("east")\neast(4)\nsouth(2)\nwest(4)\njump("west")\n'
+                    "west(4)\nnorth(2)\n"],
+        }
+        self.assertEqual(set(ways), {s["key"] for s in planet.MIX_SITES.values()})
+        for key, codes in ways.items():
+            for code in codes:
+                self.assertTrue(run(key, code)["reached"], (key, code))
+            zone = next(z for z in planet.ZONES if key in [s["key"] for s in z["sites"]])
+            self.assertEqual(zone["sites"][-1]["key"], key)   # last in its zone
 
     def test_a_boulder_is_pushed_and_fills_a_crater(self):
         out = run("13a", "east(4)\n")
@@ -772,8 +802,12 @@ class GiftTests(unittest.TestCase):
 
     def test_one_gift_per_zone_each_with_its_own_garage_item(self):
         # One for every zone but Uncharted: site keys start with the zone's number.
-        self.assertEqual([k[:-1] for k in planet.GIFT_SQUARES],
+        self.assertEqual([k[:-1] for k in server.MAIN_GIFTS],
                          [str(n) for n in range(1, len(planet.ZONES))])
+        # And one in each practice zone.
+        practice = [k for k in planet.GIFT_SQUARES if k not in server.MAIN_GIFTS]
+        self.assertEqual([next(z["key"] for z in planet.PRACTICE_ZONES if k in [x["key"] for x in z["sites"]])
+                          for k in practice], [z["key"] for z in planet.PRACTICE_ZONES])
         self.assertEqual(set(server.GIFTS), set(planet.GIFT_SQUARES))
         keys = [i["key"] for i in server.GARAGE]
         self.assertEqual(len(keys), len(set(keys)))
@@ -791,10 +825,22 @@ class GiftTests(unittest.TestCase):
                  "world": lambda k: k == "planet" or re.search(rf"\n  {k}: {{", page),
                  "dance": lambda k: k == "spin" or f'kind === "{k}"' in page,
                  "glow": lambda k: k == "noglow" or re.search(rf"\n  {k}[:(]", render),
+                 "wheels": lambda k: re.search(rf"\n  {k}\(ctx, s", render),
                  "pet": lambda k: k == "nopet" or re.search(rf"\n  {k}\(ctx", render),
                  "horn": lambda k: re.search(rf"\n    {k}: \(\) =>", page) and k in page.split("HORN_ICONS")[1]}
         for item in server.GARAGE:
             self.assertTrue(drawn[item["slot"]](item["key"]), item["key"])
+
+    def test_every_set_piece_is_in_the_garage(self):
+        render = open(os.path.join(HERE, "planet_render.js"), encoding="utf-8").read()
+        sets = re.findall(r'name: "([^"]+)", icon: "[^"]+", items: \{([^}]*)\}', render)
+        self.assertGreaterEqual(len(sets), 9)
+        garage = {(i["slot"], i["key"]) for i in server.GARAGE}
+        for name, items in sets:
+            pieces = re.findall(r'(\w+): "(\w+)"', items)
+            self.assertGreaterEqual(len(pieces), 3, name)
+            for piece in pieces:
+                self.assertIn(piece, garage, name)
 
     def test_dances_have_icons(self):
         page = open(os.path.join(HERE, "planet.html"), encoding="utf-8").read()
@@ -802,6 +848,39 @@ class GiftTests(unittest.TestCase):
         for item in server.GARAGE:
             if item["slot"] == "dance":
                 self.assertIn(f"{item['key']}:", icons)
+
+
+class PaintShopTests(unittest.TestCase):
+    """The Paint Shop: code that paints the rover, 10 squares by 7."""
+
+    def rows(self, code):
+        art = planet.paint_shop(code)["art"]
+        return [art[i:i + 10] for i in range(0, 70, 10)]
+
+    def test_loops_paint_a_pattern(self):
+        rows = self.rows('fill("navy")\nfor y in range(1, 8):\n    for x in range(1, 11):\n'
+                         '        if (x + y) % 2 == 0:\n            paint(x, y, "white")\n')
+        self.assertEqual(rows[0], "wvwvwvwvwv")
+        self.assertEqual(rows[1], "vwvwvwvwvw")
+        self.assertEqual(self.rows('paint(10, 7, "Gold ")')[6], ".........a")
+
+    def test_the_squares_go_on_in_the_order_they_were_painted(self):
+        out = planet.paint_shop('paint(2, 1, "red")\npaint(1, 1, "red")\npaint(2, 1, "red")\n')
+        self.assertEqual(out["steps"], [[1, "r"], [0, "r"]])   # repainting the same is no step
+        self.assertFalse(out["loops"])
+
+    def test_mistakes_say_how_to_fix_them(self):
+        said = lambda code: planet.paint_shop(code)["error"]
+        self.assertIn("range(1, 11) counts 1 to 10", said('for x in range(10):\n    paint(x, 1, "red")\n'))
+        self.assertIn('Put quotes round colours:  "red"', said("paint(1, 1, red)"))
+        self.assertIn('"purple"', said('paint(1, 1, "rainbow")'))
+        self.assertIn("y goes from 1 to 7", said('paint(1, 8, "red")'))
+        self.assertIn("is for missions on the planet", said("east()"))
+        self.assertIn("three things", said("paint(1, 1)"))
+        self.assertIn("ran too long", said('while True:\n    paint(1, 1, "red")\n'))
+        # What got painted before the mistake stays.
+        out = planet.paint_shop('paint(1, 1, "red")\npaint(0, 1, "red")\n')
+        self.assertEqual((out["art"][0], out["line"]), ("r", 2))
 
 
 class ChallengeTests(unittest.TestCase):
@@ -819,6 +898,11 @@ class ChallengeTests(unittest.TestCase):
         self.assertEqual(self.met('print("Sssss!")\neast()\n'), {"hiss"})
         self.assertEqual(self.met('print("hi", "ssss")\n'), {"hiss"})
         self.assertEqual(self.met('print("ss")\nsss = 1\n'), set())
+
+    def test_a_moo_is_a_printed_moo(self):
+        self.assertEqual(self.met('print("Moooo!")\neast()\n'), {"moo"})
+        self.assertEqual(self.met('print("moo", "sss")\n'), {"moo", "hiss"})
+        self.assertEqual(self.met('print("mo", "o")\nmoo = 1\n'), set())
 
     def test_a_loop_inside_a_loop(self):
         self.assertEqual(self.met("for i in range(2):\n    for j in range(3):\n        east()\n"), {"nested"})
@@ -1401,6 +1485,64 @@ class ClassroomTests(unittest.TestCase):
         self.post("/planet/look", {"id": pid, "showoff": None})
         self.assertIsNone(self.get("/planet/overview")["students"][0]["showoff"])
 
+    def test_the_everyday_coding_badges_unlock_paints(self):
+        pid = self.join()
+        garage = lambda: {i["key"]: i for i in self.get(f"/planet/state?id={pid}")["garage"]}
+        self.assertFalse(garage()["ladybug"]["open"])
+        self.assertEqual(garage()["ladybug"]["badge_name"], "Bug Squasher")
+        server.players[pid]["planet"]["badges"] += ["fixer", "loop"]
+        self.assertTrue(garage()["ladybug"]["open"] and garage()["cheetah"]["open"])
+        self.assertFalse(garage()["zebra"]["open"])   # that one wants an if
+
+    def test_every_rank_up_picks_one_of_three_rewards(self):
+        pid = self.join()
+        self.assertEqual(self.get(f"/planet/state?id={pid}")["picks"], 0)   # a Cadet
+        entry = server.planet_entry(server.players[pid])
+        entry["stars"] = {k: [True] * 3 for k in planet.SITE_ORDER[:4]}   # 12 ★: Rookie Pilot
+        state = self.get(f"/planet/state?id={pid}")
+        self.assertEqual(state["picks"], 1)
+        offer = state["pick_choices"]
+        self.assertEqual(len({i["slot"] for i in offer}), 3)
+        self.assertTrue(all(i["stars"] > 12 for i in offer))
+        self.assertEqual(self.get(f"/planet/state?id={pid}")["pick_choices"], offer)   # no reroll
+        # Only one of the three, and only once.
+        self.post("/planet/pick", {"id": pid, "key": "rocket"})
+        self.assertEqual(self.get(f"/planet/state?id={pid}")["picks"], 1)
+        state = self.post("/planet/pick", {"id": pid, "key": offer[1]["key"]})
+        self.assertEqual((state["picks"], state["pick_choices"]), (0, []))
+        self.assertTrue(next(i for i in state["garage"] if i["key"] == offer[1]["key"])["open"])
+        self.assertEqual(self.post("/planet/pick", {"id": pid, "key": offer[0]["key"]})["picks"], 0)
+        self.assertFalse(next(i for i in self.get(f"/planet/state?id={pid}")["garage"]
+                              if i["key"] == offer[0]["key"])["open"])
+
+    def test_the_paint_shop_paints_your_rover(self):
+        pid = self.join()
+        mine = lambda: next(i for i in self.get(f"/planet/state?id={pid}")["garage"] if i["key"] == "mine")
+        self.assertFalse(mine()["open"])
+        # Painting shows it; only wearing it puts it on.
+        out = self.post("/planet/paint", {"id": pid, "code": 'paint(1, 1, "red")'})
+        self.assertEqual(out["art"][:2], "r.")
+        self.assertNotIn("art", out["look"])
+        self.assertEqual(self.get(f"/planet/state?id={pid}")["paint_code"], 'paint(1, 1, "red")')
+        self.assertIn("Paint a square", self.post("/planet/paint", {"id": pid, "code": "", "wear": True})["error"])
+        out = self.post("/planet/paint", {"id": pid, "code": 'paint(1, 1, "red")', "wear": True})
+        self.assertEqual((out["look"]["paint"], out["look"]["art"][0]), ("mine", "r"))
+        self.assertNotIn("badge", out)   # no loop, no Pixel Artist
+        self.assertTrue(mine()["open"])
+        self.assertEqual(self.get("/planet/overview")["students"][0]["look"]["art"][0], "r")
+        out = self.post("/planet/paint", {"id": pid, "wear": True,
+                                          "code": 'for x in range(1, 11):\n    paint(x, 1, "blue")\n'})
+        self.assertEqual(out["badge"]["name"], "Pixel Artist")
+        # Broken code never goes on the rover.
+        out = self.post("/planet/paint", {"id": pid, "code": 'paint(1, 1, red)', "wear": True})
+        self.assertEqual(out["look"]["art"][:2], "bb")
+        # The teacher can take it off.
+        self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_wipe_paint", "pid": pid})
+        look = self.get(f"/planet/state?id={pid}")["look"]
+        self.assertEqual(look["paint"], "bone")
+        self.assertNotIn("art", look)
+        self.assertFalse(mine()["open"])
+
     def test_a_hiss_in_a_finished_run_unlocks_the_creeper(self):
         pid = self.join()
         ref = site("1a")[2]["reference"]
@@ -1632,11 +1774,27 @@ class ClassroomTests(unittest.TestCase):
         self.assertEqual(self.post("/planet/look", {"id": pid, "paint": "gold"})["look"]["paint"],
                          "bone")
         self.assertEqual(self.transmit(pid, "1a", site("1a")[2]["reference"])
-                         ["rewards"]["unlocked"], [])   # 2 stars: not yet
+                         ["rewards"]["unlocked"],   # 2 stars: the bunny, not the paint yet
+                         [{"slot": "pet", "key": "bunny", "name": "Bunny", "rarity": "common"}])
         out = self.transmit(pid, "1a", BONUS_PROGRAMS["1a"])   # the third star
         self.assertEqual(out["rewards"]["unlocked"], [{"slot": "paint", "key": "coral", "name": "Coral", "rarity": "common"}])
         self.assertEqual(self.post("/planet/look", {"id": pid, "paint": "coral"})["look"]["paint"],
                          "coral")
+
+    def test_the_practice_zones_hide_gifts_in_easy_mode(self):
+        pid = self.join()
+        garage = lambda: {i["key"]: i for i in self.get(f"/planet/state?id={pid}")["garage"]}
+        self.assertNotIn("chick", garage())   # no practice zones, so no practice gifts
+        server.planet_class_settings["easy"] = True
+        try:
+            self.assertEqual(garage()["chick"]["where"], "Downhill (P2)")
+            self.assertTrue(self.get(f"/planet/state?id={pid}")["zones"][0]["sites"][1]["gift"])
+            out = self.post("/planet/run", {"id": pid, "site": "p2", "code": "east()\nsouth()\n"})
+            self.assertEqual(out["rewards"]["found"][0]["key"], "chick")
+            self.assertTrue(garage()["chick"]["open"])
+        finally:
+            server.planet_class_settings["easy"] = False
+        self.assertTrue(garage()["chick"]["open"])   # found stays found
 
     def test_driving_over_a_gift_finds_a_garage_item(self):
         pid = self.join()
@@ -1682,6 +1840,16 @@ class ClassroomTests(unittest.TestCase):
         server.planet_entry(server.players[pid])["stars"]["1b"] = [True] * 3
         self.assertEqual(self.post("/planet/look", {"id": pid, "world": "moon"})["look"]["world"],
                          "moon")
+
+    def test_a_site_added_later_never_sends_anyone_back(self):
+        pid = self.join()
+        entry = server.planet_entry(server.players[pid])
+        before = planet.SITE_ORDER[:planet.SITE_ORDER.index("9e")]
+        entry["solved"] = {k: 10 for k in before}   # best ticks
+        self.assertEqual(self.get(f"/planet/state?id={pid}")["current"], "9e")
+        # Someone who got further before 9E was there carries on where they were.
+        entry["solved"]["10a"] = 10
+        self.assertEqual(self.get(f"/planet/state?id={pid}")["current"], "10b")
 
     def test_scouting_drives_by_hand_but_saves_nothing(self):
         pid = self.join()
@@ -1770,9 +1938,9 @@ class ClassroomTests(unittest.TestCase):
         state = self.get(f"/planet/state?id={pid}")
         self.assertEqual(state["zones"][0]["key"], "practice")
         self.assertEqual(state["current"], "p1")
-        self.assertEqual([z["key"] for z in state["zones"][:6]],
-                         ["practice", "garden", "rink", "pads", "bounce", "landing"])
-        self.assertEqual(state["zones"][5]["zi"], 0)   # the Landing Site keeps its sensors
+        self.assertEqual([z["key"] for z in state["zones"][:8]],
+                         ["practice", "garden", "rink", "pads", "bounce", "lookout", "forks", "landing"])
+        self.assertEqual(state["zones"][7]["zi"], 0)   # the Landing Site keeps its sensors
         for key in planet.PRACTICE_ORDER:
             s = planet.find_site(key)[2]
             out = self.transmit(pid, key, s["reference"])
@@ -1785,6 +1953,10 @@ class ClassroomTests(unittest.TestCase):
                 self.assertEqual(out["rewards"]["zone_cleared"]["next"]["key"], "pads")
             if key == "p30":
                 self.assertEqual(out["rewards"]["zone_cleared"]["next"]["key"], "bounce")
+            if key == "p38":
+                self.assertEqual(out["rewards"]["zone_cleared"]["next"]["key"], "lookout")
+            if key == "p46":
+                self.assertEqual(out["rewards"]["zone_cleared"]["next"]["key"], "forks")
         self.assertEqual(out["rewards"]["zone_cleared"]["next"]["key"], "landing")
         self.assertEqual(out["state"]["current"], "1a")
         self.assertFalse(self.get(f"/planet/site?id={pid}&site=p1")["can_skip"])
@@ -1792,6 +1964,18 @@ class ClassroomTests(unittest.TestCase):
         state = self.get(f"/planet/state?id={pid}")
         self.assertNotIn("practice", [z["key"] for z in state["zones"]])
         self.assertEqual(state["current"], "1a")   # nobody's way is blocked
+
+    def test_new_practice_zones_never_send_anyone_back(self):
+        self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_easy", "on": True})
+        try:
+            pid = self.join()
+            entry = server.planet_entry(server.players[pid])
+            entry["solved"] = {k: 5 for k in planet.PRACTICE_ORDER if k not in planet.LATE_PRACTICE}
+            self.assertEqual(self.get(f"/planet/state?id={pid}")["current"], "p39")
+            entry["solved"]["1a"] = 10   # already on the main route: carries on there
+            self.assertEqual(self.get(f"/planet/state?id={pid}")["current"], "1b")
+        finally:
+            self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_easy", "on": False})
 
     def test_jump_park_scouts_with_jumps_and_shows_a_short_kit(self):
         pid = self.join()

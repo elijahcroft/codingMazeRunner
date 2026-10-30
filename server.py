@@ -2777,6 +2777,9 @@ planet_spotlight = [None]
 # coach: those words are typed letter by letter on every site, with the
 # right key shown and only the right letter going in.
 planet_class_settings = {"blanks": True, "easy": False, "coach": False}
+# The mystery gifts on the main route. The practice zones' gifts are extra, for
+# a younger class, so Treasure Hunter doesn't wait on them.
+MAIN_GIFTS = [k for k in planet.GIFT_SQUARES if k in planet.SITE_ORDER]
 
 # Badges: (icon, name, how to earn it). Zone masters are added below.
 PLANET_BADGES = {
@@ -2793,9 +2796,10 @@ PLANET_BADGES = {
     "crystals": ("💎", "Crystal Hunter", "Collect every crystal on 4 sites"),
     "record": ("🏆", "Record Breaker", "Beat a class record"),
     "hopper": ("🪐", "Planet Hopper", "Reach all 5 Uncharted planets in one run"),
-    "hunter": ("🎁", "Treasure Hunter", f"Find all {len(planet.GIFT_SQUARES)} mystery gifts"),
+    "hunter": ("🎁", "Treasure Hunter", f"Find all {len(MAIN_GIFTS)} mystery gifts"),
     "sharp": ("🎯", "Sharpshooter", "Complete 5 sites on your first transmit"),
     "daily": ("🏆", "Mission Day", "Finish all three of a day's missions"),
+    "artist": ("🎨", "Pixel Artist", "Paint your own rover in the Paint Shop, with a loop"),
 }
 
 # Today's missions: three small goals a day, the same for the whole class (so
@@ -2867,6 +2871,13 @@ GARAGE = [
     {"slot": "paint", "key": "laser", "name": "Laser Red", "find": "14b"},
     {"slot": "paint", "key": "cardboard", "name": "Cardboard Box", "find": "15b"},
     {"slot": "paint", "key": "trailblazer", "name": "Trailblazer", "find": "16b"},
+    {"slot": "pet", "key": "chick", "name": "Baby chick", "find": "p2"},
+    {"slot": "topper", "key": "daisy", "name": "Daisy", "find": "p10"},
+    {"slot": "paint", "key": "frosty", "name": "Frosty", "find": "p17"},
+    {"slot": "glow", "key": "portalglow", "name": "Portal swirl", "find": "p26"},
+    {"slot": "pet", "key": "froggy", "name": "Froggy", "find": "p34"},
+    {"slot": "topper", "key": "binoculars", "name": "Binoculars", "find": "p43"},
+    {"slot": "pet", "key": "owl", "name": "Wise owl", "find": "p47"},
     {"slot": "paint", "key": "aurora", "name": "Aurora", "class": 30},
     {"slot": "paint", "key": "nebula", "name": "Nebula", "class": 90},
     {"slot": "paint", "key": "supernova", "name": "Supernova", "class": 180},
@@ -3004,8 +3015,45 @@ GARAGE = [
     {"slot": "dance", "key": "pogo", "name": "Pogo bounce", "stars": 27},
     {"slot": "horn", "key": "weewoo", "name": "Wee-woo", "stars": 33},
     {"slot": "horn", "key": "boom", "name": "Dramatic boom", "stars": 61},
+    # Batch 3: animal prints, the Speedway, snacks and a robot. Many come from
+    # the coding badges every class earns, so they don't wait on stars.
+    {"slot": "paint", "key": "cow", "name": "Cow", "badge": "moo"},
+    {"slot": "paint", "key": "ladybug", "name": "Ladybug", "badge": "fixer"},
+    {"slot": "paint", "key": "cheetah", "name": "Cheetah", "badge": "loop"},
+    {"slot": "paint", "key": "zebra", "name": "Zebra", "badge": "if"},
+    {"slot": "paint", "key": "robot", "name": "Robot", "badge": "while"},
+    {"slot": "paint", "key": "racecar", "name": "Race Car", "badge": "record"},
+    {"slot": "pet", "key": "bunny", "name": "Bunny", "stars": 2},
+    {"slot": "paint", "key": "banana", "name": "Banana", "stars": 5},
+    {"slot": "paint", "key": "panda", "name": "Panda", "stars": 13},
+    {"slot": "paint", "key": "firetruck", "name": "Fire Truck", "stars": 19},
+    {"slot": "topper", "key": "donut", "name": "Donut", "stars": 22},
+    {"slot": "pet", "key": "buzzy", "name": "Buzzy bee", "stars": 28},
+    {"slot": "paint", "key": "bumblebee", "name": "Bumblebee", "stars": 32},
+    {"slot": "paint", "key": "hotrod", "name": "Hot Rod", "stars": 46},
+    {"slot": "paint", "key": "sharkbite", "name": "Shark Bite", "stars": 58},
+    {"slot": "paint", "key": "armor", "name": "Diamond Armor", "stars": 100},
+    # What the rover drives on.
+    {"slot": "wheels", "key": "std", "name": "Rover wheels", "stars": 0},
+    {"slot": "wheels", "key": "monster", "name": "Monster tyres", "stars": 4},
+    {"slot": "wheels", "key": "glowrims", "name": "Neon wheels", "stars": 12},
+    {"slot": "wheels", "key": "pixelwheels", "name": "Block wheels", "stars": 20},
+    {"slot": "wheels", "key": "flamerims", "name": "Flame wheels", "stars": 30},
+    {"slot": "wheels", "key": "treads", "name": "Tank treads", "stars": 40},
+    {"slot": "wheels", "key": "hover", "name": "Hover pads", "stars": 52},
+    {"slot": "wheels", "key": "goldrims", "name": "Gold rims", "badge": "sharp"},
+    {"slot": "wheels", "key": "rainbowwheels", "name": "Rainbow wheels", "stars": 85},
+    {"slot": "wheels", "key": "portalwheels", "name": "Portal wheels", "badge": "master_portals", "legend": True},
+    # A zone's Master badge (every star in it) earns a legendary.
+    {"slot": "topper", "key": "captain", "name": "Star Captain hat", "badge": "master_landing", "legend": True},
+    {"slot": "topper", "key": "frostcrown", "name": "Frost Crown", "badge": "master_ice", "legend": True},
+    {"slot": "topper", "key": "cape", "name": "Hero cape", "badge": "master_wind", "legend": True},
+    {"slot": "topper", "key": "lasereyes", "name": "Laser eyes", "badge": "master_laser", "legend": True},
+    {"slot": "paint", "key": "goldtruck", "name": "Gold Truck", "badge": "master_cargo", "legend": True},
+    # The Paint Shop: a paint the student codes themselves (look["art"]).
+    {"slot": "paint", "key": "mine", "name": "My paint", "shop": True},
 ]
-GARAGE_SLOTS = ("paint", "topper", "trail", "world", "dance", "glow", "pet", "horn")
+GARAGE_SLOTS = ("paint", "topper", "wheels", "trail", "world", "dance", "glow", "pet", "horn")
 
 # The code challenges: one coding trick each, any site, on a run that gets
 # there. See challenge_badges().
@@ -3014,7 +3062,10 @@ CHALLENGE_BADGES = {
     "nested": ("🌀", "Loopception", "Complete a mission with a loop inside a loop"),
     "kangaroo": ("🦘", "Kangaroo", "Jump 10 times in a run that completes its mission"),
     "fan": ("📣", "Function Fan", "Complete a mission calling a function you made 3 times (a call inside a loop counts)"),
+    "moo": ("🐄", "Moo-ver", 'Complete a mission with print("moo") in your code'),
 }
+# What a print() has to say for a challenge: print("sssss") is a hiss.
+PRINT_CHALLENGES = {"sss": "hiss", "moo": "moo"}
 PLANET_BADGES.update(CHALLENGE_BADGES)
 
 
@@ -3030,6 +3081,8 @@ def rarity(item):
     if "class" in item:
         n = item["class"]
         return "rare" if n < 100 else "epic" if n < 600 else "legendary"
+    if "shop" in item or item.get("legend"):   # one of a kind, or a whole zone's stars
+        return "legendary"
     return "epic"
 
 
@@ -3062,6 +3115,30 @@ def rank_for(stars):
     return rank
 
 
+def picks_left(entry):
+    """Rewards still to pick: one for every rank reached after Cadet."""
+    return rank_for(star_count(entry))["level"] - 1 - len(entry.get("picked", []))
+
+
+def pickable(entry):
+    """Star items still locked, nearest first: what a rank-up can offer."""
+    mine, picked = star_count(entry), set(entry.get("picked", []))
+    return sorted((i for i in GARAGE if "stars" in i and i["stars"] > mine
+                   and i["key"] not in picked), key=lambda i: i["stars"])
+
+
+def pick_choices(entry):
+    """The three locked star items a rank-up offers: the nearest ones, from
+    different slots where it can. The same three until one is picked."""
+    locked = pickable(entry)
+    choice = []
+    for i in locked:
+        if len(choice) < 3 and i["slot"] not in {c["slot"] for c in choice}:
+            choice.append(i)
+    choice += [i for i in locked if i not in choice][:3 - len(choice)]
+    return [{k: i[k] for k in ("slot", "key", "name", "rarity", "stars")} for i in choice]
+
+
 def planet_entry(p):
     entry = p.setdefault("planet", {"solved": {}, "code": {}, "runs": {},
                                     "hints": {}, "unlocked": 0,
@@ -3077,6 +3154,7 @@ def planet_entry(p):
     entry["look"].setdefault("glow", "noglow")
     entry["look"].setdefault("pet", "nopet")
     entry["look"].setdefault("horn", "beep")
+    entry["look"].setdefault("wheels", "std")
     entry.setdefault("showoff", None)   # a badge worn on the class screen
     return entry
 
@@ -3087,8 +3165,11 @@ def planet_frontier(p):
     a skip) opened, so clearing it goes on even with skipped sites behind."""
     entry = planet_entry(p)
     last = len(planet.SITE_ORDER) - 1
+    order, solved = planet.SITE_ORDER, entry["solved"]
+    later = max((order.index(k) for k in solved if k in order), default=-1)
     return next((i for i in range(min(entry["unlocked"], last), last + 1)
-                 if planet.SITE_ORDER[i] not in entry["solved"]), last)
+                 if order[i] not in solved
+                 and not (order[i] in planet.LATE_SITES and i < later)), last)
 
 
 def planet_open(p, key):
@@ -3174,7 +3255,8 @@ def garage_for(entry):
     garage = []
     for item in GARAGE:
         if "stars" in item:
-            garage.append(dict(item, open=mine >= item["stars"]))
+            garage.append(dict(item, open=mine >= item["stars"]
+                               or item["key"] in entry.get("picked", [])))
         elif "trophies" in item:
             garage.append(dict(item, open=entry.get("trophies", 0) >= item["trophies"]))
         elif "badge" in item:
@@ -3183,10 +3265,16 @@ def garage_for(entry):
                                badge_how=PLANET_BADGES[item["badge"]][2]))
         elif "class" in item:
             garage.append(dict(item, open=ours >= item["class"]))
+        elif "shop" in item:
+            garage.append(dict(item, open=bool(entry["look"].get("art"))))
         else:
+            found = item["key"] in entry["found"]
+            # A practice zone's gift only shows while there are practice zones.
+            if item["find"] in planet.PRACTICE_ORDER and not found \
+                    and not planet_class_settings["easy"]:
+                continue
             s = planet.find_site(item["find"])[2]
-            garage.append(dict(item, open=item["key"] in entry["found"],
-                               where=f"{s['name']} ({s['key'].upper()})"))
+            garage.append(dict(item, open=found, where=f"{s['name']} ({s['key'].upper()})"))
     return garage
 
 
@@ -3273,9 +3361,11 @@ def planet_state(p):
                 "sites": [{"key": s["key"], "name": s["name"],
                            "solved": entry["solved"].get(s["key"]),
                            "stars": shown_stars(s["key"], entry["stars"].get(s["key"], [False] * 3)),
-                           "open": True, "gift": False}
+                           "open": True, "gift": gift_for(p, s["key"]) is not None}
                           for s in zone["sites"]]})
-        current = next((k for k in planet.PRACTICE_ORDER if k not in entry["solved"]), current)
+        moved_on = any(k in entry["solved"] for k in planet.SITE_ORDER)
+        current = next((k for k in planet.PRACTICE_ORDER if k not in entry["solved"]
+                        and not (moved_on and k in planet.LATE_PRACTICE)), current)
     for zi, zone in enumerate(planet.ZONES):
         zones.append({
             "key": zone["key"], "name": zone["name"], "blurb": zone["blurb"], "zi": zi,
@@ -3287,6 +3377,8 @@ def planet_state(p):
                        "open": planet.SITE_ORDER.index(s["key"]) <= frontier,
                        "gift": gift_for(p, s["key"]) is not None}
                       for s in zone["sites"]]})
+    # Rewards to pick, while there's something left to pick.
+    choices = pick_choices(entry) if picks_left(entry) > 0 else []
     return {"you": {"name": p["name"], "ran": any(entry["runs"].values())}, "zones": zones,
             "current": current,
             "uncharted": entry["uncharted"],
@@ -3294,12 +3386,14 @@ def planet_state(p):
             "max_stars": 3 * len(planet.SITE_ORDER)
             + (len(planet.PRACTICE_ORDER) if planet_class_settings["easy"] else 0),
             "rank": rank_for(star_count(entry)),
+            "picks": min(picks_left(entry), len(pickable(entry))) if choices else 0,
+            "pick_choices": choices,
             "missions": missions_view(entry),
             "badges": [{"key": k, "icon": b[0], "name": b[1], "how": b[2],
                         "earned": k in entry["badges"]}
                        for k, b in PLANET_BADGES.items()],
             "look": entry["look"], "garage": garage_for(entry), "showoff": entry["showoff"],
-            "functions": entry["functions"],
+            "functions": entry["functions"], "paint_code": entry.get("paint_code"),
             "class": {"stars": class_stars(), "goals": CLASS_GOALS}}
 
 
@@ -3376,10 +3470,10 @@ def challenge_badges(code, results):
                 found.add("nested")
             # A call in a loop runs again and again: it counts as three.
             calls += 2 * sum(is_own_call(m) for m in inside)
-        elif isinstance(n, ast.Call) and getattr(n.func, "id", None) == "print" and any(
-                isinstance(a, ast.Constant) and isinstance(a.value, str) and "sss" in a.value.lower()
-                for a in n.args):
-            found.add("hiss")
+        elif isinstance(n, ast.Call) and getattr(n.func, "id", None) == "print":
+            said = " ".join(a.value.lower() for a in n.args
+                            if isinstance(a, ast.Constant) and isinstance(a.value, str))
+            found.update(b for word, b in PRINT_CHALLENGES.items() if word in said)
     if calls >= 3 and any(r.get("own_function") for r in results):
         found.add("fan")
     if max(sum(f.get("e") == "jump" for f in r["frames"]) for r in results) >= 10:
@@ -3510,7 +3604,7 @@ def planet_record(p, key, code, results):
     crystal_sites = [k for k, c in planet.CHALLENGES.items() if c["bonus"]["kind"] == "crystals"]
     if all(entry["stars"].get(k, [0, 0, 0])[1] for k in crystal_sites):
         badge("crystals")
-    if all(i["key"] in entry["found"] for i in GIFTS.values()):
+    if all(GIFTS[k]["key"] in entry["found"] for k in MAIN_GIFTS):
         badge("hunter")
     for z in planet.ZONES[:-1]:
         if all(all(entry["stars"].get(x["key"], [False])) for x in z["sites"]):
@@ -3606,6 +3700,29 @@ def planet_set_look(p, data):
         wear = data["showoff"]
         entry["showoff"] = wear if wear in entry["badges"] else None
     return entry["look"]
+
+def planet_paint(p, data):
+    """Run a Paint Shop program; with "wear", put the paint on the rover."""
+    entry = planet_entry(p)
+    code = code_in(data)[:planet.MAX_CODE]
+    out = planet.paint_shop(code)
+    entry["paint_code"] = code
+    if data.get("wear") and not out["error"]:
+        if out["art"] == planet.blank_art():
+            out["error"] = 'Paint a square or two first, like  paint(3, 2, "red")'
+        else:
+            first = not entry["look"].get("art")
+            entry["look"].update(art=out["art"], paint="mine")
+            if first:
+                feed(f"🎨 {p['name']} painted their own rover in the Paint Shop")
+            if out["loops"] and "artist" not in entry["badges"]:
+                entry["badges"].append("artist")
+                icon, name, how = PLANET_BADGES["artist"]
+                out["badge"] = {"icon": icon, "name": name, "how": how}
+                feed(f"{icon} {p['name']} earned {name}")
+    out["look"] = entry["look"]
+    return out
+
 
 def planet_typing(p, key, code):
     """What a student has in the editor right now, for the projector. A new
@@ -3982,6 +4099,16 @@ def admin_action(data):
         if not q or not q.pop("planet", None):
             return "No such student."
         return f"Removed {q['name']} from Strange Planet."
+    if action == "planet_wipe_paint":
+        # A Paint Shop paint the class screen shouldn't show: back to Moonstone.
+        q = players.get(data.get("pid"))
+        if not q or not q.get("planet"):
+            return "No such student."
+        look = planet_entry(q)["look"]
+        look.pop("art", None)
+        if look["paint"] == "mine":
+            look["paint"] = "bone"
+        return f"Wiped {q['name']}'s Paint Shop paint."
     if action == "planet_blanks":
         planet_class_settings["blanks"] = bool(data.get("on"))
         return ("Scouted code now has a few words to finish." if planet_class_settings["blanks"]
@@ -4641,6 +4768,30 @@ class Handler(BaseHTTPRequestHandler):
                 look = planet_set_look(p, data)
                 save_state()
                 self._send(200, {"look": look})
+            return
+        if self.path == "/planet/pick":
+            with lock:
+                p = players.get(data.get("id"))
+                if not p:
+                    self._send(200, {"error": "join"})
+                    return
+                entry = planet_entry(p)
+                key = str(data.get("key", ""))
+                if picks_left(entry) > 0 and key in [c["key"] for c in pick_choices(entry)]:
+                    entry.setdefault("picked", []).append(key)
+                    save_state()
+                self._send(200, planet_state(p))
+            return
+        if self.path == "/planet/paint":
+            with lock:
+                p = players.get(data.get("id"))
+                if not p:
+                    self._send(200, {"error": "join"})
+                    return
+                out = planet_paint(p, data)
+                if data.get("wear"):   # a try runs as they type: kept with the next save
+                    save_state()
+                self._send(200, out)
             return
         if self.path == "/planet/typing":
             key = str(data.get("site", ""))

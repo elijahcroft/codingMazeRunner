@@ -77,7 +77,7 @@ The skill you're teaching is as much **experimenting** as coding:
   (half the class never ran in the first lesson). After 8 misses in a row on
   a site, the banner names up to two classmates who cleared it today ("🙋 Ask
   Ada"). After 20, **⏭ Skip for now** opens the next site; the skipped one
-  stays on the route bar to come back to, with no stars until it's done.
+  stays in the 🗺 Levels map to come back to, with no stars until it's done.
 - **Missed runs that get further say so:** "🔥 Closest yet! 3 of 8 samples
   (before: 1 of 8)" or "4 squares from the beacon (before: 7)", only when a
   miss beats the student's best on that site. Long grinds like 3B now show
@@ -157,10 +157,36 @@ lost.
   Legendary paint at 2400. When the class crosses one, the projector shows a
   big **🎉 Class unlock!** card, and every student gets a toast the next time
   their page loads or they transmit.
+- **Coding unlocks paint**: some garage items come from a badge, not stars,
+  so the coding is the way to get them. Worth telling the class: a `for`
+  loop earns the Cheetah paint, an `if` the Zebra, a `while` loop the Robot,
+  fixing a code error the Ladybug, and beating a class record the Race Car.
+  Silly ones: a mission with `print("moo")` in it earns the Cow paint, and
+  `print("sssss")` the Creeper. Every locked item in the garage says how to
+  get it. Earning every star in a zone (its Master badge) gives a legendary:
+  a Frost Crown for the Ice Field, a Hero cape for Wind Canyon, Laser eyes
+  for the Laser Range and more.
+- **🎨 The Paint Shop** (top of the garage's Paint tab): students paint their
+  own rover with code, `paint(x, y, "red")` on a 10 by 7 grid and
+  `fill("navy")`, and watch the squares go on one at a time in the order
+  their code painted them. Clicking a square writes the `paint()` line for
+  it, so younger kids can start by clicking. Loops make stripes, a loop
+  inside a loop and an `if` make checkers (there are six examples to load).
+  **✓ Wear it** puts it on their rover everywhere, the class screen too, and
+  painting with a loop earns 🎨 Pixel Artist. A great five minutes at the
+  end of a lesson. If a painting isn't right for the projector, **🧽 Wipe
+  paint** on the teacher page takes it off.
+- **🛞 Wheels**: a garage slot of its own, from monster tyres and tank treads
+  to hover pads and flame wheels.
+- **🧩 Full sets**: wearing every piece of a pack (all four Ninja things, say)
+  sends the pack's icon circling the rover. The garage says how many pieces
+  are on.
 - **Ranks**: the ★ button at the top shows a rank icon and a thin bar to the
   next one: Cadet, Rookie Pilot (10 ★), Pilot (25), Navigator (45), Explorer
   (70), Pathfinder (95), Commander (120), Star Captain (145) and Legend
-  (every star). Ranking up says so on the celebration card with a fanfare.
+  (every star). Ranking up says so on the celebration card with a fanfare,
+  and earns a **🎉 reward to pick**: the garage offers three locked things
+  and the student unlocks the one they like best.
   Ranks only show on the student's own screen, never on the projector.
 - **Little wins in a run**: clearing a site on its first transmit says
   **🎯 First try!** (5 of those earn the 🎯 Sharpshooter badge). Samples,
@@ -202,9 +228,11 @@ lost.
   by hand drives past it without opening it. On 4C and 7B, where each
   student has their own planet, the gift is a short detour from the route
   on that planet. On 3B, 5B and some 4C planets it's on the way. A small 🎁
-  on the route bar marks open sites that still hide one. The garage counts
+  marks open sites that still hide one: on the route bar for the zone
+  you're in, and on the 🗺 Levels map for all of them. The garage counts
   them ("3 of 8 found"), and finding all 8 earns the 🎁 **Treasure Hunter**
-  badge. **🎲 Surprise me** in the garage picks a random look from
+  badge. In easy mode each practice zone hides one too (P2, P10, P17, P26,
+  P34, P43, P47), with a pet, a hat, a paint or a glow you can only find there. **🎲 Surprise me** in the garage picks a random look from
   everything a student has unlocked.
 - **The rover talks**: each `print()` shows in a speech bubble over the
   rover during the replay, at the tick it happened, so printing a sensor
@@ -413,9 +441,9 @@ works is how to help a neighbour.
 | 1 | **Landing Site** (1A–1C) → **Ice Field** (2A–2C) | "How did you measure the slide? Who made the rover measure it?" Everyone's 2A slide is a different length: ask two neighbours to compare numbers, then show that `report(x() - 1)` is right for both. |
 | 2 | **Wind Canyon** (3A–3C) → **Crumbling Crust** (4A–4C) | "How did you find *when* the gusts came? What was your evidence?" (Everyone's 3A gusts keep their own time, so the answers differ; the method is the same.) |
 | 3 | **Solar Valley** (5A–5C) → **Portal Fields** (6A–6C) | "How did you work out where each portal goes? How many runs did it take?" |
-| 4 | **Signal Plains** (7A–7C): steering by coordinates on calm ground → **Crater Hops** (8A–8C): the new `jump()` | "When does your program jump, and how does it know?" |
-| 5 | **Conveyor Works** (9A–9D) → **The Quarry** (10A–10D) → **Gate Station** (11A–11D) → **Flag Relay** (12A–12D) | "Which new thing changed your program most, and what stayed the same?" |
-| 6 | **Boulder Yard** (13A–13D) → **Laser Range** (14A–14D) → **Cargo Run** (15A–15D) | "Where did a variable or a sum save you from counting?" |
+| 4 | **Signal Plains** (7A–7C): steering by coordinates on calm ground → **Crater Hops** (8A–8D): the new `jump()` | "When does your program jump, and how does it know?" |
+| 5 | **Conveyor Works** (9A–9E) → **The Quarry** (10A–10E) → **Gate Station** (11A–11E) → **Flag Relay** (12A–12E) | "Which new thing changed your program most, and what stayed the same?" |
+| 6 | **Boulder Yard** (13A–13E) → **Laser Range** (14A–14E) → **Cargo Run** (15A–15E) | "Where did a variable or a sum save you from counting?" |
 | 7 | **Grand Tour** (16A–16D): everything at once → **Uncharted**: the same 5 planets every run | "Which square was hardest to plan for, and how did your code tell it apart?" |
 
 Fast students will get ahead. That's fine, because each site opens only when
@@ -423,9 +451,24 @@ the one before is done. Slow students aren't stuck behind a wall: open the
 next site for one student from `/planet/teacher` (type the admin key once,
 then **Unlock next**).
 
+## The screen, kept simple
+
+- The **route bar** at the top shows the zone you're in as a row of dots,
+  one per level; every other zone is just its icon (press it to go there,
+  a gold dot means every level is done). **🗺 Levels** shows everything.
+- The **◀ P6 ▶** arrows beside a level's name step to the level before or
+  after.
+- A status pill on the map only appears when there's news: Driving,
+  Beacon reached, Code error and so on.
+- An empty code box says what to do: write a command a line (or press one
+  under the box), or on practice levels drive first and press 📋 Use as
+  code.
+- On practice levels the 🧰 Functions button and the line counter stay
+  hidden (kids haven't met `def` yet, and practice levels have one star).
+
 ## Easy mode: practice zones for a younger class
 
-Turn on **Easy mode** in ⚙ Settings on `/planet/teacher`. Five practice zones
+Turn on **Easy mode** in ⚙ Settings on `/planet/teacher`. Seven practice zones
 come before the Landing Site, every level open, and kids drive by hand first
 (arrow keys or the buttons on the map), press **📋 Use as code**, finish the
 words letter by letter and press **Transmit**:
@@ -437,6 +480,13 @@ words letter by letter and press **Transmit**:
 | ⛸ Ice Rink | P17–P24 | one press slides until something stops it |
 | 🔮 Pad Park | P25–P30 | magic pads: drive onto one, pop out of its partner; P30 is one drive in a loop |
 | 🐸 Jump Park | P31–P38 | `jump("east")` over craters and rocks; while scouting, 🦘 then an arrow (or Shift+arrow) jumps |
+| 👀 Look-Out Point | P39–P46 | `look("east")` and `while` loops: everyone's paths are a different length, so a loop that looks beats counting |
+| 🔀 Fork Road | P47–P51 | `if` and `else`: maps that differ between neighbours, a `for` loop with an `if` in it, and a path finder that works on any staircase |
+
+Look-Out Point and Fork Road get the class ready for the Landing Site's
+`look()` and `while`. Kids who had already moved on to the Landing Site
+before they were added aren't sent back: the zones are open for them, but
+they carry on where they were.
 
 Students find every level in the **🗺 Levels** button at the top left: each
 zone with its levels as big tiles, their stars, 🔒 for what's still locked,
@@ -777,6 +827,28 @@ home unloads. New: `cargo()`, `home_x()`, `home_y()`, and `sample_x()`,
       else:
           go_to(sample_x(), sample_y())
   ```
+
+#### The mixes: 8D and 9E to 15E
+The last site of Zones 8 to 15 mixes that zone's new thing with one or two
+from before, on a small planet with **more than one way through**. Any way
+completes the mission; the challenge star picks out one of them, so it's a
+good moment to ask "who got there a different way?"
+- **8D Hop or Pad**: hop the three trenches, or the pad round them
+  (`south(3) north() west()`, the ⚡ star).
+- **9E Belt and Hop**: ride the belt and hop the trench (⚡), or drive round.
+- **10E Through or Round**: drill the wall, or ride the belt round it and keep
+  the drill (⛏ star): `south(3) north(2)`.
+- **11E Two Ways In**: drill into the box, or fetch the key for the gate and
+  keep the drill (⛏). Jumping the wall works too.
+- **12E Flag Express**: after flag 2, the belt carries the rover to flag 3 (⚡).
+- **13E Bridge or Tunnel**: push the boulder in and jump (⚡), or drill the two
+  rocks under the trench.
+- **14E Laser Locks**: key, gate, trench. Counting works; the 🔢 star wants
+  `distance()`.
+- **15E Express Delivery**: the belt along the bottom brings the rover home (⚡).
+
+Students who had already passed one of these sites before it was added aren't
+sent back for it: it opens for them, but they carry on where they were.
 
 #### 16 · Grand Tour: everything at once
 Nothing new: every site mixes several things from Zones 9 to 15, so the

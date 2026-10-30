@@ -111,7 +111,103 @@ coding badges, and works on any site, practice sites in easy mode included.
 | 🦘 Kangaroo | 10 `jump()`s in one run | Wings topper |
 | 📣 Function Fan | call your own function 3 times or more | Smoke bomb dance |
 
-## Batch 2: next ideas, not built yet
+## Batch 3: built (October 29)
+
+Mostly paints, the kid favourites from idea 11 below and a few more. Six
+unlock with a coding badge, five of them the everyday ones (a `for` loop, an
+`if`...) that unlocked nothing before. A student who already has one of those
+badges finds the item open straight away. The rest unlock at low star counts,
+so the easy-mode class (about 40 ★) gets most of them.
+
+| Item | Slot | Unlock | What it does |
+|---|---|---|---|
+| Cow | paint | 🐄 badge **Moo-ver** (new) | black patches on white |
+| Ladybug | paint | 🐛 badge **Bug Squasher** | red, black spots, a head at the front |
+| Cheetah | paint | 🔁 badge **Loop Pilot** | golden with dark spots |
+| Zebra | paint | 🔀 badge **Decision Maker** | wavy black stripes |
+| Robot | paint | 👀 badge **Sensor Driver** | silver panels, rivets, lights blinking in turn |
+| Race Car | paint | 🏆 badge **Record Breaker** | red with white stripes, a chequered tail and a big 1 |
+| Bunny | pet | 2 ★ | hops, one ear twitches |
+| Banana | paint | 5 ★ | yellow with brown tips |
+| Panda | paint | 13 ★ | a panda face looking forward |
+| Fire Truck | paint | 19 ★ | ladder on top, flashing lights |
+| Donut | topper | 22 ★ | pink icing and sprinkles |
+| Buzzy bee | pet | 28 ★ | wings a blur |
+| Bumblebee | paint | 32 ★ | stripes and buzzing wings |
+| Hot Rod | paint | 46 ★ | flames licking back from the front |
+| Shark Bite | paint | 58 ★ | gills and a toothy grin |
+| Diamond Armor | paint | 100 ★ | plates and rivets, a glint sweeping over |
+
+The new code challenge works like 🐍 Sssneaky: 🐄 **Moo-ver** wants
+`print("moo")` (anything with "moo" in it) in a run that completes its
+mission. Both live in `PRINT_CHALLENGES` in `server.py`.
+
+## Batch 4: built (October 29): ideas 1, 2, 4, 5, 7 and 8 below
+
+### 🎨 The Paint Shop
+A button at the top of the garage's Paint tab. The student writes code with
+`paint(x, y, "red")` and `fill("navy")`, and it paints a 10 × 7 grid of the
+rover's body, seen from above with the front on the right, the way the rover
+starts on a map: x runs 1 to 10 back to front, y 1 to 7 top to bottom.
+
+- The program runs on the server in the same safe interpreter as missions
+  (`planet.Painter`, a `Rover` with an `Easel` for a world), so the whole of
+  the class's Python works: loops, `if`, `def`, variables, `%`. The rover's
+  commands and sensors say they're for missions.
+- The squares go on one by one in the order the code painted them, with a
+  little note each, so a loop is something you watch working. It repaints
+  by itself half a second after typing stops; a typo mid-word keeps the last
+  painting up.
+- Clicking a square adds `paint(x, y, "colour")` for it, in the colour last
+  pressed under the code, so younger kids start by clicking and read the code
+  it makes. Colour names in the code show in their own colour. Six examples
+  to load: One square, A stripe, Racing stripes, Checkers (nested loops and
+  an `if`), Rainbow (a `def` with two values) and Smiley.
+- Mistakes get the planet's kind of message, like "x 0 is off the rover: x
+  goes from 1 to 10. range(10) counts 0 to 9: range(1, 11) counts 1 to 10."
+- **✓ Wear it** keeps the paint as 70 letters in `look["art"]` with the paint
+  `mine` (the garage's "My paint", legendary), so it's on the map, the
+  replays, the teacher's page and the class screen. Painting with a loop
+  earns the 🎨 **Pixel Artist** badge, and the projector's feed says who
+  painted their rover.
+- **🧽 Wipe paint** on the teacher's page takes a painted rover back to
+  Moonstone, if one isn't right for the class screen.
+
+### 🛞 Wheels: a new garage slot
+Rover wheels (0 ★), Monster tyres (4), Neon wheels (12), Block wheels (20),
+Flame wheels (30), Tank treads (40), Hover pads (52), Rainbow wheels (85),
+Gold rims (🎯 Sharpshooter badge) and Portal wheels (Portal Fields Master).
+`WHEELS` in `planet_render.js` draws everything under the body.
+
+### 🎁 Gifts in the practice zones
+One per practice zone, a square or so off the way, each a new item you can
+only find there: 🐤 Baby chick pet (P2), 🌼 Daisy topper (P10, on the other
+way round the rock), ❄️ Frosty paint (P17, on the ground beside the ice),
+🌀 Portal swirl glow (P26, one square past the pad) and 🐸 Froggy pet (P34).
+They show in the garage only while easy mode is on (or once found), and
+Treasure Hunter still counts only the 16 on the main route.
+
+### 🏅 Zone master legendaries
+A zone's Master badge (every star in it) earns a legendary: Landing Site →
+Star Captain hat, Ice Field → Frost Crown, Wind Canyon → Hero cape, Portal
+Fields → Portal wheels, Laser Range → Laser eyes, Cargo Run → Gold Truck
+paint.
+
+### 🎉 Pick 1 of 3 at every rank-up
+Every rank after Cadet earns a pick: the garage shows three locked star
+items, the nearest ones and from different slots where it can, and the
+student unlocks one of them now. The three stay the same until one is picked
+(nothing random), and students who ranked up before this was built have
+their picks waiting.
+
+### 🧩 Set bonuses
+Wear every piece of a pack at once and the pack's icon circles the rover,
+upright, on every screen: 💥 Blocky Boom, 👻 Spooky, 🥷 Ninja, 🦖 Dino,
+⚡ Thunder, 🦄 Sparkle, 🪙 Gold Rush, 🏁 Speedway and 🐄 Farmyard (`SETS` in
+`planet_render.js`). Pointing at a piece in the garage says how much of its
+set is on ("Thunder set: 1 of 4 on").
+
+## Batch 2: the ideas list (1, 2, 4, 5, 7 and 8 are built, see Batch 4)
 
 Roughly the most kid excitement for the least work first.
 
@@ -148,7 +244,7 @@ Roughly the most kid excitement for the least work first.
    never time-limited.
 10. **🗳 Class vote:** the projector offers 3 designs for the next pack, kids
     vote on their screens, and the winner ships next week.
-11. **More kid favourites to draw:** Lava Golem, Galaxy Dragon pet, Robot
+11. **More kid favourites to draw** (Banana and Shark Bite are in Batch 3): Lava Golem, Galaxy Dragon pet, Robot
     Butler pet, Gamer Headset topper, Diamond Armor paint, Gold Chain topper,
     Rocket Boots glow, Confetti Cannon dance, Floss and Dab style dances (the
     rover wiggles side to side), Banana paint, Donut topper, Shark Bite paint

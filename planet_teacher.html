@@ -218,7 +218,7 @@
 <section class="settings" id="settings" hidden>
   <label>🔑 Admin key <input id="key" type="password" placeholder="from the server" autocomplete="off"></label>
   <label title="On: 📋 Use as code after scouting leaves a few words for students to finish (r____ for range). Off: the code comes out whole."><span class="switch"><input type="checkbox" id="blanks" onchange="admin('planet_blanks', null, {on: this.checked})"><span></span></span> Scouted code has words to finish</label>
-  <label title="For a younger class. On: five practice zones (Practice Park, Loop Garden, Ice Rink, Pad Park, Jump Park) before the Landing Site, where kids drive by hand first, then finish their code one letter at a time; classmates to ask after 3 misses (not 8), Skip for now after 6 (not 20)."><span class="switch"><input type="checkbox" id="easy" onchange="admin('planet_easy', null, {on: this.checked})"><span></span></span> Easy mode (younger class)</label>
+  <label title="For a younger class. On: seven practice zones (Practice Park, Loop Garden, Ice Rink, Pad Park, Jump Park, Look-Out Point, Fork Road) before the Landing Site, where kids drive by hand first, then finish their code one letter at a time; classmates to ask after 3 misses (not 8), Skip for now after 6 (not 20)."><span class="switch"><input type="checkbox" id="easy" onchange="admin('planet_easy', null, {on: this.checked})"><span></span></span> Easy mode (younger class)</label>
   <label title="On: after 📋 Use as code, students finish each word one letter at a time on every site: the word shows as keys, the next key lights up, and only the right letter goes in. The practice sites always work this way."><span class="switch"><input type="checkbox" id="coach" onchange="admin('planet_coach', null, {on: this.checked})"><span></span></span> Letter-by-letter typing help</label>
 </section>
 <div class="msg" id="msg" hidden></div>
@@ -289,7 +289,7 @@ function ago(seconds) {
   return s < 20 ? "just now" : s < 60 ? `${Math.floor(s)} s ago` : s < 3600 ? `${Math.floor(s / 60)} min ago` : `${Math.floor(s / 3600)} h ago`;
 }
 function siteTag(key) { return key === "7" ? "🪐" : key.toUpperCase(); }
-const ZONE_ICONS = {practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐"};
+const ZONE_ICONS = {practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", lookout: "👀", forks: "🔀", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐"};
 const ENDED = {goal: "✓ done", stopped: "stopped short", fell: "fell", ticks: "out of time",
                error: "code error", wrong: "wrong number", battery: "flat battery"};
 const STAMP = {goal: ["🎉 MISSION COMPLETE!", "win"], fell: ["💥 FELL IN!", "miss"], stopped: ["🏁 STOPPED SHORT", "miss"],
@@ -459,7 +459,7 @@ function cardHtml(s, data, st) {
     <div class="prog" title="${w.done} of ${w.of} ${w.practice ? "practice " : ""}levels done"><span style="width:${pct}%"></span></div>
     <div class="prog-l"><span>${w.done} of ${w.of} ${w.practice ? "practice levels" : "levels"}</span><span>last run ${esc(ago(s.active))}</span></div>
     ${dots}${said}${skipped}
-    <div class="acts">${s.site !== "7" ? `<button class="btn small" onclick="admin('planet_unlock', '${esc(s.id)}')" title="Open the next level of the main route for this student">🔓 Unlock next</button>` : ""}${s.now && s.now.code ? `<button class="btn small" onclick="admin('planet_spotlight', '${esc(s.id)}')" title="Put this student's last transmitted code on the class screen, without their name">📽 Show code</button>` : ""}${s.runs_total ? `<button class="btn small" onclick="replayOf('${esc(s.id)}')" title="Play this student's last run on the big screen above">▶ Replay</button>` : ""}<button class="btn small warn" data-remove="${esc(s.id)}" title="Take this student off Strange Planet (their progress here is lost)">✕</button></div>
+    <div class="acts">${s.site !== "7" ? `<button class="btn small" onclick="admin('planet_unlock', '${esc(s.id)}')" title="Open the next level of the main route for this student">🔓 Unlock next</button>` : ""}${s.now && s.now.code ? `<button class="btn small" onclick="admin('planet_spotlight', '${esc(s.id)}')" title="Put this student's last transmitted code on the class screen, without their name">📽 Show code</button>` : ""}${s.runs_total ? `<button class="btn small" onclick="replayOf('${esc(s.id)}')" title="Play this student's last run on the big screen above">▶ Replay</button>` : ""}${s.look && s.look.art ? `<button class="btn small" onclick="admin('planet_wipe_paint', '${esc(s.id)}')" title="Take off the paint this student made in the Paint Shop (back to Moonstone). Use it if it isn't right for the class screen.">🧽 Wipe paint</button>` : ""}<button class="btn small warn" data-remove="${esc(s.id)}" title="Take this student off Strange Planet (their progress here is lost)">✕</button></div>
     ${triesHtml(s)}`;
 }
 function replayOf(pid) {

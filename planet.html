@@ -94,6 +94,9 @@
   .route.more-l.more-r { -webkit-mask-image: linear-gradient(90deg, transparent, #000 40px calc(100% - 40px), transparent); mask-image: linear-gradient(90deg, transparent, #000 40px calc(100% - 40px), transparent); }
   .leg { display: flex; align-items: center; gap: 0; padding: 3px 8px 3px 4px; border-radius: 99px; flex: none; }
   .leg.here { background: var(--panel); }
+  .leg.mini { position: relative; border: 0; background: none; padding: 3px 5px; font-size: 18px; line-height: 1; border-radius: 10px; }
+  .leg.mini:not(.locked):hover { background: var(--panel); }
+  .leg.mini.all::after { content: ""; position: absolute; right: 2px; bottom: 2px; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 2px var(--dusk); }
   .zg { font-size: 16px; width: 24px; text-align: center; filter: saturate(.85); }
   .leg.locked .zg { filter: grayscale(1); opacity: .45; }
   .zname { margin-left: 6px; font-weight: 650; font-size: 13px; white-space: nowrap; }
@@ -117,7 +120,7 @@
   .levels-button { flex: none; display: flex; align-items: center; gap: 7px; border: 0; border-radius: 12px; padding: 7px 14px 7px 11px; background: var(--violet); color: #1d1240; font: 800 15px var(--ui); box-shadow: 0 3px 0 #7b62d6; }
   .levels-button:hover { background: #cbb9ff; }
   .levels-button:active { transform: translateY(2px); box-shadow: 0 1px 0 #7b62d6; }
-  .site-nav { display: inline-flex; align-items: center; gap: 4px; align-self: center; }
+  .site-nav { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; margin-top: 2px; }
   .step-site { width: 30px; height: 30px; border: 1px solid var(--edge); border-radius: 9px; background: var(--dusk); color: var(--haze); font-size: 12px; padding: 0; }
   .step-site:hover:not(:disabled) { color: var(--bone); background: var(--panel-2); }
   .step-site:disabled { opacity: .3; cursor: default; }
@@ -194,6 +197,7 @@
   .gauge.low { color: var(--coral); }
   .status { padding: 6px 12px; border-radius: 99px; font-weight: 700; font-size: 13px; background: rgba(18,13,34,.72); display: flex; align-items: center; gap: 7px; white-space: nowrap; }
   .status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--haze); }
+  .status:not([class*="s-"]) { display: none; }   /* "Ready" says nothing new */
   .status.s-go::before { background: var(--mint); box-shadow: 0 0 8px var(--mint); }
   .status.s-hold::before { background: var(--amber); }
   .status.s-win { color: #12302a; background: var(--mint); }
@@ -311,6 +315,8 @@
   .uplink-head b { font-weight: 750; }
   .uplink-head span { color: var(--haze); font-size: 13px; }
   .uplink-head span.fits { color: var(--gold); }
+  /* Practice levels: one star, and no def yet. */
+  body.kids #lineCount, body.kids #fnButton.none { display: none; }
   .uplink-head span.pop { animation: fitpop .7s cubic-bezier(.2,1.6,.4,1); }
   @keyframes fitpop { 30% { transform: scale(1.3); text-shadow: 0 0 12px rgba(255,211,107,.9); } }
   .calm .uplink-head span.pop { animation: none; }
@@ -322,6 +328,7 @@
   #code, .paint { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 12px 14px 40px 6px; font: var(--code-size)/1.6 var(--mono); tab-size: 4; white-space: pre; letter-spacing: 0; }
   #code { resize: none; border: 0; outline: 0; background: transparent; color: transparent; caret-color: var(--mint); overflow: auto; }
   #code::selection { background: rgba(140,242,198,.28); color: transparent; }
+  #code::placeholder { color: var(--dim); font-family: var(--ui); white-space: pre-line; }
   .paint { z-index: 0; overflow: hidden; color: #ece4ff; pointer-events: none; }
   .paint i { font-style: normal; }
   .ind { box-shadow: inset 1px 0 0 rgba(185,163,255,.22); }
@@ -460,12 +467,14 @@
   .stage canvas { width: 280px; height: 280px; border-radius: 18px; display: block; box-shadow: 0 0 0 1px var(--edge); }
   .stage-tag { margin: 10px 0 0; text-align: center; color: var(--haze); font-size: 13.5px; line-height: 1.4; }
   .stage-tag b { display: block; color: var(--bone); font-size: 17px; }
+  .set-tag { display: block; margin-top: 8px; padding: 6px 10px; border-radius: 10px; background: var(--panel); font-size: 12.5px; }
+  .set-tag.full { background: rgba(255,211,107,.16); color: var(--gold); font-weight: 650; }
   .garage-card h2 { margin: 0; font-size: 24px; font-weight: 850; letter-spacing: -.02em; }
   .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-  .tab { position: relative; border: 1px solid var(--edge); background: var(--panel); border-radius: 99px; padding: 8px 14px; font-size: 15px; font-weight: 650; color: var(--haze); }
+  .tab { position: relative; border: 1px solid var(--edge); background: var(--panel); border-radius: 99px; padding: 6px 11px; font-size: 14px; font-weight: 650; color: var(--haze); }
   .tab:hover { color: var(--bone); }
   .tab.on { background: var(--bone); border-color: var(--bone); color: #1b1733; font-weight: 750; }
-  .tab small { margin-left: 4px; font: 600 11px var(--mono); opacity: .75; }
+  .tab small { margin-left: 3px; font: 600 10.5px var(--mono); opacity: .7; }
   .tab.has-new::after { content: ""; position: absolute; top: -2px; right: -2px; width: 10px; height: 10px; border-radius: 50%; background: #ff8ad8; box-shadow: 0 0 0 2px var(--dusk); }
   /* Rarity: grey, blue, purple, gold. */
   .r-common { --r: #a99fc8; } .r-rare { --r: #5ab8ff; } .r-epic { --r: #c46bff; } .r-legendary { --r: #ffb547; }
@@ -508,6 +517,59 @@
   .card .new, .badge .new { color: #2a0f24; background: #ff8ad8; border-radius: 99px; padding: 0 5px; font: 800 10px/15px var(--ui); letter-spacing: .05em; }
   .card.fresh, .badge.fresh { box-shadow: inset 0 0 0 2px #ff8ad8; }
   .gift-note { margin: 10px 0 0; color: var(--haze); font-size: 13px; }
+  /* A rank-up reward to pick: three locked things, choose one. */
+  .pick-row { margin: 0 0 14px; padding: 12px 14px 14px; border-radius: 16px; background: linear-gradient(100deg, rgba(255,211,107,.22), rgba(255,138,216,.16)); box-shadow: inset 0 0 0 2px rgba(255,211,107,.6); }
+  .pick-row h3 { margin: 0 0 10px; font-size: 17px; }
+  .pick-row h3 small { margin-left: 8px; color: var(--haze); font-size: 13.5px; font-weight: 500; }
+  .pick-row .cards { grid-template-columns: repeat(3, minmax(0, 150px)); }
+  .pick-row .card { animation: pick-glow 1.6s ease-in-out infinite; }
+  @keyframes pick-glow { 50% { box-shadow: 0 0 18px rgba(255,211,107,.7); } }
+  .calm .pick-row .card { animation: none; }
+  /* ---- The Paint Shop: code your own paint ---------------------------------- */
+  .shop-door { width: 100%; display: flex; align-items: center; gap: 14px; margin: 0 0 12px; padding: 12px 16px; border: 0; border-radius: 16px; text-align: left; color: var(--bone); font-size: 14.5px;
+    background: linear-gradient(100deg, rgba(255,77,77,.22), rgba(255,225,77,.18), rgba(63,191,90,.18), rgba(63,125,255,.2), rgba(164,99,255,.24)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+  .shop-door:hover, .shop-door:focus-visible { box-shadow: inset 0 0 0 2px var(--bone); }
+  .shop-door .big { font-size: 34px; line-height: 1; }
+  .shop-door b { display: block; font-size: 17px; }
+  .shop-door code { font: 600 13px var(--mono); color: var(--mint); }
+  .shop-door .gn-go { margin-left: auto; flex: none; padding: 8px 14px; border-radius: 10px; background: var(--bone); color: #1d1240; font-weight: 800; }
+  .shop-card { width: min(1060px, 100%); height: min(720px, calc(100vh - 32px)); overflow: auto; padding: 18px 20px 20px; background: var(--dusk); border-radius: 20px; box-shadow: 0 30px 80px rgba(0,0,0,.5), inset 0 0 0 1px var(--edge); }
+  .shop-card h2 { margin: 0; font-size: 24px; font-weight: 850; letter-spacing: -.02em; }
+  .garage-head .shop-sub { color: var(--haze); font: 500 14.5px var(--ui); }
+  .shop-top { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 20px; margin-top: 14px; align-items: start; }
+  .easel { display: grid; gap: 10px; }
+  #shopGrid { width: 100%; display: block; cursor: crosshair; touch-action: none; }
+  .easel-foot { display: grid; grid-template-columns: 170px 1fr; gap: 14px; align-items: center; }
+  #shopRover { width: 170px; height: 130px; border-radius: 14px; display: block; box-shadow: 0 0 0 1px var(--edge); }
+  .easel-tip { margin: 0; color: var(--haze); font-size: 13.5px; line-height: 1.45; }
+  .easel-tip b { color: var(--bone); }
+  .shop-examples { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .shop-examples button { border: 1px solid var(--edge); background: var(--panel); border-radius: 99px; padding: 5px 12px; font-size: 13.5px; font-weight: 650; color: var(--haze); }
+  .shop-examples button:hover { color: var(--bone); border-color: var(--violet); }
+  .shop-examples span { align-self: center; color: var(--dim); font-size: 13px; margin-right: 2px; }
+  .shop-editor { position: relative; height: 290px; border-radius: 12px; overflow: hidden; background: #171329; box-shadow: inset 0 0 0 1px var(--edge); }
+  #shopCode, .shop-paint { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 12px 14px; font: 15px/1.6 var(--mono); tab-size: 4; white-space: pre; letter-spacing: 0; }
+  #shopCode { resize: none; border: 0; outline: 0; background: transparent; color: transparent; caret-color: var(--mint); overflow: auto; }
+  #shopCode::selection { background: rgba(140,242,198,.28); color: transparent; }
+  .shop-paint { overflow: hidden; color: #ece4ff; pointer-events: none; }
+  .shop-paint i { font-style: normal; }
+  .shop-paint .err-line { position: absolute; left: 0; right: 0; height: 1.6em; background: rgba(255,111,97,.18); box-shadow: inset 3px 0 0 var(--coral); }
+  .swatches { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0 0; }
+  .swatches button { display: flex; align-items: center; gap: 5px; border: 1px solid var(--edge); background: var(--panel); border-radius: 99px; padding: 3px 9px 3px 4px; font: 600 12.5px var(--mono); color: var(--haze); }
+  .swatches button i { width: 16px; height: 16px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.35); }
+  .swatches button:hover { color: var(--bone); }
+  .swatches button.on { border-color: var(--bone); color: var(--bone); box-shadow: 0 0 0 1px var(--bone); }
+  .shop-msg { min-height: 2.9em; margin: 10px 0; padding: 8px 12px; border-radius: 10px; background: var(--panel); color: var(--haze); font-size: 14px; line-height: 1.45; }
+  .shop-msg.err { background: rgba(255,111,97,.14); color: #ffc9c2; }
+  .shop-msg.ok { background: rgba(140,242,198,.12); color: var(--mint); }
+  .shop-msg code { font: 600 .92em var(--mono); color: var(--mint); }
+  .shop-actions { display: flex; gap: 10px; align-items: center; }
+  .shop-actions .go { flex: 1; }
+  .shop-actions .go.wear { background: var(--gold); box-shadow: 0 3px 0 #c79a2a; color: #3a2a00; }
+  .shop-actions .go.wear:hover { background: #ffe08f; }
+  .shop-actions .go.wear:disabled { opacity: .45; cursor: not-allowed; }
+  .shop-actions small { color: var(--dim); font-size: 12px; }
+  @media (max-width: 860px) { .shop-top { grid-template-columns: 1fr; } .shop-card { height: auto; } }
   .badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
   .badge { display: grid; grid-template-columns: 30px 1fr; gap: 6px; align-items: center; padding: 8px; border-radius: 12px; background: var(--panel); font-size: 13px; }
   .badge .ico { font-size: 22px; text-align: center; }
@@ -552,6 +614,8 @@
     .stage canvas { width: min(220px, 100%); height: auto; aspect-ratio: 1; }
     .scout-help { max-width: calc(100% - 28px); bottom: 130px; }
   }
+  /* A phone: the name goes, so the header fits without scrolling sideways. */
+  @media (max-width: 480px) { #driver { display: none; } }
   @media (prefers-reduced-motion: reduce) {
     .wp span, .cell i, .big-star i { transition: none; }
     .scope.shake, .stars-button.bump, .stars-button.fresh, .toast, .toast.out, .tool.nudge, .card.r-legendary { animation: none; }
@@ -696,6 +760,7 @@
 <div class="dialog" id="garage" hidden role="dialog" aria-modal="true" aria-labelledby="garageTitle">
   <div class="garage-card">
     <div class="garage-head"><h2 id="garageTitle">Garage</h2><span id="garageStars"></span><div class="garage-actions"><button class="quiet" id="surpriseButton" title="A random look from everything you've unlocked">🎲 Surprise me</button><button class="quiet" id="garageClose">Done</button></div></div>
+    <div class="pick-row" id="garagePick" hidden></div>
     <button class="garage-next" id="garageNext" hidden></button>
     <div class="garage-top">
       <div class="stage">
@@ -706,6 +771,27 @@
         <div class="tabs" id="garageTabs"></div>
         <div id="garageShelf"></div>
         <p class="gift-note" id="giftNote"></p>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="dialog" id="paintShop" hidden role="dialog" aria-modal="true" aria-labelledby="shopTitle">
+  <div class="shop-card">
+    <div class="garage-head"><h2 id="shopTitle">🎨 Paint Shop</h2><span class="shop-sub">Your code paints your rover.</span><div class="garage-actions"><button class="quiet" id="shopBack">← Garage</button></div></div>
+    <div class="shop-top">
+      <div class="easel">
+        <canvas id="shopGrid" aria-label="Your rover's body seen from above, 10 squares along and 7 across. Click a square to add a paint() line for it."></canvas>
+        <div class="easel-foot">
+          <canvas id="shopRover" aria-hidden="true"></canvas>
+          <p class="easel-tip" id="shopTip"></p>
+        </div>
+      </div>
+      <div>
+        <div class="shop-examples" id="shopExamples"></div>
+        <div class="shop-editor"><pre class="shop-paint" id="shopPaint" aria-hidden="true"></pre><textarea id="shopCode" aria-label="Your paint program. Ctrl+Enter paints it." spellcheck="false" autocapitalize="off" autocomplete="off"></textarea></div>
+        <div class="swatches" id="shopColors" aria-label="Colours: press one to type it, and to pick it for clicking squares"></div>
+        <p class="shop-msg" id="shopMsg" aria-live="polite"></p>
+        <div class="shop-actions"><button class="go" id="shopRun" title="Ctrl+Enter">Paint ▶</button><button class="go wear" id="shopWear">✓ Wear it</button></div>
       </div>
     </div>
   </div>
@@ -763,7 +849,7 @@ let scene = null;     // what the canvas shows: map, zone, frames, events
 let pos = 0, playing = false, lastTs = 0, fps = 8, heard = 0;
 let errorLine = 0, errorCount = 0;
 
-const ZONE_ICONS = {practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐"};
+const ZONE_ICONS = {practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", lookout: "👀", forks: "🔀", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐"};
 // Each sensor arrives with a zone (matches planet.SENSOR_ZONE).
 const SENSOR_ZONE = {look: 0, at_beacon: 0, x: 1, y: 1, report: 1, tick: 2, samples_left: 3,
   battery: 4, in_sun: 4, beacon_x: 6, beacon_y: 6, jump: 7, drill: 9, drills_left: 9,
@@ -913,6 +999,8 @@ const SFX = (() => {
     badge: () => notes([659, 784, 988, 1319, 1568], {type: "square", vol: .09, dur: .14, gap: .06}),
     gift: () => notes([784, 988, 1175, 1568, 1976, 2349], {type: "triangle", vol: .24, dur: .16, gap: .05}),
     beep: () => notes([880, 1320], {type: "square", vol: .07, dur: .07, gap: .07}),
+    // A dab of paint: each one a little higher, round and round the scale.
+    dab: i => tone([523, 587, 659, 784, 880, 1047, 1175, 1319][i % 8], .06, {type: "triangle", vol: .09}),
     error: () => tone(140, .28, {type: "sawtooth", vol: .13, slide: -30}),
     send: () => notes([440, 660, 880], {vol: .16, dur: .08, gap: .05}),
     report: () => notes([1175, 1568, 1175, 1568], {type: "square", vol: .07, dur: .06, gap: .05}),
@@ -961,6 +1049,8 @@ const GROUND = {
   practice: {ground: "#6f9a4f", rock: "#3d5a2e", bed: "#1a2a14"},
   garden: {ground: "#8a9b52", rock: "#56603a", bed: "#20240f"},
   rink: {ground: "#7f8fa8", rock: "#44506a", bed: "#1c2230"},
+  lookout: {ground: "#5f9a8a", rock: "#2f5249", bed: "#14241f"},
+  forks: {ground: "#b39a62", rock: "#5e4c2c", bed: "#272012"},
   landing: {ground: "#b5683f", rock: "#5a3125", bed: "#2e1912"},
   ice: {ground: "#8e7f93", rock: "#4b4157", bed: "#231d2b"},
   wind: {ground: "#c39457", rock: "#6a4628", bed: "#2f2014"},
@@ -2214,7 +2304,7 @@ async function celebrate(r, run) {
   if (nextBar) nextBar();
   if (r.rank_up) {
     SFX.play("rank");
-    toast(r.rank_up.icon, `Rank up! You're a ${r.rank_up.name} now`, r.rank_up.next ? `${r.rank_up.need} ★ more to ${r.rank_up.next_icon} ${r.rank_up.next}.` : "Every star on the planet. Legendary!");
+    toast(r.rank_up.icon, `Rank up! You're a ${r.rank_up.name} now`, "🎉 Pick a reward in the garage!", true);
   }
   r.flown = true;
   showToasts(r);
@@ -2240,7 +2330,7 @@ function hideCelebrate() { $("celebrate").hidden = true; }
 // The next thing stars unlock in the garage, and how close it is. Returns
 // what fills the bar up to the new total, for when the stars land.
 const SLOT_WORD = {paint: "paint", topper: "topper", trail: "trail", world: "map look", dance: "victory dance"};
-const SLOT_ICON = {paint: "🎨", topper: "🎩", trail: "✨", world: "🗺", dance: "💃", glow: "💡", pet: "🐾", horn: "📯"};
+const SLOT_ICON = {paint: "🎨", topper: "🎩", wheels: "🛞", trail: "✨", world: "🗺", dance: "💃", glow: "💡", pet: "🐾", horn: "📯"};
 const RARITY_NAMES = {common: "Common", rare: "Rare", epic: "Epic", legendary: "Legendary"};
 function showNextUnlock(total, before) {
   const box = $("celeNext"), items = ((state && state.garage) || []).filter(g => g.stars != null);
@@ -2408,6 +2498,12 @@ function renderRoute() {
   const here = site && zoneOf(site.key);
   $("route").innerHTML = state.zones.map(z => {
     const open = z.sites.some(s => s.open), isHere = here && here.key === z.key;
+    // Another zone is just its icon: press it to go there.
+    if (!isHere) {
+      const done = z.sites.filter(s => s.solved != null).length, next = z.sites.find(s => s.open && s.solved == null) || z.sites.find(s => s.open);
+      const label = `${z.name}: ${open ? `${done} of ${z.sites.length} done` : "locked"}`;
+      return `<button class="leg mini${open ? "" : " locked"}${open && done === z.sites.length ? " all" : ""}" ${next ? `onclick="openSite('${next.key}')"` : "disabled"} title="${esc(label)}" aria-label="${esc(label)}"><span class="zg">${ZONE_ICONS[z.key] || "•"}</span></button>`;
+    }
     return `<div class="leg${isHere ? " here" : ""}${open ? "" : " locked"}">
       <span class="zg" title="${esc(z.name)}" aria-hidden="true">${ZONE_ICONS[z.key] || "•"}</span>
       ${z.sites.map(s => {
@@ -2548,6 +2644,9 @@ async function openSite(key) {
   $("status").className = "status"; $("status").textContent = "Ready";
   // Little kids drive by hand first: their drive becomes their code.
   if (kidsMode() && !view.solved) toggleScout();
+  document.body.classList.toggle("kids", kidsMode());
+  $("code").placeholder = kidsMode() ? "Drive the rover with the arrows first.\nThen press 📋 Use as code, and your drive appears here."
+    : "Write your program here, one command a line.\nPress a command under this box to add it, then Transmit ▶.";
   renderSteps();
 }
 // The site as it is before anything has run.
@@ -2738,6 +2837,7 @@ function renderFunctions() {
   const saved = state.functions || [], here = defsIn($("code").value);
   const inCode = new Set(here.map(d => d.name));
   $("fnCount").hidden = !saved.length;
+  $("fnButton").classList.toggle("none", !saved.length);
   $("fnCount").textContent = saved.length;
   if ($("fnPop").hidden) return;
   $("savedFunctions").innerHTML = saved.length ? saved.map(f => `<div class="fn"><pre>${esc(f.code)}</pre>
@@ -2802,7 +2902,7 @@ function garageSeen() {
 }
 // Never opened, or something new since: NEW on the Garage button.
 function markGarageNew() {
-  const seen = garageSeen(), fresh = !seen || garageKeys().some(k => !seen.has(k));
+  const seen = garageSeen(), fresh = !seen || garageKeys().some(k => !seen.has(k)) || state.picks > 0;
   $("newPip").hidden = !fresh;
   $("starsButton").classList.toggle("fresh", fresh);
 }
@@ -2828,19 +2928,19 @@ function garageLoop(ts) {
   requestAnimationFrame(garageLoop);
 }
 // The garage's shelves, one tab each, and the badge cabinet.
-const GARAGE_TABS = [["paint", "Paint"], ["topper", "Hats"], ["pet", "Pets"], ["glow", "Glow"], ["trail", "Trails"],
-                     ["horn", "Horns"], ["dance", "Dances"], ["world", "Map looks"], ["badges", "Badges"]];
+const GARAGE_TABS = [["paint", "Paint"], ["topper", "Hats"], ["wheels", "Wheels"], ["pet", "Pets"], ["glow", "Glow"], ["trail", "Trails"],
+                     ["horn", "Horns"], ["dance", "Dances"], ["world", "Maps"], ["badges", "Badges"]];
 const DANCE_ICONS = {spin: "🌀", wiggle: "〰️", moonwalk: "🕺", firework: "🎆", flip: "🤸", zoomies: "💨", disco: "🪩",
                      kaboom: "💥", smokebomb: "🥷", tornado: "🌪", pogo: "🏀"};
 const HORN_ICONS = {beep: "🤖", honk: "📢", quack: "🦆", pew: "⚡", moo: "🐄", airhorn: "📯", fanfare: "🎺", icecream: "🍦",
                     hiss: "🐍", spooky: "👻", roar: "🦖", weewoo: "🚨", boom: "💥"};
 let garageTab = "paint", garagePeek = null;
 function itemNeed(i) {
-  return i.find ? `🎁 ${i.find.toUpperCase()}` : i.stars != null ? `★ ${i.stars}` : i.trophies != null ? `🏆 ${i.trophies}`
+  return i.shop ? "🎨 Paint Shop" : i.find ? `🎁 ${i.find.toUpperCase()}` : i.stars != null ? `★ ${i.stars}` : i.trophies != null ? `🏆 ${i.trophies}`
     : i.badge ? `🏅 ${i.badge_name}` : `class ★ ${i.class}`;
 }
 function itemHow(i) {
-  return i.find ? `A mystery gift on ${i.where}: drive over the 🎁 there to find it`
+  return i.shop ? "Paint it yourself, with code, in the 🎨 Paint Shop" : i.find ? `A mystery gift on ${i.where}: drive over the 🎁 there to find it`
     : i.stars != null ? `Earn ${i.stars} stars` : i.trophies != null ? `Finish all of a day's missions on ${i.trophies} day${i.trophies === 1 ? "" : "s"}`
     : i.badge ? `Earn the ${i.badge_name} badge` + (i.badge_how ? `: ${i.badge_how.charAt(0).toLowerCase()}${i.badge_how.slice(1)}` : "")
     : `When the class has ${i.class} stars together`;
@@ -2861,7 +2961,8 @@ function renderGarage() {
   } else {
     const RANK = Object.keys(RARITY_NAMES), shelf = state.garage.filter(i => i.slot === garageTab)
       .sort((a, b) => RANK.indexOf(a.rarity) - RANK.indexOf(b.rarity));   // common first, legendary last
-    $("garageShelf").innerHTML = `<div class="cards">` + shelf.map(i => {
+    const door = garageTab !== "paint" ? "" : `<button class="shop-door" id="shopDoor"><span class="big">🎨</span><span><b>Paint Shop</b>Code your own paint: <code>paint(3, 2, "red")</code></span><span class="gn-go">Open ▶</span></button>`;
+    $("garageShelf").innerHTML = door + `<div class="cards">` + shelf.map(i => {
       const on = look[i.slot] === i.key, fresh = garageNew.has(`${i.slot}:${i.key}`);
       return `<button class="card r-${i.rarity}${on ? " on" : ""}${fresh ? " fresh" : ""}${i.open ? "" : " locked"}" data-slot="${i.slot}" data-key="${i.key}"
         ${i.open ? "" : `aria-disabled="true"`} title="${esc(i.open ? i.name : itemHow(i))}">
@@ -2880,21 +2981,55 @@ function renderGarage() {
 // The next thing stars unlock, with a bar, and a way to go and earn them.
 function renderGarageNext() {
   const total = state.total_stars, items = state.garage.filter(g => g.stars != null);
-  const next = items.filter(g => g.stars > total).sort((a, b) => a.stars - b.stars)[0];
-  $("garageNext").hidden = !next;
+  const next = items.filter(g => g.stars > total && !g.open).sort((a, b) => a.stars - b.stars)[0];
+  renderPicks();
+  $("garageNext").hidden = !next || state.picks > 0;   // one thing at a time: the pick first
   if (!next) return;
   const from = Math.max(0, ...items.filter(g => g.stars <= total).map(g => g.stars));
   const need = next.stars - total, pct = Math.max(4, Math.min(100, (total - from) / (next.stars - from) * 100));
   $("garageNext").dataset.slot = next.slot; $("garageNext").dataset.key = next.key;
   $("garageNext").innerHTML = `<span class="big">${SLOT_ICON[next.slot] || "🔓"}</span><span class="gn-text"><b>${plural(need, "more star")}</b> unlocks <b>${esc(next.name)}</b> (${SLOT_WORD[next.slot] || next.slot}). Finish levels to earn stars!<span class="nu-bar"><i class="nu-fill" style="width:${pct}%"></i></span></span><span class="gn-go">🗺 Levels</span>`;
 }
+// A rank-up's reward: pick one of three locked things to have now.
+function renderPicks() {
+  const picks = state.picks || 0;
+  $("garagePick").hidden = !picks;
+  if (!picks) return;
+  $("garagePick").innerHTML = `<h3>🎉 Rank-up reward: pick one to unlock now!<small>${picks > 1 ? `${picks} picks to make · ` : ""}point at one to try it on</small></h3><div class="cards">`
+    + state.pick_choices.map(i => `<button class="card r-${i.rarity}" data-pick="${i.key}" data-slot="${i.slot}" data-key="${i.key}" title="Pick ${esc(i.name)}">
+        <canvas data-key="${i.key}" data-slot="${i.slot}"></canvas><span class="cname">${esc(i.name)}</span><span class="tier">${SLOT_WORD[i.slot] || i.slot} · ★ ${i.stars}</span></button>`).join("") + "</div>";
+  $("garagePick").querySelectorAll("canvas").forEach(cv => thumb(cv, cv.dataset.slot, cv.dataset.key));
+}
+async function pickReward(key) {
+  const item = state.pick_choices.find(i => i.key === key);
+  try { useState(await post("/planet/pick", {id: me, key})); } catch (_) { return; }
+  SFX.wake(); SFX.play("gift");
+  if (item) {
+    toast(SLOT_ICON[item.slot] || "🎁", `Unlocked: ${item.name}`, "It's yours. Press it to put it on.", false, item.rarity);
+    garageNew.add(`${item.slot}:${item.key}`);
+    garageTab = item.slot; garagePeek = {slot: item.slot, key: item.key};
+  }
+  renderGarage();
+}
 // Under the big preview: what's being tried on, and how to get it.
 function stageTag() {
   const i = garagePeek && state.garage.find(g => g.slot === garagePeek.slot && g.key === garagePeek.key);
-  $("stageTag").innerHTML = !i ? `<b>Your rover</b>Point at anything to try it on.`
+  $("stageTag").innerHTML = (!i ? `<b>Your rover</b>Point at anything to try it on.`
     : `<b>${esc(i.name)}</b><span class="tier r-${i.rarity}">${RARITY_NAMES[i.rarity]} ${i.slot}</span> · `
-      + (!i.open ? `🔒 ${esc(itemHow(i))}` : look[i.slot] === i.key ? "you're wearing it" : "press to fit it")
-      + (i.slot === "horn" ? " · press to hear it" : "");
+      + ((state.pick_choices || []).some(c => c.key === i.key) ? "🎉 a rank-up reward: press it to unlock it now"
+        : !i.open ? `🔒 ${esc(itemHow(i))}` : look[i.slot] === i.key ? "you're wearing it" : "press to fit it")
+      + (i.slot === "horn" ? " · press to hear it" : "")) + setTag(i);
+}
+// The pack the item pointed at belongs to (or the one worn), and how much of it is on.
+function setTag(i) {
+  const set = i ? SETS.find(x => x.items[i.slot] === i.key) : fullSet(look);
+  if (!set) return "";
+  const pieces = Object.entries(set.items).map(([slot, key]) => ({on: look[slot] === key, item: state.garage.find(g => g.slot === slot && g.key === key)}));
+  const on = pieces.filter(p => p.on).length;
+  const list = pieces.map(p => `${p.on ? "✓ " : ""}${esc(p.item ? p.item.name : "?")}`).join(", ");
+  return `<span class="set-tag${on === pieces.length ? " full" : ""}">${set.icon} ${on === pieces.length
+    ? `Full ${esc(set.name)} set: the ${set.icon} sparkle is on!`
+    : `${esc(set.name)} set: ${on} of ${pieces.length} on (${list}). Wear them all for a ${set.icon} sparkle.`}</span>`;
 }
 function swatch(slot, key) {
   if (slot === "world") {
@@ -3007,6 +3142,247 @@ async function chooseLook(slot, key) {
   renderGarage(); render();
 }
 
+// ---- The Paint Shop: code your own paint ---------------------------------------------
+// The program runs on the server (planet.paint_shop) like any other; the
+// page shows the squares going on in the order the code painted them.
+const SHOP_COLORS = {red: "r", orange: "o", yellow: "y", lime: "l", green: "g", mint: "m", cyan: "c", blue: "b",
+                     navy: "v", purple: "p", pink: "k", brown: "d", gold: "a", white: "w", gray: "e", black: "n"};
+const BLANK_ART = ".".repeat(ART_COLS * ART_ROWS);
+const SHOP_START = `# x goes 1 to 10, back to front.
+# y goes 1 to 7, top to bottom.
+fill("navy")
+for x in range(1, 11):
+    paint(x, 4, "gold")
+`;
+const SHOP_EXAMPLES = [
+  ["One square", `paint(3, 2, "red")\n`],
+  ["A stripe", `for x in range(1, 11):\n    paint(x, 4, "gold")\n`],
+  ["Racing stripes", `fill("navy")\nfor x in range(1, 11):\n    paint(x, 2, "white")\n    paint(x, 6, "white")\n`],
+  ["Checkers", `for y in range(1, 8):\n    for x in range(1, 11):\n        if (x + y) % 2 == 0:\n            paint(x, y, "black")\n        else:\n            paint(x, y, "white")\n`],
+  ["Rainbow", `def stripe(y, colour):\n    for x in range(1, 11):\n        paint(x, y, colour)\n\nstripe(1, "red")\nstripe(2, "orange")\nstripe(3, "yellow")\nstripe(4, "green")\nstripe(5, "cyan")\nstripe(6, "blue")\nstripe(7, "purple")\n`],
+  ["Smiley", `# a face on the back half
+fill("gold")
+paint(2, 2, "black")
+paint(5, 2, "black")
+paint(1, 4, "black")
+paint(6, 4, "black")
+for x in range(2, 6):
+    paint(x, 5, "black")
+`],
+];
+const shop = {shown: BLANK_ART, art: BLANK_ART, anim: null, timer: 0, brush: "red", hover: null, errorLine: 0, dabbed: 0};
+function openPaintShop() {
+  $("garage").hidden = true; $("paintShop").hidden = false;
+  if (!$("shopCode").value) $("shopCode").value = state.paint_code || SHOP_START;
+  $("shopExamples").innerHTML = `<span>Try:</span>` + SHOP_EXAMPLES.map(([name], k) => `<button data-k="${k}">${name}</button>`).join("");
+  renderSwatches();
+  shopHighlight();
+  shopRun(true);
+  $("shopCode").focus();
+  requestAnimationFrame(shopLoop);
+}
+function closePaintShop(back) {
+  $("paintShop").hidden = true;
+  clearTimeout(shop.timer);
+  if (back) openGarage();
+}
+function renderSwatches() {
+  $("shopColors").innerHTML = Object.entries(SHOP_COLORS).map(([name, k]) =>
+    `<button data-c="${name}" class="${name === shop.brush ? "on" : ""}" title="Type &quot;${name}&quot;, and click squares in ${name}"><i style="background:${ART[k]}"></i>${name}</button>`).join("");
+}
+function shopSay(text, kind = "") {
+  $("shopMsg").className = "shop-msg" + (kind ? " " + kind : "");
+  $("shopMsg").innerHTML = text;
+}
+function painted(art) { return [...art].filter(c => c !== ".").length; }
+async function shopRun(animate) {
+  clearTimeout(shop.timer);
+  const code = $("shopCode").value;
+  let out;
+  try { out = await post("/planet/paint", {id: me, code}); }
+  catch (_) { shopSay("No answer from mission control. Try again.", "err"); return; }
+  if (out.error === "join") { localStorage.removeItem("mazeId"); location.reload(); return; }
+  if (code !== $("shopCode").value) return;   // typed again since: that run is coming
+  state.paint_code = code;
+  shop.art = out.art; shop.errorLine = out.error ? out.line || 0 : 0;
+  shop.anim = animate && !CALM && out.steps.length ? {steps: out.steps, start: performance.now()} : null;
+  shop.dabbed = 0;
+  // A typo mid-typing keeps the last painting up; Paint ▶ shows how far it got.
+  if (!shop.anim && (animate || !out.error)) shop.shown = out.art;
+  const n = painted(out.art);
+  $("shopWear").disabled = !!out.error || !n;
+  if (out.error) { shopSay(esc(out.error), "err"); if (animate) SFX.play("error"); }
+  else if (!n) shopSay(`Nothing painted yet. Click a square, or write a line like <code>paint(3, 2, "red")</code>.`);
+  else shopSay(`🎨 ${n} of 70 squares painted${out.prints.length ? ` · it printed <code>${esc(out.prints[out.prints.length - 1])}</code>` : ""}. Like it? Press <b>✓ Wear it</b>.`);
+  shopHighlight();
+}
+async function shopWear() {
+  const code = $("shopCode").value;
+  let out;
+  try { out = await post("/planet/paint", {id: me, code, wear: true}); } catch (_) { return; }
+  if (out.error) { shopSay(esc(out.error), "err"); return; }
+  look = out.look; state.look = look;
+  const mine = state.garage.find(i => i.key === "mine");
+  if (mine) mine.open = true;
+  SFX.wake(); SFX.play("gift");
+  if (out.badge) {
+    const b = state.badges.find(x => x.key === "artist");
+    if (b) b.earned = true;
+    toast(out.badge.icon, `Badge: ${out.badge.name}`, out.badge.how, true, "epic");
+  }
+  toast("🎨", "Your own paint is on!", "It's on the map and on the class screen. Change the code and wear it again any time.");
+  shopSay("✓ You're wearing it. Change the code and press <b>✓ Wear it</b> again to repaint.", "ok");
+  render();
+}
+// Colour behind the code: a colour's name shows in that colour.
+function shopHighlight() {
+  const code = $("shopCode").value;
+  const html = code.split("\n").map(line => line.replace(/(#.*)|("[^"]*"?|'[^']*'?)|\b(\d+)\b|([A-Za-z_]\w*)|([&<>])/g, (all, note, text, num, word, ch) => {
+    if (ch) return {"&": "&amp;", "<": "&lt;", ">": "&gt;"}[ch];
+    if (note) return `<i class="t-note">${esc(note)}</i>`;
+    if (text) {
+      const k = SHOP_COLORS[text.replace(/["']/g, "").trim().toLowerCase()];
+      return k ? `<i style="color:${k === "n" || k === "v" ? "#8a8fb0" : ART[k]};font-weight:700">${esc(text)}</i>` : `<i class="t-text">${esc(text)}</i>`;
+    }
+    if (num) return `<i class="t-num">${num}</i>`;
+    const cls = word === "paint" || word === "fill" ? "t-cmd" : KEYWORDS.has(word) ? "t-key" : "";
+    return cls ? `<i class="${cls}">${word}</i>` : word;
+  })).join("\n");
+  const bar = shop.errorLine ? `<span class="err-line" style="top: calc(12px + ${shop.errorLine - 1} * 1.6em)"></span>` : "";
+  $("shopPaint").innerHTML = bar + html + "\n ";
+  $("shopPaint").scrollTop = $("shopCode").scrollTop; $("shopPaint").scrollLeft = $("shopCode").scrollLeft;
+}
+// Typing: Tab indents, Enter keeps the indent (and adds one after a colon),
+// Ctrl+Enter paints. The rover repaints by itself a moment after typing stops.
+function shopKey(e) {
+  const t = $("shopCode");
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); shopRun(true); return; }
+  if (e.key === "Tab" && !e.shiftKey) { e.preventDefault(); document.execCommand("insertText", false, "    "); return; }
+  if (e.key === "Enter") {
+    const before = t.value.slice(0, t.selectionStart), line = before.slice(before.lastIndexOf("\n") + 1);
+    const indent = line.match(/^ */)[0] + (/:\s*$/.test(line) ? "    " : "");
+    e.preventDefault(); document.execCommand("insertText", false, "\n" + indent);
+  }
+}
+function shopTyped() {
+  shopHighlight();
+  clearTimeout(shop.timer);
+  shop.timer = setTimeout(() => shopRun(false), 500);
+}
+function insertCode(text, newLine) {
+  const t = $("shopCode");
+  t.focus();
+  if (newLine) {
+    t.setSelectionRange(t.value.length, t.value.length);
+    if (t.value && !t.value.endsWith("\n")) text = "\n" + text;
+  }
+  document.execCommand("insertText", false, text);
+}
+// The easel: the body as a 10 by 7 grid with its numbers, the camera's place
+// marked, and the square under the pointer named.
+function easelBox() {
+  const cv = $("shopGrid"), w = cv.clientWidth, left = 30, top = 26, cell = (w - left - 8) / ART_COLS;
+  return {cv, w, h: top + cell * ART_ROWS + 28, left, top, cell};
+}
+function drawShop(now) {
+  const {cv, w, h, left, top, cell} = easelBox(), dpr = window.devicePixelRatio || 1;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); cv.style.height = h + "px"; }
+  const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+  ctx.font = `600 13px ${getComputedStyle(document.body).getPropertyValue("--mono")}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (let i = 0; i < ART_COLS; i++) { ctx.fillStyle = shop.hover && shop.hover.x === i + 1 ? "#f2eadb" : "#a89ec8"; ctx.fillText(i + 1, left + (i + .5) * cell, top - 13); }
+  for (let j = 0; j < ART_ROWS; j++) { ctx.fillStyle = shop.hover && shop.hover.y === j + 1 ? "#f2eadb" : "#a89ec8"; ctx.fillText(j + 1, left - 15, top + (j + .5) * cell); }
+  ctx.save(); roundRect(ctx, left, top, cell * ART_COLS, cell * ART_ROWS, cell * .35); ctx.clip();
+  for (let j = 0; j < ART_ROWS; j++) for (let i = 0; i < ART_COLS; i++) {
+    const c = ART[shop.shown[j * ART_COLS + i]];
+    ctx.fillStyle = c || ((i + j) % 2 ? "#ece3d1" : "#f5eee0");
+    ctx.fillRect(left + i * cell, top + j * cell, cell + .5, cell + .5);
+  }
+  ctx.strokeStyle = "rgba(30,20,60,.18)"; ctx.lineWidth = 1; ctx.beginPath();
+  for (let i = 1; i < ART_COLS; i++) { ctx.moveTo(left + i * cell, top); ctx.lineTo(left + i * cell, top + ART_ROWS * cell); }
+  for (let j = 1; j < ART_ROWS; j++) { ctx.moveTo(left, top + j * cell); ctx.lineTo(left + ART_COLS * cell, top + j * cell); }
+  ctx.stroke(); ctx.restore();
+  ctx.strokeStyle = "#6e6290"; ctx.lineWidth = 3; roundRect(ctx, left, top, cell * ART_COLS, cell * ART_ROWS, cell * .35); ctx.stroke();
+  // Where the camera sits on top (planet_render's drawRover): it covers these squares.
+  ctx.setLineDash([5, 5]); ctx.strokeStyle = "rgba(35,29,63,.55)"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(left + 7.58 * cell, top + 3.5 * cell, 1.6 * cell, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = "rgba(35,29,63,.6)"; ctx.font = `700 11px ${getComputedStyle(document.body).getPropertyValue("--ui")}`;
+  ctx.fillText("camera", left + 7.58 * cell, top + 3.5 * cell);
+  if (shop.cursor != null && shop.anim) {
+    const i = shop.cursor % ART_COLS, j = Math.floor(shop.cursor / ART_COLS);
+    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3; ctx.strokeRect(left + i * cell + 1.5, top + j * cell + 1.5, cell - 3, cell - 3);
+  }
+  if (shop.hover) {
+    ctx.strokeStyle = ART[SHOP_COLORS[shop.brush]]; ctx.lineWidth = 3;
+    ctx.strokeRect(left + (shop.hover.x - 1) * cell + 1.5, top + (shop.hover.y - 1) * cell + 1.5, cell - 3, cell - 3);
+  }
+  ctx.fillStyle = "#a89ec8"; ctx.font = `600 12px ${getComputedStyle(document.body).getPropertyValue("--ui")}`;
+  ctx.textAlign = "left"; ctx.fillText("◀ back", left, top + ART_ROWS * cell + 15);
+  ctx.textAlign = "right"; ctx.fillText("front ▶", left + ART_COLS * cell, top + ART_ROWS * cell + 15);
+  ctx.textAlign = "center"; ctx.fillStyle = "#f2eadb";
+  if (shop.hover) ctx.fillText(`paint(${shop.hover.x}, ${shop.hover.y}, "${shop.brush}")`, left + ART_COLS * cell / 2, top + ART_ROWS * cell + 15);
+  // The rover wearing it, as it drives on the map.
+  const rv = $("shopRover"), rw = 170, rh = 130;
+  if (rv.width !== rw * dpr) { rv.width = rw * dpr; rv.height = rh * dpr; }
+  const g = rv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const grad = g.createRadialGradient(rw / 2, rh / 2, 6, rw / 2, rh / 2, rw * .6);
+  grad.addColorStop(0, "#3a3168"); grad.addColorStop(1, "#16122c");
+  g.fillStyle = grad; g.fillRect(0, 0, rw, rh);
+  drawRover(g, rw / 2 - 2, rh / 2 + 2, 118, 0, 1, {...look, paint: "mine", art: shop.shown}, now);
+}
+function shopLoop(now) {
+  if ($("paintShop").hidden) return;
+  const a = shop.anim;
+  if (a) {
+    const per = Math.max(10, Math.min(70, 1600 / a.steps.length)), k = Math.floor((now - a.start) / per);
+    if (k >= a.steps.length) { shop.anim = null; shop.shown = shop.art; }
+    else {
+      const art = BLANK_ART.split("");
+      for (let i = 0; i <= k; i++) art[a.steps[i][0]] = a.steps[i][1];
+      shop.shown = art.join(""); shop.cursor = a.steps[k][0];
+      if (k >= shop.dabbed && now - (shop.lastDab || 0) > 55) { SFX.play("dab", k); shop.lastDab = now; }
+      shop.dabbed = k + 1;
+    }
+  }
+  drawShop(now);
+  requestAnimationFrame(shopLoop);
+}
+function easelSquare(e) {
+  const {left, top, cell} = easelBox(), r = $("shopGrid").getBoundingClientRect();
+  const x = Math.floor((e.clientX - r.left - left) / cell) + 1, y = Math.floor((e.clientY - r.top - top) / cell) + 1;
+  return x >= 1 && x <= ART_COLS && y >= 1 && y <= ART_ROWS ? {x, y} : null;
+}
+$("shopGrid").addEventListener("pointermove", e => { shop.hover = easelSquare(e); });
+$("shopGrid").addEventListener("pointerleave", () => { shop.hover = null; });
+$("shopGrid").addEventListener("click", e => {
+  const sq = easelSquare(e);
+  if (!sq) return;
+  SFX.wake();
+  insertCode(`paint(${sq.x}, ${sq.y}, "${shop.brush}")\n`, true);
+  shopHighlight(); shopRun(false);
+});
+$("shopColors").addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  shop.brush = b.dataset.c; renderSwatches();
+  insertCode(`"${b.dataset.c}"`);
+  shopTyped();
+});
+$("shopExamples").addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  const t = $("shopCode");
+  t.focus(); t.select(); document.execCommand("insertText", false, SHOP_EXAMPLES[b.dataset.k][1]);
+  shopHighlight(); shopRun(true);
+});
+$("shopCode").addEventListener("keydown", shopKey);
+$("shopCode").addEventListener("input", shopTyped);
+$("shopCode").addEventListener("scroll", () => { $("shopPaint").scrollTop = $("shopCode").scrollTop; $("shopPaint").scrollLeft = $("shopCode").scrollLeft; });
+$("shopRun").addEventListener("click", () => { SFX.wake(); shopRun(true); });
+$("shopWear").addEventListener("click", shopWear);
+$("shopBack").addEventListener("click", () => closePaintShop(true));
+$("paintShop").addEventListener("click", e => { if (e.target === $("paintShop")) closePaintShop(false); });
+$("shopTip").innerHTML = `<b>Click a square</b> to add a <code>paint()</code> line for it, or write your own with loops. Colours: press one below the code.`;
+
 // ---- Scouting: drive by hand to feel the planet -----------------------------------------
 function toggleScout() {
   if (scout) return stopScout();
@@ -3019,7 +3395,7 @@ function toggleScout() {
   hideBanner(); hideCelebrate();
   $("planets").hidden = true; $("marks").innerHTML = "";
   resetScene(); setPlaying(false); render();
-  $("feed").innerHTML = '<div class="empty">Scouting: drive north, south, east and west with the arrow keys or the buttons on the map.</div>';
+  $("feed").innerHTML = '<div class="empty">Transmit to see the rover\'s telemetry.</div>';
   scoutLeft(SCOUT_MAX); $("scoutCode").disabled = true;
   $("scoutHelp").classList.toggle("kids", kidsMode());
   $("scoutKid").innerHTML = scoutCan("jump") ? "🕹 Drive with the arrows <b>↑ ↓ ← →</b>. To jump, press <b>🦘</b> and then an arrow. Made a mistake? Press R."
@@ -3980,9 +4356,14 @@ $("garageNext").addEventListener("click", e => {
   const {slot, key} = $("garageNext").dataset;
   garageTab = slot; garagePeek = {slot, key}; renderGarage();
 });
+$("garagePick").addEventListener("pointerover", e => peek(e.target.closest(".card")));
+$("garagePick").addEventListener("pointerleave", () => peek(null));
 $("garage").addEventListener("click", e => {
+  const pick = e.target.closest("[data-pick]");
+  if (pick) return pickReward(pick.dataset.pick);
   const tab = e.target.closest(".tab"), card = e.target.closest(".card");
   if (tab) { garageTab = tab.dataset.tab; garagePeek = null; renderGarage(); }
+  if (e.target.closest(".shop-door") || card && card.dataset.key === "mine" && card.classList.contains("locked")) return openPaintShop();
   // A locked horn still plays, so it's something to look forward to.
   if (card && card.classList.contains("locked")) { if (card.dataset.slot === "horn") { SFX.wake(); SFX.play(card.dataset.key); } }
   else if (card) chooseLook(card.dataset.slot, card.dataset.key);
@@ -4055,6 +4436,7 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
     closePops();
     if (!$("garage").hidden) $("garage").hidden = true;
+    if (!$("paintShop").hidden) closePaintShop(true);
     if (!$("levels").hidden) closeLevels();
     else if (!$("intro").hidden) closeIntro();
     else if (!$("celebrate").hidden) hideCelebrate();
