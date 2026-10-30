@@ -44,7 +44,7 @@ function drawSpook(ctx, x, y, z, now, alpha = .88, face = "o") {
 }
 // A house, drawn upright on its square: lit windows, a pumpkin on the step,
 // and once it's been visited, its door open and light spilling out.
-function drawHouse(ctx, r, c, cell, now, visited) {
+function drawHouse(ctx, r, c, cell, now, visited, rattle) {
   const x = c * cell, y = r * cell, s = cell, k = CALM ? 1 : .85 + .15 * Math.sin(now / 170 + c * 3);
   ctx.fillStyle = "rgba(10,6,24,.4)"; ctx.fillRect(x + s * .1, y + s * .9, s * .84, s * .08);
   ctx.fillStyle = "#6b4a6e"; ctx.fillRect(x + s * .14, y + s * .44, s * .72, s * .5);
@@ -62,9 +62,11 @@ function drawHouse(ctx, r, c, cell, now, visited) {
     ctx.fillStyle = "#8cf2c6"; ctx.font = `800 ${Math.round(s * .26)}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillText("✓", x + s * .5, y + s * .32);
   } else {
-    ctx.fillStyle = "#5a3418"; ctx.fillRect(x + s * .41, y + s * .7, s * .18, s * .24);
-    ctx.fillStyle = "#ffd36b"; ctx.beginPath(); ctx.arc(x + s * .55, y + s * .83, s * .022, 0, 7); ctx.fill();
+    const jiggle = rattle ? Math.sin(rattle * 60) * s * .02 : 0;
+    ctx.fillStyle = "#5a3418"; ctx.fillRect(x + s * .41 + jiggle, y + s * .7, s * .18, s * .24);
+    ctx.fillStyle = "#ffd36b"; ctx.beginPath(); ctx.arc(x + s * .55 + jiggle, y + s * .83, s * .022, 0, 7); ctx.fill();
   }
+  if (rattle) knockLines(ctx, x + s * .5, y + s * .82, s, rattle);
   // A jack-o'-lantern on the step, grinning.
   const px = x + s * .8, py = y + s * .86;
   ctx.fillStyle = "#ff8a1f"; ctx.beginPath(); ctx.ellipse(px, py, s * .1, s * .08, 0, 0, 7); ctx.fill();
@@ -73,10 +75,10 @@ function drawHouse(ctx, r, c, cell, now, visited) {
 }
 // A haunted house: crooked and dark, boarded up, a green light in a broken
 // window with eyes in it, and a cobweb.
-function drawHaunted(ctx, r, c, cell, now) {
+function drawHaunted(ctx, r, c, cell, now, rattle) {
   const x = c * cell, y = r * cell, s = cell, k = CALM ? .7 : .55 + .45 * Math.abs(Math.sin(now / 900 + c));
   ctx.fillStyle = "rgba(10,6,24,.45)"; ctx.fillRect(x + s * .1, y + s * .9, s * .84, s * .08);
-  ctx.save(); ctx.translate(x + s * .5, y + s * .94); ctx.rotate(-.06); ctx.translate(-x - s * .5, -y - s * .94);
+  ctx.save(); ctx.translate(x + s * .5, y + s * .94); ctx.rotate(-.06 + (rattle ? Math.sin(rattle * 50) * .06 : 0)); ctx.translate(-x - s * .5, -y - s * .94);
   ctx.fillStyle = "#33293f"; ctx.fillRect(x + s * .14, y + s * .42, s * .72, s * .52);
   ctx.fillStyle = "#16101e"; ctx.beginPath(); ctx.moveTo(x + s * .02, y + s * .46); ctx.lineTo(x + s * .44, y + s * .06); ctx.lineTo(x + s * .56, y + s * .16); ctx.lineTo(x + s * .98, y + s * .48); ctx.fill();
   ctx.shadowColor = "#9cff6b"; ctx.shadowBlur = s * .3 * k;
@@ -89,6 +91,7 @@ function drawHaunted(ctx, r, c, cell, now) {
   ctx.strokeStyle = "#7a5a3a"; ctx.lineWidth = Math.max(1, s * .04);
   ctx.beginPath(); ctx.moveTo(x + s * .56, y + s * .72); ctx.lineTo(x + s * .8, y + s * .84); ctx.moveTo(x + s * .56, y + s * .88); ctx.lineTo(x + s * .8, y + s * .76); ctx.stroke();
   ctx.restore();
+  if (rattle) knockLines(ctx, x + s * .68, y + s * .82, s, rattle);
   ctx.strokeStyle = "rgba(230,225,255,.55)"; ctx.lineWidth = Math.max(.7, s * .012);
   const wx = x + s * .86, wy = y + s * .44;
   ctx.beginPath();
@@ -183,14 +186,30 @@ function drawMansion(ctx, cell, now) {
   }
   ctx.restore();
 }
+// Knock knock: little arcs either side of a door, for the moment it's knocked
+// on (u counts from 0 to 1 over that moment).
+function knockLines(ctx, x, y, s, u) {
+  ctx.strokeStyle = `rgba(255,243,224,${1 - u})`; ctx.lineWidth = Math.max(1, s * .03); ctx.lineCap = "round";
+  for (const side of [-1, 1]) for (const k of [0, 1]) {
+    const rr = s * (.16 + k * .08 + u * .06);
+    ctx.beginPath(); ctx.arc(x, y, rr, side < 0 ? Math.PI * .8 : -Math.PI * .2, side < 0 ? Math.PI * 1.2 : Math.PI * .2); ctx.stroke();
+  }
+}
+// How far through being knocked on a house is (0 to 1), or 0 when it isn't.
+function rattleOf(r, c, now) {
+  const at = scene.knocks && scene.knocks[r + "," + c];
+  const u = at == null || CALM ? 1 : (now - at) / 450;
+  return u < 1 ? Math.max(u, .001) : 0;
+}
 // The houses visited by frame i.
 function knockedBy(i) {
   return new Set(scene.frames.slice(0, i + 1).filter(f => f.kn && f.kn[2] >= 0).map(f => f.kn[0] + "," + f.kn[1]));
 }
 // Everything Halloween on one square of the map, under the rover.
 function drawSpookySquare(ctx, ch, r, c, cell, now, knocked, picked) {
-  if (ch === "h") drawHouse(ctx, r, c, cell, now, knocked.has(r + "," + c));
-  else if (ch === "z") drawHaunted(ctx, r, c, cell, now);
+  // A door being knocked on rattles shut first, then opens.
+  if (ch === "h") { const u = rattleOf(r, c, now); drawHouse(ctx, r, c, cell, now, knocked.has(r + "," + c) && !u, u); }
+  else if (ch === "z") drawHaunted(ctx, r, c, cell, now, rattleOf(r, c, now));
   else if (ch === "m") drawMystery(ctx, r, c, cell, now);
   else if (ch === "c" && !picked.has(r + "," + c)) drawCandy(ctx, r, c, cell, now);
   else if (ch === "g") drawGrave(ctx, r, c, cell, now);
@@ -260,6 +279,7 @@ function spookyStep(f, p) {
   if (f.kn) {
     const [r, c, n] = f.kn;
     SFX.play("knock");
+    (scene.knocks = scene.knocks || {})[r + "," + c] = performance.now();
     if (n >= 0) {
       setTimeout(() => SFX.play("treat"), 260);
       pop({r, c}, `+${n} 🍬`, "#ffd36b"); burst(r, c, "gift", 14);
