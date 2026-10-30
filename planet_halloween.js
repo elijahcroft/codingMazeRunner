@@ -258,12 +258,19 @@ function spookyStep(f, p) {
 // ---- The event: the invitation, the candy chip and the candy road ------------------
 
 function halloweenSeenKey() { return `planetHalloweenSeen:${me}`; }
+// While a run's replay plays, the chip keeps the candy from before it, so the
+// bag fills when the rover gets there (like the star counter).
+let holdCandy = false;
+function releaseCandy() { if (holdCandy) { holdCandy = false; renderCandyChip(); } }
 // The chip at the top: the candy in the bag. Press it for the candy road.
 function renderCandyChip() {
   const h = state && state.halloween, chip = $("candyButton");
   chip.hidden = !h;
-  if (!h) return;
+  if (!h || holdCandy) return;
   const next = h.road.find(i => !i.open);
+  if ($("candyCount").textContent !== String(h.candy) && $("candyCount").textContent !== "0") {
+    chip.classList.remove("bump"); void chip.offsetWidth; chip.classList.add("bump");
+  }
   $("candyCount").textContent = h.candy;
   chip.title = `Halloween night: ${h.candy} candy in your bag` + (next ? `. ${next.candy - h.candy} more unlocks ${next.name}.` : ". Every candy prize is yours!");
 }
@@ -331,8 +338,9 @@ async function pingHalloween() {
     if (recall(halloweenSeenKey()) !== "1") welcomeHalloween();
     else toast("🎃", "Halloween night is open!", "Press the 🎃 at the top for the candy road.");
   } else if (site && spooky(site.zoneKey)) {
+    closeInvite(); closeCandyRoad();
+    await openSite(fresh.current);
     toast("🌙", "Halloween night is over", "Your candy prizes are yours to keep. Back to the planet!");
-    openSite(fresh.current);
   }
 }
 // After a Halloween run: the candy news for the celebration card.

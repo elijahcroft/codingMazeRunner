@@ -4759,8 +4759,9 @@ TRICK_STREET = {
         site("h5", "Ghost Crossing",
              "Ghosts float across the road 👻. They drift right through a rover "
              "that waits, but drive into one and BOO! Get to the house at the end "
-             "and knock. look(\"east\") says \"ghost\" when one is in the way:\n\n"
-             'while look("east") == "ghost":\n    wait()',
+             "and knock. look(\"east\") says \"ghost\" when one is in the way, so "
+             "before every square east, wait while there's a ghost there:\n\n"
+             'while look("east") == "ghost":\n    wait()\neast()',
              # Ghost timings where driving straight through always meets one,
              # and the waits that fit one street fit no other.
              [{"map": lane(13, {13: "h"}), "ghosts": crossing((4, 7, 10), starts, top=1, bottom=3)}

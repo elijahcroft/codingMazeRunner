@@ -3631,6 +3631,7 @@ def planet_record(p, key, code, results):
     del tries[:-TRIES_KEPT]
     before_open = {i["key"] for i in garage_for(entry) if i["open"]}
     before_stars = star_count(entry)
+    before_spooky = halloween_stars(entry)
     before_class = class_stars()
     zone_done = lambda: all(x["key"] in entry["solved"] for x in zone["sites"])
     zone_before = zone_done()
@@ -3765,7 +3766,9 @@ def planet_record(p, key, code, results):
     # Today's missions this run moved on.
     keys, today = missions_today(entry)
     before_missions = {k for k in keys if today["progress"].get(k, 0) >= MISSIONS[k][2]}
-    gains = {"stars": new_stars, "first": int(bool(first_try and reached_any)),
+    # Halloween stars stay out of ranks, but they count for today's missions.
+    gains = {"stars": new_stars + halloween_stars(entry) - before_spooky,
+             "first": int(bool(first_try and reached_any)),
              "triple": int(all(run_stars))}
     if reached_any:
         if key not in today["sites"]:
@@ -3987,7 +3990,7 @@ def planet_report():
     entries = [(q, planet_entry(q)) for q in players.values() if q.get("planet")]
     frontier = {q["id"]: planet.SITE_ORDER[planet_frontier(q)] for q, e in entries}
     zones, sites = [], []
-    for zone in planet.ZONES:
+    for zone in planet.ZONES + planet.HALLOWEEN_ZONES:
         zones.append({"name": zone["name"], "hints": sum(e["hints"].get(zone["key"], 0)
                                                          for q, e in entries)})
         for s in zone["sites"]:
