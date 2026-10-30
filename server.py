@@ -2954,6 +2954,9 @@ GARAGE = [
     # A sidekick that floats along behind the rover.
     {"slot": "pet", "key": "nopet", "name": "Just me", "stars": 0},
     {"slot": "pet", "key": "verity", "name": "Verity", "stars": 13},
+    {"slot": "pet", "key": "lovity", "name": "Lovity", "stars": 17},
+    {"slot": "pet", "key": "falsity", "name": "Falsity", "stars": 23},
+    {"slot": "pet", "key": "cruelty", "name": "Cruelty", "stars": 30},
     {"slot": "pet", "key": "drone", "name": "Drone", "stars": 7},
     {"slot": "pet", "key": "duck", "name": "Rubber duck", "trophies": 2},
     {"slot": "pet", "key": "spacecat", "name": "Space cat", "stars": 26},

@@ -506,20 +506,16 @@ const PETS = {
     }
   },
   verity(ctx, s, t) {   // Verity, a smiley face that blinks and now and then winks
-    ctx.rotate(Math.sin(t / 600) * .1);
-    const grad = ctx.createRadialGradient(-.12 * s, -.14 * s, .05 * s, 0, 0, .4 * s);
-    grad.addColorStop(0, "#fff38a"); grad.addColorStop(1, "#ffc928");
-    ctx.fillStyle = grad; ctx.strokeStyle = "#d99a12"; ctx.lineWidth = s * .04;
-    ctx.beginPath(); ctx.arc(0, 0, .38 * s, 0, 7); ctx.fill(); ctx.stroke();
-    const blink = t % 3200 > 3060, wink = !blink && t % 9600 > 9000;   // eyes open at t = 0 (calm mode)
-    ctx.fillStyle = ctx.strokeStyle = "#3a2410"; ctx.lineWidth = s * .05; ctx.lineCap = "round";
-    for (const x of [-.13, .13]) {
-      if (blink || (wink && x > 0)) { ctx.beginPath(); ctx.moveTo((x - .06) * s, -.1 * s); ctx.lineTo((x + .06) * s, -.1 * s); ctx.stroke(); }
-      else { ctx.beginPath(); ctx.ellipse(x * s, -.1 * s, .045 * s, .08 * s, 0, 0, 7); ctx.fill(); }
-    }
-    ctx.beginPath(); ctx.arc(0, .02 * s, .22 * s, .15 * Math.PI, .85 * Math.PI); ctx.stroke();
-    ctx.fillStyle = "rgba(255,120,120,.4)";
-    for (const x of [-.25, .25]) { ctx.beginPath(); ctx.ellipse(x * s, .08 * s, .06 * s, .035 * s, 0, 0, 7); ctx.fill(); }
+    smiley(ctx, s, t, ["#fff38a", "#ffc928", "#d99a12", "#3a2410"]);
+  },
+  falsity(ctx, s, t) {   // Falsity, Verity's blue twin: eyes sliding sideways, a sly smirk
+    smiley(ctx, s, t, ["#bfe3ff", "#4a9cf0", "#2462b8", "#0f2340"], "sly");
+  },
+  lovity(ctx, s, t) {   // Lovity, pink, with heart eyes and a heart floating up
+    smiley(ctx, s, t, ["#ffd6ec", "#ff7ec0", "#d94b95", "#5a1638"], "love");
+  },
+  cruelty(ctx, s, t) {   // Cruelty, red and cross: frowning brows, a scowl, steam puffing
+    smiley(ctx, s, t, ["#ffb0a0", "#e8392b", "#a3180f", "#3a0805"], "cross");
   },
   minicrew(ctx, s, t) {   // a little crewmate in a spacesuit, waddling along
     const step = Math.sin(t / 140);
@@ -538,6 +534,50 @@ const PETS = {
   },
 };
 
+// Verity and her three twins: one smiley face, coloured [light, main, rim, ink].
+function smiley(ctx, s, t, [light, main, rim, ink], mood) {
+  ctx.rotate(Math.sin(t / 600) * .1);
+  const grad = ctx.createRadialGradient(-.12 * s, -.14 * s, .05 * s, 0, 0, .4 * s);
+  grad.addColorStop(0, light); grad.addColorStop(1, main);
+  ctx.fillStyle = grad; ctx.strokeStyle = rim; ctx.lineWidth = s * .04;
+  ctx.beginPath(); ctx.arc(0, 0, .38 * s, 0, 7); ctx.fill(); ctx.stroke();
+  const blink = t % 3200 > 3060, wink = !blink && t % 9600 > 9000;   // eyes open at t = 0 (calm mode)
+  ctx.fillStyle = ctx.strokeStyle = ink; ctx.lineWidth = s * .05; ctx.lineCap = "round";
+  const look = mood === "sly" ? Math.sin(t / 900) * .04 : 0;   // Falsity's eyes slide side to side
+  for (const x of [-.13, .13]) {
+    if (blink || (wink && x > 0)) { ctx.beginPath(); ctx.moveTo((x - .06) * s, -.1 * s); ctx.lineTo((x + .06) * s, -.1 * s); ctx.stroke(); }
+    else if (mood === "love") petHeart(ctx, x * s, -.1 * s, .075 * s * (1 + .12 * Math.sin(t / 200)), "#e0184f");
+    else { ctx.beginPath(); ctx.ellipse((x + look) * s, -.1 * s, .045 * s, .08 * s, 0, 0, 7); ctx.fill(); }
+  }
+  ctx.beginPath();
+  if (mood === "sly") {   // one eyebrow up, and a smile up one side only
+    ctx.moveTo(.06 * s, -.26 * s); ctx.quadraticCurveTo(.13 * s, -.31 * s, .2 * s, -.25 * s);
+    ctx.moveTo(-.14 * s, .13 * s); ctx.quadraticCurveTo(.04 * s, .17 * s, .19 * s, .05 * s);
+  } else if (mood === "cross") {   // brows slanting down to the middle, a frown
+    ctx.moveTo(-.22 * s, -.25 * s); ctx.lineTo(-.06 * s, -.18 * s);
+    ctx.moveTo(.22 * s, -.25 * s); ctx.lineTo(.06 * s, -.18 * s);
+    ctx.moveTo(-.15 * s, .19 * s); ctx.quadraticCurveTo(0, .06 * s, .15 * s, .19 * s);
+  } else ctx.arc(0, .02 * s, .22 * s, .15 * Math.PI, .85 * Math.PI);
+  ctx.stroke();
+  ctx.fillStyle = mood === "cross" ? "rgba(120,0,0,.3)" : "rgba(255,120,120,.4)";
+  for (const x of [-.25, .25]) { ctx.beginPath(); ctx.ellipse(x * s, .08 * s, .06 * s, .035 * s, 0, 0, 7); ctx.fill(); }
+  if (mood === "love") {   // a little heart drifting up and fading
+    const k = (t % 2400) / 2400;
+    ctx.globalAlpha = 1 - k; petHeart(ctx, (.3 + .05 * Math.sin(t / 300)) * s, (-.35 - .3 * k) * s, .07 * s, "#ff4f9a"); ctx.globalAlpha = 1;
+  }
+  if (mood === "cross") {   // steam puffing out of both sides
+    const k = (t % 1400) / 1400;
+    ctx.fillStyle = `rgba(235,235,235,${.7 * (1 - k)})`;
+    for (const d of [-1, 1]) { ctx.beginPath(); ctx.arc(d * (.4 + .12 * k) * s, (-.3 - .1 * k) * s, (.04 + .05 * k) * s, 0, 7); ctx.fill(); }
+  }
+}
+function petHeart(ctx, x, y, r, colour) {
+  ctx.fillStyle = colour; ctx.beginPath();
+  ctx.moveTo(x, y + r * .9);
+  ctx.bezierCurveTo(x - r * 1.4, y, x - r * .7, y - r * 1.1, x, y - r * .35);
+  ctx.bezierCurveTo(x + r * .7, y - r * 1.1, x + r * 1.4, y, x, y + r * .9);
+  ctx.fill();
+}
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
