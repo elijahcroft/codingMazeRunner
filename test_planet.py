@@ -2080,5 +2080,304 @@ class ClassroomTests(unittest.TestCase):
         self.assertEqual(self.get(f"/planet/state?id={pid}")["current"], "1b")
 
 
+def spooky(code, variant):
+    """Run code on a Halloween night map: knock() and candy() included."""
+    return planet.drive(code, variant, {"spooky"}, 0)
+
+
+def halloween_sites():
+    for zone in planet.HALLOWEEN_ZONES:
+        for s in zone["sites"]:
+            yield zone, s
+
+
+class HalloweenTests(unittest.TestCase):
+    """Halloween night: knock() at houses for candy, haunted houses and ghosts
+    say BOO, and each site's claim holds on every street."""
+
+    STREET = {"map": ["#########",
+                      "###h#z###",
+                      "#S......#",
+                      "#########"]}
+
+    def test_every_site_has_a_reference_that_clears_every_street(self):
+        for zone, s in halloween_sites():
+            seeds = range(30) if s["key"] in planet.NIGHTLY else [None]
+            for vi, v in enumerate(s["variants"]):
+                for seed in seeds:
+                    vv = v if seed is None else dict(v, seed=seed)
+                    out = planet.drive(s["reference"], vv, zone["rules"], zone.get("zi", 0))
+                    self.assertTrue(out["reached"], (s["key"], vi, seed, out["log"][-2:], out["error"]))
+            self.assertLessEqual(planet.code_lines(s["reference"]), s["compact"], s["key"])
+            self.assertEqual(len(zone["hints"]), 3, zone["key"])
+
+    def test_a_knock_on_a_lit_door_fills_the_bag_once(self):
+        out = spooky('east(2)\nknock("north")\nprint(candy())\nknock("north")\nprint(candy())\n'
+                     'east(2)\nknock("south")', dict(self.STREET, map=self.STREET["map"][:1] +
+                                                      ["###h#h###"] + self.STREET["map"][2:]))
+        given = planet.treats(1, 3)
+        self.assertIn(2, range(2, 6))
+        self.assertEqual([p["text"] for p in out["prints"]], [str(given), str(given)])
+        self.assertTrue(any("already got candy here" in line for line in out["log"]))
+        self.assertTrue(any("no door there" in line for line in out["log"]))
+        self.assertEqual(out["houses"], [1, 2])
+        self.assertEqual(out["end"], "stopped")
+        self.assertIn("1 lit house still to visit", out["explain"]["what"])
+        self.assertIn("knock() found no door 1 time", out["explain"]["what"])
+
+    def test_knocking_on_every_lit_house_is_the_mission(self):
+        out = spooky('east(2)\nknock("north")', self.STREET)
+        self.assertTrue(out["reached"])
+        self.assertEqual(out["mission"], "treats")
+        self.assertEqual(out["candy"], planet.treats(1, 3))
+        self.assertEqual(out["frames"][-2]["kn"], [1, 3, planet.treats(1, 3)])
+
+    def test_a_haunted_house_says_boo(self):
+        out = spooky('east(4)\nknock("north")', self.STREET)
+        self.assertEqual(out["end"], "spooked")
+        self.assertEqual(out["spooked"], "haunted")
+        self.assertIn('look("north") says "haunted"', out["explain"]["next"])
+        self.assertEqual(spooky('east(4)\nprint(look("north"))\nwest(2)\nprint(look("north"))',
+                                self.STREET)["prints"][-2:], [{"t": 4, "text": "haunted"}, {"t": 6, "text": "house"}])
+
+    def test_houses_are_solid_and_knock_needs_a_way(self):
+        out = spooky('east(2)\nnorth()', self.STREET)
+        self.assertEqual(out["bumps"], 1)
+        self.assertTrue(any("bumped into a house" in line for line in out["log"]))
+        self.assertIn('knock("north")', spooky("knock()", self.STREET)["error"])
+        self.assertIn('knock("north")', spooky("knock(north)\nknock(1)", self.STREET)["error"])
+
+    def test_knock_and_candy_are_only_for_halloween_night(self):
+        for code in ('knock("north")', "print(candy())"):
+            out = planet.drive(code, self.STREET, set(), 0)
+            self.assertIn("Halloween night", out["error"])
+
+    def test_ghosts_float_through_a_waiting_rover_but_boo_one_that_drives_in(self):
+        v = {"map": ["#######", "#S...G#", "#######"], "ghosts": [{"path": [[0, 3], [1, 3], [2, 3]]}]}
+        rush = spooky("east(4)", v)
+        self.assertEqual(rush["end"], "spooked")
+        self.assertEqual(rush["spooked"], "ghost")
+        self.assertIn('while look("east") == "ghost"', rush["explain"]["next"])
+        careful = spooky('east()\nwhile look("east") == "ghost":\n    wait()\neast(3)', v)
+        self.assertTrue(careful["reached"])
+        # A ghost floating onto a rover that waits there does nothing.
+        sit = {"map": ["#####", "#S.G#", "#####"], "ghosts": [{"path": [[1, 1], [0, 1]], "start": 1}]}
+        self.assertTrue(spooky("wait()\nwait()\nwait()\neast(2)", sit)["reached"])
+        self.assertEqual([f["gh"] for f in careful["frames"][:3]], [[[0, 3]], [[1, 3]], [[2, 3]]])
+
+    def test_ground_candy_counts_and_can_be_the_mission(self):
+        field = {"map": ["######", "#Sccc#", "######"]}
+        out = spooky("east(3)", field)
+        self.assertTrue(out["reached"])
+        self.assertEqual((out["mission"], out["candy"], out["candy_left"]), ("candy", 3, 0))
+        self.assertEqual(spooky('print(look("east"))', field)["prints"][0]["text"], "candy")
+
+    def test_shortcuts_that_dont_check_get_spooked(self):
+        cases = {"h4": 'for i in range(6):\n    east(2)\n    knock("north")\n',
+                 "h5": 'east(12)\nknock("north")\n',
+                 "h9": planet.PARADE_RUSH}
+        for key, code in cases.items():
+            zone, s = next((z, x) for z, x in halloween_sites() if x["key"] == key)
+            for vi, v in enumerate(s["variants"]):
+                self.assertEqual(spooky(code, v)["end"], "spooked", (key, vi))
+
+    def test_a_route_timed_for_one_street_fails_on_the_others(self):
+        for key in ("h4", "h5", "h7", "h9"):
+            zone, s = next((z, x) for z, x in halloween_sites() if x["key"] == key)
+            own = spooky(s["reference"], s["variants"][0])
+            moves = []
+            for a, b in zip(own["frames"], own["frames"][1:]):
+                if b.get("kn"):
+                    way = {(-1, 0): "north", (1, 0): "south", (0, 1): "east", (0, -1): "west"}[
+                        (b["kn"][0] - b["r"], b["kn"][1] - b["c"])]
+                    moves.append(f'knock("{way}")')
+                elif b.get("e") == "wait":
+                    moves.append("wait()")
+                elif (b["r"], b["c"]) != (a["r"], a["c"]):
+                    moves.append({(0, 1): "east()", (0, -1): "west()", (1, 0): "south()",
+                                  (-1, 0): "north()"}[(b["r"] - a["r"], b["c"] - a["c"])])
+            plan = "\n".join(moves)
+            self.assertTrue(spooky(plan, s["variants"][0])["reached"], key)
+            others = [spooky(plan, v)["reached"] for v in s["variants"][1:]]
+            self.assertIn(False, others, key)
+            run_ = spooky(plan, s["variants"][0])
+            self.assertFalse(planet.everywhere(s, plan, run_), key)
+
+    def test_the_mansion_picks_its_haunted_houses_every_night(self):
+        zone, s = next((z, x) for z, x in halloween_sites() if x["key"] == "h10")
+        v = s["variants"][0]
+        maps = {tuple(spooky("wait()", dict(v, seed=seed))["map"]) for seed in range(12)}
+        self.assertGreater(len(maps), 6)
+        for m in maps:
+            self.assertEqual("".join(m).count("z"), 4)
+            self.assertNotIn("m", "".join(m))
+        self.assertEqual(spooky("wait()", dict(v, seed=3))["map"], spooky("wait()", dict(v, seed=3))["map"])
+        # A program that knocks on every house it passes, without looking, is
+        # spooked on almost every night.
+        blind = s["reference"].replace('    if look(way) == "house":\n        knock(way)\n',
+                                       "    knock(way)\n")
+        self.assertNotEqual(blind, s["reference"])
+        ends = [spooky(blind, dict(v, seed=seed))["end"] for seed in range(20)]
+        self.assertEqual(ends.count("spooked"), 20)
+        goals = planet.goals(s, v)
+        self.assertEqual(goals[0], "🏠 Every lit house, then 🛰 the beacon")
+
+    def test_halloween_stars_and_bonuses(self):
+        zone, s = next((z, x) for z, x in halloween_sites() if x["key"] == "h1")
+        v = s["variants"][0]
+        plain = spooky(s["reference"], v)
+        self.assertEqual(planet.stars(s, v, plain, s["reference"]), [True, False, True])
+        self.assertEqual(plain["candy"], 5)   # a full-size bar from the first door
+        pumpkin = 'east(6)\nwest(2)\nknock("north")'
+        self.assertEqual(planet.stars(s, v, spooky(pumpkin, v), pumpkin), [True, True, False])
+        zone, s = next((z, x) for z, x in halloween_sites() if x["key"] == "h2")
+        nooks = 'for i in range(5):\n    east(2)\n    south()\n    north()\n    knock("north")\n'
+        out = spooky(nooks, s["variants"][0])
+        self.assertEqual(planet.stars(s, s["variants"][0], out, nooks), [True, True, False])
+        self.assertEqual(planet.bonus_label({"kind": "candy"}), "🍬 Pick up every candy on the ground")
+
+    def test_every_halloween_gift_is_on_open_ground_next_to_the_road(self):
+        for key in ("h3", "h8"):
+            zone, s = next((z, x) for z, x in halloween_sites() if x["key"] == key)
+            for vi, v in enumerate(s["variants"]):
+                r, c = planet.gift_square(key, vi)
+                self.assertEqual(v["map"][r][c], ".", (key, vi))
+                self.assertEqual(v["map"][r + 1][c], ".", (key, vi))
+
+
+class HalloweenClassroomTests(unittest.TestCase):
+    """Halloween night in the classroom: the teacher invites students, candy
+    fills the candy road, and limited-time things stay with whoever won them."""
+
+    setUp, get, post, join = ClassroomTests.setUp, ClassroomTests.get, ClassroomTests.post, ClassroomTests.join
+
+    def tearDown(self):
+        ClassroomTests.tearDown(self)
+        server.planet_class_settings["halloween"] = True
+
+    def admin(self, action, **data):
+        return self.post("/admin", dict(data, key=server.ADMIN_KEY, action=action))
+
+    def transmit(self, pid, key, code=None):
+        code = code if code is not None else planet.find_site(key)[2]["reference"]
+        return self.post("/planet/run", {"id": pid, "site": key, "code": code})
+
+    def test_halloween_night_opens_only_for_students_the_teacher_invites(self):
+        ada, bo = self.join("Ada"), self.join("Bo")
+        self.get(f"/planet/state?id={ada}"); self.get(f"/planet/state?id={bo}")
+        self.assertIsNone(self.get(f"/planet/state?id={ada}")["halloween"])
+        self.assertIn("error", self.transmit(ada, "h1"))
+        self.assertFalse(self.get(f"/planet/ping?id={ada}")["halloween"])
+        self.assertIn("Invited Ada", self.admin("planet_invite", pid=ada, on=True)["ok"])
+        self.assertTrue(self.get(f"/planet/ping?id={ada}")["halloween"])
+        state = self.get(f"/planet/state?id={ada}")
+        spooky_zones = [z for z in state["zones"] if z.get("halloween")]
+        self.assertEqual([z["key"] for z in spooky_zones], ["street", "hollow"])
+        self.assertEqual([x["open"] for x in spooky_zones[0]["sites"]], [True, False, False, False, False])
+        self.assertEqual(state["halloween"]["next"], "h1")
+        self.assertIsNone(self.get(f"/planet/state?id={bo}")["halloween"])
+        self.assertIn("error", self.get(f"/planet/site?id={ada}&site=h2"))
+        out = self.transmit(ada, "h1")
+        self.assertTrue(out["runs"][0]["reached"])
+        self.assertEqual(out["rewards"]["candy"]["total"], 5)
+        self.assertEqual(out["state"]["halloween"]["next"], "h2")
+        self.assertIn("ghosts", self.get(f"/planet/site?id={ada}&site=h2"))
+        # Inviting everyone, and putting it away.
+        self.assertIn("all 2", self.admin("planet_invite_all", on=True)["ok"])
+        self.assertTrue(self.get(f"/planet/ping?id={bo}")["halloween"])
+        self.admin("planet_halloween", on=False)
+        self.assertFalse(self.get(f"/planet/ping?id={ada}")["halloween"])
+        self.assertIn("closed", self.transmit(ada, "h2")["error"])
+        overview = self.get("/planet/overview")
+        self.assertFalse(overview["halloween"])
+        ada_row = next(s for s in overview["students"] if s["id"] == ada)
+        self.assertEqual(ada_row["halloween"]["candy"], 5)
+
+    def test_candy_is_the_best_haul_on_each_site_and_a_boo_drops_it(self):
+        pid = self.join()
+        self.get(f"/planet/state?id={pid}")
+        self.admin("planet_invite", pid=pid, on=True)
+        for key in ("h1", "h2", "h3"):
+            self.transmit(pid, key)
+        entry = server.planet_entry(server.players[pid])
+        before = server.candy_total(entry)
+        self.assertEqual(before, sum(entry["candy"].values()))
+        # A run that knocks on the haunted house drops what it collected.
+        h4 = planet.find_site("h4")[2]
+        v = h4["variants"][planet.variant_index(pid, h4)]
+        out = self.transmit(pid, "h4", 'for i in range(6):\n    east(2)\n    knock("north")\n')
+        self.assertEqual(out["runs"][0]["end"], "spooked")
+        self.assertTrue(out["rewards"]["candy"]["dropped"] or out["runs"][0]["candy"] == 0)
+        self.assertEqual(server.candy_total(entry), before)
+        self.assertIn("😱", [b["icon"] for b in out["rewards"]["badges"]])
+        out = self.transmit(pid, "h4")
+        self.assertEqual(server.candy_total(entry), before + out["runs"][0]["candy"])
+        again = self.transmit(pid, "h4")
+        self.assertEqual(server.candy_total(entry), before + out["runs"][0]["candy"])   # the best, not a sum
+        self.assertEqual(again["rewards"]["candy"]["total"] - again["rewards"]["candy"]["before"], 0)
+        self.assertIn("🔦", [b["icon"] for b in out["rewards"]["badges"]])
+        self.assertTrue(v)
+
+    def test_halloween_stars_stay_out_of_the_planet_stars(self):
+        pid = self.join()
+        self.get(f"/planet/state?id={pid}")
+        self.admin("planet_invite", pid=pid, on=True)
+        out = self.transmit(pid, "h1", 'east(6)\nwest(2)\nknock("north")')
+        self.assertEqual(out["rewards"]["stars"], [True, True, False])
+        self.assertEqual(out["rewards"]["new_stars"], 0)
+        state = out["state"]
+        self.assertEqual(state["total_stars"], 0)
+        self.assertEqual(state["halloween"]["stars"], 2)
+        self.assertEqual(state["rank"]["name"], "Cadet")
+        self.assertEqual(self.get("/planet/overview")["class"]["stars"], 0)
+
+    def test_limited_things_are_out_only_while_halloween_is_and_stay_once_won(self):
+        pid = self.join()
+        self.get(f"/planet/state?id={pid}")
+        limited = lambda: {i["key"]: i for i in self.get(f"/planet/state?id={pid}")["garage"] if i.get("limited")}
+        self.assertEqual(limited(), {})
+        self.admin("planet_invite", pid=pid, on=True)
+        items = limited()
+        self.assertEqual(len(items), len(server.HALLOWEEN_GARAGE))
+        self.assertFalse(items["witchhat"]["open"])
+        self.assertEqual(items["candybucket"]["where"], "Both Sides (H3)")
+        for key in ("h1", "h2"):
+            self.transmit(pid, key)
+        self.assertTrue(limited()["witchhat"]["open"])   # 10 candy
+        self.assertEqual(self.post("/planet/look", {"id": pid, "topper": "witchhat"})["look"]["topper"], "witchhat")
+        self.admin("planet_halloween", on=False)
+        kept = limited()
+        self.assertIn("witchhat", kept)
+        self.assertTrue(all(i["open"] for i in kept.values()))
+        self.assertNotIn("vampire", kept)
+        badges = {b["key"] for b in self.get(f"/planet/state?id={pid}")["badges"]}
+        self.assertIn("h_knock", badges)
+        self.assertNotIn("h_king", badges)
+
+    def test_the_mansion_gets_new_houses_every_run_and_the_replay_shows_them(self):
+        pid = self.join()
+        self.get(f"/planet/state?id={pid}")
+        self.admin("planet_invite", pid=pid, on=True)
+        entry = server.planet_entry(server.players[pid])
+        entry["skipped"] = planet.HALLOWEEN_ORDER[:-1]
+        maps = set()
+        for _ in range(6):
+            out = self.transmit(pid, "h10")
+            self.assertTrue(out["runs"][0]["reached"])
+            maps.add(tuple(out["runs"][0]["map"]))
+        self.assertGreater(len(maps), 1)
+        self.assertIn("🏚", [b["icon"] for b in self.get(f"/planet/state?id={pid}")["badges"] if b["earned"]])
+        self.assertEqual(server.planet_runs[-1]["map"], list(out["runs"][0]["map"]))
+
+    def test_scouting_can_knock(self):
+        pid = self.join()
+        self.get(f"/planet/state?id={pid}")
+        self.admin("planet_invite", pid=pid, on=True)
+        out = self.post("/planet/scout", {"id": pid, "site": "h1",
+                                          "moves": ["east", "east", "east", "east", "knock:north"]})
+        self.assertTrue(out["run"]["reached"])
+        self.assertIn("error", self.post("/planet/scout", {"id": pid, "site": "h1", "moves": ["knock:up"]}))
+
+
 if __name__ == "__main__":
     unittest.main()
