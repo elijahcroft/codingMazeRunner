@@ -2236,6 +2236,16 @@ class HalloweenTests(unittest.TestCase):
         self.assertEqual(planet.stars(s, s["variants"][0], out, nooks), [True, True, False])
         self.assertEqual(planet.bonus_label({"kind": "candy"}), "🍬 Pick up every candy on the ground")
 
+    def test_every_mission_done_reaches_the_end_of_the_candy_road(self):
+        # The unluckiest streets, and the mansion's meanest night, with no
+        # candy picked up off the ground unless that's the mission.
+        total = 0
+        for zone, s in halloween_sites():
+            nights = [dict(v, seed=seed) for v in s["variants"] for seed in range(60)] \
+                if s["key"] in planet.NIGHTLY else s["variants"]
+            total += min(spooky(s["reference"], v)["candy"] for v in nights)
+        self.assertGreaterEqual(total, max(i["candy"] for i in server.CANDY_ROAD))
+
     def test_every_halloween_gift_is_on_open_ground_next_to_the_road(self):
         for key in ("h3", "h8"):
             zone, s = next((z, x) for z, x in halloween_sites() if x["key"] == key)

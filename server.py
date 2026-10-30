@@ -3088,16 +3088,18 @@ HALLOWEEN_BADGES = {
 }
 PLANET_BADGES.update(HALLOWEEN_BADGES)
 HALLOWEEN_GARAGE = [
-    # The candy road: candy in the bag unlocks them, in this order.
+    # The candy road: candy in the bag unlocks them, in this order. Every
+    # mission done gets every one, whichever streets a student was dealt
+    # (a test checks): the candy lying about only gets there sooner.
     {"slot": "topper", "key": "witchhat", "name": "Witch hat", "candy": 10},
     {"slot": "paint", "key": "candycorn", "name": "Candy Corn", "candy": 25},
-    {"slot": "pet", "key": "blackcat", "name": "Black cat", "candy": 40},
+    {"slot": "pet", "key": "blackcat", "name": "Black cat", "candy": 45},
     {"slot": "trail", "key": "candytrail", "name": "Candy trail", "candy": 60},
     {"slot": "wheels", "key": "pumpkinwheels", "name": "Pumpkin wheels", "candy": 80},
     {"slot": "paint", "key": "mummy", "name": "Mummy", "candy": 100},
-    {"slot": "glow", "key": "spookyfog", "name": "Spooky fog", "candy": 125},
-    {"slot": "world", "key": "graveyard", "name": "Graveyard", "candy": 150},
-    {"slot": "paint", "key": "vampire", "name": "Vampire", "candy": 175},
+    {"slot": "glow", "key": "spookyfog", "name": "Spooky fog", "candy": 120},
+    {"slot": "world", "key": "graveyard", "name": "Graveyard", "candy": 140},
+    {"slot": "paint", "key": "vampire", "name": "Vampire", "candy": 165},
     # Mystery gifts on Halloween night, and the Halloween badges.
     {"slot": "topper", "key": "candybucket", "name": "Candy bucket", "find": "h3"},
     {"slot": "pet", "key": "spider", "name": "Spider", "find": "h8"},

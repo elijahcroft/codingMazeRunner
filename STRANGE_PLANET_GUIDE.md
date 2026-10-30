@@ -537,7 +537,8 @@ the class: "how did your code know that house was haunted?"
 the event never changes ranks or the class star meter). Candy fills the
 **🍬 candy road** (press the candy counter): a witch hat at 10 candy, then
 Candy Corn paint, a black cat, a candy trail, pumpkin wheels, Mummy paint,
-spooky fog, the Graveyard map, and Vampire paint at 175. Candy counts the
+spooky fog, the Graveyard map, and Vampire paint at 165 (finishing every
+level always gets there, whatever streets a student was given). Candy counts the
 best run on each level, and a run that ends in a BOO drops its bag, so
 grinding doesn't help but careful code does. Halloween badges give more:
 Knock Knock (a doorbell horn), Boo'd! for getting spooked (a scream horn:
