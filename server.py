@@ -3235,6 +3235,17 @@ def planet_events(p, counts):
             today[kind] = today.get(kind, 0) + n
 
 
+def planet_again(p, key):
+    """The same code sent again after a miss: the page replays it without
+    running it, but a student doing this is stuck, and the teacher should
+    see it, so it counts as a miss (not as a new try for Never Give Up)."""
+    entry = planet_entry(p)
+    entry["misses"][key] = entry["misses"].get(key, 0) + 1
+    entry["active"] = int(time.time())
+    return {"misses": entry["misses"][key], "can_skip": can_skip(p, key),
+            "helpers": planet_helpers(p, key) if entry["misses"][key] >= help_after() else []}
+
+
 def planet_habits():
     """Today's counts for the whole class, for the teacher's page."""
     day, out = time.strftime("%Y-%m-%d"), {}
@@ -5049,6 +5060,17 @@ class Handler(BaseHTTPRequestHandler):
                              "left": SCOUT_MAX - min(len(moves), SCOUT_MAX),
                              "blanks": planet_class_settings["blanks"],
                              "coach": planet_class_settings["coach"]})
+            return
+        if self.path == "/planet/again":
+            key = str(data.get("site", ""))
+            with lock:
+                p = players.get(data.get("id"))
+                if not p or not planet_open(p, key):
+                    self._send(200, {"error": "join"})
+                    return
+                out = planet_again(p, key)
+                save_state()
+            self._send(200, out)
             return
         if self.path == "/planet/events":
             with lock:

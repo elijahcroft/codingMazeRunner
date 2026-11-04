@@ -4137,13 +4137,16 @@ function beamToRover() {
 // The same code after a miss would only do the same thing, so nothing goes
 // out: the rover shows it again and asks for a change. (Half of all tries in a
 // row were the same code, and stuck students sent it four times over.)
-function sameCode() {
+async function sameCode() {
   note("same_code");
   clearToasts();
   say("Same code, same trip!");
-  if (last() === 0) return;   // a code error: its banner is still up, and nothing to replay
-  site.same = true;
-  togglePlay();
+  const key = site.key, was = scene;
+  if (last()) { site.same = true; togglePlay(); }   // (a code error has nothing to replay)
+  const out = await post("/planet/again", {id: me, site: key}).catch(() => null);
+  if (!out || out.error || site.key !== key) return;
+  site.misses = out.misses;
+  if (playing && scene === was) rewards = {badges: [], unlocked: [], found: [], new_stars: 0, can_skip: out.can_skip, helpers: out.helpers};
 }
 async function transmit() {
   if (busy || !me || !site) return;
