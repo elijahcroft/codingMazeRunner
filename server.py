@@ -3222,7 +3222,7 @@ def planet_entry(p):
 
 # What students do between runs, which the runs themselves don't show. Only
 # counts, by day, for the teacher to see what's being used.
-PLANET_EVENTS = {"replay", "scout", "chip", "garage", "levels", "hint", "show_me",
+PLANET_EVENTS = {"replay", "scout", "chip", "garage", "levels", "hint", "show_me", "same_code",
                  "shortcut_offered", "shortcut_taken", "shortcut_won"}
 
 
@@ -3516,7 +3516,7 @@ def planet_state(p):
     # Rewards to pick, while there's something left to pick.
     choices = pick_choices(entry) if picks_left(entry) > 0 else []
     return {"you": {"name": p["name"], "ran": any(entry["runs"].values())}, "zones": zones,
-            "current": current,
+            "current": current, "last_site": entry["now"] and entry["now"]["site"],
             "uncharted": entry["uncharted"],
             "total_stars": star_count(entry),
             "max_stars": 3 * len(planet.SITE_ORDER)

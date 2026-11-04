@@ -2465,11 +2465,18 @@ function finished() {
   let text = unused ? unused.replace(/^tick \d+: /, "") : run.end === "error" ? `⚠️ ${run.error}` : coachTip(run);
   const plain = !text && run.explain;
   if (!text) text = plain ? run.explain.what : say;
-  const looped = site.taught && Number((/range\((\d+)\)/.exec(scene.code) || [])[1]);
+  const looped = site.taught && Number((/range\((\d+)\)/.exec(scene.code.split("\n")[site.taught.at]) || [])[1]);
   if (looped && looped !== site.taught.times) text = `Your loop went round ${looped} ${looped === 1 ? "time" : "times"}, and you wrote it ${site.taught.times} times. ${text}`;
   if (site.key === "7" && runs) text = `${unchartedSummary()} Planet ${runs.indexOf(run) + 1}: ${text}`;
+  if (site.same) { text = `🔁 Same code, same trip. Change one thing, then press Transmit ▶`; site.same = false; }
   if (closer) text = `🔥 Closest yet: ${closer}.${plain && stoppedShort ? "" : ` ${text}`}`;
   showBanner(cls === "win" ? "win" : cls === "lost" ? "lost" : "", text, buttons.join(""), plain ? run.explain.next : "");
+  // Back to the code, ready to type. Code that stopped short needs more on the end.
+  if (run.end !== "goal" && document.activeElement !== $("code")) {
+    const t = $("code");
+    t.focus();
+    if (run.end === "stopped") { t.setSelectionRange(t.value.length, t.value.length); t.scrollTop = t.scrollHeight; }
+  }
   const helpers = sitesRewards && sitesRewards.helpers || [];
   if (helpers.length) $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">🙋 Ask ${esc(helpers.join(" or "))}: they've cleared this site.</span>`);
 }
@@ -2655,18 +2662,18 @@ async function teachShortcut() {
   hideCelebrate();
   if (!rep) return t.focus();
   note("shortcut_taken");
-  site.taught = {from: codeSize(code), times: rep.times};
+  site.taught = {from: codeSize(code), times: rep.times, at: rep.at};
   if (!CALM) {
     goToLine(rep.at + 1);
     say("Watch this!");
-    t.readOnly = true;
+    t.readOnly = true; busy = true;
     const lines = code.split("\n");
     for (let n = rep.times - 1; n >= 1; n--) {
       lines.splice(rep.at + rep.size * n, rep.size);
       paintCode(lines.join("\n"));
       await wait(Math.max(60, Math.min(170, 1000 / rep.times)));
     }
-    t.readOnly = false;
+    t.readOnly = false; busy = false;
   }
   replaceText(0, code.length, withLoop(code, rep));
   if (scene) say("How many times?");
@@ -2795,7 +2802,8 @@ async function enter(id) {
   $("driver").textContent = data.you.name; $("driver").title = data.you.name;
   $("join").hidden = true; $("app").hidden = false;
   const lastSite = recall(`planetSite:${me}`);
-  await openSite(siteOpen(lastSite) ? lastSite : data.current);
+  // A new computer has no last site of its own: the server remembers the last run.
+  await openSite([lastSite, data.last_site].find(siteOpen) || data.current);
   requestAnimationFrame(frameLoop);
   if (recall("planetIntroSeen") !== "1") openIntro();
   // A returning driver sees their own progress, so joining with a classmate's
@@ -2896,7 +2904,7 @@ const NEW_ZONES = ["tricks", "numbers"];   // say NEW until a student has tried 
 function openLevels() {
   if (!state) return;
   note("levels");
-  closePops();
+  closePops(); clearToasts();
   const next = playNext(), here = site && site.key;
   const got = n => (n.stars || []).filter(Boolean).length;
   $("levelsStars").textContent = `★ ${state.total_stars} / ${state.max_stars}`;
@@ -3298,6 +3306,7 @@ function markGarageNew() {
 let garageNew = new Set();
 function openGarage() {
   note("garage");
+  clearToasts();
   const seen = garageSeen();
   garageNew = new Set(seen ? garageKeys().filter(k => !seen.has(k)) : []);
   store(`planetGarageSeen:${me}`, JSON.stringify(garageKeys()));
@@ -4059,6 +4068,16 @@ function beamToRover() {
   }
   return wait(BEAM_MS);
 }
+// The same code after a miss would only do the same thing, so nothing goes
+// out: the rover shows it again and asks for a change. (Half of all tries in a
+// row were the same code, and stuck students sent it four times over.)
+function sameCode() {
+  note("same_code");
+  clearToasts();
+  site.same = true;
+  togglePlay();
+  say("Same code, same trip!");
+}
 async function transmit() {
   if (busy || !me || !site) return;
   if (BLANK.test($("code").value)) {
@@ -4071,6 +4090,7 @@ async function transmit() {
   if (noCode()) return waitForCode();
   // Pressed again while the rover is still driving this same code: it heard.
   if (playing && !scout && scene.code === $("code").value) return say("I'm on it!");
+  if (!scout && site.key !== "7" && site.lastMissed && scene.code === $("code").value && $("code").value === site.lastSent) return sameCode();
   busy = true;
   clearToasts();
   state.you.ran = true; nudgeFirstRun();
