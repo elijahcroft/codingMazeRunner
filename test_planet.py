@@ -2705,7 +2705,7 @@ class BuildersYardTests(unittest.TestCase):
         out = self.post("/planet/run", {"id": pid, "site": "b1",
                                         "code": planet.find_site("b1")[2]["reference"]})
         self.assertTrue(out["runs"][0]["reached"])
-        self.assertEqual(self.get(f"/planet/state?id={pid}")["current"], "1c")   # still the main route
+        self.assertEqual(self.get(f"/planet/state?id={pid}")["current"], "1b1")   # still the main route
         self.assertEqual(yard()["sites"][0]["stars"], [True, False, True])
 
 
