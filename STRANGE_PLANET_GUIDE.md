@@ -25,6 +25,21 @@ to repeat!"), says which line confused it, says "Ow! Rock!" on its first bump, a
 when nobody has touched anything for 30 seconds it asks what to do (three times at
 most). The youngest (practice zones with arrows) see *steps*, not *ticks*, on the win card.
 
+**Two levels where a loop is the only way.** After 1B, **1B1 Short Memory** and **1B2
+Memory Full** give the rover a memory of 4 and 6 lines, shown above the editor. The long
+way doesn't fit: the rover says "My memory is full!", and if the code repeats, the banner
+offers the shortcut. Most students could finish every other level without a loop, and
+most did. Anyone already past them isn't sent back.
+
+**🧠 What your rover knows.** A chip beside the goals counts the big ideas a student
+has used in a win (loops, variables, `while`, `if`, `def`, loops in loops, `print`), and
+shows the next one to teach. Using a variable earns a new badge, Name Giver.
+
+**🎯 Class challenge.** ⚙ Settings on your page: pick a level and it opens for everyone,
+locked or not. Students get a gold chip within seconds, the class screen counts who's
+finished it and names them, and the win card says what number they came. Pick *None* to
+end it. Handy for "everyone try 1B1 now".
+
 **Rovers have names.** The first win asks; the box is under the rover in the garage.
 The name only shows on the student's own screen, in the win card and when you click
 the rover. A student who feels they're teaching someone tends to try harder for them.
@@ -37,6 +52,8 @@ saved. Wrong number? The banner says how many times it went round and how many t
 they wrote it. The same few lines in places apart get *Name this move* instead: the
 student types a word, and it becomes a `def`. Ctrl+Z brings the old code back. On last
 term's code this fires on about 7% of wins: most students' programs don't repeat.
+A student whose program ends with a `for` that reaches the beacon gets the next step:
+*Teach your rover to look* swaps the count for `while not at_beacon():`, until they know `while`.
 
 **Sending the same code after a miss doesn't send it.** The rover replays what happened,
 says "Same code, same trip!", and the banner asks for a change. Half of all tries in a

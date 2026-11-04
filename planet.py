@@ -294,6 +294,8 @@ class Rover(Brain):
                 raise BotError(f'To drive, write  {name.lower()}()  with brackets. '
                                f'To name the direction, put it in quotes: '
                                f'"{name.lower()}"')
+            if name in self.sensors and name not in self.defs:
+                raise BotError(f"{name} needs brackets to run: write  {name}()")
             if name.lower() in LOOK_WORDS and name not in self.defs:
                 raise BotError(f'Put quotes round words:  "{name.lower()}". look() '
                                f'gives back a word, like  look("east") == '
@@ -1524,7 +1526,12 @@ def drive(code, variant, rules, zone):
     if "spooky" in rules:   # Halloween night, where the witch wants report()s too
         sensors.update(knock=None, candy=None, report=None)
     error = line = rover = None
+    memory = variant.get("memory")
+    full = bool(memory) and code_lines(code) > memory
     try:
+        if full:
+            raise BotError(f"🧠 This rover's memory holds {memory} lines, and your program "
+                           f"is {code_lines(code)}. Find the part that repeats and put it in a loop.")
         rover = Rover(str(code)[:MAX_CODE + 1], world, sensors)
         rover.run()
     except _End:
@@ -1544,7 +1551,7 @@ def drive(code, variant, rules, zone):
                       f"line  {name}()  to run it.")
         world.say(f"{ENDED_SHORT[world.mission]}, at {where((world.r, world.c))}")
     out = {"reached": world.end == "goal", "end": "error" if error else world.end,
-            "mission": world.mission,
+            "mission": world.mission, "memory_full": full,
             "ticks": world.t, "error": error, "line": line,
             "frames": world.frames, "log": world.log, "prints": world.prints,
             "cracked": sorted(world.cracked),
@@ -1869,6 +1876,29 @@ FROZEN_LAKES = [
 
 
 
+def stairs(widths):
+    """Legs for stairs that go east by each width, then one square south."""
+    return [leg for n in widths for leg in (("east", n), ("south", 1))]
+
+
+def corridor(legs):
+    """A map that's all rock but for a path along `legs`, from the top left
+    to the beacon: where a program's moves have nowhere else to go."""
+    r, c = 0, 0
+    path = [(r, c)]
+    for way, n in legs:
+        dr, dc = DIRS[COMPASS[way]]
+        for _ in range(n):
+            r, c = r + dr, c + dc
+            path.append((r, c))
+    rows, cols = max(p[0] for p in path) + 3, max(p[1] for p in path) + 3
+    grid = [["#"] * cols for _ in range(rows)]
+    for r, c in path:
+        grid[r + 1][c + 1] = "."
+    grid[1][1], grid[path[-1][0] + 1][path[-1][1] + 1] = "S", "G"
+    return ["".join(row) for row in grid]
+
+
 def site(key, name, brief, variants, per_student=False, reference="",
          bonus=None, compact=99, coach=None):
     """One site. Every variant is a dict with a "map" and the hidden details
@@ -1931,6 +1961,19 @@ ZONES = [
               "for i in range(3):\n    east()",
               [{"map": STEPS_FIELD}],
               reference="for i in range(8):\n    east()\n    south()\n"),
+         site("1b1", "Short Memory",
+              "This rover's memory holds 4 lines, so the long way won't fit. "
+              "Each step is the same two moves, and a loop remembers them for "
+              "you:\n\nfor i in range(6):\n    east(2)\n    south()",
+              [{"map": corridor(stairs([2] * 6)), "memory": 4}],
+              reference="for i in range(6):\n    east(2)\n    south()\n"),
+         site("1b2", "Memory Full",
+              "Back and forth down the field, with a memory of 6 lines. What's "
+              "the piece that repeats? It's more than two moves this time.",
+              [{"map": corridor([("east", 7), ("south", 2), ("west", 7), ("south", 2)] * 3 + [("east", 7)]),
+                "memory": 6}],
+              reference="for i in range(3):\n    east(7)\n    south(2)\n    west(7)\n"
+                        "    south(2)\neast(7)\n"),
          site("1c", "Rock Run",
               "Collect the sample in front of every rock. Your rocks aren't where "
               "anyone else's are, so let look() find them.\n"
@@ -3353,6 +3396,8 @@ CHALLENGES = {
     "1a": {"bonus": {"kind": "crystals"}, "compact": 7, "crystals": [(1, 10)]},
     "1b": {"bonus": {"kind": "def"}, "compact": 3},
     # Counting squares off your own map works, so the star wants look().
+    "1b1": {"bonus": {"kind": "no_bump"}, "compact": 3},
+    "1b2": {"bonus": {"kind": "no_bump"}, "compact": 6},
     "1c": {"bonus": {"kind": "everywhere", "of": "rock run"}, "compact": 7},
     "2a": {"bonus": {"kind": "computed"}, "compact": 3},
     "2b": {"bonus": {"kind": "crystals"}, "compact": 6, "crystals": [(1, 7)]},
@@ -3969,7 +4014,7 @@ ZONES.append({"key": "uncharted", "name": "Uncharted", "rules": UNCHARTED_RULES,
 SITE_ORDER = [s["key"] for z in ZONES for s in z["sites"]]
 # Sites added once classes were already playing. One counts as passed for a
 # student who has solved a site after it, so nobody is sent back for it.
-LATE_SITES = {s["key"] for s in MIX_SITES.values()} | {"16a", "16b", "16c", "16d", "3a1", "3a2"}
+LATE_SITES = {s["key"] for s in MIX_SITES.values()} | {"16a", "16b", "16c", "16d", "3a1", "3a2", "1b1", "1b2"}
 
 # Practice zones: very small first steps for a younger class, before the
 # Landing Site. Only open when the teacher's easy mode is on, and not in
@@ -4640,11 +4685,6 @@ def sample_trail(legs, spare=0):
     return strings(grid)
 
 
-def stairs(widths):
-    """Legs for stairs that go east by each width, then one square south."""
-    return [leg for n in widths for leg in (("east", n), ("south", 1))]
-
-
 TRICK_SCHOOL = {"key": "tricks", "name": "Trick School", "rules": set(), "sensors": ["look", "at_beacon"],
                 "typed": True,
                 "blurb": "Teach your rover a trick: give some moves a name with def, "
@@ -4789,6 +4829,8 @@ for _z in PRACTICE_ZONES:
         if _z not in (TRICK_SCHOOL, NUMBER_LAB):
             _s["stars_max"] = 1
 STAR_TIPS.update({
+    "1b1": {"compact": "The for line and the two moves inside it: 3 lines."},
+    "1b2": {"compact": "One loop with four lines inside, then one last drive."},
     "3a1": {"compact": "The card's three lines are all it takes."},
     "3a2": {"compact": "A loop with the gust check and south() inside: 4 lines."},
     "p52": {"compact": "The code on the card is 6 lines: the def and three step()."},

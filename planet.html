@@ -502,6 +502,8 @@
 
   /* ---- Pop-overs and dialogs ------------------------------------------------------ */
   .goal.today { border: 0; font-family: inherit; cursor: pointer; background: rgba(127,240,214,.14); color: #7ff0d6; }
+  .goal.challenge { border: 0; font-family: inherit; background: var(--gold); color: #33280a; font-weight: 750; }
+  button.goal.challenge { cursor: pointer; }
   .goal.today.all { background: rgba(255,211,107,.18); color: var(--gold); }
   .mission { display: flex; align-items: center; gap: 10px; padding: 9px 10px; margin-bottom: 6px; border-radius: 10px; background: var(--dusk); font-size: 14px; }
   .mission .ico { font-size: 20px; }
@@ -895,6 +897,10 @@
   <h2 id="todayTitle">📋 Today's missions</h2>
   <div id="todayList"></div>
   <div class="pop-row"><small id="todayNote"></small></div>
+</div>
+<div class="pop" id="brainPop" hidden role="dialog" aria-labelledby="brainTitle">
+  <h2 id="brainTitle"></h2>
+  <div id="brainList"></div>
 </div>
 <div class="pop" id="fnPop" hidden role="dialog" aria-labelledby="fnTitle">
   <h2 id="fnTitle">Your functions</h2>
@@ -2488,7 +2494,7 @@ function finished() {
   // the child is looking. (Its line stays a little longer than a click's.)
   const closer = sitesRewards && sitesRewards.closer, stoppedShort = run.end === "stopped" && run.explain;
   if (stoppedShort) scene.shrug = performance.now();
-  const line = [closer && "🔥 Closest yet!", stoppedShort ? stoppedShort.say : run.end === "error" ? (run.line ? `Line ${run.line} confused me!` : "That confused me!") : ROVER_ENDS[run.end]].filter(Boolean).join(" ");
+  const line = [closer && "🔥 Closest yet!", stoppedShort ? stoppedShort.say : run.memory_full ? "My memory is full!" : run.end === "error" ? (run.line ? `Line ${run.line} confused me!` : "That confused me!") : ROVER_ENDS[run.end]].filter(Boolean).join(" ");
   if (line) scene.said = {text: line, at: performance.now() + 900};
   const candy = sitesRewards && sitesRewards.candy;
   if (candy && candy.dropped) toast("😱", `The rover dropped its ${candy.run} candy!`, "A spooked rover runs away and drops its bag. Only runs without a BOO count.");
@@ -2501,6 +2507,8 @@ function finished() {
   } else if (run.end === "error") {
     SFX.play("error");
     if (run.line) buttons.push(`<button class="quiet" onclick="goToLine(${run.line})">Go to line ${run.line}</button>`);
+    // Too long for the rover's memory, and it repeats: the shortcut is the way in.
+    if (run.memory_full && findRepeat($("code").value)) buttons.push(`<button class="go trick" onclick="teachShortcut()">Teach ${esc(roverName())} a shortcut</button>`);
   } else if (run.end !== "error" && last() > 1) {
     buttons.push(`<button class="quiet" onclick="showMe()">Show me</button>`);
   }
@@ -2611,24 +2619,27 @@ async function celebrate(r, run) {
   site.taught = null;
   const here = site.key !== "7" && $("code").value === scene.code ? scene.code : "";
   const rep = findRepeat(here), twin = !rep && !kidsMode() ? findTwin(here) : null;
+  // (Not on the win that shows off a shortcut: one new thing at a time.)
+  const count = !rep && !twin && !taught && run.mission === "beacon" && run.reached ? findCount(here) : null;
   const shrank = taught && taught.from - codeSize(scene.code);
   $("celeSub").textContent = site.key === "7" ? unchartedSummary()
-    : taught ? `🪄 ${shrank > 0 ? `${taught.from} lines became ${codeSize(scene.code)}. ` : ""}${taught.word ? `${roverName("Your rover")} knows ${taught.word}()!` : "Same trip!"}` : run.mission === "report" ? (scene.spooky ? "🧙 The witch agrees" : "📡 Report confirmed") : ticks(run.ticks);
+    : taught ? `🪄 ${shrank > 0 ? `${taught.from} lines became ${codeSize(scene.code)}. ` : ""}${taught.word ? `${roverName("Your rover")} knows ${taught.word}()!` : taught.look ? `${roverName("Your rover")} stopped by itself!` : "Same trip!"}` : run.mission === "report" ? (scene.spooky ? "🧙 The witch agrees" : "📡 Report confirmed") : ticks(run.ticks);
   $("bigStars").innerHTML = r.stars.map((s, i) => `<div class="big-star${s ? " got" : r.best[i] ? " was" : ""}" title="${esc(goals[i] || "")}"><i>★</i><span>${esc([...(goals[i] || "★")][0])}</span></div>`).join("");
-  const missing = goals.filter((g, i) => !r.best[i] && !rep && !twin);
+  const missing = goals.filter((g, i) => !r.best[i] && !rep && !twin && !count);
   // One thing to try next at a time: a trick on offer takes the tips' place.
-  $("celeTip").innerHTML = site.key !== "7" && !rep && !twin ? starTips(r.best, $("code").value).map(codeSpans).join("\n") : "";
+  $("celeTip").innerHTML = site.key !== "7" && !rep && !twin && !count ? starTips(r.best, $("code").value).map(codeSpans).join("\n") : "";
   if (taught && taught.word) $("celeTip").innerHTML += `\n🧰 Save ${esc(taught.word)}() in Functions to use it on any level.`;
-  $("celeTrick").hidden = !rep && !twin;
+  $("celeTrick").hidden = !rep && !twin && !count;
   if (rep) $("celeTrick").innerHTML = repeatWords(rep, scene.code);
   if (twin) $("celeTrick").innerHTML = twinWords(twin);
-  if (rep || twin) note("shortcut_offered");
+  if (count) $("celeTrick").innerHTML = `🪄 Your loop counts to <b>${count.times}</b>. What if the beacon were further away?<button class="go trick" onclick="teachLook()">Teach ${esc(roverName())} to look</button>`;
+  if (rep || twin || count) note("shortcut_offered");
   if (taught) note("shortcut_won");
   $("celeMiss").textContent = missing.length && site.key !== "7" && !$("celeTip").textContent ? `Still to earn: ${missing.join(" · ")}` : "";
   $("celeNote").innerHTML = "";
   const next = nextSite();
   $("celeActions").innerHTML = (next && site.key !== "7" ? `<button class="go" onclick="openSite('${next}')">Next level ▶</button>` : "")
-    + (rep || twin || r.best.every(Boolean) ? "" : `<button class="quiet" onclick="hideCelebrate();$('code').focus()">Go for ${r.best.length - r.best.filter(Boolean).length} more ★</button>`)
+    + (rep || twin || count || r.best.every(Boolean) ? "" : `<button class="quiet" onclick="hideCelebrate();$('code').focus()">Go for ${r.best.length - r.best.filter(Boolean).length} more ★</button>`)
     + `<button class="quiet" onclick="hideCelebrate();togglePlay()">Watch again</button>`;
   $("celebrate").hidden = false;
   // Something new earns the full reveal; a re-run with nothing new shows its
@@ -2651,11 +2662,12 @@ async function celebrate(r, run) {
   const nz = r.zone_cleared && r.zone_cleared.next;
   if (nz) notes.push(`<span class="teaser">Next up: ${ZONE_ICONS[nz.key] || "🪐"} <b>${esc(nz.name)}</b>. ${esc(nz.blurb)}</span>`);
   if (r.candy) notes.push(candyNote(r.candy));
+  if (r.challenge_place) notes.push(`<span class="teaser">🎯 Number ${r.challenge_place} to finish the class challenge!</span>`);
   $("celeNote").innerHTML = notes.join(" &nbsp; ");
   if (r.first_try) SFX.play("first");
   if (got === r.stars.length || r.record || r.rank_up || r.zone_cleared) throwConfetti();
   $("celeActions").querySelector("button").focus();
-  const nextBar = rep || twin ? ($("celeNext").hidden = true, null) : r.candy ? showNextCandy(r.candy) : showNextUnlock(r.total_stars, r.total_stars - r.new_stars);
+  const nextBar = rep || twin || count ? ($("celeNext").hidden = true, null) : r.candy ? showNextCandy(r.candy) : showNextUnlock(r.total_stars, r.total_stars - r.new_stars);
   if (r.new_stars) await flyStars(stars.filter((el, i) => r.stars[i]).slice(-r.new_stars), r.total_stars);
   if (nextBar) nextBar();
   if (r.rank_up) {
@@ -2747,6 +2759,29 @@ function teachMove(event) {
   replaceText(0, code.length, withMove(code, twin, name));
   if (scene) say(`${name}? I'm listening!`);
   showBanner("", `🪄 ${name}() is one word for all ${twin.size} lines now. Press Transmit ▶ and see if ${roverName()} learned it.`);
+}
+// Past for, the next idea: a loop whose job is to reach the beacon doesn't need
+// to count. Only when the program ends with that loop, the loop's number isn't
+// used, and the rover can sense the beacon. Once while is known it's no news.
+function findCount(code) {
+  if (!site || !(site.sensors || []).includes("at_beacon") || ideasKnown().some(x => x[0] === "while")) return null;
+  const lines = code.split("\n").map(s => s.trimEnd());
+  const at = lines.findLastIndex(s => /^for /.test(s)), m = /^for (\w+) in range\((\d+)\):$/.exec(lines[at] || "");
+  if (!m) return null;
+  const body = lines.slice(at + 1).filter(s => s.trim());
+  if (!body.length || !body.every(s => s.startsWith(" ")) || body.some(s => new RegExp(`\\b${m[1]}\\b`).test(s))) return null;
+  return {at, times: Number(m[2])};
+}
+function teachLook() {
+  const t = $("code"), code = t.value, found = findCount(code);
+  hideCelebrate();
+  if (!found) return t.focus();
+  note("shortcut_taken");
+  const lines = code.split("\n"), start = lines.slice(0, found.at).reduce((n, s) => n + s.length + 1, 0);
+  site.taught = {from: codeSize(code), times: 0, at: -1, look: true};
+  replaceText(start, start + lines[found.at].length, "while not at_beacon():");
+  if (scene) say("I'll watch for it!");
+  showBanner("", `🪄 No more counting: ${roverName()} keeps going until it's at the beacon. Press Transmit ▶`);
 }
 const SHORTCUT_BLANK = /range\(_\)/;
 function goToShortcut() {
@@ -3177,9 +3212,41 @@ function renderGoals() {
     : `<span class="goal${best[i] ? " got" : ""}"><i>★</i>${esc(g)}</span>`).join("")
     + (site.gift ? '<span class="goal gift">🎁 A mystery gift is hidden here: drive over it</span>' : "")
     + legend(site.map || []).map(t => `<span class="goal legend">${esc(t)}</span>`).join("")
-    + todayChip();
+    + challengeChip() + todayChip() + brainChip();
 }
 // Today's missions: a chip with how many are done, and the list it opens.
+function challengeChip() {
+  const c = state && state.challenge;
+  if (!c) return "";
+  return c.key === site.key ? `<span class="goal challenge">🎯 Class challenge · ${c.done.length} done</span>`
+    : `<button class="goal challenge" onclick="openSite('${esc(c.key)}')">🎯 Class challenge: ${esc(c.name)} ▶</button>`;
+}
+// What the student has taught the rover: the big ideas of coding, each lit up
+// by a win that used it (their badges), and the next one to teach.
+const IDEAS = [["loop", "🔁", "Repeat moves", "for i in range(3):"],
+               ["variable", "🏷", "Remember a number", "steps = 4"],
+               ["while", "👀", "Keep checking", 'while look("east") != "rock":'],
+               ["if", "🔀", "Decide for itself", 'if look("east") == "rock":'],
+               ["def", "🧩", "Learn a new move", "def zigzag():"],
+               ["nested", "🌀", "Loops inside loops", "for i in range(3):  for j in range(2):"],
+               ["print", "🔬", "Tell you what it sees", "print(tick())"]];
+function ideasKnown() {
+  const earned = new Set(((state && state.badges) || []).filter(b => b.earned).map(b => b.key));
+  return IDEAS.filter(x => earned.has(x[0]));
+}
+function brainChip() {
+  return `<button class="goal today" onclick="openBrain(this)" title="What you've taught your rover so far">🧠 ${ideasKnown().length}/${IDEAS.length}</button>`;
+}
+function openBrain(button) {
+  const known = ideasKnown(), next = IDEAS.find(x => !known.includes(x));
+  $("brainTitle").textContent = `🧠 What ${roverName()} knows`;
+  $("brainList").innerHTML = IDEAS.map(x => {
+    const has = known.includes(x);
+    return `<div class="mission${has ? " done" : ""}"><span class="ico">${has ? "✅" : x[1]}</span>${esc(x[2])}<small>${x === next ? "teach me next!" : ""}</small></div>`
+      + (x === next ? `<div class="msg"><code>${esc(x[3])}</code></div>` : "");
+  }).join("");
+  popBelow($("brainPop"), button);
+}
 function todayChip() {
   const m = state && state.missions;
   if (!m) return "";
@@ -3190,7 +3257,10 @@ function openToday(button) {
   const m = state.missions;
   $("todayList").innerHTML = m.list.map(x => `<div class="mission${x.have >= x.need ? " done" : ""}"><span class="ico">${x.have >= x.need ? "✅" : esc(x.icon)}</span>${esc(x.text)}<small>${x.need > 1 ? `${x.have}/${x.need}` : x.have >= x.need ? "done" : ""}</small></div>`).join("");
   $("todayNote").textContent = `New missions every day, the same for the whole class. 🏆 ${m.trophies} mission day${m.trophies === 1 ? "" : "s"} so far${m.trophies < 3 ? ": 3 unlock the Gold medal topper" : ""}.`;
-  const pop = $("todayPop"), wasOpen = !pop.hidden;
+  popBelow($("todayPop"), button);
+}
+function popBelow(pop, button) {
+  const wasOpen = !pop.hidden;
   closePops();
   if (wasOpen) return;
   pop.hidden = false;
@@ -3454,7 +3524,7 @@ function placePop(pop, button) {
   pop.style.left = Math.max(12, Math.min(window.innerWidth - pr.width - 12, r.right - pr.width)) + "px";
   pop.style.top = Math.max(12, r.top - pr.height - 10) + "px";
 }
-function closePops() { $("radioPop").hidden = true; $("fnPop").hidden = true; $("todayPop").hidden = true; }
+function closePops() { $("radioPop").hidden = true; $("fnPop").hidden = true; $("todayPop").hidden = true; $("brainPop").hidden = true; }
 
 // ---- Saved functions: a def kept for later sites ------------------------------------------
 // Each def at the left edge of the code, with the indented lines under it.
@@ -3981,7 +4051,7 @@ function shopLoop(now) {
   if ($("paintShop").hidden) return;
   const a = shop.anim;
   if (a) {
-    const per = Math.max(10, Math.min(70, 1600 / a.steps.length)), k = Math.floor((now - a.start) / per);
+    const per = Math.max(10, Math.min(70, 1600 / a.steps.length)), k = Math.max(0, Math.floor((now - a.start) / per));
     if (k >= a.steps.length) { shop.anim = null; shop.shown = shop.art; }
     else {
       const art = BLANK_ART.split("");
@@ -4417,7 +4487,7 @@ function updateEditor() {
   const m = site && site.goals && /✂️ (\d+)/.exec(site.goals[2] || "");
   const target = m ? Number(m[1]) : null;
   const fits = !!(target && lines && lines <= target);
-  $("lineCount").textContent = `${lines} line${lines === 1 ? "" : "s"}${target ? ` · ✂️ ${target} or fewer${fits ? " ✓" : ""}` : ""}`;
+  $("lineCount").textContent = `${lines} line${lines === 1 ? "" : "s"}${site && site.memory ? ` · 🧠 holds ${site.memory}` : ""}${target ? ` · ✂️ ${target} or fewer${fits ? " ✓" : ""}` : ""}`;
   // Cutting the code down to size is a little win of its own, as it happens.
   const popped = fits && site && site.fitted === false;
   $("lineCount").className = fits ? "fits" + (popped ? " pop" : "") : "";
@@ -5193,7 +5263,7 @@ document.addEventListener("keydown", e => {
   else if (e.key === "r" || e.key === "R") restartScout();
 });
 document.addEventListener("pointerdown", e => {
-  if (!e.target.closest(".pop, #radioButton, #fnButton")) closePops();
+  if (!e.target.closest(".pop, #radioButton, #fnButton, .goal.today")) closePops();
 });
 $("map").addEventListener("pointermove", e => {
   if (!scene || !scene.view) return;
@@ -5235,6 +5305,14 @@ $("roadPlay").addEventListener("click", playHalloween);
 $("roadClose").addEventListener("click", closeCandyRoad);
 for (const id of ["invite", "candyRoad"]) $(id).addEventListener("click", e => { if (e.target === $(id)) $(id).hidden = true; });
 setInterval(pingHalloween, 12000);
+// A class challenge set or ended by the teacher shows up within a few seconds.
+setInterval(async () => {
+  if (!me || !state || !site || busy) return;
+  const out = await get(`/planet/ping?id=${encodeURIComponent(me)}`).catch(() => null);
+  if (!out || (out.challenge || null) === ((state.challenge || {}).key || null)) return;
+  useState(await get(`/planet/state?id=${encodeURIComponent(me)}`));
+  renderGoals();
+}, 6000);
 resume();
 </script>
 </body>
