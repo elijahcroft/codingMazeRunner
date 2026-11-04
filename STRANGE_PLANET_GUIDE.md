@@ -20,6 +20,32 @@ The skill you're teaching is as much **experimenting** as coding:
 
 ## Since the first lesson (what students will notice)
 
+**Your rover is your pupil.** It says what it learned at the beacon ("You taught me
+to repeat!"), says which line confused it, says "Ow! Rock!" on its first bump, and
+when nobody has touched anything for 30 seconds it asks what to do (three times at
+most). The youngest (practice zones with arrows) see *steps*, not *ticks*, on the win card.
+
+**Rovers have names.** The first win asks; the box is under the rover in the garage.
+The name only shows on the student's own screen, in the win card and when you click
+the rover. A student who feels they're teaching someone tends to try harder for them.
+
+**Shortcuts out of a student's own code.** After a win, code with the same lines over
+and over gets a 🪄 box on the win card: "You wrote `east()` 6 times!" Pressing *Teach
+your rover a shortcut* makes the copies vanish and leaves a loop, `for i in range(_):`,
+with the number for the student to type. Transmit, and the card says how many lines it
+saved. Wrong number? The banner says how many times it went round and how many times
+they wrote it. The same few lines in places apart get *Name this move* instead: the
+student types a word, and it becomes a `def`. Ctrl+Z brings the old code back. On last
+term's code this fires on about 7% of wins: most students' programs don't repeat.
+
+**Sending the same code after a miss doesn't send it.** The rover replays what happened,
+says "Same code, same trip!", and the banner asks for a change. Half of all tries in a
+row used to be the same code. After a miss the cursor is back in the code, at the end
+of it if the program stopped short.
+
+**One step at a time.** ⏭ next to Play moves the replay on by one step and lights up
+the line that did it.
+
 - **Students type more, and click less.** 1A starts with an empty editor
   (it used to come with `south(2)` typed in), and a command or sensor under
   the editor no longer types itself: pressing `east()` shows "✍️ Type it
@@ -171,7 +197,7 @@ lost.
   perfect run or a class record.
 - **Badges** for coding habits: first `for` loop, first `while`, first `if`,
   first function, using `print()`, **fixing a code error**, completing a
-  mission after 5 tries that didn't (**Never Give Up**), class records, all
+  mission after 5 different tries that didn't (**Never Give Up**), class records, all
   crystals, zone masters. They're all listed, with how to earn them, in the
   garage.
 - **🧰 Functions**: a student who writes a good `def` can save it and add
@@ -301,7 +327,8 @@ lost.
   only goes to code that reaches it on every classmate's plain too (8C
   does the same with fields). On Uncharted one program has to reach five
   planets, which is where brute force finally stops working.
-- **Sound**: every event has a synthesized sound effect. It starts **off**
+- **Sound** (⚙ Settings has a "Sound starts on" switch for the class, and a
+  student's own choice with the 🔇 button always wins): every event has a synthesized sound effect. It starts **off**
   (a room of laptop speakers is a lot, and sudden sounds are hard for some
   students); 🔇 at the top turns it on, and each browser remembers.
   Headphones are best in a full room.

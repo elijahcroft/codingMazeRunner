@@ -271,9 +271,14 @@
   .cele-miss { margin: -6px 0 12px; color: var(--haze); font-size: 14px; }
   .cele-tip { margin-top: -4px; color: var(--mint); white-space: pre-line; }
   .cele-tip:empty { display: none; }
+  .rover-name { display: flex; gap: 6px; align-items: center; justify-content: center; margin-top: 8px; }
+  .rover-name input { width: 140px; padding: 5px 9px; border: 0; border-radius: 9px; background: rgba(12,9,26,.65); color: var(--bone); font: 600 14px var(--ui); box-shadow: inset 0 0 0 1px var(--edge); }
   .cele-trick { margin: -2px 0 14px; padding: 9px 12px; border-radius: 14px; background: rgba(255,211,107,.1); box-shadow: inset 0 0 0 1px rgba(255,211,107,.35); font-size: 15px; font-weight: 650; }
   .cele-trick code { font: 600 .92em var(--mono); color: var(--mint); background: rgba(140,242,198,.1); padding: 1px 5px; border-radius: 5px; white-space: nowrap; }
   .cele-trick small { display: block; margin-top: 6px; color: var(--haze); font-size: 13px; font-weight: 500; }
+  .trick-name { display: flex; gap: 8px; justify-content: center; margin-top: 8px; }
+  .trick-name input { width: 130px; padding: 7px 10px; border: 0; border-radius: 10px; background: var(--dusk); color: var(--mint); font: 600 15px var(--mono); box-shadow: inset 0 0 0 1px var(--edge); }
+  .trick-name .go.trick { margin: 0; }
   .go.trick { display: block; margin: 8px auto 3px; padding: 8px 16px; font-size: 15px; background: var(--gold); color: #33280a; box-shadow: 0 3px 0 #b8912e; }
   .cele-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
   /* What the next stars unlock, with a bar that fills as the new ones land. */
@@ -848,6 +853,7 @@
       </div>
       <div class="timeline">
         <button class="play" id="playButton" aria-label="Play" disabled>▶</button>
+        <button class="play" id="stepButton" title="One step at a time, to see which line does what" aria-label="One step" disabled>⏭</button>
         <div class="track"><div class="marks" id="marks"></div><input class="scrub" id="scrub" type="range" min="0" max="0" step="any" value="0" aria-label="Replay position" disabled></div>
         <div class="clock" id="clock"></div>
         <button class="play speed" id="speedButton" title="Replay speed" aria-label="Replay speed">1×</button>
@@ -898,6 +904,7 @@
       <div class="stage">
         <canvas id="garageScene" aria-hidden="true"></canvas>
         <p class="stage-tag" id="stageTag" aria-live="polite"></p>
+        <label class="rover-name">🏷 <input id="roverName" maxlength="14" placeholder="Name your rover" autocomplete="off" spellcheck="false" aria-label="Your rover's name"></label>
       </div>
       <div>
         <div class="tabs" id="garageTabs"></div>
@@ -2064,7 +2071,10 @@ function onStep(k) {
   if (!p) return;
   const moved = Math.abs(f.r - p.r) + Math.abs(f.c - p.c);
   const sliding = moved && f.t === p.t && f.e !== "gust" && f.e !== "portal";
-  if (f.e === "bump") { SFX.play("bump"); burst(f.r + DIRS[f.d][0] * .45, f.c + DIRS[f.d][1] * .45, "dust", 8); }
+  if (f.e === "bump") {
+    SFX.play("bump"); burst(f.r + DIRS[f.d][0] * .45, f.c + DIRS[f.d][1] * .45, "dust", 8);
+    if (!scene.bumped) { scene.bumped = true; say("Ow! Rock!"); }   // the rover didn't move, and that's why
+  }
   else if (f.e === "gust") { SFX.play("gust"); burst(f.r, f.c, "wind", 5); }
   else if (f.e === "portal") { SFX.play("portal"); burst(p.r, p.c, "portal", 14); burst(f.r, f.c, "portal", 14); }
   else if (f.e === "jump") { SFX.play("jump"); burst(p.r, p.c, "dust", 6); burst(f.r, f.c, "dust", 6); }
@@ -2190,6 +2200,7 @@ const LEARNED = [[/^\s*def\s/m, ["I learned a new move!", "My own move! Thanks!"
                  [/^\s*if\b/m, ["I decided all by myself!", "I made the choice!"]],
                  [/^\s*for\b/m, ["You taught me to repeat!", "Round and round I go!"]]];
 function winLine(code) {
+  if (site.taught && site.taught.word) return `I learned ${site.taught.word}!`;
   const taught = LEARNED.find(([idea]) => idea.test(code || ""));
   return pick(taught ? taught[1] : CHEERS);
 }
@@ -2291,6 +2302,18 @@ function frameLoop(ts) {
 function stalled(i) {
   const f = scene.frames, same = (x, y) => x && y && x.r === y.r && x.c === y.c && x.d === y.d;
   return same(f[i - 1], f[i]) && same(f[i], f[i + 1]);
+}
+// One frame on, with the line that made it lit up: reading a program as the
+// rover runs it. From the end it starts over.
+function stepOnce() {
+  if (!scene || last() === 0) return;
+  note("step");
+  setPlaying(false); hideBanner(); hideCelebrate();
+  if (pos >= last()) { setPos(0); heard = 0; return; }
+  const k = Math.floor(pos) + 1;
+  setPos(k);
+  while (heard < k) onStep(++heard);
+  if (k >= last()) finished();
 }
 const SPEEDS = [1, 2, 4, .5];
 let speed = SPEEDS.includes(Number(recall("planetSpeed"))) ? Number(recall("planetSpeed")) : 1;
@@ -2404,7 +2427,7 @@ function showRun(run, map, crystals, startAt = 0) {
   if (marks.length > 12) marks = marks.filter(m => !["⛸", "🧱", "🦘", "🛤"].includes(m.icon));
   if (marks.length > 12) marks = marks.filter(m => m.icon !== "💨" || /pushed/.test(m.text));
   $("marks").innerHTML = marks.map(m => `<span class="mark" style="left:${last() ? m.k / last() * 100 : 0}%" title="tick ${run.frames[m.k].t}: ${esc(m.text)}" data-k="${m.k}">${m.icon}</span>`).join("");
-  $("scrub").max = last(); $("scrub").disabled = last() === 0; $("playButton").disabled = last() === 0;
+  $("scrub").max = last(); $("scrub").disabled = last() === 0; $("playButton").disabled = last() === 0; $("stepButton").disabled = last() === 0;
   $("batteryGauge").hidden = run.frames[0].b == null;
   $("sampleGauge").hidden = !scene.samples;
   $("crystalGauge").hidden = !scene.crystals.length;
@@ -2493,11 +2516,18 @@ function finished() {
   let text = unused ? unused.replace(/^tick \d+: /, "") : run.end === "error" ? `⚠️ ${run.error}` : coachTip(run);
   const plain = !text && run.explain;
   if (!text) text = plain ? run.explain.what : say;
-  const looped = site.taught && Number((/range\((\d+)\)/.exec(scene.code) || [])[1]);
+  const looped = site.taught && Number((/range\((\d+)\)/.exec(scene.code.split("\n")[site.taught.at]) || [])[1]);
   if (looped && looped !== site.taught.times) text = `Your loop went round ${looped} ${looped === 1 ? "time" : "times"}, and you wrote it ${site.taught.times} times. ${text}`;
   if (site.key === "7" && runs) text = `${unchartedSummary()} Planet ${runs.indexOf(run) + 1}: ${text}`;
+  if (site.same) { text = `🔁 Same code, same trip. Change one thing, then press Transmit ▶`; site.same = false; }
   if (closer) text = `🔥 Closest yet: ${closer}.${plain && stoppedShort ? "" : ` ${text}`}`;
   showBanner(cls === "win" ? "win" : cls === "lost" ? "lost" : "", text, buttons.join(""), plain ? run.explain.next : "");
+  // Back to the code, ready to type. Code that stopped short needs more on the end.
+  if (run.end !== "goal" && [document.body, $("runButton")].includes(document.activeElement)) {
+    const t = $("code");
+    t.focus();
+    if (run.end === "stopped") { t.setSelectionRange(t.value.length, t.value.length); t.scrollTop = t.scrollHeight; }
+  }
   const helpers = sitesRewards && sitesRewards.helpers || [];
   if (helpers.length) $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">🙋 Ask ${esc(helpers.join(" or "))}: they've cleared this site.</span>`);
 }
@@ -2572,19 +2602,26 @@ async function celebrate(r, run) {
     : r.zone_cleared ? `${ZONE_ICONS[r.zone_cleared.key] || "🗺"} ${r.zone_cleared.name} cleared!` : titles[Math.max(0, got - 1)];
   const taught = site.taught && run.reached && !/range\(_\)/.test(scene.code) ? site.taught : null;
   site.taught = null;
-  const rep = site.key !== "7" && $("code").value === scene.code ? findRepeat(scene.code) : null;
-  $("celeSub").textContent = site.key === "7" ? unchartedSummary() : taught ? `🪄 ${taught.from} lines became ${codeSize(scene.code)}. Same trip!` : run.mission === "report" ? (scene.spooky ? "🧙 The witch agrees" : "📡 Report confirmed") : ticks(run.ticks);
+  const here = site.key !== "7" && $("code").value === scene.code ? scene.code : "";
+  const rep = findRepeat(here), twin = !rep && !kidsMode() ? findTwin(here) : null;
+  const shrank = taught && taught.from - codeSize(scene.code);
+  $("celeSub").textContent = site.key === "7" ? unchartedSummary()
+    : taught ? `🪄 ${shrank > 0 ? `${taught.from} lines became ${codeSize(scene.code)}. ` : ""}${taught.word ? `${roverName("Your rover")} knows ${taught.word}()!` : "Same trip!"}` : run.mission === "report" ? (scene.spooky ? "🧙 The witch agrees" : "📡 Report confirmed") : ticks(run.ticks);
   $("bigStars").innerHTML = r.stars.map((s, i) => `<div class="big-star${s ? " got" : r.best[i] ? " was" : ""}" title="${esc(goals[i] || "")}"><i>★</i><span>${esc([...(goals[i] || "★")][0])}</span></div>`).join("");
-  const missing = goals.filter((g, i) => !r.best[i]);
-  $("celeTip").innerHTML = site.key !== "7" ? starTips(rep ? [r.best[0], r.best[1], true] : r.best, $("code").value).map(codeSpans).join("\n") : "";
-  $("celeTrick").hidden = !rep;
-  if (rep) { $("celeTrick").innerHTML = repeatWords(rep, scene.code); note("shortcut_offered"); }
+  const missing = goals.filter((g, i) => !r.best[i] && !rep && !twin);
+  // One thing to try next at a time: a trick on offer takes the tips' place.
+  $("celeTip").innerHTML = site.key !== "7" && !rep && !twin ? starTips(r.best, $("code").value).map(codeSpans).join("\n") : "";
+  if (taught && taught.word) $("celeTip").innerHTML += `\n🧰 Save ${esc(taught.word)}() in Functions to use it on any level.`;
+  $("celeTrick").hidden = !rep && !twin;
+  if (rep) $("celeTrick").innerHTML = repeatWords(rep, scene.code);
+  if (twin) $("celeTrick").innerHTML = twinWords(twin);
+  if (rep || twin) note("shortcut_offered");
   if (taught) note("shortcut_won");
   $("celeMiss").textContent = missing.length && site.key !== "7" && !$("celeTip").textContent ? `Still to earn: ${missing.join(" · ")}` : "";
   $("celeNote").innerHTML = "";
   const next = nextSite();
   $("celeActions").innerHTML = (next && site.key !== "7" ? `<button class="go" onclick="openSite('${next}')">Next level ▶</button>` : "")
-    + (rep || r.best.every(Boolean) ? "" : `<button class="quiet" onclick="hideCelebrate();$('code').focus()">Go for ${r.best.length - r.best.filter(Boolean).length} more ★</button>`)
+    + (rep || twin || r.best.every(Boolean) ? "" : `<button class="quiet" onclick="hideCelebrate();$('code').focus()">Go for ${r.best.length - r.best.filter(Boolean).length} more ★</button>`)
     + `<button class="quiet" onclick="hideCelebrate();togglePlay()">Watch again</button>`;
   $("celebrate").hidden = false;
   // Something new earns the full reveal; a re-run with nothing new shows its
@@ -2611,7 +2648,7 @@ async function celebrate(r, run) {
   if (r.first_try) SFX.play("first");
   if (got === r.stars.length || r.record || r.rank_up || r.zone_cleared) throwConfetti();
   $("celeActions").querySelector("button").focus();
-  const nextBar = rep ? ($("celeNext").hidden = true, null) : r.candy ? showNextCandy(r.candy) : showNextUnlock(r.total_stars, r.total_stars - r.new_stars);
+  const nextBar = rep || twin ? ($("celeNext").hidden = true, null) : r.candy ? showNextCandy(r.candy) : showNextUnlock(r.total_stars, r.total_stars - r.new_stars);
   if (r.new_stars) await flyStars(stars.filter((el, i) => r.stars[i]).slice(-r.new_stars), r.total_stars);
   if (nextBar) nextBar();
   if (r.rank_up) {
@@ -2656,7 +2693,7 @@ function repeatWords(rep, code) {
   const line = code.split("\n")[rep.at].trim();
   const what = rep.size === 1 ? `<code>${esc(line)}</code>` : `the same ${rep.size} lines`;
   const prize = ((state && state.garage) || []).find(g => g.badge === "loop" && !g.open);
-  return `🪄 You wrote ${what} <b>${rep.times} times</b>!<button class="go trick" onclick="teachShortcut()">Teach your rover a shortcut</button>`
+  return `🪄 You wrote ${what} <b>${rep.times} times</b>!<button class="go trick" onclick="teachShortcut()">Teach ${esc(roverName())} a shortcut</button>`
     + (prize ? `<small>A win with a loop unlocks ${esc(prize.name)} in the garage!</small>` : "");
 }
 function withLoop(code, rep) {
@@ -2664,6 +2701,45 @@ function withLoop(code, rep) {
   return [...lines.slice(0, rep.at), `${" ".repeat(rep.pad)}for ${name} in range(_):`,
           ...lines.slice(rep.at, rep.at + rep.size).map(s => "    " + s),
           ...lines.slice(rep.at + rep.size * rep.times)].join("\n");
+}
+// The same few lines in places that aren't next to each other: a job for a
+// function. (No = in a chunk: a name set inside a def stays inside it.)
+function findTwin(code) {
+  const lines = code.split("\n").map(s => s.trimEnd()), indent = s => s.search(/\S/);
+  const boundary = s => !s || indent(s) === 0 && !/^(else|elif)\b/.test(s);
+  let best = null;
+  for (let size = 3; size <= 10; size++) for (let at = 0; at + size * 2 <= lines.length; at++) {
+    const chunk = lines.slice(at, at + size);
+    if (indent(chunk[0]) || /^(else|elif)\b/.test(chunk[0]) || !chunk.every(s => s.trim() && !s.trim().startsWith("#") && !/^\s*(def|return|break|continue)\b/.test(s) && !/(^|[^=!<>])=([^=]|$)/.test(s))) continue;
+    const spots = [];
+    for (let j = at; j + size <= lines.length; j++) if (chunk.every((s, i) => lines[j + i] === s) && boundary(lines[j + size])) { spots.push(j); j += size - 1; }
+    if (spots.length > 1 && (!best || size * spots.length > best.size * best.spots.length)) best = {size, spots};
+  }
+  return best;
+}
+function twinWords(twin) {
+  return `🪄 You wrote the same ${twin.size} lines in ${twin.spots.length} places!`
+    + `<form class="trick-name" onsubmit="teachMove(event)"><input id="trickName" maxlength="16" placeholder="zigzag" autocomplete="off" spellcheck="false" aria-label="A name for this move">`
+    + `<button class="go trick">Name this move</button></form><small id="trickWhy">It'll be a new word for ${esc(roverName())}.</small>`;
+}
+function withMove(code, twin, name) {
+  const lines = code.split("\n"), chunk = lines.slice(twin.spots[0], twin.spots[0] + twin.size);
+  for (const at of [...twin.spots].reverse()) lines.splice(at, twin.size, `${name}()`);
+  return [`def ${name}():`, ...chunk.map(s => "    " + s), "", ...lines].join("\n");
+}
+function teachMove(event) {
+  event.preventDefault();
+  const t = $("code"), code = t.value, twin = findTwin(code), box = $("trickName");
+  if (!twin) return hideCelebrate();
+  const name = (box.value.trim() || box.placeholder).toLowerCase().replace(/[^a-z0-9_]+/g, "_").replace(/^[0-9_]+|_+$/g, "");
+  const taken = !name || KEYWORDS.has(name) || COMMANDS.includes(name) || (site.sensors || []).includes(name) || new RegExp(`\\b${name}\\b`).test(code);
+  if (taken) { $("trickWhy").textContent = `${esc(roverName("Your rover"))} already knows that word. Try another!`; return box.select(); }
+  note("shortcut_taken");
+  hideCelebrate();
+  site.taught = {from: codeSize(code), times: twin.spots.length, word: name, at: -1};
+  replaceText(0, code.length, withMove(code, twin, name));
+  if (scene) say(`${name}? I'm listening!`);
+  showBanner("", `🪄 ${name}() is one word for all ${twin.size} lines now. Press Transmit ▶ and see if ${roverName()} learned it.`);
 }
 const SHORTCUT_BLANK = /range\(_\)/;
 function goToShortcut() {
@@ -2683,18 +2759,18 @@ async function teachShortcut() {
   hideCelebrate();
   if (!rep) return t.focus();
   note("shortcut_taken");
-  site.taught = {from: codeSize(code), times: rep.times};
+  site.taught = {from: codeSize(code), times: rep.times, at: rep.at};
   if (!CALM) {
     goToLine(rep.at + 1);
     say("Watch this!");
-    t.readOnly = true;
+    t.readOnly = true; busy = true;
     const lines = code.split("\n");
     for (let n = rep.times - 1; n >= 1; n--) {
       lines.splice(rep.at + rep.size * n, rep.size);
       paintCode(lines.join("\n"));
       await wait(Math.max(60, Math.min(170, 1000 / rep.times)));
     }
-    t.readOnly = false;
+    t.readOnly = false; busy = false;
   }
   replaceText(0, code.length, withLoop(code, rep));
   if (scene) say("How many times?");
@@ -2766,6 +2842,10 @@ async function showToasts(r) {
                  ...unlocks,
                  ...(r.missions_done || []).map(m => ["✅", `Mission done: ${m.text}`, r.trophy ? "" : "📋 Today, next to the goals, shows the others."]),
                  ...(r.trophy ? [["🏆", "All of today's missions done!", "A mission day trophy. Come back tomorrow for three new ones."]] : [])];
+  if (scene && scene.run && scene.run.reached && !state.rover_name && recall(`planetNameAsked:${me}`) !== "1") {
+    store(`planetNameAsked:${me}`, "1");
+    items.push(["🏷", "Your rover needs a name!", "You're teaching it, so you choose. Press to name it in the garage.", true]);
+  }
   if (r.found.length && site) renderGoals();
   if ((r.missions_done || []).length && site) renderGoals();
   const gen = toastGen;
@@ -2823,7 +2903,8 @@ async function enter(id) {
   $("driver").textContent = data.you.name; $("driver").title = data.you.name;
   $("join").hidden = true; $("app").hidden = false;
   const lastSite = recall(`planetSite:${me}`);
-  await openSite(siteOpen(lastSite) ? lastSite : data.current);
+  // A new computer has no last site of its own: the server remembers the last run.
+  await openSite([lastSite, data.last_site].find(siteOpen) || data.current);
   requestAnimationFrame(frameLoop);
   if (recall("planetIntroSeen") !== "1") openIntro();
   // A returning driver sees their own progress, so joining with a classmate's
@@ -2924,7 +3005,7 @@ const NEW_ZONES = ["tricks", "numbers"];   // say NEW until a student has tried 
 function openLevels() {
   if (!state) return;
   note("levels");
-  closePops();
+  closePops(); clearToasts();
   const next = playNext(), here = site && site.key;
   const got = n => (n.stars || []).filter(Boolean).length;
   $("levelsStars").textContent = `★ ${state.total_stars} / ${state.max_stars}`;
@@ -3455,8 +3536,12 @@ function markGarageNew() {
   $("starsButton").classList.toggle("fresh", fresh);
 }
 let garageNew = new Set();
+// The rover, as the page talks about it: its own name once it has one.
+function roverName(the = "your rover") { return (state && state.rover_name) || the; }
 function openGarage() {
   note("garage");
+  clearToasts();
+  $("roverName").value = state.rover_name || "";
   const seen = garageSeen();
   garageNew = new Set(seen ? garageKeys().filter(k => !seen.has(k)) : []);
   store(`planetGarageSeen:${me}`, JSON.stringify(garageKeys()));
@@ -4195,7 +4280,7 @@ function waitForCode() {
   if (kidsMode() && !scout) toggleScout();
   if (scout && scout.over) return say(scout.reached ? "Press Use as code!" : "Press Scout again!");
   if (scene) { scene.poke = performance.now(); say(scout ? "Drive me with the arrows!" : "I'm waiting for your code!"); }
-  if (!scout) return showBanner("", "Your rover is waiting for instructions! Write a command like  east()  in the box, then press Transmit ▶.");
+  if (!scout) return showBanner("", `${roverName("Your rover")} is waiting for instructions! Write a command like  east()  in the box, then press Transmit ▶.`);
   const pad = $("pad");
   pad.classList.remove("wake"); void pad.offsetWidth; pad.classList.add("wake");
   setTimeout(() => pad.classList.remove("wake"), 1600);
@@ -4218,6 +4303,20 @@ function beamToRover() {
   }
   return wait(BEAM_MS);
 }
+// The same code after a miss would only do the same thing, so nothing goes
+// out: the rover shows it again and asks for a change. (Half of all tries in a
+// row were the same code, and stuck students sent it four times over.)
+async function sameCode() {
+  note("same_code");
+  clearToasts();
+  say("Same code, same trip!");
+  const key = site.key, was = scene;
+  if (last()) { site.same = true; togglePlay(); }   // (a code error has nothing to replay)
+  const out = await post("/planet/again", {id: me, site: key}).catch(() => null);
+  if (!out || out.error || site.key !== key) return;
+  site.misses = out.misses;
+  if (playing && scene === was) rewards = {badges: [], unlocked: [], found: [], new_stars: 0, can_skip: out.can_skip, helpers: out.helpers};
+}
 async function transmit() {
   if (busy || !me || !site) return;
   if (BLANK.test($("code").value)) {
@@ -4230,6 +4329,7 @@ async function transmit() {
   if (noCode()) return waitForCode();
   // Pressed again while the rover is still driving this same code: it heard.
   if (playing && !scout && scene.code === $("code").value) return say("I'm on it!");
+  if (!scout && site.key !== "7" && site.lastMissed && scene.code === $("code").value && $("code").value === site.lastSent) return sameCode();
   busy = true;
   clearToasts();
   state.you.ran = true; nudgeFirstRun();
@@ -4963,6 +5063,10 @@ $("levelsPlay").addEventListener("click", () => { const k = $("levelsPlay").data
 $("prevSite").addEventListener("click", () => { const k = stepSite(-1); if (k) openSite(k); });
 $("nextSiteButton").addEventListener("click", () => { const k = stepSite(1); if (k) openSite(k); });
 $("garageClose").addEventListener("click", () => { $("garage").hidden = true; });
+$("roverName").addEventListener("change", async () => {
+  const out = await post("/planet/rover", {id: me, name: $("roverName").value}).catch(() => null);
+  if (out && !out.error) { useState(out); $("roverName").value = out.rover_name; }
+});
 $("surpriseButton").addEventListener("click", surprise);
 $("garageNext").addEventListener("click", e => {
   if (e.target.closest(".gn-go")) { $("garage").hidden = true; openLevels(); return; }
@@ -5021,6 +5125,7 @@ $("warmup").addEventListener("click", e => {
   else if (e.target.closest("#warmPad")) $("warmPad").focus();
 });
 $("radioButton").addEventListener("click", () => openPop($("radioPop"), $("radioButton")));
+$("stepButton").addEventListener("click", stepOnce);
 $("hintButton").addEventListener("click", () => { note("hint"); askHint(); });
 $("fnButton").addEventListener("click", () => { removing = null; $("fnState").textContent = "Saved functions work on every site."; openPop($("fnPop"), $("fnButton")); renderFunctions(); placePop($("fnPop"), $("fnButton")); });
 $("fnPop").addEventListener("click", functionsClick);
@@ -5112,7 +5217,8 @@ $("map").addEventListener("click", e => {
   if (Math.hypot(dx, dy) > cell * .8) return;
   SFX.wake(); SFX.play(look.horn || "beep");
   scene.poke = performance.now();
-  scene.said = {at: scene.poke, text: POKE_LINES[Math.floor(Math.random() * POKE_LINES.length)]};
+  const lines = state.rover_name ? [...POKE_LINES, `I'm ${state.rover_name}!`, `${state.rover_name}, ready!`] : POKE_LINES;
+  scene.said = {at: scene.poke, text: lines[Math.floor(Math.random() * lines.length)]};
 });
 window.addEventListener("resize", () => { render(); refreshEditor(); foldBrief(); });
 $("candyButton").addEventListener("click", openCandyRoad);

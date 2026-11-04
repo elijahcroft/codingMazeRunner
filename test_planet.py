@@ -1730,6 +1730,21 @@ class ClassroomTests(unittest.TestCase):
         out = self.transmit(pid, "1a", site("1a")[2]["reference"])
         self.assertNotIn("Never Give Up", [b["name"] for b in out["rewards"]["badges"]])
 
+    def test_the_same_code_again_counts_as_a_miss_but_not_a_new_try(self):
+        pid = self.join()
+        self.transmit(pid, "1a", "east()\n")
+        for n in (2, 3):
+            self.assertEqual(self.post("/planet/again", {"id": pid, "site": "1a"})["misses"], n)
+        entry = server.planet_entry(server.players[pid])
+        self.assertEqual((entry["misses"]["1a"], entry["changed"]["1a"]), (3, 1))
+        self.assertIn("error", self.post("/planet/again", {"id": pid, "site": "9a"}))
+
+    def test_a_rover_can_have_a_name(self):
+        pid = self.join()
+        self.assertEqual(self.get(f"/planet/state?id={pid}")["rover_name"], "")
+        self.assertEqual(self.post("/planet/rover", {"id": pid, "name": " Sparky <b>the  Great and Mighty"})["rover_name"], "Sparky bthe Gr")
+        self.assertEqual(self.post("/planet/rover", {"id": pid, "name": ""})["rover_name"], "")
+
     def test_the_page_can_count_what_students_do_between_runs(self):
         pid = self.join()
         self.post("/planet/events", {"id": pid, "counts": {"replay": 2, "scout": 1}})
@@ -1737,6 +1752,7 @@ class ClassroomTests(unittest.TestCase):
         self.post("/planet/events", {"id": "nobody", "counts": {"replay": 1}})
         days = server.planet_entry(server.players[pid])["events"]
         self.assertEqual(list(days.values()), [{"replay": 3, "scout": 1}])
+        self.assertEqual(self.get("/planet/overview")["habits"], {"replay": 3, "scout": 1})
 
     def test_long_miss_runs_name_classmates_then_open_the_next_site(self):
         ada, bo = self.join("Ada"), self.join("Bo")

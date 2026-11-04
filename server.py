@@ -3222,7 +3222,7 @@ def planet_entry(p):
 
 # What students do between runs, which the runs themselves don't show. Only
 # counts, by day, for the teacher to see what's being used.
-PLANET_EVENTS = {"replay", "scout", "chip", "garage", "levels", "hint", "show_me",
+PLANET_EVENTS = {"replay", "step", "scout", "chip", "garage", "levels", "hint", "show_me", "same_code",
                  "shortcut_offered", "shortcut_taken", "shortcut_won"}
 
 
@@ -3233,6 +3233,34 @@ def planet_events(p, counts):
     for kind, n in counts.items():
         if kind in PLANET_EVENTS and isinstance(n, int) and 0 < n <= 1000:
             today[kind] = today.get(kind, 0) + n
+
+
+def planet_rover_name(p, name):
+    """The student's name for their rover: letters, numbers and spaces. It
+    only shows on their own screen."""
+    name = " ".join(re.sub(r"[^\w ]", "", str(name)).split())[:14]
+    planet_entry(p)["rover_name"] = name
+    return name
+
+
+def planet_again(p, key):
+    """The same code sent again after a miss: the page replays it without
+    running it, but a student doing this is stuck, and the teacher should
+    see it, so it counts as a miss (not as a new try for Never Give Up)."""
+    entry = planet_entry(p)
+    entry["misses"][key] = entry["misses"].get(key, 0) + 1
+    entry["active"] = int(time.time())
+    return {"misses": entry["misses"][key], "can_skip": can_skip(p, key),
+            "helpers": planet_helpers(p, key) if entry["misses"][key] >= help_after() else []}
+
+
+def planet_habits():
+    """Today's counts for the whole class, for the teacher's page."""
+    day, out = time.strftime("%Y-%m-%d"), {}
+    for q in players.values():
+        for kind, n in q.get("planet", {}).get("events", {}).get(day, {}).items():
+            out[kind] = out.get(kind, 0) + n
+    return out
 
 
 def planet_frontier(p):
@@ -3538,7 +3566,7 @@ def planet_state(p):
     # Rewards to pick, while there's something left to pick.
     choices = pick_choices(entry) if picks_left(entry) > 0 else []
     return {"you": {"name": p["name"], "ran": any(entry["runs"].values())}, "zones": zones,
-            "current": current,
+            "current": current, "last_site": entry["now"] and entry["now"]["site"],
             "uncharted": entry["uncharted"],
             "total_stars": star_count(entry),
             "max_stars": 3 * len(planet.SITE_ORDER + planet.BUILD_ORDER)
@@ -3546,7 +3574,7 @@ def planet_state(p):
                if planet_class_settings["easy"] else 0),
             "rank": rank_for(star_count(entry)),
             "picks": min(picks_left(entry), len(pickable(entry))) if choices else 0,
-            "sound": planet_class_settings["sound"],
+            "sound": planet_class_settings["sound"], "rover_name": entry.get("rover_name", ""),
             "pick_choices": choices,
             "missions": missions_view(entry),
             "badges": [{"key": k, "icon": b[0], "name": b[1], "how": b[2],
@@ -4894,6 +4922,7 @@ class Handler(BaseHTTPRequestHandler):
                                 blanks=planet_class_settings["blanks"],
                                 coach=planet_class_settings["coach"],
                                 sound=planet_class_settings["sound"],
+                                habits=planet_habits(),
                                 easy=planet_class_settings["easy"],
                                 halloween=planet_class_settings["halloween"])
                 elif not p:
@@ -5063,6 +5092,27 @@ class Handler(BaseHTTPRequestHandler):
                              "left": SCOUT_MAX - min(len(moves), SCOUT_MAX),
                              "blanks": planet_class_settings["blanks"],
                              "coach": planet_class_settings["coach"]})
+            return
+        if self.path == "/planet/rover":
+            with lock:
+                p = players.get(data.get("id"))
+                if not p:
+                    self._send(200, {"error": "join"})
+                    return
+                planet_rover_name(p, data.get("name", ""))
+                save_state()
+                self._send(200, planet_state(p))
+            return
+        if self.path == "/planet/again":
+            key = str(data.get("site", ""))
+            with lock:
+                p = players.get(data.get("id"))
+                if not p or not planet_open(p, key):
+                    self._send(200, {"error": "join"})
+                    return
+                out = planet_again(p, key)
+                save_state()
+            self._send(200, out)
             return
         if self.path == "/planet/events":
             with lock:
