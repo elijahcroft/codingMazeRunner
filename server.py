@@ -2795,6 +2795,7 @@ PLANET_BADGES = {
     "if": ("🔀", "Decision Maker", "Complete a mission using an if"),
     "def": ("🧩", "Architect", "Complete a mission using a function you made"),
     "print": ("🔬", "Scientist", "Complete a mission with print() in your code"),
+    "variable": ("🏷", "Name Giver", "Complete a mission with a variable you use"),
     "fixer": ("🐛", "Bug Squasher", "Fix a code error, then complete the mission"),
     "grit": ("💪", "Never Give Up", "Complete a mission after 5 different tries that didn't"),
     "triple": ("🌟", "Triple Star", "Earn all three stars in one run"),
@@ -3221,7 +3222,12 @@ def planet_entry(p):
     # saved. They count places in SITE_ORDER, so those saves move up by two.
     if "wind_ramp" not in entry:
         entry["wind_ramp"] = True
-        if entry["unlocked"] > planet.SITE_ORDER.index("3a"):
+        if entry["unlocked"] > planet.SITE_ORDER.index("3a") - 2:
+            entry["unlocked"] += 2
+    # And two more after 1B. (The - 2 above: those two weren't there yet.)
+    if "memory_ramp" not in entry:
+        entry["memory_ramp"] = True
+        if entry["unlocked"] > planet.SITE_ORDER.index("1b"):
             entry["unlocked"] += 2
     return entry
 
@@ -3709,7 +3715,7 @@ def planet_site(p, key):
                     # The gauge shows from the start: what drains it is the hidden part.
                     battery=v.get("battery", planet.BATTERY_MAX)
                     if "battery" in zone["rules"] else None,
-                    crystals=v.get("crystals", []), goals=planet.goals(s, v),
+                    crystals=v.get("crystals", []), goals=planet.goals(s, v), memory=v.get("memory"),
                     tips=planet.star_tips(s, v), coach=s["coach"], gift=gift_for(p, key), drills=v.get("drills"),
                     # A zone that brings something new says what it is on its first site.
                     new=zone.get("new") if zone["sites"][0] is s else None,
@@ -3739,6 +3745,8 @@ def code_features(code):
             found.add("def")
         elif isinstance(n, ast.Call) and getattr(n.func, "id", None) == "print":
             found.add("print")
+    if planet.uses_variable(code):
+        found.add("variable")
     return found
 
 

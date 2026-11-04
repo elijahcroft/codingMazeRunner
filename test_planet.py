@@ -239,7 +239,7 @@ class NewZoneTests(unittest.TestCase):
             for s in zone["sites"]:
                 if s["reference"]:
                     self.assertEqual(self.earn(s["key"], s["reference"]), [True] * 3, s["key"])
-        for key in ("3a1", "3a2"):
+        for key in ("3a1", "3a2", "1b1", "1b2"):
             self.assertEqual(self.earn(key, site(key)[2]["reference"]), [True] * 3, key)
 
     def test_change_one_number_works_on_every_field(self):
@@ -258,6 +258,19 @@ class NewZoneTests(unittest.TestCase):
         self.assertTrue(planet.uses_variable("n = 1\nn = n + 1\n"))
         self.assertFalse(planet.uses_variable("n = 4\neast(4)\n"))
         self.assertFalse(planet.uses_variable("for i in range(3):\n    east(i)\n"))
+
+    def test_a_short_memory_needs_a_loop(self):
+        out = run("1b1", "east(2)\nsouth()\n" * 6)
+        self.assertEqual((out["end"], out["memory_full"], out["reached"]), ("error", True, False))
+        self.assertIn("memory holds 4 lines, and your program is 12", out["error"])
+        self.assertTrue(run("1b1", "# a note\n\n" * 8 + site("1b1")[2]["reference"])["reached"])
+        self.assertFalse(run("1b2", site("1b2")[2]["reference"])["memory_full"])
+        long_way = ("east(7)\nsouth(2)\nwest(7)\nsouth(2)\n" * 3) + "east(7)\n"
+        self.assertTrue(run("1b2", long_way)["memory_full"])
+
+    def test_a_corridor_leaves_one_way_through(self):
+        rows = planet.corridor(planet.stairs([2, 2]))
+        self.assertEqual(rows, ["#######", "#S..###", "###...#", "#####G#", "#######"])
 
     def test_the_ledge_ramp_teaches_the_gust_check(self):
         self.assertFalse(run("3a1", "south(8)\n")["reached"])
@@ -1392,7 +1405,7 @@ class ClassroomTests(unittest.TestCase):
         picks = {planet.variant_index(pid, s) for pid in ids}
         self.assertGreater(len(picks), 1)
         for pid in ids[:3]:
-            server.planet_entry(server.players[pid])["unlocked"] = 5
+            server.planet_entry(server.players[pid])["unlocked"] = 7
             first = self.get(f"/planet/site?id={pid}&site=2c")["map"]
             self.assertEqual(first, self.get(f"/planet/site?id={pid}&site=2c")["map"])
 
@@ -1646,7 +1659,7 @@ class ClassroomTests(unittest.TestCase):
 
     def test_clearing_a_zone_says_whats_next(self):
         pid = self.join()
-        for key in ("1a", "1b"):
+        for key in ("1a", "1b", "1b1", "1b2"):
             out = self.post("/planet/run", {"id": pid, "site": key, "code": site(key)[2]["reference"]})
             self.assertIsNone(out["rewards"]["zone_cleared"])
         loop = site("1c")[2]["reference"]   # clears every student's rock run
@@ -1666,7 +1679,7 @@ class ClassroomTests(unittest.TestCase):
         self.assertEqual(self.get(f"/planet/state?id={pid}")["current"], "1b")
         # Clearing the unlocked site goes on past it, with 1A still to do.
         self.post("/planet/run", {"id": pid, "site": "1b", "code": site("1b")[2]["reference"]})
-        self.assertEqual(self.get(f"/planet/state?id={pid}")["current"], "1c")
+        self.assertEqual(self.get(f"/planet/state?id={pid}")["current"], "1b1")
 
     def transmit(self, pid, key, code):
         return self.post("/planet/run", {"id": pid, "site": key, "code": code})
@@ -1729,6 +1742,11 @@ class ClassroomTests(unittest.TestCase):
             self.transmit(pid, "1a", "east()\n")
         out = self.transmit(pid, "1a", site("1a")[2]["reference"])
         self.assertNotIn("Never Give Up", [b["name"] for b in out["rewards"]["badges"]])
+
+    def test_a_variable_that_gets_used_earns_a_badge(self):
+        pid = self.join()
+        out = self.transmit(pid, "1a", "n = 2\nsouth(n)\neast()\nsouth()\neast(7)\nsouth()\nnorth(3)\nwest()\n")
+        self.assertIn("Name Giver", [b["name"] for b in out["rewards"]["badges"]])
 
     def test_the_same_code_again_counts_as_a_miss_but_not_a_new_try(self):
         pid = self.join()
@@ -1861,7 +1879,7 @@ class ClassroomTests(unittest.TestCase):
 
     def test_a_measurement_has_no_class_record(self):
         pid = self.join()
-        server.planet_entry(server.players[pid])["unlocked"] = 3
+        server.planet_entry(server.players[pid])["unlocked"] = 5
         out = self.transmit(pid, "2a", site("2a")[2]["reference"])
         self.assertTrue(out["runs"][0]["reached"])
         self.assertIsNone(out["rewards"]["record"])
@@ -2163,7 +2181,7 @@ class ClassroomTests(unittest.TestCase):
         order = planet.SITE_ORDER
         for key in ("3b", "4a", "7a"):
             pid = self.join()
-            old = [k for k in order if k not in ("3a1", "3a2")].index(key)
+            old = [k for k in order if k not in ("3a1", "3a2", "1b1", "1b2")].index(key)
             server.players[pid]["planet"] = {"solved": {}, "code": {}, "runs": {}, "hints": {},
                                              "unlocked": old, "uncharted": None, "active": None}
             self.assertEqual(order[server.planet_frontier(server.players[pid])], key)
@@ -2172,12 +2190,23 @@ class ClassroomTests(unittest.TestCase):
         entry = server.planet_entry(server.players[pid])
         entry["unlocked"] = order.index("3a")   # a new save is already in today's order
         self.assertEqual(order[server.planet_frontier(server.players[pid])], "3a")
+        # A save from after the Ledge ramp, before the memory levels.
+        pid = self.join()
+        server.players[pid]["planet"] = {"solved": {}, "code": {}, "runs": {}, "hints": {}, "wind_ramp": True,
+                                         "unlocked": [k for k in order if k not in ("1b1", "1b2")].index("3a2"),
+                                         "uncharted": None, "active": None}
+        self.assertEqual(order[server.planet_frontier(server.players[pid])], "3a2")
+        # One still at 1B stays there, and the new levels are next.
+        pid = self.join()
+        server.players[pid]["planet"] = {"solved": {}, "code": {}, "runs": {}, "hints": {},
+                                         "unlocked": 1, "uncharted": None, "active": None}
+        self.assertEqual(order[server.planet_frontier(server.players[pid])], "1b")
 
     def test_anyone_past_the_ledge_ramp_isnt_sent_back_for_it(self):
         pid = self.join()
         entry = server.planet_entry(server.players[pid])
         entry["solved"] = {k: 5 for k in planet.SITE_ORDER[:planet.SITE_ORDER.index("3c")]
-                           if k not in ("3a1", "3a2")}
+                           if k not in ("3a1", "3a2", "1b1", "1b2")}
         self.assertEqual(self.get(f"/planet/state?id={pid}")["current"], "3c")
 
     def test_max_stars_counts_three_on_the_new_zones(self):

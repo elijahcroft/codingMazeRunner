@@ -884,6 +884,10 @@
   <div id="todayList"></div>
   <div class="pop-row"><small id="todayNote"></small></div>
 </div>
+<div class="pop" id="brainPop" hidden role="dialog" aria-labelledby="brainTitle">
+  <h2 id="brainTitle"></h2>
+  <div id="brainList"></div>
+</div>
 <div class="pop" id="fnPop" hidden role="dialog" aria-labelledby="fnTitle">
   <h2 id="fnTitle">Your functions</h2>
   <div class="fns" id="savedFunctions"></div>
@@ -2491,7 +2495,7 @@ function finished() {
   // the child is looking. (Its line stays a little longer than a click's.)
   const closer = sitesRewards && sitesRewards.closer, stoppedShort = run.end === "stopped" && run.explain;
   if (stoppedShort) scene.shrug = performance.now();
-  const line = [closer && "🔥 Closest yet!", stoppedShort ? stoppedShort.say : run.end === "error" ? (run.line ? `Line ${run.line} confused me!` : "That confused me!") : ROVER_ENDS[run.end]].filter(Boolean).join(" ");
+  const line = [closer && "🔥 Closest yet!", stoppedShort ? stoppedShort.say : run.memory_full ? "My memory is full!" : run.end === "error" ? (run.line ? `Line ${run.line} confused me!` : "That confused me!") : ROVER_ENDS[run.end]].filter(Boolean).join(" ");
   if (line) scene.said = {text: line, at: performance.now() + 900};
   const candy = sitesRewards && sitesRewards.candy;
   if (candy && candy.dropped) toast("😱", `The rover dropped its ${candy.run} candy!`, "A spooked rover runs away and drops its bag. Only runs without a BOO count.");
@@ -2504,6 +2508,8 @@ function finished() {
   } else if (run.end === "error") {
     SFX.play("error");
     if (run.line) buttons.push(`<button class="quiet" onclick="goToLine(${run.line})">Go to line ${run.line}</button>`);
+    // Too long for the rover's memory, and it repeats: the shortcut is the way in.
+    if (run.memory_full && findRepeat($("code").value)) buttons.push(`<button class="go trick" onclick="teachShortcut()">Teach ${esc(roverName())} a shortcut</button>`);
   } else if (run.end !== "error" && last() > 1) {
     buttons.push(`<button class="quiet" onclick="showMe()">Show me</button>`);
   }
@@ -3248,9 +3254,35 @@ function renderGoals() {
     : `<span class="goal${best[i] ? " got" : ""}"><i>★</i>${esc(g)}</span>`).join("")
     + (site.gift ? '<span class="goal gift">🎁 A mystery gift is hidden here: drive over it</span>' : "")
     + legend(site.map || []).map(t => `<span class="goal legend">${esc(t)}</span>`).join("")
-    + todayChip();
+    + todayChip() + brainChip();
 }
 // Today's missions: a chip with how many are done, and the list it opens.
+// What the student has taught the rover: the big ideas of coding, each lit up
+// by a win that used it (their badges), and the next one to teach.
+const IDEAS = [["loop", "🔁", "Repeat moves", "for i in range(3):"],
+               ["variable", "🏷", "Remember a number", "steps = 4"],
+               ["while", "👀", "Keep checking", 'while look("east") != "rock":'],
+               ["if", "🔀", "Decide for itself", 'if look("east") == "rock":'],
+               ["def", "🧩", "Learn a new move", "def zigzag():"],
+               ["nested", "🌀", "Loops inside loops", "for i in range(3):  for j in range(2):"],
+               ["print", "🔬", "Tell you what it sees", "print(tick())"]];
+function ideasKnown() {
+  const earned = new Set(((state && state.badges) || []).filter(b => b.earned).map(b => b.key));
+  return IDEAS.filter(x => earned.has(x[0]));
+}
+function brainChip() {
+  return `<button class="goal today" onclick="openBrain(this)" title="What you've taught your rover so far">🧠 ${ideasKnown().length}/${IDEAS.length}</button>`;
+}
+function openBrain(button) {
+  const known = ideasKnown(), next = IDEAS.find(x => !known.includes(x));
+  $("brainTitle").textContent = `🧠 What ${roverName()} knows`;
+  $("brainList").innerHTML = IDEAS.map(x => {
+    const has = known.includes(x);
+    return `<div class="mission${has ? " done" : ""}"><span class="ico">${has ? "✅" : x[1]}</span>${esc(x[2])}<small>${x === next ? "teach me next!" : ""}</small></div>`
+      + (x === next ? `<div class="msg"><code>${esc(x[3])}</code></div>` : "");
+  }).join("");
+  popBelow($("brainPop"), button);
+}
 function todayChip() {
   const m = state && state.missions;
   if (!m) return "";
@@ -3261,7 +3293,10 @@ function openToday(button) {
   const m = state.missions;
   $("todayList").innerHTML = m.list.map(x => `<div class="mission${x.have >= x.need ? " done" : ""}"><span class="ico">${x.have >= x.need ? "✅" : esc(x.icon)}</span>${esc(x.text)}<small>${x.need > 1 ? `${x.have}/${x.need}` : x.have >= x.need ? "done" : ""}</small></div>`).join("");
   $("todayNote").textContent = `New missions every day, the same for the whole class. 🏆 ${m.trophies} mission day${m.trophies === 1 ? "" : "s"} so far${m.trophies < 3 ? ": 3 unlock the Gold medal topper" : ""}.`;
-  const pop = $("todayPop"), wasOpen = !pop.hidden;
+  popBelow($("todayPop"), button);
+}
+function popBelow(pop, button) {
+  const wasOpen = !pop.hidden;
   closePops();
   if (wasOpen) return;
   pop.hidden = false;
@@ -3395,7 +3430,7 @@ function placePop(pop, button) {
   pop.style.left = Math.max(12, Math.min(window.innerWidth - pr.width - 12, r.right - pr.width)) + "px";
   pop.style.top = Math.max(12, r.top - pr.height - 10) + "px";
 }
-function closePops() { $("radioPop").hidden = true; $("fnPop").hidden = true; $("todayPop").hidden = true; }
+function closePops() { $("radioPop").hidden = true; $("fnPop").hidden = true; $("todayPop").hidden = true; $("brainPop").hidden = true; }
 
 // ---- Saved functions: a def kept for later sites ------------------------------------------
 // Each def at the left edge of the code, with the indented lines under it.
@@ -3922,7 +3957,7 @@ function shopLoop(now) {
   if ($("paintShop").hidden) return;
   const a = shop.anim;
   if (a) {
-    const per = Math.max(10, Math.min(70, 1600 / a.steps.length)), k = Math.floor((now - a.start) / per);
+    const per = Math.max(10, Math.min(70, 1600 / a.steps.length)), k = Math.max(0, Math.floor((now - a.start) / per));
     if (k >= a.steps.length) { shop.anim = null; shop.shown = shop.art; }
     else {
       const art = BLANK_ART.split("");
@@ -4358,7 +4393,7 @@ function updateEditor() {
   const m = site && site.goals && /✂️ (\d+)/.exec(site.goals[2] || "");
   const target = m ? Number(m[1]) : null;
   const fits = !!(target && lines && lines <= target);
-  $("lineCount").textContent = `${lines} line${lines === 1 ? "" : "s"}${target ? ` · ✂️ ${target} or fewer${fits ? " ✓" : ""}` : ""}`;
+  $("lineCount").textContent = `${lines} line${lines === 1 ? "" : "s"}${site && site.memory ? ` · 🧠 holds ${site.memory}` : ""}${target ? ` · ✂️ ${target} or fewer${fits ? " ✓" : ""}` : ""}`;
   // Cutting the code down to size is a little win of its own, as it happens.
   const popped = fits && site && site.fitted === false;
   $("lineCount").className = fits ? "fits" + (popped ? " pop" : "") : "";
@@ -5126,7 +5161,7 @@ document.addEventListener("keydown", e => {
   else if (e.key === "r" || e.key === "R") restartScout();
 });
 document.addEventListener("pointerdown", e => {
-  if (!e.target.closest(".pop, #radioButton, #fnButton")) closePops();
+  if (!e.target.closest(".pop, #radioButton, #fnButton, .goal.today")) closePops();
 });
 $("map").addEventListener("pointermove", e => {
   if (!scene || !scene.view) return;
