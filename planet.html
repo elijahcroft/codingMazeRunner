@@ -296,6 +296,14 @@
   .trick-name .go.trick { margin: 0; }
   .go.trick { display: block; margin: 8px auto 3px; padding: 8px 16px; font-size: 15px; background: var(--gold); color: #33280a; box-shadow: 0 3px 0 #b8912e; }
   .cele-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  @media (max-height: 720px) {   /* a small Chromebook: the buttons stay on screen */
+    .cele-card { padding: 12px 18px; }
+    .cele-card h2 { font-size: 24px; }
+    .big-star i { font-size: 38px; }
+    .big-star span { display: none; }
+    .cele-note { margin-bottom: 8px; }
+    .cele-trick { margin-bottom: 8px; padding: 6px 10px; }
+  }
   /* What the next stars unlock, with a bar that fills as the new ones land. */
   .cele-next { display: flex; align-items: center; gap: 8px; margin: 0 auto 14px; max-width: 380px; padding: 6px 12px; border-radius: 99px; background: rgba(0,0,0,.2); font-size: 13.5px; color: var(--haze); white-space: nowrap; }
   .cele-next[hidden] { display: none; }
