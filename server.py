@@ -2965,6 +2965,9 @@ GARAGE = [
     {"slot": "pet", "key": "jelly", "name": "Space jelly", "stars": 66},
     {"slot": "pet", "key": "robodog", "name": "Robo dog", "stars": 82},
     {"slot": "pet", "key": "dragon", "name": "Baby dragon", "stars": 115},
+    {"slot": "pet", "key": "falsity", "name": "Falsity", "stars": 16},
+    {"slot": "pet", "key": "cruelty", "name": "Cruelty", "stars": 32},
+    {"slot": "pet", "key": "lovity", "name": "Lovity", "stars": 125},   # the rarest pet of all
     # What the rover says when it's clicked, and at the beacon.
     {"slot": "horn", "key": "beep", "name": "Beep boop", "stars": 0},
     {"slot": "horn", "key": "honk", "name": "Honk", "stars": 6},

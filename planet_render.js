@@ -1601,7 +1601,27 @@ Object.assign(WHEELS, {
     wheelSpots((wx, wy) => { ctx.beginPath(); ctx.arc(wx * s, wy * s, .025 * s, 0, 7); ctx.fill(); });
   },
 });
+// Verity's cousins: the same smiley in other colours.
+function smiley(ctx, s, t, light, mid, rim, ink) {
+  ctx.rotate(Math.sin(t / 600) * .1);
+  const grad = ctx.createRadialGradient(-.12 * s, -.14 * s, .05 * s, 0, 0, .4 * s);
+  grad.addColorStop(0, light); grad.addColorStop(1, mid);
+  ctx.fillStyle = grad; ctx.strokeStyle = rim; ctx.lineWidth = s * .04;
+  ctx.beginPath(); ctx.arc(0, 0, .38 * s, 0, 7); ctx.fill(); ctx.stroke();
+  const blink = t % 3200 > 3060, wink = !blink && t % 9600 > 9000;   // eyes open at t = 0 (calm mode)
+  ctx.fillStyle = ctx.strokeStyle = ink; ctx.lineWidth = s * .05; ctx.lineCap = "round";
+  for (const x of [-.13, .13]) {
+    if (blink || (wink && x > 0)) { ctx.beginPath(); ctx.moveTo((x - .06) * s, -.1 * s); ctx.lineTo((x + .06) * s, -.1 * s); ctx.stroke(); }
+    else { ctx.beginPath(); ctx.ellipse(x * s, -.1 * s, .045 * s, .08 * s, 0, 0, 7); ctx.fill(); }
+  }
+  ctx.beginPath(); ctx.arc(0, .02 * s, .22 * s, .15 * Math.PI, .85 * Math.PI); ctx.stroke();
+  ctx.fillStyle = "rgba(255,255,255,.3)";
+  for (const x of [-.25, .25]) { ctx.beginPath(); ctx.ellipse(x * s, .08 * s, .06 * s, .035 * s, 0, 0, 7); ctx.fill(); }
+}
 Object.assign(PETS, {
+  falsity(ctx, s, t) { smiley(ctx, s, t, "#a8dcff", "#3f9bf0", "#1f6cc0", "#0f2c55"); },   // Falsity, the blue one
+  cruelty(ctx, s, t) { smiley(ctx, s, t, "#ff9c8c", "#e8352e", "#a81a1a", "#4a0c0c"); },   // Cruelty, the red one
+  lovity(ctx, s, t) { smiley(ctx, s, t, "#ffd6ea", "#ff7ab8", "#d94a8e", "#5a1438"); },    // Lovity, the pink one
   cauldron(ctx, s, t) {   // a witch's cauldron on little legs, green brew bubbling over
     ctx.fillStyle = "#1a1620";
     for (const x of [-.22, .22]) { ctx.fillRect((x - .04) * s, .22 * s, .08 * s, .16 * s); }
