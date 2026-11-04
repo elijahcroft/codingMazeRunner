@@ -1567,6 +1567,7 @@ function render(now = performance.now()) {
   }
   drawTrail(ctx, frames, i, rover, cell, now);
   drawGhost(ctx, i, pos, cell, now);
+  if (!playing && i >= last()) drawAim(ctx, scene.run, cell, now);
   const G = findChar(map, "G");
   if (G) drawBeacon(ctx, G[0], G[1], cell, now, f.e === "goal");
   // The rover, and whatever just happened to it.
@@ -1596,6 +1597,9 @@ function render(now = performance.now()) {
     }
     const poke = CALM || !scene.poke ? 1 : (now - scene.poke) / 500;
     if (poke < 1) angle += Math.sin(poke * Math.PI * 6) * .35 * (1 - poke);
+    // Stopped short: a shrug, this way and that.
+    const shrug = CALM || !scene.shrug ? 1 : (now - scene.shrug) / 900;
+    if (shrug < 1 && shrug > 0) { angle += Math.sin(shrug * Math.PI * 4) * .22; lift = Math.max(lift, Math.abs(Math.sin(shrug * Math.PI * 2)) * .12); }
     if (lift && !rover.lift) {
       ctx.fillStyle = "rgba(10,6,24,.35)"; ctx.beginPath();
       ctx.ellipse(rx + dx, ry + dy + cell * .3, cell * .4 * (1 - lift * .4), cell * .14, 0, 0, 7); ctx.fill();
@@ -2168,6 +2172,21 @@ function combo(f, icon) {
   SFX.play("combo", c);
   if (c > 1) pop(f, `${icon} ×${c}${c >= 4 ? "!" : ""}`, c >= 4 ? "#ff8ad8" : "#7ff0d6");
 }
+// Code that stopped short: a dot on each square to go, in the order the
+// words say them (across, then up or down), so they can be counted.
+function drawAim(ctx, run, cell, now) {
+  const aim = run && !scout && run.end === "stopped" && run.explain && run.explain.aim;
+  if (!aim) return;
+  const dots = [];
+  let {r, c} = scene.frames[last()];
+  while (c !== aim[1]) { c += Math.sign(aim[1] - c); dots.push([r, c]); }
+  while (r !== aim[0]) { r += Math.sign(aim[0] - r); dots.push([r, c]); }
+  const lit = CALM ? -1 : Math.floor(now / 170) % (dots.length + 3);
+  dots.forEach(([dr, dc], k) => {
+    ctx.fillStyle = k === lit ? "#fff6d8" : "rgba(255,211,107,.85)";
+    ctx.beginPath(); ctx.arc((dc + .5) * cell, (dr + .5) * cell, Math.max(3, cell * (k === lit ? .13 : .09)), 0, 7); ctx.fill();
+  });
+}
 // A word that floats up from a square and fades.
 function pop(f, text, color) {
   (scene.pops = scene.pops || []).push({r: f.r, c: f.c, text, color, at: performance.now()});
@@ -2388,6 +2407,12 @@ function finished() {
   }
   const sitesRewards = rewards; rewards = null;
   if (sitesRewards) showToasts(sitesRewards);
+  // Stopped short, or closer than ever: the rover says so, on the map where
+  // the child is looking. (Its line stays a little longer than a click's.)
+  const closer = sitesRewards && sitesRewards.closer, stoppedShort = run.end === "stopped" && run.explain;
+  if (stoppedShort) scene.shrug = performance.now();
+  const line = [closer && "🔥 Closest yet!", stoppedShort && stoppedShort.say].filter(Boolean).join(" ");
+  if (line) scene.said = {text: line, at: performance.now() + 900};
   const candy = sitesRewards && sitesRewards.candy;
   if (candy && candy.dropped) toast("😱", `The rover dropped its ${candy.run} candy!`, "A spooked rover runs away and drops its bag. Only runs without a BOO count.");
   else if (candy && candy.total > candy.before) toast("🍬", `+${candy.total - candy.before} candy in your bag`, `${candy.total} in all. Finish the level for its stars!`);
@@ -2424,6 +2449,7 @@ function finished() {
   const looped = site.taught && Number((/range\((\d+)\)/.exec(scene.code) || [])[1]);
   if (looped && looped !== site.taught.times) text = `Your loop went round ${looped} ${looped === 1 ? "time" : "times"}, and you wrote it ${site.taught.times} times. ${text}`;
   if (site.key === "7" && runs) text = `${unchartedSummary()} Planet ${runs.indexOf(run) + 1}: ${text}`;
+  if (closer) text = `🔥 Closest yet: ${closer}.${plain && stoppedShort ? "" : ` ${text}`}`;
   showBanner(cls === "win" ? "win" : cls === "lost" ? "lost" : "", text, buttons.join(""), plain ? run.explain.next : "");
   const helpers = sitesRewards && sitesRewards.helpers || [];
   if (helpers.length) $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">🙋 Ask ${esc(helpers.join(" or "))}: they've cleared this site.</span>`);
@@ -2673,8 +2699,7 @@ async function showToasts(r) {
     ? [["🔓", `${r.unlocked.length} new things in the garage!`, r.unlocked.map(u => `${SLOT_ICON[u.slot] || ""} ${u.name}`).join(" · "), true,
         r.unlocked.map(u => u.rarity).reduce((a, b) => TIERS.indexOf(b) > TIERS.indexOf(a) ? b : a, "common")]]
     : r.unlocked.map(u => [SLOT_ICON[u.slot] || "🔓", `Unlocked: ${u.name} ${u.slot}`, "Press to fit it in the garage", true, u.rarity]);
-  const items = [...(r.closer ? [["🔥", "Closest yet!", `${r.closer}. Keep the part that worked and change the next bit.`]] : []),
-                 ...r.found.map(u => ["🎁", `You found a mystery gift: ${u.name} ${u.slot}!`, "Press to try it on in the garage", true, u.rarity]),
+  const items = [...r.found.map(u => ["🎁", `You found a mystery gift: ${u.name} ${u.slot}!`, "Press to try it on in the garage", true, u.rarity]),
                  ...badges,
                  ...unlocks,
                  ...(r.missions_done || []).map(m => ["✅", `Mission done: ${m.text}`, r.trophy ? "" : "📋 Today, next to the goals, shows the others."]),

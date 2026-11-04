@@ -402,8 +402,10 @@ notice each rule. Ask them to predict out loud before they press **Transmit**.
 in plain words, then one thing to try (👉). It never asks a question. For example:
 *"A belt carried the rover into a crater at x 12, y 5."* 👉 *"Belts carry the
 rover the way their arrows point. Jump over a belt you don't want to ride."*
-Or, for code that stops short: *"Your code finished with the rover at x 4, y 2,
-away from the beacon at x 9, y 2."* 👉 *"The beacon is 5 squares east of there."*
+Or, for code that stops short: *"Your code finished before the beacon."* 👉 *"The
+beacon is 5 squares east of the rover."* The rover shrugs, says how far is left
+("5 more squares!"), and a dot on each square shows the way; a best try yet says
+"🔥 Closest yet!" on the map. The exact spot is in the telemetry.
 Where the zone's new idea is the way through, the 👉 says so: rock with drills
 left suggests `drill("east")`, a locked gate points at the key, and once jump()
 has arrived a crater one square wide says where to jump from. A flat battery

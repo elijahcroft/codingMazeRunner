@@ -414,7 +414,7 @@ class SiteClaims(unittest.TestCase):
     def test_2a_no_report_is_no_mission(self):
         out = run("2a", "east()\n")
         self.assertEqual((out["end"], out["log"][-1]),
-                         ("stopped", "tick 1: 🏁 program ended without a report()"))
+                         ("stopped", "tick 1: 🏁 program ended without a report(), at x 6, y 2"))
 
     def test_2b_the_beacon_is_close_but_needs_six_slides(self):
         self.assertEqual(len(solve("2b", 0)), 6)
@@ -1109,12 +1109,12 @@ class RoverTests(unittest.TestCase):
 
     def test_a_run_that_misses_says_what_happened_in_plain_words(self):
         for key, code, what, nxt in [
-            ("1a", "east(2)\n", "finished with the rover at x 3, y 1, and 3 samples still out",
+            ("1a", "east(2)\n", "finished with 3 samples still out",
              "The closest is at x 2, y 3: 1 square west and 2 squares south."),
-            ("7b", "east()\n", "away from the beacon at", "of there."),
+            ("7b", "east()\n", "before the beacon", "of the rover."),
             ("8a", "east(8)\n", "The rover drove into a crater at x 6, y 2", 'jump("east") from x 5, y 2'),
             ("3b", "south(20)\n", "gust pushed the rover into a crater", "wait()"),
-            ("2b", "east(2)\n", "away from the beacon", "work back from the beacon"),
+            ("2b", "east(2)\n", "before the beacon", "work back from the beacon"),
             ("4a", "east()\nwest()\n", "had cracked", "own tracks"),
             ("5c", "east(40)\n", "The battery ran out", "sun"),
             ("1a", "while True:\n    wait()\n", "ran for 1000 ticks", "while loop"),
@@ -1127,6 +1127,19 @@ class RoverTests(unittest.TestCase):
             self.assertNotIn("?", out["explain"]["what"] + out["explain"]["next"], code)
         self.assertIsNone(run("1a", "east(\n")["explain"])
         self.assertIsNone(run("9a", "east(2)\n")["explain"])
+
+    def test_code_that_stops_short_points_the_way(self):
+        out = run("1a", "east(2)\n")
+        self.assertEqual((out["explain"]["aim"], out["explain"]["say"]), ((3, 2), "3 more samples!"))
+        self.assertIn("at x 3, y 1", out["log"][-2] if "gift" in out["log"][-1] else out["log"][-1])
+        self.assertNotIn("x 3", out["explain"]["what"])   # coordinates stay in the telemetry
+        self.assertEqual(run("p1", "east()\n")["explain"]["say"], "2 more squares!")
+        self.assertEqual(run("p1", "east(2)\n")["explain"]["say"], "1 more square!")
+        self.assertEqual(run("2b", "east(2)\n")["explain"]["say"], "Not there yet!")   # ice
+        out = run("7a", "east()\n")
+        self.assertIsNone(out["explain"]["aim"])
+        self.assertEqual(out["explain"]["say"], "Nothing sent yet!")
+        self.assertNotIn("aim", run("8a", "east(8)\n")["explain"])   # only for stopping short
 
     def test_running_out_of_time_on_two_squares_says_which(self):
         # 7C's steering on 8A paces in front of the crater wall for 995 ticks.
@@ -1176,7 +1189,7 @@ class RoverTests(unittest.TestCase):
     def test_the_place_it_names_is_where_the_rover_ended(self):
         out = run("7b", "east(3)\nsouth()\n")
         last = out["frames"][-1]
-        self.assertIn(f"x {last['c']}, y {last['r']}", out["explain"]["what"])
+        self.assertIn(f"x {last['c']}, y {last['r']}", out["log"][-1])
 
     def test_friendly_errors(self):
         self.assertIn("Strange Planet", run("1a", "x = [1, 2]\n")["error"])

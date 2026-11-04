@@ -1227,6 +1227,7 @@ def explain(world, unlocked=(), code=""):
     end = world.end
     what = nxt = ""
     bumps_said = False
+    aim = line = None   # code that stopped short: where the rover points, and what it says
     if end == "fell":
         if at in world.cracked:
             what = (f"The ground at {where(at)} had cracked from driving over it "
@@ -1326,44 +1327,60 @@ def explain(world, unlocked=(), code=""):
         what = "Mission control measured a different number"
         nxt = "Play the replay and count again."
     elif end == "stopped":
-        what = f"Your code finished with the rover at {where(at)}"
+        # The coordinates are in the telemetry; here it's what a child can see.
+        what = "Your code finished"
+        squares = lambda p: abs(p[0] - at[0]) + abs(p[1] - at[1])
         if world.mission == "report":
+            what += " without sending a number"
             nxt = "Nothing was sent. Add a last line with your number inside report( ), and transmit again."
+            line = "Nothing sent yet!"
         elif world.mission == "deliver" and world.cargo >= CARGO_MAX and world.samples:
-            what += f", carrying {CARGO_MAX} samples: the cargo bay is full"
+            what += f" with the rover carrying {CARGO_MAX} samples: the cargo bay is full"
             nxt = f"Drive home to {where(world.home)} to unload them: {far(at, world.home)}."
+            aim, line = world.home, "Home is that way!"
         elif world.mission == "deliver" and world.cargo and not world.samples:
-            what += (f", carrying the last {world.cargo} "
+            what += (f" with the rover carrying the last {world.cargo} "
                      f"sample{'s' if world.cargo != 1 else ''}")
             nxt = f"Bring them home to {where(world.home)}: {far(at, world.home)}."
+            aim, line = world.home, "Home is that way!"
         elif world.samples:
-            near = min(world.samples, key=lambda p: (abs(p[0] - at[0]) + abs(p[1] - at[1]), p))
+            near = min(world.samples, key=lambda p: (squares(p), p))
             n = len(world.samples)
-            what += f", and {n} sample{'s' if n != 1 else ''} still out"
+            what += f" with {n} sample{'s' if n != 1 else ''} still out"
             nxt = f"The closest is at {where(near)}: {far(at, near)}."
+            aim, line = near, f"{n} more sample{'s' if n != 1 else ''}!"
         elif world.flag in world.flags:
             spot = world.flags[world.flag]
+            what += f" before flag {world.flag}"
             nxt = f"Flag {world.flag} is next, at {where(spot)}: {far(at, spot)}."
+            aim, line = spot, f"Flag {world.flag} is that way!"
         elif world.houses - world.knocked:
             left = world.houses - world.knocked
-            near = min(left, key=lambda p: (abs(p[0] - at[0]) + abs(p[1] - at[1]), p))
+            near = min(left, key=lambda p: (squares(p), p))
             n = len(left)
-            what += f", with {n} lit house{'s' if n != 1 else ''} still to visit"
+            what += f" with {n} lit house{'s' if n != 1 else ''} still to visit"
             nxt = (f"The closest is at {where(near)}. Drive next to it and "
                    f"knock() on it, the way the house is from the rover.")
+            aim, line = near, f"{n} more house{'s' if n != 1 else ''}!"
         elif world.mission == "candy" and world.candies:
-            near = min(world.candies, key=lambda p: (abs(p[0] - at[0]) + abs(p[1] - at[1]), p))
+            near = min(world.candies, key=lambda p: (squares(p), p))
             n = len(world.candies)
-            what += f", and {n} cand{'ies' if n != 1 else 'y'} still on the ground"
+            what += f" with {n} cand{'ies' if n != 1 else 'y'} still on the ground"
             nxt = f"The closest is at {where(near)}: {far(at, near)}."
-        elif world.goal and locked_gate(world, at):
-            nxt = locked_gate(world, at)
-        elif world.goal and drill_next(world):
-            what += f", away from the beacon at {where(world.goal)}"
-            nxt = drill_next(world)
+            aim, line = near, f"{n} more cand{'ies' if n != 1 else 'y'}!"
         elif world.goal:
-            what += f", away from the beacon at {where(world.goal)}"
-            nxt = f"The beacon is {far(at, world.goal)} of there."
+            what += " before the beacon"
+            n = squares(world.goal)
+            # On ice or through a pad, squares to go say little.
+            aim = world.goal
+            line = "Not there yet!" if "ice" in world.rules or any("P" in row for row in world.grid) else \
+                f"{n} more square{'s' if n != 1 else ''}!"
+        if world.goal and not nxt and locked_gate(world, at):
+            nxt = locked_gate(world, at)
+        elif world.goal and not nxt and drill_next(world):
+            nxt = drill_next(world)
+        elif world.goal and not nxt:
+            nxt = f"The beacon is {far(at, world.goal)} of the rover."
             if "ice" in world.rules and "gust_in" not in unlocked:
                 # Squares to go mean little when one move slides to a rock.
                 nxt += (" On ice one move slides until rock stops it, so work "
@@ -1389,6 +1406,8 @@ def explain(world, unlocked=(), code=""):
         extra.append(f"The rover bumped into {'a house or rock' if world.houses else 'rock'} "
                      f"{world.bumps} time{'s' if world.bumps != 1 else ''}: when it bumps, it doesn't move.")
     out = {"what": " ".join([what + "."] + extra), "next": nxt}
+    if end == "stopped":
+        out.update(aim=aim, say=line)
     if world.copied:
         out["copied"] = True   # the coach leads with it
     if world.reading:
@@ -1523,7 +1542,7 @@ def drive(code, variant, rules, zone):
         for name in [n for n in rover.defs if n not in rover.called][:1]:
             world.say(f"🧩 {name}() was made with def but never used. Add a "
                       f"line  {name}()  to run it.")
-        world.say(ENDED_SHORT[world.mission])
+        world.say(f"{ENDED_SHORT[world.mission]}, at {where((world.r, world.c))}")
     out = {"reached": world.end == "goal", "end": "error" if error else world.end,
             "mission": world.mission,
             "ticks": world.t, "error": error, "line": line,
