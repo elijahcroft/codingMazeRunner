@@ -25,6 +25,15 @@ to repeat!"), says which line confused it, says "Ow! Rock!" on its first bump, a
 when nobody has touched anything for 30 seconds it asks what to do (three times at
 most). The youngest (practice zones with arrows) see *steps*, not *ticks*, on the win card.
 
+**🛠 Students can make levels** (⚙ Settings: "Students can make levels", off by
+default). *Make a level* in the Levels screen opens a drawing board: paint rock,
+craters, samples, a beacon and a start, name it, press *Test drive*. A level stays
+private until its maker beats it with code, so every level can be done, and then it
+shows in the Class Workshop for everyone. Four levels each. Changing a level takes it
+down until it's beaten again. Levels earn no stars, but publishing earns Level Maker and
+three classmates beating one earns Crowd Pleaser. Level names show on the class screen:
+you can remove any level from Settings.
+
 **Rovers have names.** The first win asks; the box is under the rover in the garage.
 The name only shows on the student's own screen, in the win card and when you click
 the rover. A student who feels they're teaching someone tends to try harder for them.
