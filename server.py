@@ -5055,7 +5055,7 @@ class Handler(BaseHTTPRequestHandler):
                                 habits=planet_habits(), maker=planet_class_settings["maker"],
                                 levels=[{k: x[k] for k in ("key", "name", "by_name", "live", "plays", "wins")}
                                         for x in planet_levels.values()],
-                                habits=planet_habits(), challenge=planet_challenge(),
+                                challenge=planet_challenge(),
                                 challenge_sites=[{"key": k, "name": planet.find_site(k)[2]["name"]}
                                                  for k in planet.SITE_ORDER],
                                 easy=planet_class_settings["easy"],
