@@ -2042,7 +2042,7 @@ function onStep(k) {
   if (f.m) burst(f.m[1][0], f.m[1][1], "rock", 8);   // a pushed boulder rolls
   else if (f.e === "fell") { SFX.play("fall"); burst(f.r, f.c, "fall", 18); shake(); say(pick(OOPS)); }
   else if (f.e === "goal" && scene.run && scene.run.mission !== "report") {
-    scene.cheer = performance.now(); say(pick(CHEERS));
+    scene.cheer = performance.now(); say(winLine(scene.code));
     scene.dances = rewards && !isFresh(rewards) ? 1 : 2;
     setTimeout(() => SFX.play(look.horn || "beep"), 600);
     if (look.dance === "firework") { burst(f.r - .8, f.c, "gift", 34); SFX.play("gift"); }
@@ -2150,8 +2150,21 @@ function drawGhost(ctx, i, pos, cell, now) {
   ctx.globalAlpha = 1;
 }
 // A line for the rover's speech bubble, for a moment.
-const CHEERS = ["Beep boop! Nailed it!", "Mission complete!", "Woohoo!", "Best. Code. Ever.", "We did it!", "Easy peasy!", "Wheee!"];
+const CHEERS = ["Beep boop! Nailed it!", "You taught me well!", "Woohoo!", "Best. Code. Ever.", "We did it!", "Easy peasy!", "Wheee!"];
 const OOPS = ["Uh oh!", "Whoaaa!", "Oops!", "Bonk!", "Help!"];
+// The rover is the student's pupil: it says what it was taught, and owns up
+// to what it didn't understand.
+const LEARNED = [[/^\s*def\s/m, ["I learned a new move!", "My own move! Thanks!"]],
+                 [/^\s*while\b/m, ["I watched and waited!", "I kept checking!"]],
+                 [/^\s*if\b/m, ["I decided all by myself!", "I made the choice!"]],
+                 [/^\s*for\b/m, ["You taught me to repeat!", "Round and round I go!"]]];
+function winLine(code) {
+  const taught = LEARNED.find(([idea]) => idea.test(code || ""));
+  return pick(taught ? taught[1] : CHEERS);
+}
+const ROVER_ENDS = {battery: "My battery's flat!", ticks: "I can't stop going round!", wrong: "That's not the number!", spooked: "EEK!"};
+const IDLE_AFTER = 30000;
+const IDLE_LINES = ["Teach me something!", "What should I do?", "I'm ready when you are!"];
 // The victory dance plays twice for something new and for Watch again, and
 // once on a re-run that earned nothing new, so trying again stays quick.
 const CHEER_MS = 900, CHEER_GAP = 250;
@@ -2290,12 +2303,14 @@ function markFeed() {
 // ---- A run on screen -------------------------------------------------------------------
 // What the end of a run says: [style, status, sentence]. Doing the mission
 // and stopping short both depend on what the mission was.
-const DONE = {beacon: ["Beacon reached", t => `🎉 Beacon reached in ${plural(t, "tick")}`],
-  samples: ["Samples collected", t => `🎉 Every sample collected in ${plural(t, "tick")}`],
+// A tick is a step, to the youngest.
+function ticks(t) { return plural(t, kidsMode() ? "step" : "tick"); }
+const DONE = {beacon: ["Beacon reached", t => `🎉 Beacon reached in ${ticks(t)}`],
+  samples: ["Samples collected", t => `🎉 Every sample collected in ${ticks(t)}`],
   report: ["Report confirmed", () => "📡 Mission control: that matches what we measured! 🎉"],
-  deliver: ["Samples home", t => `🎉 Every sample brought home in ${plural(t, "tick")}`],
-  treats: ["Trick or treat!", t => `🎃 Every lit house trick-or-treated in ${plural(t, "tick")}`],
-  candy: ["Candy collected", t => `🍬 Every candy collected in ${plural(t, "tick")}`]};
+  deliver: ["Samples home", t => `🎉 Every sample brought home in ${ticks(t)}`],
+  treats: ["Trick or treat!", t => `🎃 Every lit house trick-or-treated in ${ticks(t)}`],
+  candy: ["Candy collected", t => `🍬 Every candy collected in ${ticks(t)}`]};
 const SHORT = {beacon: t => `🏁 Ended ${plural(t, "tick")} in, away from the beacon`,
   samples: t => `🏁 Ended ${plural(t, "tick")} in, with samples still out there`,
   report: t => `🏁 Ended ${plural(t, "tick")} in without a report(). Found the number? Send it with report()`,
@@ -2411,7 +2426,7 @@ function finished() {
   // the child is looking. (Its line stays a little longer than a click's.)
   const closer = sitesRewards && sitesRewards.closer, stoppedShort = run.end === "stopped" && run.explain;
   if (stoppedShort) scene.shrug = performance.now();
-  const line = [closer && "🔥 Closest yet!", stoppedShort && stoppedShort.say].filter(Boolean).join(" ");
+  const line = [closer && "🔥 Closest yet!", stoppedShort ? stoppedShort.say : run.end === "error" ? (run.line ? `Line ${run.line} confused me!` : "That confused me!") : ROVER_ENDS[run.end]].filter(Boolean).join(" ");
   if (line) scene.said = {text: line, at: performance.now() + 900};
   const candy = sitesRewards && sitesRewards.candy;
   if (candy && candy.dropped) toast("😱", `The rover dropped its ${candy.run} candy!`, "A spooked rover runs away and drops its bag. Only runs without a BOO count.");
@@ -2515,7 +2530,7 @@ async function celebrate(r, run) {
   const taught = site.taught && run.reached && !/range\(_\)/.test(scene.code) ? site.taught : null;
   site.taught = null;
   const rep = site.key !== "7" && $("code").value === scene.code ? findRepeat(scene.code) : null;
-  $("celeSub").textContent = site.key === "7" ? unchartedSummary() : taught ? `🪄 ${taught.from} lines became ${codeSize(scene.code)}. Same trip!` : run.mission === "report" ? (scene.spooky ? "🧙 The witch agrees" : "📡 Report confirmed") : plural(run.ticks, "tick");
+  $("celeSub").textContent = site.key === "7" ? unchartedSummary() : taught ? `🪄 ${taught.from} lines became ${codeSize(scene.code)}. Same trip!` : run.mission === "report" ? (scene.spooky ? "🧙 The witch agrees" : "📡 Report confirmed") : ticks(run.ticks);
   $("bigStars").innerHTML = r.stars.map((s, i) => `<div class="big-star${s ? " got" : r.best[i] ? " was" : ""}" title="${esc(goals[i] || "")}"><i>★</i><span>${esc([...(goals[i] || "★")][0])}</span></div>`).join("");
   const missing = goals.filter((g, i) => !r.best[i]);
   $("celeTip").innerHTML = site.key !== "7" ? starTips(rep ? [r.best[0], r.best[1], true] : r.best, $("code").value).map(codeSpans).join("\n") : "";
@@ -4889,7 +4904,17 @@ $("map").addEventListener("pointermove", e => {
 $("map").addEventListener("pointerleave", () => { $("where").hidden = true; });
 // Click the rover and it says hello.
 const POKE_LINES = ["Beep boop!", "Hi there!", "Ready to explore!", "Bzzt!", "Where to next?",
-                    "I like this planet.", "Write me some code!", "Wheee!", "Is that a crystal?"];
+                    "I like this planet.", "Teach me something!", "You're my teacher!", "Wheee!", "Is that a crystal?"];
+// Nobody's touched anything for a while: the rover gives a wiggle and asks,
+// three times at most, then waits quietly until someone's back.
+let idleSince = performance.now(), idleAsked = 0;
+for (const name of ["keydown", "pointerdown"]) window.addEventListener(name, () => { idleSince = performance.now(); idleAsked = 0; }, true);
+setInterval(() => {
+  if (!scene || playing || busy || scout || document.hidden || !$("celebrate").hidden || idleAsked >= IDLE_LINES.length) return;
+  if (performance.now() - idleSince < IDLE_AFTER * (idleAsked + 1)) return;
+  scene.poke = performance.now();
+  say(IDLE_LINES[idleAsked++]);
+}, 1000);
 $("map").addEventListener("click", e => {
   if (!scene || !scene.view) return;
   const rect = $("map").getBoundingClientRect(), {ox, oy, cell} = scene.view, rover = roverAt(pos);
