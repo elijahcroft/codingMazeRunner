@@ -78,6 +78,7 @@
   .stars-button { position: relative; }
   .rank-bar { position: absolute; left: 12px; right: 12px; bottom: 2px; height: 3px; border-radius: 2px; background: rgba(255,211,107,.18); overflow: hidden; }
   .rank-bar b { display: block; height: 100%; width: 0; background: var(--gold); transition: width .6s; }
+  .beam-dot { position: fixed; z-index: 60; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 12px var(--mint); pointer-events: none; transition: transform .3s ease-in; }
   .fly-star { position: fixed; z-index: 60; margin: -18px 0 0 -14px; font-size: 34px; color: var(--gold); text-shadow: 0 0 14px rgba(255,211,107,.85); pointer-events: none; transition: transform .7s cubic-bezier(.5,-.3,.7,1), opacity .7s; }
   .cele-note .first { color: #7ff0d6; }
   .cele-note .rank { color: #ff8ad8; }
@@ -301,6 +302,9 @@
   .pad button.on { background: var(--amber); color: #2a1a00; }
   .pad button.on small { color: #2a1a00; }
   .pad.armed button:is(.up, .left, .right, .down) { box-shadow: 0 3px 0 #1b1733, 0 0 0 3px var(--amber); }
+  .pad.wake button:is(.up, .left, .right, .down) { animation: pad-wake .5s ease-in-out 3; }
+  @keyframes pad-wake { 50% { box-shadow: 0 3px 0 #1b1733, 0 0 0 3px var(--mint), 0 0 16px rgba(140,242,198,.7); } }
+  .calm .pad.wake button:is(.up, .left, .right, .down) { animation: none; box-shadow: 0 3px 0 #1b1733, 0 0 0 3px var(--mint); }
   /* Which way is north: the rover drives by compass, never by turning. */
   .compass { position: absolute; left: 12px; bottom: 40px; width: 58px; height: 58px; pointer-events: none; opacity: .9; }
   .scout-help { position: absolute; left: 80px; bottom: 14px; max-width: calc(100% - 266px); padding: 8px 12px; border-radius: 12px; background: rgba(39,27,72,.9); box-shadow: inset 0 0 0 1px var(--violet); font-size: 13px; color: #e5dcff; }
@@ -1451,6 +1455,7 @@ function layout(canvas) {
   return {w, h, dpr};
 }
 let lastRender = 0;
+let roverSpot = null;   // where the rover is on the map canvas, for Transmit's beam
 function render(now = performance.now()) {
   const dt = Math.min(.1, Math.max(0, (now - (lastRender || now)) / 1000));
   lastRender = now;
@@ -1540,6 +1545,7 @@ function render(now = performance.now()) {
   if (G) drawBeacon(ctx, G[0], G[1], cell, now, f.e === "goal");
   // The rover, and whatever just happened to it.
   const rx = (rover.c + .5) * cell, ry = (rover.r + .5) * cell;
+  roverSpot = [ox + rx, oy + ry];
   const atEvent = !playing || pos - i < .6;
   if (f.e === "fell") {
     ctx.fillStyle = "rgba(255,111,97,.25)"; ctx.beginPath(); ctx.arc(rx, ry, cell * .55, 0, 7); ctx.fill();
@@ -1556,7 +1562,7 @@ function render(now = performance.now()) {
     }
     // A happy hop and spin at the beacon, and a wiggle when someone clicks the rover.
     let lift = rover.lift, angle = rover.angle, dx = 0, dy = 0, sx = 1, fx = null;
-    const cheer = CALM || !scene.cheer ? 1 : (now - scene.cheer) / 900;
+    const cheer = cheerAt(now);
     if (cheer < 1) {
       const d = fx = dance(look.dance, cheer);
       lift = Math.max(lift, d.lift); angle += d.angle; dx = d.dx * cell; dy = d.dy * cell; sx = d.sx;
@@ -1582,6 +1588,12 @@ function render(now = performance.now()) {
     const u = CALM ? 0 : (now - scene.ring) / 2000;
     ctx.strokeStyle = "#ffd36b"; ctx.lineWidth = Math.max(2, cell / 10);
     ctx.beginPath(); ctx.arc(rx, ry, cell * (.7 + u * .4), 0, 7); ctx.stroke();
+  }
+  // The signal from Transmit lands: one ring goes out from the rover.
+  if (scene.ping && now - scene.ping < 500) {
+    const u = (now - scene.ping) / 500;
+    ctx.strokeStyle = `rgba(140,242,198,${1 - u})`; ctx.lineWidth = Math.max(2, cell / 10);
+    ctx.beginPath(); ctx.arc(rx, ry, cell * (.5 + u), 0, 7); ctx.stroke();
   }
   drawGhosts(ctx, i, cell, now);
   if (spooky(scene.zone)) drawMist(ctx, worldW, worldH, cell, now);
@@ -2001,6 +2013,7 @@ function onStep(k) {
   else if (f.e === "fell") { SFX.play("fall"); burst(f.r, f.c, "fall", 18); shake(); say(pick(OOPS)); }
   else if (f.e === "goal" && scene.run && scene.run.mission !== "report") {
     scene.cheer = performance.now(); say(pick(CHEERS));
+    scene.dances = rewards && !isFresh(rewards) ? 1 : 2;
     setTimeout(() => SFX.play(look.horn || "beep"), 600);
     if (look.dance === "firework") { burst(f.r - .8, f.c, "gift", 34); SFX.play("gift"); }
   }
@@ -2109,6 +2122,16 @@ function drawGhost(ctx, i, pos, cell, now) {
 // A line for the rover's speech bubble, for a moment.
 const CHEERS = ["Beep boop! Nailed it!", "Mission complete!", "Woohoo!", "Best. Code. Ever.", "We did it!", "Easy peasy!", "Wheee!"];
 const OOPS = ["Uh oh!", "Whoaaa!", "Oops!", "Bonk!", "Help!"];
+// The victory dance plays twice for something new and for Watch again, and
+// once on a re-run that earned nothing new, so trying again stays quick.
+const CHEER_MS = 900, CHEER_GAP = 250;
+function cheerLength(n) { return n * CHEER_MS + (n - 1) * CHEER_GAP; }
+// How far through a dance the rover is, 0 to 1: 1 is standing still.
+function cheerAt(now) {
+  if (CALM || !scene.cheer) return 1;
+  const t = now - scene.cheer;
+  return t >= cheerLength(scene.dances || 1) ? 1 : Math.min(1, (t % (CHEER_MS + CHEER_GAP)) / CHEER_MS);
+}
 function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
 function say(text) { scene.said = {text, at: performance.now()}; }
 // Pick-ups close together make a combo: each one sounds higher, and from the
@@ -2168,7 +2191,7 @@ function frameLoop(ts) {
   // Smooth while anything moves; otherwise just enough for the glows (about
   // 15 frames a second), so an idle tab stays cheap on a Chromebook.
   const busyFx = particles.length || confetti.length || (scene && scene.pops && scene.pops.length) ||
-    (scene && ts - Math.max(scene.cheer || 0, scene.poke || 0) < 900);
+    (scene && (ts - (scene.poke || 0) < 900 || ts - (scene.cheer || 0) < cheerLength(scene.dances || 1)));
   if (!document.hidden && (playing || busyFx || ts - (frameLoop.drawn || 0) > (CALM ? 500 : 66))) {
     render(ts); frameLoop.drawn = ts;
   }
@@ -2314,7 +2337,9 @@ function showRun(run, map, crystals, startAt = 0) {
     + (run.error ? `<div class="err">${codeSpans(run.error)}</div>` : "")
     + (!lines.length && !run.error ? '<div class="empty">No telemetry.</div>' : "");
   hideBanner(); hideCelebrate();
-  fps = scout ? 7 : Math.max(5, Math.min(30, last() / 20));
+  // Short programs go slowly enough to see each line light up as it drives.
+  const steady = Math.max(2.5, Math.min(5, last() / 2));
+  fps = scout ? 7 : Math.max(steady, Math.min(30, last() / 20));
   setPos(startAt); heard = startAt;
   if (last() === 0) { setPlaying(false); finished(); }
   else setPlaying(true);
@@ -2327,10 +2352,10 @@ function finished() {
   releaseCandy();
   const anyReached = site.key === "7" ? runs.some(x => x.reached) : run.reached;
   if (rewards && anyReached) {
-    // A beat to see the rover's hop and hear its cheer, then the card (unless
-    // another run started meanwhile).
+    // Time to see the dance the student earned, then the card (unless another
+    // run started meanwhile).
     const r = rewards, shown = scene; rewards = null;
-    setTimeout(() => { if (scene === shown) celebrate(r, run); }, CALM || !run.reached ? 0 : 900);
+    setTimeout(() => { if (scene === shown) celebrate(r, run); }, CALM || !run.reached ? 0 : scene.cheer ? cheerLength(scene.dances) : 900);
     // On Uncharted the planet on screen may be one it missed: its banner
     // waits under the celebration for when that closes.
     if (site.key !== "7" || run.reached) return;
@@ -2352,11 +2377,13 @@ function finished() {
     buttons.push(`<button class="quiet" onclick="showMe()">Show me</button>`);
   }
   // A few misses in a row: offer the two ways to find out more, without
-  // waiting for the teacher to come over.
-  if (!["goal", "error"].includes(run.end) && (site.misses || 0) >= 3) {
+  // waiting for the teacher to come over. Little kids start with the arrows,
+  // so a miss offers those back straight away.
+  const misses = site.misses || 0;
+  if (!["goal", "error"].includes(run.end) && (misses >= 3 || kidsMode())) {
     const zone = zoneOf(site.key);
     if (site.key !== "7") buttons.push(`<button class="quiet" onclick="toggleScout()">🕹 Try it by hand</button>`);
-    if (zone.hints.length < zone.hint_count) buttons.push(`<button class="quiet" onclick="openPop($('radioPop'), $('radioButton'))">📻 Get a hint</button>`);
+    if (misses >= 3 && zone.hints.length < zone.hint_count) buttons.push(`<button class="quiet" onclick="openPop($('radioPop'), $('radioButton'))">📻 Get a hint</button>`);
   }
   // Many misses in a row: the next site can open, so nobody stays stuck
   // in one place (and classmates who cleared it are named below).
@@ -2423,6 +2450,7 @@ function foldBrief() {
 }
 
 // ---- Celebration: the stars, one by one ------------------------------------------------
+function isFresh(r) { return r.new_stars || r.record || r.badges.length; }
 async function celebrate(r, run) {
   const goals = site.goals || [];
   const titles = ["Mission complete!", "Nice work!", "Perfect run!"];
@@ -2438,12 +2466,12 @@ async function celebrate(r, run) {
   $("celeNote").innerHTML = "";
   const next = nextSite();
   $("celeActions").innerHTML = (next && site.key !== "7" ? `<button class="go" onclick="openSite('${next}')">Next level ▶</button>` : "")
-    + (r.best.every(Boolean) ? `<button class="quiet" onclick="hideCelebrate()">Watch again</button>`
-       : `<button class="quiet" onclick="hideCelebrate();$('code').focus()">Go for ${r.best.length - r.best.filter(Boolean).length} more ★</button>`);
+    + (r.best.every(Boolean) ? "" : `<button class="quiet" onclick="hideCelebrate();$('code').focus()">Go for ${r.best.length - r.best.filter(Boolean).length} more ★</button>`)
+    + `<button class="quiet" onclick="hideCelebrate();togglePlay()">Watch again</button>`;
   $("celebrate").hidden = false;
   // Something new earns the full reveal; a re-run with nothing new shows its
   // stars at once, so trying again stays quick.
-  const fresh = r.new_stars || r.record || r.badges.length;
+  const fresh = isFresh(r);
   const pause = CALM || !fresh ? 0 : 380;
   SFX.play(fresh ? "win" : "sample");
   const stars = [...$("bigStars").children];
@@ -2963,6 +2991,7 @@ function nudgeFirstRun() {
   if (firstRunTimer) return;
   firstRunTimer = setTimeout(() => {
     if (state.you.ran || busy) return;
+    if (noCode()) return waitForCode();
     $("runButton").classList.add("nudge");
     showBanner("", "Press Transmit ▶ to run the code in the editor and watch your rover drive. Then change one thing and run it again.");
   }, 45000);
@@ -3811,6 +3840,39 @@ function renderSteps() {
 function restartScout() { if (scout) { stopScout(true); toggleScout(); } }
 
 // ---- Transmitting ------------------------------------------------------------------------
+// Nothing in the editor (or only comments), so nothing to send: a run would
+// only take away the arrow buttons and report coordinates. The rover asks for
+// its instructions instead, and a little kid's arrows stay, or come back.
+function noCode() {
+  return !$("code").value.split("\n").some(line => line.trim() && !line.trim().startsWith("#"));
+}
+function waitForCode() {
+  if (kidsMode() && !scout) toggleScout();
+  if (scout && scout.over) return say(scout.reached ? "Press Use as code!" : "Press Scout again!");
+  if (scene) { scene.poke = performance.now(); say(scout ? "Drive me with the arrows!" : "I'm waiting for your code!"); }
+  if (!scout) return showBanner("", "Your rover is waiting for instructions! Write a command like  east()  in the box, then press Transmit ▶.");
+  const pad = $("pad");
+  pad.classList.remove("wake"); void pad.offsetWidth; pad.classList.add("wake");
+  setTimeout(() => pad.classList.remove("wake"), 1600);
+}
+// Transmit sends a signal, so you see it go: dots of light fly from the button
+// to the rover. The button stays down until they land, so a quick second press
+// can't send the same code twice.
+const BEAM_MS = 460;
+function beamToRover() {
+  if (CALM) return wait(200);
+  const from = $("runButton").getBoundingClientRect(), box = $("map").getBoundingClientRect();
+  const x0 = from.left + from.width / 2, y0 = from.top + from.height / 2;
+  const [mx, my] = roverSpot || [box.width / 2, box.height / 2], x = box.left + mx, y = box.top + my;
+  for (let k = 0; k < 4; k++) {
+    const dot = document.createElement("span");
+    dot.className = "beam-dot"; dot.style.left = x0 + "px"; dot.style.top = y0 + "px";
+    document.body.appendChild(dot);
+    setTimeout(() => { dot.style.transform = `translate(${x - x0}px, ${y - y0}px) scale(.6)`; }, 20 + k * 45);
+    setTimeout(() => dot.remove(), 320 + k * 45);
+  }
+  return wait(BEAM_MS);
+}
 async function transmit() {
   if (busy || !me || !site) return;
   if (BLANK.test($("code").value)) {
@@ -3819,6 +3881,9 @@ async function transmit() {
     goToBlank();
     return;
   }
+  if (noCode()) return waitForCode();
+  // Pressed again while the rover is still driving this same code: it heard.
+  if (playing && !scout && scene.code === $("code").value) return say("I'm on it!");
   busy = true;
   clearToasts();
   state.you.ran = true; nudgeFirstRun();
@@ -3829,7 +3894,7 @@ async function transmit() {
   $("runButton").textContent = site.key === "7" ? "Landing…" : "Transmitting…";
   try {
     const sent = $("code").value, again = sent === site.lastSent && site.lastMissed;
-    const data = await post("/planet/run", {id: me, site: site.key, code: sent});
+    const [data] = await Promise.all([post("/planet/run", {id: me, site: site.key, code: sent}), beamToRover()]);
     if (data.error === "join") { localStorage.removeItem("mazeId"); location.reload(); return; }
     if (data.error) { showBanner("lost", data.error); return; }
     runs = data.runs; rewards = data.rewards; site.ghost = data.ghost;
@@ -3863,6 +3928,7 @@ async function transmit() {
       announce(ending(runs[0])[2]);
       if (data.rewards.found.length) site.gift = null;
     }
+    if (!CALM) scene.ping = performance.now();
   } catch (_) {
     showBanner("lost", NO_ANSWER);
   } finally {

@@ -226,6 +226,13 @@ class StarTests(unittest.TestCase):
 
 
 class SiteClaims(unittest.TestCase):
+    def test_no_level_is_won_without_code(self):
+        # The page doesn't send an empty editor: there must be nothing to win by it.
+        for key in planet.SITE_ORDER + planet.PRACTICE_ORDER + planet.HALLOWEEN_ORDER:
+            for v in range(len(site(key)[2].get("variants", ()))):
+                for code in ("", "# only a comment\n"):
+                    self.assertFalse(run(key, code, v)["reached"], (key, v))
+
     def test_maps_are_rectangles_with_one_start(self):
         for _, _, s in sites():
             for v in s["variants"]:

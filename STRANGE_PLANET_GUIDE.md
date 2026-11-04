@@ -69,6 +69,14 @@ The skill you're teaching is as much **experimenting** as coding:
   done, the 📻 button glows and says "Get a hint" until there are no hints
   left. Transmitting exactly the same code after a miss says "Same code as
   last time: change one thing".
+- **Transmit is something you see happen:** dots of light fly from the button
+  to the rover, and the button stays down until they land. An empty editor
+  sends nothing: the rover asks for its code, and on Practice Park levels the
+  arrow buttons stay (a miss there offers them straight away too). Pressing
+  Transmit again while the same code is still driving just gets "I'm on it!".
+- **More time to enjoy a win:** programs under 10 moves replay more slowly, so
+  each line can be seen lighting up. A new win plays the victory dance twice
+  before the card, and **Watch again** is on every win card and replays the run.
 - **The win card shows the next unlock** (its name and a bar that fills as
   the new stars land, "2 ★ to go"). The buttons under the editor are
   coloured like the code: green commands, blue sensors.
