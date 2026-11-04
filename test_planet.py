@@ -2092,7 +2092,7 @@ class ClassroomTests(unittest.TestCase):
         try:
             state = self.get(f"/planet/state?id={self.join()}")
             many = sum(len(z["sites"]) for z in (planet.TRICK_SCHOOL, planet.NUMBER_LAB))
-            self.assertEqual(state["max_stars"], 3 * len(planet.SITE_ORDER)
+            self.assertEqual(state["max_stars"], 3 * len(planet.SITE_ORDER + planet.BUILD_ORDER)
                              + len(planet.PRACTICE_ORDER) + 2 * many)
             typed = {z["key"] for z in state["zones"] if z.get("typed")}
             self.assertEqual(typed, {"lookout", "forks", "tricks", "numbers"})
@@ -2577,6 +2577,68 @@ class HalloweenClassroomTests(unittest.TestCase):
                                           "moves": ["east", "east", "east", "east", "knock:north"]})
         self.assertTrue(out["run"]["reached"])
         self.assertIn("error", self.post("/planet/scout", {"id": pid, "site": "h1", "moves": ["knock:up"]}))
+
+
+
+class BuildersYardTests(unittest.TestCase):
+    """Builder's Yard: longer programs, each site open once its idea is taught."""
+
+    setUp, get, post, join = ClassroomTests.setUp, ClassroomTests.get, ClassroomTests.post, ClassroomTests.join
+    tearDown = ClassroomTests.tearDown
+
+    def test_every_site_has_a_reference_that_clears_every_variant(self):
+        for s in planet.BUILDERS_YARD["sites"]:
+            for vi, v in enumerate(s["variants"]):
+                out = planet.drive(s["reference"], v, set(), 0)
+                self.assertTrue(out["reached"], (s["key"], vi, out["error"]))
+                self.assertEqual(out["bumps"], 0, (s["key"], vi))
+            self.assertLessEqual(planet.code_lines(s["reference"]), s["compact"], s["key"])
+            self.assertIn(planet.BUILD_AFTER[s["key"]], planet.SITE_ORDER)
+            self.assertNotIn(s["key"], planet.SITE_ORDER)
+        self.assertEqual(len(planet.BUILDERS_YARD["hints"]), 3)
+
+    def test_a_route_typed_out_by_hand_is_long_and_misses_the_compact_star(self):
+        comb = planet.find_site("b1")[2]
+        by_hand = "south(3)\nnorth(3)\neast(2)\n" * 5
+        v = comb["variants"][0]
+        out = planet.drive(by_hand, v, set(), 0)
+        self.assertTrue(out["reached"])
+        self.assertEqual(planet.stars(comb, v, out, by_hand)[2], False)
+
+    def test_counting_one_spiral_fails_on_the_others(self):
+        spiral = planet.find_site("b3")[2]
+        v = spiral["variants"][0]
+        route = "east(10)\nsouth(6)\nwest(10)\nnorth(4)\neast(8)\nsouth(2)\nwest(6)\n"
+        self.assertTrue(planet.drive(route, v, set(), 0)["reached"])
+        others = [planet.drive(route, w, set(), 0)["reached"] for w in spiral["variants"][1:]]
+        self.assertFalse(all(others))
+
+    def test_the_crystals_need_a_detour_off_the_loop(self):
+        for key, code in (("b2", "east(4)\nnorth()\nsouth()\neast(4)\nsouth(2)\nfor i in range(2):\n"
+                                 "    west(8)\n    south(2)\n    east(8)\n    south(2)\n"),
+                          ("b5", planet.find_site("b5")[2]["reference"].replace(
+                              "box(2)\neast(4)", "box(2)\neast(3)\nsouth()\nnorth()\neast()"))):
+            s = planet.find_site(key)[2]
+            v = s["variants"][0]
+            plain = planet.drive(s["reference"], v, set(), 0)
+            self.assertEqual(plain["crystals"], [0, 1], key)
+            out = planet.drive(code, v, set(), 0)
+            self.assertTrue(out["reached"], key)
+            self.assertEqual(planet.stars(s, v, out, code)[:2], [True, True], key)
+
+    def test_each_site_opens_once_its_idea_is_taught(self):
+        pid = self.join()
+        yard = lambda: next(z for z in self.get(f"/planet/state?id={pid}")["zones"] if z.get("build"))
+        self.assertEqual([x["open"] for x in yard()["sites"]], [False] * 5)
+        self.assertIn("error", self.post("/planet/run", {"id": pid, "site": "b1", "code": "east()"}))
+        entry = server.planet_entry(server.players[pid])
+        entry["solved"].update({"1a": 5, "1b": 3})
+        self.assertEqual([x["open"] for x in yard()["sites"]], [True, True, False, False, False])
+        out = self.post("/planet/run", {"id": pid, "site": "b1",
+                                        "code": planet.find_site("b1")[2]["reference"]})
+        self.assertTrue(out["runs"][0]["reached"])
+        self.assertEqual(self.get(f"/planet/state?id={pid}")["current"], "1c")   # still the main route
+        self.assertEqual(yard()["sites"][0]["stars"], [True, False, True])
 
 
 if __name__ == "__main__":

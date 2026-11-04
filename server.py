@@ -3272,8 +3272,16 @@ def planet_open(p, key):
         return halloween_on(entry) and planet.HALLOWEEN_ORDER.index(key) <= halloween_frontier(entry)
     if key in planet.PRACTICE_ORDER:   # all open at once, in easy mode only
         return planet_class_settings["easy"]
+    if key in planet.BUILD_ORDER:
+        return build_open(p, key)
     return key in planet.SITE_ORDER and \
         planet.SITE_ORDER.index(key) <= planet_frontier(p)
+
+
+def build_open(p, key):
+    """A Builder's Yard site opens once the student is past the main site
+    that teaches its idea (planet.BUILD_AFTER)."""
+    return planet.SITE_ORDER.index(planet.BUILD_AFTER[key]) < planet_frontier(p)
 
 
 def planet_variant(p, key):
@@ -3498,6 +3506,20 @@ def planet_state(p):
                        "open": planet.SITE_ORDER.index(s["key"]) <= frontier,
                        "gift": gift_for(p, s["key"]) is not None}
                       for s in zone["sites"]]})
+    # Builder's Yard: bigger programs, each open once its idea has been taught.
+    for zone in planet.BUILD_ZONES:
+        zones.append({
+            "key": zone["key"], "name": zone["name"], "blurb": zone["blurb"],
+            "zi": zone.get("zi", 0), "build": True,
+            "hints": zone["hints"][:entry["hints"].get(zone["key"], 0)],
+            "hint_count": len(zone["hints"]),
+            "sites": [{"key": s["key"], "name": s["name"],
+                       "solved": entry["solved"].get(s["key"]),
+                       "stars": entry["stars"].get(s["key"], [False] * 3),
+                       "open": build_open(p, s["key"]),
+                       "after": planet.BUILD_AFTER[s["key"]].upper(),
+                       "gift": False}
+                      for s in zone["sites"]]})
     spooky = halloween_on(entry)
     if spooky:
         frontier_h = halloween_frontier(entry)
@@ -3519,7 +3541,7 @@ def planet_state(p):
             "current": current,
             "uncharted": entry["uncharted"],
             "total_stars": star_count(entry),
-            "max_stars": 3 * len(planet.SITE_ORDER)
+            "max_stars": 3 * len(planet.SITE_ORDER + planet.BUILD_ORDER)
             + (sum(planet.stars_max(planet.find_site(k)[2]) for k in planet.PRACTICE_ORDER)
                if planet_class_settings["easy"] else 0),
             "rank": rank_for(star_count(entry)),
@@ -3789,6 +3811,8 @@ def planet_record(p, key, code, results):
     if not zone_before and zone_done():
         if zone in planet.HALLOWEEN_ZONES:
             nxt = (planet.HALLOWEEN_ZONES + [None])[planet.HALLOWEEN_ZONES.index(zone) + 1]
+        elif zone in planet.BUILD_ZONES:
+            nxt = None
         elif zone in planet.PRACTICE_ZONES:
             nxt = (planet.PRACTICE_ZONES + planet.ZONES[:1])[planet.PRACTICE_ZONES.index(zone) + 1]
         else:
@@ -4026,7 +4050,7 @@ def planet_report():
     entries = [(q, planet_entry(q)) for q in players.values() if q.get("planet")]
     frontier = {q["id"]: planet.SITE_ORDER[planet_frontier(q)] for q, e in entries}
     zones, sites = [], []
-    for zone in planet.ZONES + planet.HALLOWEEN_ZONES:
+    for zone in planet.ZONES + planet.BUILD_ZONES + planet.HALLOWEEN_ZONES:
         zones.append({"name": zone["name"], "hints": sum(e["hints"].get(zone["key"], 0)
                                                          for q, e in entries)})
         for s in zone["sites"]:
@@ -4110,7 +4134,7 @@ def planet_class():
             "zones": [z["name"] for z in planet.ZONES],
             "practice_zones": [z["name"] for z in planet.PRACTICE_ZONES],
             "zone_keys": {z["name"]: z["key"] for z in planet.PRACTICE_ZONES + planet.ZONES
-                          + planet.HALLOWEEN_ZONES},
+                          + planet.BUILD_ZONES + planet.HALLOWEEN_ZONES},
             "halloween_sites": len(planet.HALLOWEEN_ORDER),
             "runs": planet_runs[-10:],
             "class": {"stars": class_stars(), "goals": CLASS_GOALS, "unlocks": CLASS_UNLOCKS,
@@ -5128,7 +5152,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/planet/hint":
             with lock:
                 p = players.get(data.get("id"))
-                zone = next((z for z in planet.ZONES + planet.PRACTICE_ZONES + planet.HALLOWEEN_ZONES
+                zone = next((z for z in planet.ZONES + planet.PRACTICE_ZONES + planet.BUILD_ZONES + planet.HALLOWEEN_ZONES
                              if z["key"] == data.get("zone")), None)
                 if not p:
                     self._send(200, {"error": "join"})
