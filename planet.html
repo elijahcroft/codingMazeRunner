@@ -271,7 +271,7 @@
   .cele-miss { margin: -6px 0 12px; color: var(--haze); font-size: 14px; }
   .cele-tip { margin-top: -4px; color: var(--mint); white-space: pre-line; }
   .cele-tip:empty { display: none; }
-  .rover-name { display: flex; gap: 6px; align-items: center; justify-content: center; margin-top: 8px; }
+  .rover-name { display: flex; gap: 6px; align-items: center; }
   .rover-name input { width: 140px; padding: 5px 9px; border: 0; border-radius: 9px; background: rgba(12,9,26,.65); color: var(--bone); font: 600 14px var(--ui); box-shadow: inset 0 0 0 1px var(--edge); }
   .cele-trick { margin: -2px 0 14px; padding: 9px 12px; border-radius: 14px; background: rgba(255,211,107,.1); box-shadow: inset 0 0 0 1px rgba(255,211,107,.35); font-size: 15px; font-weight: 650; }
   .cele-trick code { font: 600 .92em var(--mono); color: var(--mint); background: rgba(140,242,198,.1); padding: 1px 5px; border-radius: 5px; white-space: nowrap; }
@@ -281,6 +281,14 @@
   .trick-name .go.trick { margin: 0; }
   .go.trick { display: block; margin: 8px auto 3px; padding: 8px 16px; font-size: 15px; background: var(--gold); color: #33280a; box-shadow: 0 3px 0 #b8912e; }
   .cele-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  @media (max-height: 720px) {   /* a small Chromebook: the buttons stay on screen */
+    .cele-card { padding: 12px 18px; }
+    .cele-card h2 { font-size: 24px; }
+    .big-star i { font-size: 38px; }
+    .big-star span { display: none; }
+    .cele-note { margin-bottom: 8px; }
+    .cele-trick { margin-bottom: 8px; padding: 6px 10px; }
+  }
   /* What the next stars unlock, with a bar that fills as the new ones land. */
   .cele-next { display: flex; align-items: center; gap: 8px; margin: 0 auto 14px; max-width: 380px; padding: 6px 12px; border-radius: 99px; background: rgba(0,0,0,.2); font-size: 13.5px; color: var(--haze); white-space: nowrap; }
   .cele-next[hidden] { display: none; }
@@ -897,14 +905,13 @@
 </div>
 <div class="dialog" id="garage" hidden role="dialog" aria-modal="true" aria-labelledby="garageTitle">
   <div class="garage-card">
-    <div class="garage-head"><h2 id="garageTitle">Garage</h2><span id="garageStars"></span><div class="garage-actions"><button class="quiet" id="surpriseButton" title="A random look from everything you've unlocked">🎲 Surprise me</button><button class="quiet" id="garageClose">Done</button></div></div>
+    <div class="garage-head"><h2 id="garageTitle">Garage</h2><span id="garageStars"></span><label class="rover-name">🏷 <input id="roverName" maxlength="14" placeholder="Name your rover" autocomplete="off" spellcheck="false" aria-label="Your rover's name"></label><div class="garage-actions"><button class="quiet" id="surpriseButton" title="A random look from everything you've unlocked">🎲 Surprise me</button><button class="quiet" id="garageClose">Done</button></div></div>
     <div class="pick-row" id="garagePick" hidden></div>
     <button class="garage-next" id="garageNext" hidden></button>
     <div class="garage-top">
       <div class="stage">
         <canvas id="garageScene" aria-hidden="true"></canvas>
         <p class="stage-tag" id="stageTag" aria-live="polite"></p>
-        <label class="rover-name">🏷 <input id="roverName" maxlength="14" placeholder="Name your rover" autocomplete="off" spellcheck="false" aria-label="Your rover's name"></label>
       </div>
       <div>
         <div class="tabs" id="garageTabs"></div>
