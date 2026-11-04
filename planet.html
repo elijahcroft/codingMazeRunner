@@ -3857,7 +3857,7 @@ function shopLoop(now) {
   if ($("paintShop").hidden) return;
   const a = shop.anim;
   if (a) {
-    const per = Math.max(10, Math.min(70, 1600 / a.steps.length)), k = Math.floor((now - a.start) / per);
+    const per = Math.max(10, Math.min(70, 1600 / a.steps.length)), k = Math.max(0, Math.floor((now - a.start) / per));
     if (k >= a.steps.length) { shop.anim = null; shop.shown = shop.art; }
     else {
       const art = BLANK_ART.split("");
