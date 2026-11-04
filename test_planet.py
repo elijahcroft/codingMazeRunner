@@ -2022,6 +2022,15 @@ class ClassroomTests(unittest.TestCase):
         self.post("/planet/maker/save", {"id": ada, "key": key, "name": "B", "rows": self.DRAWING})
         self.assertIn("error", self.transmit(bo, key, "east(4)\n"))
 
+    def test_samples_on_a_level_with_a_beacon_count(self):
+        self.maker_on()
+        ada = self.join("Ada")
+        rows = ["S...G.......", "...*........", *["............"] * 6]
+        key = self.post("/planet/maker/save", {"id": ada, "name": "Both", "rows": rows})["key"]
+        self.assertFalse(self.transmit(ada, key, "east(4)\n")["runs"][0]["reached"])
+        self.assertTrue(self.transmit(ada, key, "south()\neast(3)\nnorth()\neast()\n")["runs"][0]["reached"])
+        self.assertIn("Every sample", self.get(f"/planet/site?id={ada}&site={key}")["goals"][0])
+
     def test_a_drawing_needs_a_start_and_somewhere_to_go(self):
         self.maker_on()
         ada = self.join("Ada")

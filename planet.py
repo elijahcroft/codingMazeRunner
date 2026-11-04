@@ -1027,7 +1027,8 @@ class World:
                              f"measured something different.")
 
     def check_goal(self):
-        if self.mission == "beacon" and (self.r, self.c) == self.goal:
+        if self.mission == "beacon" and (self.r, self.c) == self.goal \
+                and not (self.v.get("sweep") and self.samples):
             left = len(self.houses - self.knocked)
             if left:
                 self.say(f"🛰 the beacon needs every lit house first ({left} to go)")
@@ -3730,6 +3731,8 @@ def goals(s, variant):
     mission = MISSION_LABELS[mission_of(variant)]
     if mission_of(variant) == "beacon" and any(ch in row for row in variant["map"] for ch in "hm"):
         mission = "🏠 Every lit house, then 🛰 the beacon"
+    elif variant.get("sweep") and any("*" in row for row in variant["map"]):
+        mission = "🧪 Every sample, then 🛰 the beacon"
     elif mission_of(variant) == "report" and any(ch in row for row in variant["map"] for ch in "hm"):
         mission = "🧙 Tell the witch your candy count"
     return [mission,
@@ -5261,7 +5264,8 @@ def class_map(rows):
 
 def add_class_level(key, name, by, rows):
     """Make (or remake) a class level's site. `rows` is the drawing, already checked."""
-    s = site(key, name, f"Made by {by}.", [{"map": class_map(rows)[0]}])
+    # A maker who drew samples and a beacon means both.
+    s = site(key, name, f"Made by {by}.", [{"map": class_map(rows)[0], "sweep": True}])
     s["stars_max"] = 1
     CLASS_LEVELS[key] = s
     WORKSHOP["sites"] = list(CLASS_LEVELS.values())
