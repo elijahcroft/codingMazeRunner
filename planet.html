@@ -2589,24 +2589,27 @@ async function celebrate(r, run) {
   site.taught = null;
   const here = site.key !== "7" && $("code").value === scene.code ? scene.code : "";
   const rep = findRepeat(here), twin = !rep && !kidsMode() ? findTwin(here) : null;
+  // (Not on the win that shows off a shortcut: one new thing at a time.)
+  const count = !rep && !twin && !taught && run.mission === "beacon" && run.reached ? findCount(here) : null;
   const shrank = taught && taught.from - codeSize(scene.code);
   $("celeSub").textContent = site.key === "7" ? unchartedSummary()
-    : taught ? `🪄 ${shrank > 0 ? `${taught.from} lines became ${codeSize(scene.code)}. ` : ""}${taught.word ? `${roverName("Your rover")} knows ${taught.word}()!` : "Same trip!"}` : run.mission === "report" ? (scene.spooky ? "🧙 The witch agrees" : "📡 Report confirmed") : ticks(run.ticks);
+    : taught ? `🪄 ${shrank > 0 ? `${taught.from} lines became ${codeSize(scene.code)}. ` : ""}${taught.word ? `${roverName("Your rover")} knows ${taught.word}()!` : taught.look ? `${roverName("Your rover")} stopped by itself!` : "Same trip!"}` : run.mission === "report" ? (scene.spooky ? "🧙 The witch agrees" : "📡 Report confirmed") : ticks(run.ticks);
   $("bigStars").innerHTML = r.stars.map((s, i) => `<div class="big-star${s ? " got" : r.best[i] ? " was" : ""}" title="${esc(goals[i] || "")}"><i>★</i><span>${esc([...(goals[i] || "★")][0])}</span></div>`).join("");
-  const missing = goals.filter((g, i) => !r.best[i] && !rep && !twin);
+  const missing = goals.filter((g, i) => !r.best[i] && !rep && !twin && !count);
   // One thing to try next at a time: a trick on offer takes the tips' place.
-  $("celeTip").innerHTML = site.key !== "7" && !rep && !twin ? starTips(r.best, $("code").value).map(codeSpans).join("\n") : "";
+  $("celeTip").innerHTML = site.key !== "7" && !rep && !twin && !count ? starTips(r.best, $("code").value).map(codeSpans).join("\n") : "";
   if (taught && taught.word) $("celeTip").innerHTML += `\n🧰 Save ${esc(taught.word)}() in Functions to use it on any level.`;
-  $("celeTrick").hidden = !rep && !twin;
+  $("celeTrick").hidden = !rep && !twin && !count;
   if (rep) $("celeTrick").innerHTML = repeatWords(rep, scene.code);
   if (twin) $("celeTrick").innerHTML = twinWords(twin);
-  if (rep || twin) note("shortcut_offered");
+  if (count) $("celeTrick").innerHTML = `🪄 Your loop counts to <b>${count.times}</b>. What if the beacon were further away?<button class="go trick" onclick="teachLook()">Teach ${esc(roverName())} to look</button>`;
+  if (rep || twin || count) note("shortcut_offered");
   if (taught) note("shortcut_won");
   $("celeMiss").textContent = missing.length && site.key !== "7" && !$("celeTip").textContent ? `Still to earn: ${missing.join(" · ")}` : "";
   $("celeNote").innerHTML = "";
   const next = nextSite();
   $("celeActions").innerHTML = (next && site.key !== "7" ? `<button class="go" onclick="openSite('${next}')">Next level ▶</button>` : "")
-    + (rep || twin || r.best.every(Boolean) ? "" : `<button class="quiet" onclick="hideCelebrate();$('code').focus()">Go for ${r.best.length - r.best.filter(Boolean).length} more ★</button>`)
+    + (rep || twin || count || r.best.every(Boolean) ? "" : `<button class="quiet" onclick="hideCelebrate();$('code').focus()">Go for ${r.best.length - r.best.filter(Boolean).length} more ★</button>`)
     + `<button class="quiet" onclick="hideCelebrate();togglePlay()">Watch again</button>`;
   $("celebrate").hidden = false;
   // Something new earns the full reveal; a re-run with nothing new shows its
@@ -2633,7 +2636,7 @@ async function celebrate(r, run) {
   if (r.first_try) SFX.play("first");
   if (got === r.stars.length || r.record || r.rank_up || r.zone_cleared) throwConfetti();
   $("celeActions").querySelector("button").focus();
-  const nextBar = rep || twin ? ($("celeNext").hidden = true, null) : r.candy ? showNextCandy(r.candy) : showNextUnlock(r.total_stars, r.total_stars - r.new_stars);
+  const nextBar = rep || twin || count ? ($("celeNext").hidden = true, null) : r.candy ? showNextCandy(r.candy) : showNextUnlock(r.total_stars, r.total_stars - r.new_stars);
   if (r.new_stars) await flyStars(stars.filter((el, i) => r.stars[i]).slice(-r.new_stars), r.total_stars);
   if (nextBar) nextBar();
   if (r.rank_up) {
@@ -2725,6 +2728,29 @@ function teachMove(event) {
   replaceText(0, code.length, withMove(code, twin, name));
   if (scene) say(`${name}? I'm listening!`);
   showBanner("", `🪄 ${name}() is one word for all ${twin.size} lines now. Press Transmit ▶ and see if ${roverName()} learned it.`);
+}
+// Past for, the next idea: a loop whose job is to reach the beacon doesn't need
+// to count. Only when the program ends with that loop, the loop's number isn't
+// used, and the rover can sense the beacon. Once while is known it's no news.
+function findCount(code) {
+  if (!site || !(site.sensors || []).includes("at_beacon") || ideasKnown().some(x => x[0] === "while")) return null;
+  const lines = code.split("\n").map(s => s.trimEnd());
+  const at = lines.findLastIndex(s => /^for /.test(s)), m = /^for (\w+) in range\((\d+)\):$/.exec(lines[at] || "");
+  if (!m) return null;
+  const body = lines.slice(at + 1).filter(s => s.trim());
+  if (!body.length || !body.every(s => s.startsWith(" ")) || body.some(s => new RegExp(`\\b${m[1]}\\b`).test(s))) return null;
+  return {at, times: Number(m[2])};
+}
+function teachLook() {
+  const t = $("code"), code = t.value, found = findCount(code);
+  hideCelebrate();
+  if (!found) return t.focus();
+  note("shortcut_taken");
+  const lines = code.split("\n"), start = lines.slice(0, found.at).reduce((n, s) => n + s.length + 1, 0);
+  site.taught = {from: codeSize(code), times: 0, at: -1, look: true};
+  replaceText(start, start + lines[found.at].length, "while not at_beacon():");
+  if (scene) say("I'll watch for it!");
+  showBanner("", `🪄 No more counting: ${roverName()} keeps going until it's at the beacon. Press Transmit ▶`);
 }
 const SHORTCUT_BLANK = /range\(_\)/;
 function goToShortcut() {

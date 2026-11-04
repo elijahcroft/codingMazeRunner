@@ -47,6 +47,8 @@ saved. Wrong number? The banner says how many times it went round and how many t
 they wrote it. The same few lines in places apart get *Name this move* instead: the
 student types a word, and it becomes a `def`. Ctrl+Z brings the old code back. On last
 term's code this fires on about 7% of wins: most students' programs don't repeat.
+A student whose program ends with a `for` that reaches the beacon gets the next step:
+*Teach your rover to look* swaps the count for `while not at_beacon():`, until they know `while`.
 
 **Sending the same code after a miss doesn't send it.** The rover replays what happened,
 says "Same code, same trip!", and the banner asks for a change. Half of all tries in a
