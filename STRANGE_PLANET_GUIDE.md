@@ -165,7 +165,7 @@ lost.
   perfect run or a class record.
 - **Badges** for coding habits: first `for` loop, first `while`, first `if`,
   first function, using `print()`, **fixing a code error**, completing a
-  mission after 5 tries that didn't (**Never Give Up**), class records, all
+  mission after 5 different tries that didn't (**Never Give Up**), class records, all
   crystals, zone masters. They're all listed, with how to earn them, in the
   garage.
 - **🧰 Functions**: a student who writes a good `def` can save it and add
