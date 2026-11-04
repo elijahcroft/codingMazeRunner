@@ -3309,15 +3309,13 @@ def planet_challenge():
 
 
 def planet_open(p, key):
-    if planet_class_settings["challenge"] and key == planet_class_settings["challenge"]["key"]:
-        return True
     if key in planet.HALLOWEEN_ORDER:
         entry = planet_entry(p)
         return halloween_on(entry) and planet.HALLOWEEN_ORDER.index(key) <= halloween_frontier(entry)
     if key in planet.PRACTICE_ORDER:   # all open at once, in easy mode only
         return planet_class_settings["easy"]
     return key in planet.SITE_ORDER and \
-        planet.SITE_ORDER.index(key) <= planet_frontier(p)
+        (planet.SITE_ORDER.index(key) <= planet_frontier(p) or key == (planet_class_settings["challenge"] or {}).get("key"))
 
 
 def planet_variant(p, key):
