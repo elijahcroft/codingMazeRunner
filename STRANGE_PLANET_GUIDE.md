@@ -35,6 +35,11 @@ most did. Anyone already past them isn't sent back.
 has used in a win (loops, variables, `while`, `if`, `def`, loops in loops, `print`), and
 shows the next one to teach. Using a variable earns a new badge, Name Giver.
 
+**🎯 Class challenge.** ⚙ Settings on your page: pick a level and it opens for everyone,
+locked or not. Students get a gold chip within seconds, the class screen counts who's
+finished it and names them, and the win card says what number they came. Pick *None* to
+end it. Handy for "everyone try 1B1 now".
+
 **Rovers have names.** The first win asks; the box is under the rover in the garage.
 The name only shows on the student's own screen, in the win card and when you click
 the rover. A student who feels they're teaching someone tends to try harder for them.

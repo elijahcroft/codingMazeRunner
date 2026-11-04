@@ -2020,6 +2020,26 @@ class ClassroomTests(unittest.TestCase):
         self.assertFalse(self.get("/planet/overview")["blanks"])
         self.assertFalse(json.load(open(server.STATE_FILE))["planet_class"]["blanks"])
 
+    def test_a_class_challenge_opens_a_level_and_counts_who_finishes(self):
+        self.addCleanup(lambda: server.planet_class_settings.update(challenge=None))
+        ada, bo = self.join("Ada"), self.join("Bo")
+        self.assertIn("error", self.transmit(ada, "1b", site("1b")[2]["reference"]))
+        self.post("/admin", {"key": "nope", "action": "planet_challenge", "site": "1b"})
+        self.assertIsNone(self.get("/planet/overview")["challenge"])
+        self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_challenge", "site": "1b"})
+        state = self.get(f"/planet/state?id={ada}")
+        self.assertEqual(state["challenge"]["name"], "Crystal Steps")
+        tile = next(s for z in state["zones"] for s in z["sites"] if s["key"] == "1b")
+        self.assertTrue(tile["open"])
+        self.assertEqual(self.get(f"/planet/ping?id={ada}")["challenge"], "1b")
+        won = self.transmit(ada, "1b", site("1b")[2]["reference"])
+        self.assertEqual(won["rewards"]["challenge_place"], 1)
+        self.assertIsNone(self.transmit(ada, "1b", site("1b")[2]["reference"])["rewards"]["challenge_place"])
+        self.assertEqual(self.transmit(bo, "1b", site("1b")[2]["reference"])["rewards"]["challenge_place"], 2)
+        self.assertEqual(self.get("/planet/overview")["challenge"]["done"], ["Ada", "Bo"])
+        self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_challenge", "site": ""})
+        self.assertIsNone(self.get(f"/planet/state?id={ada}")["challenge"])
+
     def test_teacher_chooses_whether_sound_starts_on(self):
         pid = self.join()
         self.assertFalse(self.get(f"/planet/state?id={pid}")["sound"])

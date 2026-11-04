@@ -228,6 +228,7 @@
 </header>
 <section class="settings" id="settings" hidden>
   <label>🔑 Admin key <input id="key" type="password" placeholder="from the server" autocomplete="off"></label>
+  <label title="Sets one level for the whole class: it opens for everyone, and the class screen counts who's finished it.">🎯 Class challenge <select id="challenge" onchange="admin('planet_challenge', null, {site: this.value})"></select></label>
   <label title="On: 📋 Use as code after scouting leaves a few words for students to finish (r____ for range). Off: the code comes out whole."><span class="switch"><input type="checkbox" id="blanks" onchange="admin('planet_blanks', null, {on: this.checked})"><span></span></span> Scouted code has words to finish</label>
   <label title="For a younger class. On: nine practice zones (Practice Park, Loop Garden, Ice Rink, Pad Park, Jump Park, Look-Out Point, Fork Road, Trick School, Number Lab) before the Landing Site, where kids drive by hand first, then finish their code one letter at a time; classmates to ask after 3 misses (not 8), Skip for now after 6 (not 20)."><span class="switch"><input type="checkbox" id="easy" onchange="admin('planet_easy', null, {on: this.checked})"><span></span></span> Easy mode (younger class)</label>
   <label title="On: the game's sound starts on for students who haven't pressed the speaker button themselves. Headphones recommended. Off: it starts muted, and each student can still turn it on."><span class="switch"><input type="checkbox" id="sound" onchange="admin('planet_sound', null, {on: this.checked})"><span></span></span> Sound starts on</label>
@@ -532,6 +533,11 @@ function renderHabits(h) {
   $("habits").hidden = !parts.length;
   $("habits").textContent = `Today: ${parts.join(" · ")}`;
 }
+function renderChallenge(data) {
+  const box = $("challenge");
+  if (!box.options.length) box.innerHTML = `<option value="">None</option>` + data.challenge_sites.map(s => `<option value="${esc(s.key)}">${esc(s.key.toUpperCase())} ${esc(s.name)}</option>`).join("");
+  if (document.activeElement !== box) box.value = data.challenge ? data.challenge.key : "";
+}
 function renderStats(data) {
   const S = data.students.map(s => ({s, st: statusOf(s)}));
   const lesson = S.filter(x => !x.st.away);
@@ -596,6 +602,7 @@ async function refresh() {
   $("empty").hidden = data.students.length > 0;
   renderStats(data);
   renderHabits(data.habits || {});
+  renderChallenge(data);
   renderWhere(data);
   renderCrew(data);
   takeRuns(data.runs);

@@ -2778,7 +2778,7 @@ planet_spotlight = [None]
 # coach: those words are typed letter by letter on every site, with the
 # right key shown and only the right letter going in.
 # halloween: Halloween night is out (for the students the teacher invites).
-planet_class_settings = {"blanks": True, "easy": False, "coach": False, "halloween": True, "sound": False}
+planet_class_settings = {"blanks": True, "easy": False, "coach": False, "halloween": True, "sound": False, "challenge": None}
 # The mystery gifts on the main route. The practice zones' gifts are extra, for
 # a younger class, so Treasure Hunter doesn't wait on them.
 MAIN_GIFTS = [k for k in planet.GIFT_SQUARES if k in planet.SITE_ORDER]
@@ -3300,7 +3300,17 @@ def halloween_frontier(entry):
     return next((i for i, k in enumerate(order) if k not in passed), len(order) - 1)
 
 
+def planet_challenge():
+    """The level the teacher has set the whole class, and who's done it, in order."""
+    now = planet_class_settings["challenge"]
+    if not now:
+        return None
+    return dict(now, name=planet.find_site(now["key"])[2]["name"])
+
+
 def planet_open(p, key):
+    if planet_class_settings["challenge"] and key == planet_class_settings["challenge"]["key"]:
+        return True
     if key in planet.HALLOWEEN_ORDER:
         entry = planet_entry(p)
         return halloween_on(entry) and planet.HALLOWEEN_ORDER.index(key) <= halloween_frontier(entry)
@@ -3529,7 +3539,8 @@ def planet_state(p):
             "sites": [{"key": s["key"], "name": s["name"],
                        "solved": entry["solved"].get(s["key"]),
                        "stars": entry["stars"].get(s["key"], [False] * 3),
-                       "open": planet.SITE_ORDER.index(s["key"]) <= frontier,
+                       "open": planet.SITE_ORDER.index(s["key"]) <= frontier
+                       or s["key"] == (planet_class_settings["challenge"] or {}).get("key"),
                        "gift": gift_for(p, s["key"]) is not None}
                       for s in zone["sites"]]})
     spooky = halloween_on(entry)
@@ -3559,6 +3570,7 @@ def planet_state(p):
             "rank": rank_for(star_count(entry)),
             "picks": min(picks_left(entry), len(pickable(entry))) if choices else 0,
             "sound": planet_class_settings["sound"], "rover_name": entry.get("rover_name", ""),
+            "challenge": planet_challenge(),
             "pick_choices": choices,
             "missions": missions_view(entry),
             "badges": [{"key": k, "icon": b[0], "name": b[1], "how": b[2],
@@ -3671,6 +3683,16 @@ def challenge_badges(code, results):
     if max(sum(f.get("e") == "jump" for f in r["frames"]) for r in results) >= 10:
         found.add("kangaroo")
     return found
+
+
+def challenge_place(p, key, reached):
+    """A win on the class challenge: where this student came, the first time."""
+    now = planet_class_settings["challenge"]
+    if not reached or not now or now["key"] != key or p["name"] in now["done"]:
+        return None
+    now["done"].append(p["name"])
+    feed(f"🎯 {p['name']} is number {len(now['done'])} to finish the class challenge")
+    return len(now["done"])
 
 
 def planet_record(p, key, code, results):
@@ -3892,7 +3914,8 @@ def planet_record(p, key, code, results):
             "misses": entry["misses"].get(key, 0),   # runs in a row that didn't get there
             "helpers": planet_helpers(p, key) if entry["misses"].get(key, 0) >= help_after()
             and key not in entry["solved"] else [],
-            "can_skip": can_skip(p, key), "closer": closer}
+            "can_skip": can_skip(p, key), "closer": closer,
+            "challenge_place": challenge_place(p, key, reached_any)}
 
 
 def looks_for_houses(code):
@@ -4416,6 +4439,14 @@ def admin_action(data):
         planet_class_settings["blanks"] = bool(data.get("on"))
         return ("Scouted code now has a few words to finish." if planet_class_settings["blanks"]
                 else "Scouted code now comes out whole, nothing to finish.")
+    if action == "planet_challenge":
+        key = str(data.get("site", ""))
+        if key not in planet.SITE_ORDER:
+            planet_class_settings["challenge"] = None
+            return "No class challenge now."
+        planet_class_settings["challenge"] = {"key": key, "done": []}
+        feed(f"🎯 Class challenge: {planet.find_site(key)[2]['name']}!")
+        return f"Class challenge set: everyone can open {key.upper()} now."
     if action == "planet_sound":
         planet_class_settings["sound"] = bool(data.get("on"))
         return ("Sound now starts on for students who haven't chosen for themselves."
@@ -4906,7 +4937,9 @@ class Handler(BaseHTTPRequestHandler):
                                 blanks=planet_class_settings["blanks"],
                                 coach=planet_class_settings["coach"],
                                 sound=planet_class_settings["sound"],
-                                habits=planet_habits(),
+                                habits=planet_habits(), challenge=planet_challenge(),
+                                challenge_sites=[{"key": k, "name": planet.find_site(k)[2]["name"]}
+                                                 for k in planet.SITE_ORDER],
                                 easy=planet_class_settings["easy"],
                                 halloween=planet_class_settings["halloween"])
                 elif not p:
@@ -4914,7 +4947,8 @@ class Handler(BaseHTTPRequestHandler):
                 elif path == "/planet/ping":
                     # A student page asks now and then: has Halloween night opened
                     # (or closed) for me since the page loaded?
-                    body = {"halloween": halloween_on(planet_entry(p))}
+                    body = {"halloween": halloween_on(planet_entry(p)),
+                            "challenge": (planet_class_settings["challenge"] or {}).get("key")}
                 elif path == "/planet/state":
                     body = planet_state(p)
                 elif not planet_open(p, key):

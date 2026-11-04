@@ -475,6 +475,8 @@
 
   /* ---- Pop-overs and dialogs ------------------------------------------------------ */
   .goal.today { border: 0; font-family: inherit; cursor: pointer; background: rgba(127,240,214,.14); color: #7ff0d6; }
+  .goal.challenge { border: 0; font-family: inherit; background: var(--gold); color: #33280a; font-weight: 750; }
+  button.goal.challenge { cursor: pointer; }
   .goal.today.all { background: rgba(255,211,107,.18); color: var(--gold); }
   .mission { display: flex; align-items: center; gap: 10px; padding: 9px 10px; margin-bottom: 6px; border-radius: 10px; background: var(--dusk); font-size: 14px; }
   .mission .ico { font-size: 20px; }
@@ -2632,6 +2634,7 @@ async function celebrate(r, run) {
   const nz = r.zone_cleared && r.zone_cleared.next;
   if (nz) notes.push(`<span class="teaser">Next up: ${ZONE_ICONS[nz.key] || "🪐"} <b>${esc(nz.name)}</b>. ${esc(nz.blurb)}</span>`);
   if (r.candy) notes.push(candyNote(r.candy));
+  if (r.challenge_place) notes.push(`<span class="teaser">🎯 Number ${r.challenge_place} to finish the class challenge!</span>`);
   $("celeNote").innerHTML = notes.join(" &nbsp; ");
   if (r.first_try) SFX.play("first");
   if (got === r.stars.length || r.record || r.rank_up || r.zone_cleared) throwConfetti();
@@ -3180,9 +3183,15 @@ function renderGoals() {
     : `<span class="goal${best[i] ? " got" : ""}"><i>★</i>${esc(g)}</span>`).join("")
     + (site.gift ? '<span class="goal gift">🎁 A mystery gift is hidden here: drive over it</span>' : "")
     + legend(site.map || []).map(t => `<span class="goal legend">${esc(t)}</span>`).join("")
-    + todayChip() + brainChip();
+    + challengeChip() + todayChip() + brainChip();
 }
 // Today's missions: a chip with how many are done, and the list it opens.
+function challengeChip() {
+  const c = state && state.challenge;
+  if (!c) return "";
+  return c.key === site.key ? `<span class="goal challenge">🎯 Class challenge · ${c.done.length} done</span>`
+    : `<button class="goal challenge" onclick="openSite('${esc(c.key)}')">🎯 Class challenge: ${esc(c.name)} ▶</button>`;
+}
 // What the student has taught the rover: the big ideas of coding, each lit up
 // by a win that used it (their badges), and the next one to teach.
 const IDEAS = [["loop", "🔁", "Repeat moves", "for i in range(3):"],
@@ -5129,6 +5138,14 @@ $("roadPlay").addEventListener("click", playHalloween);
 $("roadClose").addEventListener("click", closeCandyRoad);
 for (const id of ["invite", "candyRoad"]) $(id).addEventListener("click", e => { if (e.target === $(id)) $(id).hidden = true; });
 setInterval(pingHalloween, 12000);
+// A class challenge set or ended by the teacher shows up within a few seconds.
+setInterval(async () => {
+  if (!me || !state || !site || busy) return;
+  const out = await get(`/planet/ping?id=${encodeURIComponent(me)}`).catch(() => null);
+  if (!out || (out.challenge || null) === ((state.challenge || {}).key || null)) return;
+  useState(await get(`/planet/state?id=${encodeURIComponent(me)}`));
+  renderGoals();
+}, 6000);
 resume();
 </script>
 </body>
