@@ -3235,6 +3235,14 @@ def planet_events(p, counts):
             today[kind] = today.get(kind, 0) + n
 
 
+def planet_rover_name(p, name):
+    """The student's name for their rover: letters, numbers and spaces. It
+    only shows on their own screen."""
+    name = " ".join(re.sub(r"[^\w ]", "", str(name)).split())[:14]
+    planet_entry(p)["rover_name"] = name
+    return name
+
+
 def planet_again(p, key):
     """The same code sent again after a miss: the page replays it without
     running it, but a student doing this is stuck, and the teacher should
@@ -3544,7 +3552,7 @@ def planet_state(p):
                if planet_class_settings["easy"] else 0),
             "rank": rank_for(star_count(entry)),
             "picks": min(picks_left(entry), len(pickable(entry))) if choices else 0,
-            "sound": planet_class_settings["sound"],
+            "sound": planet_class_settings["sound"], "rover_name": entry.get("rover_name", ""),
             "pick_choices": choices,
             "missions": missions_view(entry),
             "badges": [{"key": k, "icon": b[0], "name": b[1], "how": b[2],
@@ -5060,6 +5068,16 @@ class Handler(BaseHTTPRequestHandler):
                              "left": SCOUT_MAX - min(len(moves), SCOUT_MAX),
                              "blanks": planet_class_settings["blanks"],
                              "coach": planet_class_settings["coach"]})
+            return
+        if self.path == "/planet/rover":
+            with lock:
+                p = players.get(data.get("id"))
+                if not p:
+                    self._send(200, {"error": "join"})
+                    return
+                planet_rover_name(p, data.get("name", ""))
+                save_state()
+                self._send(200, planet_state(p))
             return
         if self.path == "/planet/again":
             key = str(data.get("site", ""))

@@ -1739,6 +1739,12 @@ class ClassroomTests(unittest.TestCase):
         self.assertEqual((entry["misses"]["1a"], entry["changed"]["1a"]), (3, 1))
         self.assertIn("error", self.post("/planet/again", {"id": pid, "site": "9a"}))
 
+    def test_a_rover_can_have_a_name(self):
+        pid = self.join()
+        self.assertEqual(self.get(f"/planet/state?id={pid}")["rover_name"], "")
+        self.assertEqual(self.post("/planet/rover", {"id": pid, "name": " Sparky <b>the  Great and Mighty"})["rover_name"], "Sparky bthe Gr")
+        self.assertEqual(self.post("/planet/rover", {"id": pid, "name": ""})["rover_name"], "")
+
     def test_the_page_can_count_what_students_do_between_runs(self):
         pid = self.join()
         self.post("/planet/events", {"id": pid, "counts": {"replay": 2, "scout": 1}})

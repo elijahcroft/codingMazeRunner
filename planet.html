@@ -270,6 +270,8 @@
   .cele-miss { margin: -6px 0 12px; color: var(--haze); font-size: 14px; }
   .cele-tip { margin-top: -4px; color: var(--mint); white-space: pre-line; }
   .cele-tip:empty { display: none; }
+  .rover-name { display: flex; gap: 6px; align-items: center; justify-content: center; margin-top: 8px; }
+  .rover-name input { width: 140px; padding: 5px 9px; border: 0; border-radius: 9px; background: rgba(12,9,26,.65); color: var(--bone); font: 600 14px var(--ui); box-shadow: inset 0 0 0 1px var(--edge); }
   .cele-trick { margin: -2px 0 14px; padding: 9px 12px; border-radius: 14px; background: rgba(255,211,107,.1); box-shadow: inset 0 0 0 1px rgba(255,211,107,.35); font-size: 15px; font-weight: 650; }
   .cele-trick code { font: 600 .92em var(--mono); color: var(--mint); background: rgba(140,242,198,.1); padding: 1px 5px; border-radius: 5px; white-space: nowrap; }
   .cele-trick small { display: block; margin-top: 6px; color: var(--haze); font-size: 13px; font-weight: 500; }
@@ -874,6 +876,7 @@
       <div class="stage">
         <canvas id="garageScene" aria-hidden="true"></canvas>
         <p class="stage-tag" id="stageTag" aria-live="polite"></p>
+        <label class="rover-name">🏷 <input id="roverName" maxlength="14" placeholder="Name your rover" autocomplete="off" spellcheck="false" aria-label="Your rover's name"></label>
       </div>
       <div>
         <div class="tabs" id="garageTabs"></div>
@@ -2575,7 +2578,7 @@ async function celebrate(r, run) {
   const rep = findRepeat(here), twin = !rep && !kidsMode() ? findTwin(here) : null;
   const shrank = taught && taught.from - codeSize(scene.code);
   $("celeSub").textContent = site.key === "7" ? unchartedSummary()
-    : taught ? `🪄 ${shrank > 0 ? `${taught.from} lines became ${codeSize(scene.code)}. ` : ""}${taught.word ? `Your rover knows ${taught.word}()!` : "Same trip!"}` : run.mission === "report" ? (scene.spooky ? "🧙 The witch agrees" : "📡 Report confirmed") : ticks(run.ticks);
+    : taught ? `🪄 ${shrank > 0 ? `${taught.from} lines became ${codeSize(scene.code)}. ` : ""}${taught.word ? `${roverName("Your rover")} knows ${taught.word}()!` : "Same trip!"}` : run.mission === "report" ? (scene.spooky ? "🧙 The witch agrees" : "📡 Report confirmed") : ticks(run.ticks);
   $("bigStars").innerHTML = r.stars.map((s, i) => `<div class="big-star${s ? " got" : r.best[i] ? " was" : ""}" title="${esc(goals[i] || "")}"><i>★</i><span>${esc([...(goals[i] || "★")][0])}</span></div>`).join("");
   const missing = goals.filter((g, i) => !r.best[i] && !rep && !twin);
   // One thing to try next at a time: a trick on offer takes the tips' place.
@@ -2662,7 +2665,7 @@ function repeatWords(rep, code) {
   const line = code.split("\n")[rep.at].trim();
   const what = rep.size === 1 ? `<code>${esc(line)}</code>` : `the same ${rep.size} lines`;
   const prize = ((state && state.garage) || []).find(g => g.badge === "loop" && !g.open);
-  return `🪄 You wrote ${what} <b>${rep.times} times</b>!<button class="go trick" onclick="teachShortcut()">Teach your rover a shortcut</button>`
+  return `🪄 You wrote ${what} <b>${rep.times} times</b>!<button class="go trick" onclick="teachShortcut()">Teach ${esc(roverName())} a shortcut</button>`
     + (prize ? `<small>A win with a loop unlocks ${esc(prize.name)} in the garage!</small>` : "");
 }
 function withLoop(code, rep) {
@@ -2689,7 +2692,7 @@ function findTwin(code) {
 function twinWords(twin) {
   return `🪄 You wrote the same ${twin.size} lines in ${twin.spots.length} places!`
     + `<form class="trick-name" onsubmit="teachMove(event)"><input id="trickName" maxlength="16" placeholder="zigzag" autocomplete="off" spellcheck="false" aria-label="A name for this move">`
-    + `<button class="go trick">Name this move</button></form><small id="trickWhy">Your rover will know it as a new word.</small>`;
+    + `<button class="go trick">Name this move</button></form><small id="trickWhy">It'll be a new word for ${esc(roverName())}.</small>`;
 }
 function withMove(code, twin, name) {
   const lines = code.split("\n"), chunk = lines.slice(twin.spots[0], twin.spots[0] + twin.size);
@@ -2702,13 +2705,13 @@ function teachMove(event) {
   if (!twin) return hideCelebrate();
   const name = (box.value.trim() || box.placeholder).toLowerCase().replace(/[^a-z0-9_]+/g, "_").replace(/^[0-9_]+|_+$/g, "");
   const taken = !name || KEYWORDS.has(name) || COMMANDS.includes(name) || (site.sensors || []).includes(name) || new RegExp(`\\b${name}\\b`).test(code);
-  if (taken) { $("trickWhy").textContent = "Your rover already knows that word. Try another!"; return box.select(); }
+  if (taken) { $("trickWhy").textContent = `${esc(roverName("Your rover"))} already knows that word. Try another!`; return box.select(); }
   note("shortcut_taken");
   hideCelebrate();
   site.taught = {from: codeSize(code), times: twin.spots.length, word: name, at: -1};
   replaceText(0, code.length, withMove(code, twin, name));
   if (scene) say(`${name}? I'm listening!`);
-  showBanner("", `🪄 ${name}() is one word for all ${twin.size} lines now. Press Transmit ▶ and see if your rover learned it.`);
+  showBanner("", `🪄 ${name}() is one word for all ${twin.size} lines now. Press Transmit ▶ and see if ${roverName()} learned it.`);
 }
 const SHORTCUT_BLANK = /range\(_\)/;
 function goToShortcut() {
@@ -2811,6 +2814,10 @@ async function showToasts(r) {
                  ...unlocks,
                  ...(r.missions_done || []).map(m => ["✅", `Mission done: ${m.text}`, r.trophy ? "" : "📋 Today, next to the goals, shows the others."]),
                  ...(r.trophy ? [["🏆", "All of today's missions done!", "A mission day trophy. Come back tomorrow for three new ones."]] : [])];
+  if (scene && scene.run && scene.run.reached && !state.rover_name && recall(`planetNameAsked:${me}`) !== "1") {
+    store(`planetNameAsked:${me}`, "1");
+    items.push(["🏷", "Your rover needs a name!", "You're teaching it, so you choose. Press to name it in the garage.", true]);
+  }
   if (r.found.length && site) renderGoals();
   if ((r.missions_done || []).length && site) renderGoals();
   const gen = toastGen;
@@ -3370,9 +3377,12 @@ function markGarageNew() {
   $("starsButton").classList.toggle("fresh", fresh);
 }
 let garageNew = new Set();
+// The rover, as the page talks about it: its own name once it has one.
+function roverName(the = "your rover") { return (state && state.rover_name) || the; }
 function openGarage() {
   note("garage");
   clearToasts();
+  $("roverName").value = state.rover_name || "";
   const seen = garageSeen();
   garageNew = new Set(seen ? garageKeys().filter(k => !seen.has(k)) : []);
   store(`planetGarageSeen:${me}`, JSON.stringify(garageKeys()));
@@ -4111,7 +4121,7 @@ function waitForCode() {
   if (kidsMode() && !scout) toggleScout();
   if (scout && scout.over) return say(scout.reached ? "Press Use as code!" : "Press Scout again!");
   if (scene) { scene.poke = performance.now(); say(scout ? "Drive me with the arrows!" : "I'm waiting for your code!"); }
-  if (!scout) return showBanner("", "Your rover is waiting for instructions! Write a command like  east()  in the box, then press Transmit ▶.");
+  if (!scout) return showBanner("", `${roverName("Your rover")} is waiting for instructions! Write a command like  east()  in the box, then press Transmit ▶.`);
   const pad = $("pad");
   pad.classList.remove("wake"); void pad.offsetWidth; pad.classList.add("wake");
   setTimeout(() => pad.classList.remove("wake"), 1600);
@@ -4894,6 +4904,10 @@ $("levelsPlay").addEventListener("click", () => { const k = $("levelsPlay").data
 $("prevSite").addEventListener("click", () => { const k = stepSite(-1); if (k) openSite(k); });
 $("nextSiteButton").addEventListener("click", () => { const k = stepSite(1); if (k) openSite(k); });
 $("garageClose").addEventListener("click", () => { $("garage").hidden = true; });
+$("roverName").addEventListener("change", async () => {
+  const out = await post("/planet/rover", {id: me, name: $("roverName").value}).catch(() => null);
+  if (out && !out.error) { useState(out); $("roverName").value = out.rover_name; }
+});
 $("surpriseButton").addEventListener("click", surprise);
 $("garageNext").addEventListener("click", e => {
   if (e.target.closest(".gn-go")) { $("garage").hidden = true; openLevels(); return; }
@@ -5036,7 +5050,8 @@ $("map").addEventListener("click", e => {
   if (Math.hypot(dx, dy) > cell * .8) return;
   SFX.wake(); SFX.play(look.horn || "beep");
   scene.poke = performance.now();
-  scene.said = {at: scene.poke, text: POKE_LINES[Math.floor(Math.random() * POKE_LINES.length)]};
+  const lines = state.rover_name ? [...POKE_LINES, `I'm ${state.rover_name}!`, `${state.rover_name}, ready!`] : POKE_LINES;
+  scene.said = {at: scene.poke, text: lines[Math.floor(Math.random() * lines.length)]};
 });
 window.addEventListener("resize", () => { render(); refreshEditor(); foldBrief(); });
 $("candyButton").addEventListener("click", openCandyRoad);
