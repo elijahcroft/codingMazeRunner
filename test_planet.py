@@ -1737,6 +1737,7 @@ class ClassroomTests(unittest.TestCase):
         self.post("/planet/events", {"id": "nobody", "counts": {"replay": 1}})
         days = server.planet_entry(server.players[pid])["events"]
         self.assertEqual(list(days.values()), [{"replay": 3, "scout": 1}])
+        self.assertEqual(self.get("/planet/overview")["habits"], {"replay": 3, "scout": 1})
 
     def test_long_miss_runs_name_classmates_then_open_the_next_site(self):
         ada, bo = self.join("Ada"), self.join("Bo")

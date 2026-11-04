@@ -3222,7 +3222,7 @@ def planet_entry(p):
 
 # What students do between runs, which the runs themselves don't show. Only
 # counts, by day, for the teacher to see what's being used.
-PLANET_EVENTS = {"replay", "scout", "chip", "garage", "levels", "hint", "show_me", "same_code",
+PLANET_EVENTS = {"replay", "step", "scout", "chip", "garage", "levels", "hint", "show_me", "same_code",
                  "shortcut_offered", "shortcut_taken", "shortcut_won"}
 
 
@@ -3233,6 +3233,15 @@ def planet_events(p, counts):
     for kind, n in counts.items():
         if kind in PLANET_EVENTS and isinstance(n, int) and 0 < n <= 1000:
             today[kind] = today.get(kind, 0) + n
+
+
+def planet_habits():
+    """Today's counts for the whole class, for the teacher's page."""
+    day, out = time.strftime("%Y-%m-%d"), {}
+    for q in players.values():
+        for kind, n in q.get("planet", {}).get("events", {}).get(day, {}).items():
+            out[kind] = out.get(kind, 0) + n
+    return out
 
 
 def planet_frontier(p):
@@ -4870,6 +4879,7 @@ class Handler(BaseHTTPRequestHandler):
                                 blanks=planet_class_settings["blanks"],
                                 coach=planet_class_settings["coach"],
                                 sound=planet_class_settings["sound"],
+                                habits=planet_habits(),
                                 easy=planet_class_settings["easy"],
                                 halloween=planet_class_settings["halloween"])
                 elif not p:

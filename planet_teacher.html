@@ -113,6 +113,7 @@
   .stat b { display: block; font: 900 34px/1 var(--ui); letter-spacing: -.03em; }
   .stat span { color: var(--haze); font-size: 13.5px; }
   .stat .ico { float: right; font-size: 26px; }
+  .habits { margin: 10px 2px 0; color: var(--haze); font-size: 13.5px; }
   .stat.gold b { color: var(--gold); } .stat.mint b { color: var(--mint); } .stat.red b { color: var(--coral); } .stat.amber b { color: var(--amber); }
   .stat.alert { box-shadow: inset 0 0 0 2px var(--coral); animation: alert 2s ease-in-out infinite; }
   @keyframes alert { 50% { background: #3a1d2e; } }
@@ -253,6 +254,7 @@
   </section>
 
   <section class="stats" id="stats"></section>
+  <p class="habits" id="habits" hidden title="Counted by the students' pages, for today. Runs aren't in here: these are the things done between runs."></p>
   <section class="help" id="help" hidden></section>
 
   <section>
@@ -522,6 +524,14 @@ function renderCrew(data) {
   for (const el of have.values()) el.remove();
   $("crewCount").textContent = `${data.students.length} explorer${data.students.length === 1 ? "" : "s"}`;
 }
+// What the class used today between runs, in one line.
+function renderHabits(h) {
+  const WORDS = {replay: "replay", step: "step", scout: "Scout", chip: "command chip", hint: "hint", show_me: "Show me", garage: "garage visit", same_code: "same code resend"};
+  const parts = Object.keys(WORDS).filter(k => h[k]).map(k => `${h[k]} ${WORDS[k]}${h[k] === 1 ? "" : "s"}`);
+  if (h.shortcut_offered) parts.push(`🪄 shortcuts: ${h.shortcut_offered} offered, ${h.shortcut_taken || 0} tried, ${h.shortcut_won || 0} worked`);
+  $("habits").hidden = !parts.length;
+  $("habits").textContent = `Today: ${parts.join(" · ")}`;
+}
 function renderStats(data) {
   const S = data.students.map(s => ({s, st: statusOf(s)}));
   const lesson = S.filter(x => !x.st.away);
@@ -585,6 +595,7 @@ async function refresh() {
   renderSpooky(data);
   $("empty").hidden = data.students.length > 0;
   renderStats(data);
+  renderHabits(data.habits || {});
   renderWhere(data);
   renderCrew(data);
   takeRuns(data.runs);

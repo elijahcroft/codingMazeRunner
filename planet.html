@@ -824,6 +824,7 @@
       </div>
       <div class="timeline">
         <button class="play" id="playButton" aria-label="Play" disabled>▶</button>
+        <button class="play" id="stepButton" title="One step at a time, to see which line does what" aria-label="One step" disabled>⏭</button>
         <div class="track"><div class="marks" id="marks"></div><input class="scrub" id="scrub" type="range" min="0" max="0" step="any" value="0" aria-label="Replay position" disabled></div>
         <div class="clock" id="clock"></div>
         <button class="play speed" id="speedButton" title="Replay speed" aria-label="Replay speed">1×</button>
@@ -2271,6 +2272,18 @@ function stalled(i) {
   const f = scene.frames, same = (x, y) => x && y && x.r === y.r && x.c === y.c && x.d === y.d;
   return same(f[i - 1], f[i]) && same(f[i], f[i + 1]);
 }
+// One frame on, with the line that made it lit up: reading a program as the
+// rover runs it. From the end it starts over.
+function stepOnce() {
+  if (!scene || last() === 0) return;
+  note("step");
+  setPlaying(false); hideBanner(); hideCelebrate();
+  if (pos >= last()) { setPos(0); heard = 0; return; }
+  const k = Math.floor(pos) + 1;
+  setPos(k);
+  while (heard < k) onStep(++heard);
+  if (k >= last()) finished();
+}
 const SPEEDS = [1, 2, 4, .5];
 let speed = SPEEDS.includes(Number(recall("planetSpeed"))) ? Number(recall("planetSpeed")) : 1;
 function showSpeed() { $("speedButton").textContent = (speed === .5 ? "½" : speed) + "×"; }
@@ -2383,7 +2396,7 @@ function showRun(run, map, crystals, startAt = 0) {
   if (marks.length > 12) marks = marks.filter(m => !["⛸", "🧱", "🦘", "🛤"].includes(m.icon));
   if (marks.length > 12) marks = marks.filter(m => m.icon !== "💨" || /pushed/.test(m.text));
   $("marks").innerHTML = marks.map(m => `<span class="mark" style="left:${last() ? m.k / last() * 100 : 0}%" title="tick ${run.frames[m.k].t}: ${esc(m.text)}" data-k="${m.k}">${m.icon}</span>`).join("");
-  $("scrub").max = last(); $("scrub").disabled = last() === 0; $("playButton").disabled = last() === 0;
+  $("scrub").max = last(); $("scrub").disabled = last() === 0; $("playButton").disabled = last() === 0; $("stepButton").disabled = last() === 0;
   $("batteryGauge").hidden = run.frames[0].b == null;
   $("sampleGauge").hidden = !scene.samples;
   $("crystalGauge").hidden = !scene.crystals.length;
@@ -4928,6 +4941,7 @@ $("lines").addEventListener("click", e => {
 });
 $("kit").addEventListener("click", e => { const n = e.target.dataset && e.target.dataset.name; if (n) { note("chip"); insertChip(n); } });
 $("radioButton").addEventListener("click", () => openPop($("radioPop"), $("radioButton")));
+$("stepButton").addEventListener("click", stepOnce);
 $("hintButton").addEventListener("click", () => { note("hint"); askHint(); });
 $("fnButton").addEventListener("click", () => { removing = null; $("fnState").textContent = "Saved functions work on every site."; openPop($("fnPop"), $("fnButton")); renderFunctions(); placePop($("fnPop"), $("fnButton")); });
 $("fnPop").addEventListener("click", functionsClick);
