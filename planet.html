@@ -270,6 +270,9 @@
   .cele-miss { margin: -6px 0 12px; color: var(--haze); font-size: 14px; }
   .cele-tip { margin-top: -4px; color: var(--mint); white-space: pre-line; }
   .cele-tip:empty { display: none; }
+  .cele-trick { margin: -2px 0 14px; padding: 9px 12px; border-radius: 14px; background: rgba(255,211,107,.1); box-shadow: inset 0 0 0 1px rgba(255,211,107,.35); font-size: 15px; font-weight: 650; }
+  .cele-trick code { font: 600 .92em var(--mono); color: var(--mint); background: rgba(140,242,198,.1); padding: 1px 5px; border-radius: 5px; white-space: nowrap; }
+  .go.trick { display: block; margin: 8px auto 3px; padding: 8px 16px; font-size: 15px; background: var(--gold); color: #33280a; box-shadow: 0 3px 0 #b8912e; }
   .cele-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
   /* What the next stars unlock, with a bar that fills as the new ones land. */
   .cele-next { display: flex; align-items: center; gap: 8px; margin: 0 auto 14px; max-width: 380px; padding: 6px 12px; border-radius: 99px; background: rgba(0,0,0,.2); font-size: 13.5px; color: var(--haze); white-space: nowrap; }
@@ -809,6 +812,7 @@
             <p class="cele-note" id="celeNote"></p>
             <p class="cele-miss" id="celeMiss"></p>
             <p class="cele-miss cele-tip" id="celeTip"></p>
+            <div class="cele-trick" id="celeTrick" hidden></div>
             <div class="cele-next" id="celeNext" hidden></div>
             <div class="cele-actions" id="celeActions"></div>
           </div>
@@ -2417,6 +2421,8 @@ function finished() {
   let text = unused ? unused.replace(/^tick \d+: /, "") : run.end === "error" ? `⚠️ ${run.error}` : coachTip(run);
   const plain = !text && run.explain;
   if (!text) text = plain ? run.explain.what : say;
+  const looped = site.taught && Number((/range\((\d+)\)/.exec(scene.code) || [])[1]);
+  if (looped && looped !== site.taught.times) text = `Your loop went round ${looped} ${looped === 1 ? "time" : "times"}, and you wrote it ${site.taught.times} times. ${text}`;
   if (site.key === "7" && runs) text = `${unchartedSummary()} Planet ${runs.indexOf(run) + 1}: ${text}`;
   showBanner(cls === "win" ? "win" : cls === "lost" ? "lost" : "", text, buttons.join(""), plain ? run.explain.next : "");
   const helpers = sitesRewards && sitesRewards.helpers || [];
@@ -2480,15 +2486,20 @@ async function celebrate(r, run) {
   $("celeTitle").textContent = site.key === "7" ? `${runs.filter(x => x.reached).length} of 5 planets!`
     : r.zone_cleared && spooky(r.zone_cleared.key) && !r.zone_cleared.next ? "🎃 Halloween night complete!"
     : r.zone_cleared ? `${ZONE_ICONS[r.zone_cleared.key] || "🗺"} ${r.zone_cleared.name} cleared!` : titles[Math.max(0, got - 1)];
-  $("celeSub").textContent = site.key === "7" ? unchartedSummary() : run.mission === "report" ? (scene.spooky ? "🧙 The witch agrees" : "📡 Report confirmed") : plural(run.ticks, "tick");
+  const taught = site.taught && run.reached && !/range\(_\)/.test(scene.code) ? site.taught : null;
+  site.taught = null;
+  const rep = site.key !== "7" && $("code").value === scene.code ? findRepeat(scene.code) : null;
+  $("celeSub").textContent = site.key === "7" ? unchartedSummary() : taught ? `🪄 ${taught.from} lines became ${codeSize(scene.code)}. Same trip!` : run.mission === "report" ? (scene.spooky ? "🧙 The witch agrees" : "📡 Report confirmed") : plural(run.ticks, "tick");
   $("bigStars").innerHTML = r.stars.map((s, i) => `<div class="big-star${s ? " got" : r.best[i] ? " was" : ""}" title="${esc(goals[i] || "")}"><i>★</i><span>${esc([...(goals[i] || "★")][0])}</span></div>`).join("");
   const missing = goals.filter((g, i) => !r.best[i]);
-  $("celeTip").innerHTML = site.key !== "7" ? starTips(r.best, $("code").value).map(codeSpans).join("\n") : "";
+  $("celeTip").innerHTML = site.key !== "7" ? starTips(rep ? [r.best[0], r.best[1], true] : r.best, $("code").value).map(codeSpans).join("\n") : "";
+  $("celeTrick").hidden = !rep;
+  if (rep) $("celeTrick").innerHTML = repeatWords(rep, scene.code);
   $("celeMiss").textContent = missing.length && site.key !== "7" && !$("celeTip").textContent ? `Still to earn: ${missing.join(" · ")}` : "";
   $("celeNote").innerHTML = "";
   const next = nextSite();
   $("celeActions").innerHTML = (next && site.key !== "7" ? `<button class="go" onclick="openSite('${next}')">Next level ▶</button>` : "")
-    + (r.best.every(Boolean) ? "" : `<button class="quiet" onclick="hideCelebrate();$('code').focus()">Go for ${r.best.length - r.best.filter(Boolean).length} more ★</button>`)
+    + (rep || r.best.every(Boolean) ? "" : `<button class="quiet" onclick="hideCelebrate();$('code').focus()">Go for ${r.best.length - r.best.filter(Boolean).length} more ★</button>`)
     + `<button class="quiet" onclick="hideCelebrate();togglePlay()">Watch again</button>`;
   $("celebrate").hidden = false;
   // Something new earns the full reveal; a re-run with nothing new shows its
@@ -2515,7 +2526,7 @@ async function celebrate(r, run) {
   if (r.first_try) SFX.play("first");
   if (got === r.stars.length || r.record || r.rank_up || r.zone_cleared) throwConfetti();
   $("celeActions").querySelector("button").focus();
-  const nextBar = r.candy ? showNextCandy(r.candy) : showNextUnlock(r.total_stars, r.total_stars - r.new_stars);
+  const nextBar = rep ? ($("celeNext").hidden = true, null) : r.candy ? showNextCandy(r.candy) : showNextUnlock(r.total_stars, r.total_stars - r.new_stars);
   if (r.new_stars) await flyStars(stars.filter((el, i) => r.stars[i]).slice(-r.new_stars), r.total_stars);
   if (nextBar) nextBar();
   if (r.rank_up) {
@@ -2536,6 +2547,72 @@ function starTips(best, code) {
     return tip + over;
   }).filter(Boolean);
 }
+// ---- A shortcut out of your own code ----------------------------------------------------
+// The stretch of the code that's the same lines over and over, when a loop
+// would make it at least two lines shorter: the first loop a student meets
+// is the one hiding in what they already wrote. A chunk has to be a whole
+// block, so wrapping it in a loop can't change what it means.
+function findRepeat(code) {
+  const lines = code.split("\n").map(s => s.trimEnd()), indent = s => s.search(/\S/);
+  let best = null;
+  for (let size = 1; size <= 8; size++) for (let at = 0; at + size * 2 <= lines.length; at++) {
+    const chunk = lines.slice(at, at + size), pad = indent(chunk[0]);
+    if (/^\s*(else|elif)\b/.test(chunk[0]) || !chunk.every(s => s.trim() && !s.trim().startsWith("#") && indent(s) >= pad && !/^\s*(def|break|continue|return)\b/.test(s))) continue;
+    let times = 1;
+    while (chunk.every((s, i) => lines[at + size * times + i] === s)) times++;
+    const saved = size * (times - 1) - 1, after = lines.slice(at + size * times).find(s => s.trim());
+    if (times > 1 && saved >= 2 && (!best || saved > best.saved) && !(after && (indent(after) > pad || /^\s*(else|elif)\b/.test(after))))
+      best = {at, size, times, saved, pad};
+  }
+  return best;
+}
+function codeSize(code) { return code.split("\n").filter(line => line.trim() && !line.trim().startsWith("#")).length; }
+function repeatWords(rep, code) {
+  const line = code.split("\n")[rep.at].trim();
+  const what = rep.size === 1 ? `<code>${esc(line)}</code>` : `the same ${rep.size} lines`;
+  return `🪄 You wrote ${what} <b>${rep.times} times</b>!<button class="go trick" onclick="teachShortcut()">Teach your rover a shortcut</button>`;
+}
+function withLoop(code, rep) {
+  const lines = code.split("\n"), name = ["i", "j", "k", "n"].find(v => !new RegExp(`\\b${v}\\b`).test(code)) || "i";
+  return [...lines.slice(0, rep.at), `${" ".repeat(rep.pad)}for ${name} in range(_):`,
+          ...lines.slice(rep.at, rep.at + rep.size).map(s => "    " + s),
+          ...lines.slice(rep.at + rep.size * rep.times)].join("\n");
+}
+const SHORTCUT_BLANK = /range\(_\)/;
+function goToShortcut() {
+  const t = $("code"), m = SHORTCUT_BLANK.exec(t.value);
+  if (!m) return;
+  t.focus(); t.setSelectionRange(m.index + 6, m.index + 7);   // typing a number replaces the _
+}
+function askHowMany(times) {
+  showBanner("", `🪄 You wrote it ${times} times. Type that number where the _ is, then press Transmit ▶`);
+  goToShortcut();
+}
+// The trick itself: the copies vanish one by one on the painted code (the
+// real text stays put, so Ctrl+Z still brings it all back in one go), then
+// the loop lands, with its one blank left for the student: how many times?
+async function teachShortcut() {
+  const t = $("code"), code = t.value, rep = findRepeat(code);
+  hideCelebrate();
+  if (!rep) return t.focus();
+  site.taught = {from: codeSize(code), times: rep.times};
+  if (!CALM) {
+    goToLine(rep.at + 1);
+    say("Watch this!");
+    t.readOnly = true;
+    const lines = code.split("\n");
+    for (let n = rep.times - 1; n >= 1; n--) {
+      lines.splice(rep.at + rep.size * n, rep.size);
+      paintCode(lines.join("\n"));
+      await wait(Math.max(60, Math.min(170, 1000 / rep.times)));
+    }
+    t.readOnly = false;
+  }
+  replaceText(0, code.length, withLoop(code, rep));
+  if (scene) say("How many times?");
+  askHowMany(rep.times);
+}
+
 // The hint for one star, from its goal button.
 function showStarTip(i) {
   showBanner("", "💡 Hint:");
@@ -3927,6 +4004,7 @@ async function transmit() {
     goToBlank();
     return;
   }
+  if (SHORTCUT_BLANK.test($("code").value)) return askHowMany((site.taught || {times: "some"}).times);
   if (noCode()) return waitForCode();
   // Pressed again while the rover is still driving this same code: it heard.
   if (playing && !scout && scene.code === $("code").value) return say("I'm on it!");
@@ -4491,7 +4569,7 @@ function paintCode(code, caret = 0) {
     if (comment) return `<i class="t-note">${esc(comment)}</i>`;
     if (text) return `<i class="t-text">${esc(text)}</i>`;
     if (num) return `<i class="t-num">${num}</i>`;
-    const cls = BLANK.test(word) ? "t-blank" : COMMANDS.includes(word) || (LINE_CHIPS.includes(word) && sensors.has(word)) ? "t-cmd" : sensors.has(word) ? "t-sense" : own.has(word) ? "t-own"
+    const cls = BLANK.test(word) || word === "_" ? "t-blank" : COMMANDS.includes(word) || (LINE_CHIPS.includes(word) && sensors.has(word)) ? "t-cmd" : sensors.has(word) ? "t-sense" : own.has(word) ? "t-own"
       : KEYWORDS.has(word) ? "t-key" : "";
     return cls ? `<i class="${cls}">${word}</i>` : word;
   });
