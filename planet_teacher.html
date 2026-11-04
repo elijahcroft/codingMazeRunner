@@ -229,6 +229,7 @@
   <label>🔑 Admin key <input id="key" type="password" placeholder="from the server" autocomplete="off"></label>
   <label title="On: 📋 Use as code after scouting leaves a few words for students to finish (r____ for range). Off: the code comes out whole."><span class="switch"><input type="checkbox" id="blanks" onchange="admin('planet_blanks', null, {on: this.checked})"><span></span></span> Scouted code has words to finish</label>
   <label title="For a younger class. On: nine practice zones (Practice Park, Loop Garden, Ice Rink, Pad Park, Jump Park, Look-Out Point, Fork Road, Trick School, Number Lab) before the Landing Site, where kids drive by hand first, then finish their code one letter at a time; classmates to ask after 3 misses (not 8), Skip for now after 6 (not 20)."><span class="switch"><input type="checkbox" id="easy" onchange="admin('planet_easy', null, {on: this.checked})"><span></span></span> Easy mode (younger class)</label>
+  <label title="On: the game's sound starts on for students who haven't pressed the speaker button themselves. Headphones recommended. Off: it starts muted, and each student can still turn it on."><span class="switch"><input type="checkbox" id="sound" onchange="admin('planet_sound', null, {on: this.checked})"><span></span></span> Sound starts on</label>
   <label title="On: after 📋 Use as code, students finish each word one letter at a time on every site: the word shows as keys, the next key lights up, and only the right letter goes in. The practice sites always work this way."><span class="switch"><input type="checkbox" id="coach" onchange="admin('planet_coach', null, {on: this.checked})"><span></span></span> Letter-by-letter typing help</label>
   <label title="A limited-time event: ten trick-or-treat levels for the students you invite (🎃 on their card). Off puts it away for everyone; what they earned stays theirs."><span class="switch"><input type="checkbox" id="halloween" onchange="admin('planet_halloween', null, {on: this.checked})"><span></span></span> 🎃 Halloween night</label>
 </section>
@@ -579,7 +580,7 @@ async function refresh() {
   helpAfter = data.easy ? 3 : 8;
   $("address").textContent = (data.address || "").replace(/^http:\/\//, "");
   $("spotOff").hidden = !data.spotlight;
-  $("blanks").checked = data.blanks; $("easy").checked = data.easy; $("coach").checked = data.coach;
+  $("blanks").checked = data.blanks; $("easy").checked = data.easy; $("coach").checked = data.coach; $("sound").checked = data.sound;
   $("halloween").checked = data.halloween;
   renderSpooky(data);
   $("empty").hidden = data.students.length > 0;

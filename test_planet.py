@@ -1717,11 +1717,26 @@ class ClassroomTests(unittest.TestCase):
         out = self.transmit(pid, "1a", site("1a")[2]["reference"])
         self.assertIn("Bug Squasher", [b["name"] for b in out["rewards"]["badges"]])
         server.planet_entry(server.players[pid])["unlocked"] = 1
-        for _ in range(5):
-            missed = self.transmit(pid, "1b", "east()\n")
+        for n in range(5):
+            missed = self.transmit(pid, "1b", "east()\n" + "wait()\n" * n)
         self.assertEqual(missed["rewards"]["misses"], 5)   # the page offers help from 3
         out = self.transmit(pid, "1b", site("1b")[2]["reference"])
         self.assertIn("Never Give Up", [b["name"] for b in out["rewards"]["badges"]])
+
+    def test_never_give_up_wants_the_code_to_change(self):
+        pid = self.join()
+        for _ in range(8):
+            self.transmit(pid, "1a", "east()\n")
+        out = self.transmit(pid, "1a", site("1a")[2]["reference"])
+        self.assertNotIn("Never Give Up", [b["name"] for b in out["rewards"]["badges"]])
+
+    def test_the_page_can_count_what_students_do_between_runs(self):
+        pid = self.join()
+        self.post("/planet/events", {"id": pid, "counts": {"replay": 2, "scout": 1}})
+        self.post("/planet/events", {"id": pid, "counts": {"replay": 1, "nonsense": 9, "chip": -4, "hint": "x"}})
+        self.post("/planet/events", {"id": "nobody", "counts": {"replay": 1}})
+        days = server.planet_entry(server.players[pid])["events"]
+        self.assertEqual(list(days.values()), [{"replay": 3, "scout": 1}])
 
     def test_long_miss_runs_name_classmates_then_open_the_next_site(self):
         ada, bo = self.join("Ada"), self.join("Bo")
@@ -1967,6 +1982,15 @@ class ClassroomTests(unittest.TestCase):
         self.assertFalse(scout()["blanks"])
         self.assertFalse(self.get("/planet/overview")["blanks"])
         self.assertFalse(json.load(open(server.STATE_FILE))["planet_class"]["blanks"])
+
+    def test_teacher_chooses_whether_sound_starts_on(self):
+        pid = self.join()
+        self.assertFalse(self.get(f"/planet/state?id={pid}")["sound"])
+        self.post("/admin", {"key": "nope", "action": "planet_sound", "on": True})
+        self.assertFalse(self.get(f"/planet/state?id={pid}")["sound"])
+        self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_sound", "on": True})
+        self.assertTrue(self.get(f"/planet/state?id={pid}")["sound"])
+        self.assertTrue(self.get("/planet/overview")["sound"])
 
     def test_teacher_switches_letter_by_letter_typing(self):
         pid = self.join()

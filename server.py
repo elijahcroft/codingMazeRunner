@@ -2778,7 +2778,7 @@ planet_spotlight = [None]
 # coach: those words are typed letter by letter on every site, with the
 # right key shown and only the right letter going in.
 # halloween: Halloween night is out (for the students the teacher invites).
-planet_class_settings = {"blanks": True, "easy": False, "coach": False, "halloween": True}
+planet_class_settings = {"blanks": True, "easy": False, "coach": False, "halloween": True, "sound": False}
 # The mystery gifts on the main route. The practice zones' gifts are extra, for
 # a younger class, so Treasure Hunter doesn't wait on them.
 MAIN_GIFTS = [k for k in planet.GIFT_SQUARES if k in planet.SITE_ORDER]
@@ -2792,7 +2792,7 @@ PLANET_BADGES = {
     "def": ("🧩", "Architect", "Complete a mission using a function you made"),
     "print": ("🔬", "Scientist", "Complete a mission with print() in your code"),
     "fixer": ("🐛", "Bug Squasher", "Fix a code error, then complete the mission"),
-    "grit": ("💪", "Never Give Up", "Complete a mission after 5 runs that didn't"),
+    "grit": ("💪", "Never Give Up", "Complete a mission after 5 different tries that didn't"),
     "triple": ("🌟", "Triple Star", "Earn all three stars in one run"),
     "compact": ("✂️", "Minimalist", "Earn the compact star on 5 sites"),
     "crystals": ("💎", "Crystal Hunter", "Collect every crystal on 4 sites"),
@@ -3220,6 +3220,21 @@ def planet_entry(p):
     return entry
 
 
+# What students do between runs, which the runs themselves don't show. Only
+# counts, by day, for the teacher to see what's being used.
+PLANET_EVENTS = {"replay", "scout", "chip", "garage", "levels", "hint", "show_me",
+                 "shortcut_offered", "shortcut_taken", "shortcut_won"}
+
+
+def planet_events(p, counts):
+    """Add a page's counts ({"replay": 2}) to today's. Anything else is ignored."""
+    day = time.strftime("%Y-%m-%d")
+    today = planet_entry(p).setdefault("events", {}).setdefault(day, {})
+    for kind, n in counts.items():
+        if kind in PLANET_EVENTS and isinstance(n, int) and 0 < n <= 1000:
+            today[kind] = today.get(kind, 0) + n
+
+
 def planet_frontier(p):
     """Index in planet.SITE_ORDER of the furthest site this student may open:
     the first one they haven't solved, counting from the one the teacher (or
@@ -3509,6 +3524,7 @@ def planet_state(p):
                if planet_class_settings["easy"] else 0),
             "rank": rank_for(star_count(entry)),
             "picks": min(picks_left(entry), len(pickable(entry))) if choices else 0,
+            "sound": planet_class_settings["sound"],
             "pick_choices": choices,
             "missions": missions_view(entry),
             "badges": [{"key": k, "icon": b[0], "name": b[1], "how": b[2],
@@ -3725,15 +3741,20 @@ def planet_record(p, key, code, results):
         if entry["errored"].get(key):
             badge("fixer")
             fixed = True
-        if entry["misses"].get(key, 0) >= 5:
+        if entry.get("changed", {}).get(key, 0) >= 5:
             badge("grit")
         if first_try:
             entry["first_tries"] = entry.get("first_tries", 0) + 1
             if entry["first_tries"] >= 5:
                 badge("sharp")
         entry["misses"][key] = 0
+        entry.setdefault("changed", {})[key] = 0
     else:
         entry["misses"][key] = entry["misses"].get(key, 0) + 1
+        # Never Give Up is for trying something else, not sending it again.
+        if len(tries) < 2 or tries[-2]["code"] != tries[-1]["code"]:
+            changed = entry.setdefault("changed", {})
+            changed[key] = changed.get(key, 0) + 1
     entry["errored"][key] = any(r.get("error") for r in results)
     closer = closest_yet(p, key, results[0])
     if all(run_stars):
@@ -4359,6 +4380,10 @@ def admin_action(data):
         planet_class_settings["blanks"] = bool(data.get("on"))
         return ("Scouted code now has a few words to finish." if planet_class_settings["blanks"]
                 else "Scouted code now comes out whole, nothing to finish.")
+    if action == "planet_sound":
+        planet_class_settings["sound"] = bool(data.get("on"))
+        return ("Sound now starts on for students who haven't chosen for themselves."
+                if planet_class_settings["sound"] else "Sound now starts off. Students can still turn it on.")
     if action == "planet_coach":
         # Letter by letter needs words to finish.
         planet_class_settings["coach"] = bool(data.get("on"))
@@ -4844,6 +4869,7 @@ class Handler(BaseHTTPRequestHandler):
                     body = dict(planet_class(), address=address, spotlight=planet_spotlight[0],
                                 blanks=planet_class_settings["blanks"],
                                 coach=planet_class_settings["coach"],
+                                sound=planet_class_settings["sound"],
                                 easy=planet_class_settings["easy"],
                                 halloween=planet_class_settings["halloween"])
                 elif not p:
@@ -5013,6 +5039,14 @@ class Handler(BaseHTTPRequestHandler):
                              "left": SCOUT_MAX - min(len(moves), SCOUT_MAX),
                              "blanks": planet_class_settings["blanks"],
                              "coach": planet_class_settings["coach"]})
+            return
+        if self.path == "/planet/events":
+            with lock:
+                p = players.get(data.get("id"))
+                if p and isinstance(data.get("counts"), dict):
+                    planet_events(p, data["counts"])
+                    save_state()
+            self._send(200, {"ok": True})
             return
         if self.path == "/planet/look":
             with lock:

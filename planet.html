@@ -272,6 +272,7 @@
   .cele-tip:empty { display: none; }
   .cele-trick { margin: -2px 0 14px; padding: 9px 12px; border-radius: 14px; background: rgba(255,211,107,.1); box-shadow: inset 0 0 0 1px rgba(255,211,107,.35); font-size: 15px; font-weight: 650; }
   .cele-trick code { font: 600 .92em var(--mono); color: var(--mint); background: rgba(140,242,198,.1); padding: 1px 5px; border-radius: 5px; white-space: nowrap; }
+  .cele-trick small { display: block; margin-top: 6px; color: var(--haze); font-size: 13px; font-weight: 500; }
   .go.trick { display: block; margin: 8px auto 3px; padding: 8px 16px; font-size: 15px; background: var(--gold); color: #33280a; box-shadow: 0 3px 0 #b8912e; }
   .cele-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
   /* What the next stars unlock, with a bar that fills as the new ones land. */
@@ -1175,6 +1176,8 @@ const SFX = (() => {
     },
     wake() { if (!muted) context(); },
     get muted() { return muted; },
+    // The teacher's switch, until the student has pressed the button themselves.
+    classDefault(on) { if (recall("planetMuted") == null) muted = !on; },
     toggle() { muted = !muted; store("planetMuted", muted ? "1" : "0"); if (!muted) context(); return muted; },
   };
 })();
@@ -2271,7 +2274,7 @@ function nextSpeed() {
 function togglePlay() {
   if (!scene || last() === 0) return;
   if (playing) { setPlaying(false); return; }
-  if (pos >= last()) { setPos(0); heard = 0; }
+  if (pos >= last()) { setPos(0); heard = 0; note("replay"); }
   heard = Math.floor(pos);
   hideBanner(); hideCelebrate();
   setPlaying(true);
@@ -2279,6 +2282,7 @@ function togglePlay() {
 // "Show me": the moment it went wrong, with a ring round the rover, and the
 // banner stays up so its words are still there to read.
 function showMe() {
+  note("show_me");
   setPlaying(false); setPos(last()); heard = Math.floor(pos);
   scene.ring = performance.now(); render(); markFeed();
 }
@@ -2519,6 +2523,17 @@ function foldBrief() {
 }
 
 // ---- Celebration: the stars, one by one ------------------------------------------------
+// Counts of what students do between runs, sent now and then (see the server's
+// PLANET_EVENTS). Losing a few when a tab closes doesn't matter.
+let tally = {};
+function note(kind) { tally[kind] = (tally[kind] || 0) + 1; }
+function sendTally() {
+  if (!me || !Object.keys(tally).length) return;
+  const counts = tally; tally = {};
+  navigator.sendBeacon("/planet/events", new Blob([JSON.stringify({id: me, counts})], {type: "application/json"}));
+}
+setInterval(sendTally, 30000);
+window.addEventListener("pagehide", sendTally);
 function isFresh(r) { return r.new_stars || r.record || r.badges.length; }
 async function celebrate(r, run) {
   const goals = site.goals || [];
@@ -2535,7 +2550,8 @@ async function celebrate(r, run) {
   const missing = goals.filter((g, i) => !r.best[i]);
   $("celeTip").innerHTML = site.key !== "7" ? starTips(rep ? [r.best[0], r.best[1], true] : r.best, $("code").value).map(codeSpans).join("\n") : "";
   $("celeTrick").hidden = !rep;
-  if (rep) $("celeTrick").innerHTML = repeatWords(rep, scene.code);
+  if (rep) { $("celeTrick").innerHTML = repeatWords(rep, scene.code); note("shortcut_offered"); }
+  if (taught) note("shortcut_won");
   $("celeMiss").textContent = missing.length && site.key !== "7" && !$("celeTip").textContent ? `Still to earn: ${missing.join(" · ")}` : "";
   $("celeNote").innerHTML = "";
   const next = nextSite();
@@ -2611,7 +2627,9 @@ function codeSize(code) { return code.split("\n").filter(line => line.trim() && 
 function repeatWords(rep, code) {
   const line = code.split("\n")[rep.at].trim();
   const what = rep.size === 1 ? `<code>${esc(line)}</code>` : `the same ${rep.size} lines`;
-  return `🪄 You wrote ${what} <b>${rep.times} times</b>!<button class="go trick" onclick="teachShortcut()">Teach your rover a shortcut</button>`;
+  const prize = ((state && state.garage) || []).find(g => g.badge === "loop" && !g.open);
+  return `🪄 You wrote ${what} <b>${rep.times} times</b>!<button class="go trick" onclick="teachShortcut()">Teach your rover a shortcut</button>`
+    + (prize ? `<small>A win with a loop unlocks ${esc(prize.name)} in the garage!</small>` : "");
 }
 function withLoop(code, rep) {
   const lines = code.split("\n"), name = ["i", "j", "k", "n"].find(v => !new RegExp(`\\b${v}\\b`).test(code)) || "i";
@@ -2636,6 +2654,7 @@ async function teachShortcut() {
   const t = $("code"), code = t.value, rep = findRepeat(code);
   hideCelebrate();
   if (!rep) return t.focus();
+  note("shortcut_taken");
   site.taught = {from: codeSize(code), times: rep.times};
   if (!CALM) {
     goToLine(rep.at + 1);
@@ -2775,7 +2794,6 @@ async function enter(id) {
   me = id; useState(data);
   $("driver").textContent = data.you.name; $("driver").title = data.you.name;
   $("join").hidden = true; $("app").hidden = false;
-  $("muteButton").textContent = SFX.muted ? "🔇" : "🔊";
   const lastSite = recall(`planetSite:${me}`);
   await openSite(siteOpen(lastSite) ? lastSite : data.current);
   requestAnimationFrame(frameLoop);
@@ -2790,6 +2808,8 @@ function useState(data) {
   state = data;
   nudgeFirstRun();
   look = data.look || look;
+  SFX.classDefault(data.sound);
+  $("muteButton").textContent = SFX.muted ? "🔇" : "🔊";
   $("totalStars").textContent = data.total_stars;
   if (!holdRank) { renderRank(data.rank); markGarageNew(); }
   classUnlocks(data);
@@ -2875,6 +2895,7 @@ function playNext() {
 const NEW_ZONES = ["tricks", "numbers"];   // say NEW until a student has tried them
 function openLevels() {
   if (!state) return;
+  note("levels");
   closePops();
   const next = playNext(), here = site && site.key;
   const got = n => (n.stars || []).filter(Boolean).length;
@@ -3276,6 +3297,7 @@ function markGarageNew() {
 }
 let garageNew = new Set();
 function openGarage() {
+  note("garage");
   const seen = garageSeen();
   garageNew = new Set(seen ? garageKeys().filter(k => !seen.has(k)) : []);
   store(`planetGarageSeen:${me}`, JSON.stringify(garageKeys()));
@@ -3762,6 +3784,7 @@ $("shopTip").innerHTML = `<b>Click a square</b> to add a <code>paint()</code> li
 function toggleScout() {
   if (scout) return stopScout();
   if (!site || !site.map || busy) return;
+  note("scout");
   scout = {moves: [], queue: [], over: false, arm: null};
   rewards = null;
   showJumpPad();
@@ -4830,9 +4853,9 @@ $("lines").addEventListener("click", e => {
   if (!ran.length) return toast("💤", `Line ${n} didn't move the rover`, "In this run, nothing on that line drove, waited or jumped.");
   jumpTo(ran.find(k => k > pos) ?? ran[0]);
 });
-$("kit").addEventListener("click", e => { const n = e.target.dataset && e.target.dataset.name; if (n) insertChip(n); });
+$("kit").addEventListener("click", e => { const n = e.target.dataset && e.target.dataset.name; if (n) { note("chip"); insertChip(n); } });
 $("radioButton").addEventListener("click", () => openPop($("radioPop"), $("radioButton")));
-$("hintButton").addEventListener("click", askHint);
+$("hintButton").addEventListener("click", () => { note("hint"); askHint(); });
 $("fnButton").addEventListener("click", () => { removing = null; $("fnState").textContent = "Saved functions work on every site."; openPop($("fnPop"), $("fnButton")); renderFunctions(); placePop($("fnPop"), $("fnButton")); });
 $("fnPop").addEventListener("click", functionsClick);
 $("code").addEventListener("input", e => {
