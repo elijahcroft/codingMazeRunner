@@ -1204,6 +1204,9 @@ class RoverTests(unittest.TestCase):
         last = out["frames"][-1]
         self.assertIn(f"x {last['c']}, y {last['r']}", out["log"][-1])
 
+    def test_a_sensor_used_without_brackets_says_so(self):
+        self.assertIn("battery needs brackets", run("5a", "report(battery)\n")["error"])
+
     def test_friendly_errors(self):
         self.assertIn("Strange Planet", run("1a", "x = [1, 2]\n")["error"])
         self.assertIn("import", run("1a", "import os\n")["error"])
