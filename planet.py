@@ -2053,16 +2053,28 @@ ZONES = [
                       "the first push moves it off its column, then report "
                       "the tick.\n\nwhile x() == 2:\n    south()\nreport(tick())",
                   ]}),
+         site("3a1", "Hold On!",
+              "Gusts blow on ticks 5, 10, 15 and so on, but a rover that is "
+              "waiting holds on. Drive 4 squares, wait() while the gust blows "
+              "past, then drive on to the beacon:\n\n"
+              "south(4)\nwait()\nsouth(4)",
+              [{"map": windy_ledge([(2, 8)]), "dir": 2, "wind": 5}],
+              reference="south(4)\nwait()\nsouth(4)\n"),
+         site("3a2", "Gust Guard",
+              "A longer ledge means a lot of waiting to work out, so let the "
+              "rover read the clock. tick() % 5 is 4 just before each gust. "
+              "Check it before every square:\n\n"
+              "for i in range(13):\n    if tick() % 5 == 4:\n        wait()\n"
+              "    south()",
+              [{"map": windy_ledge([(2, 13)]), "dir": 2, "wind": 5}],
+              reference="for i in range(13):\n    if tick() % 5 == 4:\n"
+                        "        wait()\n    south()\n"),
          site("3b", "The Ledge",
-              "Drive down the ledge to the beacon without being pushed into a"
-              " crater. Here the gusts come every 5 ticks: on ticks 5, 10, 15 "
-              "and so on.\n"
-              "1. A gust only catches a rover that is driving, so wait() on the "
-              "tick just before one: when tick() % 5 is 4.\n"
-              "2. Put that check in your own def, and call it before every "
-              "single square.\n"
-              "3. Drive each part of the ledge one square at a time, with a for "
-              "loop.",
+              "Now the ledge turns corners, and the gusts still come every 5 "
+              "ticks. Give your gust check a name with def, then use it before "
+              "every square:\n\n"
+              "def guard():\n    if tick() % 5 == 4:\n        wait()\n\n"
+              "for i in range(6):\n    guard()\n    south()",
               [{"map": windy_ledge([(2, 6), (1, 5), (2, 6), (1, 4), (2, 5)]),
                 "dir": 2, "wind": 5}],
               reference="def guard():\n    if tick() % 5 == 4:\n        wait()\n\n"
@@ -3327,6 +3339,8 @@ CHALLENGES = {
     "2b": {"bonus": {"kind": "crystals"}, "compact": 6, "crystals": [(1, 7)]},
     "2c": {"bonus": {"kind": "no_bump"}, "compact": [8, 8, 8, 9, 8, 8, 8, 8]},
     "3a": {"bonus": {"kind": "computed"}, "compact": 3},
+    "3a1": {"bonus": {"kind": "no_push"}, "compact": 3},
+    "3a2": {"bonus": {"kind": "no_push"}, "compact": 4},
     "3b": {"bonus": {"kind": "no_push"}, "compact": 16},
     "3c": {"bonus": {"kind": "no_push"}, "compact": 17},
     "4a": {"bonus": {"kind": "ticks", "max": 14}, "compact": 5},
@@ -3406,6 +3420,8 @@ BONUS_TIPS = {
                 "detour that drives over it.",
     "def": "🧩 Find lines that repeat. Put them under  def name():  and call "
            "name() where they were. The def has to run to count.",
+    "variable": "🔢 Name the number on a line of its own, like  n = 4 , then "
+                "write  east(n)  instead of  east(4) .",
     "no_bump": "🧱 Watch the replay for the 🧱 in the telemetry. Make that drive "
                "stop one square sooner, or check look() before you move.",
     "no_push": "💨 Note the ticks the gusts came on. wait() on the tick just "
@@ -3624,7 +3640,7 @@ GIFT_SQUARES = {"1a": (1, 4), "2b": (4, 5), "3b": (13, 9), "4c": None,
                 # One in each practice zone, a square or so off the way, for
                 # the younger class (easy mode).
                 "p2": (2, 3), "p10": (3, 4), "p17": (1, 4), "p26": (3, 1), "p34": (3, 1),
-                "p43": None, "p47": None}
+                "p43": None, "p47": None, "p54": None, "p60": None}
 _gifts = {}
 
 
@@ -3665,6 +3681,7 @@ def bonus_label(bonus):
     kind = bonus["kind"]
     return {"crystals": "💎 Grab every crystal",
             "def": "🧩 Use a function you made with def",
+            "variable": "🔢 Give a number a name, and use the name",
             "no_bump": "🧱 Never bump into rock",
             "no_push": "💨 Never get blown off course",
             "computed": "🔢 Work the number out in code, not typed in",
@@ -3699,6 +3716,15 @@ def goals(s, variant):
             f"✂️ {compact} line{'' if compact == 1 else 's'} of code or fewer"][:stars_max(s)]
 
 
+def uses_variable(code):
+    """Does the code give something a name, and then use that name?"""
+    tree = ast.parse(code)
+    named = {t.id for n in ast.walk(tree) if isinstance(n, ast.Assign)
+             for t in n.targets if isinstance(t, ast.Name)}
+    return any(isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load) and n.id in named
+               for n in ast.walk(tree))
+
+
 def stars(s, variant, run, code):
     """Which of the site's three stars this run earned."""
     if not run["reached"]:
@@ -3711,6 +3737,8 @@ def stars(s, variant, run, code):
         met = run["crystals"][0] == run["crystals"][1]
     elif kind == "def":
         met = run.get("own_function", False)
+    elif kind == "variable":
+        met = uses_variable(code)
     elif kind == "no_bump":
         met = run["bumps"] == 0
     elif kind == "no_push":
@@ -3922,7 +3950,7 @@ ZONES.append({"key": "uncharted", "name": "Uncharted", "rules": UNCHARTED_RULES,
 SITE_ORDER = [s["key"] for z in ZONES for s in z["sites"]]
 # Sites added once classes were already playing. One counts as passed for a
 # student who has solved a site after it, so nobody is sent back for it.
-LATE_SITES = {s["key"] for s in MIX_SITES.values()} | {"16a", "16b", "16c", "16d"}
+LATE_SITES = {s["key"] for s in MIX_SITES.values()} | {"16a", "16b", "16c", "16d", "3a1", "3a2"}
 
 # Practice zones: very small first steps for a younger class, before the
 # Landing Site. Only open when the teacher's easy mode is on, and not in
@@ -4434,6 +4462,7 @@ def staircase(seed):
 # if, on paths of a different length for each student, so counting squares
 # doesn't help and a sensor does. Landing Site rules (zone index 0).
 LOOKOUT = {"key": "lookout", "name": "Look-Out Point", "rules": set(), "sensors": ["look", "at_beacon"],
+           "typed": True,   # the lesson is the code, so no driving it by hand first
            "blurb": "look() tells the rover what's next to it, and a while loop "
                     "keeps driving until it's time to stop.",
            "hints": [
@@ -4513,6 +4542,7 @@ LOOKOUT = {"key": "lookout", "name": "Look-Out Point", "rules": set(), "sensors"
                               'while look("west") != "rock":\n    west()\n', compact=6),
            ]}
 FORK_ROAD = {"key": "forks", "name": "Fork Road", "rules": set(), "sensors": ["look", "at_beacon"],
+             "typed": True,
              "blurb": "if lets the rover decide: do this, or else do that.",
              "hints": [
                  'An if runs its lines only when its check is True. else runs '
@@ -4571,17 +4601,189 @@ FORK_ROAD = {"key": "forks", "name": "Fork Road", "rules": set(), "sensors": ["l
                       reference='while not at_beacon():\n    if look("east") != "rock":\n'
                                 "        east()\n    else:\n        south()\n", compact=5),
              ]}
-PRACTICE_ZONES = [PRACTICE_PARK, LOOP_GARDEN, ICE_RINK, PAD_PARK, JUMP_PARK, LOOKOUT, FORK_ROAD]
+def sample_trail(legs, spare=0):
+    """Open ground with a sample at the end of every leg of a route, from S.
+    `legs` are [(direction, squares)]; the way between is left to the student.
+    `spare` squares of ground past the far edges mean a number that's too big
+    overshoots, where it would otherwise bump the rock in just the right place."""
+    r = c = 0
+    stops = []
+    for way, n in legs:
+        dr, dc = DIRS[COMPASS[way]]
+        r, c = r + dr * n, c + dc * n
+        stops.append((r, c))
+    top, left = min(0, *(p[0] for p in stops)), min(0, *(p[1] for p in stops))
+    grid = open_ground(max(0, *(p[0] for p in stops)) - top + 3 + spare,
+                       max(0, *(p[1] for p in stops)) - left + 3 + spare)
+    grid[1 - top][1 - left] = "S"
+    for r, c in stops:
+        grid[r - top + 1][c - left + 1] = "*"
+    return strings(grid)
+
+
+def stairs(widths):
+    """Legs for stairs that go east by each width, then one square south."""
+    return [leg for n in widths for leg in (("east", n), ("south", 1))]
+
+
+TRICK_SCHOOL = {"key": "tricks", "name": "Trick School", "rules": set(), "sensors": ["look", "at_beacon"],
+                "typed": True,
+                "blurb": "Teach your rover a trick: give some moves a name with def, "
+                         "then just say the name.",
+                "hints": [
+                    "def step():  teaches the rover a trick. The lines pushed in "
+                    "under it are the trick. Nothing happens until you say its name.",
+                    "To do the trick, write its name with ( ) on its own line, not "
+                    "pushed in:\n\nstep()\nstep()",
+                    "A trick can go inside a loop, so a few lines can do a lot:\n\n"
+                    "for i in range(4):\n    step()",
+                ],
+                "sites": [
+                    site("p52", "Your First Trick",
+                         "Teach your rover a trick! The lines pushed in under def are "
+                         "the trick. Each step() does it once. Collect the samples 🧪 "
+                         "with three steps:\n\n"
+                         "def step():\n    east()\n    south()\n\nstep()\nstep()\nstep()",
+                         [{"map": sample_trail([("east", 1), ("south", 1)] * 3)}],
+                         reference="def step():\n    east()\n    south()\n\n"
+                                   "step()\nstep()\nstep()\n",
+                         bonus={"kind": "def"}, compact=6),
+                    site("p53", "Name It Yourself",
+                         "These stairs go the other way. Teach the rover a new trick "
+                         "and pick its name yourself: hop, dive, or anything you like.",
+                         [{"map": sample_trail([("west", 1), ("south", 1)] * 4)}],
+                         reference="def dive():\n    west()\n    south()\n\n"
+                                   "dive()\ndive()\ndive()\ndive()\n",
+                         bonus={"kind": "def"}, compact=7),
+                    site("p54", "Trick in a Loop",
+                         "So many stairs! You don't want to say step() seven times. "
+                         "Put it in a loop:\n\n"
+                         "for i in range(7):\n    step()",
+                         [{"map": sample_trail([("east", 1), ("south", 1)] * 7)}],
+                         reference="def step():\n    east()\n    south()\n\n"
+                                   "for i in range(7):\n    step()\n",
+                         bonus={"kind": "def"}, compact=5),
+                    site("p55", "Rock Hopper",
+                         "A sample 🧪 hides behind every rock. Teach the rover to go "
+                         "up, over and down, then do that trick four times.",
+                         [{"map": ["###########",
+                                   "#.........#",
+                                   "#S#*#*#*#*#",
+                                   "#.........#",
+                                   "###########"]}],
+                         reference="def hop():\n    north()\n    east(2)\n    south()\n\n"
+                                   "for i in range(4):\n    hop()\n",
+                         bonus={"kind": "def"}, compact=6),
+                    site("p56", "Trick With a Number",
+                         "A trick can take a number! Now stair(1) and stair(4) are "
+                         "different stairs. Collect the samples 🧪:\n\n"
+                         "def stair(n):\n    east(n)\n    south()\n\n"
+                         "stair(1)\nstair(2)",
+                         [{"map": sample_trail(stairs((1, 2, 3, 4)))}],
+                         reference="def stair(n):\n    east(n)\n    south()\n\n"
+                                   "stair(1)\nstair(2)\nstair(3)\nstair(4)\n",
+                         bonus={"kind": "def"}, compact=7),
+                    site("p57", "The Big Show",
+                         "The rover's big show: there and back, wider each time! "
+                         "Teach it one trick that takes a number, and use it three "
+                         "times with 2, 4 and 6.",
+                         [{"map": sample_trail([leg for n in (2, 4, 6) for leg in
+                                                (("east", n), ("south", 1), ("west", n), ("south", 1))])}],
+                         reference="def lap(n):\n    east(n)\n    south()\n    west(n)\n"
+                                   "    south()\n\nlap(2)\nlap(4)\nlap(6)\n",
+                         bonus={"kind": "def"}, compact=8),
+                ]}
+
+NUMBER_LAB = {"key": "numbers", "name": "Number Lab", "rules": set(), "sensors": ["look", "at_beacon"],
+              "typed": True,
+              "blurb": "Give a number a name. Change it once, and every line that "
+                       "uses it changes too.",
+              "hints": [
+                  "n = 4  gives the number 4 a name. Now  east(n)  means  east(4) .",
+                  "A name's number can change.  n = n + 1  makes n one bigger, so "
+                  "the next  east(n)  goes further.",
+                  "Pick any name you like, but not x or y: those are the rover's "
+                  "own sensors. Try n, size or steps.",
+              ],
+              "sites": [
+                  site("p58", "Name a Number",
+                       "size is a name for the number 4. Every line that says size "
+                       "means 4. Collect the samples 🧪:\n\n"
+                       "size = 4\neast(size)\nsouth(size)\nwest(size)",
+                       [{"map": sample_trail([("east", 4), ("south", 4), ("west", 4)])}],
+                       reference="size = 4\neast(size)\nsouth(size)\nwest(size)\n",
+                       bonus={"kind": "variable"}, compact=4),
+                  site("p59", "Change One Number",
+                       "Everyone's field is a different size! Start from your code "
+                       "on the last level, count your squares, and change just one number.",
+                       [{"map": sample_trail([("east", n), ("south", n), ("west", n)], spare=3), "size": n}
+                        for n in (3, 5, 6, 7)],
+                       per_student=True,
+                       bonus={"kind": "variable"}, compact=4),
+                  site("p60", "Growing Steps",
+                       "Each stair is one wider than the last. Let n grow as you go. "
+                       "Watch what  n = n + 1  does to each east(n):\n\n"
+                       "n = 1\nfor i in range(5):\n    east(n)\n    south()\n"
+                       "    n = n + 1",
+                       [{"map": sample_trail(stairs(range(1, 6)))}],
+                       reference="n = 1\nfor i in range(5):\n    east(n)\n    south()\n"
+                                 "    n = n + 1\n",
+                       bonus={"kind": "variable"}, compact=5),
+                  site("p61", "Shrinking Steps",
+                       "These stairs start wide and get narrower. Start n big, and "
+                       "make it smaller each time.",
+                       [{"map": sample_trail(stairs(range(5, 0, -1)))}],
+                       reference="n = 5\nfor i in range(5):\n    east(n)\n    south()\n"
+                                 "    n = n - 1\n",
+                       bonus={"kind": "variable"}, compact=5),
+                  site("p62", "Square Spiral",
+                       "Spiral out from the middle: east, south, west, north, and "
+                       "every two sides n grows by 1. Start with n = 2.",
+                       [{"map": sample_trail([("east", 2), ("south", 2), ("west", 3), ("north", 3),
+                                              ("east", 4), ("south", 4), ("west", 5), ("north", 5),
+                                              ("east", 6), ("south", 6), ("west", 7), ("north", 7)])}],
+                       reference="n = 2\nfor i in range(3):\n    east(n)\n    south(n)\n"
+                                 "    n = n + 1\n    west(n)\n    north(n)\n    n = n + 1\n",
+                       bonus={"kind": "variable"}, compact=8),
+                  site("p63", "Snail Shell",
+                       "Now spiral all the way in, like a snail's shell. It's your "
+                       "spiral backwards: start big, and let n shrink every two sides.",
+                       [{"map": sample_trail([("east", 7), ("south", 7), ("west", 6), ("north", 6),
+                                              ("east", 5), ("south", 5), ("west", 4), ("north", 4),
+                                              ("east", 3), ("south", 3), ("west", 2), ("north", 2)])}],
+                       reference="n = 7\nfor i in range(3):\n    east(n)\n    south(n)\n"
+                                 "    n = n - 1\n    west(n)\n    north(n)\n    n = n - 1\n",
+                       bonus={"kind": "variable"}, compact=8),
+              ]}
+
+PRACTICE_ZONES = [PRACTICE_PARK, LOOP_GARDEN, ICE_RINK, PAD_PARK, JUMP_PARK, LOOKOUT, FORK_ROAD,
+                  TRICK_SCHOOL, NUMBER_LAB]
 # Added once a younger class was already playing: nobody who has moved on
 # to the main route is sent back for them (see the server's planet_state).
-LATE_PRACTICE = {s["key"] for z in (LOOKOUT, FORK_ROAD) for s in z["sites"]}
+LATE_PRACTICE = {s["key"] for z in (LOOKOUT, FORK_ROAD, TRICK_SCHOOL, NUMBER_LAB) for s in z["sites"]}
 PRACTICE_ORDER = [s["key"] for z in PRACTICE_ZONES for s in z["sites"]]
 # Practice sites are easy, so each gives one star: the mission. (Stars kids
-# earned on them before stay counted.)
+# earned on them before stay counted.) Trick School and Number Lab keep all
+# three: there the other stars are the lesson.
 for _z in PRACTICE_ZONES:
     for _s in _z["sites"]:
-        _s["stars_max"] = 1
+        if _z not in (TRICK_SCHOOL, NUMBER_LAB):
+            _s["stars_max"] = 1
 STAR_TIPS.update({
+    "3a1": {"compact": "The card's three lines are all it takes."},
+    "3a2": {"compact": "A loop with the gust check and south() inside: 4 lines."},
+    "p52": {"compact": "The code on the card is 6 lines: the def and three step()."},
+    "p53": {"compact": "The def is 3 lines, then four calls."},
+    "p54": {"compact": "3 lines of def, then a for loop that calls it."},
+    "p55": {"compact": "A def with north(), east(2) and south(), then a loop of 4."},
+    "p56": {"compact": "3 lines of def, then one call for each stair: 4 in all."},
+    "p57": {"compact": "One def that takes n, then lap(2), lap(4) and lap(6)."},
+    "p58": {"compact": "One line for the name, and one for each side."},
+    "p59": {"compact": "One line for the name, and one for each side."},
+    "p60": {"compact": "n = 1, then a loop of 4 lines with  n = n + 1  last."},
+    "p61": {"compact": "n = 5, then a loop of 4 lines with  n = n - 1  last."},
+    "p62": {"compact": "n = 2, then a loop of 3. Inside: two drives, n grows, two drives, n grows."},
+    "p63": {"compact": "n = 7, then a loop of 3. Inside: two drives, n shrinks, two drives, n shrinks."},
     "p1": {"compact": "Take out any extra lines: three east() is all it needs."},
     "p2": {"compact": "Take out any extra lines: three south() is all it needs."},
     "p3": {"compact": "One line for each square: three east(), then three south()."},

@@ -2880,6 +2880,8 @@ GARAGE = [
     {"slot": "pet", "key": "froggy", "name": "Froggy", "find": "p34"},
     {"slot": "topper", "key": "binoculars", "name": "Binoculars", "find": "p43"},
     {"slot": "pet", "key": "owl", "name": "Wise owl", "find": "p47"},
+    {"slot": "paint", "key": "chalkboard", "name": "Chalkboard", "find": "p54"},
+    {"slot": "paint", "key": "graphpaper", "name": "Graph Paper", "find": "p60"},
     {"slot": "paint", "key": "aurora", "name": "Aurora", "class": 30},
     {"slot": "paint", "key": "nebula", "name": "Nebula", "class": 90},
     {"slot": "paint", "key": "supernova", "name": "Supernova", "class": 180},
@@ -3209,6 +3211,12 @@ def planet_entry(p):
     entry["look"].setdefault("horn", "beep")
     entry["look"].setdefault("wheels", "std")
     entry.setdefault("showoff", None)   # a badge worn on the class screen
+    # Two levels went in before The Ledge after some "unlocked" numbers were
+    # saved. They count places in SITE_ORDER, so those saves move up by two.
+    if "wind_ramp" not in entry:
+        entry["wind_ramp"] = True
+        if entry["unlocked"] > planet.SITE_ORDER.index("3a"):
+            entry["unlocked"] += 2
     return entry
 
 
@@ -3453,7 +3461,7 @@ def planet_state(p):
         for zone in planet.PRACTICE_ZONES:
             zones.append({
                 "key": zone["key"], "name": zone["name"], "blurb": zone["blurb"],
-                "zi": zone.get("zi", 0), "practice": True,
+                "zi": zone.get("zi", 0), "practice": True, "typed": zone.get("typed", False),
                 "hints": zone["hints"][:entry["hints"].get(zone["key"], 0)],
                 "hint_count": len(zone["hints"]),
                 "sites": [{"key": s["key"], "name": s["name"],
@@ -3497,7 +3505,8 @@ def planet_state(p):
             "uncharted": entry["uncharted"],
             "total_stars": star_count(entry),
             "max_stars": 3 * len(planet.SITE_ORDER)
-            + (len(planet.PRACTICE_ORDER) if planet_class_settings["easy"] else 0),
+            + (sum(planet.stars_max(planet.find_site(k)[2]) for k in planet.PRACTICE_ORDER)
+               if planet_class_settings["easy"] else 0),
             "rank": rank_for(star_count(entry)),
             "picks": min(picks_left(entry), len(pickable(entry))) if choices else 0,
             "pick_choices": choices,

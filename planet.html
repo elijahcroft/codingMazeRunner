@@ -126,27 +126,45 @@
   .step-site:hover:not(:disabled) { color: var(--bone); background: var(--panel-2); }
   .step-site:disabled { opacity: .3; cursor: default; }
   .site-tag { min-width: 38px; padding: 4px 8px; border-radius: 9px; background: var(--panel); color: var(--gold); font: 800 14px var(--mono); text-align: center; }
-  .levels-card { width: min(1040px, 100%); max-height: calc(100vh - 32px); display: grid; grid-template-rows: auto minmax(0, 1fr); background: var(--dusk); border-radius: 22px; box-shadow: 0 30px 80px rgba(0,0,0,.5), inset 0 0 0 1px var(--edge); overflow: hidden; }
+  .levels-card { width: min(1040px, 100%); max-height: calc(100vh - 32px); display: grid; grid-template-rows: auto auto minmax(0, 1fr); background: var(--dusk); border-radius: 22px; box-shadow: 0 30px 80px rgba(0,0,0,.5), inset 0 0 0 1px var(--edge); overflow: hidden; }
   .levels-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 16px 20px; border-bottom: 1px solid var(--edge); background: var(--panel); }
   .levels-head h2 { margin: 0; font-size: 26px; font-weight: 850; letter-spacing: -.02em; }
   .levels-stars { color: var(--gold); font: 700 16px var(--mono); }
   .levels-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
-  .zone-list { overflow: auto; padding: 16px 20px 22px; display: grid; gap: 14px; }
-  .zone-card { border-radius: 18px; background: rgba(53,45,96,.45); box-shadow: inset 0 0 0 1px var(--edge); padding: 14px 16px 16px; }
+  .zone-jump { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; padding: 8px 20px; border-bottom: 1px solid var(--edge); }
+  .jump-zone { position: relative; width: 30px; height: 32px; padding: 0; border: 0; border-radius: 9px; overflow: hidden; background: var(--panel); font-size: 16px; line-height: 1; transition: transform .12s; }
+  .jump-zone:hover:not(:disabled) { transform: translateY(-2px); background: var(--panel-2); }
+  .jump-zone i { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--mint); }
+  .jump-zone.here { box-shadow: inset 0 0 0 2px var(--amber); }
+  .jump-zone:disabled { opacity: .4; filter: grayscale(1); cursor: default; }
+  .jump-gap { width: 1px; height: 22px; margin: 0 5px; background: var(--edge); }
+  .zone-list { overflow: auto; padding: 12px 20px 20px; display: grid; gap: 8px; align-content: start; }
+  .zone-group { margin: 8px 0 0; color: var(--haze); font: 800 12px var(--ui); letter-spacing: .08em; text-transform: uppercase; }
+  .zone-group:first-child { margin-top: 0; }
+  .zone-card { border-radius: 16px; background: rgba(53,45,96,.45); box-shadow: inset 0 0 0 1px var(--edge); scroll-margin-top: 30px; }
   .zone-card.here { box-shadow: inset 0 0 0 2px var(--amber); background: rgba(70,52,40,.35); }
-  .zone-card.locked { padding: 10px 16px; opacity: .6; }
-  .zone-top { display: flex; align-items: center; gap: 12px; }
-  .zone-ico { font-size: 34px; line-height: 1; width: 44px; text-align: center; }
-  .zone-card.locked .zone-ico { filter: grayscale(1); font-size: 24px; }
-  .zone-top h3 { margin: 0; font-size: 19px; font-weight: 800; }
+  .zone-card.locked { opacity: .6; }
+  .zone-top { width: 100%; display: flex; align-items: center; gap: 12px; padding: 9px 14px; border: 0; border-radius: 16px; background: none; color: inherit; font: inherit; text-align: left; }
+  button.zone-top:hover { background: rgba(255,255,255,.04); }
+  .zone-ico { font-size: 24px; line-height: 1; width: 36px; text-align: center; }
+  .zone-card.locked .zone-ico { filter: grayscale(1); }
+  .zone-card.open .zone-ico { font-size: 32px; }
+  .zone-top h3 { margin: 0; font-size: 17px; font-weight: 800; }
+  .zone-card:not(.open):not(.locked) .zone-top p { display: none; }
+  .zone-new { display: inline-block; padding: 0 8px; border-radius: 99px; background: var(--mint); color: #12302a; font: 800 10px/16px var(--ui); letter-spacing: .06em; vertical-align: middle; }
   .zone-top p { margin: 2px 0 0; color: var(--haze); font-size: 14px; }
-  .zone-prog { margin-left: auto; text-align: right; color: var(--haze); font: 13px var(--mono); white-space: nowrap; }
-  .zone-prog b { display: block; color: var(--gold); font-size: 15px; }
+  .zone-prog { margin-left: auto; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+  .zone-prog b { min-width: 62px; text-align: right; color: var(--gold); font: 700 14px var(--mono); }
   .zone-prog .all { color: var(--mint); }
-  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; margin-top: 12px; }
-  .tile { position: relative; display: grid; gap: 3px; justify-items: center; align-content: start; min-height: 104px; padding: 12px 8px 10px; border: 0; border-radius: 16px; background: var(--panel); color: var(--bone); box-shadow: 0 4px 0 #1b1733, inset 0 0 0 1px var(--edge); transition: transform .12s; }
+  .zone-bar { width: 84px; height: 6px; border-radius: 99px; overflow: hidden; background: rgba(255,255,255,.1); }
+  .zone-bar i { display: block; height: 100%; border-radius: 99px; background: var(--mint); }
+  .zone-chev { flex: none; color: var(--haze); font-size: 13px; transition: transform .15s; }
+  .zone-card.open .zone-chev { transform: rotate(180deg); }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; padding: 8px 14px 14px; }
+  .tiles[hidden] { display: none; }
+  .tile { position: relative; display: grid; gap: 2px; justify-items: center; align-content: start; min-height: 84px; padding: 10px 6px 8px; border: 0; border-radius: 16px; background: var(--panel); color: var(--bone); box-shadow: 0 4px 0 #1b1733, inset 0 0 0 1px var(--edge); transition: transform .12s; }
   .tile:hover:not(:disabled) { transform: translateY(-3px); background: var(--panel-2); }
-  .tile b { font: 850 22px var(--mono); color: var(--violet); }
+  .tile b { font: 850 18px var(--mono); color: var(--violet); }
   .tile .tname { font-size: 13px; font-weight: 650; line-height: 1.2; text-align: center; }
   .tile .tstars { font-size: 17px; letter-spacing: 2px; color: #4d4378; }
   .tile .tstars i { font-style: normal; color: var(--gold); text-shadow: 0 0 8px rgba(255,211,107,.6); }
@@ -163,7 +181,7 @@
   .tile:disabled b { color: var(--dim); }
   .tile .tgift { position: absolute; top: 6px; right: 8px; font-size: 15px; }
   .tile .tlock { font-size: 18px; }
-  @media (max-width: 700px) { .tiles { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); } .levels-button span { display: none; } }
+  @media (max-width: 700px) { .tiles { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); } .levels-button span { display: none; } .zone-bar { display: none; } .zone-prog b { min-width: 0; } }
 
   /* ---- The planet view ---------------------------------------------------------- */
   .view { min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: var(--sky); }
@@ -188,6 +206,9 @@
   .scope.shake { animation: shake .35s; }
   @keyframes shake { 20% { transform: translate(-6px, 3px); } 40% { transform: translate(5px, -4px); } 60% { transform: translate(-4px, 2px); } 80% { transform: translate(3px, -1px); } }
   .scope canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .scope.arrive #map { animation: map-arrive .26s ease-out; }
+  @keyframes map-arrive { from { opacity: 0; transform: translateX(16px); } }
+  .calm .scope.arrive #map { animation: none; }
   .hud { position: absolute; inset: 12px 12px auto 12px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; pointer-events: none; }
   .gauges { display: flex; gap: 8px; flex-wrap: wrap; }
   .gauge { display: flex; align-items: baseline; gap: 7px; padding: 6px 10px; border-radius: 10px; background: rgba(18,13,34,.72); backdrop-filter: blur(4px); font: 600 14px var(--mono); font-variant-numeric: tabular-nums; }
@@ -259,7 +280,7 @@
   .nu-bar { flex: 1; min-width: 50px; height: 7px; border-radius: 4px; background: #3a3260; overflow: hidden; }
   .nu-fill { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--gold), #fff0b8); transition: width .9s cubic-bezier(.3,.9,.3,1); }
   .calm .nu-fill { transition: none; }
-  /* A short screen: the card shrinks so Next site stays in view. */
+  /* A short screen: the card shrinks so Next level stays in view. */
   @media (max-height: 680px) {
     .cele-card { padding: 16px 18px 14px; }
     .cele-card h2 { font-size: 26px; }
@@ -881,6 +902,7 @@
       <span class="levels-stars" id="levelsStars"></span>
       <div class="levels-actions"><button class="go" id="levelsPlay"></button><button class="quiet" id="levelsClose">Close</button></div>
     </div>
+    <div class="zone-jump" id="zoneJump" aria-label="Jump to a zone"></div>
     <div class="zone-list" id="zoneList"></div>
   </div>
 </div>
@@ -956,7 +978,7 @@ let scene = null;     // what the canvas shows: map, zone, frames, events
 let pos = 0, playing = false, lastTs = 0, fps = 8, heard = 0;
 let errorLine = 0, errorCount = 0;
 
-const ZONE_ICONS = {practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", lookout: "👀", forks: "🔀", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐", street: "🎃", hollow: "👻", woods: "🧙"};
+const ZONE_ICONS = {practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", lookout: "👀", forks: "🔀", tricks: "🎓", numbers: "🔢", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐", street: "🎃", hollow: "👻", woods: "🧙"};
 // Each sensor arrives with a zone (matches planet.SENSOR_ZONE).
 const SENSOR_ZONE = {look: 0, at_beacon: 0, x: 1, y: 1, report: 1, tick: 2, samples_left: 3,
   battery: 4, in_sun: 4, beacon_x: 6, beacon_y: 6, jump: 7, drill: 9, drills_left: 9,
@@ -2369,7 +2391,7 @@ function finished() {
   const buttons = [];
   if (run.end === "goal") {
     const next = nextSite();
-    if (next && site.key !== "7") buttons.push(`<button class="go" onclick="openSite('${next}')">Next site</button>`);
+    if (next && site.key !== "7") buttons.push(`<button class="go" onclick="openSite('${next}')">Next level ▶</button>`);
   } else if (run.end === "error") {
     SFX.play("error");
     if (run.line) buttons.push(`<button class="quiet" onclick="goToLine(${run.line})">Go to line ${run.line}</button>`);
@@ -2733,6 +2755,7 @@ function playNext() {
   const open = allSites().filter(s => s.open);
   return (open.find(s => !s.solved && !(s.stars || []).some(Boolean)) || open[open.length - 1] || {}).key;
 }
+const NEW_ZONES = ["tricks", "numbers"];   // say NEW until a student has tried them
 function openLevels() {
   if (!state) return;
   closePops();
@@ -2742,16 +2765,23 @@ function openLevels() {
   const nextSite = allSites().find(s => s.key === next);
   $("levelsPlay").dataset.key = next || "";
   $("levelsPlay").textContent = next && next !== here ? `▶ Play next: ${siteLabel(next)} ${nextSite.name}` : "▶ Keep playing";
+  const groupOf = z => z.halloween ? "🎃 Halloween night" : z.practice ? "🛝 Practice parks" : "🪐 The planet";
+  const doneIn = z => z.sites.filter(s => s.solved != null || got(s)).length;
+  let group = "";
   $("zoneList").innerHTML = state.zones.map((z, zi) => {
     const open = z.sites.some(s => s.open), isHere = z.sites.some(s => s.key === here);
-    const done = z.sites.filter(s => s.solved != null || got(s)).length;
+    const done = doneIn(z), name = groupOf(z);
     const stars = z.sites.reduce((n, s) => n + got(s), 0), max = z.sites.reduce((n, s) => n + s.stars.length, 0);
     const before = state.zones[zi - 1];
-    if (!open) return `<section class="zone-card locked"><div class="zone-top"><span class="zone-ico">${ZONE_ICONS[z.key] || "🪐"}</span><div><h3>🔒 ${esc(z.name)}</h3><p>${before ? `Finish ${esc(before.name)} to open it.` : "Locked."}</p></div></div></section>`;
-    return `<section class="zone-card${isHere ? " here" : ""}${z.halloween ? " spooky" : ""}" data-zone="${esc(z.key)}">
-      <div class="zone-top"><span class="zone-ico">${ZONE_ICONS[z.key] || "🪐"}</span><div><h3>${esc(z.name)}${z.halloween ? ' <span class="limited">🕸 Limited time</span>' : ""}</h3><p>${esc(z.blurb || "")}</p></div>
-        <div class="zone-prog"><b class="${stars === max ? "all" : ""}">★ ${stars}/${max}</b>${done} of ${z.sites.length} done</div></div>
-      <div class="tiles">${z.sites.map(s => {
+    const head = name === group ? "" : `<h3 class="zone-group">${name}</h3>`;
+    group = name;
+    if (!open) return `${head}<section class="zone-card locked" data-zone="${esc(z.key)}"><div class="zone-top"><span class="zone-ico">${ZONE_ICONS[z.key] || "🪐"}</span><div><h3>🔒 ${esc(z.name)}</h3><p>${before ? `Finish ${esc(before.name)} to open it.` : "Locked."}</p></div></div></section>`;
+    // Only where you are and where you're going start unfolded.
+    const unfold = isHere || z.sites.some(s => s.key === next);
+    return `${head}<section class="zone-card${isHere ? " here" : ""}${unfold ? " open" : ""}${z.halloween ? " spooky" : ""}" data-zone="${esc(z.key)}">
+      <button class="zone-top" aria-expanded="${unfold}"><span class="zone-ico">${ZONE_ICONS[z.key] || "🪐"}</span><div><h3>${esc(z.name)}${z.halloween ? ' <span class="limited">🕸 Limited time</span>' : ""}${!done && NEW_ZONES.includes(z.key) ? ' <span class="zone-new">NEW</span>' : ""}</h3><p>${esc(z.blurb || "")}</p></div>
+        <div class="zone-prog"><span class="zone-bar" title="${done} of ${z.sites.length} done"><i style="width:${done / z.sites.length * 100}%"></i></span><b class="${stars === max ? "all" : ""}">★ ${stars}/${max}</b><span class="zone-chev" aria-hidden="true">▾</span></div></button>
+      <div class="tiles"${unfold ? "" : " hidden"}>${z.sites.map(s => {
         const n = got(s), cls = [s.key === here ? "now" : "", s.key === next ? "next" : "", n && n === s.stars.length ? "gold" : n || s.solved != null ? "done" : ""].join(" ");
         const label = `${siteLabel(s.key)} ${s.name}${s.open ? `, ${n} of ${plural(s.stars.length, "star")}` : ", locked"}`;
         return s.open
@@ -2759,11 +2789,22 @@ function openLevels() {
           : `<button class="tile" disabled aria-label="${esc(label)}"><b>${siteLabel(s.key)}</b><span class="tname">${esc(s.name)}</span><span class="tlock">🔒</span></button>`;
       }).join("")}</div></section>`;
   }).join("");
+  $("zoneJump").innerHTML = state.zones.map((z, zi) => {
+    const gap = zi && groupOf(z) !== groupOf(state.zones[zi - 1]) ? '<span class="jump-gap" aria-hidden="true"></span>' : "";
+    const open = z.sites.some(s => s.open), isHere = z.sites.some(s => s.key === here), done = doneIn(z);
+    const label = `${z.name}: ${open ? `${done} of ${z.sites.length} done` : "locked"}`;
+    return `${gap}<button class="jump-zone${isHere ? " here" : ""}" data-zone="${esc(z.key)}"${open ? "" : " disabled"} title="${esc(label)}" aria-label="${esc(label)}">${ZONE_ICONS[z.key] || "🪐"}<i style="width:${done / z.sites.length * 100}%"></i></button>`;
+  }).join("");
   $("levels").hidden = false;
   const focus = $("zoneList").querySelector(".tile.now") || $("zoneList").querySelector(".tile.next");
   const card = focus && focus.closest(".zone-card");
   if (card) card.scrollIntoView({block: "start"});
   $("levelsPlay").focus();
+}
+function foldZone(card, open) {
+  card.classList.toggle("open", open);
+  card.querySelector(".tiles").hidden = !open;
+  card.querySelector(".zone-top").setAttribute("aria-expanded", open);
 }
 function closeLevels() { $("levels").hidden = true; }
 function routeEdges() {
@@ -2782,6 +2823,10 @@ async function openSite(key) {
   saveCode();
   closePops(); stopScout(true); clearToasts(); releaseCandy();
   const zone = zoneOf(key);
+  if (site && site.key !== key) {
+    const box = $("scope");
+    box.classList.remove("arrive"); void box.offsetWidth; box.classList.add("arrive");
+  }
   site = {...view, zoneKey: zone.key};
   runs = null; rewards = null;
   store(`planetSite:${me}`, key);
@@ -2796,11 +2841,12 @@ async function openSite(key) {
   renderGoals();
   // This browser's draft, else what was last run here, else the code from the
   // site before: running old code on new ground is how each rule shows itself.
+  // Not where the rover is driven by hand first: that starts from an empty editor.
   let code = recall(codeKey(key)), carried = false;
   if (code == null && view.code) code = view.code;
   if (code == null) {
     const order = allSites().map(s => s.key), prev = order[order.indexOf(key) - 1];
-    code = prev ? recall(codeKey(prev)) : null;
+    code = prev && !kidsMode() ? recall(codeKey(prev)) : null;
     carried = !!code;
     if (!code && key === "1a") code = "# Press Transmit, then add more.\nsouth(2)\n";
   }
@@ -3800,7 +3846,7 @@ function fillBlank(e) {
 // at a time, then Transmit.
 let blanked = [];      // the words withBlanks cut, for the typing coach
 let coachOops = "";    // the key a wrong letter should have been
-function kidsMode() { const z = site && zoneOf(site.key); return !!(z && z.practice); }
+function kidsMode() { const z = site && zoneOf(site.key); return !!(z && z.practice && !z.typed); }
 // Letter by letter: always on the practice sites, and on every site when the
 // teacher's switch was on for the scouted code.
 function typingHelp() { return kidsMode() || !!(site && site.coached); }
@@ -4603,6 +4649,13 @@ $("levelsButton").addEventListener("click", openLevels);
 $("levelsClose").addEventListener("click", closeLevels);
 $("levels").addEventListener("click", e => {
   if (e.target === $("levels")) return closeLevels();
+  const jump = e.target.closest(".jump-zone"), top = e.target.closest("button.zone-top");
+  if (top) return foldZone(top.closest(".zone-card"), !top.closest(".zone-card").classList.contains("open"));
+  if (jump && !jump.disabled) {
+    const card = $("zoneList").querySelector(`.zone-card[data-zone="${jump.dataset.zone}"]`);
+    foldZone(card, true);
+    return card.scrollIntoView({block: "start", behavior: CALM ? "auto" : "smooth"});
+  }
   const tile = e.target.closest(".tile");
   if (tile && !tile.disabled) { closeLevels(); openSite(tile.dataset.key); }
 });

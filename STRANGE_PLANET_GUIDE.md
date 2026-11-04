@@ -490,14 +490,28 @@ words letter by letter and press **Transmit**:
 | 🐸 Jump Park | P31–P38 | `jump("east")` over craters and rocks; while scouting, 🦘 then an arrow (or Shift+arrow) jumps |
 | 👀 Look-Out Point | P39–P46 | `look("east")` and `while` loops: everyone's paths are a different length, so a loop that looks beats counting |
 | 🔀 Fork Road | P47–P51 | `if` and `else`: maps that differ between neighbours, a `for` loop with an `if` in it, and a path finder that works on any staircase |
+| 🎓 Trick School | P52–P57 | `def`: teach the rover a trick, call it, put it in a loop, give it a number |
+| 🔢 Number Lab | P58–P63 | variables: name a number, change one number to fit your own field, `n = n + 1` stairs and spirals |
 
 Look-Out Point and Fork Road get the class ready for the Landing Site's
 `look()` and `while`. Kids who had already moved on to the Landing Site
 before they were added aren't sent back: the zones are open for them, but
-they carry on where they were.
+they carry on where they were. The same goes for Trick School and Number Lab,
+which show a **NEW** tag in Levels until someone tries them.
 
-Students find every level in the **🗺 Levels** button at the top left: each
-zone with its levels as big tiles, their stars, 🔒 for what's still locked,
+Look-Out Point, Fork Road, Trick School and Number Lab are typed: there's no
+driving by hand first, because the code is the lesson (🕹 Scout is still there
+for looking around). Trick School and Number Lab also give all three stars,
+not one: the 🧩 or 🔢 star is for using the new idea, and ✂️ is for keeping it short.
+
+Wind Canyon has two new levels before The Ledge: **3A1 Hold On!** (`wait()` by
+hand) and **3A2 Gust Guard** (the `if tick() % 5 == 4` check), so The Ledge
+only adds `def`. Saved games keep their place.
+
+Students find every level in the **🗺 Levels** button at the top left: every
+zone in one list that folds (where they are and where they're going start
+open), a strip of zone icons to jump along it, and each level as a tile with
+its stars, 🔒 for what's still locked,
 and **▶ Play next**. The ◀ ▶ arrows beside a level's name go to the level
 before or after.
 

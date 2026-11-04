@@ -1317,6 +1317,29 @@ const WHEELS = {
 
 // ---- The practice zones' mystery gifts, for a younger class.
 Object.assign(PAINTS, {
+  chalkboard: {base: "#2f4a3c", swatch: "linear-gradient(135deg, #3a5a49, #24392e)", draw(ctx, s) {
+    // A sum in chalk, and a line of working under it.
+    ctx.strokeStyle = "rgba(240,240,225,.85)"; ctx.lineWidth = Math.max(1, s * .014); ctx.lineCap = "round";
+    ctx.beginPath();
+    for (const [a, b, c, d] of [[-.25, -.1, -.13, -.1], [-.19, -.16, -.19, -.04], [-.06, -.12, .06, -.12],
+                                [-.06, -.07, .06, -.07], [.13, -.15, .22, -.15], [.22, -.15, .13, -.05],
+                                [.13, -.05, .22, -.05], [-.25, .1, -.05, .1], [.02, .08, .2, .12]]) {
+      ctx.moveTo(a * s, b * s); ctx.lineTo(c * s, d * s);
+    }
+    ctx.stroke();
+  }},
+  graphpaper: {base: "#f6f8ff", swatch: "repeating-linear-gradient(0deg, #9db7ff 0 1px, transparent 1px 6px), repeating-linear-gradient(90deg, #9db7ff 0 1px, transparent 1px 6px), #f6f8ff", draw(ctx, s) {
+    // Squares, and a line climbing across them.
+    ctx.strokeStyle = "rgba(120,150,235,.7)"; ctx.lineWidth = Math.max(1, s * .008);
+    ctx.beginPath();
+    for (let k = -4; k <= 4; k++) {
+      ctx.moveTo(k * .08 * s, -.3 * s); ctx.lineTo(k * .08 * s, .3 * s);
+      ctx.moveTo(-.4 * s, k * .08 * s); ctx.lineTo(.4 * s, k * .08 * s);
+    }
+    ctx.stroke();
+    ctx.strokeStyle = "#ef5b6b"; ctx.lineWidth = Math.max(1.5, s * .02); ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-.26 * s, .14 * s); ctx.lineTo(-.08 * s, .06 * s); ctx.lineTo(.06 * s, .08 * s); ctx.lineTo(.24 * s, -.14 * s); ctx.stroke();
+  }},
   frosty: {base: "#cfefff", swatch: "radial-gradient(circle at 35% 35%, #ffffff 12%, transparent 14%), linear-gradient(135deg, #e8f8ff, #8fd3ff)", fill(ctx, s) {
     const grad = ctx.createLinearGradient(-.32 * s, -.22 * s, .3 * s, .22 * s);
     grad.addColorStop(0, "#f2fbff"); grad.addColorStop(1, "#8fd3ff");

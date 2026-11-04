@@ -225,6 +225,53 @@ class StarTests(unittest.TestCase):
             self.assertEqual(planet.goals(s, s["variants"][0])[0], first)
 
 
+class NewZoneTests(unittest.TestCase):
+    """Trick School, Number Lab and the ramp up to The Ledge."""
+    ZONES = (planet.TRICK_SCHOOL, planet.NUMBER_LAB)
+
+    def earn(self, key, code, variant=0):
+        zi, zone, s = planet.find_site(key)
+        v = s["variants"][variant]
+        return planet.stars(s, v, planet.drive(code, v, zone["rules"], zi), code)
+
+    def test_every_model_answer_earns_all_three_stars(self):
+        for zone in self.ZONES:
+            for s in zone["sites"]:
+                if s["reference"]:
+                    self.assertEqual(self.earn(s["key"], s["reference"]), [True] * 3, s["key"])
+        for key in ("3a1", "3a2"):
+            self.assertEqual(self.earn(key, site(key)[2]["reference"]), [True] * 3, key)
+
+    def test_change_one_number_works_on_every_field(self):
+        for i, n in enumerate((3, 5, 6, 7)):
+            code = f"size = {n}\neast(size)\nsouth(size)\nwest(size)\n"
+            self.assertEqual(self.earn("p59", code, i), [True] * 3, n)
+            self.assertFalse(self.earn("p59", "size = 4\neast(size)\nsouth(size)\nwest(size)\n", i)[0], n)
+
+    def test_the_lesson_is_a_star_and_typing_it_out_misses_it(self):
+        out = "east()\nsouth()\n" * 7
+        self.assertEqual(self.earn("p54", out), [True, False, False])
+        self.assertEqual(self.earn("p58", "east(4)\nsouth(4)\nwest(4)\n"), [True, False, True])
+
+    def test_a_name_has_to_be_used_to_count(self):
+        self.assertTrue(planet.uses_variable("n = 4\neast(n)\n"))
+        self.assertTrue(planet.uses_variable("n = 1\nn = n + 1\n"))
+        self.assertFalse(planet.uses_variable("n = 4\neast(4)\n"))
+        self.assertFalse(planet.uses_variable("for i in range(3):\n    east(i)\n"))
+
+    def test_the_ledge_ramp_teaches_the_gust_check(self):
+        self.assertFalse(run("3a1", "south(8)\n")["reached"])
+        self.assertFalse(run("3a2", "south(4)\nwait()\nsouth(9)\n")["reached"])
+        self.assertEqual(planet.SITE_ORDER[planet.SITE_ORDER.index("3a"):][:4], ["3a", "3a1", "3a2", "3b"])
+
+    def test_the_new_zones_all_have_star_tips(self):
+        for zone in self.ZONES:
+            for s in zone["sites"]:
+                for v in s["variants"]:
+                    self.assertTrue(all(isinstance(t, str) and "{" not in t
+                                        for t in planet.star_tips(s, v)[1:]), s["key"])
+
+
 class SiteClaims(unittest.TestCase):
     def test_no_level_is_won_without_code(self):
         # The page doesn't send an empty editor: there must be nothing to win by it.
@@ -1946,13 +1993,18 @@ class ClassroomTests(unittest.TestCase):
         state = self.get(f"/planet/state?id={pid}")
         self.assertEqual(state["zones"][0]["key"], "practice")
         self.assertEqual(state["current"], "p1")
-        self.assertEqual([z["key"] for z in state["zones"][:8]],
-                         ["practice", "garden", "rink", "pads", "bounce", "lookout", "forks", "landing"])
-        self.assertEqual(state["zones"][7]["zi"], 0)   # the Landing Site keeps its sensors
+        self.assertEqual([z["key"] for z in state["zones"][:10]],
+                         ["practice", "garden", "rink", "pads", "bounce", "lookout", "forks",
+                          "tricks", "numbers", "landing"])
+        self.assertEqual(state["zones"][9]["zi"], 0)   # the Landing Site keeps its sensors
         for key in planet.PRACTICE_ORDER:
             s = planet.find_site(key)[2]
-            out = self.transmit(pid, key, s["reference"])
-            self.assertEqual(out["rewards"]["stars"], [True], key)   # one star: they're easy
+            # Change One Number is the only one with a number of your own.
+            size = s["variants"][planet.variant_index(pid, s)].get("size")
+            code = s["reference"] or f"size = {size}\neast(size)\nsouth(size)\nwest(size)\n"
+            out = self.transmit(pid, key, code)
+            # One star, they're easy, except where the other stars are the lesson.
+            self.assertEqual(out["rewards"]["stars"], [True] * planet.stars_max(s), key)
             if key == "p8":
                 self.assertEqual(out["rewards"]["zone_cleared"]["next"]["key"], "garden")
             if key == "p16":
@@ -1965,6 +2017,10 @@ class ClassroomTests(unittest.TestCase):
                 self.assertEqual(out["rewards"]["zone_cleared"]["next"]["key"], "lookout")
             if key == "p46":
                 self.assertEqual(out["rewards"]["zone_cleared"]["next"]["key"], "forks")
+            if key == "p51":
+                self.assertEqual(out["rewards"]["zone_cleared"]["next"]["key"], "tricks")
+            if key == "p57":
+                self.assertEqual(out["rewards"]["zone_cleared"]["next"]["key"], "numbers")
         self.assertEqual(out["rewards"]["zone_cleared"]["next"]["key"], "landing")
         self.assertEqual(out["state"]["current"], "1a")
         self.assertFalse(self.get(f"/planet/site?id={pid}&site=p1")["can_skip"])
@@ -1972,6 +2028,39 @@ class ClassroomTests(unittest.TestCase):
         state = self.get(f"/planet/state?id={pid}")
         self.assertNotIn("practice", [z["key"] for z in state["zones"]])
         self.assertEqual(state["current"], "1a")   # nobody's way is blocked
+
+    def test_saves_keep_their_place_when_the_ledge_ramp_arrives(self):
+        order = planet.SITE_ORDER
+        for key in ("3b", "4a", "7a"):
+            pid = self.join()
+            old = [k for k in order if k not in ("3a1", "3a2")].index(key)
+            server.players[pid]["planet"] = {"solved": {}, "code": {}, "runs": {}, "hints": {},
+                                             "unlocked": old, "uncharted": None, "active": None}
+            self.assertEqual(order[server.planet_frontier(server.players[pid])], key)
+            self.assertEqual(order[server.planet_frontier(server.players[pid])], key)   # only moved once
+        pid = self.join()
+        entry = server.planet_entry(server.players[pid])
+        entry["unlocked"] = order.index("3a")   # a new save is already in today's order
+        self.assertEqual(order[server.planet_frontier(server.players[pid])], "3a")
+
+    def test_anyone_past_the_ledge_ramp_isnt_sent_back_for_it(self):
+        pid = self.join()
+        entry = server.planet_entry(server.players[pid])
+        entry["solved"] = {k: 5 for k in planet.SITE_ORDER[:planet.SITE_ORDER.index("3c")]
+                           if k not in ("3a1", "3a2")}
+        self.assertEqual(self.get(f"/planet/state?id={pid}")["current"], "3c")
+
+    def test_max_stars_counts_three_on_the_new_zones(self):
+        self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_easy", "on": True})
+        try:
+            state = self.get(f"/planet/state?id={self.join()}")
+            many = sum(len(z["sites"]) for z in (planet.TRICK_SCHOOL, planet.NUMBER_LAB))
+            self.assertEqual(state["max_stars"], 3 * len(planet.SITE_ORDER)
+                             + len(planet.PRACTICE_ORDER) + 2 * many)
+            typed = {z["key"] for z in state["zones"] if z.get("typed")}
+            self.assertEqual(typed, {"lookout", "forks", "tricks", "numbers"})
+        finally:
+            self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_easy", "on": False})
 
     def test_new_practice_zones_never_send_anyone_back(self):
         self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_easy", "on": True})
