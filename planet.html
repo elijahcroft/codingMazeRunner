@@ -2492,7 +2492,7 @@ function finished() {
   if (closer) text = `🔥 Closest yet: ${closer}.${plain && stoppedShort ? "" : ` ${text}`}`;
   showBanner(cls === "win" ? "win" : cls === "lost" ? "lost" : "", text, buttons.join(""), plain ? run.explain.next : "");
   // Back to the code, ready to type. Code that stopped short needs more on the end.
-  if (run.end !== "goal" && document.activeElement !== $("code")) {
+  if (run.end !== "goal" && [document.body, $("runButton")].includes(document.activeElement)) {
     const t = $("code");
     t.focus();
     if (run.end === "stopped") { t.setSelectionRange(t.value.length, t.value.length); t.scrollTop = t.scrollHeight; }
@@ -4140,9 +4140,10 @@ function beamToRover() {
 function sameCode() {
   note("same_code");
   clearToasts();
+  say("Same code, same trip!");
+  if (last() === 0) return;   // a code error: its banner is still up, and nothing to replay
   site.same = true;
   togglePlay();
-  say("Same code, same trip!");
 }
 async function transmit() {
   if (busy || !me || !site) return;

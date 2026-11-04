@@ -20,6 +20,28 @@ The skill you're teaching is as much **experimenting** as coding:
 
 ## Since the first lesson (what students will notice)
 
+**Your rover is your pupil.** It says what it learned at the beacon ("You taught me
+to repeat!"), says which line confused it, says "Ow! Rock!" on its first bump, and
+when nobody has touched anything for 30 seconds it asks what to do (three times at
+most). The youngest (practice zones with arrows) see *steps*, not *ticks*, on the win card.
+
+**Shortcuts out of a student's own code.** After a win, code with the same lines over
+and over gets a 🪄 box on the win card: "You wrote `east()` 6 times!" Pressing *Teach
+your rover a shortcut* makes the copies vanish and leaves a loop, `for i in range(_):`,
+with the number for the student to type. Transmit, and the card says how many lines it
+saved. Wrong number? The banner says how many times it went round and how many times
+they wrote it. The same few lines in places apart get *Name this move* instead: the
+student types a word, and it becomes a `def`. Ctrl+Z brings the old code back. On last
+term's code this fires on about 7% of wins: most students' programs don't repeat.
+
+**Sending the same code after a miss doesn't send it.** The rover replays what happened,
+says "Same code, same trip!", and the banner asks for a change. Half of all tries in a
+row used to be the same code. After a miss the cursor is back in the code, at the end
+of it if the program stopped short.
+
+**One step at a time.** ⏭ next to Play moves the replay on by one step and lights up
+the line that did it.
+
 - **Measuring sites have numbered steps,** and everyone's number is their own
   (2A ice length, 3A gust timing, 7A beacon distance; 5A is still 2 for
   everyone). A classmate's number gets "That's the number on someone else's
@@ -273,7 +295,8 @@ lost.
   only goes to code that reaches it on every classmate's plain too (8C
   does the same with fields). On Uncharted one program has to reach five
   planets, which is where brute force finally stops working.
-- **Sound**: every event has a synthesized sound effect. It starts **off**
+- **Sound** (⚙ Settings has a "Sound starts on" switch for the class, and a
+  student's own choice with the 🔇 button always wins): every event has a synthesized sound effect. It starts **off**
   (a room of laptop speakers is a lot, and sudden sounds are hard for some
   students); 🔇 at the top turns it on, and each browser remembers.
   Headphones are best in a full room.
