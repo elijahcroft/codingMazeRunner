@@ -5133,6 +5133,7 @@ class Handler(BaseHTTPRequestHandler):
             if not planet_open(p, key):
                 self._send(200, {"error": "🎃 Halloween night is closed now." if key in planet.HALLOWEEN_ORDER
                                  and not halloween_on(planet_entry(p)) else
+                                 "🛠 The Class Workshop is closed right now." if key in planet_levels else
                                  "🔒 Complete the site before this one to open it."})
                 return
             # Drive without the lock: other students keep working.
