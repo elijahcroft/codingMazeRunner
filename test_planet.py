@@ -1743,6 +1743,11 @@ class ClassroomTests(unittest.TestCase):
         out = self.transmit(pid, "1a", site("1a")[2]["reference"])
         self.assertNotIn("Never Give Up", [b["name"] for b in out["rewards"]["badges"]])
 
+    def test_a_variable_that_gets_used_earns_a_badge(self):
+        pid = self.join()
+        out = self.transmit(pid, "1a", "n = 2\nsouth(n)\neast()\nsouth()\neast(7)\nsouth()\nnorth(3)\nwest()\n")
+        self.assertIn("Name Giver", [b["name"] for b in out["rewards"]["badges"]])
+
     def test_the_same_code_again_counts_as_a_miss_but_not_a_new_try(self):
         pid = self.join()
         self.transmit(pid, "1a", "east()\n")

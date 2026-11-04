@@ -2791,6 +2791,7 @@ PLANET_BADGES = {
     "if": ("🔀", "Decision Maker", "Complete a mission using an if"),
     "def": ("🧩", "Architect", "Complete a mission using a function you made"),
     "print": ("🔬", "Scientist", "Complete a mission with print() in your code"),
+    "variable": ("🏷", "Name Giver", "Complete a mission with a variable you use"),
     "fixer": ("🐛", "Bug Squasher", "Fix a code error, then complete the mission"),
     "grit": ("💪", "Never Give Up", "Complete a mission after 5 different tries that didn't"),
     "triple": ("🌟", "Triple Star", "Earn all three stars in one run"),
@@ -3638,6 +3639,8 @@ def code_features(code):
             found.add("def")
         elif isinstance(n, ast.Call) and getattr(n.func, "id", None) == "print":
             found.add("print")
+    if planet.uses_variable(code):
+        found.add("variable")
     return found
 
 

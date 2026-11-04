@@ -31,6 +31,10 @@ way doesn't fit: the rover says "My memory is full!", and if the code repeats, t
 offers the shortcut. Most students could finish every other level without a loop, and
 most did. Anyone already past them isn't sent back.
 
+**🧠 What your rover knows.** A chip beside the goals counts the big ideas a student
+has used in a win (loops, variables, `while`, `if`, `def`, loops in loops, `print`), and
+shows the next one to teach. Using a variable earns a new badge, Name Giver.
+
 **Rovers have names.** The first win asks; the box is under the rover in the garage.
 The name only shows on the student's own screen, in the win card and when you click
 the rover. A student who feels they're teaching someone tends to try harder for them.

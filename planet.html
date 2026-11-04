@@ -868,6 +868,10 @@
   <div id="todayList"></div>
   <div class="pop-row"><small id="todayNote"></small></div>
 </div>
+<div class="pop" id="brainPop" hidden role="dialog" aria-labelledby="brainTitle">
+  <h2 id="brainTitle"></h2>
+  <div id="brainList"></div>
+</div>
 <div class="pop" id="fnPop" hidden role="dialog" aria-labelledby="fnTitle">
   <h2 id="fnTitle">Your functions</h2>
   <div class="fns" id="savedFunctions"></div>
@@ -3150,9 +3154,35 @@ function renderGoals() {
     : `<span class="goal${best[i] ? " got" : ""}"><i>★</i>${esc(g)}</span>`).join("")
     + (site.gift ? '<span class="goal gift">🎁 A mystery gift is hidden here: drive over it</span>' : "")
     + legend(site.map || []).map(t => `<span class="goal legend">${esc(t)}</span>`).join("")
-    + todayChip();
+    + todayChip() + brainChip();
 }
 // Today's missions: a chip with how many are done, and the list it opens.
+// What the student has taught the rover: the big ideas of coding, each lit up
+// by a win that used it (their badges), and the next one to teach.
+const IDEAS = [["loop", "🔁", "Repeat moves", "for i in range(3):"],
+               ["variable", "🏷", "Remember a number", "steps = 4"],
+               ["while", "👀", "Keep checking", 'while look("east") != "rock":'],
+               ["if", "🔀", "Decide for itself", 'if look("east") == "rock":'],
+               ["def", "🧩", "Learn a new move", "def zigzag():"],
+               ["nested", "🌀", "Loops inside loops", "for i in range(3):  for j in range(2):"],
+               ["print", "🔬", "Tell you what it sees", "print(tick())"]];
+function ideasKnown() {
+  const earned = new Set(((state && state.badges) || []).filter(b => b.earned).map(b => b.key));
+  return IDEAS.filter(x => earned.has(x[0]));
+}
+function brainChip() {
+  return `<button class="goal today" onclick="openBrain(this)" title="What you've taught your rover so far">🧠 ${ideasKnown().length}/${IDEAS.length}</button>`;
+}
+function openBrain(button) {
+  const known = ideasKnown(), next = IDEAS.find(x => !known.includes(x));
+  $("brainTitle").textContent = `🧠 What ${roverName()} knows`;
+  $("brainList").innerHTML = IDEAS.map(x => {
+    const has = known.includes(x);
+    return `<div class="mission${has ? " done" : ""}"><span class="ico">${has ? "✅" : x[1]}</span>${esc(x[2])}<small>${x === next ? "teach me next!" : ""}</small></div>`
+      + (x === next ? `<div class="msg"><code>${esc(x[3])}</code></div>` : "");
+  }).join("");
+  popBelow($("brainPop"), button);
+}
 function todayChip() {
   const m = state && state.missions;
   if (!m) return "";
@@ -3163,7 +3193,10 @@ function openToday(button) {
   const m = state.missions;
   $("todayList").innerHTML = m.list.map(x => `<div class="mission${x.have >= x.need ? " done" : ""}"><span class="ico">${x.have >= x.need ? "✅" : esc(x.icon)}</span>${esc(x.text)}<small>${x.need > 1 ? `${x.have}/${x.need}` : x.have >= x.need ? "done" : ""}</small></div>`).join("");
   $("todayNote").textContent = `New missions every day, the same for the whole class. 🏆 ${m.trophies} mission day${m.trophies === 1 ? "" : "s"} so far${m.trophies < 3 ? ": 3 unlock the Gold medal topper" : ""}.`;
-  const pop = $("todayPop"), wasOpen = !pop.hidden;
+  popBelow($("todayPop"), button);
+}
+function popBelow(pop, button) {
+  const wasOpen = !pop.hidden;
   closePops();
   if (wasOpen) return;
   pop.hidden = false;
@@ -3297,7 +3330,7 @@ function placePop(pop, button) {
   pop.style.left = Math.max(12, Math.min(window.innerWidth - pr.width - 12, r.right - pr.width)) + "px";
   pop.style.top = Math.max(12, r.top - pr.height - 10) + "px";
 }
-function closePops() { $("radioPop").hidden = true; $("fnPop").hidden = true; $("todayPop").hidden = true; }
+function closePops() { $("radioPop").hidden = true; $("fnPop").hidden = true; $("todayPop").hidden = true; $("brainPop").hidden = true; }
 
 // ---- Saved functions: a def kept for later sites ------------------------------------------
 // Each def at the left edge of the code, with the indented lines under it.
@@ -5028,7 +5061,7 @@ document.addEventListener("keydown", e => {
   else if (e.key === "r" || e.key === "R") restartScout();
 });
 document.addEventListener("pointerdown", e => {
-  if (!e.target.closest(".pop, #radioButton, #fnButton")) closePops();
+  if (!e.target.closest(".pop, #radioButton, #fnButton, .goal.today")) closePops();
 });
 $("map").addEventListener("pointermove", e => {
   if (!scene || !scene.view) return;
