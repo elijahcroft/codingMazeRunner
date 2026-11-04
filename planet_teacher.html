@@ -539,6 +539,7 @@ function renderHabits(h) {
 }
 function renderLevels(levels) {
   $("levelsList").innerHTML = levels.map(x => `<span>🛠 <b>${esc(x.name)}</b> by ${esc(x.by_name)}${x.live ? `, beaten by ${x.wins}` : ", not live yet"} <button class="btn" onclick="admin('planet_maker_remove', null, {level: '${esc(x.key)}'})">Remove</button></span>`).join("");
+}
 function renderChallenge(data) {
   const box = $("challenge");
   if (!box.options.length) box.innerHTML = `<option value="">None</option>` + data.challenge_sites.map(s => `<option value="${esc(s.key)}">${esc(s.key.toUpperCase())} ${esc(s.name)}</option>`).join("");
