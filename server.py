@@ -3300,14 +3300,6 @@ def halloween_frontier(entry):
     return next((i for i, k in enumerate(order) if k not in passed), len(order) - 1)
 
 
-def planet_challenge():
-    """The level the teacher has set the whole class, and who's done it, in order."""
-    now = planet_class_settings["challenge"]
-    if not now:
-        return None
-    return dict(now, name=planet.find_site(now["key"])[2]["name"])
-
-
 def planet_open(p, key):
     if key in planet.HALLOWEEN_ORDER:
         entry = planet_entry(p)
@@ -3324,6 +3316,14 @@ def build_open(p, key):
     """A Builder's Yard site opens once the student is past the main site
     that teaches its idea (planet.BUILD_AFTER)."""
     return planet.SITE_ORDER.index(planet.BUILD_AFTER[key]) < planet_frontier(p)
+
+
+def planet_challenge():
+    """The level the teacher has set the whole class, and who's done it, in order."""
+    now = planet_class_settings["challenge"]
+    if not now:
+        return None
+    return dict(now, name=planet.find_site(now["key"])[2]["name"])
 
 
 def planet_variant(p, key):
