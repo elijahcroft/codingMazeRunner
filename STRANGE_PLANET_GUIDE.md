@@ -25,6 +25,10 @@ to repeat!"), says which line confused it, says "Ow! Rock!" on its first bump, a
 when nobody has touched anything for 30 seconds it asks what to do (three times at
 most). The youngest (practice zones with arrows) see *steps*, not *ticks*, on the win card.
 
+**Rovers have names.** The first win asks; the box is under the rover in the garage.
+The name only shows on the student's own screen, in the win card and when you click
+the rover. A student who feels they're teaching someone tends to try harder for them.
+
 **Shortcuts out of a student's own code.** After a win, code with the same lines over
 and over gets a 🪄 box on the win card: "You wrote `east()` 6 times!" Pressing *Teach
 your rover a shortcut* makes the copies vanish and leaves a loop, `for i in range(_):`,

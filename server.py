@@ -3241,6 +3241,25 @@ def planet_events(p, counts):
             today[kind] = today.get(kind, 0) + n
 
 
+def planet_rover_name(p, name):
+    """The student's name for their rover: letters, numbers and spaces. It
+    only shows on their own screen."""
+    name = " ".join(re.sub(r"[^\w ]", "", str(name)).split())[:14]
+    planet_entry(p)["rover_name"] = name
+    return name
+
+
+def planet_again(p, key):
+    """The same code sent again after a miss: the page replays it without
+    running it, but a student doing this is stuck, and the teacher should
+    see it, so it counts as a miss (not as a new try for Never Give Up)."""
+    entry = planet_entry(p)
+    entry["misses"][key] = entry["misses"].get(key, 0) + 1
+    entry["active"] = int(time.time())
+    return {"misses": entry["misses"][key], "can_skip": can_skip(p, key),
+            "helpers": planet_helpers(p, key) if entry["misses"][key] >= help_after() else []}
+
+
 def planet_habits():
     """Today's counts for the whole class, for the teacher's page."""
     day, out = time.strftime("%Y-%m-%d"), {}
@@ -3636,6 +3655,7 @@ def planet_state(p):
             "rank": rank_for(star_count(entry)),
             "picks": min(picks_left(entry), len(pickable(entry))) if choices else 0,
             "sound": planet_class_settings["sound"], "maker": planet_class_settings["maker"],
+            "rover_name": entry.get("rover_name", ""),
             "pick_choices": choices,
             "missions": missions_view(entry),
             "badges": [{"key": k, "icon": b[0], "name": b[1], "how": b[2],
@@ -5182,6 +5202,26 @@ class Handler(BaseHTTPRequestHandler):
                     out = maker_save(p, data)
                 save_state()
                 self._send(200, dict(out, state=planet_state(p)))
+        if self.path == "/planet/rover":
+            with lock:
+                p = players.get(data.get("id"))
+                if not p:
+                    self._send(200, {"error": "join"})
+                    return
+                planet_rover_name(p, data.get("name", ""))
+                save_state()
+                self._send(200, planet_state(p))
+            return
+        if self.path == "/planet/again":
+            key = str(data.get("site", ""))
+            with lock:
+                p = players.get(data.get("id"))
+                if not p or not planet_open(p, key):
+                    self._send(200, {"error": "join"})
+                    return
+                out = planet_again(p, key)
+                save_state()
+            self._send(200, out)
             return
         if self.path == "/planet/events":
             with lock:
