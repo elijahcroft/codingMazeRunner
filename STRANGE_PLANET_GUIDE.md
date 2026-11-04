@@ -25,6 +25,12 @@ to repeat!"), says which line confused it, says "Ow! Rock!" on its first bump, a
 when nobody has touched anything for 30 seconds it asks what to do (three times at
 most). The youngest (practice zones with arrows) see *steps*, not *ticks*, on the win card.
 
+**Two levels where a loop is the only way.** After 1B, **1B1 Short Memory** and **1B2
+Memory Full** give the rover a memory of 4 and 6 lines, shown above the editor. The long
+way doesn't fit: the rover says "My memory is full!", and if the code repeats, the banner
+offers the shortcut. Most students could finish every other level without a loop, and
+most did. Anyone already past them isn't sent back.
+
 **Rovers have names.** The first win asks; the box is under the rover in the garage.
 The name only shows on the student's own screen, in the win card and when you click
 the rover. A student who feels they're teaching someone tends to try harder for them.

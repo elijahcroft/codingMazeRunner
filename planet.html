@@ -2460,7 +2460,7 @@ function finished() {
   // the child is looking. (Its line stays a little longer than a click's.)
   const closer = sitesRewards && sitesRewards.closer, stoppedShort = run.end === "stopped" && run.explain;
   if (stoppedShort) scene.shrug = performance.now();
-  const line = [closer && "🔥 Closest yet!", stoppedShort ? stoppedShort.say : run.end === "error" ? (run.line ? `Line ${run.line} confused me!` : "That confused me!") : ROVER_ENDS[run.end]].filter(Boolean).join(" ");
+  const line = [closer && "🔥 Closest yet!", stoppedShort ? stoppedShort.say : run.memory_full ? "My memory is full!" : run.end === "error" ? (run.line ? `Line ${run.line} confused me!` : "That confused me!") : ROVER_ENDS[run.end]].filter(Boolean).join(" ");
   if (line) scene.said = {text: line, at: performance.now() + 900};
   const candy = sitesRewards && sitesRewards.candy;
   if (candy && candy.dropped) toast("😱", `The rover dropped its ${candy.run} candy!`, "A spooked rover runs away and drops its bag. Only runs without a BOO count.");
@@ -2473,6 +2473,8 @@ function finished() {
   } else if (run.end === "error") {
     SFX.play("error");
     if (run.line) buttons.push(`<button class="quiet" onclick="goToLine(${run.line})">Go to line ${run.line}</button>`);
+    // Too long for the rover's memory, and it repeats: the shortcut is the way in.
+    if (run.memory_full && findRepeat($("code").value)) buttons.push(`<button class="go trick" onclick="teachShortcut()">Teach ${esc(roverName())} a shortcut</button>`);
   } else if (run.end !== "error" && last() > 1) {
     buttons.push(`<button class="quiet" onclick="showMe()">Show me</button>`);
   }
@@ -4258,7 +4260,7 @@ function updateEditor() {
   const m = site && site.goals && /✂️ (\d+)/.exec(site.goals[2] || "");
   const target = m ? Number(m[1]) : null;
   const fits = !!(target && lines && lines <= target);
-  $("lineCount").textContent = `${lines} line${lines === 1 ? "" : "s"}${target ? ` · ✂️ ${target} or fewer${fits ? " ✓" : ""}` : ""}`;
+  $("lineCount").textContent = `${lines} line${lines === 1 ? "" : "s"}${site && site.memory ? ` · 🧠 holds ${site.memory}` : ""}${target ? ` · ✂️ ${target} or fewer${fits ? " ✓" : ""}` : ""}`;
   // Cutting the code down to size is a little win of its own, as it happens.
   const popped = fits && site && site.fitted === false;
   $("lineCount").className = fits ? "fits" + (popped ? " pop" : "") : "";

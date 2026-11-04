@@ -3215,7 +3215,12 @@ def planet_entry(p):
     # saved. They count places in SITE_ORDER, so those saves move up by two.
     if "wind_ramp" not in entry:
         entry["wind_ramp"] = True
-        if entry["unlocked"] > planet.SITE_ORDER.index("3a"):
+        if entry["unlocked"] > planet.SITE_ORDER.index("3a") - 2:
+            entry["unlocked"] += 2
+    # And two more after 1B. (The - 2 above: those two weren't there yet.)
+    if "memory_ramp" not in entry:
+        entry["memory_ramp"] = True
+        if entry["unlocked"] > planet.SITE_ORDER.index("1b"):
             entry["unlocked"] += 2
     return entry
 
@@ -3606,7 +3611,7 @@ def planet_site(p, key):
                     # The gauge shows from the start: what drains it is the hidden part.
                     battery=v.get("battery", planet.BATTERY_MAX)
                     if "battery" in zone["rules"] else None,
-                    crystals=v.get("crystals", []), goals=planet.goals(s, v),
+                    crystals=v.get("crystals", []), goals=planet.goals(s, v), memory=v.get("memory"),
                     tips=planet.star_tips(s, v), coach=s["coach"], gift=gift_for(p, key), drills=v.get("drills"),
                     # A zone that brings something new says what it is on its first site.
                     new=zone.get("new") if zone["sites"][0] is s else None,
