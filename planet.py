@@ -294,6 +294,8 @@ class Rover(Brain):
                 raise BotError(f'To drive, write  {name.lower()}()  with brackets. '
                                f'To name the direction, put it in quotes: '
                                f'"{name.lower()}"')
+            if name in self.sensors and name not in self.defs:
+                raise BotError(f"{name} needs brackets to run: write  {name}()")
             if name.lower() in LOOK_WORDS and name not in self.defs:
                 raise BotError(f'Put quotes round words:  "{name.lower()}". look() '
                                f'gives back a word, like  look("east") == '
