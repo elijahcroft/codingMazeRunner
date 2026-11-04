@@ -113,6 +113,8 @@
   .stat b { display: block; font: 900 34px/1 var(--ui); letter-spacing: -.03em; }
   .stat span { color: var(--haze); font-size: 13.5px; }
   .stat .ico { float: right; font-size: 26px; }
+  .levels-list { display: flex; flex-direction: column; gap: 4px; flex-basis: 100%; font-size: 14px; }
+  .levels-list:empty { display: none; }
   .habits { margin: 10px 2px 0; color: var(--haze); font-size: 13.5px; }
   .stat.gold b { color: var(--gold); } .stat.mint b { color: var(--mint); } .stat.red b { color: var(--coral); } .stat.amber b { color: var(--amber); }
   .stat.alert { box-shadow: inset 0 0 0 2px var(--coral); animation: alert 2s ease-in-out infinite; }
@@ -231,6 +233,8 @@
   <label title="On: 📋 Use as code after scouting leaves a few words for students to finish (r____ for range). Off: the code comes out whole."><span class="switch"><input type="checkbox" id="blanks" onchange="admin('planet_blanks', null, {on: this.checked})"><span></span></span> Scouted code has words to finish</label>
   <label title="For a younger class. On: nine practice zones (Practice Park, Loop Garden, Ice Rink, Pad Park, Jump Park, Look-Out Point, Fork Road, Trick School, Number Lab) before the Landing Site, where kids drive by hand first, then finish their code one letter at a time; classmates to ask after 3 misses (not 8), Skip for now after 6 (not 20)."><span class="switch"><input type="checkbox" id="easy" onchange="admin('planet_easy', null, {on: this.checked})"><span></span></span> Easy mode (younger class)</label>
   <label title="On: the game's sound starts on for students who haven't pressed the speaker button themselves. Headphones recommended. Off: it starts muted, and each student can still turn it on."><span class="switch"><input type="checkbox" id="sound" onchange="admin('planet_sound', null, {on: this.checked})"><span></span></span> Sound starts on</label>
+  <label title="On: students can draw levels for each other in the Levels screen. A level goes live once its maker has beaten it with code. Level names show on the class screen: you can remove any level here."><span class="switch"><input type="checkbox" id="maker" onchange="admin('planet_maker', null, {on: this.checked})"><span></span></span> Students can make levels</label>
+  <div class="levels-list" id="levelsList"></div>
   <label title="On: after 📋 Use as code, students finish each word one letter at a time on every site: the word shows as keys, the next key lights up, and only the right letter goes in. The practice sites always work this way."><span class="switch"><input type="checkbox" id="coach" onchange="admin('planet_coach', null, {on: this.checked})"><span></span></span> Letter-by-letter typing help</label>
   <label title="A limited-time event: ten trick-or-treat levels for the students you invite (🎃 on their card). Off puts it away for everyone; what they earned stays theirs."><span class="switch"><input type="checkbox" id="halloween" onchange="admin('planet_halloween', null, {on: this.checked})"><span></span></span> 🎃 Halloween night</label>
 </section>
@@ -532,6 +536,9 @@ function renderHabits(h) {
   $("habits").hidden = !parts.length;
   $("habits").textContent = `Today: ${parts.join(" · ")}`;
 }
+function renderLevels(levels) {
+  $("levelsList").innerHTML = levels.map(x => `<span>🛠 <b>${esc(x.name)}</b> by ${esc(x.by_name)}${x.live ? `, beaten by ${x.wins}` : ", not live yet"} <button class="btn" onclick="admin('planet_maker_remove', null, {level: '${esc(x.key)}'})">Remove</button></span>`).join("");
+}
 function renderStats(data) {
   const S = data.students.map(s => ({s, st: statusOf(s)}));
   const lesson = S.filter(x => !x.st.away);
@@ -590,7 +597,8 @@ async function refresh() {
   helpAfter = data.easy ? 3 : 8;
   $("address").textContent = (data.address || "").replace(/^http:\/\//, "");
   $("spotOff").hidden = !data.spotlight;
-  $("blanks").checked = data.blanks; $("easy").checked = data.easy; $("coach").checked = data.coach; $("sound").checked = data.sound;
+  $("blanks").checked = data.blanks; $("easy").checked = data.easy; $("coach").checked = data.coach; $("sound").checked = data.sound; $("maker").checked = data.maker;
+  renderLevels(data.levels || []);
   $("halloween").checked = data.halloween;
   renderSpooky(data);
   $("empty").hidden = data.students.length > 0;

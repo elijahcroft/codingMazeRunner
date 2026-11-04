@@ -3640,6 +3640,8 @@ def stars_max(s):
 def star_tips(s, variant):
     """A hint for each of the site's three stars (none for the mission: the
     zone's 📻 hints cover that)."""
+    if s["key"] in CLASS_LEVELS:   # the mission's star, and no more
+        return [None]
     bonus = variant.get("bonus", s["bonus"])
     tips = STAR_TIPS.get(s["key"], {})
     return [None,
@@ -5230,8 +5232,50 @@ STAR_TIPS.update({
 })
 
 
+# Levels the class draws for each other. They're ordinary sites, in a zone with
+# no strange rules, added while the server runs. A student's drawing is the
+# middle of the map: the rock wall round it comes with every level.
+WORKSHOP = {"key": "workshop", "name": "Class Workshop", "rules": set(), "zi": 3,
+            "blurb": "Levels made by your class.", "hints": [], "sites": []}
+CLASS_LEVELS = {}
+MAKER_ROWS, MAKER_COLS, MAKER_SAMPLES = 8, 12, 12
+
+
+def class_map(rows):
+    """A drawing as a playable map, or None and what's still needed."""
+    if not (isinstance(rows, list) and len(rows) == MAKER_ROWS
+            and all(isinstance(r, str) and len(r) == MAKER_COLS and set(r) <= set(".#O*GS") for r in rows)):
+        return None, "That drawing didn't arrive properly. Try again."
+    tiles = "".join(rows)
+    if tiles.count("S") != 1:
+        return None, "Your level needs one 🚙 start."
+    if tiles.count("G") > 1:
+        return None, "One 🛰 beacon is enough."
+    if not (tiles.count("G") or tiles.count("*")):
+        return None, "Your level needs a 🛰 beacon or a 🧪 sample to reach."
+    if tiles.count("*") > MAKER_SAMPLES:
+        return None, f"{MAKER_SAMPLES} 🧪 samples at most."
+    wall = "#" * (MAKER_COLS + 2)
+    return [wall, *(f"#{r}#" for r in rows), wall], ""
+
+
+def add_class_level(key, name, by, rows):
+    """Make (or remake) a class level's site. `rows` is the drawing, already checked."""
+    s = site(key, name, f"Made by {by}.", [{"map": class_map(rows)[0]}])
+    s["stars_max"] = 1
+    CLASS_LEVELS[key] = s
+    WORKSHOP["sites"] = list(CLASS_LEVELS.values())
+
+
+def drop_class_level(key):
+    CLASS_LEVELS.pop(key, None)
+    WORKSHOP["sites"] = list(CLASS_LEVELS.values())
+
+
 def find_site(key):
     """(zone index, zone, site) for a site key, or None."""
+    if key in CLASS_LEVELS:
+        return WORKSHOP["zi"], WORKSHOP, CLASS_LEVELS[key]
     for zi, zone in enumerate(ZONES):
         for s in zone["sites"]:
             if s["key"] == key:
