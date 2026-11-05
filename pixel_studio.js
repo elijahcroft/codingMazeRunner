@@ -191,7 +191,11 @@ function paintNumbers(g) {
     if (n === f[at]) return;
     const number = list.indexOf(n) + 1;
     if (!number) return;
-    g.fillStyle = "#57506e";
+    if (n === colour) {               // the squares she's looking for
+      g.fillStyle = "#ffe98a";
+      g.fillRect(at % size * cell, Math.floor(at / size) * cell, cell, cell);
+    }
+    g.fillStyle = n === colour ? "#1b1530" : "#8d84a8";
     g.fillText(number, (at % size + .5) * cell, (Math.floor(at / size) + .55) * cell);
   });
 }
@@ -779,7 +783,7 @@ function refreshOptions() {
   $("optSelect").hidden = tool !== "select" || !sel;
   $("stampBar").hidden = tool !== "stamp";
   document.querySelectorAll("[data-colour]").forEach(b => b.setAttribute("aria-pressed", +b.dataset.colour === colour));
-  $("guideKey").hidden = !art || !art.guide;
+  if (art && art.guide) buildGuideKey();
   document.querySelectorAll("[data-fps]").forEach(b => b.setAttribute("aria-pressed", +b.dataset.fps === art.speed));
   $("nowColour").style.background = art.palette[colour];
   $("solid").setAttribute("aria-pressed", solid);

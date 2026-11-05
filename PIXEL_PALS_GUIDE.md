@@ -108,6 +108,7 @@ chapter's new words stay by the editor, and All words holds everything else.
 - **Easy pen:** it starts off, because a first click that leaves a line following the
   finger is confusing. A student clicking along a line square by square gets offered
   it once, with a button.
+- **Reading:** the 🔈 button on a mission reads it aloud with the laptop's own voice.
 - **Stuck students:** the teacher page marks anyone with 3 misses or more on a
   mission, and shows their last error. Help me gives two or three hints, and the
   last one is a working answer.

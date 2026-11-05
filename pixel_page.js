@@ -616,6 +616,17 @@ document.addEventListener("click", e => {
 new ResizeObserver(fitScreen).observe($("stageHost").parentElement);
 $("runButton").addEventListener("click", runShow);
 $("skip").addEventListener("click", () => stage.hurry());
+// Reads the mission aloud with the computer's own voice, for anyone who'd rather
+// hear it. A second press stops it.
+const CODE_WORDS = {"()": " ", "(": " ", ")": " ", '"': " "};
+function readAloud(text) {
+  if (!("speechSynthesis" in window)) return;
+  if (speechSynthesis.speaking) { speechSynthesis.cancel(); return; }
+  const line = new SpeechSynthesisUtterance(text.replace(/[()"]/g, c => CODE_WORDS[c]).replace(/\s+/g, " "));
+  line.rate = .92;
+  speechSynthesis.speak(line);
+}
+$("readOut").addEventListener("click", () => readAloud(`${$("pipSays").textContent} ${$("job").textContent}`));
 $("hint").addEventListener("click", showHint);
 $("openBook").addEventListener("click", () => { $("bookSheet").hidden = false; });
 $("closeBook").addEventListener("click", closeSheets);
