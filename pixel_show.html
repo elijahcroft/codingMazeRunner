@@ -114,6 +114,8 @@ async function refresh() {
   // Only pals that are in the Theatre walk here: drawings are private until
   // a student shares them, and the teacher's Hide takes them out too.
   buildParade(shows.map(s => s.pal));
+  if (partySeen !== null && over.party > partySeen) startParty();
+  partySeen = over.party;
 }
 
 // ---- The parade: every pal in the class, walking along the bottom ---------------
@@ -123,6 +125,13 @@ function buildParade(pals) {
   if (walkers.length === list.length) return;
   walkers = list.map((pal, i) => ({x: i * 96, pup: PalStage.puppet(pal, Math.max(1, Math.floor(80 / pal.size)), i + 3)}));
 }
+// The teacher's Dance party: everyone stops where they are and dances.
+const PARTY_SECONDS = 14;
+let partySeen = null, partyUntil = 0, drift = 0, lastParade = 0, bits = [];
+function startParty() {
+  partyUntil = performance.now() + PARTY_SECONDS * 1000;
+  PalStage.SFX.play("yay");
+}
 function parade(now) {
   requestAnimationFrame(parade);
   const cv = $("parade"), rect = cv.getBoundingClientRect(), g = cv.getContext("2d");
@@ -130,15 +139,26 @@ function parade(now) {
   if (cv.width !== Math.round(rect.width)) { cv.width = Math.round(rect.width); cv.height = Math.round(rect.height); }
   g.imageSmoothingEnabled = false;
   g.drawImage(PalStage.sceneArt("park"), 0, 104, 320, 66, 0, 0, cv.width, cv.height);
-  const room = Math.max(cv.width + 96, walkers.length * 96), t = now / 1000;
+  const room = Math.max(cv.width + 96, walkers.length * 96), t = now / 1000, party = now < partyUntil;
+  if (!party) drift += now - (lastParade || now);
+  lastParade = now;
   walkers.forEach((w, i) => {
-    const x = ((w.x + now / 26) % room) - 48;
-    const pose = PalStage.livePose(w.pup.rigOf(0), w.pup.lifeline, t + i, {move: "walk", moveT: t + i * .13});
+    const x = ((w.x + drift / 26) % room) - 48;
+    const pose = PalStage.livePose(w.pup.rigOf(0), w.pup.lifeline, t + i, {move: party ? "dance" : "walk", moveT: t + i * .13});
     w.pup.draw(g, 0, pose, x, cv.height - 10);
   });
+  if (party && bits.length < 90) {
+    bits.push({x: Math.random() * cv.width, y: -8, vy: 1 + Math.random() * 2, hue: Math.floor(Math.random() * 5)});
+  }
+  bits = bits.filter(b => b.y < cv.height);
+  for (const b of bits) {
+    b.y += b.vy;
+    g.fillStyle = ["#ff5fa2", "#ffd93b", "#35d0bd", "#7ab8ff", "#c5a3ff"][b.hue];
+    g.fillRect(Math.round(b.x), Math.round(b.y), 6, 6);
+  }
 }
 
-setInterval(refresh, 10000);
+setInterval(refresh, 4000);
 requestAnimationFrame(parade);
 refresh().finally(theatreLoop);      // know what's on before the curtain goes up
 </script>

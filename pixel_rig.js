@@ -107,7 +107,8 @@ const PixelRig = (() => {
         const high = ((a.mid[1] + b.mid[1]) / 2 - main.top) / tall;
         if (dy > Math.max(1, size / 12) || apart < 2 || big > small * 2.5 || high > .78) continue;
         if (apart > size * .75 || Math.max(a.pop, b.pop) < 60) continue;
-        const score = dy * 3 + off * 16 / size + (big - small) * .5 + high * 8 - Math.min(a.pop, b.pop) / 40;
+        const pale = (brightness(inkOf(palette, a.ink)) + brightness(inkOf(palette, b.ink))) / 2;
+        const score = dy * 3 + off * 16 / size + (big - small) * .5 + high * 8 - Math.min(a.pop, b.pop) / 40 + pale / 40;
         if (!best || score < best.score) {
           best = {score, skin, eyes: a.mid[0] < b.mid[0] ? [a, b] : [b, a], islands};
         }

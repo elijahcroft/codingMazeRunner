@@ -265,10 +265,28 @@ function layDown(x, y) {
     path.splice(path.length - 2, 1);
   }
 }
+// Clicking along a line square by square is what a child does when dragging is
+// hard. Easy pen would help, so it's offered then, once.
+let lonelyClicks = 0, lastClick = null, offerUntil = 0;
+function noticeClick(sq) {
+  const near = lastClick && Math.abs(lastClick.x - sq.x) <= 1 && Math.abs(lastClick.y - sq.y) <= 1
+    && performance.now() - lastClick.at < 3000;
+  lonelyClicks = near ? lonelyClicks + 1 : 0;
+  lastClick = {x: sq.x, y: sq.y, at: performance.now()};
+  if (lonelyClicks < 7 || easy || recall("pixelEasyOffered")) return;
+  store("pixelEasyOffered", "1");
+  clearTimeout(tipHold);
+  $("tip").innerHTML = `Lots of clicking? <button class="tip-try" id="tryEasy">Try Easy pen</button>`;
+  $("tryEasy").addEventListener("click", () => { easy = true; offerUntil = 0; store("pixelEasyPen", "1"); refreshOptions(); showTip(); });
+  offerUntil = performance.now() + 9000;
+  tipHold = setTimeout(showTip, 9000);
+  return true;
+}
 function endStroke() {
   if (!stroke) return;
-  const {before} = stroke;
+  const {before, path, held, x, y} = stroke;
   stroke = null;
+  if (held && tool === "pencil" && path.length <= 1) noticeClick({x, y});
   $("board").classList.remove("pen-down");
   done(before);
   showTip();
@@ -806,6 +824,7 @@ function tipNow(text) {
   tipHold = setTimeout(showTip, 3500);
 }
 function showTip() {
+  if (performance.now() < offerUntil && $("tryEasy")) return;
   clearTimeout(tipHold);
   const pen = {pencil: "colour it", eraser: "rub it out", shade: shadeWay < 0 ? "make it darker" : "make it lighter"}[tool];
   let html;
@@ -839,11 +858,13 @@ function showTip() {
 
 // ---- See it play: one frame is alive, and two or more play like a flip book --------------------
 let shown = -1, shownVersion = "";
+let playedAt = 0, checkedAt = 0;
 function playLoop(now) {
   requestAnimationFrame(playLoop);
-  if (!art) return;
+  if (!art || now - playedAt < 45) return;     // a little pal doesn't need 60 frames a second
+  playedAt = now;
   const n = art.frames.length;
-  freshMini();
+  if (now - checkedAt > 160) { checkedAt = now; freshMini(); }
   if (n === 1) { livePreview(now); return; }
   const at = Math.floor(now / 1000 * art.speed) % n;
   const version = `${at}:${A.encode(art.frames[at])}:${art.size}`;
@@ -1212,7 +1233,12 @@ $("closeArt").addEventListener("click", closeArtSheet);
 $("artCode").addEventListener("input", artTyped);
 $("seeBeads").addEventListener("click", showBeads);
 $("closeBeads").addEventListener("click", () => { $("beads").hidden = true; });
-$("printBeads").addEventListener("click", () => print());
+function printSheet(id) {
+  $(id).classList.add("printing");
+  print();
+  $(id).classList.remove("printing");
+}
+$("printBeads").addEventListener("click", () => printSheet("beads"));
 $("openShelf").addEventListener("click", openShelf);
 $("closeShelf").addEventListener("click", closeShelf);
 $("frameName").addEventListener("change", e => nameFrame(e.target.value));

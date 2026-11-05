@@ -70,6 +70,7 @@ class StudioOverHttp(unittest.TestCase):
     def setUp(self):
         self.folder = tempfile.TemporaryDirectory()
         self.saved = dict(server.players), server.STATE_FILE
+        server.pixel_class["check"] = False       # the checking has its own tests
         server.players.clear()
         server.STATE_FILE = os.path.join(self.folder.name, "scores.json")
         self.httpd = server.ClassroomServer(("127.0.0.1", 0), server.Handler)
@@ -83,6 +84,7 @@ class StudioOverHttp(unittest.TestCase):
             server.pixel_write_timer[0] = None
         self.httpd.shutdown()
         self.httpd.server_close()
+        server.pixel_class.pop("check", None)
         server.players.clear()
         server.players.update(self.saved[0])
         server.STATE_FILE = self.saved[1]
@@ -162,7 +164,7 @@ class StudioOverHttp(unittest.TestCase):
     def test_your_own_drawing_is_your_pal(self):
         me = self.join()
         self.assertEqual(self.get(f"/pixel/state?id={me}")["pal"], "pip")
-        self.post("/pixel/save", {"id": me, "drawing": drawing("mine", names=["happy"])})
+        self.post("/pixel/save", {"id": me, "drawing": drawing("mine", frames=["0" + "." * 255], names=["happy"])})
         self.assertEqual(self.get(f"/pixel/state?id={me}")["pal"], "mine")
         code = 'pose("happy")\nsay("Hi")'
         self.assertIsNone(self.post("/pixel/run", {"id": me, "level": "free", "code": code})["error"])
@@ -228,7 +230,7 @@ class StudioOverHttp(unittest.TestCase):
 
     def test_the_open_overview_has_no_student_rows(self):
         self.join()
-        self.assertEqual(set(self.get("/pixel/overview")), {"class", "feed", "address"})
+        self.assertEqual(set(self.get("/pixel/overview")), {"class", "feed", "address", "party"})
 
     def test_saves_reach_the_file_and_a_burst_shares_one_write(self):
         me = self.post("/join", {"name": "Mia"})["id"]
@@ -470,15 +472,14 @@ class TheRig(unittest.TestCase):
     def test_every_gallery_pal_is_square_and_has_eyes(self):
         out = self.js("""return G.names.map(name => {
             const f = G.pictures[name], rig = R.build(f, 16, A.PALETTE);
-            return [name, f.length, f.every(n => n !== undefined), rig.eyes.length > 0, rig.legs.length > 0];
+            return [name, f.length, f.every(n => n !== undefined), rig.eyes.length > 0];
         })""")
-        self.assertGreaterEqual(len(out), 12)
-        for name, length, known, eyes, legs in out:
+        self.assertGreaterEqual(len(out), 18)
+        for name, length, known, eyes in out:
             with self.subTest(pal=name):
                 self.assertEqual(length, 256)
                 self.assertTrue(known)
                 self.assertTrue(eyes)
-                self.assertTrue(legs)
 
     def test_the_gallery_pals_are_rigged_as_what_they_are(self):
         found = self.js("""const out = {};
@@ -490,6 +491,8 @@ class TheRig(unittest.TestCase):
         self.assertEqual(found["Fairy"].count("wing"), 2)      # wings aren't ears
         self.assertEqual(found["Dino"].count("tail"), 1)       # a tail isn't an arm
         self.assertEqual(found["Robot"].count("arm"), 2)       # joined on at a corner
+        self.assertGreaterEqual(found["Butterfly"].count("wing"), 2)
+        self.assertNotIn("arm", found["Mushroom"])             # its spots aren't eyes, so its cap isn't arms
 
     def test_a_shape_with_no_face_has_no_eyes(self):
         rows = ["." * 16] * 4 + ["....gggggggg...."] * 8 + ["." * 16] * 4
@@ -608,6 +611,69 @@ class TheRig(unittest.TestCase):
             for (let i = 0; i < 20; i++) R.build(f, 48, A.PALETTE);
             return (Date.now() - start) / 20""")
         self.assertLess(ms, 30)
+
+
+class TeacherChecksShows(unittest.TestCase):
+    """Students can type anything, so by default a show waits for the teacher."""
+
+    setUp, tearDown, post, get = StudioOverHttp.setUp, StudioOverHttp.tearDown, StudioOverHttp.post, StudioOverHttp.get
+
+    def join(self, name):
+        return self.post("/join", {"name": name})["id"]
+
+    def teacher(self, **data):
+        return self.post("/pixel/teacher", dict(data, key=server.ADMIN_KEY))
+
+    def test_a_new_show_waits_and_nobody_sees_it(self):
+        server.pixel_class.pop("check", None)
+        mia, ben = self.join("Mia"), self.join("Ben")
+        out = self.post("/pixel/publish", {"id": mia, "code": 'say("Hi")', "title": "Secret"})
+        self.assertTrue(out["waiting"])
+        self.assertEqual(self.get("/pixel/theatre")["shows"], [])
+        self.assertNotIn("Secret", json.dumps(self.get("/pixel/overview")))
+        owner = server.pixel_public(server.players[mia])
+        self.assertEqual([s["waiting"] for s in self.teacher(action="overview")["shows"]], [True])
+        self.assertIn("error", self.post("/pixel/heart", {"id": ben, "owner": owner}))
+        self.assertTrue(self.teacher(action="show", owner=owner)["ok"])
+        self.assertEqual([s["title"] for s in self.get("/pixel/theatre")["shows"]], ["Secret"])
+        self.assertIn("Secret", json.dumps(self.get("/pixel/overview")))
+
+    def test_saying_no_keeps_it_out(self):
+        server.pixel_class.pop("check", None)
+        mia = self.join("Mia")
+        self.post("/pixel/publish", {"id": mia, "code": 'say("Hi")', "title": "Nope"})
+        self.teacher(action="hide", owner=server.pixel_public(server.players[mia]))
+        self.assertEqual(self.get("/pixel/theatre")["shows"], [])
+        self.assertNotIn("Nope", json.dumps(self.get("/pixel/overview")))
+
+    def test_a_blank_page_never_goes_on_stage(self):
+        mia = self.join("Mia")
+        self.post("/pixel/save", {"id": mia, "drawing": drawing()})
+        self.assertEqual(self.get(f"/pixel/state?id={mia}")["pal"], "pip")
+        art = dict(drawing(), key="ink123", frames=["0" + "." * 255])
+        self.post("/pixel/save", {"id": mia, "drawing": art})
+        self.assertEqual(self.get(f"/pixel/state?id={mia}")["pal"], "ink123")
+
+    def test_the_party_button_reaches_the_projector(self):
+        before = self.get("/pixel/overview").get("party", 0)
+        self.assertTrue(self.teacher(action="party")["ok"])
+        self.assertGreater(self.get("/pixel/overview")["party"], before)
+
+    def test_a_best_catch_goes_on_the_feed_once(self):
+        mia = self.join("Mia")
+        self.assertTrue(self.post("/pixel/caught", {"id": mia, "score": 12})["ok"])
+        self.post("/pixel/caught", {"id": mia, "score": 9})
+        words = json.dumps(self.get("/pixel/overview"), ensure_ascii=False)
+        self.assertIn("caught 12 stars", words)
+        self.assertNotIn("caught 9 stars", words)
+        for bad in (-1, 0, 9999, "12", True, None):
+            self.assertIn("error", self.post("/pixel/caught", {"id": mia, "score": bad}))
+
+    def test_the_switch_lets_shows_go_straight_up(self):
+        self.teacher(action="check", on=False)
+        mia = self.join("Mia")
+        self.assertFalse(self.post("/pixel/publish", {"id": mia, "code": 'say("Hi")', "title": "Fast"})["waiting"])
+        self.assertEqual(len(self.get("/pixel/theatre")["shows"]), 1)
 
 
 class TheMarks(unittest.TestCase):

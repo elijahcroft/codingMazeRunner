@@ -29,7 +29,7 @@
   .err { color: var(--warn); font-size: 13px; }
   .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .shows { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
-  .show { border: 2px solid var(--ink); border-radius: 8px; padding: 8px; display: grid; gap: 4px; }
+  .show { border: 2px solid var(--ink); border-radius: 8px; padding: 8px; display: grid; gap: 4px; align-content: start; }
   .show.hidden { background: #f0eef4; border-style: dashed; }
   .show pre { margin: 0; max-height: 130px; overflow: auto; font: 12.5px/1.35 ui-monospace, Menlo, Consolas, monospace; background: #f6f3fd; padding: 6px; border-radius: 6px; }
   .feed { margin: 0; padding: 0; list-style: none; font-size: 14px; }
@@ -75,11 +75,13 @@
     <span>Everyone can reach:</span>
     <select id="openTo"></select>
     <button class="btn" id="openGo">Open up to here</button>
+    <button class="btn" id="party">🎉 Dance party on the projector</button>
     <span style="font-size:14px;color:var(--soft)">Students can always go past this by finishing missions.</span>
   </div>
 
   <h2>The Theatre</h2>
-  <p style="margin:0 0 8px;font-size:14px;color:var(--soft)">Shows go up straight away, and students can type anything into say(). Read them here, and press Hide if one isn't right for the class.</p>
+  <label style="display:flex;gap:8px;align-items:center;margin:0 0 4px;font-weight:700"><input type="checkbox" id="checkFirst"> Check shows before the class sees them</label>
+  <p style="margin:0 0 8px;font-size:14px;color:var(--soft)" id="checkNote"></p>
   <div class="shows" id="shows"></div>
 
   <h2>Just now</h2>
@@ -131,17 +133,25 @@ async function refresh() {
     pick.innerHTML = data.missions.map((m, i) => `<option value="${esc(m.key)}">${i + 1}. ${esc(m.name)}</option>`).join("");
     pick.selectedIndex = data.open;
   }
-  $("shows").innerHTML = data.shows.length ? data.shows.map(s => `
-    <div class="show${s.hidden ? " hidden" : ""}">
+  $("checkFirst").checked = data.check;
+  $("checkNote").textContent = data.check
+    ? "New shows wait here until you press Let it in, because students can type anything into say()."
+    : "Shows go up straight away. Read them here, and press Hide if one isn't right for the class.";
+  const order = data.shows.slice().sort((a, b) => b.waiting - a.waiting);
+  $("shows").innerHTML = order.length ? order.map(s => `
+    <div class="show${s.hidden && !s.waiting ? " hidden" : ""}">
       <b>${esc(s.title)}</b>
-      <small>by ${esc(s.by)} · ♥ ${s.hearts}${s.hidden ? " · Hidden" : ""}</small>
+      <small>by ${esc(s.by)} · ♥ ${s.hearts}${s.waiting ? " · Waiting for you" : s.hidden ? " · Hidden" : ""}</small>
       <pre>${esc(s.code)}</pre>
-      <button class="btn" data-${s.hidden ? "show" : "hide"}="${esc(s.owner)}">${s.hidden ? "Show it again" : "Hide"}</button>
+      ${s.waiting ? `<button class="btn" data-show="${esc(s.owner)}">Let it in</button> <button class="btn" data-hide="${esc(s.owner)}">Not this one</button>`
+        : `<button class="btn" data-${s.hidden ? "show" : "hide"}="${esc(s.owner)}">${s.hidden ? "Show it again" : "Hide"}</button>`}
     </div>`).join("") : `<p style="margin:0;color:var(--soft)">No shows yet.</p>`;
   $("feed").innerHTML = data.feed.slice().reverse().map(f => `<li>${esc(f.text)}</li>`).join("") || `<li style="color:var(--soft)">Nothing yet.</li>`;
 }
 $("gate").addEventListener("submit", e => { e.preventDefault(); key = $("key").value.trim(); refresh(); });
 $("openGo").addEventListener("click", async () => { await call({action: "open", level: $("openTo").value}); refresh(); });
+$("party").addEventListener("click", () => call({action: "party"}));
+$("checkFirst").addEventListener("change", async e => { await call({action: "check", on: e.target.checked}); refresh(); });
 $("shows").addEventListener("click", async e => {
   const b = e.target.closest("button");
   if (!b) return;

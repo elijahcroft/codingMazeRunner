@@ -9,7 +9,7 @@ const PalStage = (() => {
 
   // ---- Sounds, made on the spot so there are no files to load -------------------
   const SFX = (() => {
-    let ac = null, muted = false;
+    let ac = null, muted = false, voice = 420;
     try { muted = localStorage.getItem("pixelMute") === "1"; } catch (_) {}
     const wake = () => {
       if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) { return null; } }
@@ -39,12 +39,15 @@ const PalStage = (() => {
       yay: () => notes([659, 784, 988, 1319, 988, 1319], .07, .1),
       nope: () => notes([233, 196], .13, .18, "triangle"),
       step: () => tone(150, 0, .04, "square", .018),
+      blip: () => tone(voice * (.9 + Math.random() * .25), 0, .05, "triangle", .035),
       jump: () => tone(300, 0, .16, "square", .03, 420),
       eat: () => notes([330, 262, 330], .09, .06),
       click: () => tone(900, 0, .03, "square", .02),
     };
     return {
       wake,
+      /** Each pal has its own pitch to talk at. */
+      voiceAt(pitch) { voice = pitch; },
       play(name) { if (!muted && wake() && SOUNDS[name]) SOUNDS[name](); },
       get muted() { return muted; },
       toggle() {
@@ -284,7 +287,7 @@ const PalStage = (() => {
     canvas.width = W; canvas.height = H;
     const g = canvas.getContext("2d");
     g.imageSmoothingEnabled = false;
-    let names = [], palW = 64, pup = null, palScale = 4, friendPups = {}, started = performance.now();
+    let names = [], palW = 64, palVoice = 420, pup = null, palScale = 4, friendPups = {}, started = performance.now();
     let crowd = 0;
     let state, sparks = [], bubbles = {}, run = 0, rate = 1, loop = 0, livePal = null;
 
@@ -299,6 +302,8 @@ const PalStage = (() => {
     function setPal(pal) {
       livePal = pal;
       palScale = Math.max(1, Math.floor(68 / pal.size));
+      // Small pals squeak and big ones rumble a bit, and no two sound quite alike.
+      palVoice = 300 + (pal.frames[0].length * 7 + pal.frames[0].replace(/\./g, "").length * 13) % 320;
       palW = pal.size * palScale;
       pup = puppet(pal, palScale, pal.frames[0].length + pal.palette.length * 7);
       names = pal.names || [];
@@ -435,6 +440,13 @@ const PalStage = (() => {
 
     // A pal who has drawn its own walk frames uses them. Everyone else uses legs.
     const walkFrames = () => names.map((n, i) => n === "walk" ? i : -1).filter(i => i >= 0);
+    async function babble(ms, t) {
+      let said = -1;
+      await tween(ms, t, u => {
+        const n = Math.floor(u * ms / 95);
+        if (n !== said) { said = n; if (rate === 1) SFX.play("blip"); }
+      });
+    }
     async function moving(name, ms, t) {
       state.move = name;
       state.moveFrom = performance.now();
@@ -460,7 +472,7 @@ const PalStage = (() => {
     // ---- What each step looks like --------------------------------------------------------
     const PLAY = {
       async walk(s, t) {
-        const from = state.x, to = spotX(s.to), squares = Math.max(1, s.by || 0);
+        const from = state.x, to = spotX(s.to), squares = Math.max(1, Math.round(Math.abs(to - from) / 26.8) || s.by || 0);
         if (to !== from) state.flip = to < from;
         const drawn = walkFrames(), rest = state.frame;
         if (!drawn.length) { state.move = "walk"; state.moveFrom = performance.now(); }
@@ -552,18 +564,18 @@ const PalStage = (() => {
       async say(s, t) {
         const ms = Math.min(2600, 900 + s.text.length * 45);
         bubble("pal", s.text, ms / rate);
-        SFX.play("click");
+        SFX.voiceAt(palVoice);
         state.talk = true;
-        await sleep(Math.min(ms, 300 + s.text.length * 70), t);
+        await babble(Math.min(ms, 300 + s.text.length * 70), t);
         state.talk = false;
         await sleep(Math.max(0, ms - (300 + s.text.length * 70)), t);
       },
       async friend_say(s, t) {
         const ms = Math.min(2600, 900 + s.text.length * 45);
         bubble("friend", s.text, ms / rate);
-        SFX.play("click");
+        SFX.voiceAt(palVoice * 1.35);
         state.friendTalk = true;
-        await sleep(Math.min(ms, 300 + s.text.length * 70), t);
+        await babble(Math.min(ms, 300 + s.text.length * 70), t);
         state.friendTalk = false;
         await sleep(Math.max(0, ms - (300 + s.text.length * 70)), t);
       },
@@ -625,6 +637,11 @@ const PalStage = (() => {
         if (t !== run) return;
         state.move = null;
         state.tilt = was;
+      },
+      async noop() {},
+      async snooze(s, t) {
+        burst(i => ({x: state.x + 14, y: FLOOR - 50, vx: .3, vy: -.5, img: ZED, life: 900 + i * 350}), 2);
+        await sleep(1800, t);
       },
       async put(s, t) {
         SFX.play("pop");
@@ -714,5 +731,5 @@ const PalStage = (() => {
   const PROPS = {};
   for (const [key, {rows, ink}] of Object.entries(PROP_ART)) PROPS[key] = rowsSprite(rows, ink, 2);
 
-  return {create, puppet, livePose, sceneArt, HEART, SFX, W, H};
+  return {create, puppet, livePose, sceneArt, HEART, PROPS, SFX, W, H};
 })();

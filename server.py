@@ -4558,8 +4558,8 @@ def pixel_pal(entry):
     their newest, or Pip until they've drawn something."""
     if entry["pal"] == "pip":
         return pixel.PIP
-    return next((d for d in entry["drawings"] if d["key"] == entry["pal"]), None) \
-        or (entry["drawings"] or [pixel.PIP])[0]
+    drawn = [d for d in entry["drawings"] if set(d["frames"][0]) != {"."}]    # a blank page can't act
+    return next((d for d in drawn if d["key"] == entry["pal"]), None) or (drawn or [pixel.PIP])[0]
 
 
 def pixel_stars(entry):
@@ -4631,7 +4631,8 @@ def pixel_state(p):
                     "friends": [s for s in pixel.FRIENDS if ("friend", s) not in pixel.LOCKED or ("friend", s) in opened],
                     "props": pixel.PROPS},
             "class_stars": pixel_class_stars(),
-            "my_show": {"title": show["title"], "hearts": len(show["hearts"]), "hidden": show.get("hidden", False)} if show else None}
+            "my_show": {"title": show["title"], "hearts": len(show["hearts"]), "hidden": show.get("hidden", False),
+                        "waiting": show.get("waiting", False)} if show else None}
 
 
 def pixel_level(entry, key):
@@ -4697,7 +4698,7 @@ def pixel_theatre(viewer=None, teacher=False):
             continue
         shows.append({"owner": pixel_public(q), "by": q["name"], "title": w["title"], "code": w["code"],
                       "pal": w["pal"], "at": w["at"], "hearts": len(w["hearts"]),
-                      "hidden": w.get("hidden", False), "events": w.get("events", []),
+                      "hidden": w.get("hidden", False), "waiting": w.get("waiting", False), "events": w.get("events", []),
                       "hearted": bool(viewer) and viewer["id"] in w["hearts"],
                       "mine": bool(viewer) and viewer["id"] == q["id"]})
     shows.sort(key=lambda s: -s["at"])
@@ -4722,7 +4723,8 @@ def pixel_overview():
                      "badges": len(entry["badges"]), "show": bool(entry["show"]), "active": entry["active"]})
     rows.sort(key=lambda r: (r["at"], -r["misses"], r["name"].lower()))
     return {"students": rows, "missions": [{"key": k, "name": pixel.LEVEL_BY_KEY[k]["name"]} for k in pixel.LEVEL_ORDER],
-            "open": pixel_class.get("open", 0), "feed": pixel_feed[-12:],
+            "open": pixel_class.get("open", 0), "check": pixel_class.get("check", True), "feed": pixel_feed[-12:],
+            "party": pixel_class.get("party", 0),
             "class": {"stars": pixel_class_stars(), "goals": [u for u in pixel.UNLOCKS if "class" in u]}}
 
 
@@ -4732,7 +4734,17 @@ def pixel_teacher(data):
         q = pixel_owner(str(data.get("owner", "")))
         if not q or not pixel_entry(q)["show"]:
             return {"error": "No such show."}
-        pixel_entry(q)["show"]["hidden"] = action == "hide"
+        show = pixel_entry(q)["show"]
+        if show.get("waiting") and action == "show":
+            pixel_feed_add(f"🎟️ {q['name']} put {show['title']} in the Theatre")
+        show["hidden"] = action == "hide"
+        show["waiting"] = False
+        return {"ok": True}
+    if action == "check":
+        pixel_class["check"] = bool(data.get("on"))
+        return {"ok": True}
+    if action == "party":
+        pixel_class["party"] = int(time.time() * 1000)
         return {"ok": True}
     if action == "open":
         key = data.get("level")
@@ -4745,7 +4757,7 @@ def pixel_get(path, query):
     with lock:
         if path == "/pixel/overview":       # the projector has no login, so no student rows
             over = pixel_overview()
-            return {"class": over["class"], "feed": over["feed"],
+            return {"class": over["class"], "feed": over["feed"], "party": over["party"],
                     "address": f"http://{get_lan_ip()}:{PORT}/pixel"}
         p = players.get(query.get("id", [""])[0])
         if path == "/pixel/theatre":
@@ -4864,6 +4876,16 @@ def pixel_post(path, data):
             rewards = pixel_record(p, key, code[:pixel.MAX_CODE], out)
             pixel_save_soon()
             return dict(out, rewards=rewards, state=pixel_state(p))
+    if path == "/pixel/caught":
+        score = data.get("score")
+        if isinstance(score, bool) or not isinstance(score, int) or not 0 < score <= 300:
+            return {"error": "bad"}
+        with lock:
+            if score > entry.get("best_catch", 0):
+                entry["best_catch"] = score
+                pixel_feed_add(f"🌟 {p['name']}'s pal caught {score} stars!")
+                pixel_save_soon()
+        return {"ok": True}
     if path == "/pixel/publish":
         title = str(data.get("title", "")).strip()[:PIXEL_SHOW_TITLE_MAX]
         if not title:
@@ -4873,14 +4895,16 @@ def pixel_post(path, data):
             return {"error": "Your show has a problem on it. Fix it first, then try again.\n" + out["error"]}
         with lock:
             old = entry["show"]
+            waiting = pixel_class.get("check", True)     # the teacher reads it first
             entry["show"] = {"title": title, "code": code[:pixel.MAX_CODE], "pal": dict(pal),
                              "events": out["events"], "unlocked": sorted(unlocked), "at": int(time.time()),
-                             "hearts": old["hearts"] if old else [], "hidden": False}
-            pixel_feed_add(f"🎟️ {p['name']} put {title} in the Theatre")
+                             "hearts": old["hearts"] if old else [], "hidden": waiting, "waiting": waiting}
+            if not waiting:
+                pixel_feed_add(f"🎟️ {p['name']} put {title} in the Theatre")
             earned = []
             pixel_badge(p, "theatre", earned)
             save_state()
-            return {"ok": True, "state": pixel_state(p), "badges": earned}
+            return {"ok": True, "state": pixel_state(p), "badges": earned, "waiting": waiting}
     return {"error": "not found"}
 
 

@@ -4,6 +4,7 @@
 "use strict";
 
 const PalGallery = (() => {
+  const Art = typeof PixelArt !== "undefined" ? PixelArt : require("./pixel_art.js");
   const INK = {k: 0, x: 2, X: 3, w: 4, s: 5, S: 6, n: 7, h: 8, d: 9, R: 10, r: 11, c: 12, p: 13, P: 14, m: 15,
                o: 16, O: 17, Y: 18, y: 19, u: 20, G: 21, g: 22, l: 23, t: 24, T: 25, a: 26, B: 27, b: 28, e: 29, v: 30, V: 31};
   const PALS = {
@@ -224,13 +225,34 @@ const PalGallery = (() => {
       "...kkkk.kkkk....",
     ],
   };
+  // These are the left half only, with no outline: they're mirrored and outlined here.
+  const HALVES = {
+    Butterfly: ["........", "..mm...k", ".mmmm...", ".mymm.VV", ".mmmmVkV", ".mmmmVkV", "..mmmVVV", "...mmVVk",
+                "..ppppVV", ".pppppVV", ".pypppVV", ".pppp.VV", "..pp..VV", ".......V", "........", "........"],
+    Mermaid: [".....rrr", "....rrrr", "...rrsss", "...rssss", "...rskss", "...rskss", "...rssss", "...rsssr",
+              "....rsss", "..ss.mmm", "..ss.sss", ".....TTT", "......TT", ".......T", ".....TTT", "....TTTT"],
+    Panda: ["........", "..kk....", ".kkkwwww", ".kkwwwww", "..wwwwww", ".wwkkwww", ".wwkwwww", ".wwkkwww",
+            ".wwwwwwk", "..wwwwww", "...kkwww", "..kkkwww", "..kkwwww", "...wwwww", "...kkk..", "...kkk.."],
+    Owl: ["........", ".nn.....", ".nnnnnnn", ".nnnnnnn", ".nwwwnnn", ".nwkwnnn", ".nwwwnno", ".nnnnnno",
+          ".nuunuuu", "nnuuuuuu", "nnuunuun", ".nuuuuuu", ".nnnnnnn", "...oo...", "...oo...", "........"],
+    Cupcake: [".......r", "......rr", "....pppp", "...ppppp", "..pppppp", ".ppkpppp", ".ppkpppp", ".ppppppk",
+              ".PPPPPPP", "..oOoOoO", "..oOoOoO", "..oOoOoO", "...oOoOo", "...oOoOo", "........", "........"],
+    Mushroom: ["........", ".....rrr", "...rrrrr", "..rrwwrr", ".rrrwwrr", ".rwwrrrr", ".rwwrrrr", ".rrrrrrr",
+               "...uuuuu", "...ukuuu", "...ukuuu", "...uuuuk", "...uuuuu", "....uuuu", "....kk..", "........"],
+  };
   const pictures = {};
   for (const [name, rows] of Object.entries(PALS)) {
     pictures[name] = Array.from(rows.join(""), ch => ch === "." ? -1 : INK[ch]);
   }
+  for (const [name, rows] of Object.entries(HALVES)) {
+    const whole = rows.map(r => r + Array.from(r).reverse().join("")).join("");
+    const f = Array.from(whole, ch => ch === "." ? -1 : INK[ch]);
+    for (const at of Art.outline(f, 16)) f[at] = INK.k;
+    pictures[name] = f;
+  }
   // Every coloured square goes white, and the ink stays.
   const outlined = f => f.map(n => n < 0 ? -1 : n === INK.k ? n : INK.w);
-  return {names: Object.keys(PALS), pictures, outlined, size: 16};
+  return {names: Object.keys(pictures), pictures, outlined, size: 16};
 })();
 
 if (typeof module !== "undefined") module.exports = PalGallery;

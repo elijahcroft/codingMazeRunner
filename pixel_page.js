@@ -75,7 +75,7 @@ function pageEnter(data) {
   showStars();
 }
 function currentPal() {
-  return S.drawings.find(d => d.key === S.pal) || S.drawings[0] || S.pip;
+  return S.drawings.find(d => d.key === S.pal) || S.pip;
 }
 function showStars() { $("starCount").textContent = `★ ${S.stars} / ${S.max_stars}`; }
 
@@ -523,8 +523,9 @@ let shows = [], watching = null;
 async function openTheatre() {
   const data = await get("/pixel/theatre?id=" + encodeURIComponent(me)).catch(() => null);
   shows = data ? data.shows : [];
-  $("myShowNote").textContent = S.my_show
-    ? `Your show "${S.my_show.title}" has ${S.my_show.hearts} ♥` : "Make a show in Free Stage, then add it here.";
+  $("myShowNote").textContent = !S.my_show ? "Make a show in Free Stage, then add it here."
+    : S.my_show.waiting ? `"${S.my_show.title}" is waiting for your teacher to say OK.`
+    : `Your show "${S.my_show.title}" has ${S.my_show.hearts} ♥`;
   $("showGrid").innerHTML = shows.length ? shows.map((s, i) => `
     <div class="show-card"><button data-watch="${i}"><canvas></canvas>
       <strong>${esc(s.title)}</strong>
@@ -594,7 +595,7 @@ async function publishShow() {
   if (out.error) { $("publishNote").textContent = out.error; return; }
   S = out.state;
   $("publish").hidden = true;
-  showRewards({badges: [...out.badges, {icon: "🎟️", name: "It's in the Theatre!"}]});
+  showRewards({badges: [...out.badges, out.waiting ? {icon: "💌", name: "Sent to your teacher!"} : {icon: "🎟️", name: "It's in the Theatre!"}]});
 }
 
 // ---- Wiring -------------------------------------------------------------------------------------

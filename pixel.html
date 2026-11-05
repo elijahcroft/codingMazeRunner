@@ -187,7 +187,7 @@
   .gallery button { display: grid; justify-items: center; gap: 1px; padding: 5px 2px 3px; border: 2px solid var(--ink); border-radius: 8px; background: #fff; font-size: 14px; font-weight: 800; }
   .gallery button:hover:not(:disabled) { background: var(--plum-soft); }
   .gallery button:disabled { opacity: .45; }
-  .gallery canvas { width: 64px; height: 64px; image-rendering: pixelated; }
+  .gallery canvas { width: 54px; height: 54px; image-rendering: pixelated; }
   .guide-key { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; }
   .guide-key button { flex: 1 0 28px; max-width: 42px; height: 28px; padding: 0; border: 2px solid var(--ink); border-radius: 5px; font-size: 15px; font-weight: 900; line-height: 1; }
   .guide-key button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--pop-deep); }
@@ -217,6 +217,11 @@
   .moves button span { font-size: 20px; line-height: 1.15; }
   .moves button:hover { background: var(--plum-soft); }
   .moves button[aria-pressed="true"] { background: var(--sun); }
+  .tip-try { margin-left: 8px; padding: 0 8px; border: 2px solid var(--ink); border-radius: 6px; background: var(--sun); font-weight: 900; }
+  #gameLayer { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
+  .game-hud { position: absolute; left: 50%; top: 6px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 3px 10px; background: var(--ink); color: #fff; border-radius: 8px; font-weight: 900; white-space: nowrap; }
+  .game-hud button { padding: 0 8px; border: 2px solid #fff; border-radius: 6px; background: none; color: #fff; font-size: 14px; font-weight: 800; }
+  #cardCanvas { display: block; width: 300px; max-width: 100%; margin: 10px auto; }
   .life-say { display: flex; gap: 6px; flex: none; }
   .life-say input { flex: 1; min-width: 0; padding: 6px 10px; border: 2px solid var(--ink); border-radius: 8px; }
   .bones { display: flex; flex-direction: column; gap: 8px; min-height: 0; min-width: 0; }
@@ -350,10 +355,10 @@
   @media print {
     body { background: #fff; }
     body::before { display: none; }
-    body > *:not(#beads) { display: none !important; }
-    #beads { position: static; display: block; background: none; padding: 0; }
-    #beads .sheet-card { box-shadow: none; border: 0; max-height: none; }
-    #beads .btn { display: none; }
+    body > *:not(.printing) { display: none !important; }
+    .printing { position: static; display: block; background: none; padding: 0; }
+    .printing .sheet-card { box-shadow: none; border: 0; max-height: none; margin: 0 auto; }
+    .printing .btn { display: none; }
   }
 
   #shelfNote { margin: 8px 0 0; font-size: 14px; color: var(--ink-soft); }
@@ -504,11 +509,13 @@
 
   <div id="lifeView" class="life-view" hidden>
     <section class="side">
-      <div class="screen-wrap"><div class="screen" id="lifeHost"><canvas id="lifeCanvas" aria-label="Your pal, alive"></canvas></div></div>
+      <div class="screen-wrap"><div class="screen" id="lifeHost"><canvas id="lifeCanvas" aria-label="Your pal, alive"></canvas><canvas id="gameLayer" hidden></canvas>
+        <div class="game-hud" id="gameHud" hidden><span id="gameWords"></span> <button id="gameStop">Stop</button></div></div></div>
       <div class="moves" id="moves"></div>
       <form class="life-say" id="lifeSay">
         <input id="lifeWords" maxlength="60" placeholder="Type words for your pal to say" aria-label="Words for your pal to say" autocomplete="off">
         <button class="btn main">Say it</button>
+        <button class="btn" type="button" id="nextPlace" title="Take your pal somewhere new">🏞️ Place</button>
       </form>
     </section>
     <section class="bones">
@@ -522,6 +529,9 @@
       </div>
       <div class="panel">
         <div class="keep">
+          <button class="btn main" id="playCatch">🌟 Catch stars</button>
+          <button class="btn main" id="playCopy">🧠 Copy me</button>
+          <button class="btn" id="openCard">🃏 Pal card</button>
           <button class="btn" id="bakeMove">Turn into frames</button>
           <button class="btn" id="gifMove">Download a GIF</button>
           <button class="btn" id="bonesAgain">Guess again</button>
@@ -613,7 +623,7 @@
 <section id="publish" class="sheet" role="dialog" aria-modal="true" aria-label="Add to the Theatre" hidden>
   <div class="panel sheet-card" style="width:min(460px,100%)">
     <h2 style="margin:0 0 8px;font-size:22px;font-weight:900">Add your show to the Theatre</h2>
-    <p style="margin:0 0 10px">The whole class can watch it and press ♥. If you add a new show, it takes the place of your old one.</p>
+    <p style="margin:0 0 10px">Your teacher looks at it first. Then the whole class can watch it and press ♥. A new show takes the place of your old one.</p>
     <input id="showTitle" maxlength="30" placeholder="Name your show" aria-label="Name your show" autocomplete="off" style="width:100%;padding:8px 10px;border:2px solid var(--ink);border-radius:8px;font-size:17px">
     <p id="publishNote" style="margin:8px 0 0;color:#b3123c"></p>
     <div class="watch-row" style="margin-top:10px">
@@ -632,6 +642,17 @@
         <canvas id="artPreview" aria-label="Your drawing"></canvas>
         <div class="key" id="artKey"></div>
       </div>
+    </div>
+  </div>
+</section>
+
+<section id="cardSheet" class="sheet" role="dialog" aria-modal="true" aria-label="Your pal card" hidden>
+  <div class="panel sheet-card" style="width:min(380px,100%)">
+    <div class="shelf-head"><h2 style="margin:0;font-size:22px;font-weight:900">Your pal card</h2><button class="btn" id="closeCard">Close</button></div>
+    <canvas id="cardCanvas" width="600" height="840" aria-label="Your pal's trading card"></canvas>
+    <div class="watch-row" style="justify-content:center">
+      <button class="btn main" id="printCard">Print</button>
+      <button class="btn" id="saveCard">Download</button>
     </div>
   </div>
 </section>
