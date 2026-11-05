@@ -8,7 +8,8 @@ one program on five tracks.  Light Cycles at `/cycles` is a battle royale where
 every student's steer() function rides against the class (cycles.py).  Strange
 Planet at `/planet` is a rover in zones that each hide a physics rule
 (planet.py). Cake Shop at `/cake` bakes cakes for customers with Python:
-dictionaries, lists, if/elif and functions, with a class shop window (cake.py).  The original maze ladders remain at `/classic` as optional drills.
+dictionaries, lists, if/elif and functions, with a class shop window (cake.py).
+Pixel Pals at `/pixel` is a drawing studio for pixel characters (pixel.py).  The original maze ladders remain at `/classic` as optional drills.
 
 Students connect from their browsers to your laptop and drive a little
 character through a maze by typing Python:
@@ -99,6 +100,7 @@ from urllib.parse import parse_qs, urlsplit
 
 import cake
 import cycles
+import pixel
 import planet
 
 PORT = int(os.environ.get("MAZE_PORT", "8000"))
@@ -1450,6 +1452,7 @@ def save_state():
             json.dump({"players": players, "next": next_player_num[0],
                        "admin_key": ADMIN_KEY, "cycles_round": cycles_round,
                        "cake_class": cake_class,
+                       "pixel_class": pixel_class,
                        "planet_class": planet_class_settings}, f)
         os.replace(tmp, STATE_FILE)  # atomic: never leaves a half-written file
     except Exception:
@@ -1515,6 +1518,7 @@ def load_state():
     cycles_round["number"] = int(saved_round.get("number", 0) or 0)
     cycles_round["last"] = saved_round.get("last") or None
     cake_class.update(data.get("cake_class") or {})
+    pixel_class.update(data.get("pixel_class") or {})
     planet_class_settings.update(data.get("planet_class") or {})
     # Reuse the same admin key across restarts so an open admin page keeps
     # working; fall back to this run's freshly generated one if none was saved.
@@ -4491,6 +4495,396 @@ def admin_action(data):
 # HTTP handling.
 # ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
+# Pixel Pals (pixel.py): students draw characters in the Studio at /pixel and
+# bring them to life with Python on the Stage. The class Theatre shows everyone's
+# shows, the projector is /pixel/show, and the teacher's overview is /pixel/teacher.
+# ---------------------------------------------------------------------------
+PIXEL_SHOW_TITLE_MAX = 30
+pixel_feed = []                      # the class's recent moments, for the projector
+pixel_class = {"open": 0}            # missions opened for everyone
+pixel_write_timer = [None]
+
+PIXEL_BADGES = {
+    "first": ("🎭", "Curtain Up", "Finish your first mission"),
+    "artist": ("🎨", "Pixel Artist", "Draw a pal with 2 frames or more"),
+    "poser": ("🏷️", "Name Dropper", "Name a frame, then use it with pose()"),
+    "loop": ("🔁", "Encore!", "Use a for loop in a mission"),
+    "move": ("💃", "Choreographer", "Make your own move with def"),
+    "friend": ("🤝", "Best Friends", "Bring a friend on stage"),
+    "chance": ("🎲", "Surprise!", "Make a show that changes every time"),
+    "pet": ("🐾", "Pet Keeper", "Finish The perfect pet"),
+    "game": ("🕹️", "Game Maker", "Finish Your own game"),
+    "theatre": ("🎟️", "On Stage", "Put a show in the Theatre"),
+    "loved": ("💖", "Crowd Pleaser", "Get 5 hearts on your show"),
+    "kind": ("💌", "Kind Critic", "Heart 5 shows in the Theatre"),
+    "all": ("🏆", "Star of the Show", "Get all the stars in the game"),
+}
+
+
+def pixel_save_soon():
+    """Every computer autosaves while its student draws, so a class would
+    rewrite the save file constantly. One write every few seconds covers them
+    all. Called while holding `lock`."""
+    def write():
+        with lock:
+            pixel_write_timer[0] = None
+            save_state()
+    if not pixel_write_timer[0]:
+        pixel_write_timer[0] = threading.Timer(3, write)
+        pixel_write_timer[0].daemon = True
+        pixel_write_timer[0].start()
+
+
+def pixel_entry(p):
+    entry = p.setdefault("pixel", {})
+    for key, value in (("drawings", []), ("pal", ""), ("solved", {}), ("code", {}), ("free", ""),
+                       ("badges", []), ("runs", {}), ("misses", {}), ("last_error", ""),
+                       ("show", None), ("given", 0), ("active", 0)):
+        entry.setdefault(key, value)
+    return entry
+
+
+def pixel_public(p):
+    """A name for a student's show that isn't their login id."""
+    return "s%08x" % zlib.crc32(("pixel:" + p["id"]).encode())
+
+
+def pixel_owner(public):
+    return next((q for q in players.values() if q.get("pixel") and pixel_public(q) == public), None)
+
+
+def pixel_pal(entry):
+    """The drawing that plays this student on stage: the one they chose, or
+    their newest, or Pip until they've drawn something."""
+    if entry["pal"] == "pip":
+        return pixel.PIP
+    return next((d for d in entry["drawings"] if d["key"] == entry["pal"]), None) \
+        or (entry["drawings"] or [pixel.PIP])[0]
+
+
+def pixel_stars(entry):
+    return sum(sum(bool(s) for s in stars) for stars in entry["solved"].values())
+
+
+def pixel_class_stars():
+    return sum(pixel_stars(pixel_entry(q)) for q in players.values() if q.get("pixel"))
+
+
+def pixel_unlocked(entry):
+    return pixel.open_unlocks(pixel_stars(entry), pixel_class_stars())
+
+
+def pixel_frontier(entry):
+    """Index of the furthest mission open: the first without its first star,
+    or further if the teacher has opened more."""
+    last = len(pixel.LEVEL_ORDER) - 1
+    for i, key in enumerate(pixel.LEVEL_ORDER):
+        if not (entry["solved"].get(key) or [False])[0]:
+            return max(i, min(pixel_class.get("open", 0), last))
+    return last
+
+
+def pixel_is_open(entry, key):
+    return key in pixel.LEVEL_ORDER and pixel.LEVEL_ORDER.index(key) <= pixel_frontier(entry)
+
+
+def pixel_feed_add(text):
+    pixel_feed.append({"at": int(time.time()), "text": text})
+    del pixel_feed[:-40]
+
+
+def pixel_badge(p, key, earned=None):
+    entry = pixel_entry(p)
+    if key in entry["badges"]:
+        return
+    entry["badges"].append(key)
+    icon, name, how = PIXEL_BADGES[key]
+    pixel_feed_add(f"{icon} {p['name']} earned {name}")
+    if earned is not None:
+        earned.append({"icon": icon, "name": name, "how": how})
+
+
+def pixel_state(p):
+    entry = pixel_entry(p)
+    frontier = pixel_frontier(entry)
+    stars = pixel_stars(entry)
+    opened = pixel_unlocked(entry)
+    show = entry["show"]
+    return {"you": {"name": p["name"]},
+            "drawings": list(entry["drawings"]), "pal": pixel_pal(entry)["key"], "pip": pixel.PIP,
+            "max_drawings": pixel.MAX_DRAWINGS, "max_frames": pixel.MAX_FRAMES,
+            "poses": pixel.POSE_NAMES,
+            "chapters": [dict(ch, levels=[
+                {"key": lv["key"], "name": lv["name"],
+                 "stars": entry["solved"].get(lv["key"], [False] * 3),
+                 "open": pixel.LEVEL_ORDER.index(lv["key"]) <= frontier}
+                for lv in pixel.LEVELS if lv["chapter"] == i]) for i, ch in enumerate(pixel.CHAPTERS)],
+            "current": pixel.LEVEL_ORDER[frontier],
+            "stars": stars, "max_stars": 3 * len(pixel.LEVELS),
+            "free_open": bool((entry["solved"].get("a2") or [False])[0]) or pixel_class.get("open", 0) > 1,
+            "free": entry["free"] or pixel.FREE_STARTER,
+            "badges": [dict(zip(("icon", "name", "how"), b), key=k, got=k in entry["badges"])
+                       for k, b in PIXEL_BADGES.items()],
+            "unlocks": [dict(u, open=(u["kind"], u["key"]) in opened) for u in pixel.UNLOCKS],
+            "kit": {"scenes": [s for s in pixel.SCENES if ("scene", s) not in pixel.LOCKED or ("scene", s) in opened],
+                    "sounds": [s for s in pixel.SOUNDS if ("sound", s) not in pixel.LOCKED or ("sound", s) in opened],
+                    "friends": [s for s in pixel.FRIENDS if ("friend", s) not in pixel.LOCKED or ("friend", s) in opened],
+                    "props": pixel.PROPS},
+            "class_stars": pixel_class_stars(),
+            "my_show": {"title": show["title"], "hearts": len(show["hearts"]), "hidden": show.get("hidden", False)} if show else None}
+
+
+def pixel_level(entry, key):
+    lv = pixel.LEVEL_BY_KEY[key]
+    ch = pixel.CHAPTERS[lv["chapter"]]
+    return {"key": key, "name": lv["name"], "chapter": ch, "pip": lv["pip"], "job": lv["job"],
+            "goals": [g[0] for g in lv["goals"]], "best": entry["solved"].get(key, [False] * 3),
+            "hints": lv["hints"], "commands": pixel.commands_for(key), "new": lv["adds"],
+            "chapter_new": [c for x in pixel.LEVELS if x["chapter"] == lv["chapter"] for c in x["adds"]],
+            "python": sorted({w for x in pixel.LEVELS[:pixel.LEVEL_ORDER.index(key) + 1] for w in x["python"]}),
+            "fresh_python": lv["python"], "number": lv["chapter"],
+            "code": entry["code"].get(key, ""), "rehearse": list(lv.get("rehearse", ()))}
+
+
+def pixel_record(p, key, code, out):
+    """Keep a mission run: the best stars, and any badges they earned."""
+    entry = pixel_entry(p)
+    earned = []
+    entry["active"] = int(time.time())
+    entry["runs"][key] = entry["runs"].get(key, 0) + 1
+    before = pixel_stars(entry)
+    opened_before = pixel_unlocked(entry)
+    old = entry["solved"].get(key, [False] * 3)
+    entry["solved"][key] = [a or b for a, b in zip(old, out["stars"])]
+    entry["code"][key] = code
+    entry["last_error"] = out["error"] or ""
+    if not out["stars"][0]:
+        entry["misses"][key] = entry["misses"].get(key, 0) + 1
+    else:
+        entry["misses"].pop(key, None)
+        if not old[0]:
+            pixel_feed_add(f"⭐ {p['name']} finished {pixel.LEVEL_BY_KEY[key]['name']}")
+        pixel_badge(p, "first", earned)
+    if out["stars"][0]:
+        lv = pixel.LEVEL_BY_KEY[key]
+        if lv["chapter"] >= 1 and "for i in" in code:
+            pixel_badge(p, "loop", earned)
+        if "def " in code and key.startswith("d"):
+            pixel_badge(p, "move", earned)
+        if "friend(" in code:
+            pixel_badge(p, "friend", earned)
+        if key == "e1":
+            pixel_badge(p, "chance", earned)
+        if key == "f5":
+            pixel_badge(p, "pet", earned)
+        if key == "g4":
+            pixel_badge(p, "game", earned)
+        pal = pixel_pal(entry)
+        if "pose(" in code and any(pal.get("names") or []) and pal["key"] != "pip":
+            pixel_badge(p, "poser", earned)
+    if pixel_stars(entry) == 3 * len(pixel.LEVELS):
+        pixel_badge(p, "all", earned)
+    fresh = [dict(u) for u in pixel.UNLOCKS
+             if (u["kind"], u["key"]) in pixel_unlocked(entry) - opened_before]
+    return {"gained": pixel_stars(entry) - before, "badges": earned, "unlocked": fresh}
+
+
+def pixel_theatre(viewer=None, teacher=False):
+    shows = []
+    for q in players.values():
+        w = (q.get("pixel") or {}).get("show")
+        if not w or (w.get("hidden") and not teacher):
+            continue
+        shows.append({"owner": pixel_public(q), "by": q["name"], "title": w["title"], "code": w["code"],
+                      "pal": w["pal"], "at": w["at"], "hearts": len(w["hearts"]),
+                      "hidden": w.get("hidden", False), "events": w.get("events", []),
+                      "hearted": bool(viewer) and viewer["id"] in w["hearts"],
+                      "mine": bool(viewer) and viewer["id"] == q["id"]})
+    shows.sort(key=lambda s: -s["at"])
+    return shows
+
+
+def pixel_overview():
+    """The teacher's page and the projector: where everyone is, who's stuck,
+    the class star meter and the recent moments."""
+    rows = []
+    for q in players.values():
+        if not q.get("pixel"):
+            continue
+        entry = pixel_entry(q)
+        at = pixel_frontier(entry)
+        key = pixel.LEVEL_ORDER[at]
+        lv = pixel.LEVEL_BY_KEY[key]
+        rows.append({"name": q["name"], "owner": pixel_public(q), "level": key, "level_name": lv["name"], "at": at,
+                     "chapter": pixel.CHAPTERS[lv["chapter"]]["name"], "stars": pixel_stars(entry),
+                     "drawings": len(entry["drawings"]), "misses": entry["misses"].get(key, 0),
+                     "runs_here": entry["runs"].get(key, 0), "last_error": entry["last_error"],
+                     "badges": len(entry["badges"]), "show": bool(entry["show"]), "active": entry["active"]})
+    rows.sort(key=lambda r: (r["at"], -r["misses"], r["name"].lower()))
+    return {"students": rows, "missions": [{"key": k, "name": pixel.LEVEL_BY_KEY[k]["name"]} for k in pixel.LEVEL_ORDER],
+            "open": pixel_class.get("open", 0), "feed": pixel_feed[-12:],
+            "class": {"stars": pixel_class_stars(), "goals": [u for u in pixel.UNLOCKS if "class" in u]}}
+
+
+def pixel_teacher(data):
+    action = data.get("action")
+    if action in ("hide", "show"):
+        q = pixel_owner(str(data.get("owner", "")))
+        if not q or not pixel_entry(q)["show"]:
+            return {"error": "No such show."}
+        pixel_entry(q)["show"]["hidden"] = action == "hide"
+        return {"ok": True}
+    if action == "open":
+        key = data.get("level")
+        pixel_class["open"] = pixel.LEVEL_ORDER.index(key) if key in pixel.LEVEL_ORDER else 0
+        return {"ok": True}
+    return {"error": "Unknown action."}
+
+
+def pixel_get(path, query):
+    with lock:
+        if path == "/pixel/overview":       # the projector has no login, so no student rows
+            over = pixel_overview()
+            return {"class": over["class"], "feed": over["feed"],
+                    "address": f"http://{get_lan_ip()}:{PORT}/pixel"}
+        p = players.get(query.get("id", [""])[0])
+        if path == "/pixel/theatre":
+            return {"shows": pixel_theatre(p)}
+        if not p:
+            return {"you": None}
+        if path == "/pixel/state":
+            return pixel_state(p)
+        if path == "/pixel/level":
+            entry, key = pixel_entry(p), query.get("level", [""])[0]
+            return pixel_level(entry, key) if pixel_is_open(entry, key) else {"error": "🔒 Finish the mission before this one first."}
+        return {"error": "not found"}
+
+
+def pixel_post(path, data):
+    if path == "/pixel/teacher":
+        with lock:
+            if str(data.get("key", "")) != ADMIN_KEY:
+                return {"error": "Wrong admin key."}
+            if data.get("action") == "overview":
+                return dict(pixel_overview(), shows=pixel_theatre(teacher=True),
+                            address=f"http://{get_lan_ip()}:{PORT}/pixel")
+            out = pixel_teacher(data)
+            save_state()
+            return out
+    if path == "/pixel/watch":              # anyone can watch: the projector has no login
+        with lock:
+            q = pixel_owner(str(data.get("owner", "")))
+            w = pixel_entry(q)["show"] if q else None
+            if not w or w.get("hidden"):
+                return {"error": "That show has gone."}
+            code, pal, unlocked = w["code"], w["pal"], {tuple(u) for u in w["unlocked"]}
+        seed = random.randrange(10 ** 9)
+        return dict(pixel.run_free(code, pal, unlocked, seed), seed=seed, pal=pal)
+    with lock:
+        p = players.get(data.get("id"))
+        if not p:
+            return {"error": "join"}
+        entry = pixel_entry(p)
+        if path == "/pixel/save":
+            error = pixel.save_drawing(entry["drawings"], data.get("drawing"))
+            if error:
+                return {"error": error}
+            saved = entry["drawings"][0]
+            earned = []
+            if len(saved["frames"]) >= 2:
+                pixel_badge(p, "artist", earned)
+            pixel_save_soon()
+            return {"ok": True, "badges": earned}
+        if path == "/pixel/delete":
+            pixel.delete_drawing(entry["drawings"], data.get("key"))
+            pixel_save_soon()
+            return {"ok": True}
+        if path == "/pixel/pal":
+            key = data.get("key")
+            if key != "pip" and not any(d["key"] == key for d in entry["drawings"]):
+                return {"error": "No such drawing."}
+            entry["pal"] = key
+            pixel_save_soon()
+            return {"ok": True, "state": pixel_state(p)}
+        if path == "/pixel/heart":
+            q = pixel_owner(str(data.get("owner", "")))
+            w = pixel_entry(q)["show"] if q else None
+            if not w or q is p or w.get("hidden"):
+                return {"error": "You can't heart that one."}
+            if p["id"] in w["hearts"]:
+                w["hearts"].remove(p["id"])
+            else:
+                w["hearts"].append(p["id"])
+                entry["given"] += 1
+                if entry["given"] >= 5:
+                    pixel_badge(p, "kind")
+                if len(w["hearts"]) >= 5:
+                    pixel_badge(q, "loved")
+            pixel_save_soon()
+            return {"ok": True, "hearts": len(w["hearts"]), "hearted": p["id"] in w["hearts"]}
+        if path == "/pixel/unpublish":
+            entry["show"] = None
+            save_state()
+            return {"ok": True}
+        pal = pixel_pal(entry)
+        unlocked = pixel_unlocked(entry)
+        code = code_in(data)[:pixel.MAX_CODE + 1]
+        owner = data.get("owner") if path == "/pixel/react" else None
+        if owner:                           # a click on a classmate's show
+            q = pixel_owner(str(owner))
+            w = pixel_entry(q)["show"] if q else None
+            if not w or w.get("hidden"):
+                return {"error": "That show has gone."}
+            code, pal, unlocked = w["code"], w["pal"], {tuple(u) for u in w["unlocked"]}
+    try:
+        seed = int(data.get("seed", 0)) % 10 ** 9
+    except (TypeError, ValueError):
+        seed = 0
+    if path == "/pixel/react":
+        events = data.get("events")
+        return pixel.react(code, pal, unlocked, seed, events if isinstance(events, list) else [],
+                           None if owner else data.get("level"))
+    if path == "/pixel/run":
+        key = str(data.get("level", ""))
+        if key == "free":
+            seed = random.randrange(10 ** 9)
+            out = pixel.run_free(code, pal, unlocked, seed)
+            with lock:
+                entry["free"], entry["active"] = code[:pixel.MAX_CODE], int(time.time())
+                entry["last_error"] = out["error"] or ""
+                pixel_save_soon()
+            return dict(out, seed=seed, rehearsed=[])
+        with lock:
+            allowed = pixel_is_open(entry, key)
+        if not allowed:
+            return {"error": "🔒 That mission isn't open yet."}
+        lv = pixel.LEVEL_BY_KEY[key]
+        out = pixel.run_level(lv, code, pal, unlocked, random.randrange(10 ** 6) if lv.get("seeds") else 0)
+        with lock:
+            rewards = pixel_record(p, key, code[:pixel.MAX_CODE], out)
+            pixel_save_soon()
+            return dict(out, rewards=rewards, state=pixel_state(p))
+    if path == "/pixel/publish":
+        title = str(data.get("title", "")).strip()[:PIXEL_SHOW_TITLE_MAX]
+        if not title:
+            return {"error": "Give your show a name first."}
+        out = pixel.run_free(code, pal, unlocked)
+        if out["error"]:
+            return {"error": "Your show has a problem on it. Fix it first, then try again.\n" + out["error"]}
+        with lock:
+            old = entry["show"]
+            entry["show"] = {"title": title, "code": code[:pixel.MAX_CODE], "pal": dict(pal),
+                             "events": out["events"], "unlocked": sorted(unlocked), "at": int(time.time()),
+                             "hearts": old["hearts"] if old else [], "hidden": False}
+            pixel_feed_add(f"🎟️ {p['name']} put {title} in the Theatre")
+            earned = []
+            pixel_badge(p, "theatre", earned)
+            save_state()
+            return {"ok": True, "state": pixel_state(p), "badges": earned}
+    return {"error": "not found"}
+
+
+# ---------------------------------------------------------------------------
 # Cake Shop (cake.py): customers order cakes and students bake them with
 # Python at /cake. The projector shows the class shop window at /cake/show,
 # and the teacher's overview is /cake/teacher.
@@ -4841,6 +5235,16 @@ PAGES = {
     "/cake/show": ("cake_show.html", "text/html; charset=utf-8"),
     "/cake/render.js": ("cake_render.js", "text/javascript; charset=utf-8"),
     "/cake/page.js": ("cake_page.js", "text/javascript; charset=utf-8"),
+    "/pixel": ("pixel.html", "text/html; charset=utf-8"),
+    "/pixel/teacher": ("pixel_teacher.html", "text/html; charset=utf-8"),
+    "/pixel/show": ("pixel_show.html", "text/html; charset=utf-8"),
+    "/pixel/art.js": ("pixel_art.js", "text/javascript; charset=utf-8"),
+    "/pixel/rig.js": ("pixel_rig.js", "text/javascript; charset=utf-8"),
+    "/pixel/stage.js": ("pixel_stage.js", "text/javascript; charset=utf-8"),
+    "/pixel/gallery.js": ("pixel_gallery.js", "text/javascript; charset=utf-8"),
+    "/pixel/studio.js": ("pixel_studio.js", "text/javascript; charset=utf-8"),
+    "/pixel/life.js": ("pixel_life.js", "text/javascript; charset=utf-8"),
+    "/pixel/page.js": ("pixel_page.js", "text/javascript; charset=utf-8"),
     "/leaderboard": ("leaderboard.html", "text/html; charset=utf-8"),
     "/screen": ("screen.html", "text/html; charset=utf-8"),
     "/admin": ("admin.html", "text/html; charset=utf-8"),
@@ -4962,6 +5366,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path.startswith("/cake/"):
             self.cake_get(path, parse_qs(urlsplit(self.path).query))
+            return
+        if path.startswith("/pixel/"):
+            self._send(200, pixel_get(path, parse_qs(urlsplit(self.path).query)))
             return
         if path == "/cycles/board":
             address = f"http://{get_lan_ip()}:{PORT}/cycles"
@@ -5248,6 +5655,9 @@ class Handler(BaseHTTPRequestHandler):
         if self.path.startswith("/cake/"):
             self.cake_post(self.path, data)
             return
+        if self.path.startswith("/pixel/"):
+            self._send(200, pixel_post(self.path, data))
+            return
         if self.path == "/typing":
             with lock:
                 p = players.get(data.get("id"))
@@ -5522,6 +5932,9 @@ def main():
         f"  Cake Shop:    http://{ip}:{PORT}/cake           (bake cakes for customers)",
         f"  Cake class:   http://localhost:{PORT}/cake/teacher  (who's stuck, the shop window)",
         f"  Cake show:    http://localhost:{PORT}/cake/show     (project the shop window)",
+        f"  Pixel Pals:   http://{ip}:{PORT}/pixel          (draw a pal, then code it)",
+        f"  Pixel class:  http://localhost:{PORT}/pixel/teacher (who's stuck, the Theatre)",
+        f"  Pixel show:   http://localhost:{PORT}/pixel/show    (project the Theatre)",
         f"  Maze library: http://{ip}:{PORT}/classic        (optional practice)",
         f"  Big screen:   http://localhost:{PORT}/screen        (project this)",
         f"  Leaderboard:  http://localhost:{PORT}/leaderboard",

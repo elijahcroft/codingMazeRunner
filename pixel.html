@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pixel Pals</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'><rect width='8' height='8' rx='0' fill='%23ff5fa2'/><rect x='2' y='2' width='1' height='2' fill='%231b1530'/><rect x='5' y='2' width='1' height='2' fill='%231b1530'/><rect x='2' y='5' width='4' height='1' fill='%231b1530'/></svg>">
+<style>
+  /* Graph paper and stickers: thick ink lines and hard shadows, like the art.
+     The panels stay plain white so the colours in the drawing are the loud part. */
+  :root {
+    color-scheme: light;
+    --ink: #1b1530;
+    --ink-soft: #57506e;      /* small print: 7:1 on white */
+    --paper: #ffffff;
+    --desk: #efeafb;
+    --graph: #dfd7f5;
+    --plum: #6a3de8;
+    --plum-soft: #e7defd;
+    --pop: #ff5fa2;
+    --pop-deep: #c9286f;
+    --mint: #2ec4a6;
+    --sun: #ffd23f;
+    --mono: ui-monospace, "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+    --ui: ui-rounded, "Nunito", "Varela Round", system-ui, "Segoe UI", Roboto, sans-serif;
+    --hard: 3px 3px 0 var(--ink);
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin: 0; color: var(--ink); font: 700 16px/1.35 var(--ui);
+    background: var(--desk) linear-gradient(var(--graph) 1px, transparent 1px) 0 0 / 24px 24px; }
+  body::before { content: ""; position: fixed; inset: 0; z-index: -1;
+    background: linear-gradient(90deg, var(--graph) 1px, transparent 1px) 0 0 / 24px 24px; }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+  :focus-visible { outline: 3px solid var(--plum); outline-offset: 2px; }
+
+  .btn { border: 2px solid var(--ink); border-radius: 8px; background: var(--paper); padding: 7px 13px;
+    font-weight: 800; box-shadow: var(--hard); white-space: nowrap; }
+  .btn:hover:not(:disabled) { background: var(--plum-soft); }
+  .btn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+  .btn:disabled { color: #8b869b; border-color: #a9a4b8; box-shadow: none; background: #f6f4fa; }
+  .btn.main { background: var(--pop); }
+  .btn.main:hover:not(:disabled) { background: #ff7fb5; }
+
+  .panel { background: var(--paper); border: 2px solid var(--ink); border-radius: 10px; box-shadow: var(--hard); padding: 8px; }
+  .label { margin: 0 0 6px; font-size: 15px; font-weight: 800; color: var(--ink); }
+
+  /* ---- Joining -------------------------------------------------------------- */
+  .join { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; }
+  .join-card { width: min(520px, 100%); text-align: center; padding: 28px 28px 30px; }
+  .join canvas { width: 144px; height: 144px; image-rendering: pixelated; }
+  .join h1 { margin: 6px 0 4px; font-size: clamp(42px, 8vw, 60px); line-height: 1; font-weight: 900; letter-spacing: -.02em; }
+  .join h1 span { color: var(--pop-deep); }
+  .join p { margin: 0 0 20px; font-size: 18px; color: var(--ink-soft); }
+  .join form { display: flex; gap: 10px; }
+  .join input { flex: 1; min-width: 0; padding: 11px 14px; font-size: 18px; border: 2px solid var(--ink); border-radius: 8px; }
+
+  /* ---- The app --------------------------------------------------------------- */
+  .app { height: 100vh; min-height: 590px; min-width: 980px; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  @media (max-width: 1120px) { .brand { display: none; } .bar { gap: 5px; padding: 8px 9px; } .bar .btn { padding: 6px 7px; font-size: 15px; } .tabs button { padding: 4px 5px; font-size: 15px; } #title { width: 96px; padding: 6px 7px; font-size: 15px; } #saved { display: none; } }
+  .view { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; }
+  .bar { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--paper); border-bottom: 2px solid var(--ink); }
+  .tabs { display: flex; gap: 4px; padding: 3px; background: var(--plum-soft); border: 2px solid var(--ink); border-radius: 10px; }
+  .tabs button { border: 0; border-radius: 6px; background: none; padding: 4px 11px; font-weight: 900; white-space: nowrap; }
+  .tabs button.on { background: var(--sun); box-shadow: 0 0 0 2px var(--ink); }
+  #starCount { font-weight: 900; white-space: nowrap; }
+  #mute { padding: 5px 8px; }
+  .brand { font-size: 21px; font-weight: 900; letter-spacing: -.01em; white-space: nowrap; }
+  .brand span { color: var(--pop-deep); }
+  #title { width: 170px; max-width: 100%; padding: 6px 10px; border: 2px dashed #8d84a8; border-radius: 8px; font-weight: 800; background: #fbfaff; }
+  #title:hover { border-color: var(--ink); }
+  .bar .gap { flex: 1; }
+  #saved { font-size: 13px; color: var(--ink-soft); white-space: nowrap; text-align: right; }
+  #saved.bad { color: #b3123c; font-weight: 800; }
+
+  .desk { display: grid; grid-template-columns: 198px minmax(0, 1fr) 256px; gap: 12px; padding: 10px 12px; min-height: 0; }
+  .col { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+
+  /* Tools */
+  .tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .tool { display: grid; justify-items: center; gap: 1px; padding: 4px 0 2px; border: 2px solid transparent; border-radius: 8px; background: #f6f3fd; font-size: 14px; line-height: 1.1; font-weight: 800; }
+  .tool canvas { width: 24px; height: 24px; image-rendering: pixelated; }
+  .tool:hover { border-color: var(--ink); }
+  .tool[aria-pressed="true"] { background: var(--sun); border-color: var(--ink); }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 30px; white-space: nowrap; }
+  .sizes { display: flex; gap: 4px; }
+  .sizes button { width: 30px; height: 28px; display: grid; place-items: center; border: 2px solid var(--ink); border-radius: 6px; background: var(--paper); padding: 0; }
+  .sizes i { display: block; background: var(--ink); }
+  .sizes button[aria-pressed="true"] { background: var(--sun); }
+  .sizes button:disabled { opacity: .35; }
+  .switch { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 8px; padding: 2px 0; border: 0; background: none; font-weight: 800; font-size: 15px; text-align: left; }
+  .switch::after { content: "Off"; flex: none; width: 42px; padding: 1px 0; text-align: center; font-size: 12px; border: 2px solid var(--ink); border-radius: 6px; background: var(--paper); }
+  .switch[aria-pressed="true"]::after { content: "On"; background: var(--mint); }
+  .switch:disabled { opacity: .4; }
+
+  /* The canvas */
+  .stage { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 8px; min-height: 0; min-width: 0; }
+  #tip { margin: 0; padding: 6px 12px; background: var(--paper); border: 2px solid var(--ink); border-radius: 8px; font-size: 16px; height: 37px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .board-row { display: flex; gap: 8px; min-height: 0; min-width: 0; }
+  .stamp-bar { flex: none; display: grid; grid-template-columns: 36px 36px; grid-auto-rows: 36px; gap: 3px; align-content: start; }
+  .stamp-bar button { width: 36px; height: 36px; display: grid; place-items: center; padding: 0; border: 2px solid var(--ink); border-radius: 6px; background: var(--paper); }
+  .stamp-bar button:hover { background: var(--plum-soft); }
+  .stamp-bar button[aria-pressed="true"] { background: var(--sun); }
+  .stamp-bar canvas { width: 26px; height: 26px; image-rendering: pixelated; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin: 2px 0 4px; }
+  .pair.three { grid-template-columns: 1fr 1fr 1fr; }
+  .pair button { padding: 3px 0; font-size: 14px; font-weight: 800; border: 2px solid var(--ink); border-radius: 6px; background: var(--paper); }
+  .pair button:hover { background: var(--plum-soft); }
+  .pair button[aria-pressed="true"] { background: var(--sun); }
+  .pair button:disabled { opacity: .4; }
+  #options { display: flex; flex-direction: column; }
+  .zoom { position: absolute; right: 8px; bottom: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .zoom button { width: 34px; height: 34px; padding: 0; font-size: 22px; line-height: 1; font-weight: 900; border: 2px solid var(--ink); border-radius: 8px; background: var(--paper); box-shadow: 2px 2px 0 var(--ink); }
+  .zoom button:hover:not(:disabled) { background: var(--plum-soft); }
+  .zoom button:disabled { opacity: .35; }
+  .popover { position: fixed; z-index: 9; width: 262px; padding: 10px; }
+  #moreMenu { left: 218px; top: 66px; }
+  #frameMenu { right: 12px; bottom: 84px; }
+  .pop-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 17px; font-weight: 900; }
+  .pop-head button { width: 30px; height: 30px; padding: 0; border: 2px solid var(--ink); border-radius: 6px; background: var(--paper); font-weight: 900; }
+  .pop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .pop-grid .btn { padding: 6px 4px; font-size: 15px; box-shadow: 2px 2px 0 var(--ink); }
+  .pop-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin: 8px 0; font-size: 15px; font-weight: 800; }
+  .pop-row div { display: flex; gap: 4px; }
+  .pop-row button { width: 34px; height: 32px; padding: 0; line-height: 1; border: 2px solid var(--ink); border-radius: 6px; background: var(--paper); font-weight: 900; }
+  .pop-row button:hover:not(:disabled) { background: var(--plum-soft); }
+  .pop-row select { max-width: 130px; padding: 3px 4px; font: inherit; border: 2px solid var(--ink); border-radius: 6px; background: var(--paper); }
+  #tip b { color: var(--pop-deep); font-weight: 900; }
+  #boardBox { position: relative; display: grid; place-items: center; min-height: 0; min-width: 0; overflow: hidden; padding: 0 5px 5px 0; }
+  #board { display: block; border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); cursor: crosshair; touch-action: none; background: #fff; }
+  #board.pen-down { cursor: cell; }
+
+  /* Colours */
+  .now { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  #nowColour { flex: 1; max-width: 70px; height: 26px; border: 2px solid var(--ink); border-radius: 6px; }
+  .shades { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; margin-top: 6px; }
+  .shades button { height: 24px; padding: 0; border: 1.5px solid rgba(27, 21, 48, .35); border-radius: 4px; }
+  .shades button:hover { border-color: var(--ink); }
+  .shades button[aria-pressed="true"] { border: 2px solid var(--ink); }
+  .swatches { display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; }
+  .swatches button { height: 24px; border: 1.5px solid rgba(27, 21, 48, .35); border-radius: 4px; padding: 0; }
+  .swatches button:hover { border-color: var(--ink); }
+  .swatches button[aria-pressed="true"] { border: 2px solid var(--ink); box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--ink); position: relative; z-index: 1; }
+  #mine { margin-top: 3px; max-height: 24px; overflow: hidden; }
+  .mix { display: flex; align-items: center; gap: 5px; font-size: 15px; font-weight: 800; cursor: pointer; }
+  .mix input { width: 44px; height: 26px; padding: 0; border: 2px solid var(--ink); border-radius: 6px; background: #fff; cursor: pointer; }
+
+  /* Preview */
+  .play { display: grid; grid-template-columns: 92px 1fr; gap: 8px; align-items: start; }
+  #preview { width: 92px; height: 92px; border: 2px solid var(--ink); border-radius: 6px; image-rendering: pixelated; background: linear-gradient(#e9f4ff 72%, #cfe8c4 72%); cursor: pointer; }
+  .speed { display: grid; gap: 4px; align-content: space-between; height: 92px; }
+  .speed button { padding: 2px 0; font-size: 14px; font-weight: 800; border: 2px solid var(--ink); border-radius: 6px; background: var(--paper); }
+  .speed button[aria-pressed="true"] { background: var(--sun); }
+
+
+  /* Frames */
+  .reel { display: flex; align-items: center; gap: 12px; padding: 5px 12px; background: var(--paper); border-top: 2px solid var(--ink); min-width: 0; }
+  .reel-note { flex: none; width: 150px; margin: 0; font-size: 14px; line-height: 1.2; color: var(--ink-soft); }
+  .reel-note b { display: block; color: var(--ink); font-size: 16px; }
+  #frames { display: flex; gap: 6px; flex: 1; min-width: 0; overflow-x: auto; padding: 3px; }
+  .frame { position: relative; flex: none; padding: 0; width: 60px; height: 60px; border: 2px solid var(--ink); border-radius: 6px; background: #fff; }
+  .frame canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; border-radius: 4px; }
+  .frame span { position: absolute; left: 0; bottom: 0; padding: 0 5px; font-size: 12px; background: var(--ink); color: #fff; border-radius: 0 5px 0 3px; }
+  .frame[aria-pressed="true"] { outline: 3px solid var(--pop); outline-offset: 1px; }
+  .reel-buttons { flex: none; display: flex; gap: 6px; }
+  .reel-buttons .btn { padding: 6px 10px; font-size: 15px; box-shadow: 2px 2px 0 var(--ink); }
+
+  .frame b { position: absolute; left: 0; right: 0; top: 0; padding: 0 2px; overflow: hidden; font-size: 10px; line-height: 12px; text-overflow: ellipsis; white-space: nowrap; background: var(--sun); border-radius: 3px 3px 0 0; }
+  .namer { display: flex; align-items: center; gap: 6px; flex: none; font-size: 14px; font-weight: 800; }
+  .namer select { max-width: 150px; padding: 3px 4px; font: inherit; border: 2px solid var(--ink); border-radius: 6px; background: var(--paper); }
+
+  /* My drawings */
+  .shelf { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; background: rgba(27, 21, 48, .55); }
+  .shelf-card { width: min(800px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 18px 20px 20px; }
+  .shelf-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .shelf h2 { margin: 0; font-size: 24px; font-weight: 900; }
+  .shelf h3 { margin: 16px 0 8px; font-size: 16px; font-weight: 900; }
+  .picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+  .ways { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+  .ways button { padding: 4px 12px; border: 2px solid var(--ink); border-radius: 8px; background: var(--paper); font-weight: 800; }
+  .ways button:hover { background: var(--plum-soft); }
+  .ways button[aria-pressed="true"] { background: var(--sun); }
+  .gallery { display: grid; grid-template-columns: repeat(6, 1fr); gap: 7px; }
+  .gallery button { display: grid; justify-items: center; gap: 1px; padding: 5px 2px 3px; border: 2px solid var(--ink); border-radius: 8px; background: #fff; font-size: 14px; font-weight: 800; }
+  .gallery button:hover:not(:disabled) { background: var(--plum-soft); }
+  .gallery button:disabled { opacity: .45; }
+  .gallery canvas { width: 64px; height: 64px; image-rendering: pixelated; }
+  .guide-key { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; }
+  .guide-key button { flex: 1 0 28px; max-width: 42px; height: 28px; padding: 0; border: 2px solid var(--ink); border-radius: 5px; font-size: 15px; font-weight: 900; line-height: 1; }
+  .guide-key button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--pop-deep); }
+  .guide-key button.done { opacity: .5; }
+  .pick { display: grid; justify-items: center; gap: 4px; padding: 8px 6px; border: 2px solid var(--ink); border-radius: 8px; background: #fff; font-size: 14px; font-weight: 800; }
+  .pick:hover:not(:disabled) { background: var(--plum-soft); }
+  .pick:disabled { opacity: .45; }
+  .pick canvas { width: 64px; height: 64px; image-rendering: pixelated; }
+  .pick small { font-size: 12px; font-weight: 700; color: var(--ink-soft); }
+  .saved-art { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 10px; }
+  .saved-card { border: 2px solid var(--ink); border-radius: 8px; overflow: hidden; background: #fff; }
+  .saved-card.here { outline: 3px solid var(--pop); outline-offset: 1px; }
+  .saved-card > button:first-child { display: grid; justify-items: center; gap: 4px; width: 100%; padding: 8px 6px 6px; border: 0; background: none; font-size: 14px; font-weight: 800; }
+  .saved-card > button:first-child:hover { background: var(--plum-soft); }
+  .saved-card canvas { width: 96px; height: 96px; image-rendering: pixelated; border: 1px solid var(--graph); }
+  .saved-card span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gone { width: 100%; padding: 3px 0; border: 0; border-top: 2px solid var(--ink); background: #f6f3fd; font-size: 13px; font-weight: 800; color: var(--ink-soft); }
+  .gone:hover { background: #ffe1ea; color: #8f0f30; }
+  .gone.sure { background: #e8294f; color: #fff; }
+  .part-chips { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; margin-top: 6px; text-align: center; font-size: 17px; line-height: 24px; }
+  .part-chips span { border-radius: 6px; background: #eeeaf6; filter: grayscale(1); opacity: .45; }
+  .part-chips span.on { background: var(--sun); filter: none; opacity: 1; box-shadow: 0 0 0 2px var(--ink); }
+  /* ---- Life ------------------------------------------------------------------- */
+  .life-view { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 12px; padding: 10px 12px; min-height: 0; }
+  .moves { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; flex: none; }
+  .moves button { display: grid; justify-items: center; padding: 2px 0 3px; border: 2px solid var(--ink); border-radius: 8px; background: var(--paper); font-size: 14px; font-weight: 800; box-shadow: 2px 2px 0 var(--ink); }
+  .moves button span { font-size: 20px; line-height: 1.15; }
+  .moves button:hover { background: var(--plum-soft); }
+  .moves button[aria-pressed="true"] { background: var(--sun); }
+  .life-say { display: flex; gap: 6px; flex: none; }
+  .life-say input { flex: 1; min-width: 0; padding: 6px 10px; border: 2px solid var(--ink); border-radius: 8px; }
+  .bones { display: flex; flex-direction: column; gap: 8px; min-height: 0; min-width: 0; }
+  .bones h2 { margin: 0; font-size: 19px; font-weight: 900; }
+  #boneNote { margin: 3px 0 6px; font-size: 15px; line-height: 1.25; min-height: 38px; }
+  .bone-row { display: grid; grid-template-columns: minmax(0, 1fr) 118px; gap: 8px; align-items: start; }
+  #boneBox { min-width: 0; }
+  #boneBoard { display: block; width: 100%; aspect-ratio: 1; max-height: 290px; border: 2px solid var(--ink); cursor: crosshair; touch-action: none; image-rendering: pixelated; background: #fff; }
+  .bone-keys { display: grid; gap: 3px; }
+  .bone-keys button { display: flex; align-items: center; gap: 5px; padding: 1px 5px; border: 2px solid var(--ink); border-radius: 6px; background: var(--paper); font-size: 14px; font-weight: 800; }
+  .bone-keys button:hover { background: var(--plum-soft); }
+  .bone-keys button[aria-pressed="true"] { background: var(--sun); }
+  .bone-keys i { flex: none; width: 13px; height: 13px; border: 1.5px solid var(--ink); border-radius: 3px; }
+  .keep { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .keep .btn { padding: 4px 9px; font-size: 15px; box-shadow: 2px 2px 0 var(--ink); }
+  /* ---- The Stage -------------------------------------------------------------- */
+  .stage-view { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr); gap: 12px; padding: 10px 12px; min-height: 0; }
+  .side { display: flex; flex-direction: column; gap: 8px; min-height: 0; min-width: 0; }
+  .mission { padding: 8px 10px; }
+  .mission-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .mission h2 { margin: 0; font-size: 18px; font-weight: 900; line-height: 1.15; }
+  .mission small { color: var(--ink-soft); font-size: 12px; font-weight: 800; }
+  #pipSays { margin: 4px 0 0; font-size: 14px; line-height: 1.3; }
+  #job { margin: 5px 0 0; padding: 4px 8px; background: #fff6cf; border: 2px solid var(--ink); border-radius: 6px; font-size: 14px; font-weight: 800; }
+  #goals { list-style: none; margin: 5px 0 0; padding: 0; display: grid; gap: 1px; font-size: 13px; }
+  #goals li { display: flex; gap: 5px; color: var(--ink-soft); }
+  #goals li i { font-style: normal; color: #a9a4b8; font-size: 15px; line-height: 17px; }
+  #goals li.got { color: var(--ink); }
+  #goals li.got i { color: #e0a100; }
+  code { font-family: var(--mono); background: var(--plum-soft); padding: 0 4px; border-radius: 4px; font-size: .94em; font-weight: 700; white-space: nowrap; }
+
+  .editor { position: relative; flex: 1 1 0; min-height: 90px; display: grid; grid-template-columns: 36px minmax(0, 1fr); background: #1f1933; border: 2px solid var(--ink); border-radius: 10px; overflow: hidden; }
+  #lines { margin: 0; padding: 8px 6px 8px 0; overflow: hidden; text-align: right; color: #8f88ab; background: #17122a; font: 16px/22px var(--mono); user-select: none; white-space: pre; }
+  #lines .run { color: var(--sun); font-weight: 900; }
+  #lines .err { color: #ff8fa3; font-weight: 900; }
+  .code-box { position: relative; min-width: 0; min-height: 0; }
+  #paint, #code { position: absolute; inset: 0; margin: 0; padding: 8px 10px; border: 0; font: 16px/22px var(--mono); white-space: pre; overflow: auto; tab-size: 4; }
+  #paint { color: #f4efff; pointer-events: none; }
+  #code { width: 100%; height: 100%; resize: none; background: none; color: transparent; caret-color: #fff; outline: none; }
+  #code::placeholder { color: #8f88ab; }
+  #code::selection { background: rgba(255, 255, 255, .25); }
+  #band { position: absolute; left: 0; right: 0; height: 22px; pointer-events: none; }
+  #band.run { background: rgba(255, 210, 63, .22); }
+  #band.err { background: rgba(255, 90, 120, .28); }
+  .hl-k { color: #ff9ecb; font-weight: 700; } .hl-c { color: #8ee06b; } .hl-s { color: #ffd98a; } .hl-n { color: #9fd6ff; } .hl-h { color: #8f88ab; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px 4px; max-height: 84px; overflow: auto; flex: none; padding-top: 7px; }
+  .chip { position: relative; padding: 2px 7px; border: 2px solid var(--ink); border-radius: 6px; background: var(--paper); font: 700 13px/18px var(--mono); }
+  .chip:hover { background: var(--plum-soft); }
+  .chip.py { background: #e6fbf6; }
+  .chip.fresh::after { content: "new"; position: absolute; top: -8px; right: -4px; padding: 0 3px; font: 800 9px/11px var(--ui); color: #fff; background: var(--pop-deep); border-radius: 3px; }
+  .do-row { display: flex; align-items: center; gap: 8px; flex: none; }
+  #runButton { font-size: 17px; padding: 6px 16px; }
+  #skip { display: none; }
+  .playing #skip { display: inline-block; }
+
+  .screen { position: relative; flex: none; border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); background: #000; cursor: pointer; aspect-ratio: 16 / 9; }
+  .screen canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+  .screen-wrap { flex: 1 1 0; min-height: 0; min-width: 0; display: flex; justify-content: center; align-items: center; overflow: hidden; padding: 0 5px 5px 0; }
+  .bubble { position: absolute; transform: translate(-50%, -100%); max-width: 46%; padding: 4px 9px; background: #fff; color: var(--ink); border: 2px solid var(--ink); border-radius: 8px; font-size: clamp(13px, 1.7vw, 18px); font-weight: 800; line-height: 1.2; text-align: center; pointer-events: none; overflow-wrap: anywhere; }
+  .bubble::after { content: ""; position: absolute; left: 50%; bottom: -8px; width: 10px; height: 10px; margin-left: -6px; background: #fff; border-right: 2px solid var(--ink); border-bottom: 2px solid var(--ink); transform: rotate(45deg); }
+  .bubble.friend { background: #fff6cf; }
+  .bubble.friend::after { background: #fff6cf; }
+  #caption { margin: 0; flex: none; min-height: 30px; padding: 4px 10px; background: var(--ink); color: #fff; border-radius: 8px; font-size: 14px; font-weight: 700; }
+  #caption b { color: var(--sun); }
+  #verdict { flex: none; height: 92px; overflow: auto; padding: 6px 10px; font-size: 15px; }
+  #verdict.bad { background: #ffe9ed; }
+  #verdict.good { background: #e5fbf0; }
+  #verdict p { margin: 0; }
+  #verdict p + p { margin-top: 3px; }
+  #verdict .next { margin-top: 5px; }
+  .live { display: flex; align-items: center; gap: 6px; flex: none; flex-wrap: wrap; font-size: 14px; font-weight: 800; }
+  .live .btn { padding: 3px 10px; font-size: 14px; }
+  .toast { position: fixed; right: 16px; top: 66px; z-index: 30; max-width: 480px; padding: 8px 16px; background: var(--sun); border: 2px solid var(--ink); border-radius: 10px; box-shadow: var(--hard); font-weight: 900; text-align: center; pointer-events: none; }
+  body:has(#drawView:not([hidden])) .toast { right: auto; left: 222px; top: 64px; }
+
+  /* Missions, trophies, word book */
+  .sheet { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; background: rgba(27, 21, 48, .55); }
+  .sheet-card { width: min(860px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 16px 18px 18px; }
+  .sheet-card h3 { margin: 12px 0 6px; font-size: 16px; font-weight: 900; }
+  .lvls { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+  .lvl { padding: 5px 8px; text-align: left; border: 2px solid var(--ink); border-radius: 8px; background: var(--paper); font-size: 14px; font-weight: 800; line-height: 1.15; }
+  .lvl:hover:not(:disabled) { background: var(--plum-soft); }
+  .lvl:disabled { opacity: .5; }
+  .lvl.here { background: var(--sun); }
+  .lvl span { display: block; color: #e0a100; font-size: 13px; }
+  .lvl span.none { color: #a9a4b8; }
+  .trophies { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 6px; }
+  .trophy { display: flex; gap: 8px; align-items: center; padding: 4px 8px; border: 2px solid #c9c4d6; border-radius: 8px; font-size: 13px; color: var(--ink-soft); }
+  .trophy.got { border-color: var(--ink); background: #fff6cf; color: var(--ink); }
+  .trophy:not(.got) i { filter: grayscale(1); opacity: .5; }
+  .trophy i { font-style: normal; font-size: 21px; }
+  .trophy b { display: block; }
+  .book { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 3px 16px; margin: 0; }
+  .book div { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; font-size: 14px; }
+  #kitWords p { margin: 2px 0; }
+
+  /* The Theatre */
+  .park { display: block; width: 100%; aspect-ratio: 960 / 210; margin-bottom: 10px; border: 2px solid var(--ink); border-radius: 10px; box-shadow: var(--hard); image-rendering: pixelated; cursor: pointer; }
+  .theatre { padding: 12px; overflow: auto; min-height: 0; }
+  .theatre-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .theatre-head h2 { margin: 0; font-size: 22px; font-weight: 900; }
+  .show-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+  .show-card { padding: 0; overflow: hidden; border: 2px solid var(--ink); border-radius: 10px; box-shadow: var(--hard); background: #fff; text-align: left; }
+  .show-card button { width: 100%; padding: 8px; border: 0; background: none; text-align: left; }
+  .show-card button:hover { background: var(--plum-soft); }
+  .show-card canvas { display: block; width: 100%; aspect-ratio: 1; image-rendering: pixelated; background: #f6f3fd; }
+  .show-card strong { display: block; margin-top: 6px; font-size: 15px; font-weight: 900; line-height: 1.15; overflow-wrap: anywhere; }
+  .show-card small { color: var(--ink-soft); font-size: 13px; font-weight: 700; }
+  .empty { padding: 26px; text-align: center; color: var(--ink-soft); font-size: 17px; }
+  .watch-card { width: min(760px, 100%); padding: 12px; }
+  .watch-card h2 { margin: 0; font-size: 20px; font-weight: 900; }
+  .watch-card .screen { margin: 8px 0 10px; width: 100%; }
+  .watch-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  
+  /* Art as code */
+  .code-art { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start; margin-top: 10px; }
+  #artCode { display: block; padding: 8px 10px; border: 2px solid var(--ink); border-radius: 8px; font: 700 15px/18px var(--mono); letter-spacing: .08em; white-space: pre; resize: none; background: #1f1933; color: #f4efff; }
+  #artPreview { width: 128px; height: 128px; border: 2px solid var(--ink); border-radius: 6px; image-rendering: pixelated; }
+  .key { display: flex; flex-wrap: wrap; gap: 3px 10px; margin-top: 8px; font: 700 14px var(--mono); }
+  .key span { display: flex; align-items: center; gap: 4px; }
+  .key i { width: 14px; height: 14px; border: 1px solid var(--ink); }
+
+  /* Bead pattern */
+  #beadGrid { display: block; width: min(420px, 100%); border: 2px solid var(--ink); image-rendering: pixelated; }
+  .bead-layout { display: grid; grid-template-columns: minmax(0, 420px) 1fr; gap: 14px; margin-top: 10px; align-items: start; }
+  #beadList { display: grid; grid-template-columns: 1fr; gap: 3px; font-size: 15px; font-weight: 800; }
+  #beadList span { display: flex; align-items: center; gap: 6px; }
+  #beadList i { width: 18px; height: 18px; border: 1.5px solid var(--ink); border-radius: 50%; }
+  @media print {
+    body { background: #fff; }
+    body::before { display: none; }
+    body > *:not(#beads) { display: none !important; }
+    #beads { position: static; display: block; background: none; padding: 0; }
+    #beads .sheet-card { box-shadow: none; border: 0; max-height: none; }
+    #beads .btn { display: none; }
+  }
+
+  #shelfNote { margin: 8px 0 0; font-size: 14px; color: var(--ink-soft); }
+</style>
+</head>
+<body>
+
+<section id="join" class="join" hidden>
+  <div class="panel join-card">
+    <canvas id="joinArt" width="16" height="16" aria-hidden="true"></canvas>
+    <h1>Pixel <span>Pals</span></h1>
+    <p>Draw your own character, then bring it to life with code.</p>
+    <form id="joinForm">
+      <input id="name" maxlength="20" placeholder="Type your name" aria-label="Your name" autocomplete="off">
+      <button class="btn main" id="joinButton">Start drawing</button>
+    </form>
+  </div>
+</section>
+
+<div id="app" class="app" hidden>
+  <header class="bar">
+    <div class="brand">Pixel <span>Pals</span></div>
+    <nav class="tabs" aria-label="Pixel Pals">
+      <button data-view="draw" class="on">🎨 Draw</button>
+      <button data-view="life">💓 Life</button>
+      <button data-view="stage">🎭 Stage</button>
+      <button data-view="theatre">🎟️ Theatre</button>
+    </nav>
+    <span class="draw-only"><input id="title" maxlength="24" placeholder="Name your drawing" aria-label="Name your drawing" autocomplete="off"></span>
+    <button class="btn draw-only" id="undo">↶ Undo</button>
+    <button class="btn draw-only" id="redo">↷ Redo</button>
+    <span class="gap"></span>
+    <span id="saved" class="draw-only" role="status"></span>
+    <button class="btn draw-only" id="openShelf">My drawings</button>
+    <button class="btn main draw-only" id="download">Download</button>
+    <label class="namer stage-only" id="palPick" hidden>My pal <select id="palSelect"></select></label>
+    <span id="starCount" class="stage-only" hidden></span>
+    <button class="btn stage-only" id="openMissions" hidden>Missions</button>
+    <button class="btn" id="mute" aria-label="Sound on or off">🔊</button>
+  </header>
+
+  <div id="drawView" class="view">
+  <main class="desk">
+    <div class="col">
+      <div class="panel"><div class="tools" id="tools"></div></div>
+      <div class="panel" id="options">
+        <div class="row" id="optSize">
+          <span class="label" style="margin:0">Pen size</span>
+          <div class="sizes" id="sizes"></div>
+        </div>
+        <button class="switch" id="solid" aria-pressed="false" hidden>Filled in</button>
+        <div class="pair" id="optShade" hidden>
+          <button data-shade="-1">Darker</button>
+          <button data-shade="1">Lighter</button>
+        </div>
+        <div class="pair" id="optAll" hidden><button id="selectAll" style="grid-column:1/-1">Pick up everything</button></div>
+        <div class="pair three" id="optSelect" hidden>
+          <button id="selCopy">Copy</button>
+          <button id="selFlip">Flip</button>
+          <button id="selDelete">Delete</button>
+        </div>
+        <button class="switch" id="easy" aria-pressed="false" title="Click once to start drawing and click again to stop, with nothing to hold down">Easy pen</button>
+        <button class="switch" id="mirror" aria-pressed="false" title="Whatever you draw on one side appears on the other side too">Mirror</button>
+        <button class="switch" id="grid" aria-pressed="true">Grid lines</button>
+      </div>
+    </div>
+
+    <section class="stage">
+      <p id="tip" aria-live="polite"></p>
+      <div class="board-row">
+        <div id="stampBar" class="stamp-bar" hidden></div>
+        <div id="boardBox" style="flex:1">
+          <canvas id="board" aria-label="Your drawing"></canvas>
+          <div class="zoom">
+            <button id="zoomIn" aria-label="Zoom in" title="Zoom in">+</button>
+            <button id="zoomOut" aria-label="Zoom out" title="Zoom out">−</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="col">
+      <div class="panel">
+        <div class="now"><p class="label" style="margin:0">Colours</p><div id="nowColour"></div>
+          <label class="mix" title="Mix your own colour"><input type="color" id="mix" value="#ff5fa2" aria-label="Mix your own colour">Mix</label></div>
+        <div class="guide-key" id="guideKey" hidden></div>
+        <div class="swatches" id="swatches" style="margin-top:6px"></div>
+        <div class="swatches" id="mine"></div>
+        <div class="shades" id="shades" aria-label="Darker and lighter"></div>
+      </div>
+      <div class="panel" id="playPanel">
+        <div class="play">
+          <canvas id="preview" aria-label="Your pal"></canvas>
+          <div class="speed" id="speed"></div>
+          <div class="speed" id="quick" hidden>
+            <button data-quick="wave">👋 Wave</button>
+            <button data-quick="dance">💃 Dance</button>
+            <button data-quick="cheer">🎉 Cheer</button>
+          </div>
+        </div>
+        <div class="part-chips" id="partChips" aria-hidden="true"></div>
+        <button class="btn main" id="toLife" style="width:100%;margin-top:6px;padding:4px">✨ Bring to life</button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="reel">
+    <p class="reel-note"><b>Frames</b><span id="reelNote"></span></p>
+    <div id="frames"></div>
+    <div class="reel-buttons">
+      <button class="btn main" id="copyFrame">+ Copy frame</button>
+      <button class="btn" id="newFrame">+ Blank</button>
+      <button class="btn" id="showLast" title="See the last frame faintly behind this one">Ghost: Off</button>
+      <button class="btn" id="deleteFrame">Delete</button>
+      <button class="btn" id="frameMore" aria-label="More for this frame">⋯</button>
+    </div>
+  </footer>
+  </div>
+
+  <div id="moreMenu" class="panel popover" hidden>
+    <div class="pop-head">More tools <button id="closeMore" aria-label="Close">✕</button></div>
+    <div class="pop-grid">
+      <button class="btn" id="flip">Flip it</button>
+      <button class="btn" id="spin">Turn it</button>
+      <button class="btn" id="outline" title="Puts a line of your colour all the way around your drawing">Add outline</button>
+      <button class="btn" id="clear">Clear all</button>
+    </div>
+    <div class="pop-row"><span>Slide it</span><div>
+      <button data-dx="-1" data-dy="0" aria-label="Slide left">←</button>
+      <button data-dx="0" data-dy="-1" aria-label="Slide up">↑</button>
+      <button data-dx="0" data-dy="1" aria-label="Slide down">↓</button>
+      <button data-dx="1" data-dy="0" aria-label="Slide right">→</button>
+    </div></div>
+    <div class="pop-grid">
+      <button class="btn" id="seeCode">See the code</button>
+      <button class="btn" id="seeBeads">Bead pattern</button>
+    </div>
+  </div>
+
+  <div id="frameMenu" class="panel popover" hidden>
+    <div class="pop-head">This frame <button id="closeFrameMenu" aria-label="Close">✕</button></div>
+    <div class="pop-row"><span>Move it</span><div>
+      <button id="frameLeft" aria-label="Move this frame left">←</button>
+      <button id="frameRight" aria-label="Move this frame right">→</button>
+    </div></div>
+    <div class="pop-row"><span>Name it</span><select id="frameName"></select></div>
+  </div>
+
+  <div id="lifeView" class="life-view" hidden>
+    <section class="side">
+      <div class="screen-wrap"><div class="screen" id="lifeHost"><canvas id="lifeCanvas" aria-label="Your pal, alive"></canvas></div></div>
+      <div class="moves" id="moves"></div>
+      <form class="life-say" id="lifeSay">
+        <input id="lifeWords" maxlength="60" placeholder="Type words for your pal to say" aria-label="Words for your pal to say" autocomplete="off">
+        <button class="btn main">Say it</button>
+      </form>
+    </section>
+    <section class="bones">
+      <div class="panel">
+        <h2>Your pal's parts</h2>
+        <p id="boneNote"></p>
+        <div class="bone-row">
+          <div id="boneBox"><canvas id="boneBoard" aria-label="Your pal, with its parts in colours"></canvas></div>
+          <div class="bone-keys" id="boneKeys"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="keep">
+          <button class="btn" id="bakeMove">Turn into frames</button>
+          <button class="btn" id="gifMove">Download a GIF</button>
+          <button class="btn" id="bonesAgain">Guess again</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="stageView" class="stage-view" hidden>
+    <section class="side">
+      <div class="panel mission">
+        <div class="mission-top">
+          <h2 id="levelName"></h2>
+          <small id="levelWhere"></small>
+        </div>
+        <p id="pipSays"></p>
+        <p id="job"></p>
+        <ul id="goals"></ul>
+      </div>
+      <div class="editor">
+        <pre id="lines" aria-hidden="true"></pre>
+        <div class="code-box">
+          <div id="band" hidden></div>
+          <pre id="paint" aria-hidden="true"></pre>
+          <textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off" aria-label="Your code" placeholder="Type your code here"></textarea>
+        </div>
+      </div>
+      <div class="chips" id="chips"></div>
+      <div class="do-row" id="doRow">
+        <button class="btn main" id="runButton">▶ Show time!</button>
+        <button class="btn" id="skip">Skip ⏩</button>
+        <button class="btn" id="hint">Help me</button>
+        <button class="btn" id="openBook">All words</button>
+      </div>
+    </section>
+    <section class="side">
+      <div class="screen-wrap"><div class="screen" id="stageHost"><canvas id="stageCanvas" aria-label="The stage"></canvas></div></div>
+      <p id="caption">Press Show time! to see your code run.</p>
+      <div class="live" id="liveBar" hidden></div>
+      <div class="panel" id="verdict"></div>
+    </section>
+  </div>
+
+  <div id="theatreView" class="theatre" hidden>
+    <canvas id="park" class="park" width="960" height="210" aria-label="The class park: everyone's pals together" hidden></canvas>
+    <div class="theatre-head">
+      <h2>The Class Theatre</h2>
+      <span id="myShowNote"></span>
+    </div>
+    <div class="show-grid" id="showGrid"></div>
+  </div>
+</div>
+
+<section id="missions" class="sheet" role="dialog" aria-modal="true" aria-label="Missions" hidden>
+  <div class="panel sheet-card">
+    <div class="shelf-head"><h2 style="margin:0;font-size:24px;font-weight:900">Missions</h2><button class="btn" id="closeMissions">Close</button></div>
+    <div id="missionList"></div>
+    <h3>Trophies</h3>
+    <div class="trophies" id="trophies"></div>
+    <h3>Stars open</h3>
+    <div class="trophies" id="unlockList"></div>
+  </div>
+</section>
+
+<section id="bookSheet" class="sheet" role="dialog" aria-modal="true" aria-label="All words" hidden>
+  <div class="panel sheet-card">
+    <div class="shelf-head"><h2 style="margin:0;font-size:24px;font-weight:900">All the words you know</h2><button class="btn" id="closeBook">Close</button></div>
+    <p style="margin:6px 0 8px">Click a word to add it to your code.</p>
+    <dl class="book" id="book"></dl>
+    <div id="kitWords" style="margin-top:10px"></div>
+  </div>
+</section>
+
+<section id="watch" class="sheet" role="dialog" aria-modal="true" aria-labelledby="watchTitle" hidden>
+  <div class="panel watch-card">
+    <div class="shelf-head"><h2 id="watchTitle"></h2><button class="btn" id="closeWatch">Close</button></div>
+    <small id="watchBy"></small>
+    <div class="screen" id="watchHost"><canvas id="watchCanvas" aria-label="The show"></canvas></div>
+    <div class="live" id="watchLive" hidden></div>
+    <div class="watch-row" style="margin-top:8px">
+      <button class="btn" id="watchAgain">▶ Play again</button>
+      <button class="btn" id="watchHeart">♥</button>
+      <button class="btn" id="watchRemix">Remix this code</button>
+      <button class="btn" id="watchTake" hidden>Take down my show</button>
+    </div>
+  </div>
+</section>
+
+<section id="publish" class="sheet" role="dialog" aria-modal="true" aria-label="Add to the Theatre" hidden>
+  <div class="panel sheet-card" style="width:min(460px,100%)">
+    <h2 style="margin:0 0 8px;font-size:22px;font-weight:900">Add your show to the Theatre</h2>
+    <p style="margin:0 0 10px">The whole class can watch it and press ♥. If you add a new show, it takes the place of your old one.</p>
+    <input id="showTitle" maxlength="30" placeholder="Name your show" aria-label="Name your show" autocomplete="off" style="width:100%;padding:8px 10px;border:2px solid var(--ink);border-radius:8px;font-size:17px">
+    <p id="publishNote" style="margin:8px 0 0;color:#b3123c"></p>
+    <div class="watch-row" style="margin-top:10px">
+      <button class="btn main" id="publishGo">Add it</button>
+      <button class="btn" id="publishNo">Not yet</button>
+    </div>
+  </div>
+</section>
+<section id="artSheet" class="sheet" role="dialog" aria-modal="true" aria-label="Your art as code" hidden>
+  <div class="panel sheet-card" style="width:min(640px,100%)">
+    <div class="shelf-head"><h2 style="margin:0;font-size:22px;font-weight:900">Your drawing is code!</h2><button class="btn" id="closeArt">Close</button></div>
+    <p style="margin:6px 0 0">The computer keeps your picture as rows of letters and numbers. A dot is an empty square. Everything else is a colour. Change one here and watch your drawing change.</p>
+    <div class="code-art">
+      <textarea id="artCode" spellcheck="false" aria-label="Your drawing as letters" wrap="off"></textarea>
+      <div>
+        <canvas id="artPreview" aria-label="Your drawing"></canvas>
+        <div class="key" id="artKey"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="beads" class="sheet" role="dialog" aria-modal="true" aria-label="Bead pattern" hidden>
+  <div class="panel sheet-card" style="width:min(720px,100%)">
+    <div class="shelf-head"><h2 id="beadTitle" style="margin:0;font-size:22px;font-weight:900">Bead pattern</h2>
+      <span><button class="btn main" id="printBeads">Print</button> <button class="btn" id="closeBeads">Close</button></span></div>
+    <p style="margin:6px 0 0">Make your pal for real! Each square is one bead on a pegboard. This is also how cross-stitch patterns work.</p>
+    <div class="bead-layout">
+      <canvas id="beadGrid" aria-label="The pattern"></canvas>
+      <div><div id="beadTotal" style="font-weight:900;margin-bottom:6px"></div><div id="beadList"></div></div>
+    </div>
+  </div>
+</section>
+<div id="toast" class="toast" role="status" hidden></div>
+
+<section id="shelf" class="shelf" role="dialog" aria-modal="true" aria-labelledby="shelfTitle" hidden>
+  <div class="panel shelf-card">
+    <div class="shelf-head">
+      <h2 id="shelfTitle">My drawings</h2>
+      <button class="btn" id="closeShelf">Back to drawing</button>
+    </div>
+    <div id="savedBlock">
+      <div class="saved-art" id="savedArt" style="margin-top:12px"></div>
+    </div>
+    <h3>Pick a pal to start from</h3>
+    <div class="ways" id="galleryWays">
+      <button data-way="colour" aria-pressed="true">🖍️ Colour it in</button>
+      <button data-way="numbers" aria-pressed="false">🔢 By numbers</button>
+      <button data-way="ready" aria-pressed="false">⭐ Ready to change</button>
+    </div>
+    <div class="gallery" id="gallery"></div>
+    <h3>Or start with an empty page</h3>
+    <div class="picks" id="picks"></div>
+    <p id="shelfNote"></p>
+  </div>
+</section>
+
+<script src="/pixel/art.js"></script>
+<script src="/pixel/rig.js"></script>
+<script src="/pixel/stage.js"></script>
+<script src="/pixel/gallery.js"></script>
+<script src="/pixel/studio.js"></script>
+<script src="/pixel/life.js"></script>
+<script src="/pixel/page.js"></script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pixel Pals Theatre</title>
+<style>
+  :root { color-scheme: dark; --ink: #1b1530; --sun: #ffd23f; --pop: #ff5fa2; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin: 0; overflow: hidden; background: #140f26; color: #fff; font: 800 18px/1.3 ui-rounded, "Nunito", system-ui, "Segoe UI", Roboto, sans-serif; }
+  .page { height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: minmax(0, 1fr) 120px; gap: 14px; padding: 14px; }
+  .screen-wrap { min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+  .now { display: flex; align-items: baseline; gap: 12px; }
+  .now b { font-size: 30px; font-weight: 900; color: var(--sun); }
+  .room { flex: 1; min-height: 0; display: flex; justify-content: center; align-items: flex-start; }
+  .screen { position: relative; aspect-ratio: 16 / 9; border: 3px solid #fff; background: #000; }
+  .screen canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+  .bubble { position: absolute; transform: translate(-50%, -100%); max-width: 46%; padding: 6px 12px; background: #fff; color: var(--ink); border: 3px solid var(--ink); border-radius: 10px; font-size: clamp(16px, 2vw, 30px); line-height: 1.2; text-align: center; overflow-wrap: anywhere; }
+  .bubble.friend { background: #fff6cf; }
+  .side { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+  .card { background: #241b40; border: 2px solid #4a3e72; border-radius: 10px; padding: 10px 12px; }
+  .label { margin: 0 0 4px; font-size: 14px; color: #c5b8ea; }
+  .address { font-size: 19px; color: var(--sun); overflow-wrap: anywhere; }
+  .meter { height: 16px; margin-top: 6px; background: #120c24; border: 2px solid #fff; border-radius: 8px; overflow: hidden; }
+  .meter i { display: block; height: 100%; background: var(--sun); }
+  #feed { margin: 0; padding: 0; list-style: none; font-size: 15px; font-weight: 700; overflow: hidden; flex: 1; }
+  #feed li { margin-bottom: 5px; }
+  #parade { grid-column: 1 / -1; width: 100%; height: 100%; display: block; image-rendering: pixelated; background: #49ad5f; border: 2px solid #4a3e72; border-radius: 10px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <section class="screen-wrap">
+    <div class="now"><b id="showName">Pixel Pals</b><span id="showBy"></span></div>
+    <div class="room"><div class="screen" id="host"><canvas id="stage" aria-label="The class show"></canvas></div></div>
+  </section>
+  <aside class="side">
+    <div class="card"><p class="label">Join in at</p><div class="address" id="address"></div></div>
+    <div class="card"><p class="label">Class stars</p><div id="stars">★ 0</div><div class="meter"><i id="meter" style="width:0"></i></div></div>
+    <div class="card" style="flex:1;min-height:0;display:flex;flex-direction:column"><p class="label">Just now</p><ul id="feed"></ul></div>
+  </aside>
+  <canvas id="parade" aria-label="Every pal in the class walking by"></canvas>
+</div>
+<script src="/pixel/art.js"></script>
+<script src="/pixel/rig.js"></script>
+<script src="/pixel/stage.js"></script>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const stage = PalStage.create($("stage"), $("host"));
+let overview = null, shows = [], turn = 0;
+
+// Pip keeps the stage warm until the class has shows of its own.
+const PIP_PAL = {size: 16, speed: 4, palette: ["#1b1530", "#ff8fc7"], names: [], frames: [Array.from(
+  PixelArt.fromRows(PixelArt.STARTERS.Bean), n => n < 0 ? "." : n === PixelArt.INK ? "0" : "1").join("")]};
+const PIP_SHOW = [
+  {do: "say", text: "Welcome to the Theatre!"}, {do: "jump"}, {do: "walk", to: 6, by: 4},
+  {do: "say", text: "Draw a pal. Write some code."}, {do: "spin"}, {do: "hearts"},
+  {do: "say", text: "Your show could be next!"}, {do: "walk", to: 2, by: 4},
+];
+
+function fit() {
+  const room = document.querySelector(".room").getBoundingClientRect();
+  $("host").style.width = Math.floor(Math.min(room.width, room.height * 16 / 9)) + "px";
+}
+new ResizeObserver(fit).observe(document.querySelector(".room"));
+
+const wait = ms => new Promise(r => setTimeout(r, ms));
+async function nextShow() {
+  const pick = shows.length ? shows[turn++ % shows.length] : null;
+  if (!pick) {
+    $("showName").textContent = "Coming up: your show!";
+    $("showBy").textContent = "";
+    stage.setPal(PIP_PAL);
+    stage.fresh();
+    await stage.play(PIP_SHOW);
+    return wait(1500);
+  }
+  $("showName").textContent = pick.title;
+  $("showBy").textContent = `by ${pick.by}  ♥ ${pick.hearts}`;
+  const response = await fetch("/pixel/watch", {method: "POST", headers: {"Content-Type": "application/json"},
+                                                body: JSON.stringify({owner: pick.owner})}).catch(() => null);
+  const out = response ? await response.json().catch(() => null) : null;
+  if (!out || !out.steps) return wait(1500);
+  stage.setPal(out.pal);
+  stage.fresh();
+  await Promise.race([stage.play(out.steps), wait(60000)]);
+  stage.cheer();
+  return wait(2800);
+}
+async function theatreLoop() {
+  for (;;) await nextShow();
+}
+
+async function refresh() {
+  const [over, theatre] = await Promise.all([
+    fetch("/pixel/overview").then(r => r.json()).catch(() => null),
+    fetch("/pixel/theatre").then(r => r.json()).catch(() => null),
+  ]);
+  if (theatre) shows = theatre.shows;
+  if (!over) return;
+  overview = over;
+  $("address").textContent = over.address;
+  const goal = over.class.goals[0];
+  $("stars").textContent = goal ? `★ ${over.class.stars} of ${goal.class}` : `★ ${over.class.stars}`;
+  $("meter").style.width = goal ? Math.min(100, over.class.stars / goal.class * 100) + "%" : "100%";
+  $("feed").innerHTML = over.feed.slice().reverse().map(f => {
+    const li = document.createElement("li");
+    li.textContent = f.text;
+    return li.outerHTML;
+  }).join("");
+  // Only pals that are in the Theatre walk here: drawings are private until
+  // a student shares them, and the teacher's Hide takes them out too.
+  buildParade(shows.map(s => s.pal));
+}
+
+// ---- The parade: every pal in the class, walking along the bottom ---------------
+let walkers = [];
+function buildParade(pals) {
+  const list = pals.length ? pals : [PIP_PAL];
+  if (walkers.length === list.length) return;
+  walkers = list.map((pal, i) => ({x: i * 96, pup: PalStage.puppet(pal, Math.max(1, Math.floor(80 / pal.size)), i + 3)}));
+}
+function parade(now) {
+  requestAnimationFrame(parade);
+  const cv = $("parade"), rect = cv.getBoundingClientRect(), g = cv.getContext("2d");
+  if (!rect.width) return;
+  if (cv.width !== Math.round(rect.width)) { cv.width = Math.round(rect.width); cv.height = Math.round(rect.height); }
+  g.imageSmoothingEnabled = false;
+  g.drawImage(PalStage.sceneArt("park"), 0, 104, 320, 66, 0, 0, cv.width, cv.height);
+  const room = Math.max(cv.width + 96, walkers.length * 96), t = now / 1000;
+  walkers.forEach((w, i) => {
+    const x = ((w.x + now / 26) % room) - 48;
+    const pose = PalStage.livePose(w.pup.rigOf(0), w.pup.lifeline, t + i, {move: "walk", moveT: t + i * .13});
+    w.pup.draw(g, 0, pose, x, cv.height - 10);
+  });
+}
+
+setInterval(refresh, 10000);
+requestAnimationFrame(parade);
+refresh().finally(theatreLoop);      // know what's on before the curtain goes up
+</script>
+</body>
+</html>
