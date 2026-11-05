@@ -133,6 +133,11 @@ const PalStage = (() => {
       if (glance.eyes === "shut") p.eyes = "shut"; else if (!p.eyes) p.eyes = "open";
       if (!p.look) p.look = glance.look;
     }
+    if (aim) {                     // the head turns with the eyes
+      const k = Math.max(1, Math.round(rig.size / 16));
+      p.headX = (p.headX || 0) + aim[0] * k;
+      p.headY = (p.headY || 0) + aim[1] * k;
+    }
     if (talk) p.mouth = Math.floor(t * 8) % 2 ? "open" : p.mouth;
     return p;
   }
@@ -510,7 +515,9 @@ const PalStage = (() => {
       async dance(s, t) { SFX.play("yay"); await moving("dance", 1800, t); },
       async cheer(s, t) { SFX.play("yay"); await moving("cheer", 1200, t); },
       async look(s, t) {
-        state.aim = {left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1]}[s.way] || null;
+        const way = {left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1]}[s.way] || null;
+        // Facing the other way, its left is the stage's right.
+        state.aim = way && state.flip ? [-way[0], way[1]] : way;
         SFX.play("click");
         await sleep(420, t);
       },
@@ -554,7 +561,7 @@ const PalStage = (() => {
       },
       async play(s, t) {
         const fps = livePal.speed || 6;
-        for (let i = 0; i < frames.length; i++) {
+        for (let i = 0; i < pup.frames; i++) {
           state.frame = i;
           await sleep(1000 / fps, t);
         }
@@ -580,6 +587,7 @@ const PalStage = (() => {
         await sleep(Math.max(0, ms - (300 + s.text.length * 70)), t);
       },
       async friend(s, t) {
+        if (s.pal) friendPups[s.kind] = puppet(s.pal, Math.max(1, Math.floor(48 / s.pal.size)), s.kind.length * 41 + 3);
         const home = state.spot > 7 ? spotX(1) : spotX(9), edge = home < W / 2 ? -40 : W + 40;
         state.friend = s.kind;
         state.friendX = edge;
@@ -726,10 +734,12 @@ const PalStage = (() => {
   }
 
   const HEART = rowsSprite([".kk.kk.", "krrkrrk", "krrrrrk", ".krrrk.", "..krk..", "...k..."], {k: "#1b1530", r: "#ff5fa2"});
-  const TWINKLE = rowsSprite(["...y...", "...y...", "..yyy..", "yyyyyyy", "..yyy..", "...y...", "...y..."], {y: "#ffd93b"});
+  const TWINKLE = rowsSprite(["...y...", "...y...", "..yyy..", "yyyyyyy", "..yyy..", "...y...", "...y..."], {y: "#ffd93b"}, 2);
   const ZED = rowsSprite(["kkkkk", "...k.", "..k..", ".k...", "kkkkk"], {k: "#1b1530"});
   const PROPS = {};
   for (const [key, {rows, ink}] of Object.entries(PROP_ART)) PROPS[key] = rowsSprite(rows, ink, 2);
 
   return {create, puppet, livePose, sceneArt, HEART, PROPS, SFX, W, H};
 })();
+
+if (typeof module !== "undefined") module.exports = PalStage;

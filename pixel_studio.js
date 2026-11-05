@@ -1008,7 +1008,7 @@ function galleryPicture(name) {
 function startFromGallery(name) {
   const pic = PalGallery.pictures[name];
   startDrawing(PalGallery.size, galleryPicture(name), name, galleryWay === "numbers" ? A.encode(pic) : "");
-  if (galleryWay === "numbers") chooseColour(guideColours()[0]);
+  if (art.guide) chooseColour(guideColours()[0]);
 }
 function buildGallery() {
   const full = shelfList.length >= limits.max_drawings;

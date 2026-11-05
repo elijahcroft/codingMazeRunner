@@ -84,7 +84,6 @@ const MOVE_BUTTONS = [
   ["😮", "Wow", {do: "feel", mood: "surprised"}], ["😠", "Cross", {do: "feel", mood: "angry"}],
   ["🤪", "Silly", {do: "feel", mood: "silly"}], ["😎", "Cool", {do: "feel", mood: "cool"}],
 ];
-const WALK_THERE = [{do: "walk", to: 8, by: 6}, {do: "walk", to: 2, by: 6}];
 // What each move is called in the rig, for making frames and GIFs of it.
 const RIG_MOVES = {Wave: "wave", Walk: "walk", Dance: "dance", Jump: "jump", Cheer: "cheer", Nap: "sleep",
                    Happy: "happy", Sad: "sad", Wow: "surprised", Cross: "cross", Silly: "giggle", Cool: "idle"};
@@ -121,6 +120,7 @@ function wakeUp() {
   if (wokenPals.has(art.key) || lifeRig.empty) return;
   wokenPals.add(art.key);
   if (!lifeRig.eyes.length) return;
+  tellServer("/pixel/game", {game: "alive"});
   const words = art.title ? `Hello ${name}! I'm ${art.title}!` : `Hello ${name}! You made me!`;
   lifeStage.state.mood = "sleepy";
   act([{do: "wait", beats: 2}, {do: "feel", mood: "calm"}, {do: "say", text: words}, {do: "wave"}]);
@@ -137,6 +137,11 @@ function fitLifeScreen() {
 }
 
 let playing = false;     // a game is on, so the pal doesn't wander off
+function tellServer(path, data) {
+  post(path, Object.assign({id: me}, data)).then(out => {
+    if (out.badges && out.badges.length) showRewards({badges: out.badges});
+  }).catch(() => {});
+}
 function refreshBones() {
   lifeRig = PixelRig.build(art.frames[0], art.size, art.palette, art.marks || "");
   paintBones();
@@ -409,7 +414,7 @@ function endGame(finished) {
     if (finished) {
       if (score > best) {
         store("pixelBestCatch", score);
-        post("/pixel/caught", {id: me, score}).catch(() => {});
+        tellServer("/pixel/caught", {score});
       }
       act([{do: "cheer"}, {do: "say", text: score > best ? `${score}! That's my best ever!` : `I got ${score}! Best is ${best}.`}]);
     }
@@ -467,6 +472,7 @@ async function copyAnswer(word) {
     return;
   }
   const score = c.list.length - 1;
+  tellServer("/pixel/game", {game: "copy", score});
   copying = null;
   playing = false;
   hud("");

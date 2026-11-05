@@ -29,6 +29,7 @@
   .err { color: var(--warn); font-size: 13px; }
   .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .shows { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+  canvas.pal { width: 40px; height: 40px; margin-right: 8px; vertical-align: middle; image-rendering: pixelated; background: #f6f3fd; border-radius: 4px; }
   .show { border: 2px solid var(--ink); border-radius: 8px; padding: 8px; display: grid; gap: 4px; align-content: start; }
   .show.hidden { background: #f0eef4; border-style: dashed; }
   .show pre { margin: 0; max-height: 130px; overflow: auto; font: 12.5px/1.35 ui-monospace, Menlo, Consolas, monospace; background: #f6f3fd; padding: 6px; border-radius: 6px; }
@@ -120,9 +121,10 @@ async function refresh() {
   $("classBar").style.width = goal ? Math.min(100, stars / goal.class * 100) + "%" : "100%";
   $("classGoal").textContent = goal ? `At ${goal.class} stars the ${goal.key} ${goal.kind} opens for everyone.` : "";
   $("none").hidden = data.students.length > 0;
+  setTimeout(() => document.querySelectorAll("canvas.pal").forEach(paintPal));
   $("rows").innerHTML = data.students.map(s => `
     <tr class="${s.misses >= 3 ? "stuck" : ""}">
-      <td>${esc(s.name)}</td>
+      <td><canvas class="pal" data-picture="${esc(JSON.stringify(s.picture || null))}"></canvas>${esc(s.name)}</td>
       <td>${esc(s.level_name)}<br><small style="color:var(--soft)">${esc(s.chapter)}</small></td>
       <td>${s.misses >= 3 ? `<b style="color:var(--warn)">${s.misses} misses</b>` : s.runs_here}</td>
       <td>${s.stars}</td><td>${s.drawings}</td><td>${s.badges}</td><td>${s.show ? "Yes" : ""}</td>
@@ -147,6 +149,19 @@ async function refresh() {
         : `<button class="btn" data-${s.hidden ? "show" : "hide"}="${esc(s.owner)}">${s.hidden ? "Show it again" : "Hide"}</button>`}
     </div>`).join("") : `<p style="margin:0;color:var(--soft)">No shows yet.</p>`;
   $("feed").innerHTML = data.feed.slice().reverse().map(f => `<li>${esc(f.text)}</li>`).join("") || `<li style="color:var(--soft)">Nothing yet.</li>`;
+}
+const LETTERS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+function paintPal(cv) {
+  const pic = JSON.parse(cv.dataset.picture);
+  cv.hidden = !pic;
+  if (!pic) return;
+  cv.width = cv.height = pic.size;
+  const g = cv.getContext("2d");
+  Array.from(pic.frame).forEach((ch, i) => {
+    if (ch === ".") return;
+    g.fillStyle = pic.palette[LETTERS.indexOf(ch)];
+    g.fillRect(i % pic.size, Math.floor(i / pic.size), 1, 1);
+  });
 }
 $("gate").addEventListener("submit", e => { e.preventDefault(); key = $("key").value.trim(); refresh(); });
 $("openGo").addEventListener("click", async () => { await call({action: "open", level: $("openTo").value}); refresh(); });

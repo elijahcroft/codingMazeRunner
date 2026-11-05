@@ -97,6 +97,7 @@ async function showView(name) {
   $("lifeView").hidden = name !== "life";
   document.querySelectorAll(".draw-only").forEach(el => { el.hidden = name !== "draw"; });
   document.querySelectorAll(".stage-only").forEach(el => { el.hidden = name === "draw" || name === "life"; });
+  if (name === "life") openLife(); else closeLife();     // before the wait, so its buttons always work
   if (name !== "draw") await saveNow();
   if (name === "stage") {
     await refreshState();
@@ -105,7 +106,6 @@ async function showView(name) {
     else resetStage();
   }
   if (name === "theatre") { await refreshState(); await openTheatre(); }
-  if (name === "life") openLife(); else closeLife();
   if (name !== "theatre") closePark();
 }
 async function refreshState() {
@@ -199,6 +199,7 @@ function buildChips(commands, fresh, python, freshPython) {
     (commands.includes("scene") ? `<p><b>Places you can go:</b> ${esc(S.kit.scenes.join(", "))}</p>` : "") +
     (commands.includes("sound") ? `<p><b>Sounds:</b> ${esc(S.kit.sounds.join(", "))}</p>` : "") +
     (commands.includes("friend") ? `<p><b>Friends:</b> ${esc(S.kit.friends.join(", "))}</p>` : "") +
+    (commands.includes("friend") && S.class_pals.length ? `<p><b>Classmates' pals:</b> ${esc(S.class_pals.join(", "))}, like <code>friend("${esc(S.class_pals[0])}")</code></p>` : "") +
     (commands.includes("put") ? `<p><b>Things:</b> ${esc(S.kit.props.join(", "))}</p>` : "");
 }
 function addLine(snippet) {
@@ -381,6 +382,7 @@ async function runShow() {
     return;
   }
   if (mode === "free") {
+    if (out.rewards) showRewards(out.rewards);
     $("caption").textContent = "That's the end of your show.";
     verdict(`<p>Nice! Change something and run it again, or share it.</p>
       <p class="next"><button class="btn" data-publish="1">🎟️ Add to the Theatre</button></p>`, "good");

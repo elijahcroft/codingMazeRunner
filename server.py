@@ -4517,6 +4517,10 @@ PIXEL_BADGES = {
     "theatre": ("🎟️", "On Stage", "Put a show in the Theatre"),
     "loved": ("💖", "Crowd Pleaser", "Get 5 hearts on your show"),
     "kind": ("💌", "Kind Critic", "Heart 5 shows in the Theatre"),
+    "alive": ("💓", "It's Alive!", "Bring a pal to life"),
+    "catcher": ("🌟", "Star Catcher", "Catch 20 stars in one go"),
+    "copycat": ("🧠", "Copy Cat", "Copy a row of 5 moves"),
+    "duo": ("👯", "Double Act", "Bring a classmate's pal into your show"),
     "all": ("🏆", "Star of the Show", "Get all the stars in the game"),
 }
 
@@ -4631,6 +4635,8 @@ def pixel_state(p):
                     "friends": [s for s in pixel.FRIENDS if ("friend", s) not in pixel.LOCKED or ("friend", s) in opened],
                     "props": pixel.PROPS},
             "class_stars": pixel_class_stars(),
+            "class_pals": sorted(q["name"] for q in players.values()
+                                  if (q.get("pixel") or {}).get("show") and not q["pixel"]["show"].get("hidden")),
             "my_show": {"title": show["title"], "hearts": len(show["hearts"]), "hidden": show.get("hidden", False),
                         "waiting": show.get("waiting", False)} if show else None}
 
@@ -4705,6 +4711,22 @@ def pixel_theatre(viewer=None, teacher=False):
     return shows
 
 
+def pixel_cast():
+    """Pals that can be friends in a show: only ones already out in the Theatre."""
+    cast = {}
+    for q in players.values():
+        w = (q.get("pixel") or {}).get("show")
+        if w and not w.get("hidden"):
+            cast[q["name"].strip().lower()] = w["pal"]
+    return cast
+
+
+def pixel_picture(entry):
+    """The first frame of a student's pal, for the teacher's list."""
+    pal = pixel_pal(entry)
+    return None if pal is pixel.PIP else {"size": pal["size"], "palette": pal["palette"], "frame": pal["frames"][0]}
+
+
 def pixel_overview():
     """The teacher's page and the projector: where everyone is, who's stuck,
     the class star meter and the recent moments."""
@@ -4720,7 +4742,8 @@ def pixel_overview():
                      "chapter": pixel.CHAPTERS[lv["chapter"]]["name"], "stars": pixel_stars(entry),
                      "drawings": len(entry["drawings"]), "misses": entry["misses"].get(key, 0),
                      "runs_here": entry["runs"].get(key, 0), "last_error": entry["last_error"],
-                     "badges": len(entry["badges"]), "show": bool(entry["show"]), "active": entry["active"]})
+                     "badges": len(entry["badges"]), "show": bool(entry["show"]), "active": entry["active"],
+                     "picture": pixel_picture(entry)})
     rows.sort(key=lambda r: (r["at"], -r["misses"], r["name"].lower()))
     return {"students": rows, "missions": [{"key": k, "name": pixel.LEVEL_BY_KEY[k]["name"]} for k in pixel.LEVEL_ORDER],
             "open": pixel_class.get("open", 0), "check": pixel_class.get("check", True), "feed": pixel_feed[-12:],
@@ -4790,8 +4813,9 @@ def pixel_post(path, data):
             if not w or w.get("hidden"):
                 return {"error": "That show has gone."}
             code, pal, unlocked = w["code"], w["pal"], {tuple(u) for u in w["unlocked"]}
+            cast = pixel_cast()
         seed = random.randrange(10 ** 9)
-        return dict(pixel.run_free(code, pal, unlocked, seed), seed=seed, pal=pal)
+        return dict(pixel.run_free(code, pal, unlocked, seed, cast=cast, stand_in=True), seed=seed, pal=pal)
     with lock:
         p = players.get(data.get("id"))
         if not p:
@@ -4848,6 +4872,7 @@ def pixel_post(path, data):
             if not w or w.get("hidden"):
                 return {"error": "That show has gone."}
             code, pal, unlocked = w["code"], w["pal"], {tuple(u) for u in w["unlocked"]}
+        cast = pixel_cast()
     try:
         seed = int(data.get("seed", 0)) % 10 ** 9
     except (TypeError, ValueError):
@@ -4855,17 +4880,20 @@ def pixel_post(path, data):
     if path == "/pixel/react":
         events = data.get("events")
         return pixel.react(code, pal, unlocked, seed, events if isinstance(events, list) else [],
-                           None if owner else data.get("level"))
+                           None if owner else data.get("level"), cast, bool(owner))
     if path == "/pixel/run":
         key = str(data.get("level", ""))
         if key == "free":
             seed = random.randrange(10 ** 9)
-            out = pixel.run_free(code, pal, unlocked, seed)
+            out = pixel.run_free(code, pal, unlocked, seed, cast=cast)
             with lock:
                 entry["free"], entry["active"] = code[:pixel.MAX_CODE], int(time.time())
                 entry["last_error"] = out["error"] or ""
+                earned = []
+                if pixel.used_classmate(out):
+                    pixel_badge(p, "duo", earned)
                 pixel_save_soon()
-            return dict(out, seed=seed, rehearsed=[])
+            return dict(out, seed=seed, rehearsed=[], rewards={"badges": earned} if earned else None)
         with lock:
             allowed = pixel_is_open(entry, key)
         if not allowed:
@@ -4881,16 +4909,28 @@ def pixel_post(path, data):
         if isinstance(score, bool) or not isinstance(score, int) or not 0 < score <= 300:
             return {"error": "bad"}
         with lock:
+            earned = []
             if score > entry.get("best_catch", 0):
                 entry["best_catch"] = score
                 pixel_feed_add(f"🌟 {p['name']}'s pal caught {score} stars!")
+                if score >= 20:
+                    pixel_badge(p, "catcher", earned)
                 pixel_save_soon()
-        return {"ok": True}
+        return {"ok": True, "badges": earned}
+    if path == "/pixel/game":
+        with lock:
+            earned = []
+            if data.get("game") == "alive":
+                pixel_badge(p, "alive", earned)
+            elif data.get("game") == "copy" and data.get("score", 0) >= 5:
+                pixel_badge(p, "copycat", earned)
+            pixel_save_soon()
+        return {"ok": True, "badges": earned}
     if path == "/pixel/publish":
         title = str(data.get("title", "")).strip()[:PIXEL_SHOW_TITLE_MAX]
         if not title:
             return {"error": "Give your show a name first."}
-        out = pixel.run_free(code, pal, unlocked)
+        out = pixel.run_free(code, pal, unlocked, cast=cast)
         if out["error"]:
             return {"error": "Your show has a problem on it. Fix it first, then try again.\n" + out["error"]}
         with lock:

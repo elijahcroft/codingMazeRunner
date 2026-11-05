@@ -102,6 +102,9 @@ chapter's new words stay by the editor, and All words holds everything else.
 - **Shared laptops:** a student who lands in someone else's account presses **Not (name)?**
   in My drawings and types their own name. Typing a name again brings back that
   student's work.
+- **Pals visiting each other:** in Free Stage, `friend("Mia")` brings Mia's own pal on
+  stage, once her show is in the Theatre. All words lists who can come. If her show
+  is taken down later, shows that used her pal carry on with a stand-in.
 - **Easy pen:** it starts off, because a first click that leaves a line following the
   finger is confusing. A student clicking along a line square by square gets offered
   it once, with a button.

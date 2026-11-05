@@ -193,8 +193,10 @@ def word_list(words):
 class Show:
     """What happens on stage. Every command is a step the browser plays back."""
 
-    def __init__(self, pal, unlocked, seed):
+    def __init__(self, pal, unlocked, seed, cast=None, stand_in=False):
         self.pal = pal
+        self.cast = cast or {}       # classmates' pals, by lowercase name
+        self.stand_in = stand_in     # a shared show keeps going if a classmate's pal has left
         self.unlocked = unlocked
         self.rng = random.Random(seed)
         self.steps = []
@@ -212,6 +214,7 @@ class Show:
         self.since_nap = 0
         self.forecast = None
         self.posed = set()           # faces and moves shown with pose(), not frames
+        self.classmates = 0          # how many times a classmate's pal came on
         self.log = []                # (command, arguments) in order, for judging
         self.fired = []              # where in the log each click starts
 
@@ -360,8 +363,21 @@ class Show:
         self.step("scene", name=args[0])
 
     def c_friend(self, name, *args):
+        who = args[0].strip().lower() if len(args) == 1 and isinstance(args[0], str) else ""
+        if who in self.cast and who not in FRIENDS:
+            pal = self.cast[who]
+            self.friend = who
+            self.classmates += 1
+            self.step("friend", kind=who, pal={"size": pal["size"], "palette": pal["palette"], "frames": pal["frames"][:1],
+                                               "marks": pal.get("marks", "")})
+            return
+        if self.stand_in and who and who not in FRIENDS:
+            self.friend = "bean"
+            self.step("friend", kind="bean")
+            return
         if len(args) != 1 or args[0] not in FRIENDS:
-            raise BotError(f'Pick a friend, like  friend("cat"). The friends are: {word_list(FRIENDS)}.')
+            raise BotError(f'Pick a friend, like  friend("cat"). The friends are: {word_list(FRIENDS)}. '
+                           f"A classmate's pal can come too, by name, once their show is in the Theatre.")
         self.locked("friend", args[0], f'The {args[0]} friend')
         self.friend = args[0]
         self.step("friend", kind=args[0])
@@ -860,9 +876,10 @@ class Report:
         return at == len(names)
 
 
-def perform(code, pal=PIP, events=(), seed=0, commands=EVERYTHING, unlocked=LOCKED, setup=None):
+def perform(code, pal=PIP, events=(), seed=0, commands=EVERYTHING, unlocked=LOCKED, setup=None,
+            cast=None, stand_in=False):
     """Run a program. `events` are clicks, like "click", "feed" or "key:left"."""
-    show = Show(pal, unlocked, seed)
+    show = Show(pal, unlocked, seed, cast, stand_in)
     error, line, director = None, None, None
     if setup:
         setup(show)
@@ -889,6 +906,10 @@ def perform(code, pal=PIP, events=(), seed=0, commands=EVERYTHING, unlocked=LOCK
 def public(result):
     """What the browser gets of a run."""
     return {k: result[k] for k in ("steps", "error", "line", "events")}
+
+
+def used_classmate(result):
+    return any(s["do"] == "friend" and "pal" in s for s in result["steps"])
 
 
 # ---- Missions ------------------------------------------------------------------
@@ -1350,18 +1371,18 @@ def run_level(lv, code, pal, unlocked=LOCKED, seed=0):
                 rehearsed=list(lv.get("rehearse", ())))
 
 
-def run_free(code, pal, unlocked, seed=0, events=()):
-    return public(perform(code, pal, events, seed, EVERYTHING, unlocked))
+def run_free(code, pal, unlocked, seed=0, events=(), cast=None, stand_in=False):
+    return public(perform(code, pal, events, seed, EVERYTHING, unlocked, None, cast, stand_in))
 
 
-def react(code, pal, unlocked, seed, events, level=None):
+def react(code, pal, unlocked, seed, events, level=None, cast=None, stand_in=False):
     """One new click on a show that's already playing: replay it all, and send
     back only what the newest click did."""
     if len(events) > MAX_EVENTS:
         return {"steps": [], "error": None, "line": None, "full": True}
     lv = LEVEL_BY_KEY.get(level)
     result = perform(code, pal, events, seed, commands_for(level) if lv else EVERYTHING,
-                     unlocked, lv.get("setup") if lv else None)
+                     unlocked, lv.get("setup") if lv else None, cast, stand_in)
     return {"steps": result["after"], "error": result["error"], "line": result["line"]}
 
 

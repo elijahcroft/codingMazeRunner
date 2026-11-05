@@ -481,6 +481,15 @@ class TheRig(unittest.TestCase):
                 self.assertTrue(known)
                 self.assertTrue(eyes)
 
+    def test_every_gallery_pal_has_numbers_to_colour(self):
+        out = self.js("""return G.names.map(name => {
+            const f = G.pictures[name], base = G.outlined(f);
+            return [name, new Set(f.filter((n, i) => n !== base[i])).size];
+        })""")
+        for name, colours in out:
+            with self.subTest(pal=name):
+                self.assertGreaterEqual(colours, 2)
+
     def test_the_gallery_pals_are_rigged_as_what_they_are(self):
         found = self.js("""const out = {};
             for (const name of G.names) out[name] = R.build(G.pictures[name], 16, A.PALETTE).limbs.map(l => l.kind);
@@ -646,6 +655,37 @@ class TeacherChecksShows(unittest.TestCase):
         self.assertEqual(self.get("/pixel/theatre")["shows"], [])
         self.assertNotIn("Nope", json.dumps(self.get("/pixel/overview")))
 
+    def test_only_a_pal_the_teacher_let_in_can_be_a_friend(self):
+        server.pixel_class.pop("check", None)
+        mia, ben = self.join("Mia"), self.join("Ben")
+        art = dict(drawing(), key="ink123", frames=["0" + "." * 255])
+        self.post("/pixel/save", {"id": mia, "drawing": art})
+        self.post("/pixel/publish", {"id": mia, "code": 'say("Hi")', "title": "Mine"})
+        code = {"id": ben, "level": "free", "code": 'friend("mia")'}
+        self.assertIn("in the Theatre", self.post("/pixel/run", code)["error"])
+        self.teacher(action="show", owner=server.pixel_public(server.players[mia]))
+        out = self.post("/pixel/run", code)
+        self.assertIsNone(out["error"])
+        self.assertEqual(out["steps"][0]["pal"]["frames"], art["frames"])
+        self.assertEqual(out["rewards"]["badges"][0]["name"], "Double Act")
+        self.assertEqual(self.get(f"/pixel/state?id={ben}")["class_pals"], ["Mia"])
+
+    def test_the_new_trophies(self):
+        mia = self.join("Mia")
+        self.assertEqual(self.post("/pixel/game", {"id": mia, "game": "alive"})["badges"][0]["name"], "It's Alive!")
+        self.assertEqual(self.post("/pixel/game", {"id": mia, "game": "alive"})["badges"], [])
+        self.assertEqual(self.post("/pixel/game", {"id": mia, "game": "copy", "score": 3})["badges"], [])
+        self.assertEqual(self.post("/pixel/game", {"id": mia, "game": "copy", "score": 6})["badges"][0]["name"], "Copy Cat")
+        self.assertEqual(self.post("/pixel/caught", {"id": mia, "score": 25})["badges"][0]["name"], "Star Catcher")
+
+    def test_the_teacher_sees_a_picture_of_each_pal_and_the_projector_doesnt(self):
+        mia = self.join("Mia")
+        art = dict(drawing(), key="ink123", frames=["0" + "." * 255])
+        self.post("/pixel/save", {"id": mia, "drawing": art})
+        rows = self.teacher(action="overview")["students"]
+        self.assertEqual(rows[0]["picture"]["frame"], art["frames"][0])
+        self.assertNotIn("0" + "." * 255, json.dumps(self.get("/pixel/overview")))
+
     def test_a_blank_page_never_goes_on_stage(self):
         mia = self.join("Mia")
         self.post("/pixel/save", {"id": mia, "drawing": drawing()})
@@ -674,6 +714,100 @@ class TeacherChecksShows(unittest.TestCase):
         mia = self.join("Mia")
         self.assertFalse(self.post("/pixel/publish", {"id": mia, "code": 'say("Hi")', "title": "Fast"})["waiting"])
         self.assertEqual(len(self.get("/pixel/theatre")["shows"]), 1)
+
+
+class TheStagePlays(unittest.TestCase):
+    """The stage's steps, run in node on a pretend canvas. A browser quietly
+    forgives a lot, so a step that does nothing is only found by checking."""
+
+    STUB = """
+        const folder = process.argv[1];
+        const noop = () => {};
+        const pen = new Proxy({}, {get: (t, k) => k === "getImageData" ? () => ({data: []}) : noop, set: () => true});
+        const canvas = () => ({width: 0, height: 0, style: {}, getContext: () => pen});
+        global.document = {createElement: canvas};
+        global.localStorage = {getItem: () => null, setItem: noop};
+        global.window = {};
+        let now = 0;
+        Object.defineProperty(global, "performance", {value: {now: () => now}, configurable: true});
+        global.requestAnimationFrame = fn => { setImmediate(() => { now += 200; fn(now); }); return 1; };
+        global.cancelAnimationFrame = noop;
+        global.PixelArt = require(folder + "/pixel_art.js");
+        global.PixelRig = require(folder + "/pixel_rig.js");
+        const PalStage = require(folder + "/pixel_stage.js");
+        const stage = PalStage.create(canvas(), null);
+    """
+
+    def js(self, code):
+        folder = os.path.dirname(os.path.abspath(__file__))
+        script = self.STUB + f"(async () => {{ {code} }})().then(out => process.stdout.write(JSON.stringify(out), () => process.exit(0)), e => {{ console.error(e); process.exit(1); }});"
+        return json.loads(subprocess.check_output(["node", "-e", script, folder], timeout=60))
+
+    def test_play_really_shows_every_frame(self):
+        out = self.js("""
+            const blank = "0" + ".".repeat(255);
+            stage.setPal({size: 16, palette: ["#000000"], frames: [blank, blank, blank], names: []});
+            stage.fresh();
+            const seen = new Set();
+            const going = stage.play([{do: "play"}]);
+            let finished = false;
+            going.then(() => { finished = true; });
+            while (!finished) { seen.add(stage.state.frame); await new Promise(r => setImmediate(r)); }
+            return [...seen].sort();""")
+        self.assertEqual(out, [0, 1, 2])
+
+    def test_every_kind_of_step_runs(self):
+        steps = [{"do": "walk", "to": 5}, {"do": "jump"}, {"do": "wave"}, {"do": "dance"}, {"do": "cheer"}, {"do": "giggle"},
+                 {"do": "look", "way": "left"}, {"do": "feel", "mood": "happy"}, {"do": "spin"}, {"do": "shake"},
+                 {"do": "size", "to": 2}, {"do": "hide"}, {"do": "appear"}, {"do": "pose", "frame": 0}, {"do": "play"},
+                 {"do": "wait", "beats": 1}, {"do": "say", "text": "Hi"}, {"do": "friend", "kind": "cat"},
+                 {"do": "friend_say", "text": "Hi"}, {"do": "friend_jump"}, {"do": "bye"}, {"do": "hearts"}, {"do": "stars"},
+                 {"do": "confetti"}, {"do": "rain"}, {"do": "snow"}, {"do": "sound", "name": "ding"}, {"do": "scene", "name": "park"},
+                 {"do": "eat"}, {"do": "nap"}, {"do": "snooze"}, {"do": "put", "prop": "star", "at": 3}, {"do": "take", "at": 3},
+                 {"do": "point", "score": 1}, {"do": "mark", "at": 2}, {"do": "place", "at": 4}, {"do": "weather", "kind": "sun"},
+                 {"do": "event"}]
+        out = self.js(f"""
+            const blank = "0" + ".".repeat(255);
+            stage.setPal({{size: 16, palette: ["#000000"], frames: [blank], names: []}});
+            stage.fresh();
+            return await stage.play({json.dumps(steps)});""")
+        self.assertTrue(out)
+
+    def test_a_classmate_friend_gets_its_own_picture(self):
+        out = self.js("""
+            const blank = "0" + ".".repeat(255);
+            stage.setPal({size: 16, palette: ["#000000"], frames: [blank], names: []});
+            stage.fresh();
+            await stage.play([{do: "friend", kind: "mia", pal: {size: 16, palette: ["#ff0000"], frames: [blank], marks: ""}}]);
+            return stage.state.friend""")
+        self.assertEqual(out, "mia")
+
+
+class ClassmatesAsFriends(unittest.TestCase):
+    PAL = dict(pixel.PIP, key="mia", frames=pixel.PIP["frames"][:1], names=[""], marks="")
+
+    def run_it(self, code, **extra):
+        return pixel.run_free(code, pixel.PIP, pixel.LOCKED, **extra)
+
+    def test_a_classmate_comes_on_by_name(self):
+        out = self.run_it('friend("Mia")\nfriend_say("Hi!")\nbye()', cast={"mia": self.PAL})
+        self.assertIsNone(out["error"])
+        self.assertEqual(out["steps"][0]["kind"], "mia")
+        self.assertEqual(out["steps"][0]["pal"]["frames"], self.PAL["frames"])
+        self.assertTrue(pixel.used_classmate(out))
+
+    def test_someone_not_in_the_theatre_cant_come(self):
+        out = self.run_it('friend("Mia")', cast={})
+        self.assertIn("in the Theatre", out["error"])
+
+    def test_a_built_in_friend_wins_over_a_student_called_cat(self):
+        out = self.run_it('friend("cat")', cast={"cat": self.PAL})
+        self.assertNotIn("pal", out["steps"][0])
+
+    def test_a_shared_show_survives_its_friend_leaving(self):
+        out = self.run_it('friend("Mia")\nfriend_say("Hi!")', stand_in=True)
+        self.assertIsNone(out["error"])
+        self.assertEqual(out["steps"][0]["kind"], "bean")
 
 
 class TheMarks(unittest.TestCase):

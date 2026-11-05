@@ -739,8 +739,6 @@ const PixelRig = (() => {
   }
 
   // ---- Moves. A move is a pose that changes with time; `t` counts in seconds. ----------
-  const wave = (t, speed, low = -1, high = 1) => low + (high - low) * (.5 + .5 * Math.sin(t * speed * Math.PI * 2));
-
   const MOVES = {
     idle(t, rig) {
       const breath = Math.sin(t * Math.PI * .9);
