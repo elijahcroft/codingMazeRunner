@@ -195,7 +195,7 @@
   .pick { display: grid; justify-items: center; gap: 4px; padding: 8px 6px; border: 2px solid var(--ink); border-radius: 8px; background: #fff; font-size: 14px; font-weight: 800; }
   .pick:hover:not(:disabled) { background: var(--plum-soft); }
   .pick:disabled { opacity: .45; }
-  .pick canvas { width: 64px; height: 64px; image-rendering: pixelated; }
+  .pick canvas { width: 34px; height: 34px; image-rendering: pixelated; }
   .pick small { font-size: 12px; font-weight: 700; color: var(--ink-soft); }
   .saved-art { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 10px; }
   .saved-card { border: 2px solid var(--ink); border-radius: 8px; overflow: hidden; background: #fff; }
@@ -674,6 +674,8 @@
   <div class="panel shelf-card">
     <div class="shelf-head">
       <h2 id="shelfTitle">My drawings</h2>
+      <span class="gap" style="flex:1"></span>
+      <button class="btn" id="notMe" title="Someone else's name is here. Press this and type yours."></button>
       <button class="btn" id="closeShelf">Back to drawing</button>
     </div>
     <div id="savedBlock">

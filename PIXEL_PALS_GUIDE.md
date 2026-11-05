@@ -99,6 +99,9 @@ chapter's new words stay by the editor, and All words holds everything else.
   projector until then. Untick **Check shows before the class sees them** and shows
   go straight up, and you can still Hide one later. Words typed on the Life tab stay
   on that student's screen.
+- **Shared laptops:** a student who lands in someone else's account presses **Not (name)?**
+  in My drawings and types their own name. Typing a name again brings back that
+  student's work.
 - **Easy pen:** it starts off, because a first click that leaves a line following the
   finger is confusing. A student clicking along a line square by square gets offered
   it once, with a button.

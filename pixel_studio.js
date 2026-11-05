@@ -1035,6 +1035,7 @@ function closeShelf() { $("shelf").hidden = true; }
 
 function buildShelf() {
   const full = shelfList.length >= limits.max_drawings;
+  $("notMe").textContent = `Not ${name}?`;
   $("shelfTitle").textContent = shelfList.length ? "My drawings" : `Welcome, ${name}! Let's draw`;
   $("savedBlock").hidden = !shelfList.length;
   $("savedArt").innerHTML = shelfList.map(d => `
@@ -1241,6 +1242,12 @@ function printSheet(id) {
 $("printBeads").addEventListener("click", () => printSheet("beads"));
 $("openShelf").addEventListener("click", openShelf);
 $("closeShelf").addEventListener("click", closeShelf);
+// Typing a name again finds that student's work, so nothing is lost by this.
+$("notMe").addEventListener("click", async () => {
+  await saveNow();
+  store("mazeId", "");
+  location.reload();
+});
 $("frameName").addEventListener("change", e => nameFrame(e.target.value));
 $("mix").addEventListener("change", e => addColour(e.target.value));
 $("title").addEventListener("input", e => { art.title = e.target.value; changed(); });
