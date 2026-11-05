@@ -59,7 +59,11 @@ All of these are on the 💓 Life tab, with no code needed:
   the touchpad. A student's new best score goes on the projector's feed.
 - **🧠 Copy me:** the pal does a row of moves and the student presses them back. The
   row grows each time. It's the idea of running commands in order, in disguise.
-- **🃏 Pal card:** a trading card of their pal to print or download.
+- **💬 Talking:** the box under the pal. It knows words like dance, jump, joke, "I love
+  you" and "what's your name", and acts on them. Anything else, it says out loud in a
+  speech bubble. This is a list of words, not AI, and it stays on that student's screen.
+- **🃏 Pal card:** a trading card of their pal, or a sheet of 12 stickers in different
+  moods, to print or download.
 - **🏞️ Place:** takes the pal to the next scene they've opened.
 
 ## The missions
@@ -116,6 +120,9 @@ chapter's new words stay by the editor, and All words holds everything else.
   mission, so a class can start at Pet Pal if you like.
 - **Unlocks:** stars open scenes, sounds and friends. The castle opens for everyone
   at 150 class stars.
+
+**🖨️ Print a class poster** on the teacher page prints everyone's current pal with
+their name, including pals that aren't in the Theatre, so check it before pinning it up.
 
 ## A first lesson
 

@@ -37,6 +37,8 @@ const PalStage = (() => {
       drum: () => { tone(120, 0, .14, "sine", .14, -70); tone(120, .2, .14, "sine", .14, -70); },
       whoosh: () => tone(220, 0, .3, "sawtooth", .025, 900),
       yay: () => notes([659, 784, 988, 1319, 988, 1319], .07, .1),
+      jig: () => { notes([523, 659, 784, 659, 880, 784, 659, 784, 523, 659, 784, 659, 988, 880, 784, 1047], .112, .1, "triangle");
+                   [0, 4, 8, 12].forEach(i => tone(131, i * .112, .1, "sine", .07)); },
       nope: () => notes([233, 196], .13, .18, "triangle"),
       step: () => tone(150, 0, .04, "square", .018),
       blip: () => tone(voice * (.9 + Math.random() * .25), 0, .05, "triangle", .035),
@@ -512,7 +514,7 @@ const PalStage = (() => {
       },
       async giggle(s, t) { SFX.play("boing"); pictureRain(HEART, 5); await moving("giggle", 760, t); },
       async wave(s, t) { SFX.play("ding"); await moving("wave", 1200, t); },
-      async dance(s, t) { SFX.play("yay"); await moving("dance", 1800, t); },
+      async dance(s, t) { SFX.play("jig"); await moving("dance", 1800, t); },
       async cheer(s, t) { SFX.play("yay"); await moving("cheer", 1200, t); },
       async look(s, t) {
         const way = {left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1]}[s.way] || null;
@@ -560,6 +562,7 @@ const PalStage = (() => {
         state.y = 0;
       },
       async play(s, t) {
+        if (pup.frames < 2) { await moving("happy", 500, t); return; }     // nothing to flip through
         const fps = livePal.speed || 6;
         for (let i = 0; i < pup.frames; i++) {
           state.frame = i;
@@ -569,7 +572,7 @@ const PalStage = (() => {
       },
       async wait(s, t) { await sleep(450 * s.beats, t); },
       async say(s, t) {
-        const ms = Math.min(2600, 900 + s.text.length * 45);
+        const ms = Math.min(5200, 900 + s.text.length * 55);     // long enough to read
         bubble("pal", s.text, ms / rate);
         SFX.voiceAt(palVoice);
         state.talk = true;
@@ -578,7 +581,7 @@ const PalStage = (() => {
         await sleep(Math.max(0, ms - (300 + s.text.length * 70)), t);
       },
       async friend_say(s, t) {
-        const ms = Math.min(2600, 900 + s.text.length * 45);
+        const ms = Math.min(5200, 900 + s.text.length * 55);     // long enough to read
         bubble("friend", s.text, ms / rate);
         SFX.voiceAt(palVoice * 1.35);
         state.friendTalk = true;

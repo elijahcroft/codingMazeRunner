@@ -29,6 +29,16 @@
   .err { color: var(--warn); font-size: 13px; }
   .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .shows { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+  #poster-page { display: none; }
+  @media print {
+    body > *:not(#poster-page) { display: none !important; }
+    #poster-page { display: block; text-align: center; font-family: system-ui, sans-serif; }
+    #poster-page h1 { margin: 0 0 18px; font-size: 40px; }
+    #posterGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    #posterGrid div { break-inside: avoid; }
+    #posterGrid canvas.pal { display: block; width: 150px; height: 150px; margin: 0 auto 6px; background: none; }
+    #posterGrid b { font-size: 20px; }
+  }
   canvas.pal { width: 40px; height: 40px; margin-right: 8px; vertical-align: middle; image-rendering: pixelated; background: #f6f3fd; border-radius: 4px; }
   .show { border: 2px solid var(--ink); border-radius: 8px; padding: 8px; display: grid; gap: 4px; align-content: start; }
   .show.hidden { background: #f0eef4; border-style: dashed; }
@@ -77,6 +87,7 @@
     <select id="openTo"></select>
     <button class="btn" id="openGo">Open up to here</button>
     <button class="btn" id="party">🎉 Dance party on the projector</button>
+    <button class="btn" id="poster">🖨️ Print a class poster</button>
     <span style="font-size:14px;color:var(--soft)">Students can always go past this by finishing missions.</span>
   </div>
 
@@ -89,6 +100,7 @@
   <div class="card"><ul class="feed" id="feed"></ul></div>
 </div>
 
+<div id="poster-page"><h1>Our Pixel Pals</h1><div id="posterGrid"></div></div>
 <script>
 "use strict";
 const $ = id => document.getElementById(id);
@@ -121,6 +133,7 @@ async function refresh() {
   $("classBar").style.width = goal ? Math.min(100, stars / goal.class * 100) + "%" : "100%";
   $("classGoal").textContent = goal ? `At ${goal.class} stars the ${goal.key} ${goal.kind} opens for everyone.` : "";
   $("none").hidden = data.students.length > 0;
+  classRows = data.students;
   setTimeout(() => document.querySelectorAll("canvas.pal").forEach(paintPal));
   $("rows").innerHTML = data.students.map(s => `
     <tr class="${s.misses >= 3 ? "stuck" : ""}">
@@ -166,6 +179,14 @@ function paintPal(cv) {
 $("gate").addEventListener("submit", e => { e.preventDefault(); key = $("key").value.trim(); refresh(); });
 $("openGo").addEventListener("click", async () => { await call({action: "open", level: $("openTo").value}); refresh(); });
 $("party").addEventListener("click", () => call({action: "party"}));
+// Every pal in the class on one page, to print and pin up.
+let classRows = [];
+$("poster").addEventListener("click", () => {
+  const pals = classRows.filter(s => s.picture);
+  $("posterGrid").innerHTML = pals.map(s => `<div><canvas class="pal" data-picture="${esc(JSON.stringify(s.picture))}"></canvas><b>${esc(s.name)}</b></div>`).join("");
+  $("posterGrid").querySelectorAll("canvas").forEach(paintPal);
+  print();
+});
 $("checkFirst").addEventListener("change", async e => { await call({action: "check", on: e.target.checked}); refresh(); });
 $("shows").addEventListener("click", async e => {
   const b = e.target.closest("button");

@@ -26,6 +26,7 @@ const TOOLS = [
   ["select", "Move"], ["picker", "Picker"],
 ];
 const PENS = ["pencil", "eraser", "shade"];     // the tools with strokes
+const RAINBOW = [11, 16, 19, 22, 25, 28, 30, 13];     // places in the palette, red round to pink
 const SHAPES = ["line", "box", "circle"];
 
 // Little pictures for the tool buttons, drawn the same way the students draw.
@@ -65,7 +66,7 @@ let cur = 0;              // which frame is open
 let tool = "pencil", toolBefore = "pencil";
 let brush = 1, colour = A.INK;
 let solid = false, mirror = false, showGrid = true, onion = false;
-let shadeWay = -1, stampKey = "Heart";
+let shadeWay = -1, stampKey = "Heart", penStyle = "plain";
 let zoom = 1, fit = 16, panAt = {x: 0, y: 0};
 let easy = recall("pixelEasyPen") === "1";
 let undoList = [], redoList = [];
@@ -235,7 +236,7 @@ function squareAt(e) {
 function onBoard(sq) { return sq.x >= 0 && sq.y >= 0 && sq.x < art.size && sq.y < art.size; }
 
 function startStroke(sq, held) {
-  stroke = {before: snap(), x: sq.x, y: sq.y, held, path: [], under: new Map(), shaded: new Set()};
+  stroke = {before: snap(), x: sq.x, y: sq.y, held, path: [], under: new Map(), shaded: new Set(), steps: 0};
   layDown(sq.x, sq.y);
   $("board").classList.toggle("pen-down", !held);
   repaint();
@@ -252,11 +253,14 @@ function layDown(x, y) {
     }
     return;
   }
+  stroke.steps++;
+  const ink = penStyle === "rainbow" ? RAINBOW[Math.floor(stroke.steps / 2) % RAINBOW.length] : colour;
   for (const at of squares) {
+    if (penStyle === "checks" && (at % art.size + Math.floor(at / art.size)) % 2) continue;
     if (!under.has(at)) under.set(at, f[at]);
-    f[at] = colour;
+    f[at] = ink;
   }
-  if (brush !== 1) return;
+  if (brush !== 1 || penStyle !== "plain") return;
   // A clean line never turns a corner on a square of its own: when a line steps
   // diagonally through a square, that square comes back off.
   const last = path[path.length - 1];
@@ -779,6 +783,8 @@ function refreshOptions() {
   $("optSize").hidden = ![...PENS, ...SHAPES].includes(tool);
   $("solid").hidden = tool !== "box" && tool !== "circle";
   $("optShade").hidden = tool !== "shade";
+  $("optPen").hidden = tool !== "pencil";
+  document.querySelectorAll("[data-pen]").forEach(b => b.setAttribute("aria-pressed", b.dataset.pen === penStyle));
   $("optAll").hidden = tool !== "select" || !!sel;
   $("optSelect").hidden = tool !== "select" || !sel;
   $("stampBar").hidden = tool !== "stamp";
@@ -1168,6 +1174,7 @@ document.addEventListener("click", e => {
   if (d.tool) chooseTool(d.tool);
   else if (d.brush) { brush = +d.brush; refreshOptions(); }
   else if (d.stamp) chooseStamp(d.stamp);
+  else if (d.pen) { penStyle = d.pen; refreshOptions(); }
   else if (d.tone) addColour(d.tone);
   else if (d.shade) { shadeWay = +d.shade; refreshOptions(); showTip(); }
   else if (d.colour) chooseColour(+d.colour);
@@ -1204,6 +1211,16 @@ $("outline").addEventListener("click", () => changeWhole(f => {
   for (const at of A.outline(f, art.size)) out[at] = colour;
   return out;
 }));
+// A new colour for every colour in the drawing, except its dark outline.
+$("surprise").addEventListener("click", () => {
+  settle();
+  const before = snap(), used = [...new Set(art.frames.flat())].filter(n => n >= 0 && n !== A.INK);
+  const pool = A.PALETTE.map((_, i) => i).filter(i => i !== A.INK && i !== 9).sort(() => Math.random() - .5);
+  const swap = new Map(used.map((n, i) => [n, pool[i % pool.length]]));
+  art.frames = art.frames.map(f => f.map(n => swap.has(n) ? swap.get(n) : n));
+  buildReel();
+  done(before);
+});
 $("openMore").addEventListener("click", () => toggleMenu("moreMenu"));
 $("closeMore").addEventListener("click", () => hideMenu("moreMenu"));
 $("frameMore").addEventListener("click", () => toggleMenu("frameMenu"));

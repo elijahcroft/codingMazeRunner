@@ -345,7 +345,7 @@ class TheShow(unittest.TestCase):
 
     def test_a_missing_pose_says_how_to_make_it(self):
         text = self.error('pose("walk")')
-        self.assertIn("Copy this frame", text)
+        self.assertIn("+ Copy frame", text)
         self.assertIn('"happy"', text)
 
     def test_a_click_replays_with_memory(self):
@@ -781,6 +781,13 @@ class TheStagePlays(unittest.TestCase):
             await stage.play([{do: "friend", kind: "mia", pal: {size: 16, palette: ["#ff0000"], frames: [blank], marks: ""}}]);
             return stage.state.friend""")
         self.assertEqual(out, "mia")
+
+
+class FreeStageIdeas(unittest.TestCase):
+    def test_every_idea_runs_for_a_brand_new_student(self):
+        for idea in pixel.IDEAS:
+            with self.subTest(idea=idea):
+                self.assertIsNone(pixel.run_free(idea, pixel.PIP, set())["error"])
 
 
 class ClassmatesAsFriends(unittest.TestCase):

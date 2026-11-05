@@ -143,6 +143,7 @@ async function openMission(key) {
   $("job").hidden = false;
   $("goals").hidden = false;
   $("hint").hidden = false;
+  $("hint").textContent = "Help me";
   drawGoals(data.best);
   setCode(recall(codeKey(key)) ?? data.code ?? "");
   buildChips(data.commands, data.new, data.python, data.fresh_python);
@@ -159,7 +160,8 @@ function openFree() {
     + `Places: ${S.kit.scenes.join(", ")}. Sounds: ${S.kit.sounds.join(", ")}. Friends: ${S.kit.friends.join(", ")}.`;
   $("job").hidden = true;
   $("goals").hidden = true;
-  $("hint").hidden = true;
+  $("hint").hidden = false;
+  $("hint").textContent = "Give me an idea";
   setCode(recall(codeKey("free")) ?? S.free);
   const known = S.chapters.flatMap(c => c.levels).filter(l => l.open).map(l => l.key);
   const last = known[known.length - 1];
@@ -344,7 +346,7 @@ async function playSteps(steps) {
   setRunLine(0);
 }
 async function runShow() {
-  if (running) return;
+  if (running || !mode) return;
   running = true;
   const ticket = ++runTicket;
   saveCode();
@@ -425,8 +427,16 @@ function fitScreen() {
   $("stageHost").style.width = w + "px";
 }
 let hintsShown = 0;
+let hintCode = "", ideaAt = 0;
 function showHint() {
+  if (mode === "free") {
+    hintCode = S.ideas[ideaAt++ % S.ideas.length];
+    verdict(`<p><b>Try this one, then change it!</b></p><pre style="margin:2px 0 0;font:14px/18px var(--mono);white-space:pre-wrap">${esc(hintCode)}</pre><p class="next"><button class="btn" data-copy="1">Use this code</button></p>`);
+    return;
+  }
+  if (!view) return;                  // the mission is still on its way
   const hints = view.hints, text = hints[Math.min(hintsShown, hints.length - 1)];
+  hintCode = hints[hints.length - 1];
   const isCode = hintsShown >= hints.length - 1;
   hintsShown++;
   verdict(isCode
@@ -609,7 +619,11 @@ document.addEventListener("click", e => {
   else if (d.chip !== undefined) { StageSFX.play("click"); $("bookSheet").hidden = true; addLine(d.chip); }
   else if (d.mission) openMission(d.mission);
   else if (d.publish) askPublish();
-  else if (d.copy) { setCode(view.hints[view.hints.length - 1]); saveCode(); }
+  else if (d.copy) {
+    const had = $("code").value.trim();
+    setCode(mode === "free" && had ? `${had}\n${hintCode}` : hintCode);    // ideas add on, so nothing is lost
+    saveCode();
+  }
   else if (d.event) fire(d.event);
   else if (d.watch) watchShow(shows[+d.watch]);
 });

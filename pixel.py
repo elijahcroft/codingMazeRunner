@@ -333,7 +333,7 @@ class Show:
             have = [n for n in names if n]
             also = f" Your pal's frames are called: {word_list(have)}." if have else ""
             raise BotError(f'Your pal has no "{which}" frame yet.{also} To make one, go to '
-                           f"🎨 Draw, press Copy this frame, change it, then name it {which}.")
+                           f"🎨 Draw, press + Copy frame, change it, then press ⋯ and name it {which}.")
         self.step("pose", frame=frame)
 
     def c_play(self):
@@ -1102,7 +1102,8 @@ LEVELS = [
      "reference": 'for name in ["Ana", "Ben", "Cy"]:\n    say("Hi " + name)\n    jump()'},
 
     {"key": "b5", "chapter": 2, "name": "Flip book", "adds": ["play"], "python": ["for"],
-     "pip": "Here's a secret: a walk is just two drawings swapped again and again. play() shows all your frames in order, like a flip book.",
+     "pip": "Here's a secret: a walk is just two drawings swapped again and again. play() shows all your frames in order, like a flip book. "
+            "Only one frame? In 💓 Life, press a move, then Turn into frames.",
      "job": "Use a loop to play your frames 3 times.",
      "goals": [("Your frames play 3 times", lambda r: r.n("play") >= 3, lambda r: f"They played {r.n('play')} times. I need 3."),
                ("You use a for loop", lambda r: r.fors >= 1, None),
@@ -1334,6 +1335,19 @@ def _after_three(r):
         if name == "say" and args:
             was = str(args[0])
     return False
+
+
+# Free Stage's Give me an idea button: little shows to start from.
+IDEAS = [
+    'scene("park")\nfeel("sleepy")\nsay("Yawn...")\nwait(2)\nfeel("happy")\nsay("Good morning!")\nwave()',
+    'for i in range(3):\n    dance()\n    hearts()\ncheer()',
+    'look("left")\nlook("right")\nfriend("cat")\nfriend_say("Boo!")\nfeel("surprised")\njump()\nsay("You scared me!")\nfeel("happy")',
+    'say("Watch this!")\nspin()\njump()\nspin()\nconfetti()\nsay("Ta-da!")',
+    'def on_click():\n    jump()\n    say("That tickles!")\n\nsay("Click me!")',
+    'for i in range(3):\n    right(2)\n    jump()\nsay("I made it!")\nstars()',
+    'scene("park")\nsnow()\nfeel("surprised")\nsay("Snow!")\ndance()',
+    'feel("cool")\nsay("I am the coolest pal.")\nfeel("silly")\nsay("Just kidding!")\ncheer()',
+]
 
 
 def commands_for(key):

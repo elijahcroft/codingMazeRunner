@@ -121,7 +121,10 @@ function wakeUp() {
   wokenPals.add(art.key);
   if (!lifeRig.eyes.length) return;
   tellServer("/pixel/game", {game: "alive"});
-  const words = art.title ? `Hello ${name}! I'm ${art.title}!` : `Hello ${name}! You made me!`;
+  const met = `pixelMet:${art.key}`, back = recall(met);
+  store(met, "1");
+  const words = back ? `You're back, ${name}! I missed you!`
+    : art.title ? `Hello ${name}! I'm ${art.title}!` : `Hello ${name}! What's my name? Tell me: your name is...`;
   lifeStage.state.mood = "sleepy";
   act([{do: "wait", beats: 2}, {do: "feel", mood: "calm"}, {do: "say", text: words}, {do: "wave"}]);
 }
@@ -291,7 +294,9 @@ $("bonesAgain").addEventListener("click", () => {
 $("playCatch").addEventListener("click", startCatch);
 $("playCopy").addEventListener("click", startCopy);
 $("gameStop").addEventListener("click", () => endGame(false));
-$("openCard").addEventListener("click", () => { drawCard(); $("cardSheet").hidden = false; });
+$("openCard").addEventListener("click", () => showSheet("card"));
+$("showCard").addEventListener("click", () => showSheet("card"));
+$("showStickers").addEventListener("click", () => showSheet("stickers"));
 $("closeCard").addEventListener("click", () => { $("cardSheet").hidden = true; });
 $("printCard").addEventListener("click", () => printSheet("cardSheet"));
 $("saveCard").addEventListener("click", () => $("cardCanvas").toBlob(blob => hand(blob, fileName("-card.png"))));
@@ -315,7 +320,7 @@ $("lifeSay").addEventListener("submit", e => {
   if (!text) return;
   $("lifeWords").value = "";
   noticed();
-  act([{do: "say", text}]);
+  if (!playing) act(chatSteps(text));
 });
 const lifeCanvas = $("lifeCanvas");
 function onLifeCanvas(e) {
@@ -533,6 +538,86 @@ function drawCard() {
   g.fillStyle = ink;
   g.font = "28px ui-rounded, system-ui, sans-serif";
   g.fillText(parts, 54, 760, W2 - 108);
+}
+
+// Twelve moods of one pal on a sheet, ready to print and cut out.
+const STICKERS = [["Hi!", {eyes: "open"}], ["Yay!", "happy"], ["Oh no", "sad"], ["Wow!", "surprised"], ["Grr", "angry"], ["Zzz", "sleepy"],
+                  ["Hee hee", "silly"], ["Cool", "cool"], ["Love you", {eyes: "happy", mouth: "smile"}], ["Bye!", {eyes: "wink", mouth: "smile"}],
+                  ["Dance!", null], ["Cheer!", null]];
+function drawStickers() {
+  const cv = $("cardCanvas"), g = cv.getContext("2d"), rig = lifeRig, W2 = cv.width, H2 = cv.height;
+  g.fillStyle = "#ffffff"; g.fillRect(0, 0, W2, H2);
+  const cellW = W2 / 3, cellH = H2 / 4, wide = rig.wide, px = Math.max(1, Math.floor(150 / (rig.size * 1.25)));
+  STICKERS.forEach(([word, mood], i) => {
+    const x = (i % 3) * cellW, y = Math.floor(i / 3) * cellH;
+    g.strokeStyle = "#c9c4d6"; g.lineWidth = 2; g.setLineDash([8, 6]);
+    g.strokeRect(x + 6, y + 6, cellW - 12, cellH - 12);
+    g.setLineDash([]);
+    const pose = mood === null ? PixelRig.pose(word === "Dance!" ? "dance" : "cheer", .1, rig)
+      : Object.assign({}, typeof mood === "string" ? PixelRig.MOODS[mood] : mood);
+    if (rig.empty) return;
+    const out = PixelRig.render(rig, art.frames[0], PixelRig.tidy(pose));
+    const left = x + cellW / 2 - (rig.pad + rig.axis + .5) * px, top = y + cellH - 44 - (rig.pad + rig.feet + 1) * px;
+    out.forEach((n, at) => {
+      if (n < 0) return;
+      const sx = left + at % wide * px, sy = top + Math.floor(at / wide) * px;
+      if (sy < y + 8 || sx < x + 8 || sx > x + cellW - 8) return;
+      g.fillStyle = art.palette[n];
+      g.fillRect(sx, sy, px, px);
+    });
+    g.fillStyle = "#1b1530";
+    g.font = "900 24px ui-rounded, system-ui, sans-serif";
+    g.textAlign = "center";
+    g.fillText(word, x + cellW / 2, y + cellH - 16);
+  });
+}
+function showSheet(kind) {
+  $("showCard").setAttribute("aria-pressed", kind === "card");
+  $("showStickers").setAttribute("aria-pressed", kind === "stickers");
+  if (kind === "card") drawCard(); else drawStickers();
+  $("cardSheet").hidden = false;
+}
+
+// ---- Talking with a pal: it knows some words, and otherwise it says what you typed --------------
+const JOKES = ["Why was the pixel sad? It felt a bit square!", "What do you call a sleepy pal? A nap-py pal!", "Why did the cat sit on the computer? To keep an eye on the mouse!",
+               "What's a pixel's best food? Square meals!", "Knock knock! Who's there? Pal. Pal who? Pal-ease let me in!"];
+const CHAT = [
+  [/\b(i )?(love|like) (you|u)\b/, () => ({steps: [{do: "hearts"}], say: "I love you too!"})],
+  [/\b(joke|funny|laugh)\b/, () => ({say: JOKES[Math.floor(Math.random() * JOKES.length)], steps: [{do: "giggle"}]})],
+  [/\b(your name|who are you)\b/, () => ({say: art.title ? `I'm ${art.title}!` : "I don't have a name yet! Give me one in Draw."})],
+  [/\b(my name|who am i)\b/, () => ({say: `You're ${name}!`, steps: [{do: "wave"}]})],
+  [/\bhow are you\b/, () => ({say: "I feel great! Thanks for drawing me!", steps: [{do: "jump"}]})],
+  [/\b(who made|who drew)\b/, () => ({say: `${name} made me!`, steps: [{do: "cheer"}]})],
+  [/\b(dance|party|boogie)\b/, () => ({steps: [{do: "dance"}]})],
+  [/\b(jump|hop|bounce)\b/, () => ({steps: [{do: "jump"}, {do: "jump"}]})],
+  [/\b(hello|hi|hey|wave)\b/, () => ({say: `Hi ${name}!`, steps: [{do: "wave"}]})],
+  [/\b(bye|goodbye)\b/, () => ({say: "Bye bye! Come back soon!", steps: [{do: "wave"}]})],
+  [/\b(sleep|nap|bed|tired|good ?night)\b/, () => ({steps: [{do: "nap"}]})],
+  [/\b(cake|food|hungry|eat|snack|treat)\b/, () => ({steps: [{do: "eat"}], say: "Yum yum!"})],
+  [/\b(walk|come here|run)\b/, () => ({steps: [{do: "walk", to: 8}, {do: "walk", to: 2}]})],
+  [/\b(yay|hooray|cheer|well done|good)\b/, () => ({steps: [{do: "cheer"}]})],
+  [/\b(spin|twirl)\b/, () => ({steps: [{do: "spin"}]})],
+  [/\b(sad|cry)\b/, () => ({steps: [{do: "feel", mood: "sad"}], say: "Oh no!"})],
+  [/\b(cool|sunglasses)\b/, () => ({steps: [{do: "feel", mood: "cool"}]})],
+  [/\b(star|stars)\b/, () => ({steps: [{do: "stars"}]})],
+  [/\b(rain|snow)\b/, words => ({steps: [{do: /snow/.test(words) ? "snow" : "rain"}]})],
+];
+function chatSteps(text) {
+  const words = text.toLowerCase();
+  const naming = text.match(/\b(?:your name is|you are called|you're called|i will call you|i'll call you|call you)\s+(.+)/i);
+  if (naming) {
+    const title = naming[1].replace(/[.!?]+$/, "").trim().slice(0, 24);
+    art.title = title;
+    $("title").value = title;
+    changed();
+    return [{do: "say", text: `${title}! I love it!`}, {do: "cheer"}];
+  }
+  for (const [pattern, reply] of CHAT) {
+    if (!pattern.test(words)) continue;
+    const {say, steps = []} = reply(words);
+    return say ? [{do: "say", text: say}, ...steps] : steps;
+  }
+  return [{do: "say", text}];
 }
 
 // ---- A pal left alone: it fidgets, then it nods off ---------------------------------------------

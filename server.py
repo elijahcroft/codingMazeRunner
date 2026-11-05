@@ -4635,7 +4635,7 @@ def pixel_state(p):
                     "friends": [s for s in pixel.FRIENDS if ("friend", s) not in pixel.LOCKED or ("friend", s) in opened],
                     "props": pixel.PROPS},
             "class_stars": pixel_class_stars(),
-            "class_pals": sorted(q["name"] for q in players.values()
+            "ideas": pixel.IDEAS, "class_pals": sorted(q["name"] for q in players.values()
                                   if (q.get("pixel") or {}).get("show") and not q["pixel"]["show"].get("hidden")),
             "my_show": {"title": show["title"], "hearts": len(show["hearts"]), "hidden": show.get("hidden", False),
                         "waiting": show.get("waiting", False)} if show else None}
