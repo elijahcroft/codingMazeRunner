@@ -844,7 +844,7 @@ function showTip() {
     if (stroke && !stroke.held) html = "<b>The pen is down.</b> Slide, then click to stop.";
     else if (easy) html = `<b>Easy pen:</b> click, slide, click to stop.`;
     else if (tool === "shade") html = `Click on your colours to ${pen}.`;
-    else html = `Click a square to ${pen}.`;
+    else html = tool === "pencil" && nextStep ? nextStep : `Click a square to ${pen}.`;
   } else if (tool === "fill") {
     html = "Click a shape to pour your colour in.";
   } else if (tool === "picker") {
@@ -1085,20 +1085,24 @@ async function deleteDrawing(key, button) {
 
 // ---- Getting in -----------------------------------------------------------------------------
 let joinTimer = 0;
+// Four pals from the gallery, up and dancing before anyone has typed a thing.
 function joinScene() {
-  const g = $("joinArt").getContext("2d"), bean = A.fromRows(A.STARTERS.Bean);
-  let up = 0;
-  const hop = () => {
-    g.clearRect(0, 0, 16, 16);
-    bean.forEach((n, i) => {
-      if (n < 0) return;
-      g.fillStyle = n === A.INK ? "#1b1530" : "#ff8fc7";
-      g.fillRect(i % 16, Math.floor(i / 16) - up, 1, 1);
+  const cv = $("joinArt"), g = cv.getContext("2d");
+  const names = PalGallery.names.slice().sort(() => Math.random() - .5).slice(0, 4);
+  const pals = names.map((n, i) => PalStage.puppet({size: 16, palette: A.PALETTE, frames: [A.encode(PalGallery.pictures[n])]}, 5, i + 2));
+  const moves = ["dance", "wave", "cheer", "walk"];
+  g.imageSmoothingEnabled = false;
+  const paint = () => {
+    const t = performance.now() / 1000;
+    g.clearRect(0, 0, cv.width, cv.height);
+    pals.forEach((pup, i) => {
+      const beat = Math.floor((t + i * 1.7) / 3), move = beat % 2 ? moves[(beat + i) % moves.length] : null;
+      const pose = PalStage.livePose(pup.rigOf(0), pup.lifeline, t + i, {move, moveT: t + i * .2});
+      pup.draw(g, 0, pose, 60 + i * 120, cv.height - 6);
     });
-    up = 1 - up;
   };
-  hop();
-  joinTimer = setInterval(hop, 420);
+  paint();
+  joinTimer = setInterval(paint, 66);
   $("join").hidden = false;
   $("name").focus();
 }

@@ -1016,7 +1016,7 @@ LEVELS = [
      "hints": ['Type  scene("park")  on the first line.', 'scene("park")\nsound("tada")\nright(4)\nsay("Fresh air!")'],
      "reference": 'scene("park")\nsound("tada")\nright(4)\nsay("Fresh air!")'},
 
-    {"key": "h1", "chapter": 1, "name": "Say hello", "adds": ["wave"], "python": [],
+    {"key": "h1", "chapter": 1, "name": "Big wave", "adds": ["wave"], "python": [],
      "pip": "Your pal has real arms now! The computer found them when you drew it. If you drew no arms, it wiggles instead.",
      "job": "Say hello, then wave.",
      "goals": [("Your pal waves", lambda r: r.n("wave") >= 1, "Type  wave()  on a line of its own."),

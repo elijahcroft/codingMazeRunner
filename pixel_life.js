@@ -21,6 +21,13 @@ const PART_CHIPS = [
   {key: "ears", icon: "🐰", word: "Ears", has: r => r.limbs.some(l => l.kind === "ear"), move: "dance", cheer: "🐰 Look at those ears go!"},
   {key: "tail", icon: "🐾", word: "Tail", has: r => r.limbs.some(l => l.kind === "tail" || l.kind === "wing"), move: "dance", cheer: "🐾 Wag, wag, wag!"},
 ];
+const NEXT_PART = [
+  {key: "eyes", ask: "<b>Next:</b> draw two dots for eyes. 👀"},
+  {key: "mouth", ask: "<b>Next:</b> add a mouth under the eyes. 👄"},
+  {key: "arms", ask: "<b>Next:</b> draw arms sticking out. 💪"},
+  {key: "legs", ask: "<b>Next:</b> draw two legs with a gap. 🦵"},
+];
+let nextStep = "";        // what the tip line suggests drawing next
 let miniHad = null;       // which parts the drawing had last time we looked
 
 function freshMini() {
@@ -36,6 +43,10 @@ function freshMini() {
   }
   miniHad = now;
   miniKey = art.key;
+  const count = art.frames[0].filter(n => n >= 0).length;
+  const missing = NEXT_PART.find(p => !now.has(p.key));
+  nextStep = count < 12 || rig.empty ? "" : missing ? missing.ask : "<b>It's ready!</b> Press ✨ Bring to life.";
+  showTip();
   document.querySelectorAll("[data-chip-part]").forEach(el => el.classList.toggle("on", now.has(el.dataset.chipPart)));
 }
 function partDrawn(chip) {
@@ -147,6 +158,9 @@ function tellServer(path, data) {
 }
 function refreshBones() {
   lifeRig = PixelRig.build(art.frames[0], art.size, art.palette, art.marks || "");
+  $("lifeEmpty").hidden = !lifeRig.empty;
+  document.querySelectorAll("#moves button, #playCatch, #playCopy, #openCard, #bakeMove, #gifMove, #nextPlace, #lifeSay .main, #boneKeys button")
+    .forEach(b => { b.disabled = lifeRig.empty; });
   paintBones();
   document.querySelectorAll("[data-bone]").forEach(b => b.setAttribute("aria-pressed", b.dataset.bone === boneKey));
   $("boneNote").innerHTML = boneKey ? `<b>${esc(BONE_KEYS.find(k => k[0] === boneKey)[1])}:</b> click the squares that belong to it.` : boneWords(lifeRig);

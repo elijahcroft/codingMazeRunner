@@ -97,6 +97,7 @@ async function showView(name) {
   $("lifeView").hidden = name !== "life";
   document.querySelectorAll(".draw-only").forEach(el => { el.hidden = name !== "draw"; });
   document.querySelectorAll(".stage-only").forEach(el => { el.hidden = name === "draw" || name === "life"; });
+  $("palPick").hidden = name !== "stage";
   if (name === "life") openLife(); else closeLife();     // before the wait, so its buttons always work
   if (name !== "draw") await saveNow();
   if (name === "stage") {
@@ -113,7 +114,7 @@ async function refreshState() {
   if (data && data.you) { S = data; shelfList = data.drawings; showStars(); }
 }
 function fillPalPick() {
-  const options = S.drawings.map(d => `<option value="${esc(d.key)}">${esc(d.title || "My drawing")}</option>`);
+  const options = S.drawings.filter(d => d.frames[0].replace(/\./g, "")).map(d => `<option value="${esc(d.key)}">${esc(d.title || "My drawing")}</option>`);
   $("palSelect").innerHTML = options.join("") + `<option value="pip">Pip</option>`;
   $("palSelect").value = S.pal;
 }
@@ -542,7 +543,7 @@ async function openTheatre() {
     <div class="show-card"><button data-watch="${i}"><canvas></canvas>
       <strong>${esc(s.title)}</strong>
       <small>by ${esc(s.by)} · ♥ ${s.hearts}${s.events.length ? " · Play with it!" : ""}</small>
-    </button></div>`).join("") : `<div class="empty" style="grid-column:1/-1">No shows yet. Be the first!<br>Go to 🎭 Stage, open Missions, and pick Free Stage.</div>`;
+    </button></div>`).join("") : `<div class="empty" style="grid-column:1/-1">No shows yet. Be the first!<br>In 🎭 Stage, press Missions and pick Free Stage.</div>`;
   $("showGrid").querySelectorAll("canvas").forEach((cv, i) => {
     const pal = shows[i].pal;
     thumbInto(cv, A.decode(pal.frames[0]), pal.size, pal.palette);
@@ -597,6 +598,7 @@ async function takeDown() {
 function askPublish() {
   $("publishNote").textContent = "";
   $("showTitle").value = S.my_show ? S.my_show.title : "";
+  $("publishWho").textContent = S.checking ? "Your teacher looks at it first." : "";
   $("publish").hidden = false;
   $("showTitle").focus();
 }
@@ -630,6 +632,13 @@ document.addEventListener("click", e => {
 new ResizeObserver(fitScreen).observe($("stageHost").parentElement);
 $("runButton").addEventListener("click", runShow);
 $("skip").addEventListener("click", () => stage.hurry());
+// Esc, or a click on the dark part around a sheet, closes it.
+const SHEETS = {missions: "closeMissions", bookSheet: "closeBook", watch: "closeWatch", publish: "publishNo", artSheet: "closeArt", beads: "closeBeads", cardSheet: "closeCard"};
+function closeTopSheet() {
+  for (const [sheet, button] of Object.entries(SHEETS)) if (!$(sheet).hidden) $(button).click();
+}
+addEventListener("keydown", e => { if (e.key === "Escape") closeTopSheet(); });
+document.addEventListener("click", e => { if (e.target.classList.contains("sheet")) closeTopSheet(); });
 // Reads the mission aloud with the computer's own voice, for anyone who'd rather
 // hear it. A second press stops it.
 const CODE_WORDS = {"()": " ", "(": " ", ")": " ", '"': " "};
