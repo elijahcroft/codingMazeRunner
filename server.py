@@ -4521,6 +4521,7 @@ PIXEL_BADGES = {
     "catcher": ("🌟", "Star Catcher", "Catch 20 stars in one go"),
     "copycat": ("🧠", "Copy Cat", "Copy a row of 5 moves"),
     "duo": ("👯", "Double Act", "Bring a classmate's pal into your show"),
+    "story": ("📖", "Storyteller", "Add a page to the class story"),
     "all": ("🏆", "Star of the Show", "Get all the stars in the game"),
 }
 
@@ -4635,7 +4636,7 @@ def pixel_state(p):
                     "friends": [s for s in pixel.FRIENDS if ("friend", s) not in pixel.LOCKED or ("friend", s) in opened],
                     "props": pixel.PROPS},
             "class_stars": pixel_class_stars(),
-            "ideas": pixel.IDEAS, "checking": pixel_class.get("check", True), "class_pals": sorted(q["name"] for q in players.values()
+            "ideas": pixel.IDEAS, "everything": list(pixel.EVERYTHING), "checking": pixel_class.get("check", True), "class_pals": sorted(q["name"] for q in players.values()
                                   if (q.get("pixel") or {}).get("show") and not q["pixel"]["show"].get("hidden")),
             "my_show": {"title": show["title"], "hearts": len(show["hearts"]), "hidden": show.get("hidden", False),
                         "waiting": show.get("waiting", False)} if show else None}
@@ -4712,19 +4713,84 @@ def pixel_theatre(viewer=None, teacher=False):
 
 
 def pixel_cast():
-    """Pals that can be friends in a show: only ones already out in the Theatre."""
+    """Pals that can be friends in a show: only ones the class can already see,
+    in the Theatre or the story, so nothing private ever turns up."""
     cast = {}
     for q in players.values():
-        w = (q.get("pixel") or {}).get("show")
+        entry = q.get("pixel") or {}
+        w, joined = entry.get("show"), entry.get("cast")
         if w and not w.get("hidden"):
             cast[q["name"].strip().lower()] = w["pal"]
+        if joined and not joined.get("waiting"):
+            cast[q["name"].strip().lower()] = joined["pal"]
+    for page in pixel_story()["pages"]:
+        if not page["waiting"]:
+            cast.setdefault(page["by"].strip().lower(), page["pal"])
     return cast
+
+
+# ---- The class story: one book, a page from each student ----------------------
+def pixel_story():
+    if "story" not in pixel_class:
+        pixel_class["story"] = {"title": "Our Class Story", "start": "Once upon a time, in a land made of pixels...",
+                                "pages": [], "next": 1}
+    return pixel_class["story"]
+
+
+def pixel_page_public(page, viewer=None):
+    pal = page["pal"]                      # the book only shows the first frame, so it stays small
+    return {"id": page["id"], "by": page["by"], "line": page["line"],
+            "pal": {"size": pal["size"], "palette": pal["palette"], "frames": pal["frames"][:1], "marks": pal.get("marks", "")},
+            "mine": bool(viewer) and viewer["id"] == page["owner"], "waiting": page["waiting"]}
+
+
+def pixel_story_view(viewer=None):
+    """The book as students see it, with their own waiting page if they have one."""
+    story = pixel_story()
+    pages = [pixel_page_public(page, viewer) for page in story["pages"] if not page["waiting"]]
+    mine = next((dict(pixel_page_public(page, viewer), code=page["code"]) for page in story["pages"]
+                 if page["waiting"] and viewer and page["owner"] == viewer["id"]), None)
+    joined = pixel_entry(viewer).get("cast") if viewer else None
+    return {"title": story["title"], "start": story["start"], "pages": pages, "waiting": mine,
+            "cast": sorted({n.title() for n in pixel_cast()}), "joined": "waiting" if joined and joined.get("waiting") else bool(joined),
+            "ideas": pixel.STORY_IDEAS}
+
+
+def pixel_film():
+    """The whole story, ready to play."""
+    with lock:
+        story = pixel_story()
+        pages = [dict(page) for page in story["pages"] if not page["waiting"]]
+        cast, title, start = pixel_cast(), story["title"], story["start"]
+    film = []
+    for page in pages:
+        out = pixel.run_free(page["code"], page["pal"], {tuple(u) for u in page["unlocked"]}, page["id"],
+                             cast=cast, stand_in=True)
+        film.append({"id": page["id"], "by": page["by"], "line": page["line"], "pal": page["pal"], "steps": out["steps"]})
+    return {"title": title, "start": start, "pages": film}
+
+
+def pixel_let_in(page):
+    story = pixel_story()
+    story["pages"].remove(page)
+    page["waiting"] = False
+    story["pages"].append(page)
+    number = sum(1 for x in story["pages"] if not x["waiting"])
+    pixel_feed_add(f"📖 {page['by']} added page {number} to the story")
+
+
+def pixel_story_page(number):
+    return next((x for x in pixel_story()["pages"] if x["id"] == number), None)
+
+
+def pixel_picture_of(pal):
+    return {"size": pal["size"], "palette": pal["palette"], "frame": pal["frames"][0]}
 
 
 def pixel_picture(entry):
     """The first frame of a student's pal, for the teacher's list."""
     pal = pixel_pal(entry)
-    return None if pal is pixel.PIP else {"size": pal["size"], "palette": pal["palette"], "frame": pal["frames"][0]}
+    return None if pal is pixel.PIP else pixel_picture_of(pal)
 
 
 def pixel_overview():
@@ -4747,7 +4813,7 @@ def pixel_overview():
     rows.sort(key=lambda r: (r["at"], -r["misses"], r["name"].lower()))
     return {"students": rows, "missions": [{"key": k, "name": pixel.LEVEL_BY_KEY[k]["name"]} for k in pixel.LEVEL_ORDER],
             "open": pixel_class.get("open", 0), "check": pixel_class.get("check", True), "feed": pixel_feed[-12:],
-            "party": pixel_class.get("party", 0),
+            "party": pixel_class.get("party", 0), "story_play": pixel_class.get("story_play", 0),
             "class": {"stars": pixel_class_stars(), "goals": [u for u in pixel.UNLOCKS if "class" in u]}}
 
 
@@ -4763,6 +4829,57 @@ def pixel_teacher(data):
         show["hidden"] = action == "hide"
         show["waiting"] = False
         return {"ok": True}
+    if action == "all_in":                 # everything waiting, in one go
+        for q in players.values():
+            entry = q.get("pixel") or {}
+            show, joined = entry.get("show"), entry.get("cast")
+            if show and show.get("waiting"):
+                pixel_feed_add(f"🎟️ {q['name']} put {show['title']} in the Theatre")
+                show["hidden"] = show["waiting"] = False
+            if joined and joined.get("waiting"):
+                joined["waiting"] = False
+        for page in [x for x in pixel_story()["pages"] if x["waiting"]]:
+            pixel_let_in(page)
+        return {"ok": True}
+    if action in ("cast_ok", "cast_no"):
+        q = pixel_owner(str(data.get("owner", "")))
+        if not q or not pixel_entry(q).get("cast"):
+            return {"error": "Nobody like that."}
+        if action == "cast_ok":
+            pixel_entry(q)["cast"]["waiting"] = False
+        else:
+            pixel_entry(q)["cast"] = None
+        return {"ok": True}
+    if action in ("page_ok", "page_no", "page_up", "page_down"):
+        page = pixel_story_page(data.get("page"))
+        if not page:
+            return {"error": "No such page."}
+        pages = pixel_story()["pages"]
+        if action == "page_no":
+            pages.remove(page)
+        elif action == "page_ok":
+            if page["waiting"]:
+                pixel_let_in(page)
+        else:
+            at, to = pages.index(page), pages.index(page) + (-1 if action == "page_up" else 1)
+            if 0 <= to < len(pages):
+                pages[at], pages[to] = pages[to], pages[at]
+        return {"ok": True}
+    if action == "story_words":
+        story = pixel_story()
+        story["title"] = str(data.get("title", "")).strip()[:40] or story["title"]
+        story["start"] = str(data.get("start", "")).strip()[:pixel.LINE_MAX * 2] or story["start"]
+        return {"ok": True}
+    if action == "story_new":
+        old = pixel_story()
+        if old["pages"]:
+            pixel_class.setdefault("old_stories", []).append(old)
+            del pixel_class["old_stories"][:-10]
+        del pixel_class["story"]
+        return {"ok": True}
+    if action == "story_play":
+        pixel_class["story_play"] = int(time.time() * 1000)
+        return {"ok": True}
     if action == "check":
         pixel_class["check"] = bool(data.get("on"))
         return {"ok": True}
@@ -4776,13 +4893,26 @@ def pixel_teacher(data):
     return {"error": "Unknown action."}
 
 
+def pixel_story_teacher():
+    story = pixel_story()
+    waiting = [{"owner": pixel_public(q), "by": q["name"], "picture": pixel_picture_of(q["pixel"]["cast"]["pal"])}
+               for q in players.values() if ((q.get("pixel") or {}).get("cast") or {}).get("waiting")]
+    return {"title": story["title"], "start": story["start"], "cast_waiting": waiting,
+            "pages": [dict(pixel_page_public(page), code=page["code"], picture=pixel_picture_of(page["pal"]))
+                      for page in story["pages"]]}
+
+
 def pixel_get(path, query):
+    if path == "/pixel/film":               # the projector has no login, and only let-in pages are in it
+        return pixel_film()
     with lock:
         if path == "/pixel/overview":       # the projector has no login, so no student rows
             over = pixel_overview()
-            return {"class": over["class"], "feed": over["feed"], "party": over["party"],
+            return {"class": over["class"], "feed": over["feed"], "party": over["party"], "story_play": over["story_play"],
                     "address": f"http://{get_lan_ip()}:{PORT}/pixel"}
         p = players.get(query.get("id", [""])[0])
+        if path == "/pixel/story":
+            return pixel_story_view(p)
         if path == "/pixel/theatre":
             return {"shows": pixel_theatre(p)}
         if not p:
@@ -4801,7 +4931,7 @@ def pixel_post(path, data):
             if str(data.get("key", "")) != ADMIN_KEY:
                 return {"error": "Wrong admin key."}
             if data.get("action") == "overview":
-                return dict(pixel_overview(), shows=pixel_theatre(teacher=True),
+                return dict(pixel_overview(), shows=pixel_theatre(teacher=True), story=pixel_story_teacher(),
                             address=f"http://{get_lan_ip()}:{PORT}/pixel")
             out = pixel_teacher(data)
             save_state()
@@ -4904,6 +5034,48 @@ def pixel_post(path, data):
             rewards = pixel_record(p, key, code[:pixel.MAX_CODE], out)
             pixel_save_soon()
             return dict(out, rewards=rewards, state=pixel_state(p))
+    if path == "/pixel/story/cast":
+        if pal is pixel.PIP:
+            return {"error": "Draw your pal first! Then it can join the story."}
+        with lock:
+            waiting = pixel_class.get("check", True)
+            entry["cast"] = {"pal": dict(pal), "waiting": waiting}
+            save_state()
+            return {"ok": True, "waiting": waiting}
+    if path == "/pixel/story/take":
+        with lock:
+            page = pixel_story_page(data.get("page"))
+            if page and page["owner"] == p["id"]:
+                pixel_story()["pages"].remove(page)
+                save_state()
+            return {"ok": True}
+    if path == "/pixel/story/add":
+        line = " ".join(str(data.get("line", "")).split())[:pixel.LINE_MAX]
+        if not line:
+            return {"error": "Write one sentence for the book first."}
+        out = pixel.run_free(code, pal, unlocked, cast=cast)
+        if out["error"]:
+            return {"error": "Your page has a problem on it. Fix it first, then try again.\n" + out["error"]}
+        if not out["steps"]:
+            return {"error": "Nothing happens on your page yet. Add a line of code first."}
+        if len(out["steps"]) > pixel.MAX_PAGE_STEPS:
+            return {"error": f"That's a very long page! A page has room for {pixel.MAX_PAGE_STEPS} moves. Make it shorter, or save some for another page."}
+        with lock:
+            story = pixel_story()
+            story["pages"][:] = [x for x in story["pages"] if not (x["waiting"] and x["owner"] == p["id"])]
+            if len(story["pages"]) >= pixel.MAX_STORY_PAGES:
+                return {"error": "The book is full! Ask your teacher to start a new story."}
+            waiting = pixel_class.get("check", True)
+            page = {"id": story["next"], "owner": p["id"], "by": p["name"], "line": line, "code": code[:pixel.MAX_CODE],
+                    "pal": dict(pal), "unlocked": sorted(unlocked), "at": int(time.time()), "waiting": True}
+            story["next"] += 1
+            story["pages"].append(page)
+            if not waiting:
+                pixel_let_in(page)
+            earned = []
+            pixel_badge(p, "story", earned)
+            save_state()
+            return {"ok": True, "waiting": waiting, "badges": earned, "story": pixel_story_view(p)}
     if path == "/pixel/caught":
         score = data.get("score")
         if isinstance(score, bool) or not isinstance(score, int) or not 0 < score <= 300:
@@ -5308,6 +5480,7 @@ PAGES = {
     "/pixel/gallery.js": ("pixel_gallery.js", "text/javascript; charset=utf-8"),
     "/pixel/studio.js": ("pixel_studio.js", "text/javascript; charset=utf-8"),
     "/pixel/life.js": ("pixel_life.js", "text/javascript; charset=utf-8"),
+    "/pixel/story.js": ("pixel_story.js", "text/javascript; charset=utf-8"),
     "/pixel/page.js": ("pixel_page.js", "text/javascript; charset=utf-8"),
     "/leaderboard": ("leaderboard.html", "text/html; charset=utf-8"),
     "/screen": ("screen.html", "text/html; charset=utf-8"),

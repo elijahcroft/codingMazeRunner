@@ -230,7 +230,7 @@ class StudioOverHttp(unittest.TestCase):
 
     def test_the_open_overview_has_no_student_rows(self):
         self.join()
-        self.assertEqual(set(self.get("/pixel/overview")), {"class", "feed", "address", "party"})
+        self.assertEqual(set(self.get("/pixel/overview")), {"class", "feed", "address", "party", "story_play"})
 
     def test_saves_reach_the_file_and_a_burst_shares_one_write(self):
         me = self.post("/join", {"name": "Mia"})["id"]
@@ -723,7 +723,7 @@ class TheStagePlays(unittest.TestCase):
     STUB = """
         const folder = process.argv[1];
         const noop = () => {};
-        const pen = new Proxy({}, {get: (t, k) => k === "getImageData" ? () => ({data: []}) : noop, set: () => true});
+        const pen = new Proxy({}, {get: (t, k) => k === "getImageData" ? () => ({data: []}) : k === "measureText" ? () => ({width: 100}) : noop, set: () => true});
         const canvas = () => ({width: 0, height: 0, style: {}, getContext: () => pen});
         global.document = {createElement: canvas};
         global.localStorage = {getItem: () => null, setItem: noop};
@@ -756,8 +756,23 @@ class TheStagePlays(unittest.TestCase):
             return [...seen].sort();""")
         self.assertEqual(out, [0, 1, 2])
 
+    def test_the_whole_film_plays_to_its_curtain_call(self):
+        out = self.js("""
+            const blank = "0" + ".".repeat(255), pal = {size: 16, palette: ["#000000"], frames: [blank], names: []};
+            const page = (by, steps) => ({by, line: "Words.", pal, steps});
+            const film = {title: "T", start: "Once.", pages: [page("Mia", [{do: "say", text: "Hi"}, {do: "scene", name: "park"}]), page("Ben", [{do: "jump"}])]};
+            const said = [];
+            const done = await PalStage.playFilm(stage, film, {line: (w, s) => said.push(s)});
+            return {done, said, scene: stage.state.scene, bows: stage.state.bow.pups.length}""")
+        self.assertTrue(out["done"])
+        self.assertEqual(out["said"][:3], ["T", "Page 1 by Mia", "Page 2 by Ben"])
+        self.assertEqual(out["scene"], "park")           # the place carries over between pages
+        self.assertEqual(out["bows"], 2)
+
     def test_every_kind_of_step_runs(self):
-        steps = [{"do": "walk", "to": 5}, {"do": "jump"}, {"do": "wave"}, {"do": "dance"}, {"do": "cheer"}, {"do": "giggle"},
+        steps = [{"do": "friend", "kind": "cat"}, {"do": "friend", "kind": "bunny"}, {"do": "friend_say", "text": "Hi", "who": "cat"},
+                 {"do": "friend_jump", "who": "bunny"}, {"do": "everyone", "move": "dance"}, {"do": "bye", "who": "cat"}, {"do": "bye"},
+                 {"do": "walk", "to": 5}, {"do": "jump"}, {"do": "wave"}, {"do": "dance"}, {"do": "cheer"}, {"do": "giggle"},
                  {"do": "look", "way": "left"}, {"do": "feel", "mood": "happy"}, {"do": "spin"}, {"do": "shake"},
                  {"do": "size", "to": 2}, {"do": "hide"}, {"do": "appear"}, {"do": "pose", "frame": 0}, {"do": "play"},
                  {"do": "wait", "beats": 1}, {"do": "say", "text": "Hi"}, {"do": "friend", "kind": "cat"},
@@ -814,7 +829,193 @@ class ClassmatesAsFriends(unittest.TestCase):
     def test_a_shared_show_survives_its_friend_leaving(self):
         out = self.run_it('friend("Mia")\nfriend_say("Hi!")', stand_in=True)
         self.assertIsNone(out["error"])
-        self.assertEqual(out["steps"][0]["kind"], "bean")
+        self.assertEqual(out["steps"][0]["stand_in"], "bean")
+
+
+class SeveralFriends(unittest.TestCase):
+    def run_it(self, code):
+        return pixel.run_free(code, pixel.PIP, pixel.LOCKED)
+
+    def test_three_friends_can_share_the_stage(self):
+        out = self.run_it('friend("cat")\nfriend("cat")\nfriend_say("Hi")')
+        self.assertEqual([s["do"] for s in out["steps"]], ["friend", "friend_say"])     # no twins
+        self.assertEqual(out["steps"][1]["who"], "cat")
+
+    def test_a_fourth_friend_is_told_why_not(self):
+        cast = {n: pixel.PIP for n in ("a", "b", "c", "d")}
+        out = pixel.run_free('friend("a")\nfriend("b")\nfriend("c")\nfriend("d")', pixel.PIP, pixel.LOCKED, cast=cast)
+        self.assertIn("room for 3", out["error"])
+
+    def test_a_friend_can_be_named(self):
+        cast = {"mia": pixel.PIP, "ben": pixel.PIP}
+        out = pixel.run_free('friend("Mia")\nfriend("Ben")\nfriend_say("Mia", "Hi")\nfriend_jump("Mia")\nbye("Mia")\nfriend_say("Hello")',
+                             pixel.PIP, pixel.LOCKED, cast=cast)
+        self.assertIsNone(out["error"])
+        self.assertEqual([s.get("who") for s in out["steps"][2:]], ["mia", "mia", "mia", "ben"])
+
+    def test_naming_someone_who_isnt_there(self):
+        self.assertIn("isn't on stage", self.run_it('friend("cat")\nfriend_say("Ben", "Hi")')["error"])
+
+    def test_everyone(self):
+        self.assertEqual(self.run_it('everyone("dance")')["steps"][0]["move"], "dance")
+        self.assertIn("The moves are", self.run_it('everyone("sing")')["error"])
+
+
+class TheClassStory(unittest.TestCase):
+    setUp, tearDown, post, get = StudioOverHttp.setUp, StudioOverHttp.tearDown, StudioOverHttp.post, StudioOverHttp.get
+    ART = dict(drawing(), key="ink123", frames=["0" + "." * 255])
+
+    def fresh(self, check=True):
+        server.pixel_class.pop("story", None)
+        server.pixel_class.pop("old_stories", None)
+        server.pixel_class.pop("check", None)
+        if not check:
+            server.pixel_class["check"] = False
+
+    def join(self, name):
+        me = self.post("/join", {"name": name})["id"]
+        self.post("/pixel/save", {"id": me, "drawing": self.ART})
+        return me
+
+    def teacher(self, **data):
+        return self.post("/pixel/teacher", dict(data, key=server.ADMIN_KEY))
+
+    def add(self, me, line="Then a thing happened.", code='say("Hi")'):
+        return self.post("/pixel/story/add", {"id": me, "code": code, "line": line})
+
+    def book(self, me=""):
+        return self.get(f"/pixel/story?id={me}")
+
+    def test_a_page_waits_then_joins_the_book(self):
+        self.fresh()
+        mia, ben = self.join("Mia"), self.join("Ben")
+        out = self.add(mia, "The cat found a map.")
+        self.assertTrue(out["waiting"])
+        self.assertEqual(out["badges"][0]["name"], "Storyteller")
+        self.assertEqual(self.book(ben)["pages"], [])
+        self.assertEqual(self.get("/pixel/film")["pages"], [])
+        self.assertEqual(self.book(mia)["waiting"]["line"], "The cat found a map.")
+        self.assertNotIn("found a map", json.dumps(self.get("/pixel/overview")))
+        page = self.teacher(action="overview")["story"]["pages"][0]
+        self.teacher(action="page_ok", page=page["id"])
+        self.assertEqual([p["line"] for p in self.book(ben)["pages"]], ["The cat found a map."])
+        self.assertIn("page 1", json.dumps(self.get("/pixel/overview"), ensure_ascii=False))
+
+    def test_a_page_needs_words_and_working_code(self):
+        self.fresh()
+        mia = self.join("Mia")
+        self.assertIn("sentence", self.add(mia, "  ")["error"])
+        self.assertIn("problem", self.add(mia, code="oops(")["error"])
+        self.assertIn("Nothing happens", self.add(mia, code="n = 1")["error"])
+        self.assertIn("long page", self.add(mia, code="for i in range(70):\n    jump()")["error"])
+
+    def test_a_second_page_replaces_the_one_still_waiting(self):
+        self.fresh()
+        mia = self.join("Mia")
+        self.add(mia, "First go.")
+        self.add(mia, "Better go.")
+        pages = self.teacher(action="overview")["story"]["pages"]
+        self.assertEqual([p["line"] for p in pages], ["Better go."])
+
+    def test_a_waiting_page_keeps_its_code_for_changing(self):
+        self.fresh()
+        mia = self.join("Mia")
+        self.add(mia, "One.", 'jump()')
+        self.assertEqual(self.book(mia)["waiting"]["code"], "jump()")
+        self.assertNotIn("code", self.book(mia)["pages"])
+
+    def test_a_student_can_take_back_a_waiting_page_but_not_anothers(self):
+        self.fresh()
+        mia, ben = self.join("Mia"), self.join("Ben")
+        self.add(mia)
+        page = self.book(mia)["waiting"]["id"]
+        self.post("/pixel/story/take", {"id": ben, "page": page})
+        self.assertIsNotNone(self.book(mia)["waiting"])
+        self.post("/pixel/story/take", {"id": mia, "page": page})
+        self.assertIsNone(self.book(mia)["waiting"])
+
+    def test_the_class_writes_it_together_in_the_order_it_was_let_in(self):
+        self.fresh(check=False)
+        for name, line in (("Mia", "One."), ("Ben", "Two."), ("Ana", "Three.")):
+            self.add(self.join(name), line)
+        self.assertEqual([p["line"] for p in self.book()["pages"]], ["One.", "Two.", "Three."])
+        ids = [p["id"] for p in self.book()["pages"]]
+        self.teacher(action="page_up", page=ids[2])
+        self.assertEqual([p["line"] for p in self.book()["pages"]], ["One.", "Three.", "Two."])
+        self.teacher(action="page_no", page=ids[0])
+        self.assertEqual([p["line"] for p in self.book()["pages"]], ["Three.", "Two."])
+
+    def test_the_film_has_every_page_ready_to_play(self):
+        self.fresh(check=False)
+        self.add(self.join("Mia"), "One.", 'say("Hi")\nwave()')
+        film = self.get("/pixel/film")
+        self.assertEqual([s["do"] for s in film["pages"][0]["steps"]], ["say", "wave"])
+        self.assertEqual(film["pages"][0]["pal"]["frames"], self.ART["frames"])
+
+    def test_a_pal_joins_the_cast_with_the_teachers_ok(self):
+        self.fresh()
+        mia, ben = self.join("Mia"), self.join("Ben")
+        self.assertEqual(self.book(mia)["joined"], False)
+        self.assertTrue(self.post("/pixel/story/cast", {"id": mia})["waiting"])
+        self.assertEqual(self.book(mia)["joined"], "waiting")
+        code = {"id": ben, "level": "free", "code": 'friend("Mia")'}
+        self.assertIn("in the Theatre or the story", self.post("/pixel/run", code)["error"])
+        waiting = self.teacher(action="overview")["story"]["cast_waiting"]
+        self.assertEqual(waiting[0]["by"], "Mia")
+        self.teacher(action="cast_ok", owner=waiting[0]["owner"])
+        self.assertIsNone(self.post("/pixel/run", code)["error"])
+        self.assertEqual(self.book(ben)["cast"], ["Mia"])
+
+    def test_pip_cant_join_the_cast(self):
+        self.fresh()
+        me = self.post("/join", {"name": "Zed"})["id"]
+        self.assertIn("Draw your pal", self.post("/pixel/story/cast", {"id": me})["error"])
+
+    def test_writing_a_page_brings_your_pal_into_the_cast(self):
+        self.fresh(check=False)
+        self.add(self.join("Mia"))
+        self.assertEqual(self.book()["cast"], ["Mia"])
+
+    def test_let_everyone_in(self):
+        self.fresh()
+        mia, ben = self.join("Mia"), self.join("Ben")
+        self.add(mia)
+        self.post("/pixel/story/cast", {"id": ben})
+        self.post("/pixel/publish", {"id": ben, "code": 'say("Hi")', "title": "Show"})
+        self.teacher(action="all_in")
+        self.assertEqual(len(self.book()["pages"]), 1)
+        self.assertEqual(self.book()["cast"], ["Ben", "Mia"])
+        self.assertEqual(len(self.get("/pixel/theatre")["shows"]), 1)
+
+    def test_a_new_story_puts_the_old_one_away(self):
+        self.fresh(check=False)
+        self.add(self.join("Mia"))
+        self.teacher(action="story_words", title="The Lost Star", start="A star fell.")
+        self.assertEqual(self.book()["title"], "The Lost Star")
+        self.teacher(action="story_new")
+        self.assertEqual(self.book()["pages"], [])
+        self.assertEqual(server.pixel_class["old_stories"][0]["title"], "The Lost Star")
+
+    def test_a_page_survives_its_friend_leaving(self):
+        self.fresh(check=False)
+        mia, ben = self.join("Mia"), self.join("Ben")
+        self.post("/pixel/story/cast", {"id": mia})
+        self.add(ben, "Hello.", 'friend("Mia")\nfriend_say("Mia", "Hi")')
+        self.teacher(action="cast_no", owner=server.pixel_public(server.players[mia]))
+        steps = self.get("/pixel/film")["pages"][0]["steps"]
+        self.assertEqual(steps[0]["stand_in"], "bean")
+
+    def test_every_story_idea_works_for_a_brand_new_student(self):
+        for idea in pixel.STORY_IDEAS:
+            with self.subTest(idea=idea):
+                self.assertIsNone(pixel.run_free(idea, pixel.PIP, set())["error"])
+
+    def test_the_story_is_saved(self):
+        self.fresh(check=False)
+        self.add(self.join("Mia"), "Kept.")
+        server.save_state()
+        with open(server.STATE_FILE) as saved:
+            self.assertIn("Kept.", saved.read())
 
 
 class TheMarks(unittest.TestCase):

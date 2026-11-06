@@ -40,6 +40,10 @@
     #posterGrid b { font-size: 20px; }
   }
   canvas.pal { width: 40px; height: 40px; margin-right: 8px; vertical-align: middle; image-rendering: pixelated; background: #f6f3fd; border-radius: 4px; }
+  .story-words { display: grid; grid-template-columns: 200px minmax(0, 1fr) auto; gap: 6px; }
+  .story-words input { padding: 6px 8px; font: inherit; border: 2px solid var(--ink); border-radius: 6px; }
+  .cast-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .cast-row div { display: flex; align-items: center; gap: 4px; }
   .show { border: 2px solid var(--ink); border-radius: 8px; padding: 8px; display: grid; gap: 4px; align-content: start; }
   .show.hidden { background: #f0eef4; border-style: dashed; }
   .show pre { margin: 0; max-height: 130px; overflow: auto; font: 12.5px/1.35 ui-monospace, Menlo, Consolas, monospace; background: #f6f3fd; padding: 6px; border-radius: 6px; }
@@ -89,6 +93,23 @@
     <button class="btn" id="party">🎉 Dance party on the projector</button>
     <button class="btn" id="poster">🖨️ Print a class poster</button>
     <span style="font-size:14px;color:var(--soft)">Students can always go past this by finishing missions.</span>
+  </div>
+
+  <h2>The class story</h2>
+  <div class="card">
+    <div class="story-words">
+      <input id="storyTitle" maxlength="40" aria-label="The story's title">
+      <input id="storyStart" maxlength="180" aria-label="How the story starts">
+      <button class="btn" id="storySave">Save</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <button class="btn" id="allIn">✅ Let everyone in</button>
+      <button class="btn" id="storyPlay">▶ Play the story on the projector</button>
+      <button class="btn" id="storyNew">Start a new story</button>
+    </div>
+    <p id="castNote" style="margin:8px 0 0;font-size:14px"></p>
+    <div id="castWaiting" class="cast-row"></div>
+    <div id="pages" class="shows" style="margin-top:8px"></div>
   </div>
 
   <h2>The Theatre</h2>
@@ -148,6 +169,24 @@ async function refresh() {
     pick.innerHTML = data.missions.map((m, i) => `<option value="${esc(m.key)}">${i + 1}. ${esc(m.name)}</option>`).join("");
     pick.selectedIndex = data.open;
   }
+  const story = data.story;
+  if (document.activeElement !== $("storyTitle") && document.activeElement !== $("storyStart")) {
+    $("storyTitle").value = story.title;
+    $("storyStart").value = story.start;
+  }
+  $("castNote").textContent = story.cast_waiting.length ? "These pals want to join the story:" : "";
+  $("castWaiting").innerHTML = story.cast_waiting.map(c => `<div><canvas class="pal" data-picture="${esc(JSON.stringify(c.picture))}"></canvas><b>${esc(c.by)}</b>
+    <button class="btn" data-cast-ok="${esc(c.owner)}">Let in</button><button class="btn" data-cast-no="${esc(c.owner)}">No</button></div>`).join("");
+  const pages = story.pages.slice().sort((a, b) => b.waiting - a.waiting);
+  let number = 0;
+  $("pages").innerHTML = pages.map(p => `
+    <div class="show">
+      <b>${p.waiting ? "Waiting for you" : `Page ${++number}`}: ${esc(p.line)}</b>
+      <small>by ${esc(p.by)}</small>
+      <pre>${esc(p.code)}</pre>
+      <div>${p.waiting ? `<button class="btn" data-page-ok="${p.id}">Let it in</button>` : `<button class="btn" data-page-up="${p.id}" aria-label="Earlier">↑</button> <button class="btn" data-page-down="${p.id}" aria-label="Later">↓</button>`}
+      <button class="btn" data-page-no="${p.id}">${p.waiting ? "Not this one" : "Take out"}</button></div>
+    </div>`).join("");
   $("checkFirst").checked = data.check;
   $("checkNote").textContent = data.check
     ? "New shows wait here until you press Let it in, because students can type anything into say()."
@@ -179,6 +218,34 @@ function paintPal(cv) {
 $("gate").addEventListener("submit", e => { e.preventDefault(); key = $("key").value.trim(); refresh(); });
 $("openGo").addEventListener("click", async () => { await call({action: "open", level: $("openTo").value}); refresh(); });
 $("party").addEventListener("click", () => call({action: "party"}));
+$("allIn").addEventListener("click", async () => { await call({action: "all_in"}); refresh(); });
+$("storyPlay").addEventListener("click", () => call({action: "story_play"}));
+$("storySave").addEventListener("click", async () => { await call({action: "story_words", title: $("storyTitle").value, start: $("storyStart").value}); refresh(); });
+let newStorySure = false;
+$("storyNew").addEventListener("click", async () => {
+  if (!newStorySure) {       // a second click makes it certain
+    newStorySure = true;
+    $("storyNew").textContent = "Click again: this one gets put away";
+    return;
+  }
+  newStorySure = false;
+  $("storyNew").textContent = "Start a new story";
+  await call({action: "story_new"});
+  refresh();
+});
+$("pages").addEventListener("click", async e => {
+  const d = (e.target.closest("button") || {}).dataset;
+  if (!d) return;
+  const [action, page] = d.pageOk ? ["page_ok", d.pageOk] : d.pageNo ? ["page_no", d.pageNo] : d.pageUp ? ["page_up", d.pageUp] : ["page_down", d.pageDown];
+  await call({action, page: +page});
+  refresh();
+});
+$("castWaiting").addEventListener("click", async e => {
+  const d = (e.target.closest("button") || {}).dataset;
+  if (!d) return;
+  await call(d.castOk ? {action: "cast_ok", owner: d.castOk} : {action: "cast_no", owner: d.castNo});
+  refresh();
+});
 // Every pal in the class on one page, to print and pin up.
 let classRows = [];
 $("poster").addEventListener("click", () => {

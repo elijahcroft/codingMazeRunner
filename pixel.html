@@ -60,7 +60,7 @@
 
   /* ---- The app --------------------------------------------------------------- */
   .app { height: 100vh; min-height: 500px; min-width: 980px; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
-  @media (max-width: 1240px) { .brand { display: none; } .bar { gap: 5px; padding: 8px 9px; } .bar .btn { padding: 6px 7px; font-size: 15px; } .tabs button { padding: 4px 5px; font-size: 15px; } #title { padding: 6px 7px; font-size: 15px; } #saved { display: none; } }
+  @media (max-width: 1340px) { .brand { display: none; } .bar { gap: 5px; padding: 8px 9px; } .bar .btn { padding: 6px 7px; font-size: 15px; } .tabs button { padding: 4px 5px; font-size: 15px; } #title { padding: 6px 7px; font-size: 15px; } #saved { display: none; } }
   .view { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; }
   .bar { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--paper); border-bottom: 2px solid var(--ink); }
   .tabs { display: flex; gap: 4px; padding: 3px; background: var(--plum-soft); border: 2px solid var(--ink); border-radius: 10px; }
@@ -274,6 +274,23 @@
   .bone-keys i { flex: none; width: 13px; height: 13px; border: 1.5px solid var(--ink); border-radius: 3px; }
   .keep { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .keep .btn { padding: 4px 9px; font-size: 15px; box-shadow: 2px 2px 0 var(--ink); }
+  /* ---- The class story --------------------------------------------------------- */
+  .story-view { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 12px; padding: 10px 12px; min-height: 0; overflow: hidden; }
+  .storybook { display: flex; flex-direction: column; min-height: 0; padding: 10px; }
+  .storybook h2 { margin: 0; font-size: 20px; font-weight: 900; }
+  #bookStart { margin: 3px 0 7px; font-size: 15px; font-style: italic; }
+  #bookPages { display: grid; gap: 6px; align-content: start; flex: 1; min-height: 0; overflow: auto; padding-right: 3px; }
+  .leaf { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; align-items: center; width: 100%; padding: 5px; border: 2px solid var(--ink); border-radius: 8px; background: #fffdf4; text-align: left; font-size: 15px; font-weight: 700; line-height: 1.2; }
+  button.leaf:hover { background: var(--plum-soft); }
+  .leaf.now { outline: 3px solid var(--pop); outline-offset: 1px; }
+  .leaf.waits { background: #f6f3fd; border-style: dashed; }
+  .leaf canvas { width: 52px; height: 52px; image-rendering: pixelated; background: #e9f4ff; border-radius: 4px; }
+  .leaf small { display: block; margin-top: 2px; font-size: 13px; color: var(--ink-soft); }
+  .leaf-empty { padding: 16px 8px; text-align: center; color: var(--ink-soft); font-size: 16px; }
+  #storyLine { margin: 0; flex: none; min-height: 62px; padding: 5px 12px; background: #fffdf4; border: 2px solid var(--ink); border-radius: 8px; font-size: 18px; font-weight: 800; line-height: 1.25; text-align: center; }
+  #storySmall { display: block; font-size: 13px; color: var(--ink-soft); }
+  .story-do { display: flex; gap: 6px; flex-wrap: wrap; flex: none; }
+  #storyCast { margin: 0; flex: none; font-size: 14px; color: var(--ink-soft); }
   /* ---- The Stage -------------------------------------------------------------- */
   .stage-view { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr); gap: 12px; padding: 10px 12px; min-height: 0; }
   .side { display: flex; flex-direction: column; gap: 8px; min-height: 0; min-width: 0; }
@@ -424,6 +441,7 @@
       <button data-view="draw" class="on">🎨 Draw</button>
       <button data-view="life">💓 Life</button>
       <button data-view="stage">🎭 Stage</button>
+      <button data-view="story">📖 Story</button>
       <button data-view="theatre">🎟️ Theatre</button>
     </nav>
     <span class="draw-only title-box"><input id="title" maxlength="24" placeholder="Name your drawing" aria-label="Name your drawing" autocomplete="off"></span>
@@ -624,6 +642,24 @@
     </section>
   </div>
 
+  <div id="storyView" class="story-view" hidden>
+    <section class="storybook panel">
+      <h2 id="bookTitle"></h2>
+      <p id="bookStart"></p>
+      <div id="bookPages"></div>
+    </section>
+    <section class="side">
+      <div class="screen-wrap"><div class="screen" id="storyHost"><canvas id="storyCanvas" aria-label="The class story"></canvas></div></div>
+      <p id="storyLine"><small id="storySmall"></small><span id="storyWords"></span></p>
+      <div class="story-do">
+        <button class="btn main" id="playStory">▶ Play our story</button>
+        <button class="btn main" id="addPage">✏️ Add a page</button>
+        <button class="btn" id="joinCast">🙋 Put my pal in the story</button>
+      </div>
+      <p id="storyCast"></p>
+    </section>
+  </div>
+
   <div id="theatreView" class="theatre" hidden>
     <canvas id="park" class="park" width="960" height="210" aria-label="The class park: everyone's pals together" hidden></canvas>
     <div class="theatre-head">
@@ -678,6 +714,18 @@
     <div class="watch-row" style="margin-top:10px">
       <button class="btn main" id="publishGo">Add it</button>
       <button class="btn" id="publishNo">Not yet</button>
+    </div>
+  </div>
+</section>
+<section id="pageSheet" class="sheet" role="dialog" aria-modal="true" aria-label="Add your page" hidden>
+  <div class="panel sheet-card" style="width:min(480px,100%)">
+    <h2 style="margin:0 0 6px;font-size:22px;font-weight:900">Add your page to the story</h2>
+    <p style="margin:0 0 8px">What happens on your page? Write one sentence for the book.</p>
+    <input id="pageWords" maxlength="90" placeholder="Then the bunny found a secret door." aria-label="One sentence for the book" autocomplete="off" style="width:100%;padding:8px 10px;border:2px solid var(--ink);border-radius:8px;font-size:17px">
+    <p id="pageNote" style="margin:8px 0 0;color:#b3123c"></p>
+    <div class="watch-row" style="margin-top:10px">
+      <button class="btn main" id="pageGo">Add my page</button>
+      <button class="btn" id="pageNo">Not yet</button>
     </div>
   </div>
 </section>
@@ -749,6 +797,7 @@
 <script src="/pixel/gallery.js"></script>
 <script src="/pixel/studio.js"></script>
 <script src="/pixel/life.js"></script>
+<script src="/pixel/story.js"></script>
 <script src="/pixel/page.js"></script>
 </body>
 </html>

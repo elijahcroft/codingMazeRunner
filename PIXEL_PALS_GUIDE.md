@@ -8,7 +8,7 @@ your own character do something lovely, funny or playable, and show the class.
 
 | Page | Who it's for |
 |---|---|
-| `/pixel` | Students: 🎨 Draw, 💓 Life, 🎭 Stage, 🎟️ Theatre |
+| `/pixel` | Students: 🎨 Draw, 💓 Life, 🎭 Stage, 📖 Story, 🎟️ Theatre |
 | `/pixel/teacher` | You: who's stuck, opening missions, hiding shows. Needs the admin key |
 | `/pixel/show` | The projector: class shows on a loop, the star meter and a parade of pals |
 
@@ -123,6 +123,28 @@ chapter's new words stay by the editor, and All words holds everything else.
 
 **🖨️ Print a class poster** on the teacher page prints everyone's current pal with
 their name, including pals that aren't in the Theatre, so check it before pinning it up.
+
+## The class story
+
+The 📖 Story tab is one book for the whole class. It's made for telling a story
+together, a page at a time.
+
+1. On `/pixel/teacher`, give it a title and a first line, like "One day, a star fell
+   into the park...". You can skip this and use the one that's there.
+2. A student presses **✏️ Add a page**. They see how the story ends so far, make the
+   next moment on the Stage with their pal, then write one sentence for the book.
+   **Give me an idea** offers beginnings if they're stuck.
+3. **🙋 Put my pal in the story** lets classmates use their pal. `friend("Mia")` brings
+   Mia's pal on, and up to three friends fit on stage. `friend_say("Mia", "Hi!")` picks
+   who talks, and `everyone("dance")` gets them all going.
+4. Pages and pals wait for you. **✅ Let everyone in** takes all of them at once, or
+   read them one by one. ↑ and ↓ change the order, which matters if two students
+   write the same part of the story.
+5. **▶ Play our story** plays the whole book for a student. **▶ Play the story on the
+   projector** plays it for the room, ending with every author's pal taking a bow.
+
+Only one page per student waits at a time. **Start a new story** puts the old one away
+in the save file and begins a blank book.
 
 ## A first lesson
 

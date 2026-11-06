@@ -301,8 +301,8 @@ const PalStage = (() => {
     function fresh() {
       return {scene: "stage", x: spotX(2), spot: 2, y: 0, frame: 0, flip: false, squeeze: 1, tilt: 0,
               size: 1, visible: true, shakeX: 0, napping: false,
-              move: null, moveFrom: 0, jump: 0, mood: null, talk: false, aim: null,
-              friend: null, friendX: 0, friendY: 0, friendSquash: 1, friendMove: null, friendTalk: false,
+              move: null, moveFrom: 0, jump: 0, mood: null, talk: false, aim: null, bow: null,
+              friend: null, crew: [],
               marks: [], props: {}, score: null, weather: null};
     }
 
@@ -340,11 +340,12 @@ const PalStage = (() => {
         g.drawImage(img, Math.round(spotX(+spot) - img.width / 2), FLOOR - img.height - 8 + bob);
       }
       const now = performance.now(), t = (now - started) / 1000;
-      if (s.friend) {
-        const fp = friendPup(s.friend), rig = fp.rigOf(0);
-        const pose = livePose(rig, fp.lifeline, t + 3, {move: s.friendMove, moveT: t, talk: s.friendTalk});
-        fp.draw(g, 0, pose, s.friendX, FLOOR + 4 - s.friendY, {squeeze: s.friendSquash, flip: true});
+      for (const m of s.crew) {
+        const fp = friendPup(m.kind), rig = fp.rigOf(0);
+        const pose = livePose(rig, fp.lifeline, t + 3 + m.kind.length, {move: m.move, moveT: t + m.kind.length * .17, talk: m.talk});
+        fp.draw(g, 0, pose, m.x, FLOOR + 4 - m.y, {flip: m.x > s.x});
       }
+      if (s.bow) paintBow(t);
       if (s.visible && pup) {
         const rig = pup.rigOf(s.frame);
         const pose = livePose(rig, pup.lifeline, t, {move: s.move, moveT: (now - s.moveFrom) / 1000, jump: s.jump,
@@ -364,6 +365,27 @@ const PalStage = (() => {
         g.fillText(`★ ${s.score}`, 9, 6);
       }
       placeBubbles();
+    }
+
+    // The end of a story: everyone who made it, up and dancing.
+    function paintBow(t) {
+      const {pups, title} = state.bow;
+      g.font = "900 26px ui-rounded, system-ui, sans-serif";
+      const fits = Math.min(26, Math.floor(26 * (W - 24) / g.measureText(title).width));
+      g.font = `900 ${fits}px ui-rounded, system-ui, sans-serif`;
+      g.textAlign = "center";
+      g.textBaseline = "top";
+      g.lineWidth = 5;
+      g.lineJoin = "round";
+      g.strokeStyle = "#1b1530";
+      g.strokeText(title, W / 2, 36);
+      g.fillStyle = "#ffd93b";
+      g.fillText(title, W / 2, 36);
+      g.textAlign = "left";
+      pups.forEach((p, i) => {
+        const pose = livePose(p.rigOf(0), p.lifeline, t + i, {move: i % 2 ? "dance" : "cheer", moveT: t + i * .23});
+        p.draw(g, 0, pose, W * (i + 1) / (pups.length + 1), FLOOR + 4);
+      });
     }
 
     // The audience: a row of heads along the front of the theatre.
@@ -402,7 +424,7 @@ const PalStage = (() => {
       if (!host) return;
       if (bubbles[who]) bubbles[who].el.remove();
       const el = document.createElement("div");
-      el.className = "bubble" + (who === "friend" ? " friend" : "");
+      el.className = "bubble" + (who === "pal" ? "" : " friend");
       el.textContent = text;
       host.appendChild(el);
       bubbles[who] = {el, until: performance.now() + ms};
@@ -412,10 +434,11 @@ const PalStage = (() => {
       for (const who of Object.keys(bubbles)) {
         const b = bubbles[who];
         if (now > b.until) { b.el.remove(); delete bubbles[who]; continue; }
-        const x = who === "friend" ? state.friendX : state.x;
+        const m = state.crew.find(c => c.kind === who);
+        const x = m ? m.x : state.x;
         const left = Math.max(16, Math.min(84, x / W * 100));
-        const tall = who === "friend" ? 64 : palW * state.size;
-        const top = Math.max(2, (FLOOR - tall - 12 - (who === "friend" ? state.friendY : state.y)) / H * 100);
+        const tall = m ? 64 : palW * state.size;
+        const top = Math.max(2, (FLOOR - tall - 12 - (m ? m.y : state.y)) / H * 100);
         b.el.style.left = left + "%";
         b.el.style.top = top + "%";
       }
@@ -581,36 +604,51 @@ const PalStage = (() => {
         await sleep(Math.max(0, ms - (300 + s.text.length * 70)), t);
       },
       async friend_say(s, t) {
+        const m = member(s.who);
+        if (!m) return;
         const ms = Math.min(5200, 900 + s.text.length * 55);     // long enough to read
-        bubble("friend", s.text, ms / rate);
-        SFX.voiceAt(palVoice * 1.35);
-        state.friendTalk = true;
+        bubble(m.kind, s.text, ms / rate);
+        SFX.voiceAt(palVoice * (1.2 + (m.kind.length % 4) * .12));
+        m.talk = true;
         await babble(Math.min(ms, 300 + s.text.length * 70), t);
-        state.friendTalk = false;
+        m.talk = false;
         await sleep(Math.max(0, ms - (300 + s.text.length * 70)), t);
       },
       async friend(s, t) {
         if (s.pal) friendPups[s.kind] = puppet(s.pal, Math.max(1, Math.floor(48 / s.pal.size)), s.kind.length * 41 + 3);
-        const home = state.spot > 7 ? spotX(1) : spotX(9), edge = home < W / 2 ? -40 : W + 40;
+        if (s.stand_in) friendPups[s.kind] = friendPup(s.stand_in);
+        // Friends line up from the far side of the stage, so there's room for each.
+        const right = state.spot <= 7, slot = state.crew.length;
+        const home = spotX(right ? 9.5 - slot * 1.9 : .5 + slot * 1.9), edge = right ? W + 40 : -40;
+        const m = {kind: s.kind, x: edge, y: 0, move: "walk", talk: false};
+        state.crew.push(m);
         state.friend = s.kind;
-        state.friendX = edge;
-        state.friendMove = "walk";
-        await tween(520, t, u => { state.friendX = edge + (home - edge) * u; });
-        state.friendMove = null;
+        await tween(520, t, u => { m.x = edge + (home - edge) * u; });
+        m.move = null;
       },
       async friend_jump(s, t) {
+        const m = member(s.who);
+        if (!m) return;
         SFX.play("jump");
-        await tween(430, t, u => { state.friendY = Math.sin(u * Math.PI) * 40; });
-        state.friendY = 0;
+        await tween(430, t, u => { m.y = Math.sin(u * Math.PI) * 40; });
+        m.y = 0;
       },
       async bye(s, t) {
-        if (!state.friend) return;
-        const from = state.friendX, edge = from < W / 2 ? -40 : W + 40;
-        state.friendMove = "walk";
-        await tween(460, t, u => { state.friendX = from + (edge - from) * u; });
-        state.friendMove = null;
-        state.friend = null;
-        clearBubble("friend");
+        const m = member(s.who);
+        if (!m) return;
+        const from = m.x, edge = from < W / 2 ? -40 : W + 40;
+        m.move = "walk";
+        await tween(460, t, u => { m.x = from + (edge - from) * u; });
+        state.crew = state.crew.filter(c => c !== m);
+        state.friend = state.crew.length ? state.crew[state.crew.length - 1].kind : null;
+        clearBubble(m.kind);
+      },
+      async everyone(s, t) {
+        const move = {dance: "dance", wave: "wave", cheer: "cheer", jump: "happy"}[s.move];
+        SFX.play(s.move === "dance" ? "jig" : "yay");
+        for (const m of state.crew) m.move = move;
+        await moving(move, 1800, t);
+        for (const m of state.crew) m.move = null;
       },
       async hearts(s, t) { SFX.play("ding"); pictureRain(HEART, 16); await sleep(800, t); },
       async stars(s, t) { SFX.play("ding"); pictureRain(TWINKLE, 16); await sleep(800, t); },
@@ -683,6 +721,8 @@ const PalStage = (() => {
         await sleep(320, t);
       },
     };
+    // The friend a step means: the named one, or else the newest.
+    function member(who) { return who ? state.crew.find(c => c.kind === who) : state.crew[state.crew.length - 1]; }
     function clearBubble(who) { if (bubbles[who]) { bubbles[who].el.remove(); delete bubbles[who]; } }
 
     return {
@@ -700,7 +740,8 @@ const PalStage = (() => {
         const token = ++run;
         rate = 1;
         // Whatever was going on stops here, wherever it had got to.
-        Object.assign(state, {move: null, y: 0, tilt: 0, squeeze: 1, shakeX: 0, talk: false, friendTalk: false});
+        Object.assign(state, {move: null, y: 0, tilt: 0, squeeze: 1, shakeX: 0, talk: false});
+        for (const m of state.crew) Object.assign(m, {move: null, talk: false, y: 0});
         clearBubbles();
         for (const s of steps) {
           if (token !== run) return false;
@@ -723,6 +764,12 @@ const PalStage = (() => {
         const gx = x - state.x, gy = y - (FLOOR - palW / 2);
         state.aim = [Math.abs(gx) > 14 ? Math.sign(gx) * (state.flip ? -1 : 1) : 0, Math.abs(gy) > 22 ? Math.sign(gy) : 0];
       },
+      /** The curtain call: these pals all dance under these words. */
+      bow(pals, title) {
+        state.visible = false;
+        const tall = pals.length > 8 ? 26 : pals.length > 4 ? 40 : 56;
+        state.bow = {title, pups: pals.slice(0, 14).map((pal, i) => puppet(pal, Math.max(1, Math.floor(tall / pal.size)), i + 7))};
+      },
       /** Is this point on the stage on the pal? */
       touching(x, y) {
         return Math.abs(x - state.x) < palW / 2 + 6 && y > FLOOR - palW - state.y - 6 && y < FLOOR + 8 - state.y;
@@ -742,7 +789,46 @@ const PalStage = (() => {
   const PROPS = {};
   for (const [key, {rows, ink}] of Object.entries(PROP_ART)) PROPS[key] = rowsSprite(rows, ink, 2);
 
-  return {create, puppet, livePose, sceneArt, HEART, PROPS, SFX, W, H};
+  // A whole story: each page in turn, with its line of the book, then a curtain call.
+  // `ui.line(words, small)` shows the book's words. Resolves false if it was stopped.
+  async function playFilm(stage, film, ui, from = 0) {
+    const pause = async ms => stage.play([{do: "wait", beats: ms / 450}]);
+    let place = "stage";
+    if (from === 0 && film.pages.length) {
+      stage.setPal(film.pages[0].pal);
+      stage.fresh();
+      stage.bow([], film.title);
+      ui.line(film.start, film.title);
+      if (!await pause(Math.min(6000, 1800 + film.start.length * 45))) return false;
+    }
+    for (let i = from; i < film.pages.length; i++) {
+      const page = film.pages[i];
+      stage.setPal(page.pal);
+      stage.fresh();
+      stage.state.scene = place;
+      ui.line(page.line, `Page ${i + 1} by ${page.by}`);
+      if (ui.page) ui.page(i);
+      if (!await pause(Math.min(5000, 1400 + page.line.length * 45))) return false;
+      if (!await stage.play(page.steps)) return false;
+      place = stage.state.scene;
+      if (!await pause(700)) return false;
+    }
+    // Everyone takes a bow: the authors, and any pal who came on in a page.
+    const seen = new Set(), pals = [], names = [], guests = [];
+    const add = (key, pal) => { if (seen.has(key)) return false; seen.add(key); pals.push(pal); return true; };
+    for (const page of film.pages) if (add(page.by.toLowerCase(), page.pal)) names.push(page.by);
+    for (const page of film.pages) for (const s of page.steps) {
+      if (s.do === "friend" && s.pal && add(s.kind, s.pal)) guests.push(s.kind[0].toUpperCase() + s.kind.slice(1));
+    }
+    stage.fresh();
+    stage.state.scene = place;
+    stage.bow(pals, "The End");
+    stage.cheer();
+    ui.line(`Made by ${names.join(", ")}${guests.length ? `. Starring ${guests.join(", ")}` : ""}`, film.title);
+    return stage.play([{do: "confetti"}, {do: "wait", beats: 9}]);
+  }
+
+  return {create, puppet, livePose, playFilm, sceneArt, HEART, PROPS, SFX, W, H};
 })();
 
 if (typeof module !== "undefined") module.exports = PalStage;

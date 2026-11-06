@@ -21,6 +21,7 @@ function codeKey(key) { return `pixelCode:${me}:${key}`; }
 
 // ---- Words for every command, shown on chips and in All words ------------------------
 const WORDS = {
+  everyone: "Everyone on stage does it: dance, wave, cheer or jump.",
   wave: "Waves its arm.", dance: "Dances with every part it has.", cheer: "Throws its arms up and jumps.",
   look: "Moves its eyes: left, right, up, down or front.",
   feel: "Changes its face: happy, sad, surprised, angry, sleepy, silly, cool or calm.",
@@ -46,6 +47,7 @@ const SAMPLE = {
 };
 const sample = name => SAMPLE[name] || name + "()";
 const CORE = ["say", "jump", "right", "left", "wave", "dance", "feel", "look", "hearts", "scene", "friend", "wait"];
+const STORY_CORE = ["say", "feel", "right", "friend_say", "everyone", "scene"];
 const PYTHON = {
   for: ["for loop", "for i in range(3):\n    ", "Repeats the lines pushed in under it."],
   list: ["list", 'names = ["Ana", "Ben"]', "Keeps a few things together."],
@@ -74,6 +76,7 @@ function pageEnter(data) {
   $("mute").textContent = StageSFX.muted ? "🔇" : "🔊";
   showStars();
 }
+function freeToPlay() { return mode === "free" || mode === "story"; }
 function currentPal() {
   return S.drawings.find(d => d.key === S.pal) || S.pip;
 }
@@ -95,10 +98,12 @@ async function showView(name) {
   $("stageView").hidden = name !== "stage";
   $("theatreView").hidden = name !== "theatre";
   $("lifeView").hidden = name !== "life";
+  $("storyView").hidden = name !== "story";
   document.querySelectorAll(".draw-only").forEach(el => { el.hidden = name !== "draw"; });
-  document.querySelectorAll(".stage-only").forEach(el => { el.hidden = name === "draw" || name === "life"; });
+  document.querySelectorAll(".stage-only").forEach(el => { el.hidden = ["draw", "life", "story"].includes(name); });
   $("palPick").hidden = name !== "stage";
   if (name === "life") openLife(); else closeLife();     // before the wait, so its buttons always work
+  if (name !== "story") closeStory();
   if (name !== "draw") await saveNow();
   if (name === "stage") {
     await refreshState();
@@ -107,6 +112,7 @@ async function showView(name) {
     else resetStage();
   }
   if (name === "theatre") { await refreshState(); await openTheatre(); }
+  if (name === "story") { await refreshState(); await openStory(); }
   if (name !== "theatre") closePark();
 }
 async function refreshState() {
@@ -152,24 +158,30 @@ async function openMission(key) {
   $("caption").textContent = "Press Show time! to see your code run.";
   resetStage();
 }
-function openFree() {
-  mode = "free";
+function openFree(story = null) {
+  mode = story ? "story" : "free";
   view = null;
-  $("levelName").textContent = "⭐ Free Stage";
-  $("levelWhere").textContent = "No mission. Just you.";
-  $("pipSays").textContent = "Make anything you like! Every word you've learned works here. "
+  $("levelName").textContent = story ? `📖 Page ${story.pages.length + 1}` : "⭐ Free Stage";
+  $("levelWhere").textContent = story ? story.title : "No mission. Just you.";
+  $("pipSays").textContent = story
+    ? `So far: "${story.pages.length ? story.pages[story.pages.length - 1].line : story.start}" What happens next? Make it with your pal. Everyone's pal can help!`
+    : "Make anything you like! Every word you've learned works here. "
     + `Places: ${S.kit.scenes.join(", ")}. Sounds: ${S.kit.sounds.join(", ")}. Friends: ${S.kit.friends.join(", ")}.`;
   $("job").hidden = true;
   $("goals").hidden = true;
   $("hint").hidden = false;
   $("hint").textContent = "Give me an idea";
-  setCode(recall(codeKey("free")) ?? S.free);
+  setCode(story ? (story.waiting ? story.waiting.code : recall(codeKey("story")) ?? "") : recall(codeKey("free")) ?? S.free);
   const known = S.chapters.flatMap(c => c.levels).filter(l => l.open).map(l => l.key);
   const last = known[known.length - 1];
   get(`/pixel/level?id=${encodeURIComponent(me)}&level=${last}`).then(data => {
-    if (mode === "free" && data && data.commands) buildChips(data.commands, [], data.python, []);
+    if (freeToPlay() && data && data.commands) {
+      buildChips(story ? S.everything : data.commands, [], data.python, []);
+      if (story) castChips();
+    }
   });
-  verdict(`<p>When it's ready, share it with the class.</p>
+  verdict(story ? `<p>Press Show time! to try your page. When you like it, add it to the book.</p>`
+    : `<p>When it's ready, share it with the class.</p>
     <p class="next"><button class="btn" data-publish="1">🎟️ Add to the Theatre</button></p>`);
   $("caption").textContent = "Press Show time! to see your code run.";
   resetStage();
@@ -183,12 +195,12 @@ function drawGoals(got) {
 // Early on a chip writes the whole line. From Story Time on it starts the line
 // and the student types the rest, so the help comes off bit by bit.
 function buildChips(commands, fresh, python, freshPython) {
-  const wholeLines = mode === "free" || !view || view.number < 4;
+  const wholeLines = freeToPlay() || !view || view.number < 4;
   const cmds = commands.filter(c => WORDS[c]);
   const started = c => wholeLines || sample(c).endsWith("()") ? sample(c) : c + "(";
   // Only this chapter's words sit by the editor. The rest are in All words,
   // so the buttons never fill the screen.
-  const near = cmds.length <= 12 ? cmds : cmds.filter(c => (view ? view.chapter_new : CORE).includes(c));
+  const near = cmds.length <= 12 ? cmds : cmds.filter(c => (view ? view.chapter_new : mode === "story" ? STORY_CORE : CORE).includes(c));
   $("chips").innerHTML =
     near.map(c => `<button class="chip${fresh.includes(c) ? " fresh" : ""}" data-chip="${esc(started(c))}" title="${esc(WORDS[c])}">${esc(sample(c))}</button>`).join("") +
     ALL_PYTHON.filter(k => python.includes(k) && (freshPython.includes(k) || !view || python.length <= 4)).map(k =>
@@ -360,7 +372,7 @@ async function runShow() {
   setBand(0);
   $("caption").textContent = "The curtain goes up...";
   let out = null;
-  try { out = await post("/pixel/run", {id: me, level: mode, code: $("code").value}); } catch (_) {}
+  try { out = await post("/pixel/run", {id: me, level: freeToPlay() ? "free" : mode, code: $("code").value}); } catch (_) {}
   if (ticket !== runTicket) return;
   if (!out) {
     finishRun();
@@ -384,7 +396,11 @@ async function runShow() {
     verdict(`<p>${fmt(out.error)}</p><p>Fix that line, then press Show time! again.</p>`, "bad");
     return;
   }
-  if (mode === "free") {
+  if (mode === "story") {
+    $("caption").textContent = "That's your page.";
+    verdict(`<p>Nice! Change anything you like, then add it to the book.</p>
+      <p class="next"><button class="btn" data-page-add="1">📖 Add to our story</button></p>`, "good");
+  } else if (mode === "free") {
     if (out.rewards) showRewards(out.rewards);
     $("caption").textContent = "That's the end of your show.";
     verdict(`<p>Nice! Change something and run it again, or share it.</p>
@@ -400,7 +416,7 @@ async function runShow() {
     }
     if (out.rewards) showRewards(out.rewards);
   }
-  if (out.events.length) goLive(out.events, {code: $("code").value, level: mode === "free" ? null : mode, seed: out.seed, events: out.rehearsed.slice()}, stage, $("liveBar"));
+  if (out.events.length) goLive(out.events, {code: $("code").value, level: freeToPlay() ? null : mode, seed: out.seed, events: out.rehearsed.slice()}, stage, $("liveBar"));
 }
 function finishRun() {
   running = false;
@@ -430,8 +446,9 @@ function fitScreen() {
 let hintsShown = 0;
 let hintCode = "", ideaAt = 0;
 function showHint() {
-  if (mode === "free") {
-    hintCode = S.ideas[ideaAt++ % S.ideas.length];
+  if (freeToPlay()) {
+    const ideas = mode === "story" ? book.ideas : S.ideas;
+    hintCode = ideas[ideaAt++ % ideas.length];
     verdict(`<p><b>Try this one, then change it!</b></p><pre style="margin:2px 0 0;font:14px/18px var(--mono);white-space:pre-wrap">${esc(hintCode)}</pre><p class="next"><button class="btn" data-copy="1">Use this code</button></p>`);
     return;
   }
@@ -621,9 +638,12 @@ document.addEventListener("click", e => {
   else if (d.chip !== undefined) { StageSFX.play("click"); $("bookSheet").hidden = true; addLine(d.chip); }
   else if (d.mission) openMission(d.mission);
   else if (d.publish) askPublish();
+  else if (d.pageAdd) openPageSheet();
+  else if (d.leaf) playBook(+d.leaf);
+  else if (d.takeLeaf) takeLeaf(+d.takeLeaf);
   else if (d.copy) {
     const had = $("code").value.trim();
-    setCode(mode === "free" && had ? `${had}\n${hintCode}` : hintCode);    // ideas add on, so nothing is lost
+    setCode(freeToPlay() && had ? `${had}\n${hintCode}` : hintCode);    // ideas add on, so nothing is lost
     saveCode();
   }
   else if (d.event) fire(d.event);
@@ -633,7 +653,7 @@ new ResizeObserver(fitScreen).observe($("stageHost").parentElement);
 $("runButton").addEventListener("click", runShow);
 $("skip").addEventListener("click", () => stage.hurry());
 // Esc, or a click on the dark part around a sheet, closes it.
-const SHEETS = {missions: "closeMissions", bookSheet: "closeBook", watch: "closeWatch", publish: "publishNo", artSheet: "closeArt", beads: "closeBeads", cardSheet: "closeCard"};
+const SHEETS = {pageSheet: "pageNo", missions: "closeMissions", bookSheet: "closeBook", watch: "closeWatch", publish: "publishNo", artSheet: "closeArt", beads: "closeBeads", cardSheet: "closeCard"};
 function closeTopSheet() {
   for (const [sheet, button] of Object.entries(SHEETS)) if (!$(sheet).hidden) $(button).click();
 }

@@ -27,6 +27,7 @@
   .meter i { display: block; height: 100%; background: var(--sun); }
   #feed { margin: 0; padding: 0; list-style: none; font-size: 15px; font-weight: 700; overflow: hidden; flex: 1; }
   #feed li { margin-bottom: 5px; }
+  #narrate { position: absolute; left: 4%; right: 4%; top: 3%; margin: 0; padding: 6px 16px; background: #fffdf4; color: #1b1530; border: 3px solid #1b1530; border-radius: 10px; font-size: clamp(18px, 2.4vw, 32px); font-weight: 800; line-height: 1.2; text-align: center; }
   #parade { grid-column: 1 / -1; width: 100%; height: 100%; display: block; image-rendering: pixelated; background: #49ad5f; border: 2px solid #4a3e72; border-radius: 10px; }
 </style>
 </head>
@@ -34,7 +35,7 @@
 <div class="page">
   <section class="screen-wrap">
     <div class="now"><b id="showName">Pixel Pals</b><span id="showBy"></span></div>
-    <div class="room"><div class="screen" id="host"><canvas id="stage" aria-label="The class show"></canvas></div></div>
+    <div class="room"><div class="screen" id="host"><canvas id="stage" aria-label="The class show"></canvas><p id="narrate" hidden></p></div></div>
   </section>
   <aside class="side">
     <div class="card"><p class="label">Join in at</p><div class="address" id="address"></div></div>
@@ -68,7 +69,25 @@ function fit() {
 new ResizeObserver(fit).observe(document.querySelector(".room"));
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
+// The teacher's Play the story button: the whole book, start to finish.
+let storySeen = null, storyWanted = false;
+const narrator = {
+  line(words, small) {
+    $("narrate").hidden = false;
+    $("narrate").textContent = words;
+    $("showBy").textContent = small || "";
+  },
+};
+async function playClassStory() {
+  storyWanted = false;
+  const film = await fetch("/pixel/film").then(r => r.json()).catch(() => null);
+  if (!film || !film.pages.length) return;
+  $("showName").textContent = `📖 ${film.title}`;
+  await PalStage.playFilm(stage, film, narrator);
+  $("narrate").hidden = true;
+}
 async function nextShow() {
+  if (storyWanted) { await playClassStory(); return wait(1000); }
   const pick = shows.length ? shows[turn++ % shows.length] : null;
   if (!pick) {
     $("showName").textContent = "Coming up: your show!";
@@ -113,9 +132,17 @@ async function refresh() {
   }).join("");
   // Only pals that are in the Theatre walk here: drawings are private until
   // a student shares them, and the teacher's Hide takes them out too.
-  buildParade(shows.map(s => s.pal));
+  const book = await fetch("/pixel/story").then(r => r.json()).catch(() => null);
+  const seen = new Set();
+  buildParade([...shows.map(s => s.pal), ...(book ? book.pages.map(p => p.pal) : [])].filter(pal => {
+    const same = seen.has(pal.frames[0]);
+    seen.add(pal.frames[0]);
+    return !same;
+  }));
   if (partySeen !== null && over.party > partySeen) startParty();
   partySeen = over.party;
+  if (storySeen !== null && over.story_play > storySeen) { storyWanted = true; stage.stop(); }
+  storySeen = over.story_play;
 }
 
 // ---- The parade: every pal in the class, walking along the bottom ---------------

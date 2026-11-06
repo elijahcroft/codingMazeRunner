@@ -135,6 +135,8 @@ EVENTS = ("click", "feed", "play", "sleep", "key")
 KEYS = ("left", "right", "up", "down", "space")
 FEELINGS = ("happy", "sad", "surprised", "angry", "sleepy", "silly", "cool", "calm")
 LOOKS = ("left", "right", "up", "down", "front")
+EVERYONE = ("dance", "wave", "cheer", "jump")
+MAX_CREW = 3
 
 # What stars open. "class" counts the whole class's stars together.
 UNLOCKS = [
@@ -173,7 +175,7 @@ USAGE = {
     "friend": 'friend("cat")', "friend_say": 'friend_say("Hi!")', "friend_jump": "friend_jump()",
     "bye": "bye()", "eat": "eat()", "nap": "nap()", "put": 'put("star", 7)',
     "take": 'take("star")', "point": "point()", "wave": "wave()", "dance": "dance()",
-    "cheer": "cheer()", "look": 'look("left")', "feel": 'feel("happy")',
+    "cheer": "cheer()", "look": 'look("left")', "feel": 'feel("happy")', "everyone": 'everyone("dance")',
 }
 COMMANDS = tuple(USAGE)
 SENSORS = {"x": "x()", "clicks": "clicks()", "hungry": "hungry()", "sleepy": "sleepy()",
@@ -182,7 +184,7 @@ USAGE.update(SENSORS)
 EVERYTHING = COMMANDS + tuple(SENSORS)
 HELPERS = ("len", "str", "int", "choice", "randint", "abs", "max", "min")
 NO_ARGS = {"jump", "spin", "shake", "grow", "shrink", "hide", "appear", "play", "hearts",
-           "stars", "confetti", "rain", "snow", "friend_jump", "bye", "eat", "nap", "point",
+           "stars", "confetti", "rain", "snow", "eat", "nap", "point",
            "wave", "dance", "cheer"}
 
 
@@ -206,7 +208,7 @@ class Show:
         self.visible = True
         self.size = 1
         self.scene = "stage"
-        self.friend = None
+        self.crew = []               # friends on stage, newest last
         self.props = {}              # spot -> what's there
         self.points = 0
         self.click_count = 0
@@ -267,17 +269,33 @@ class Show:
             raise BotError('say() needs one thing to say, like  say("Hello")')
         self.step("say", text=self.text(args[0]))
 
-    def c_friend_say(self, name, *args):
-        if len(args) != 1:
-            raise BotError('friend_say() needs one thing to say, like  friend_say("Hi!")')
-        if not self.friend:
-            raise BotError('There\'s no friend on stage yet. Bring one on first, like  friend("cat")')
-        self.step("friend_say", text=self.text(args[0]))
+    def on_stage(self, word):
+        who = str(word).strip().lower()
+        if who not in self.crew:
+            raise BotError(f"{word} isn't on stage. Bring them on first, like  friend(\"{word}\")")
+        return who
 
-    def c_friend_jump(self):
-        if not self.friend:
+    def named_friend(self, args, what):
+        """The friend a command is for: the one named, or the newest."""
+        if not self.crew:
             raise BotError('There\'s no friend on stage yet. Bring one on first, like  friend("cat")')
-        self.step("friend_jump")
+        return self.on_stage(args[0]) if args else self.crew[-1]
+
+    def c_friend_say(self, name, *args):
+        if len(args) not in (1, 2):
+            raise BotError('friend_say() needs one thing to say, like  friend_say("Hi!")  or  friend_say("cat", "Hi!")')
+        who = self.named_friend(args[:-1], "say")
+        self.step("friend_say", text=self.text(args[-1]), who=who)
+
+    def c_friend_jump(self, name, *args):
+        if len(args) > 1:
+            raise BotError('friend_jump() can take one name, like  friend_jump("cat")')
+        self.step("friend_jump", who=self.named_friend(args, "jump"))
+
+    def c_everyone(self, name, *args):
+        if len(args) != 1 or args[0] not in EVERYONE:
+            raise BotError(f'Pick a move for everyone, like  everyone("dance"). The moves are: {word_list(EVERYONE)}.')
+        self.step("everyone", move=args[0])
 
     def c_right(self, name, *args):
         self.walk_to(self.x + self.count_of(name, args))
@@ -362,29 +380,38 @@ class Show:
         self.scene = args[0]
         self.step("scene", name=args[0])
 
+    def bring(self, who, **extra):
+        if who in self.crew:
+            return
+        if len(self.crew) >= MAX_CREW:
+            raise BotError(f"There's only room for {MAX_CREW} friends on stage. Use  bye()  to send one off first.")
+        self.crew.append(who)
+        self.step("friend", kind=who, **extra)
+
     def c_friend(self, name, *args):
         who = args[0].strip().lower() if len(args) == 1 and isinstance(args[0], str) else ""
-        if who in self.cast and who not in FRIENDS:
+        if who in FRIENDS:
+            self.locked("friend", who, f'The {who} friend')
+            self.bring(who)
+        elif who in self.cast:
             pal = self.cast[who]
-            self.friend = who
             self.classmates += 1
-            self.step("friend", kind=who, pal={"size": pal["size"], "palette": pal["palette"], "frames": pal["frames"][:1],
-                                               "marks": pal.get("marks", "")})
-            return
-        if self.stand_in and who and who not in FRIENDS:
-            self.friend = "bean"
-            self.step("friend", kind="bean")
-            return
-        if len(args) != 1 or args[0] not in FRIENDS:
+            self.bring(who, pal={"size": pal["size"], "palette": pal["palette"], "frames": pal["frames"][:1],
+                                 "marks": pal.get("marks", "")})
+        elif self.stand_in and who:
+            self.bring(who, stand_in="bean")
+        else:
             raise BotError(f'Pick a friend, like  friend("cat"). The friends are: {word_list(FRIENDS)}. '
-                           f"A classmate's pal can come too, by name, once their show is in the Theatre.")
-        self.locked("friend", args[0], f'The {args[0]} friend')
-        self.friend = args[0]
-        self.step("friend", kind=args[0])
+                           f"A classmate's pal can come too, by name, once it's in the Theatre or the story.")
 
-    def c_bye(self):
-        self.friend = None
-        self.step("bye")
+    def c_bye(self, name, *args):
+        if len(args) > 1:
+            raise BotError('bye() can take one name, like  bye("cat")')
+        if not self.crew:
+            return
+        who = self.on_stage(args[0]) if args else self.crew[-1]
+        self.crew.remove(who)
+        self.step("bye", who=who)
 
     def c_eat(self):
         self.since_food = 0
@@ -1177,7 +1204,7 @@ LEVELS = [
      "hints": ['def greet(name):\n    say("Hi " + name)\n\ngreet("Ana")', 'def greet(name):\n    say("Hi " + name)\n    jump()\n\ngreet("Ana")\ngreet("Ben")\ngreet("Cy")'],
      "reference": 'def greet(name):\n    say("Hi " + name)\n    jump()\n\ngreet("Ana")\ngreet("Ben")\ngreet("Cy")'},
 
-    {"key": "d4", "chapter": 4, "name": "A story in two acts", "adds": ["friend_jump", "bye"], "python": ["def"],
+    {"key": "d4", "chapter": 4, "name": "A story in two acts", "adds": ["friend_jump", "bye", "everyone"], "python": ["def"],
      "pip": "Real shows have acts. Put each act in its own def, and the bottom of your program reads like a list of what happens.",
      "job": "Write two acts with def, in two different scenes, then run them.",
      "goals": [("Two acts made with def", lambda r: len(r.defs) >= 2 and sum(r.own_calls.values()) >= 2, "Make  def act_one():  and  def act_two():  and use them both."),
@@ -1348,6 +1375,20 @@ IDEAS = [
     'scene("park")\nsnow()\nfeel("surprised")\nsay("Snow!")\ndance()',
     'feel("cool")\nsay("I am the coolest pal.")\nfeel("silly")\nsay("Just kidding!")\ncheer()',
 ]
+
+
+# The class story's Give me an idea button. These are beginnings, for changing.
+STORY_IDEAS = [
+    'say("Where did it go?")\nlook("left")\nlook("right")\nfeel("sad")\nsay("I lost my map!")',
+    'friend("cat")\nfriend_say("Quick! Follow me!")\nfeel("surprised")\nright(3)\nsay("Wait for me!")',
+    'scene("park")\nrain()\nfeel("sad")\nsay("Oh no, it\'s raining.")\nwait(2)\nfeel("happy")\nsay("A rainbow!")',
+    'look("up")\nfeel("surprised")\nsay("What was that noise?")\nshake()\nhide()\nwait(1)\nappear()\nsay("Boo!")',
+    'say("I have a plan!")\nfriend("cat")\nfriend_say("Tell me!")\nsay("We dance.")\neveryone("dance")',
+    'feel("happy")\nsay("We did it!")\nhearts()\ncheer()\nconfetti()',
+]
+MAX_PAGE_STEPS = 60        # a page, not a whole film
+MAX_STORY_PAGES = 80
+LINE_MAX = 90
 
 
 def commands_for(key):
