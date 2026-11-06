@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strange Planet — Team Mission</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>🤝</text></svg>">
+<style>
+  /* The class screen for the Team Mission: the map as big as it will go, for
+     the projector or the teacher. Watching doesn't put a rover on the map. */
+  :root { color-scheme: dark; --bone: #f4eee2; --haze: #a99fca; --edge: #3d3470; --gold: #ffd36b; --mint: #8cf2c6; --ui: system-ui, "Segoe UI", Roboto, "Noto Sans", sans-serif; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin: 0; overflow: hidden; background: #120f24; color: var(--bone); font: 18px/1.35 var(--ui); }
+  .watch { height: 100%; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 10px; padding: 12px 18px; }
+  .top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; }
+  .top h1 { margin: 0; font-size: 26px; font-weight: 850; letter-spacing: -.02em; }
+  .top span { color: var(--gold); font-weight: 700; }
+  .top p { margin: 0; color: var(--haze); }
+  .map { position: relative; width: min(100%, calc((100vh - 190px) * 2)); margin: 0 auto; align-self: center; }
+  canvas { display: block; width: 100%; aspect-ratio: 2 / 1; border-radius: 12px; }
+  .job { margin: 0; color: var(--gold); font-size: 20px; font-weight: 700; }
+  .team-win { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 16px 30px; border-radius: 18px; background: rgba(18, 15, 36, .92); box-shadow: inset 0 0 0 2px var(--gold); font-size: 30px; font-weight: 800; text-align: center; }
+  .foot { display: flex; align-items: center; gap: 14px; min-height: 40px; }
+  .doors { display: flex; gap: 6px; }
+  .doors span { display: inline-flex; gap: 5px; align-items: baseline; padding: 3px 9px; border-radius: 9px; background: #231d42; color: var(--haze); font-size: 15px; box-shadow: inset 0 0 0 2px var(--door); }
+  .doors b { color: var(--door); }
+  .doors .good { background: var(--door); color: #1b1734; }
+  .doors .good b { color: #1b1734; }
+  .doors .held { color: var(--bone); }
+  ul { display: flex; gap: 18px; margin: 0; padding: 0; list-style: none; overflow: hidden; white-space: nowrap; color: var(--haze); font-size: 16px; }
+  li:first-child { color: var(--bone); }
+</style>
+</head>
+<body>
+<div class="watch">
+  <div class="top"><h1>🤝 Team Mission</h1><span id="teamLevel"></span><p id="teamGoal"></p><p id="teamSay" hidden></p><p id="teamClock"></p></div>
+  <p class="job">🧭 <span id="teamJob"></span></p>
+  <div class="map"><canvas id="teamMap" aria-label="The Team Mission map, with everyone's rovers on it"></canvas><div class="team-win" id="teamWin" hidden></div></div>
+  <div class="foot"><div class="doors" id="teamDoors"></div><ul id="teamNews"></ul></div>
+</div>
+<script src="/planet/render.js"></script>
+<script src="/planet/lounge.js"></script>
+<script src="/planet/team.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const CALM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const look = {};
+async function get(url) { return (await fetch(url)).json(); }
+team.watching = true;
+teamTake = (take => out => {
+  if (out.open === false) { $("teamGoal").textContent = "The Team Mission isn't open yet. Turn it on from the teacher page."; return; }
+  take(out);
+})(teamTake);
+openTeam();
+</script>
+</body>
+</html>

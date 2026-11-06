@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strange Planet — Rover Lounge</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>🛋</text></svg>">
+<style>
+  /* The class screen for the Rover Lounge: the room as big as it will go.
+     Watching doesn't put a rover in the room. */
+  :root { color-scheme: dark; --bone: #f4eee2; --haze: #a99fca; --gold: #ffd36b; --ui: system-ui, "Segoe UI", Roboto, "Noto Sans", sans-serif; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin: 0; overflow: hidden; background: #120f24; color: var(--bone); font: 18px/1.35 var(--ui); }
+  .watch { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 10px; padding: 12px 18px; }
+  .top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; }
+  .top h1 { margin: 0; font-size: 26px; font-weight: 850; letter-spacing: -.02em; }
+  .top span { color: var(--gold); font-weight: 700; }
+  .top p { margin: 0; color: var(--haze); }
+  .room { width: min(100%, calc((100vh - 84px) * 14 / 9)); margin: 0 auto; align-self: center; }
+  canvas { display: block; width: 100%; aspect-ratio: 14 / 9; border-radius: 12px; }
+</style>
+</head>
+<body>
+<div class="watch" id="lounge">
+  <div class="top"><h1>🛋 Rover Lounge</h1><span id="loungeSay"></span><p id="loungeWins"></p></div>
+  <div class="room"><canvas id="loungeRoom" aria-label="The lounge, with everyone's rovers in it"></canvas></div>
+</div>
+<!-- The lounge script looks for these, and the class screen doesn't use them. -->
+<div hidden><button id="loungeStage"></button><div id="loungeEmotes"></div><div id="loungeRover"></div></div>
+<script src="/planet/render.js"></script>
+<script src="/planet/lounge.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const CALM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const look = {}, me = "";
+const esc = text => text;
+async function get(url) { return (await fetch(url)).json(); }
+loungeSay = () => { $("loungeSay").textContent = lounge.stage ? `🎤 Now on stage: ${lounge.stage.tag}` : ""; };
+loungeTake = (take => out => {
+  if (out.open === false) {
+    lounge.rovers.clear();
+    $("loungeSay").textContent = "The lounge isn't open yet. Turn it on from the teacher page.";
+    return;
+  }
+  take(out);
+})(loungeTake);
+loungePoll();
+requestAnimationFrame(loungeLoop);
+</script>
+</body>
+</html>

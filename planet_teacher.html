@@ -113,6 +113,7 @@
   .stat b { display: block; font: 900 34px/1 var(--ui); letter-spacing: -.03em; }
   .stat span { color: var(--haze); font-size: 13.5px; }
   .stat .ico { float: right; font-size: 26px; }
+  .stale { margin: 0 0 12px; padding: 10px 16px; border-radius: 12px; background: #5a2030; box-shadow: inset 0 0 0 2px #ff7a6b; color: #fff; font-weight: 700; }
   .habits { margin: 10px 2px 0; color: var(--haze); font-size: 13.5px; }
   .stat.gold b { color: var(--gold); } .stat.mint b { color: var(--mint); } .stat.red b { color: var(--coral); } .stat.amber b { color: var(--amber); }
   .stat.alert { box-shadow: inset 0 0 0 2px var(--coral); animation: alert 2s ease-in-out infinite; }
@@ -223,20 +224,33 @@
     <span class="live" id="live"><i></i>LIVE</span>
     <a class="btn" href="/planet/show" target="_blank" title="The class screen for the projector">📽 Class screen</a>
     <button class="btn" id="spotOff" hidden onclick="admin('planet_spotlight_off')">⏹ Stop showing code</button>
+    <button class="btn" onclick="admin('planet_notice', null, {what: 'eyes'})" title="Puts a message on every student's screen">👀 Eyes up</button>
+    <button class="btn" onclick="admin('planet_notice', null, {what: 'five'})" title="Puts a message on every student's screen">⏰ 5 minutes</button>
+    <button class="btn" onclick="admin('planet_notice', null, {what: 'stop'})" title="Puts a message on every student's screen">👋 Stop</button>
     <button class="btn" id="settingsButton" aria-expanded="false" aria-controls="settings">⚙ Settings</button>
   </div>
 </header>
 <section class="settings" id="settings" hidden>
   <label>🔑 Admin key <input id="key" type="password" placeholder="from the server" autocomplete="off"></label>
   <label title="Sets one level for the whole class: it opens for everyone, and the class screen counts who's finished it.">🎯 Class challenge <select id="challenge" onchange="admin('planet_challenge', null, {site: this.value})"></select></label>
+  <label title="Everyone gets the same broken program on one level, and fixes it. Students press the gold chip to load it. A good warm-up. The answers are in the teaching guide.">🐛 Bug hunt <select id="bugHunt" onchange="admin('planet_bug', null, {n: this.value})"></select></label>
+  <label title="Every student gets a short program and votes on how far the rover drives. Nothing is earned and no names show. Open the page beside it on the class screen.">🔮 Predict it <select id="predictPick" onchange="admin('planet_predict', null, {n: this.value})"></select></label>
+  <a class="btn small" href="/planet/predict" target="_blank" title="The class screen for Predict it">📺 Show</a>
+  <button class="btn small" id="predictReveal" onclick="admin('planet_predict_reveal')" title="Shows the answer and drives the rover on the class screen" hidden>🎬 Reveal</button>
+  <a class="btn small" href="/planet/race" target="_blank" title="Opens the class race for the class screen. Everyone who has won the class challenge races at the same moment, each on their own map.">🏁 Race</a>
   <label title="On: 📋 Use as code after scouting leaves a few words for students to finish (r____ for range). Off: the code comes out whole."><span class="switch"><input type="checkbox" id="blanks" onchange="admin('planet_blanks', null, {on: this.checked})"><span></span></span> Scouted code has words to finish</label>
   <label title="For a younger class. On: nine practice zones (Practice Park, Loop Garden, Ice Rink, Pad Park, Jump Park, Look-Out Point, Fork Road, Trick School, Number Lab) before the Landing Site, where kids drive by hand first, then finish their code one letter at a time; classmates to ask after 3 misses (not 8), Skip for now after 6 (not 20)."><span class="switch"><input type="checkbox" id="easy" onchange="admin('planet_easy', null, {on: this.checked})"><span></span></span> Easy mode (younger class)</label>
   <label title="On: the game's sound starts on for students who haven't pressed the speaker button themselves. Headphones recommended. Off: it starts muted, and each student can still turn it on."><span class="switch"><input type="checkbox" id="sound" onchange="admin('planet_sound', null, {on: this.checked})"><span></span></span> Sound starts on</label>
-  <label title="On: after 📋 Use as code, students finish each word one letter at a time on every site: the word shows as keys, the next key lights up, and only the right letter goes in. The practice sites always work this way."><span class="switch"><input type="checkbox" id="coach" onchange="admin('planet_coach', null, {on: this.checked})"><span></span></span> Letter-by-letter typing help</label>
+  <label title="On: after 📋 Use as code, students finish each word one letter at a time on every site: the word shows as keys, the next key lights up, and only the right letter goes in. The practice sites always work this way. 📋 Use as code itself goes once a student reaches Solar Valley."><span class="switch"><input type="checkbox" id="coach" onchange="admin('planet_coach', null, {on: this.checked})"><span></span></span> Letter-by-letter typing help</label>
+  <label title="A room where everyone's rovers hang out and show off. Open it for a treat, like the last ten minutes of class. A Lounge button comes up on students' screens. Off sends everyone back to their level, with their code as they left it."><span class="switch"><input type="checkbox" id="lounge" onchange="admin('planet_lounge', null, {on: this.checked})"><span></span></span> 🛋 Rover Lounge</label>
+  <a class="btn small" id="loungeWatch" href="/planet/lounge/watch" target="_blank" hidden title="The live lounge, for the class screen. Watching doesn't put a rover in it.">📺 Watch the lounge</a>
+  <label title="The whole class on one big map, live, for 8 levels. They push boulders onto plates to open doors, and need each other to get through. A Team Mission button comes up on students' screens. Off keeps the mission as it is until you open it again."><span class="switch"><input type="checkbox" id="team" onchange="admin('planet_team', null, {on: this.checked})"><span></span></span> 🤝 Team Mission</label>
+  <span class="team-tools" id="teamTools" hidden><span id="teamStatus"></span><a class="btn small" href="/planet/team/watch" target="_blank" title="The live map, for you or the class screen. Watching doesn't put a rover on it.">📺 Watch</a><select id="teamPick" aria-label="Team Mission level" title="Moves the class to this level, for a new try at the class best" onchange="admin('planet_team_level', null, {level: this.value})"></select><button class="btn small" id="teamHelper" onclick="admin('planet_team_helper')" title="Adds a rover that stands on the plate that's needed next. Use it to try the mission alone, or with a very small class. A level it helps on earns no trophy or class best.">🤖 Helper rover</button><button class="btn small" onclick="admin('planet_team_doors')" title="Opens every door and fills every crater on this level, so the class can finish it if time is short">🔓 Open the doors</button><button class="btn small" onclick="admin('planet_team_next')" title="Moves the class straight on to the next level">⏭ Next level</button><button class="btn small warn" onclick="if (confirm('Start the Team Mission again from level 1?')) admin('planet_team_restart')" title="Starts again from level 1">🔄 Start again</button></span>
   <label title="A limited-time event: ten trick-or-treat levels for the students you invite (🎃 on their card). Off puts it away for everyone; what they earned stays theirs."><span class="switch"><input type="checkbox" id="halloween" onchange="admin('planet_halloween', null, {on: this.checked})"><span></span></span> 🎃 Halloween night</label>
 </section>
 <div class="msg" id="msg" hidden></div>
 <main>
+  <div class="stale" id="stale" role="alert" hidden>⚠ This server is running old code, so students won't see the newest changes. Stop it, then start it again with <code>python3 server.py</code>.</div>
   <section class="stage" aria-label="The last run, replayed">
     <div class="screen" id="screen">
       <canvas id="stageMap"></canvas>
@@ -285,6 +299,16 @@
     <div class="crew" id="crew"></div>
     <div class="empty" id="empty" hidden>Nobody has opened Strange Planet yet. Students go to <b>/planet</b> on the same address as Python Quest.</div>
   </section>
+
+  <details class="report" id="todayBox">
+    <summary>📋 Today's class: who played and how far they got</summary>
+    <p class="note">Everyone who played today, longest first. Minutes count only while they were pressing things. New levels are ones they cleared for the first time.</p>
+    <table>
+      <thead><tr><th>STUDENT</th><th>MINUTES</th><th>RUNS</th><th>WINS</th><th>NEW LEVELS</th><th>NOW ON</th></tr></thead>
+      <tbody id="today"></tbody>
+    </table>
+    <p class="note" id="todayTeam" hidden></p>
+  </details>
 
   <details class="report" id="reportBox">
     <summary>📊 Level by level: where the class got stuck (for after class)</summary>
@@ -479,12 +503,12 @@ function cardHtml(s, data, st) {
   const dots = s.misses ? `<div class="misses">${Array.from({length: Math.min(s.misses, 12)}, (_, i) => `<i class="${i >= helpAfter ? "red" : ""}"></i>`).join("")} ${s.misses} ${s.misses === 1 ? "miss" : "misses"} in a row here</div>` : "";
   const said = s.now && s.now.said && s.now.end !== "goal" ? `<div class="said">💬 ${esc(s.now.said)}</div>` : "";
   const skipped = s.skipped && s.skipped.length ? `<div class="skip">⏭ skipped ${esc(s.skipped.map(siteTag).join(", "))}</div>` : "";
-  return `<div class="card-top"><canvas width="108" height="108"></canvas><div class="nm"><b title="${esc(s.name)}">${esc(s.name)}</b><span class="pill ${st.cls}">${esc(st.text)}</span></div><div class="st">★ ${s.stars}<small>${plural(s.badges, "badge")}</small></div></div>
+  return `<div class="card-top"><canvas width="108" height="108"></canvas><div class="nm"><b title="${esc(s.name)}">${esc(s.name)}</b>${s.rover_name ? `<small title="Their rover's name, shown on its tag in the Rover Lounge">🏷 ${esc(s.rover_name)}</small>` : ""}<span class="pill ${st.cls}">${esc(st.text)}</span></div><div class="st">★ ${s.stars}<small>${plural(s.badges, "badge")}</small></div></div>
     <div class="loc"><span class="tag">${esc(siteTag(w.key))}</span><span class="sn">${esc(w.name)}</span><span class="mini-stars">${stars}</span><small>${ZONE_ICONS[w.zoneKey] || ""} ${esc(w.zone)}</small></div>
     <div class="prog" title="${w.done} of ${w.of} ${w.what} done"><span style="width:${pct}%"></span></div>
-    <div class="prog-l"><span>${w.done} of ${w.of} ${w.what}</span><span>last run ${esc(ago(s.active))}</span></div>
+    <div class="prog-l"><span>${w.done} of ${w.of} ${w.what}</span><span>${s.played.minutes ? `⏱ ${s.played.minutes} min today · ` : ""}last run ${esc(ago(s.active))}</span></div>
     ${dots}${said}${skipped}${s.halloween.invited || s.halloween.candy ? `<div class="spooky-line">🎃 ${w.what === "Halloween levels" ? `★ ${s.halloween.stars} Halloween stars` : `${s.halloween.done} of ${data.halloween_sites} Halloween levels`} · 🍬 ${s.halloween.candy} candy${s.halloween.invited ? "" : " · not invited now"}</div>` : ""}
-    <div class="acts">${data.halloween ? `<button class="btn small invite${s.halloween.invited ? " on" : ""}" onclick="admin('planet_invite', '${esc(s.id)}', {on: ${!s.halloween.invited}})" title="${s.halloween.invited ? "Invited to Halloween night. Press to take the invitation back (their candy stays)." : "Invite this student to Halloween night: ten trick-or-treat levels open on their screen."}">${s.halloween.invited ? "🎃 Invited ✓" : "🎃 Invite"}</button>` : ""}${s.site !== "7" ? `<button class="btn small" onclick="admin('planet_unlock', '${esc(s.id)}')" title="Open the next level of the main route for this student">🔓 Unlock next</button>` : ""}${s.now && s.now.code ? `<button class="btn small" onclick="admin('planet_spotlight', '${esc(s.id)}')" title="Put this student's last transmitted code on the class screen, without their name">📽 Show code</button>` : ""}${s.runs_total ? `<button class="btn small" onclick="replayOf('${esc(s.id)}')" title="Play this student's last run on the big screen above">▶ Replay</button>` : ""}${s.look && s.look.art ? `<button class="btn small" onclick="admin('planet_wipe_paint', '${esc(s.id)}')" title="Take off the paint this student made in the Paint Shop (back to Moonstone). Use it if it isn't right for the class screen.">🧽 Wipe paint</button>` : ""}<button class="btn small warn" data-remove="${esc(s.id)}" title="Take this student off Strange Planet (their progress here is lost)">✕</button></div>
+    <div class="acts">${data.halloween ? `<button class="btn small invite${s.halloween.invited ? " on" : ""}" onclick="admin('planet_invite', '${esc(s.id)}', {on: ${!s.halloween.invited}})" title="${s.halloween.invited ? "Invited to Halloween night. Press to take the invitation back (their candy stays)." : "Invite this student to Halloween night: ten trick-or-treat levels open on their screen."}">${s.halloween.invited ? "🎃 Invited ✓" : "🎃 Invite"}</button>` : ""}${s.site !== "7" ? `<button class="btn small" onclick="admin('planet_unlock', '${esc(s.id)}')" title="Open the next level of the main route for this student">🔓 Unlock next</button>` : ""}${s.now && s.now.code ? `<button class="btn small" onclick="admin('planet_spotlight', '${esc(s.id)}')" title="Put this student's last transmitted code on the class screen, without their name">📽 Show code</button>` : ""}${s.runs_total ? `<button class="btn small" onclick="replayOf('${esc(s.id)}')" title="Play this student's last run on the big screen above">▶ Replay</button>` : ""}${s.look && s.look.art ? `<button class="btn small" onclick="admin('planet_wipe_paint', '${esc(s.id)}')" title="Take off the paint this student made in the Paint Shop (back to Moonstone). Use it if it isn't right for the class screen.">🧽 Wipe paint</button>` : ""}${s.rover_name ? `<button class="btn small" onclick="admin('planet_wipe_name', '${esc(s.id)}')" title="Take the name off this student's rover. Use it if it isn't right for the Rover Lounge.">🧽 Wipe name</button>` : ""}<button class="btn small warn" data-remove="${esc(s.id)}" title="Take this student off Strange Planet (their progress here is lost)">✕</button></div>
     ${triesHtml(s)}`;
 }
 function replayOf(pid) {
@@ -529,6 +553,7 @@ function renderCrew(data) {
 function renderHabits(h) {
   const WORDS = {replay: "replay", step: "step", scout: "Scout", chip: "command chip", hint: "hint", show_me: "Show me", garage: "garage visit", same_code: "same code resend"};
   const parts = Object.keys(WORDS).filter(k => h[k]).map(k => `${h[k]} ${WORDS[k]}${h[k] === 1 ? "" : "s"}`);
+  if (h.secs) parts.unshift(`${Math.round(h.secs / 60)} minutes played`);
   if (h.shortcut_offered) parts.push(`🪄 shortcuts: ${h.shortcut_offered} offered, ${h.shortcut_taken || 0} tried, ${h.shortcut_won || 0} worked`);
   $("habits").hidden = !parts.length;
   $("habits").textContent = `Today: ${parts.join(" · ")}`;
@@ -596,7 +621,18 @@ async function refresh() {
   helpAfter = data.easy ? 3 : 8;
   $("address").textContent = (data.address || "").replace(/^http:\/\//, "");
   $("spotOff").hidden = !data.spotlight;
-  $("blanks").checked = data.blanks; $("easy").checked = data.easy; $("coach").checked = data.coach; $("sound").checked = data.sound;
+  $("blanks").checked = data.blanks; $("easy").checked = data.easy; $("coach").checked = data.coach; $("sound").checked = data.sound; $("lounge").checked = data.lounge; $("loungeWatch").hidden = !data.lounge; $("team").checked = data.team; $("teamTools").hidden = !data.team;
+  $("teamStatus").textContent = `${plural(data.team_rovers, "rover")} on the map, ${data.team_vault} in the vault`;
+  $("teamHelper").textContent = data.team_helper ? "🤖 Send the helper away" : "🤖 Helper rover";
+  const guess = $("predictPick");
+  if (!guess.options.length) guess.innerHTML = `<option value="">None</option>` + Array.from({length: data.predict_count}, (_, i) => `<option value="${i}">Question ${i + 1}</option>`).join("");
+  if (document.activeElement !== guess) guess.value = data.predict == null ? "" : data.predict;
+  $("predictReveal").hidden = data.predict == null || data.predict_revealed;
+  const pick = $("teamPick"), bug = $("bugHunt");
+  if (!pick.options.length) pick.innerHTML = data.team_levels.map((name, i) => `<option value="${i}">Level ${i + 1}: ${esc(name)}</option>`).join("");
+  if (document.activeElement !== pick) pick.value = data.team_level;
+  if (!bug.options.length) bug.innerHTML = `<option value="">None</option>` + data.bug_hunts.map((h, i) => `<option value="${i}">${esc(h.key.toUpperCase())}: ${esc(h.what)}</option>`).join("");
+  if (document.activeElement !== bug) bug.value = data.challenge && data.challenge.bug ? data.challenge.tag.split(":")[1] : "";
   $("halloween").checked = data.halloween;
   renderSpooky(data);
   $("empty").hidden = data.students.length > 0;
@@ -604,6 +640,8 @@ async function refresh() {
   renderHabits(data.habits || {});
   renderChallenge(data);
   renderWhere(data);
+  $("stale").hidden = !data.out_of_date.length;
+  $("stale").title = data.out_of_date.join(", ");
   renderCrew(data);
   takeRuns(data.runs);
 }
@@ -629,6 +667,17 @@ async function refreshReport() {
       <td>${said}</td></tr>`;
   }).join("") || `<tr><td colspan="5" class="empty">Nobody has run a level yet.</td></tr>`;
 }
+async function refreshToday() {
+  if (!$("todayBox").open) return;
+  let data;
+  try { data = await (await fetch("/planet/today")).json(); } catch (_) { return; }
+  $("today").innerHTML = data.students.map(s => `<tr><td>${esc(s.name)}</td><td class="num">${s.minutes}</td><td class="num">${s.runs}</td><td class="num">${s.wins}</td><td class="num">${s.new_levels}</td><td>${esc(siteTag(s.on))}</td></tr>`).join("")
+    || `<tr><td colspan="6" class="empty">Nobody has played today yet.</td></tr>`;
+  $("todayTeam").hidden = !data.team_best.length;
+  $("todayTeam").textContent = `🤝 Team Mission class bests: ${data.team_best.map(t => `${t.name} ${Math.floor(t.secs / 60)}:${String(t.secs % 60).padStart(2, "0")}`).join(" · ")}`;
+}
+$("todayBox").addEventListener("toggle", refreshToday);
+setInterval(refreshToday, 30000);
 $("reportBox").addEventListener("toggle", () => { store("planetReport", $("reportBox").open ? "1" : ""); refreshReport(); });
 $("reportBox").open = recall("planetReport") === "1";
 setInterval(refreshReport, 30000);

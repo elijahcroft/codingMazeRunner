@@ -40,9 +40,54 @@ locked or not. Students get a gold chip within seconds, the class screen counts 
 finished it and names them, and the win card says what number they came. Pick *None* to
 end it. Handy for "everyone try 1B1 now".
 
+**🏁 Class race.** Press 🏁 Race beside the challenge and put that page on the class screen.
+Everyone who has won the challenge is on it, each with their own map. Press 🏁 Start the race:
+3, 2, 1, and every rover drives its student's quickest win at once. Tiles light up as they
+finish, and the fastest get a gold edge. At the end it names ⚡ Fastest rover (fewest ticks) and
+✂️ Shortest program (fewest letters, not counting spaces or comments), and **✂️ Show the
+shortest program** puts that code up big to talk through. A win that wasn't sent
+during this challenge isn't on it, so a student who won earlier has to Transmit again. It lasts
+until you pick a new challenge, so you can pick *None* first.
+
+**🔮 Predict it.** ⚙ Settings → pick a question, and press **📺 Show** beside it for the class
+screen. Every student gets the code and four answers: how many squares will the rover drive?
+The class screen counts the votes and keeps how they fell hidden, so nobody just copies the
+crowd. Press **🎬 Reveal**, here or on the class screen if it's the same browser: the rover drives
+it, the right answer lights up and the votes show. There are no names and nothing is earned, so a
+wrong guess costs nothing. Ask "why?" before you reveal. Pick *None* to finish. The twelve
+questions run from `east(3)` to loops inside loops, and each answer comes from running the code.
+
+**🐛 Bug hunt.** A warm-up, and a challenge with a broken program. ⚙ Settings: pick one. Students
+press the gold chip to open the level, then again to load the broken code (Ctrl+Z brings theirs
+back). They Transmit to see what goes wrong, and fix it. After 2 misses in a row a 💡 clue names the
+kind of mistake. It counts as the challenge, so the race works with it too. Every one is played in `test_team.py`. The answers:
+
+| Level | The bug | The fix |
+|---|---|---|
+| 1A | A number that's one too small | `east(6)` should be `east(7)` |
+| 1A | A wrong direction | The `north()` after `east(7)` should be `south()` |
+| 1A | A missing bracket | `east(7` needs its `)` |
+| 1B | A loop that stops too soon | `range(3)` should be `range(8)` |
+| 1B | A missing colon | `for` line needs its `:` |
+| 1B | A line that isn't indented | `south()` needs four spaces, to go inside the loop |
+| 1B1 | A number inside the loop | `east()` should be `east(2)` |
+| 1C | A loop that checks the wrong thing | `==` on the first `while` should be `!=` |
+| 2B | A slide that goes the wrong way | The last `east()` should be `west()` |
+
+**👀 Eyes up, ⏰ 5 minutes, 👋 Stop.** The buttons at the top of your page put that message on every
+student's screen within about six seconds, over whatever they're doing, Team Mission and lounge
+included. It's a fixed list.
+
+**⏱ Minutes played.** A card says how long a student has played today, and "Today:" under the
+crew adds up the class. It counts while the page is open and they've pressed something in the
+last 90 seconds, so a laptop left open stops counting. It only counts from now on. **📋 Today's class**, near the bottom of your page, lists everyone
+who played today with their minutes, runs, wins, new levels and where they are now, and under
+that the class's Team Mission best times.
+
 **Rovers have names.** The first win asks; the box is under the rover in the garage.
-The name only shows on the student's own screen, in the win card and when you click
-the rover. A student who feels they're teaching someone tends to try harder for them.
+The name shows on the student's own screen, in the win card and when you click the
+rover, and on the rover's tag in the 🛋 Rover Lounge. A student who feels they're
+teaching someone tends to try harder for them.
 
 **Shortcuts out of a student's own code.** After a win, code with the same lines over
 and over gets a 🪄 box on the win card: "You wrote `east()` 6 times!" Pressing *Teach
@@ -264,6 +309,18 @@ lost.
   the holder's name and ticks, driving its route step for step. It only
   appears after they've done the site themselves, so it gives no route
   away, and never on per-student planets, where the maps differ.
+- **Loadouts on the big screen**: every replay on the class screen and the
+  teacher page shows the student's whole look from the garage: paint, hat,
+  wheels, glow, pet, their trail behind the rover, their map look's colours
+  and their own victory dance at the beacon. (Halloween levels keep their
+  spooky streets.)
+- **💾 Saved looks**: four slots under the garage preview. Pressing an empty
+  one keeps everything the rover has on (Paint Shop painting included);
+  pressing a full one puts that whole look back on. ✕ empties a slot.
+  🧽 Wipe paint on the teacher page clears a painting from saved looks too.
+- **Hide the camera**: a tick box under the garage preview takes the camera
+  head off the front of the rover, so more of the paint shows (on the class
+  screen too). Untick it to put it back.
 - **Wear a badge**: pressing an earned badge in the garage puts its icon
   next to the student's name on the class screen. One at a time; pressing
   it again takes it off. It shows something they did, not a score.
@@ -297,9 +354,10 @@ lost.
   N, E, S, W buttons) to *feel* the strange physics. Nothing is saved, and
   only code completes a mission. Students who are stuck on "what is the
   rule?" should scout. A scout that falls or runs flat gets the same
-  what-happened and 👉 next-step line as a transmitted run. Scouting has no
-  jump button, so on jump sites it says "Scouting can't jump, but code can"
-  and where to jump from.
+  what-happened and 👉 next-step line as a transmitted run. Where the rover
+  can jump, space jumps the way it last went, and Shift+space waits. Where it
+  can drill, E digs the same way. Before the first move, the next arrow picks
+  the way. J or X then an arrow still works.
 - **Brute force is allowed, on purpose.** Every site (but Uncharted) can be
   done with a plain list of commands, so nobody is locked out. Scout a
   route by hand (up to 150 moves), then **📋 Use as code** turns it into code
@@ -333,6 +391,29 @@ lost.
   light up when they're spelt right (so `eats()` stays plain), faint
   guides show the indentation, and Ctrl+Z undoes anything. A code error shows
   over the map with a **Go to line** button, and that line turns coral.
+- **The help comes off as they go.** Students write more by hand the further
+  they get. Each piece goes when a student first reaches that zone, stays off
+  even back on old sites, and a ✍️ note says so once:
+
+  | Reached | They now type |
+  | --- | --- |
+  | Wind Canyon | their own `(`: picking a word adds no brackets, and a chip shows the code instead of typing it |
+  | Solar Valley | the closing `)` too, and **📋 Use as code** goes (scouting stays) |
+  | Signal Plains | both quotes (the engine still forgives `look(east)`, but the line gets a ⚠) |
+  | Conveyor Works | the whole shape, `for i in range(3):`, colon and all |
+  | Gate Station | indents, with Tab, and lining up `else:` |
+  | Boulder Yard | the spelling: suggestions stop, but Ctrl+Space still lists them |
+
+  The ⚠ slips, tips in the ( ), and Tab stay to the end. The drive-first
+  practice sites keep all the help. The list is `TYPE_YOURSELF` in `planet.py`.
+- **Written for a child who finds computers hard.** The **?** card starts with
+  five plain steps and has two new folds: **What do the words mean?** and
+  **Where are the keys?** (`(`, `"`, `:`, Tab and so on). While the replay plays,
+  a caption on the map says which line the rover is on and what it's doing. The
+  goals are labelled **Your job** and **Extra stars**, and the first two zones
+  name the sample, beacon and crater on the map. A mistake says what to type,
+  why the rover stopped, and that nothing is broken. The word "Telemetry" is
+  now "What the rover did", and "Code error" is now "Line to fix".
 - **Help without waiting for you**: after 3 runs in a row that miss the
   mission, the result offers **🕹 Try it by hand** and **📻 Get a hint**. On
   Uncharted, every run says what stopped the other planets ("2 fell in a
@@ -381,7 +462,9 @@ board while they work.
 
 ## Pre-class checklist (5 minutes)
 
-- [ ] `python3 server.py`. Note the **admin key** in the banner.
+- [ ] `python3 server.py`. Note the **admin key** in the banner. A server that's already
+      running keeps its old pages and rules, so stop it and start it again after any update.
+      Mission Control shows a red warning if you've forgotten.
 - [ ] Students go to **`http://<ip>:8000/planet`** (the banner prints it).
 - [ ] If they've done the maze game, say so out loud: **"This rover never
       turns. North is up."** The Landing Site (3 short sites) is where they
@@ -426,6 +509,14 @@ board while they work.
 - [ ] Decide what to say when a student asks "what's the rule?":
       **"What did your last run show you?"** (see below).
 
+### A class hour using all of it
+
+1. **Warm-up, 5 minutes.** 🔮 Predict it for a question or two, then ⚙ Settings → 🐛 Bug hunt.
+2. **The race, 2 minutes.** 🏁 Race on the class screen, then Start the race.
+3. **Levels, most of the hour.** Their own route, with 👀 Eyes up when you need the room.
+4. **Team Mission, last 15 minutes.** Open it with the switch, and 📺 Watch on the class screen.
+5. **Lounge, if there's time.** ⏰ 5 minutes before the end, then 👋 Stop.
+
 ## How a site works
 
 Each zone has three sites, and each site has a job:
@@ -437,7 +528,7 @@ Each zone has three sites, and each site has a job:
 | **C · Generalise** | The rule's details differ **per student** (a different field, lake, gust timing, sun, or portal wiring). | "My neighbour's code doesn't work on my planet." |
 
 When a student opens a new site, **their code from the last site is
-already loaded** and the map says *"Your last site's code is loaded. Will it
+already loaded** and the map says *"The code from your last level is in the box. Will it
 still work here?"*
 That's deliberate: running the old program on the new ground is how they
 notice each rule. Ask them to predict out loud before they press **Transmit**.
@@ -533,7 +624,7 @@ words letter by letter and press **Transmit**:
 | 🌻 Loop Garden | P9–P16 | corners, a rock to go round, loops with a line after them |
 | ⛸ Ice Rink | P17–P24 | one press slides until something stops it |
 | 🔮 Pad Park | P25–P30 | magic pads: drive onto one, pop out of its partner; P30 is one drive in a loop |
-| 🐸 Jump Park | P31–P38 | `jump("east")` over craters and rocks; while scouting, 🦘 then an arrow (or Shift+arrow) jumps |
+| 🐸 Jump Park | P31–P38 | `jump("east")` over craters and rocks; while scouting, space (or 🦘 then an arrow, or Shift+arrow) jumps |
 | 👀 Look-Out Point | P39–P46 | `look("east")` and `while` loops: everyone's paths are a different length, so a loop that looks beats counting |
 | 🔀 Fork Road | P47–P51 | `if` and `else`: maps that differ between neighbours, a `for` loop with an `if` in it, and a path finder that works on any staircase |
 | 🎓 Trick School | P52–P57 | `def`: teach the rover a trick, call it, put it in a loop, give it a number |
@@ -560,6 +651,150 @@ open), a strip of zone icons to jump along it, and each level as a tile with
 its stars, 🔒 for what's still locked,
 and **▶ Play next**. The ◀ ▶ arrows beside a level's name go to the level
 before or after.
+
+## 🛋 The Rover Lounge: somewhere to show off
+
+A room where everyone's rovers hang out together. It's for play, so nothing in it
+earns stars or badges, and nothing is counted or ranked. Use it as a treat, like the
+last ten minutes of class.
+
+**Opening it:** turn on the **🛋 Rover Lounge** switch under ⚙ Settings on the teacher page. A pink
+**🛋 Lounge** button comes up at the top of students' screens within about six
+seconds. Turning it off sends everyone back to their level with their code as they
+left it. It's always closed after a server restart.
+
+**What students can do:**
+
+- **Drive around.** Click the floor, or use the arrow keys. Everyone sees it move.
+- **📯 Honk, 💃 Dance, 👋 Wave.** Their own horn and victory dance from the garage. A
+  horn only sounds on that student's own computer, and everyone else sees a 📯, so
+  the room stays quiet.
+- **Click a rover** to see it up close: its name, the rarest thing it's wearing, its
+  pet and its worn badge. Stars never show.
+- **Send a cheer.** Five fixed choices (👏 🔥 ⭐ 🤩 ❤️), and no typing, so there's no
+  chat to watch.
+- **🎤 Take the stage.** Works for everyone. The rover rolls on and spins, does its
+  dance, honks and waves. One rover at a time, with a queue.
+- **🌀 Spin, 🦘 Jump and the emotes.** Six fixed faces (😂 😎 🥳 🙌 🤖 😴) float up over their
+  rover, so there's still no typing.
+- **Kick the ball.** Drive into it and it rolls away. Everyone sees the same ball. There's no
+  goal and no score.
+- **The dance floor.** The tile under a rover lights up as it drives across.
+- **🎬 Make your own show.** An extra, only for those who want it. They write a short
+  program with `spin()`, `dance()`, `honk()`, `wave()`, `wait()` and the four
+  directions, and loops, `if` and `def` all work. **💾 Keep this show** makes it what
+  their rover does on stage. A show is one turn, about 20 seconds or 30 moves, and a
+  longer one just stops there. A show can't say anything, because there's no word for it.
+
+**Keeping an eye on it:** tags read "Zoomer · Mia", rover name then student. A
+student's rover name also shows on their card on the teacher page, with a **🧽 Wipe
+name** button beside **🧽 Wipe paint**. Both change the room at once. Rover names
+only allow letters, numbers and spaces, which won't stop a rude word, and a student
+can type a new name after a wipe. If that keeps happening, close the lounge.
+
+**On the class screen:** **📺 Watch the lounge** comes up on the teacher page while it's open. It
+shows the room with no rover of its own.
+
+**Trophies:** the shelf on the wall has one 🏆 for each Team Mission level, lit up once the class
+has finished that level. They stay after a restart and after 🔄 Start again. A level finished
+with 🔓 Open the doors doesn't earn one. They're for the whole class, so no names go on them.
+
+## 🤝 The Team Mission: the whole class on one map, live
+
+Everyone's rover is on the same map at the same moment, and everyone sees every rover and
+every boulder move as it happens. There are eight levels. When enough rovers reach the gold
+vault, the class gets a 10 second celebration and everyone rolls onto the next map together.
+Nobody has to write code: they drive with the arrow keys, the on-screen arrows, or by clicking
+a square, and 🤖 Code my rover is there for anyone who wants it. It earns no stars. All it keeps
+is the class's trophies and best times.
+
+**Opening it:** turn on **🤝 Team Mission** under ⚙ Settings on the teacher page. A
+**🤝 Team Mission** button comes up at the top of students' screens within about six seconds.
+Turning the switch off keeps the mission as it is until you open it again.
+
+**📺 Watch** opens the live map for you or the class screen. Watching doesn't put a rover on it.
+
+**What's on each student's screen:**
+
+- **🧭 Next job.** One plain sentence on what the class needs to do now, with gold boxes pulsing
+  round those squares on the map. It's personal too: a rover on a plate is told to stay there, a
+  rover in the vault is told to wait, and the closest free rover is told the plate is theirs. It follows the game: a door a friend is holding says "Go
+  through now!", and wide craters say to fill one row. It's on the class screen too.
+- **Shouts.** 🆘 Help, ✋ Holding, 👀 Look, 🪨 Boulder and 🙌 Thanks put a bubble over the rover
+  for everyone, by button or the keys 1 to 5. It's a fixed list, so there's no chat to watch,
+  and one rover can shout every 2.5 seconds at most.
+- **⏱ The clock and the class best.** The first finish sets the time to beat. Finishing with
+  🔓 Open the doors doesn't count. Use the level list beside 📺 Watch to try a level again.
+- **The win card** gives the time, the squares driven and the boulder pushes, and the map lights
+  up everywhere the class drove.
+- **🤖 Code my rover.** An extra. It opens a box beside the map, and the program drives their
+  rover: `north(3)`, `south()`, `east()`, `west()`, `wait()`, plus `for`, `while`, `if`, `def` and
+  variables. `look("east")` says `rock`, `door`, `crater`, `boulder`, `plate`, `vault` or `ground`.
+  So `while look("east") == "ground":` then `east()` drives to the next thing. A program is
+  worked out at the moment they press Run, and can do 60 moves. If it would hit something, it
+  stops there and names the line. If the map changes on the way, the rover stops and says so.
+  Keys or clicks take over at any time. It's handy for a long boulder push. A dotted line shows
+  the way the rover is about to go, three buttons add a ready-made loop or check to the code, and
+  `print()` shows beside the code, so `print(look("east"))` is a good way to find out what's there.
+
+**The rules to tell the class:**
+
+- Something heavy on a plate opens the door with the same letter.
+- A rover on a plate holds the door open only while it stays there, so a friend can go through.
+- A boulder pushed onto a plate sinks in and opens the door **for good**, which frees that friend.
+- A door with two or three plates needs them all pressed at once.
+- A boulder pushed into a crater fills it in, and then you can drive over it.
+- Half the rovers need to be in the vault to finish a level, so one kid off doing something
+  else can't hold up the class.
+
+**When something goes wrong:**
+
+- *A boulder is stuck.* Drive onto ♻. Every boulder nobody has pushed for 20 seconds goes back
+  to where it started, including ones that went into a crater. Filled craters and sunk plates
+  stay done, so this can never lose progress.
+- *A rover is shut in.* **🏠 Back to the lander** works from anywhere.
+- *Time's nearly up.* **🔓 Open the doors** opens every door and fills every crater on the level.
+- *The class has done this level.* **⏭ Next level** skips ahead.
+- **🔄 Start again** goes back to level 1. Restarting the server does too.
+
+At least two rovers are needed, because some doors can't be opened alone. To try it by yourself
+or with a very small class, press **🤖 Helper rover**: it stands on the plate that's needed next.
+It doesn't count towards the vault, and a level it helps on earns no trophy or class best. You can
+also join from a second computer, or use 🔓 Open the doors.
+
+**Answer keys** (every one is played square by square in `test_team.py`, with two rovers):
+
+1. **Landing Bay.** Push the boulder down onto plate A. One rover stands on plate B, and another
+   goes through door B and pushes the boulder back left through the door onto it. Door C needs
+   both its plates: push a boulder left onto each.
+2. **Four Corners.** Door V has four plates, but there are only three boulders. Push the boulders
+   onto three plates (up, up and down), and one rover stands on the fourth so the rest get through.
+3. **Crater Crossing.** Push the boulder right into the crater to make a bridge, then push the
+   boulder past it up onto plate A, which opens the top lane. Up there, push the boulder up and
+   then left onto plate B, which opens the bottom lane. There, push the boulder up onto plate C,
+   which opens the top lane again. Each lane then has a boulder to push down onto a plate V.
+4. **The Long Road.** Push the boulder a long way right onto plate A, then down through the door.
+   Push the boulder on the right into the crater, then the next boulder left onto plate B. Down
+   again, push a boulder right onto each C plate.
+5. **Three-Step Bridge.** The crater belt is three wide, so three boulders must end up in one row.
+   Use the middle row: push the top and bottom boulders into that row first, then along. If they
+   go into different rows, use ♻. Over the bridge, push the boulder onto one V plate and stand on
+   the other.
+6. **The Ring.** One rover stands on plate A. Another goes through door A, gets behind the boulder
+   on that row and pushes it back out through the door onto the plate. Push a boulder down into
+   a crater to cross to the bottom. There, push the two boulders apart onto the two V plates.
+   The third V plate is on the far right of the outer road, with a boulder above it.
+7. **Pass It Back.** Three doors in a row, and each one's boulder is on the far side. One rover
+   stands on the plate, and the other goes through, pushes the boulder into row with the door,
+   and rolls it back through onto the plate. Then the same again at the next door.
+8. **The Big Vault.** Push boulders down onto plates A and B. One rover stands on plate D, and
+   another goes through door D, pushes the hall's right-hand boulder left, then down through the
+   door onto the plate. West: two boulders in one row bridge the double crater (two in different
+   rows won't, so use ♻). Door C needs both its plates: push one boulder onto a plate, stand on
+   the other, and a friend brings a boulder down through the door. East: swap doors E and F, where
+   each door's plate is on the far side of the other door, so one rover stands while the other
+   pushes a boulder through. Over the crater, boulder onto plate G. The three V plates are in the
+   hall, the top left room and the top right room.
 
 ## 🎃 Halloween night: a limited-time event
 

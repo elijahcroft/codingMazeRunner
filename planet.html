@@ -238,12 +238,16 @@
   .planet-tab.ok { background: radial-gradient(circle at 35% 30%, #c9ffe6, #59c99a); }
   .planet-tab.no { background: radial-gradient(circle at 35% 30%, #ffc4bc, #c8574c); }
   .planet-tab.on { border-color: var(--bone); transform: scale(1.12); }
+  /* While the replay plays: the line the rover is on, in words. */
+  .caption { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 8px 14px; border-radius: 12px; background: rgba(18,13,34,.9); color: var(--bone); font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+  .caption code { font: 600 15px var(--mono); color: var(--mint); margin: 0 4px; }
   .where { position: absolute; left: 12px; bottom: 12px; font: 12px var(--mono); color: var(--haze); background: rgba(18,13,34,.6); padding: 3px 8px; border-radius: 6px; pointer-events: none; }
   .banner { position: absolute; left: 16px; right: 16px; bottom: 16px; width: fit-content; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 10px 12px 10px 18px; border-radius: 14px; background: rgba(27,21,52,.92); backdrop-filter: blur(6px); box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 1px var(--edge); }
   .banner p { margin: 0; font-weight: 650; max-width: 62ch; white-space: pre-wrap; }
   .banner p .next { display: block; margin-top: 4px; color: var(--mint); }
   .banner code { font: 600 .95em var(--mono); color: var(--mint); background: rgba(140,242,198,.1); padding: 1px 6px; border-radius: 6px; }
   #siteBrief code, .feed .err code, .msg code, .cele-tip code { font: 600 .92em var(--mono); color: var(--mint); background: rgba(140,242,198,.1); padding: 1px 5px; border-radius: 5px; white-space: nowrap; }
+  .goal-tag { color: var(--bone); font-size: 13px; font-weight: 700; }
   .goal.legend { background: none; padding-left: 4px; color: var(--haze); }
   .banner.win { box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 2px var(--mint); }
   .banner.lost { box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 2px var(--coral); }
@@ -511,6 +515,19 @@
   .stage canvas { width: 280px; height: 280px; border-radius: 18px; display: block; box-shadow: 0 0 0 1px var(--edge); }
   .stage-tag { margin: 10px 0 0; text-align: center; color: var(--haze); font-size: 13.5px; line-height: 1.4; }
   .stage-tag b { display: block; color: var(--bone); font-size: 17px; }
+  .mast-toggle { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; color: var(--haze); font-size: 13.5px; cursor: pointer; }
+  .mast-toggle input { width: 17px; height: 17px; accent-color: var(--mint); }
+  /* Saved looks: press an empty one to keep what the rover wears, a full one to put it back on. */
+  .presets-head { margin: 14px 0 6px; text-align: center; color: var(--haze); font-size: 13px; font-weight: 650; }
+  .presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .preset { position: relative; display: grid; place-items: center; aspect-ratio: 1; padding: 0; border: 1px dashed var(--edge); border-radius: 12px; background: var(--panel); color: var(--dim); font-size: 12px; line-height: 1.2; }
+  .preset.full { border-style: solid; background: radial-gradient(circle, #3a3168, #16122c); }
+  .preset.full:hover, .preset.empty:hover { border-color: var(--mint); color: var(--bone); }
+  .preset.on { border: 2px solid var(--mint); }
+  .preset canvas { width: 100%; height: 100%; display: block; }
+  .preset .clear { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border: 0; border-radius: 50%; padding: 0; background: var(--panel-2); color: var(--haze); font-size: 11px; line-height: 20px; display: none; }
+  .preset.full:hover .clear, .preset.full:focus-within .clear { display: block; }
+  .preset .clear:hover { background: var(--coral); color: #fff; }
   .set-tag { display: block; margin-top: 8px; padding: 6px 10px; border-radius: 10px; background: var(--panel); font-size: 12.5px; }
   .set-tag.full { background: rgba(255,211,107,.16); color: var(--gold); font-weight: 650; }
   .garage-card h2 { margin: 0; font-size: 24px; font-weight: 850; letter-spacing: -.02em; }
@@ -609,6 +626,102 @@
   .shop-msg code { font: 600 .92em var(--mono); color: var(--mint); }
   .shop-actions { display: flex; gap: 10px; align-items: center; }
   .shop-actions .go { flex: 1; }
+  /* ---- The Team Mission: the whole class on one map ------------------------- */
+  .team-button { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 0; border-radius: 12px; background: linear-gradient(120deg, #ffd36b, #8cf2c6); color: #1d1240; font: 800 14px var(--ui); animation: garage-glow 1.8s ease-in-out infinite; }
+  .team-card { width: min(1400px, 100%, calc((100vh - 110px) * 2 + 262px)); padding: 12px 14px; background: var(--dusk); border-radius: 18px; box-shadow: 0 30px 80px rgba(0,0,0,.5), inset 0 0 0 1px var(--edge); }
+  .team-head { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; margin-bottom: 8px; }
+  .team-head h2 { margin: 0; font-size: 20px; font-weight: 850; letter-spacing: -.02em; }
+  .team-head #teamLevel { color: var(--gold); font: 700 15px var(--ui); }
+  .team-head #teamSay { flex: 1 1 200px; min-width: 0; color: var(--bone); font: 600 14.5px var(--ui); }
+  .team-body { display: grid; grid-template-columns: minmax(0, 1fr) 228px; gap: 12px; align-items: start; }
+  .team-map { position: relative; }
+  .team-map canvas { display: block; width: 100%; aspect-ratio: 2 / 1; border-radius: 10px; cursor: pointer; }
+  .team-win { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: max-content; max-width: 90%; padding: 12px 22px; border-radius: 16px; background: rgba(18, 15, 36, .92); box-shadow: inset 0 0 0 2px var(--gold); font: 800 22px var(--ui); text-align: center; pointer-events: none; }
+  .team-side { display: grid; gap: 8px; min-width: 0; }
+  .team-side p { margin: 0; font: 650 14.5px/1.3 var(--ui); }
+  .team-doors { display: flex; flex-wrap: wrap; gap: 4px; }
+  .team-doors span { display: inline-flex; align-items: baseline; gap: 4px; padding: 2px 7px; border-radius: 8px; background: var(--panel); color: var(--haze); font: 600 13px var(--ui); box-shadow: inset 0 0 0 2px var(--door); }
+  .team-doors b { color: var(--door); font-size: 14px; }
+  .team-doors .good { background: var(--door); color: #1b1734; }
+  .team-doors .good b { color: #1b1734; }
+  .team-doors .held { color: var(--bone); }
+  .team-pad { display: grid; grid-template-columns: repeat(3, 40px); grid-auto-rows: 34px; gap: 3px; justify-content: center; }
+  .team-pad button { border: 0; border-radius: 9px; background: var(--panel); color: var(--bone); font: 700 17px var(--ui); box-shadow: inset 0 0 0 1px var(--edge); }
+  .team-pad button:hover { box-shadow: inset 0 0 0 2px var(--violet); }
+  .team-pad [data-way=north] { grid-column: 2; }
+  .team-pad [data-way=west] { grid-column: 1; grid-row: 2; }
+  .team-pad [data-way=south] { grid-column: 2; grid-row: 2; }
+  .team-pad [data-way=east] { grid-column: 3; grid-row: 2; }
+  #teamHome, #teamCodeOpen { padding: 7px 8px; border: 0; border-radius: 10px; background: var(--panel); color: var(--bone); font: 700 14px var(--ui); box-shadow: inset 0 0 0 1px var(--edge); }
+  #teamHome:hover, #teamCodeOpen:hover { box-shadow: inset 0 0 0 2px var(--violet); }
+  .team-job { padding: 6px 8px; border-radius: 10px; background: rgba(255,211,107,.12); box-shadow: inset 0 0 0 1px rgba(255,211,107,.5); }
+  .team-job b { display: block; color: var(--gold); font-size: 13px; }
+  .team-clock { color: var(--haze); font: 600 13px var(--ui); align-self: center; }
+  .team-chips { display: contents; }
+  .team-side { position: relative; }
+  .team-coder { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; gap: 6px; min-height: 340px; padding: 8px; border-radius: 12px; background: var(--dusk); box-shadow: inset 0 0 0 1px var(--edge); overflow: auto; }
+  .team-coder h3 { margin: 0; font: 800 15px var(--ui); }
+  .team-coder p { font: 500 12.5px/1.3 var(--ui); color: var(--haze); }
+  .team-coder textarea { flex: 1 1 110px; min-height: 90px; width: 100%; padding: 6px; border: 0; border-radius: 8px; background: var(--ink, #120f24); color: var(--bone); font: 14px/1.35 ui-monospace, Menlo, Consolas, monospace; box-shadow: inset 0 0 0 1px var(--edge); resize: none; }
+  .team-coder code { color: var(--mint, #8cf2c6); font-size: 12.5px; }
+  .team-coder #teamCodeSay { color: var(--bone); font-weight: 650; min-height: 2.6em; overflow-wrap: anywhere; }
+  .team-coder #teamCodeSay.bad { color: #ffb4a8; }
+  .team-prints { margin: 0; color: var(--gold); font: 12.5px/1.3 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .team-prints:empty { display: none; }
+  .team-eg { display: flex; gap: 3px; }
+  .team-eg button { flex: 1 1 auto; padding: 3px 2px; border: 0; border-radius: 8px; background: var(--panel); color: var(--bone); font: 650 11.5px var(--ui); box-shadow: inset 0 0 0 1px var(--edge); }
+  .team-coder-row { display: flex; gap: 4px; }
+  .team-coder-row button { flex: 1; padding: 6px 2px; border: 0; border-radius: 9px; background: var(--panel); color: var(--bone); font: 700 14px var(--ui); box-shadow: inset 0 0 0 1px var(--edge); }
+  .team-coder-row #teamRun { background: var(--mint, #8cf2c6); color: #1b1734; }
+  .team-shouts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; }
+  .team-shouts button { padding: 3px 0; border: 0; border-radius: 9px; background: var(--panel); color: var(--bone); font: 700 16px var(--ui); box-shadow: inset 0 0 0 1px var(--edge); }
+  .team-shouts button:hover { box-shadow: inset 0 0 0 2px var(--violet); }
+  .team-shouts small { display: block; color: var(--haze); font: 600 10.5px var(--ui); }
+  .predict-card { display: grid; gap: 10px; width: min(460px, 100%); padding: 18px; border-radius: 18px; background: var(--dusk); box-shadow: 0 30px 80px rgba(0,0,0,.5), inset 0 0 0 1px var(--edge); }
+  .predict-card h2, .predict-card p { margin: 0; }
+  .predict-card pre { margin: 0; padding: 12px 14px; border-radius: 12px; background: #0c0a19; color: var(--gold); font: 16px/1.45 ui-monospace, Menlo, Consolas, monospace; overflow: auto; }
+  .predict-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .predict-options button { padding: 12px 0; border: 0; border-radius: 12px; background: var(--panel); color: var(--bone); font: 800 22px var(--ui); box-shadow: inset 0 0 0 1px var(--edge); }
+  .predict-options .mine { background: var(--violet); color: #1b1734; }
+  .predict-options .right { background: var(--gold); color: #33280a; }
+  .predict-options button:disabled { opacity: .85; }
+  #predictSay { min-height: 2.6em; font-weight: 650; }
+  .team-news { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; color: var(--haze); font: 500 13px/1.25 var(--ui); overflow-wrap: anywhere; }
+  .team-news li:first-child { color: var(--bone); }
+  @media (max-width: 760px) { .team-body { grid-template-columns: minmax(0, 1fr); } }
+  /* ---- The Rover Lounge: everyone's rovers in one room ---------------------- */
+  .lounge-button { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 0; border-radius: 12px; background: linear-gradient(120deg, #ff8ad8, #b9a3ff); color: #1d1240; font: 800 14px var(--ui); animation: garage-glow 1.8s ease-in-out infinite; }
+  .lounge-card { width: min(1320px, 100%, calc((100vh - 122px) * 14 / 9 + 276px)); padding: 18px 20px 16px; background: var(--dusk); border-radius: 20px; box-shadow: 0 30px 80px rgba(0,0,0,.5), inset 0 0 0 1px var(--edge); }
+  .lounge-card h2 { margin: 0; font-size: 24px; font-weight: 850; letter-spacing: -.02em; }
+  .lounge-card .shop-sub { color: var(--bone); font: 600 15px var(--ui); }
+  .lounge-room { position: relative; }
+  .lounge-room canvas#loungeRoom { display: block; width: 100%; aspect-ratio: 14 / 9; border-radius: 14px; cursor: pointer; }
+  .lounge-rover { position: absolute; top: 12px; right: 12px; width: 230px; display: grid; justify-items: center; gap: 4px; padding: 12px 14px 14px; border-radius: 16px; background: var(--dusk); box-shadow: 0 14px 40px rgba(0,0,0,.5), inset 0 0 0 1px var(--edge); text-align: center; }
+  .lounge-rover canvas { width: 132px; height: 132px; }
+  .lounge-rover b { font-size: 16px; overflow-wrap: anywhere; }
+  .lounge-rover span { color: var(--haze); font-size: 14px; }
+  .lounge-rover small { margin-top: 6px; color: var(--haze); font-size: 13.5px; }
+  .lc-close { position: absolute; top: 8px; right: 8px; }
+  .lc-cheers { display: flex; gap: 4px; }
+  .lc-cheers button { width: 38px; height: 38px; border: 0; border-radius: 10px; background: var(--panel); font-size: 19px; }
+  .lc-cheers button:hover { background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--violet); }
+  .lounge-body { display: grid; grid-template-columns: minmax(0, 1fr) 224px; gap: 12px; align-items: start; }
+  .lounge-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+  .lounge-bar button { padding: 7px 4px; border: 0; border-radius: 10px; background: var(--panel); color: var(--bone); font: 700 14px var(--ui); box-shadow: inset 0 0 0 1px var(--edge); }
+  .lounge-bar button:hover:not(:disabled) { box-shadow: inset 0 0 0 2px var(--violet); }
+  .lounge-bar button:disabled { opacity: .55; cursor: default; }
+  .lounge-bar .big { grid-column: 1 / -1; background: var(--gold); color: #33240a; box-shadow: none; }
+  .lounge-bar .extra, .lounge-bar p, #loungeJump { grid-column: 1 / -1; }
+  .lounge-bar p { margin: 2px 0 0; color: var(--gold); font: 650 13.5px/1.3 var(--ui); }
+  .lounge-emotes { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; }
+  .lounge-emotes button { padding: 5px 0; font-size: 16px; }
+  @media (max-width: 760px) { .lounge-body { grid-template-columns: minmax(0, 1fr); } }
+  .lounge-bar .extra { background: transparent; color: var(--haze); }
+  #showStage { display: block; width: 100%; aspect-ratio: 20 / 9; margin-bottom: 12px; border-radius: 14px; }
+  #showCode { display: block; width: 100%; height: 230px; padding: 12px 14px; resize: none; border: 0; outline: 0; border-radius: 12px; background: #171329; box-shadow: inset 0 0 0 1px var(--edge); color: var(--bone); caret-color: var(--mint); font: 15px/1.6 var(--mono); tab-size: 4; white-space: pre; }
+  .show-words { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+  .show-words button { padding: 4px 9px; border: 0; border-radius: 8px; background: var(--panel); color: var(--mint); font: 600 13.5px var(--mono); }
+  .show-words button:hover { background: var(--panel-2); }
   .shop-actions .go.wear { background: var(--gold); box-shadow: 0 3px 0 #c79a2a; color: #3a2a00; }
   .shop-actions .go.wear:hover { background: #ffe08f; }
   .shop-actions .go.wear:disabled { opacity: .45; cursor: not-allowed; }
@@ -670,6 +783,10 @@
   .calm .scope.shake, .calm .stars-button.bump, .calm .stars-button.fresh, .calm .toast, .calm .toast.out, .calm .card.r-legendary { animation: none; }
   .intro-note, .calm-pick { display: flex; align-items: center; gap: 8px; margin: 0 0 16px; color: var(--haze); font-size: 14px; }
   .intro-note { display: block; line-height: 1.45; margin-bottom: 12px; }
+  #introClose { position: sticky; bottom: 12px; }   /* always on screen, however long the card gets */
+  .word-list { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; margin: 8px 0 14px; font-size: 14.5px; line-height: 1.4; }
+  .word-list dt { color: var(--bone); font-weight: 700; }
+  .word-list dd { margin: 0; color: var(--haze); }
   .intro-more { margin: 0 0 14px; }
   .intro-more summary { cursor: pointer; color: var(--violet); font-weight: 700; font-size: 14px; margin-bottom: 8px; }
   .calm-pick { cursor: pointer; }
@@ -689,6 +806,7 @@
   .candy-button b { color: #fff3e0; }
   @keyframes candy-glow { 50% { box-shadow: inset 0 0 0 1.5px var(--pumpkin), 0 0 16px rgba(255,138,31,.55); } }
   .calm .candy-button { animation: none; }
+  .calm .lounge-button, .calm .team-button { animation: none; }
   .candy-button.bump { animation: bump .5s; }
   .gauge.spooky small { color: var(--pumpkin-2); }
   .chip.spooky { color: var(--pumpkin-2); box-shadow: inset 0 0 0 1px rgba(255,138,31,.5); }
@@ -770,6 +888,8 @@
     <button class="levels-button" id="levelsButton" title="Every level: pick one to play">🗺<span>Levels</span></button>
     <nav class="route" id="route" aria-label="Your route across the planet"></nav>
     <div class="who">
+      <button class="team-button" id="teamButton" hidden title="Join your whole class on one big map">🤝 Team Mission</button>
+      <button class="lounge-button" id="loungeButton" hidden title="Go to the Rover Lounge and show off your rover">🛋 Lounge</button>
       <button class="candy-button" id="candyButton" hidden aria-label="Halloween night: your candy and the candy road">🎃<b id="candyCount">0</b><span class="cw">🍬</span></button>
       <button class="stars-button" id="starsButton" title="Your stars, the garage and your badges"><span id="rankIcon"></span>★ <span id="totalStars">0</span><span class="garage-word">🔧 Garage</span><i class="new-pip" id="newPip" hidden>NEW</i><i class="rank-bar"><b id="rankBar"></b></i></button>
       <b id="driver"></b>
@@ -808,8 +928,9 @@
         </div>
         <svg class="compass" id="compass" viewBox="0 0 58 58" aria-hidden="true"><circle cx="29" cy="29" r="20" fill="rgba(18,13,34,.6)" stroke="rgba(242,234,219,.25)"/><path d="M29 12 L33 29 L29 26 L25 29 Z" fill="#8cf2c6"/><path d="M29 46 L33 29 L29 32 L25 29 Z" fill="rgba(242,234,219,.4)"/><g font-family="ui-monospace,monospace" font-size="9" font-weight="700" fill="#f2eadb" text-anchor="middle"><text x="29" y="8">N</text><text x="29" y="57">S</text><text x="53" y="32">E</text><text x="5" y="32">W</text></g></svg>
         <div class="where" id="where" hidden></div>
+        <div class="caption" id="caption" hidden></div>
         <div class="banner" id="banner" hidden><p id="bannerText"></p><div class="banner-actions" id="bannerActions"></div></div>
-        <div class="scout-help" id="scoutHelp" hidden><span class="adult"><b>Scouting</b>: arrow keys drive north, south, east and west · space waits<span id="scoutExtra"></span> · R restarts. <span id="scoutLeft"></span> Only code completes the mission.</span><span class="kid" id="scoutKid">🕹 Drive the rover with the arrow buttons <b>↑ ↓ ← →</b>. Made a mistake? Press R to start again.</span> <button class="quiet" id="scoutCode" disabled>📋 Use as code</button></div>
+        <div class="scout-help" id="scoutHelp" hidden><span class="adult"><b>Scouting</b>: arrow keys drive north, south, east and west<span id="scoutExtra"></span> · R restarts. <span id="scoutLeft"></span> Only code completes the mission.</span><span class="kid" id="scoutKid">🕹 Drive the rover with the arrow buttons <b>↑ ↓ ← →</b>. Made a mistake? Press R to start again.</span> <button class="quiet" id="scoutCode" disabled>📋 Use as code</button></div>
         <div class="pad" id="pad" hidden aria-label="Drive by hand">
           <button class="jump" data-move="jump" hidden aria-label="Jump: then press an arrow">🦘<small>jump</small></button>
           <button class="up" data-move="north" aria-label="Drive north">↑<small>N</small></button>
@@ -890,6 +1011,9 @@
       <div class="stage">
         <canvas id="garageScene" aria-hidden="true"></canvas>
         <p class="stage-tag" id="stageTag" aria-live="polite"></p>
+        <label class="mast-toggle"><input type="checkbox" id="mastToggle"> Hide the camera, to show off the paint</label>
+        <div class="presets-head">💾 Saved looks</div>
+        <div class="presets" id="presets"></div>
       </div>
       <div>
         <div class="tabs" id="garageTabs"></div>
@@ -916,6 +1040,80 @@
         <div class="swatches" id="shopColors" aria-label="Colours: press one to type it, and to pick it for clicking squares"></div>
         <p class="shop-msg" id="shopMsg" aria-live="polite"></p>
         <div class="shop-actions"><button class="go" id="shopRun" title="Ctrl+Enter">Paint ▶</button><button class="go wear" id="shopWear">✓ Wear it</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="dialog" id="team" hidden role="dialog" aria-modal="true" aria-labelledby="teamTitle">
+  <div class="team-card">
+    <div class="team-head"><h2 id="teamTitle">🤝 Team Mission</h2><span id="teamLevel"></span><span id="teamSay" aria-live="polite"></span><button class="quiet" id="teamClose">← Back to my level</button></div>
+    <div class="team-body">
+      <div class="team-map"><canvas id="teamMap" aria-label="The map, with everyone's rovers on it. Use the arrow keys to drive, or click a square."></canvas><div class="team-win" id="teamWin" hidden></div></div>
+      <div class="team-side">
+        <p id="teamGoal"></p>
+        <p class="team-job"><b>🧭 Next job</b> <span id="teamJob"></span></p>
+        <div class="team-doors"><span id="teamDoors" class="team-chips"></span><i class="team-clock" id="teamClock"></i></div>
+        <div class="team-pad" id="teamPad"><button data-way="north" aria-label="Drive up">↑</button><button data-way="west" aria-label="Drive left">←</button><button data-way="south" aria-label="Drive down">↓</button><button data-way="east" aria-label="Drive right">→</button></div>
+        <div class="team-shouts" id="teamShouts" role="group" aria-label="Shout to your class"><button data-shout="help" title="Help me here! (key 1)">🆘<small>Help</small></button><button data-shout="hold" title="I'm holding the door! (key 2)">✋<small>Holding</small></button><button data-shout="look" title="Look here! (key 3)">👀<small>Look</small></button><button data-shout="boulder" title="Bring a boulder! (key 4)">🪨<small>Boulder</small></button><button data-shout="thanks" title="Thank you! (key 5)">🙌<small>Thanks</small></button></div>
+        <button id="teamCodeOpen" title="An extra, if you want it: write a program and your rover drives it">🤖 Code my rover</button>
+        <button id="teamHome" title="Your rover jumps back to the lander. Use it if you're shut in.">🏠 Back to the lander</button>
+        <ul class="team-news" id="teamNews"></ul>
+        <div class="team-coder" id="teamCoder" hidden>
+          <h3>🤖 Code my rover</h3>
+          <p>Write a program, then press Run. Your rover drives it. The arrow keys still work if you want them.</p>
+          <textarea id="teamCode" spellcheck="false" autocomplete="off" aria-label="Your rover's program"></textarea>
+          <div class="team-eg" id="teamExamples"><button data-eg="repeat" title="Adds a loop to your program">🔁 Repeat</button><button data-eg="rock" title="Adds a loop that drives until it sees rock">🪨 Drive to rock</button><button data-eg="check" title="Adds a check on what's next to your rover">❓ Check</button></div>
+          <p><code>east(3)</code> <code>north()</code> <code>wait()</code> <code>look("east")</code> says rock, door, crater, boulder, plate, vault or ground.</p>
+          <div class="team-coder-row"><button id="teamRun">▶ Run</button><button id="teamStop">⏹ Stop</button><button id="teamCodeClose">✕ Close</button></div>
+          <p id="teamCodeSay" aria-live="polite"></p>
+          <pre id="teamPrints" class="team-prints" aria-label="What your program printed"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="dialog" id="lounge" hidden role="dialog" aria-modal="true" aria-labelledby="loungeTitle">
+  <div class="lounge-card">
+    <div class="garage-head"><h2 id="loungeTitle">🛋 Rover Lounge</h2><span class="shop-sub" id="loungeSay" aria-live="polite"></span><div class="garage-actions"><button class="quiet" id="loungeClose">← Back to my level</button></div></div>
+    <div class="lounge-body">
+      <div class="lounge-room">
+        <canvas id="loungeRoom" aria-label="The lounge, seen from above, with everyone's rovers in it. Click the floor to drive there, or use the arrow keys. Click a rover to see it up close. Drive into the ball to kick it."></canvas>
+        <div class="lounge-rover" id="loungeRover" hidden></div>
+      </div>
+      <div class="lounge-bar">
+        <button id="loungeHonk">📯 Honk</button><button id="loungeDance">💃 Dance</button><button id="loungeWave">👋 Wave</button><button id="loungeSpin">🌀 Spin</button><button id="loungeJump">🦘 Jump</button>
+        <div class="lounge-emotes" id="loungeEmotes"></div>
+        <button class="big" id="loungeStage" title="Your rover rolls onto the stage and does its dance. Everyone in the lounge watches.">🎤 Take the stage</button>
+        <button class="extra" id="loungeShow" title="An extra, if you feel like it: write what your rover does on the stage">🎬 Make your own show</button>
+        <p id="loungeWins"></p>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="dialog" id="predict" hidden role="dialog" aria-modal="true" aria-labelledby="predictTitle">
+  <div class="predict-card">
+    <h2 id="predictTitle">🔮 Predict it!</h2>
+    <p>Read the code. How many squares will the rover drive? Press your answer.</p>
+    <pre id="predictCode"></pre>
+    <div class="predict-options" id="predictOptions"></div>
+    <p id="predictSay" aria-live="polite"></p>
+    <button class="quiet" id="predictClose">← Back to my level</button>
+  </div>
+</div>
+<div class="dialog" id="showMaker" hidden role="dialog" aria-modal="true" aria-labelledby="showTitle">
+  <div class="shop-card">
+    <div class="garage-head"><h2 id="showTitle">🎬 Make your own show</h2><span class="shop-sub">Just for fun: write what your rover does on the stage.</span><div class="garage-actions"><button class="quiet" id="showBack">← Lounge</button></div></div>
+    <div class="shop-top">
+      <div>
+        <canvas id="showStage" aria-hidden="true"></canvas>
+        <p class="easel-tip">You don't need a show to go on stage. Without one, your rover spins, does its dance, honks and waves. If you keep a show here, your rover does that instead. A show is one turn: about 20 seconds.</p>
+      </div>
+      <div>
+        <div class="shop-examples" id="showExamples"></div>
+        <textarea id="showCode" aria-label="Your rover's show. Ctrl+Enter tries it." spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+        <div class="show-words" id="showWords" aria-label="Words your rover knows. Press one to add it to your show."></div>
+        <p class="shop-msg" id="showMsg" aria-live="polite"></p>
+        <div class="shop-actions"><button class="go" id="showTry" title="Ctrl+Enter">▶ Try it</button><button class="go wear" id="showKeep">💾 Keep this show</button></div>
       </div>
     </div>
   </div>
@@ -965,13 +1163,41 @@
     <div class="intro-body">
       <h2 id="introTitle" class="announce">How it works</h2>
       <ol>
-        <li>Write code on the right, press <b>Transmit ▶</b>, and watch your rover try it.</li>
-        <li>Your rover drives by compass: <code>north()</code> <code>south()</code> <code>east(3)</code> <code>west()</code>. It never turns.</li>
-        <li>Every site is a mission: collect samples, reach the beacon, or measure something strange and <code>report()</code> it.</li>
-        <li>Every zone hides a rule. Nobody will tell you.</li>
+        <li><b>Read your job.</b> It's at the top of the screen. Every level has one.</li>
+        <li><b>Write code in the box on the right.</b> Code is a list of jobs for your rover, one job on each line.</li>
+        <li><b>Press Transmit ▶.</b> That sends your code to the rover. Then watch the map: it does your lines from top to bottom.</li>
+        <li><b>It moves up, down, left and right.</b> <code>north()</code> is up ↑, <code>south()</code> is down ↓, <code>east()</code> is right →, <code>west()</code> is left ←. <code>east(3)</code> goes 3 squares right.</li>
+        <li><b>Went wrong? That's normal!</b> Everyone who codes gets it wrong lots. The rover tells you what happened. Change one thing and press Transmit again.</li>
       </ol>
+      <details class="intro-more"><summary>What do the words mean?</summary>
+      <dl class="word-list">
+        <dt>Code</dt><dd>The jobs you write for the rover. It does exactly what you write, even if that's a mistake.</dd>
+        <dt>Transmit</dt><dd>Send your code to the rover.</dd>
+        <dt>Level</dt><dd>One job on one map. Finish it and the next one opens.</dd>
+        <dt>Sample</dt><dd>The green spikes on the map. Drive over one to collect it.</dd>
+        <dt>Beacon</dt><dd>The glowing rings on the map. Some levels want you to drive onto it.</dd>
+        <dt>Tick</dt><dd>The rover's clock. It goes up by one for every square driven or every wait.</dd>
+        <dt>x and y</dt><dd>Where a square is. x is the number along the top of the map, y is the number down the side.</dd>
+        <dt>Brackets ( )</dt><dd>Every command has them. They tell the rover "do this now". A number inside says how many.</dd>
+        <dt>Quotes " "</dt><dd>They go round words, so the rover knows it's a word and not a command.</dd>
+        <dt>Loop</dt><dd>Lines that repeat, so you don't have to write them again and again.</dd>
+        <dt>Pushed in</dt><dd>A line that starts further right, made with the Tab key. It belongs to the line above it.</dd>
+      </dl>
+      </details>
+      <details class="intro-more"><summary>Where are the keys?</summary>
+      <dl class="word-list">
+        <dt><code>(</code> and <code>)</code></dt><dd>Hold Shift, then press 9 for <code>(</code> or 0 for <code>)</code>.</dd>
+        <dt><code>"</code></dt><dd>Hold Shift, then press the key that shows <code>"</code>. It's near Enter, or on the 2 key.</dd>
+        <dt><code>:</code></dt><dd>Hold Shift, then press the <code>;</code> key.</dd>
+        <dt><code>_</code></dt><dd>Hold Shift, then press the <code>-</code> key.</dd>
+        <dt><code>=</code></dt><dd>The key just left of Backspace, with no Shift.</dd>
+        <dt>Tab</dt><dd>The key on the far left, above Caps Lock. It pushes a line in.</dd>
+        <dt>Enter</dt><dd>Starts a new line.</dd>
+        <dt>Backspace</dt><dd>Top right. It deletes the letter before the cursor.</dd>
+      </dl>
+      </details>
       <details class="intro-more"><summary>More tips</summary>
-      <p class="intro-note">The editor helps you type: start a word and it suggests commands (Enter or Tab picks one), brackets and quotes close themselves, and a slip gets a ⚠ on its line. Point at a word to see what it does. Ctrl+/ turns lines into notes.</p>
+      <p class="intro-note">The editor helps you type: start a word and it suggests commands (Enter or Tab picks one), brackets and quotes close themselves, and a slip gets a ⚠ on its line. The further you get, the more you type yourself. Point at a word to see what it does. Ctrl+/ turns lines into notes.</p>
       <p class="intro-note">Earn every star you can on each site. Stuck? 🕹 Scout drives by hand, 📻 Hints asks mission control. Made a good <code>def</code>? 🧰 Functions keeps it for later sites.</p>
       <p class="intro-note">Stars unlock paint, hats, trails and new looks for the whole map in the 🔧 Garage at the top. Spot a 🎁 on the map? Drive over it for a secret one. Click your rover to say hi.</p>
       </details>
@@ -984,7 +1210,10 @@
 <div class="announce" id="announce" aria-live="polite"></div>
 
 <script src="/planet/render.js"></script>
+<script src="/planet/predict.js"></script>
 <script src="/planet/halloween.js"></script>
+<script src="/planet/lounge.js"></script>
+<script src="/planet/team.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]];
@@ -1241,38 +1470,6 @@ const GROUND = {
   woods: {ground: "#2e3a3c", rock: "#121a17", bed: "#06090a", edge: "#c08cff", rim: "#7dff5a",
           grit: ["rgba(125,255,90,.18)", "rgba(192,140,255,.22)", "rgba(6,9,10,.35)"], stars: "rgba(192,140,255,.6)"},
 };
-// The garage's map looks: one palette for every zone in place of the zone's
-// own. Rock stays much darker than ground (or, on the dark ones, lit along its
-// edge) so the two never blur together. Besides the three colours: ice (light
-// and dark), grit (speck colours), seam (tile lines), edge (rock's lit lip),
-// rim (round a crater), stars (specks in the bedrock) and pixel (blocky).
-const WORLDS = {
-  moon: {ground: "#a3a3ad", rock: "#56565f", bed: "#16161c"},
-  snow: {ground: "#e8eef5", rock: "#5a6a80", bed: "#1d2633", ice: ["#a6e0ff", "#3f8fd0"], seam: "rgba(60,80,110,.2)"},
-  candy: {ground: "#f6b3cf", rock: "#6b3a22", bed: "#2e1810", grit: ["#ff5a7a", "#5ad1ff", "#fff36b", "#8cf2a0", "#ffffff"]},
-  volcano: {ground: "#5e4a46", rock: "#2a1d1c", bed: "#3a0f06", edge: "#ff8a3d", rim: "#ff8a3d", stars: "rgba(255,122,46,.6)"},
-  space: {ground: "#3d3470", rock: "#1a1433", bed: "#07051a", edge: "#b9a3ff", rim: "#b9a3ff",
-          grit: ["rgba(10,6,30,.3)", "rgba(255,255,255,.75)"], stars: "rgba(255,255,255,.7)"},
-  neon: {ground: "#131a3a", rock: "#5a2a8a", bed: "#060914", edge: "#ff4fd8", rim: "#5af0ff",
-         seam: "rgba(90,240,255,.5)", ice: ["#8ff8ff", "#2aa8d8"]},
-  blocky: {ground: "#6dbb44", rock: "#505357", bed: "#5b3d24", ice: ["#a9d8ff", "#6fa8e0"], pixel: true},
-  factory: {ground: "#7d838c", rock: "#33373e", bed: "#111317", edge: "#ffb84d", seam: "rgba(20,22,26,.35)"},
-  sandstone: {ground: "#e0b77e", rock: "#8a5a32", bed: "#3a2414", grit: ["rgba(140,80,40,.18)", "rgba(255,240,210,.2)"]},
-  jungle: {ground: "#5f8f45", rock: "#2e4a26", bed: "#13210f", grit: ["rgba(30,60,20,.28)", "rgba(190,240,120,.2)"]},
-  clouds: {ground: "#eef3ff", rock: "#b9a3ff", bed: "#8fb8ff", grit: ["rgba(255,255,255,.7)", "rgba(150,170,220,.22)"], seam: "rgba(150,170,220,.25)"},
-  starry: {ground: "#1d2a5a", rock: "#0d1330", bed: "#050818", edge: "#ffd36b", rim: "#ffd36b",
-           grit: ["rgba(255,236,170,.85)", "rgba(10,20,50,.3)"], stars: "rgba(255,236,170,.8)"},
-  haunted: {ground: "#4a3f63", rock: "#1f1830", bed: "#0b0814", edge: "#9cff6b", rim: "#9cff6b",
-            grit: ["rgba(156,255,107,.3)", "rgba(10,6,20,.3)"], stars: "rgba(156,255,107,.5)"},
-  graveyard: {ground: "#3c4a3a", rock: "#20242c", bed: "#0a0c12", edge: "#ff9a3c", rim: "#b98cff",
-              grit: ["rgba(20,30,20,.35)", "rgba(200,220,200,.18)", "rgba(255,154,60,.35)"], stars: "rgba(255,210,150,.6)"},
-  jurassic: {ground: "#6b8f3a", rock: "#3a2a1c", bed: "#1a120b", edge: "#ff8a3d",
-             grit: ["rgba(40,70,20,.35)", "rgba(220,250,140,.2)"]},
-  underwater: {ground: "#d9c48f", rock: "#2a6f8a", bed: "#0a2a4a", edge: "#8ff0ff", rim: "#5ad1ff",
-               grit: ["rgba(255,255,255,.5)", "rgba(40,120,160,.25)", "rgba(255,120,150,.35)"], ice: ["#b8f0ff", "#4aa8d8"]},
-  deepcave: {ground: "#8a8a8f", rock: "#3a3a42", bed: "#141418", ice: ["#a8fff9", "#2aa3a0"], pixel: true},
-  nether: {ground: "#8a2f2f", rock: "#3a1414", bed: "#1a0606", ice: ["#ffe14d", "#c79a2a"], pixel: true},
-};
 const GRIT = ["rgba(30,10,20,.14)", "rgba(255,240,220,.10)"];
 function palette(zone) { return (spooky(zone) ? null : WORLDS[look.world]) || GROUND[zone] || GROUND.landing; }
 // One square as a 4 by 4 of blocks, each a slightly different shade.
@@ -1478,7 +1675,6 @@ function drawConfetti(ctx, dt) {
 }
 
 // ---- Drawing the scene --------------------------------------------------------------
-function ease(u) { return u < .5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2; }
 // Where the rover is at replay position p: between two frames it rolls (or
 // turns) smoothly, except through a portal, and a jump arcs up and over.
 function roverAt(p) {
@@ -1714,175 +1910,6 @@ function findChar(map, ch) {
   for (let r = 0; r < map.length; r++) { const c = map[r].indexOf(ch); if (c >= 0) return [r, c]; }
   return null;
 }
-// Behind the rover: wheel tracks, in the trail style from the garage.
-function drawTrail(ctx, frames, i, rover, cell, now) {
-  const pts = frames.slice(0, i + 1).map(f => ({r: f.r, c: f.c, jump: f.e === "portal"}));
-  pts.push({r: rover.r, c: rover.c, jump: false});
-  const segs = [];
-  for (let k = 1; k < pts.length; k++) {
-    const p = pts[k], q = pts[k - 1];
-    if (!p.jump && Math.abs(p.r - q.r) + Math.abs(p.c - q.c) <= 1.01 && (p.r !== q.r || p.c !== q.c)) segs.push([q, p, k]);
-  }
-  ctx.lineCap = "round"; ctx.lineWidth = Math.max(1.5, cell * (look.trail === "slime" ? .16 : .07));
-  for (const side of look.trail === "paws" ? [] : [-.25, .25]) {
-    for (const [q, p, k] of segs) {
-      ctx.strokeStyle = look.trail === "rainbow" ? `hsla(${(k * 24) % 360},90%,72%,.7)` : look.trail === "slime" ? "rgba(126,224,74,.6)" : "rgba(30,14,30,.32)";
-      const dx = p.c - q.c, dy = p.r - q.r, len = Math.hypot(dx, dy) || 1;
-      const nx = -dy / len * side * cell, ny = dx / len * side * cell;
-      ctx.beginPath();
-      ctx.moveTo((q.c + .5) * cell + nx, (q.r + .5) * cell + ny);
-      ctx.lineTo((p.c + .5) * cell + nx, (p.r + .5) * cell + ny);
-      ctx.stroke();
-    }
-  }
-  if (look.trail === "dust") {
-    for (const [, p, k] of segs.slice(-8)) {
-      const age = (segs.length - segs.findIndex(s => s[2] === k)) / 8;
-      ctx.fillStyle = `rgba(232,210,184,${.25 * (1 - age)})`;
-      ctx.beginPath(); ctx.arc((p.c + .5) * cell, (p.r + .5) * cell, cell * (.18 + age * .25), 0, 7); ctx.fill();
-    }
-  } else if (look.trail === "sparkle") {
-    for (const [, p, k] of segs) {
-      const tw = CALM ? .6 : .5 + .5 * Math.sin(now / 200 + k * 1.7);
-      ctx.fillStyle = `rgba(255,236,170,${tw * .8})`;
-      ctx.beginPath(); ctx.arc((p.c + .5 + (hash(k, 1) - .5) * .5) * cell, (p.r + .5 + (hash(k, 2) - .5) * .5) * cell, Math.max(1, cell * .045), 0, 7); ctx.fill();
-    }
-  } else if (look.trail === "hearts") {
-    for (const [, p, k] of segs) {
-      const z = cell * .15 * (CALM ? 1 : 1 + .15 * Math.sin(now / 250 + k));
-      ctx.fillStyle = "rgba(255,111,159,.85)"; heart(ctx, (p.c + .5) * cell, (p.r + .5) * cell, z);
-    }
-  } else if (look.trail === "paws") {   // prints that turn the way the rover went
-    for (const [q, p, k] of segs) {
-      const a = Math.atan2(p.r - q.r, p.c - q.c), side = k % 2 ? .18 : -.18;
-      ctx.save(); ctx.translate((p.c + .5) * cell, (p.r + .5) * cell); ctx.rotate(a); ctx.translate(0, side * cell);
-      ctx.fillStyle = "rgba(60,30,45,.55)";
-      ctx.beginPath(); ctx.ellipse(0, 0, cell * .1, cell * .13, 0, 0, 7); ctx.fill();
-      for (const [tx, ty] of [[.13, -.12], [.17, -.04], [.17, .04], [.13, .12]]) { ctx.beginPath(); ctx.arc(tx * cell, ty * cell, cell * .04, 0, 7); ctx.fill(); }
-      ctx.restore();
-    }
-  } else if (look.trail === "slime") {
-    ctx.fillStyle = "rgba(126,224,74,.7)";
-    for (const [, p, k] of segs) {
-      if (hash(k, 6) < .5) continue;
-      ctx.beginPath(); ctx.arc((p.c + .5 + (hash(k, 7) - .5) * .5) * cell, (p.r + .5 + (hash(k, 8) - .5) * .5) * cell, cell * (.05 + hash(k, 9) * .06), 0, 7); ctx.fill();
-    }
-  } else if (look.trail === "pixels") {   // little blocks dropped along the way
-    const colors = ["#6dbb44", "#7a5230", "#9aa0a6", "#4ee6e0", "#ffd36b"];
-    for (const [, p, k] of segs) for (const j of [0, 1]) {
-      const z = cell * .17;
-      ctx.fillStyle = colors[Math.floor(hash(k, j, 10) * colors.length)];
-      ctx.fillRect((p.c + .5 + (hash(k, j, 11) - .5) * .6) * cell - z / 2, (p.r + .5 + (hash(k, j, 12) - .5) * .6) * cell - z / 2, z, z);
-    }
-  } else if (look.trail === "notes") {   // music notes that bob along behind
-    ctx.font = `700 ${Math.round(cell * .46)}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    for (const [, p, k] of segs) {
-      const bob = CALM ? 0 : Math.sin(now / 300 + k) * cell * .05;
-      ctx.fillStyle = ["#ff6fae", "#8fc8ff", "#ffd36b", "#7ff0d6"][k % 4];
-      ctx.fillText(k % 2 ? "♪" : "♫", (p.c + .5 + (hash(k, 17) - .5) * .4) * cell, (p.r + .5) * cell + bob);
-    }
-  } else if (look.trail === "stars") {   // little gold stars that twinkle
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    for (const [, p, k] of segs) {
-      const tw = CALM ? .8 : .45 + .55 * Math.abs(Math.sin(now / 260 + k * 1.3));
-      ctx.globalAlpha = tw; ctx.fillStyle = "#ffd36b";
-      ctx.font = `${Math.round(cell * (.3 + hash(k, 18) * .16))}px system-ui, sans-serif`;
-      ctx.shadowColor = "#ffd36b"; ctx.shadowBlur = cell * .2;
-      ctx.fillText("★", (p.c + .5 + (hash(k, 19) - .5) * .5) * cell, (p.r + .5 + (hash(k, 20) - .5) * .5) * cell);
-    }
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-  } else if (look.trail === "fireworks") {   // bursts on the newest squares, glitter behind
-    segs.forEach(([, p, k], n) => {
-      const age = (segs.length - 1 - n) / 6, x = (p.c + .5) * cell, y = (p.r + .5) * cell;
-      const color = ["#ff6fae", "#ffd36b", "#7ff0d6", "#8fc8ff", "#c69bff"][k % 5];
-      ctx.fillStyle = ctx.strokeStyle = color;
-      if (age >= 1) { ctx.globalAlpha = .6; ctx.beginPath(); ctx.arc(x, y, cell * .04, 0, 7); ctx.fill(); ctx.globalAlpha = 1; return; }
-      const r = cell * (.15 + .25 * (CALM ? .5 : age)) ;
-      ctx.lineWidth = Math.max(1, cell * .035); ctx.globalAlpha = 1 - age * .7;
-      for (let j = 0; j < 8; j++) {
-        const a = j * Math.PI / 4 + k;
-        ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r * .4, y + Math.sin(a) * r * .4); ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-    });
-  } else if (look.trail === "fire") {   // flames on the newest squares, scorch marks behind
-    segs.forEach(([, p, k], n) => {
-      const age = (segs.length - 1 - n) / 8, x = (p.c + .5) * cell, y = (p.r + .5) * cell;
-      if (age >= 1) {
-        ctx.fillStyle = "rgba(20,8,4,.3)"; ctx.beginPath(); ctx.arc(x, y, cell * .14, 0, 7); ctx.fill();
-        return;
-      }
-      const z = cell * (.12 + .28 * (1 - age)) * (CALM ? 1 : .85 + .3 * hash(k, Math.floor(now / 90)));
-      const grad = ctx.createRadialGradient(x, y, 0, x, y, z);
-      grad.addColorStop(0, "rgba(255,240,150,.95)"); grad.addColorStop(.45, "rgba(255,140,40,.8)"); grad.addColorStop(1, "rgba(220,40,20,0)");
-      ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(x, y, z, 0, 7); ctx.fill();
-    });
-  } else if (look.trail === "lightning") {   // bolts crackling between squares, brightest at the front
-    const frame = CALM ? 0 : Math.floor(now / 80);
-    ctx.shadowColor = "#5ac8ff";
-    segs.forEach(([q, p, k], n) => {
-      const age = (segs.length - 1 - n) / 8;
-      if (age >= 1) return;
-      ctx.shadowBlur = cell * .3 * (1 - age);
-      ctx.beginPath(); ctx.moveTo((q.c + .5) * cell, (q.r + .5) * cell);
-      for (let j = 1; j < 4; j++) {
-        const u = j / 4, off = (hash(k, frame, j + 140) - .5) * cell * .35;
-        ctx.lineTo((q.c + .5 + (p.c - q.c) * u) * cell + off * (p.r - q.r ? 1 : 0), (q.r + .5 + (p.r - q.r) * u) * cell + off * (p.c - q.c ? 1 : 0));
-      }
-      ctx.lineTo((p.c + .5) * cell, (p.r + .5) * cell);
-      ctx.strokeStyle = `rgba(90,200,255,${.8 * (1 - age)})`; ctx.lineWidth = Math.max(2, cell * .12); ctx.stroke();
-      ctx.strokeStyle = `rgba(255,255,230,${1 - age * .8})`; ctx.lineWidth = Math.max(1, cell * .045); ctx.stroke();
-    });
-    ctx.shadowBlur = 0;
-  } else if (look.trail === "clones") {   // see-through copies of the rover, a square apart
-    segs.slice(-3).forEach(([q, p], n) => {
-      const alpha = [.12, .2, .3][n + 3 - Math.min(3, segs.length)];
-      drawRover(ctx, (q.c + .5) * cell, (q.r + .5) * cell, cell * 1.12, Math.atan2(p.r - q.r, p.c - q.c), alpha, {...look, glow: "noglow"}, now);
-    });
-  } else if (look.trail === "coins") {   // gold coins spinning where the rover went
-    for (const [, p, k] of segs) {
-      if (hash(k, 150) < .2) continue;
-      const x = (p.c + .5 + (hash(k, 151) - .5) * .4) * cell, y = (p.r + .5 + (hash(k, 152) - .5) * .4) * cell;
-      const w = cell * .18 * (CALM ? 1 : Math.max(.15, Math.abs(Math.cos(now / 260 + k))));
-      ctx.fillStyle = "#ffd36b"; ctx.strokeStyle = "#c79a2a"; ctx.lineWidth = Math.max(1, cell * .03);
-      ctx.shadowColor = "#ffd36b"; ctx.shadowBlur = cell * .15;
-      ctx.beginPath(); ctx.ellipse(x, y, w, cell * .18, 0, 0, 7); ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
-      ctx.beginPath(); ctx.ellipse(x, y, w * .6, cell * .11, 0, 0, 7); ctx.stroke();
-      ctx.fillStyle = "rgba(255,255,255,.6)"; ctx.beginPath(); ctx.ellipse(x - w * .3, y - cell * .06, w * .25, cell * .04, 0, 0, 7); ctx.fill();
-    }
-  } else if (look.trail === "bubbles") {   // bubbles that wobble and drift up
-    ctx.lineWidth = Math.max(1, cell * .025);
-    for (const [, p, k] of segs) for (const j of [0, 1]) {
-      const rise = CALM ? 0 : ((now / 1800 + hash(k, j, 160)) % 1) * cell * .25;
-      const x = (p.c + .5 + (hash(k, j, 161) - .5) * .6) * cell + (CALM ? 0 : Math.sin(now / 300 + k + j) * cell * .04);
-      const y = (p.r + .5 + (hash(k, j, 162) - .5) * .6) * cell - rise, z = cell * (.06 + hash(k, j, 163) * .07);
-      ctx.strokeStyle = "rgba(200,240,255,.85)"; ctx.fillStyle = "rgba(143,227,255,.18)";
-      ctx.beginPath(); ctx.arc(x, y, z, 0, 7); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = "rgba(255,255,255,.8)"; ctx.beginPath(); ctx.arc(x - z * .35, y - z * .35, z * .25, 0, 7); ctx.fill();
-    }
-  } else if (look.trail === "candytrail") {   // wrapped sweets dropped along the way, a different one each square
-    for (const [, p, k] of segs) {
-      const x = (p.c + .5 + (hash(k, 1, 180) - .5) * .4) * cell, y = (p.r + .5 + (hash(k, 2, 180) - .5) * .4) * cell;
-      drawSweet(ctx, x, y, cell * .3, hash(k, 3, 180) * 3, ["#ff4f7a", "#ffe14d", "#7ff07a", "#b07aff", "#ff8a1f"][k % 5]);
-    }
-  }
-}
-// A wrapped sweet, `z` across, turned `a`: a round middle and a twist at each end.
-function drawSweet(ctx, x, y, z, a, color) {
-  ctx.save(); ctx.translate(x, y); ctx.rotate(a);
-  ctx.fillStyle = color;
-  for (const side of [-1, 1]) { ctx.beginPath(); ctx.moveTo(side * z * .3, 0); ctx.lineTo(side * z * .62, -z * .22); ctx.lineTo(side * z * .62, z * .22); ctx.fill(); }
-  ctx.beginPath(); ctx.ellipse(0, 0, z * .36, z * .25, 0, 0, 7); ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,.75)"; ctx.lineWidth = Math.max(1, z * .08);
-  ctx.beginPath(); ctx.moveTo(-z * .16, -z * .2); ctx.lineTo(z * .04, z * .22); ctx.moveTo(z * .06, -z * .22); ctx.lineTo(z * .22, z * .12); ctx.stroke();
-  ctx.restore();
-}
-function heart(ctx, x, y, z) {
-  ctx.beginPath(); ctx.moveTo(x, y + z * .9);
-  ctx.bezierCurveTo(x - z * 1.6, y - z * .2, x - z * .6, y - z * 1.3, x, y - z * .4);
-  ctx.bezierCurveTo(x + z * .6, y - z * 1.3, x + z * 1.6, y - z * .2, x, y + z * .9);
-  ctx.fill();
-}
 function drawCrack(ctx, r, c, cell) {
   const x = c * cell, y = r * cell;
   ctx.fillStyle = "rgba(20,10,8,.42)"; ctx.fillRect(x, y, cell, cell);
@@ -2090,71 +2117,6 @@ function onStep(k) {
   // Samples unloaded at home: a ka-ching and how many.
   if (f.cg != null && p.cg > f.cg) { SFX.play("deliver"); pop(f, `+${p.cg} 📦`, "#ffd36b"); burst(f.r, f.c, "gift", 18); }
 }
-// The victory dance at the beacon, u from 0 to 1: how high, how far round,
-// how far off its square (in squares), and a flip squashes it side to side.
-function dance(kind, u) {
-  const d = {lift: 0, angle: 0, dx: 0, dy: 0, sx: 1, ring: 0, alpha: 1, flash: 0, boom: 0, puff: 0};
-  if (kind === "wiggle") { d.angle = Math.sin(u * Math.PI * 8) * .5 * (1 - u); d.lift = Math.abs(Math.sin(u * Math.PI * 4)) * .15; }
-  else if (kind === "flip") { d.lift = Math.sin(u * Math.PI) * .8; d.sx = Math.cos(u * Math.PI * 2); }
-  else if (kind === "moonwalk") { d.dx = -Math.sin(u * Math.PI * 2) * .35; d.angle = Math.sin(u * Math.PI * 4) * .08; }
-  else if (kind === "zoomies") { const a = u * Math.PI * 2; d.dx = Math.sin(a) * .4; d.dy = (Math.cos(a) - 1) * .25; d.angle = a; }
-  else if (kind === "disco") { d.angle = ease(u) * Math.PI * 4; d.lift = Math.sin(u * Math.PI) * .3; d.ring = Math.sin(u * Math.PI); }
-  else if (kind === "firework") { d.lift = Math.sin(u * Math.PI) * .35; d.angle = Math.sin(u * Math.PI * 2) * .2; }
-  else if (kind === "kaboom") {   // shakes and swells, flashes white, bursts into blocks, pops back
-    if (u < .55) {
-      d.dx = Math.sin(u * 140) * .06 * u / .55; d.sx = 1 + .3 * u / .55;
-      d.flash = u > .25 && Math.floor(u * 24) % 2 ? .8 : 0;
-    } else { d.boom = (u - .55) / .45; d.alpha = d.boom < .6 ? 0 : (d.boom - .6) / .4; }
-  }
-  else if (kind === "smokebomb") {   // poof, gone, poof, back
-    d.puff = u < .35 ? u / .35 : u > .6 && u < .95 ? (u - .6) / .35 : 0;
-    d.alpha = u > .12 && u < .72 ? 0 : 1;
-  }
-  else if (kind === "tornado") { d.angle = ease(u) * Math.PI * 8; d.lift = Math.sin(u * Math.PI) * .5; }
-  else if (kind === "zombieshuffle") {   // a slow lurch side to side, then a lunge forward
-    d.dx = Math.sin(u * Math.PI * 3) * .18 + (u > .7 ? Math.sin((u - .7) / .3 * Math.PI) * .25 : 0);
-    d.angle = Math.sin(u * Math.PI * 3) * .25; d.lift = Math.abs(Math.sin(u * Math.PI * 6)) * .06;
-  }
-  else if (kind === "pogo") {
-    const hop = Math.abs(Math.sin(u * Math.PI * 4));
-    d.lift = hop * .45 * (1 - u * .4); d.sx = 1 + .25 * (1 - hop) * (1 - u);
-  }
-  else { d.lift = Math.sin(u * Math.PI) * .6; d.angle = ease(u) * Math.PI * 2; }
-  return d;
-}
-// What some dances draw over the rover: a white flash, a burst of green
-// blocks, a cloud of smoke. (x, y) is the rover's middle.
-function danceFx(ctx, x, y, cell, d) {
-  if (d.flash) {
-    ctx.fillStyle = `rgba(255,255,255,${d.flash * .7})`;
-    ctx.beginPath(); ctx.arc(x, y, cell * .5, 0, 7); ctx.fill();
-  }
-  if (d.boom) {
-    const r = cell * (.3 + d.boom * .9), grad = ctx.createRadialGradient(x, y, 0, x, y, r);
-    grad.addColorStop(0, `rgba(255,255,255,${1 - d.boom})`); grad.addColorStop(.5, `rgba(255,190,90,${.8 * (1 - d.boom)})`); grad.addColorStop(1, "rgba(255,120,40,0)");
-    ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
-    for (let j = 0; j < 12; j++) {
-      const a = j * Math.PI / 6 + hash(j, 170), far = cell * (.2 + Math.sin(d.boom * Math.PI) * 1.1), z = cell * .14;
-      ctx.fillStyle = ["#5dae3f", "#4f9a35", "#6fc24e", "#10200b"][j % 4];
-      ctx.fillRect(x + Math.cos(a) * far - z / 2, y + Math.sin(a) * far - z / 2, z, z);
-    }
-  }
-  if (d.puff) {
-    ctx.fillStyle = `rgba(200,200,215,${.9 * (1 - d.puff * d.puff)})`;
-    for (let j = 0; j < 7; j++) {
-      const a = j * Math.PI * 2 / 7, far = cell * (.15 + d.puff * .35);
-      ctx.beginPath(); ctx.arc(x + Math.cos(a) * far, y + Math.sin(a) * far, cell * (.22 + d.puff * .12), 0, 7); ctx.fill();
-    }
-  }
-}
-// Disco: a ring of colours round the rover while it spins.
-function discoRing(ctx, x, y, cell, k, now) {
-  for (let j = 0; j < 12; j++) {
-    const a = j * Math.PI / 6 + now / 200;
-    ctx.fillStyle = `hsla(${j * 30 + now / 5},90%,65%,${k})`;
-    ctx.beginPath(); ctx.arc(x + Math.cos(a) * cell * .8, y + Math.sin(a) * cell * .8, cell * .13, 0, 7); ctx.fill();
-  }
-}
 // The class record's rover, see-through, driving its route step for step with
 // this replay: a race against the record, once the site is done.
 const GHOST_LOOK = {paint: "bone", topper: "none", trail: "tracks", world: "planet"};
@@ -2257,7 +2219,8 @@ function setPos(p) {
   $("scrub").value = pos;
   $("scrub").style.setProperty("--done", last() ? (pos / last() * 100) + "%" : "0%");
   if (scene) $("clock").textContent = `${scene.frames[Math.floor(pos)].t} / ${scene.frames[last()].t}`;
-  followRun(scene && scene.run && !scout ? scene.frames[Math.floor(pos)].ln : 0);
+  // The frame the rover is on its way to: its line is the one that's running.
+  followRun(scene && scene.run && !scout ? scene.frames[Math.ceil(pos)].ln : 0);
 }
 function setPlaying(on) {
   playing = on && scene && last() > 0;
@@ -2369,7 +2332,7 @@ function ending(run) {
     spooked: ["lost", "Spooked!", `👻 BOO! The rover got spooked at tick ${t}. What was there?`],
     ticks: ["lost", "Out of time", `⏱ Out of time after ${plural(t, "tick")}. Is a loop going round forever?`],
     stopped: ["hold", "Stopped", SHORT[mission](t)],
-    error: ["lost", "Code error", "⚠️ Code error"],
+    error: ["lost", "Line to fix", "⚠️ A line needs fixing"],
   }[run.end];
 }
 function setStatus(i) {
@@ -2432,7 +2395,7 @@ function showRun(run, map, crystals, startAt = 0) {
       else out.push({...x, n: 1, end: x.t});
       return out;
     }, []);
-  $("feed").innerHTML = `<div class="feed-head">${scout ? "Scouting telemetry" : "Telemetry"}</div>` + lines.map(x =>
+  $("feed").innerHTML = `<div class="feed-head">${scout ? "What the rover did while scouting" : "What the rover did"}</div>` + lines.map(x =>
     `<div class="ev${x.print ? " print" : /🎉|💎|🍬|🎃|matches/.test(x.text) ? " good" : /💥|🔋|⏱|🔒|👻|different|no drills|won't move|is full/.test(x.text) ? " bad" : ""}" data-t="${x.t}" data-end="${x.end}"><span class="t">${x.t}</span><span>${x.print ? "› " : ""}${esc(x.text)}${x.n > 1 ? ` ×${x.n} <small>(until tick ${x.end})</small>` : ""}</span></div>`).join("")
     + (run.error ? `<div class="err">${codeSpans(run.error)}</div>` : "")
     + (!lines.length && !run.error ? '<div class="empty">No telemetry.</div>' : "");
@@ -2444,8 +2407,13 @@ function showRun(run, map, crystals, startAt = 0) {
   if (last() === 0) { setPlaying(false); finished(); }
   else setPlaying(true);
 }
+// Why the rover stopped at a line it couldn't do, and that nothing is broken.
+function errorNext() {
+  return `${last() > 0 ? "The rover did the lines above it, then stopped here." : "The rover got stuck on this line before it could move."} Nothing's broken. Fix the line, then press Transmit ▶`;
+}
 // The replay reached its end: celebrate, or say what went wrong.
 function finished() {
+  $("caption").hidden = true;
   if (!scene || !scene.run) return;
   const run = scene.run;
   if (scout) return scoutFinished(run);
@@ -2508,7 +2476,7 @@ function finished() {
   if (site.key === "7" && runs) text = `${unchartedSummary()} Planet ${runs.indexOf(run) + 1}: ${text}`;
   if (site.same) { text = `🔁 Same code, same trip. Change one thing, then press Transmit ▶`; site.same = false; }
   if (closer) text = `🔥 Closest yet: ${closer}.${plain && stoppedShort ? "" : ` ${text}`}`;
-  showBanner(cls === "win" ? "win" : cls === "lost" ? "lost" : "", text, buttons.join(""), plain ? run.explain.next : "");
+  showBanner(cls === "win" ? "win" : cls === "lost" ? "lost" : "", text, buttons.join(""), run.end === "error" ? errorNext() : plain ? run.explain.next : "");
   // Back to the code, ready to type. Code that stopped short needs more on the end.
   if (run.end !== "goal" && [document.body, $("runButton")].includes(document.activeElement)) {
     const t = $("code");
@@ -2544,6 +2512,7 @@ function coachTip(run) {
   return text;
 }
 function showBanner(cls, text, actions = "", next = "") {
+  $("caption").hidden = true;
   $("banner").className = "banner " + cls; $("bannerText").innerHTML = codeSpans(text);
   if (next) $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">👉 ${codeSpans(next)}</span>`);
   // A note with nothing to press can be put away, to see the map under it.
@@ -2635,6 +2604,7 @@ async function celebrate(r, run) {
   if (nz) notes.push(`<span class="teaser">Next up: ${ZONE_ICONS[nz.key] || "🪐"} <b>${esc(nz.name)}</b>. ${esc(nz.blurb)}</span>`);
   if (r.candy) notes.push(candyNote(r.candy));
   if (r.challenge_place) notes.push(`<span class="teaser">🎯 Number ${r.challenge_place} to finish the class challenge!</span>`);
+  if (r.in_race) notes.push(`<span class="teaser">🏁 Your rover is in the class race! A quicker win takes its place.</span>`);
   $("celeNote").innerHTML = notes.join(" &nbsp; ");
   if (r.first_try) SFX.play("first");
   if (got === r.stars.length || r.record || r.rank_up || r.zone_cleared) throwConfetti();
@@ -2850,7 +2820,7 @@ async function showToasts(r) {
   const unlocks = r.unlocked.length > 2
     ? [["🔓", `${r.unlocked.length} new things in the garage!`, r.unlocked.map(u => `${SLOT_ICON[u.slot] || ""} ${u.name}`).join(" · "), true,
         r.unlocked.map(u => u.rarity).reduce((a, b) => TIERS.indexOf(b) > TIERS.indexOf(a) ? b : a, "common")]]
-    : r.unlocked.map(u => [SLOT_ICON[u.slot] || "🔓", `Unlocked: ${u.name} ${u.slot}`, "Press to fit it in the garage", true, u.rarity]);
+    : r.unlocked.map(u => [SLOT_ICON[u.slot] || "🔓", `Unlocked: ${u.name} ${u.slot}`, "Press here to put it on your rover!", () => putOn(u), u.rarity]);
   const items = [...r.found.map(u => ["🎁", `You found a mystery gift: ${u.name} ${u.slot}!`, "Press to try it on in the garage", true, u.rarity]),
                  ...badges,
                  ...unlocks,
@@ -2870,6 +2840,14 @@ async function showToasts(r) {
     toast(icon, title, text, garage, rarity);
   }
 }
+// One press on a new unlock and the rover is wearing it.
+async function putOn(item) {
+  try { look = (await post("/planet/look", {id: me, [item.slot]: item.key})).look; } catch (_) { openGarage(); return; }
+  SFX.wake(); SFX.play("beep");
+  state.look = look;
+  toast("✨", `Your rover has ${item.name} on now!`, "Change it any time in the 🔧 Garage.");
+  render();
+}
 // Toasts are for the moment: the next Transmit or site clears them (and any
 // still to come), so they never sit on the Transmit button.
 let toastGen = 0;
@@ -2883,7 +2861,7 @@ function toast(icon, title, text, garage, rarity) {
   el.className = (garage ? "toast act" : "toast") + (rarity ? ` r-${rarity}` : "");
   const tier = rarity && rarity !== "common" ? `<span class="tier">${RARITY_NAMES[rarity]}</span>` : "";
   el.innerHTML = `<span class="ico">${icon}</span><div>${tier}<b>${esc(title)}</b><small>${esc(text)}</small></div>`;
-  if (garage) el.addEventListener("click", () => { el.remove(); openGarage(); });
+  if (garage) el.addEventListener("click", () => { el.remove(); typeof garage === "function" ? garage() : openGarage(); });
   // Three at most on screen: the oldest makes room.
   const shown = [...$("toasts").children].filter(t => !t.classList.contains("out"));
   if (shown.length >= 3) { shown[0].classList.add("out"); setTimeout(() => shown[0].remove(), 350); }
@@ -2937,6 +2915,8 @@ function useState(data) {
   if (!holdRank) { renderRank(data.rank); markGarageNew(); }
   classUnlocks(data);
   renderCandyChip();
+  loungeSet(!!data.lounge);
+  teamSet(!!data.team);
   renderRoute();
   renderFunctions();
   if (site) renderSiteNav();
@@ -3109,7 +3089,7 @@ async function openSite(key) {
     const order = allSites().map(s => s.key), prev = order[order.indexOf(key) - 1];
     code = prev && !kidsMode() ? recall(codeKey(prev)) : null;
     carried = !!code;
-    if (!code && key === "1a") code = "# Press Transmit, then add more.\nsouth(2)\n";
+    if (!code && key === "1a") code = "# A line with # is a note for you.\n# Press Transmit. Watch south(2) work.\nsouth(2)\n";
   }
   $("code").value = code || "";
   $("code").scrollTop = 0; $("lines").scrollTop = 0; syncPaint();
@@ -3125,8 +3105,9 @@ async function openSite(key) {
   hideCelebrate();
   $("record").hidden = !view.record;
   if (view.record) $("record").textContent = `🏆 Class record: ${plural(view.record.ticks, "tick")} · ${view.record.name}`;
-  $("feed").innerHTML = '<div class="empty">Transmit to see the rover\'s telemetry.</div>';
+  $("feed").innerHTML = '<div class="empty">Press Transmit ▶. Everything the rover does gets listed here.</div>';
   $("scoutButton").hidden = key === "7";
+  $("scoutCode").hidden = typesOwn("closing");
   resetScene();
   setPlaying(false);
   render();
@@ -3140,15 +3121,20 @@ async function openSite(key) {
   } else {
     // A new zone's first site also says what the zone is like.
     const intro = zone.sites[0].key === key && zone.blurb ? `${zone.name}: ${zone.blurb}` : "";
-    const text = [intro, view.coach ? view.coach.intro : "", carried ? "Your last site's code is loaded. Will it still work here?" : ""].filter(Boolean).join(" ");
+    const text = [intro, view.coach ? view.coach.intro : "", carried ? "The code from your last level is in the box. Press Transmit ▶ to see if it still works here, or delete it and start again." : ""].filter(Boolean).join(" ");
     if (text) showBanner("", text);
+    if (key === "1a" && !view.solved) $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">👉 Press the green Transmit ▶ button to see what the code in the box does.</span>`);
     if (view.new) $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">🆕 ${esc(view.new.icon)} ${codeSpans(view.new.what)}  Try: <code>${esc(view.new.example)}</code></span>`);
   }
+  const yours = yoursNews();
+  if (yours.length && $("banner").hidden) showBanner("", "");
+  for (const y of yours.slice(-2)) $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">✍️ ${codeSpans(y.say)}</span>`);
   $("status").className = "status"; $("status").textContent = "Ready";
   // Little kids drive by hand first: their drive becomes their code.
   if (kidsMode() && !view.solved) toggleScout();
   document.body.classList.toggle("kids", kidsMode());
   $("code").placeholder = kidsMode() ? "Drive the rover with the arrows first.\nThen press 📋 Use as code, and your drive appears here."
+    : typesOwn("brackets") ? "Write your program here, one command a line,\nthen Transmit ▶."
     : "Write your program here, one command a line.\nPress a command under this box to add it, then Transmit ▶.";
   renderSteps();
 }
@@ -3178,9 +3164,9 @@ function resetScene() {
 function renderGoals() {
   const best = site.stars || [false, false, false];
   // A star still to earn that has a hint is a button: press it for the hint.
-  $("goals").innerHTML = (site.goals || []).map((g, i) => site.tips && site.tips[i] && !best[i]
+  $("goals").innerHTML = (site.goals || []).map((g, i) => (["<span class=\"goal-tag\">Your job:</span>", "<span class=\"goal-tag\">Extra stars:</span>"][i] || "") + (site.tips && site.tips[i] && !best[i]
     ? `<button class="goal hint" onclick="showStarTip(${i})" title="Press for a hint"><i>★</i>${esc(g)} <b>💡</b></button>`
-    : `<span class="goal${best[i] ? " got" : ""}"><i>★</i>${esc(g)}</span>`).join("")
+    : `<span class="goal${best[i] ? " got" : ""}"><i>★</i>${esc(g)}</span>`)).join("")
     + (site.gift ? '<span class="goal gift">🎁 A mystery gift is hidden here: drive over it</span>' : "")
     + legend(site.map || []).map(t => `<span class="goal legend">${esc(t)}</span>`).join("")
     + challengeChip() + todayChip() + brainChip();
@@ -3189,6 +3175,8 @@ function renderGoals() {
 function challengeChip() {
   const c = state && state.challenge;
   if (!c) return "";
+  if (c.bug) return c.key === site.key ? `<button class="goal challenge" onclick="loadBug()">🐛 Bug hunt: press for the broken code · ${c.done.length} done</button>`
+    : `<button class="goal challenge" onclick="openSite('${esc(c.key)}')">🐛 Bug hunt: ${esc(c.name)} ▶</button>`;
   return c.key === site.key ? `<span class="goal challenge">🎯 Class challenge · ${c.done.length} done</span>`
     : `<button class="goal challenge" onclick="openSite('${esc(c.key)}')">🎯 Class challenge: ${esc(c.name)} ▶</button>`;
 }
@@ -3242,8 +3230,11 @@ function popBelow(pop, button) {
 }
 // The squares on this map that do something new, in words.
 function legend(map) {
-  const text = map.join(""), flags = text.replace(/[^1-9]/g, "").length;
-  return [/[<>^v]/.test(text) && "🛤 belt: carries you the way its arrows point",
+  const text = map.join(""), flags = text.replace(/[^1-9]/g, "").length, early = zoneOf(site.key).zi <= 1;
+  return [early && text.includes("*") && "🟢 sample: the green spikes. Drive over one to collect it",
+          early && text.includes("G") && "🛰 beacon: the glowing rings",
+          early && text.includes("O") && "🕳 crater: the rover falls in, so go round it",
+          /[<>^v]/.test(text) && "🛤 belt: carries you the way its arrows point",
           text.includes("k") && "🔑 key: drive over it to pick it up",
           text.includes("D") && "🚪 gate: opens with a key",
           flags && `🚩 flags 1 to ${flags}: in order`,
@@ -3268,6 +3259,7 @@ function renderKit(zi) {
                   drill: site.drills != null, drills_left: site.drills != null, has_key: keys, key_x: keys, key_y: keys,
                   next_x: flags, next_y: flags, flags_left: flags, cargo: home, home_x: home, home_y: home};
   const names = [...COMMANDS, ...site.sensors.filter(n => USEFUL[n] !== false)];
+  $("kit").setAttribute("aria-label", `Commands and sensors: click one to ${typesOwn("brackets") ? "see how to type it" : "add it"}`);
   $("kit").innerHTML = names.map(n => {
     const cmd = LINE_CHIPS.includes(n), fresh = SENSOR_ZONE[n] === zi && zi > 0 || n === "knock" && site.key === "h1";
     return `<button class="chip${cmd ? " cmd" : " sense"}${fresh ? " new" : ""}${n === "knock" || n === "candy" ? " spooky" : ""}" data-name="${n}" title="${esc(HELP[n] || "")}${fresh ? " (new here)" : ""}">${esc(CHIP_TEXT[n] || n + "()")}</button>`;
@@ -3277,6 +3269,7 @@ function renderKit(zi) {
 // so clicking a few in a row never runs them together. A sensor goes where
 // the cursor is, since it's usually part of an  if  or  while.
 function insertChip(name) {
+  if (typesOwn("brackets")) { $("code").focus(); return toast("✍️", `Type it yourself: ${CHIP_TEXT[name] || name + "()"}`, `${HELP[name] || ""} Chips show you how now, so your fingers learn it.`); }
   const t = $("code"), before = t.value.slice(t.value.lastIndexOf("\n", t.selectionStart - 1) + 1, t.selectionStart);
   if (!LINE_CHIPS.includes(name)) return insertAtCursor(CHIP_TEXT[name] || name + "()");
   let indent = (before.match(/^\s*/) || [""])[0];
@@ -3501,6 +3494,8 @@ function itemHow(i) {
 }
 function renderGarage() {
   const rank = state.rank;
+  $("mastToggle").checked = !!look.nomast;
+  renderPresets();
   $("garageStars").innerHTML = `★ ${state.total_stars} / ${state.max_stars}` + (rank ? `<small>${rank.icon} ${esc(rank.name)}${rank.next ? ` · ${rank.need} ★ to ${rank.next_icon} ${esc(rank.next)}` : ""}</small>` : "");
   // Halloween night's things have a tab of their own while there are any to show.
   const tabs = state.garage.some(i => i.limited) ? [["halloween", "Halloween"], ...GARAGE_TABS] : GARAGE_TABS;
@@ -3814,7 +3809,7 @@ function shopHighlight() {
 // Typing: Tab indents, Enter keeps the indent (and adds one after a colon),
 // Ctrl+Enter paints. The rover repaints by itself a moment after typing stops.
 function shopKey(e) {
-  const t = $("shopCode");
+  const t = e.target;
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); shopRun(true); return; }
   if (e.key === "Tab" && !e.shiftKey) { e.preventDefault(); document.execCommand("insertText", false, "    "); return; }
   if (e.key === "Enter") {
@@ -3861,11 +3856,14 @@ function drawShop(now) {
   for (let j = 1; j < ART_ROWS; j++) { ctx.moveTo(left, top + j * cell); ctx.lineTo(left + ART_COLS * cell, top + j * cell); }
   ctx.stroke(); ctx.restore();
   ctx.strokeStyle = "#6e6290"; ctx.lineWidth = 3; roundRect(ctx, left, top, cell * ART_COLS, cell * ART_ROWS, cell * .35); ctx.stroke();
-  // Where the camera sits on top (planet_render's drawRover): it covers these squares.
-  ctx.setLineDash([5, 5]); ctx.strokeStyle = "rgba(35,29,63,.55)"; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(left + 7.58 * cell, top + 3.5 * cell, 1.6 * cell, 0, 7); ctx.stroke(); ctx.setLineDash([]);
-  ctx.fillStyle = "rgba(35,29,63,.6)"; ctx.font = `700 11px ${getComputedStyle(document.body).getPropertyValue("--ui")}`;
-  ctx.fillText("camera", left + 7.58 * cell, top + 3.5 * cell);
+  // Where the camera sits on top (planet_render's drawRover): it covers these
+  // squares, unless it's been taken off in the garage.
+  if (!look.nomast) {
+    ctx.setLineDash([5, 5]); ctx.strokeStyle = "rgba(35,29,63,.55)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(left + 7.58 * cell, top + 3.5 * cell, 1.6 * cell, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = "rgba(35,29,63,.6)"; ctx.font = `700 11px ${getComputedStyle(document.body).getPropertyValue("--ui")}`;
+    ctx.fillText("camera", left + 7.58 * cell, top + 3.5 * cell);
+  }
   if (shop.cursor != null && shop.anim) {
     const i = shop.cursor % ART_COLS, j = Math.floor(shop.cursor / ART_COLS);
     ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3; ctx.strokeRect(left + i * cell + 1.5, top + j * cell + 1.5, cell - 3, cell - 3);
@@ -3955,10 +3953,10 @@ function toggleScout() {
   hideBanner(); hideCelebrate();
   $("planets").hidden = true; $("marks").innerHTML = "";
   resetScene(); setPlaying(false); render();
-  $("feed").innerHTML = '<div class="empty">Transmit to see the rover\'s telemetry.</div>';
+  $("feed").innerHTML = '<div class="empty">Press Transmit ▶. Everything the rover does gets listed here.</div>';
   scoutLeft(SCOUT_MAX); $("scoutCode").disabled = true;
   $("scoutHelp").classList.toggle("kids", kidsMode());
-  $("scoutKid").innerHTML = scoutCan("jump") ? "🕹 Drive with the arrows <b>↑ ↓ ← →</b>. To jump, press <b>🦘</b> and then an arrow. Made a mistake? Press R."
+  $("scoutKid").innerHTML = scoutCan("jump") ? "🕹 Drive with the arrows <b>↑ ↓ ← →</b>. To jump, press <b>space</b>. Made a mistake? Press R."
     : scoutCan("knock") ? "🕹 Drive with the arrows <b>↑ ↓ ← →</b>. To knock on a door, press <b>🚪</b> and then the arrow towards the house."
     : "🕹 Drive the rover with the arrow buttons <b>↑ ↓ ← →</b>. Made a mistake? Press R to start again.";
   announce("Scouting. Use the arrow keys to drive.");
@@ -3969,7 +3967,7 @@ function stopScout(quiet) {
   scout = null;
   $("scoutButton").classList.remove("on");
   $("scoutHelp").hidden = true; $("pad").hidden = true;
-  if (!quiet) { hideBanner(); resetScene(); setPlaying(false); render(); $("feed").innerHTML = '<div class="empty">Transmit to see the rover\'s telemetry.</div>'; }
+  if (!quiet) { hideBanner(); resetScene(); setPlaying(false); render(); $("feed").innerHTML = '<div class="empty">Press Transmit ▶. Everything the rover does gets listed here.</div>'; }
   renderSteps();
 }
 const SCOUT_MAX = 150;   // matches server.SCOUT_MAX
@@ -3990,15 +3988,22 @@ function showJumpPad() {
   pad.querySelector(".knock").hidden = !scoutCan("knock");
   for (const b of pad.querySelectorAll('[data-move="jump"], [data-move="drill"], [data-move="knock"]')) b.classList.toggle("on", !!scout && scout.arm === b.dataset.move);
   pad.classList.toggle("armed", !!(scout && scout.arm));
-  $("scoutExtra").textContent = (scoutCan("jump") ? " · J then an arrow jumps (or Shift+arrow)" : "")
-    + (scoutCan("drill") ? " · X then an arrow drills" : "")
+  $("scoutExtra").textContent = (scoutCan("jump") ? " · space jumps the way you're going, Shift+space waits" : " · space waits")
+    + (scoutCan("drill") ? " · E digs the way you're going" : "")
     + (scoutCan("knock") ? " · K then an arrow knocks" : "");
+}
+// Space and E: jump or dig the way the rover last went. Before its first
+// move it has no way to go, so the next arrow says which.
+function scoutAct(act) {
+  if (scout.way) { scout.arm = null; showJumpPad(); }
+  scoutMove(scout.way ? `${act}:${scout.way}` : act);
 }
 async function scoutMove(move) {
   if (!scout || scout.over) return;
   if (move === "jump" || move === "drill" || move === "knock") { if (scoutCan(move)) { scout.arm = scout.arm === move ? null : move; showJumpPad(); } return; }
   if (scout.arm && WAYS.includes(move)) { move = `${scout.arm}:${move}`; scout.arm = null; showJumpPad(); }
   if (move.includes(":") && !scoutCan(move.split(":")[0])) return;
+  scout.way = WAYS.find(w => move.endsWith(w)) || scout.way;
   if (scout.queue.length < 3) scout.queue.push(move);
   if (busy) return;
   busy = true;
@@ -4036,7 +4041,7 @@ function scoutFinished(run) {
   let next = ex ? ex.next : "";
   if (next.includes("jump(") && !scoutCan("jump")) next = "Scouting can't jump, but code can. " + next;
   if (kidsMode() && scout.reached) say = "🎉 You made it! Now press 📋 Use as code to turn your drive into code.";
-  showBanner("scout", ex ? `${say} ${ex.what}` : say, `${run.end === "goal" ? `<button class="go" onclick="scoutAsCode()">📋 Use as code</button>` : ""}<button class="quiet" onclick="restartScout()">Scout again (R)</button><button class="quiet" onclick="stopScout()">Stop</button>`, next);
+  showBanner("scout", ex ? `${say} ${ex.what}` : say, `${run.end === "goal" && !typesOwn("closing") ? `<button class="go" onclick="scoutAsCode()">📋 Use as code</button>` : ""}<button class="quiet" onclick="restartScout()">Scout again (R)</button><button class="quiet" onclick="stopScout()">Stop</button>`, next);
 }
 // The hand-driven route, written as code, with a few words left for the
 // student to finish if the teacher's switch says so (blanks): three east()
@@ -4152,6 +4157,17 @@ function kidsMode() { const z = site && zoneOf(site.key); return !!(z && z.pract
 // Letter by letter: always on the practice sites, and on every site when the
 // teacher's switch was on for the scouted code.
 function typingHelp() { return kidsMode() || !!(site && site.coached); }
+// Has this piece of help come off (planet.TYPE_YOURSELF)? The little kids'
+// drive-first sites keep all of it: their way in leans on it.
+function typesOwn(key) { return !kidsMode() && state.yours.some(y => y.key === key); }
+// The help that's come off since this student last looked, said once, so the
+// editor doesn't just seem to have stopped working.
+function yoursNews() {
+  const seen = Number(recall(`planetYours:${me}`)) || 0;
+  if (kidsMode() || state.yours.length <= seen) return [];
+  store(`planetYours:${me}`, state.yours.length);
+  return state.yours.slice(seen);
+}
 // The word an unfinished one is: it starts with `letters` and has `length` letters.
 function blankTarget(letters, length) {
   const fits = w => w.length === length && w.startsWith(letters.toLowerCase());
@@ -4197,6 +4213,7 @@ function noCode() {
 function waitForCode() {
   if (kidsMode() && !scout) toggleScout();
   if (scout && scout.over) return say(scout.reached ? "Press Use as code!" : "Press Scout again!");
+  if (!scout && scene && scene.run) { resetScene(); setPlaying(false); render(); }   // the last run is over: back to the start
   if (scene) { scene.poke = performance.now(); say(scout ? "Drive me with the arrows!" : "I'm waiting for your code!"); }
   if (!scout) return showBanner("", `${roverName("Your rover")} is waiting for instructions! Write a command like  east()  in the box, then press Transmit ▶.`);
   const pad = $("pad");
@@ -4265,6 +4282,7 @@ async function transmit() {
     site.lastSent = sent; site.lastMissed = !data.runs.every(r => r.reached);
     // The same code after a miss: the experiment only changes if the code does.
     if (again && site.lastMissed) toast("🔁", "Same code as last time", "Change one thing, then transmit and watch what's different. (↻ under the map replays without sending.)");
+    if (data.rewards.bug_clue) toast("💡", "A clue for the bug hunt", `Look for ${data.rewards.bug_clue}.`);
     holdRank = data.rewards.new_stars > 0;
     holdCandy = !!data.rewards.candy && !!state.halloween;
     useState(data.state);
@@ -4370,14 +4388,33 @@ function followRun(ln) {
   if ((ln || 0) === runLine) return;
   runLine = ln || 0;
   refreshEditor();
+  showCaption();
   const t = $("code");
   if (!runLine || document.activeElement === t) return;
   const lh = parseFloat(getComputedStyle(t).lineHeight) || 22, top = 12 + (runLine - 1) * lh;
   if (top < t.scrollTop || top + lh > t.scrollTop + t.clientHeight - 40) t.scrollTop = Math.max(0, top - t.clientHeight / 3);
 }
 
+// Over the replay: the line the rover is on, and what it's doing, in words.
+function showCaption() {
+  const box = $("caption"), line = ($("code").value.split("\n")[runLine - 1] || "").trim();
+  box.hidden = !runLine || !line || !$("banner").hidden;
+  if (!box.hidden) box.innerHTML = `Line ${runLine}:<code>${esc(line)}</code>${esc(lineInWords(line))}`;
+}
+function lineInWords(line) {
+  const drive = /^(north|south|east|west)\(\s*(\d*)\s*\)/.exec(line);
+  if (drive) return `driving ${drive[2] ? plural(Number(drive[2]), "square") + " " : ""}${drive[1]} ${WAY_ARROW[drive[1]]}`;
+  const m = /^(north|south|east|west|wait|jump|drill|knock|report|print)\(\s*(?:["'](\w+)["'])?/.exec(line);
+  if (!m) return /^\w+\(/.test(line) ? "doing your own move" : "";
+  const way = m[2] ? `${m[2]} ${WAY_ARROW[m[2]] || ""}` : "";
+  return {wait: "staying still for a moment", jump: `jumping 2 squares ${way}`, drill: `drilling the rock ${way}`,
+          knock: `knocking on the door ${way}`, report: "sending a number to mission control",
+          print: "writing in the list on the right"}[m[1]] || `driving ${m[1]} ${WAY_ARROW[m[1]]}`;
+}
+
 // ---- Keys ----
 const PAIRS = {"(": ")", "[": "]", '"': '"', "'": "'"};
+const PAIR_HELP = {"(": "closing", "[": "closing", '"': "quotes", "'": "quotes"};   // which help closes it
 function editorKey(event) {
   const t = event.target, start = t.selectionStart, end = t.selectionEnd, v = t.value;
   if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
@@ -4406,7 +4443,7 @@ function editorKey(event) {
     const whole = /^[)\]"']*:?\s*$/.test(after) && after.trim() ? v.slice(lineStart, lineEnd) : before;
     const at = whole === before ? start : lineEnd;
     let indent = (whole.match(/^\s*/) || [""])[0];
-    if (mask(whole).text.trimEnd().endsWith(":")) indent += "    ";
+    if (mask(whole).text.trimEnd().endsWith(":") && !typesOwn("indent")) indent += "    ";
     else if (/^\s*(return\b.*|break|continue|pass)\s*$/.test(whole)) indent = indent.slice(4);
     replaceText(at, whole === before ? end : lineEnd, "\n" + indent);
   } else if (event.key === "Backspace" && start === end) {
@@ -4419,7 +4456,7 @@ function editorKey(event) {
     if (!before || /[^ ]/.test(before)) return;
     event.preventDefault();
     replaceText(start - ((before.length - 1) % 4 + 1), start, "");
-  } else if (PAIRS[event.key]) {
+  } else if (PAIRS[event.key] && !typesOwn(PAIR_HELP[event.key])) {
     const key = event.key, quote = key === '"' || key === "'";
     if (start !== end && !v.slice(start, end).includes("\n")) {
       // Typed round a selection: wrap it.
@@ -4440,7 +4477,7 @@ function editorKey(event) {
     // The closing bracket is already there: step over it.
     event.preventDefault();
     t.setSelectionRange(start + 1, start + 1);
-  } else if (event.key === ":" && start === end && !after.trim() && /^\s*(else|elif\b.*)$/.test(before)) {
+  } else if (event.key === ":" && start === end && !after.trim() && /^\s*(else|elif\b.*)$/.test(before) && !typesOwn("indent")) {
     // else and elif line up with their if.
     const indent = blockIndent(v, lineStart, before);
     if (indent == null) return;
@@ -4566,6 +4603,7 @@ function completionContext() {
 }
 let ac = null;   // the open list: {ctx, items, i}
 function complete(open, all) {
+  if (typesOwn("names") && !all && !ac) return closeComplete();
   const ctx = completionContext();
   if (!ctx) return closeComplete();
   let items;
@@ -4637,14 +4675,14 @@ function acceptComplete(item) {
   const name = item.name, lineEnd = (v.indexOf("\n", at) + 1 || v.length + 1) - 1;
   const alone = !ctx.before.slice(0, ctx.before.length - ctx.word.length).trim() && !v.slice(at, lineEnd).trim();
   let text = name, caret = name.length, from = ctx.from;
-  if (SNIPPETS[name] && alone) {
+  if (SNIPPETS[name] && alone && !typesOwn("shapes")) {
     const [a, b] = SNIPPETS[name];
     text = a + b; caret = a.length;
     if (name === "else" || name === "elif") {
       const indent = blockIndent(v, ctx.lineStart, ctx.before);
       if (indent != null) { from = ctx.lineStart; text = indent + text; caret += indent.length; }
     }
-  } else if (["cmd", "sense", "own", "fn"].includes(item.kind) && v[at] !== "(") {
+  } else if (["cmd", "sense", "own", "fn"].includes(item.kind) && v[at] !== "(" && !typesOwn("brackets")) {
     const own = defsWithParams(v)[name];
     if (["look", "jump", "drill", "distance"].includes(name)) { text = name + '("")'; caret = name.length + 2; }
     else { text = name + "()"; caret = ARGS[name] || (own && own.length) ? name.length + 1 : text.length; }
@@ -4690,7 +4728,7 @@ function showSignature() {
   const args = name && (own && own.length ? own.join(", ") : ARGS[name]);
   if (!args || KEY_HELP[name]) { sig.hidden = true; return; }
   const help = own ? "Your own command." : HELP[name] || BUILTIN_HELP[name] || "";
-  sig.innerHTML = `<code>${esc(name)}(<b>${esc(args)}</b>)</code>${help ? ` ${esc(help)}` : ""}`;
+  sig.innerHTML = `<code>${esc(name)}(<b>${esc(args)}</b>)</code>${help ? ` ${esc(help)}` : ""}${typesOwn("closing") ? " Finish with ) (Shift and 0)." : ""}`;
   sig.hidden = false;
   placeAt(sig, lineStart + open, false);
 }
@@ -4757,14 +4795,14 @@ function problemsIn(code, caret) {
     const n = i + 1, {text, open} = mask(line), bare = text.trimEnd();
     if (!bare.trim()) return;
     const say = msg => { if (n !== caret && !out[n]) out[n] = msg; };
-    if (open) say(`close the words with ${open}`);
+    if (open) say(`a word needs a ${open} at both ends: add the missing ${open}`);
     let depth = 0, first = null;
     for (const ch of bare) {
       if (ch === "(" || ch === "[") { depth++; first = first || ch; }
       if (ch === ")" || ch === "]") depth--;
     }
-    if (depth > 0) say(`missing ${first === "[" ? "]" : ")"} at the end`);
-    if (depth < 0) say("one ) too many");
+    if (depth > 0) say(first === "[" ? "add a ] at the end" : "add a ) at the end: every ( needs one to close it");
+    if (depth < 0) say("there's one ) too many: delete it");
     for (const m of bare.matchAll(/([A-Za-z_]\w*)\s*\(/g)) {
       const name = m[1];
       if (known.has(name) || KEY_HELP[name] || SENSOR_ZONE[name] != null) continue;
@@ -4774,15 +4812,17 @@ function problemsIn(code, caret) {
       break;
     }
     const bareCmd = /^\s*(north|south|east|west|wait)\s*(\d*)\s*$/.exec(bare);
-    if (bareCmd) say(`add brackets: ${bareCmd[1]}(${bareCmd[2]})`);
-    if (/^\s*(if|elif|while|for|def|else)\b/.test(bare) && !bare.endsWith(":") && depth === 0) say("add : at the end");
-    if (/^\s*(if|elif|while)\b/.test(bare) && /[^=!<>]=[^=]/.test(bare)) say("use == to check if two things are the same");
+    if (bareCmd) say(`commands need brackets: write ${bareCmd[1]}(${bareCmd[2]})`);
+    const bareWay = typesOwn("quotes") && /\b(look|jump|drill|distance|knock)\(\s*(north|south|east|west)\s*\)/.exec(bare);
+    if (bareWay) say(`add quotes round the word: ${bareWay[1]}("${bareWay[2]}")`);
+    if (/^\s*(if|elif|while|for|def|else)\b/.test(bare) && !bare.endsWith(":") && depth === 0) say("add a : at the end, to show more lines are coming under this one");
+    if (/^\s*(if|elif|while)\b/.test(bare) && /[^=!<>]=[^=]/.test(bare)) say("use == to compare two things (one = stores a number)");
     if (bare.endsWith(":") && depth === 0) {
       const j = nextUsed(i);
-      if (j >= 0 && indentOf(lines[j]) <= indentOf(line) && j + 1 !== caret) say("push the line under it in with Tab");
+      if (j >= 0 && indentOf(lines[j]) <= indentOf(line) && j + 1 !== caret) say("the line under this one needs pushing in: click at its start and press Tab");
     }
     if (prev < 0 ? indentOf(line) > 0 : indentOf(line) > indentOf(lines[prev]) && !mask(lines[prev]).text.trimEnd().endsWith(":"))
-      say(prev < 0 ? "start this line at the left edge" : "pushed in too far: the line above doesn't end with :");
+      say(prev < 0 ? "this line should start at the left edge: delete the spaces in front" : "this line is pushed in too far: only lines under a : get pushed in");
     prev = i;
   });
   return out;
@@ -4986,6 +5026,48 @@ $("roverName").addEventListener("change", async () => {
   if (out && !out.error) { useState(out); $("roverName").value = out.rover_name; }
 });
 $("surpriseButton").addEventListener("click", surprise);
+// Saved looks: four slots under the preview.
+const LOOK_SLOTS = ["paint", "topper", "wheels", "trail", "world", "dance", "glow", "pet", "horn"];
+const sameLook = (a, b) => LOOK_SLOTS.every(k => a[k] === b[k]) && !!a.nomast === !!b.nomast && (a.paint !== "mine" || a.art === b.art);
+function renderPresets() {
+  const presets = state.presets || [];
+  $("presets").innerHTML = presets.map((p, i) => p
+    ? `<div class="preset full${sameLook(p, look) ? " on" : ""}" role="button" tabindex="0" data-wear="${i}" title="Put this look back on"><canvas></canvas><button class="clear" data-clear="${i}" title="Empty this slot" aria-label="Empty this slot">✕</button></div>`
+    : `<button class="preset empty" data-save="${i}" title="Keep the look your rover has on now"><b style="font-size:20px">+</b><br>Save</button>`).join("");
+  $("presets").querySelectorAll(".preset.full canvas").forEach((cv, n) => {
+    const p = presets.filter(Boolean)[n], dpr = window.devicePixelRatio || 1, px = cv.clientWidth || 56;
+    cv.width = cv.height = px * dpr;
+    const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawRover(g, px * .45, px * .55, px * .7, -Math.PI / 2, 1, p, 1200);
+    if (PETS[p.pet]) drawPet(g, px * .8, px * .28, px * .5, p.pet, 1200);
+  });
+}
+async function presetAction(body, sound) {
+  let out;
+  try { out = await post("/planet/presets", {id: me, ...body}); } catch (_) { return; }
+  if (out.error) return;
+  state.presets = out.presets; look = out.look; state.look = look;
+  SFX.wake(); SFX.play(sound);
+  renderGarage(); render();
+}
+$("presets").addEventListener("click", e => {
+  const b = e.target.closest("[data-clear], [data-save], [data-wear]");
+  if (!b) return;
+  if (b.dataset.clear != null) { e.stopPropagation(); return presetAction({slot: +b.dataset.clear, clear: true}, "beep"); }
+  if (b.dataset.save != null) {
+    presetAction({slot: +b.dataset.save, save: true}, "badge");
+    return toast("💾", "Look saved!", "Press it any time to put this whole look back on.");
+  }
+  presetAction({slot: +b.dataset.wear, wear: true}, look.horn || "beep");
+});
+$("presets").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.dataset.wear != null) e.target.click(); });
+$("mastToggle").addEventListener("change", async e => {
+  look = {...look, nomast: e.target.checked};
+  SFX.wake(); SFX.play("beep");
+  try { look = (await post("/planet/look", {id: me, nomast: e.target.checked})).look; } catch (_) {}
+  state.look = look;
+  renderGarage(); render();
+});
 $("garageNext").addEventListener("click", e => {
   if (e.target.closest(".gn-go")) { $("garage").hidden = true; openLevels(); return; }
   const {slot, key} = $("garageNext").dataset;
@@ -5072,6 +5154,7 @@ document.addEventListener("keydown", e => {
   if (e.key === "F5" && me) { e.preventDefault(); transmit(); return; }
   if (e.key === "Escape") {
     closePops();
+    if (predictEscape() || loungeEscape() || teamEscape()) return;
     if (!$("garage").hidden) $("garage").hidden = true;
     if (!$("paintShop").hidden) closePaintShop(true);
     if (!$("invite").hidden) closeInvite();
@@ -5088,9 +5171,11 @@ document.addEventListener("keydown", e => {
   if (!scout || e.target.closest("textarea, input") && !kidArrow) return;
   const keys = {ArrowUp: "north", w: "north", ArrowDown: "south", s: "south", ArrowRight: "east", d: "east",
                 ArrowLeft: "west", a: "west", " ": "wait"};
-  if (keys[e.key] && e.shiftKey && scoutCan("jump") && WAYS.includes(keys[e.key])) { e.preventDefault(); scoutMove("jump:" + keys[e.key]); }
+  if (e.key === " " && !e.shiftKey && scoutCan("jump")) { e.preventDefault(); scoutAct("jump"); }
+  else if (keys[e.key] && e.shiftKey && scoutCan("jump") && WAYS.includes(keys[e.key])) { e.preventDefault(); scoutMove("jump:" + keys[e.key]); }
   else if (keys[e.key]) { e.preventDefault(); scoutMove(keys[e.key]); }
   else if ((e.key === "j" || e.key === "J") && scoutCan("jump")) scoutMove("jump");
+  else if ((e.key === "e" || e.key === "E") && scoutCan("drill")) scoutAct("drill");
   else if ((e.key === "x" || e.key === "X") && scoutCan("drill")) scoutMove("drill");
   else if ((e.key === "k" || e.key === "K") && scoutCan("knock")) scoutMove("knock");
   else if (e.key === "r" || e.key === "R") restartScout();
@@ -5112,6 +5197,7 @@ const POKE_LINES = ["Beep boop!", "Hi there!", "Ready to explore!", "Bzzt!", "Wh
                     "I like this planet.", "Teach me something!", "You're my teacher!", "Wheee!", "Is that a crystal?"];
 // Nobody's touched anything for a while: the rover gives a wiggle and asks,
 // three times at most, then waits quietly until someone's back.
+const IDLE_PLAY_MS = 90000;   // a press this long ago still counts as playing, for the teacher's minutes
 let idleSince = performance.now(), idleAsked = 0;
 for (const name of ["keydown", "pointerdown"]) window.addEventListener(name, () => { idleSince = performance.now(); idleAsked = 0; }, true);
 setInterval(() => {
@@ -5138,11 +5224,33 @@ $("roadPlay").addEventListener("click", playHalloween);
 $("roadClose").addEventListener("click", closeCandyRoad);
 for (const id of ["invite", "candyRoad"]) $(id).addEventListener("click", e => { if (e.target === $(id)) $(id).hidden = true; });
 setInterval(pingHalloween, 12000);
+loungeWire();
+teamWire();
+predictWire();
+// The class's bug hunt goes in the editor, so Ctrl+Z brings the old code back.
+function loadBug() {
+  const box = $("code");
+  if (box.value === state.challenge.bug) return;
+  box.focus(); box.select();
+  document.execCommand("insertText", false, state.challenge.bug);
+  toast("🐛", "Find the bug!", "This code has one mistake in it. Press Transmit to see what goes wrong, then change the code to fix it.");
+}
+// A message from the teacher, once. Whatever was sent before this page opened stays old news.
+let noticeSeen = null;
+function hearNotice(notice) {
+  if (noticeSeen != null && notice.n && notice.n !== noticeSeen) {
+    SFX.play("badge");
+    toast(notice.icon, notice.title, notice.text);
+  }
+  noticeSeen = notice.n;
+}
 // A class challenge set or ended by the teacher shows up within a few seconds.
 setInterval(async () => {
   if (!me || !state || !site || busy) return;
-  const out = await get(`/planet/ping?id=${encodeURIComponent(me)}`).catch(() => null);
-  if (!out || (out.challenge || null) === ((state.challenge || {}).key || null)) return;
+  const lately = performance.now() - idleSince < IDLE_PLAY_MS ? "&busy=1" : "";
+  const out = await get(`/planet/ping?id=${encodeURIComponent(me)}${lately}`).catch(() => null);
+  if (out) { loungeSet(!!out.lounge, true); teamSet(!!out.team, true); hearNotice(out.notice); predictHear(out.predict); }
+  if (!out || (out.challenge || null) === ((state.challenge || {}).tag || null)) return;
   useState(await get(`/planet/state?id=${encodeURIComponent(me)}`));
   renderGoals();
 }, 6000);

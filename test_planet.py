@@ -889,9 +889,9 @@ class GiftTests(unittest.TestCase):
         page = open(os.path.join(HERE, "planet.html"), encoding="utf-8").read()
         drawn = {"paint": lambda k: re.search(rf"\b{k}: ", render),
                  "topper": lambda k: k == "none" or f'topper === "{k}"' in render,
-                 "trail": lambda k: k == "tracks" or f'look.trail === "{k}"' in page,
-                 "world": lambda k: k == "planet" or re.search(rf"\n  {k}: {{", page),
-                 "dance": lambda k: k == "spin" or f'kind === "{k}"' in page,
+                 "trail": lambda k: k == "tracks" or f'gear.trail === "{k}"' in render,
+                 "world": lambda k: k == "planet" or re.search(rf"\n  {k}: {{", render),
+                 "dance": lambda k: k == "spin" or f'kind === "{k}"' in render,
                  "glow": lambda k: k == "noglow" or re.search(rf"\n  {k}[:(]", render),
                  "wheels": lambda k: re.search(rf"\n  {k}\(ctx, s", render),
                  "pet": lambda k: k == "nopet" or re.search(rf"\n  {k}\(ctx", render),
@@ -1082,7 +1082,7 @@ class RoverTests(unittest.TestCase):
         self.assertIn("else  goes on its own line",
                       run("1b", "if x() == 1: east() else: south()\n")["error"])
         # A missing colon with the body already below keeps Python's own hint.
-        self.assertIn("has to end with a  :", run("1b", "for i in range(3)\n    east()\n")["error"])
+        self.assertIn("Add a  :  at the very end", run("1b", "for i in range(3)\n    east()\n")["error"])
 
     def test_sensors_arrive_zone_by_zone(self):
         out = run("1a", "print(tick())\n")
@@ -1123,7 +1123,7 @@ class RoverTests(unittest.TestCase):
     def test_a_run_that_misses_says_what_happened_in_plain_words(self):
         for key, code, what, nxt in [
             ("1a", "east(2)\n", "finished with 3 samples still out",
-             "The closest is at x 2, y 3: 1 square west and 2 squares south."),
+             "The closest is at x 2, y 3: 1 square west ← and 2 squares south ↓."),
             ("7b", "east()\n", "before the beacon", "of the rover."),
             ("8a", "east(8)\n", "The rover drove into a crater at x 6, y 2", 'jump("east") from x 5, y 2'),
             ("3b", "south(20)\n", "gust pushed the rover into a crater", "wait()"),
@@ -1204,13 +1204,33 @@ class RoverTests(unittest.TestCase):
         last = out["frames"][-1]
         self.assertIn(f"x {last['c']}, y {last['r']}", out["log"][-1])
 
+    def test_a_beginner_is_told_exactly_what_to_type(self):
+        for code, says in (("sout 2", "Write  south(2)"), ("east 2", "Write  east(2)"),
+                           ("go east", "write  east()"), ("look east", 'look("east")'),
+                           ("for 3:\n    east()", "for i in range(3):"),
+                           ("east(two)", "write  2  instead of  two"),
+                           ("print(hello)", '"hello"'),
+                           ("hello world", "doesn't know what  hello world  means"),
+                           ("if way == east\n    north()", "end this line with  :")):
+            out = run("1a", code)
+            self.assertIn(says, out["error"], code)
+            self.assertTrue(out["error"].startswith("Line "), code)
+            self.assertNotIn("Syntax", out["error"], code)
+
+    def test_a_first_level_miss_says_it_is_fine_and_what_to_add(self):
+        out = run("1a", "south(2)\n")["explain"]
+        self.assertIn("not a mistake", out["what"])
+        self.assertIn("Add a new line at the bottom of your code, like  east()", out["next"])
+        # Further on, working out the line is the student's job.
+        self.assertNotIn("Add a new line", run("2a", "east()\n")["explain"]["next"])
+
     def test_a_sensor_used_without_brackets_says_so(self):
         self.assertIn("battery needs brackets", run("5a", "report(battery)\n")["error"])
 
     def test_friendly_errors(self):
         self.assertIn("Strange Planet", run("1a", "x = [1, 2]\n")["error"])
         self.assertIn("import", run("1a", "import os\n")["error"])
-        self.assertIn("Syntax error", run("1a", "east(\n")["error"])
+        self.assertIn("never closes it", run("1a", "east(\n")["error"])
         # Beginners' slips get the fix, not a misleading guess.
         self.assertIn('Put quotes round words:  "rock"',
                       run("1c", 'while look("east") != rock:\n    east()\n')["error"])
@@ -1291,8 +1311,8 @@ class RoverTests(unittest.TestCase):
     def test_beginner_slips_say_what_to_do(self):
         step = "def step():\n    east()\n"
         for key, code, says, line in [
-            ("1a", "east(3) south()\n", "put each command on its own line", 1),
-            ("1a", "east 3\n", "commands need brackets, like  east(3)", 1),
+            ("1a", "east(3) south()\n", "Only one command fits on a line", 1),
+            ("1a", "east 3\n", "Write  east(3)", 1),
             ("1a", "east()\nturn right()\n", "drives by compass", 2),
             ("1a", "repeat 7:\n    east()\n", "for i in range(7):", 1),
             ("1a", "def step:\n    east()\n", "def step():", 1),
@@ -1378,6 +1398,21 @@ class ClassroomTests(unittest.TestCase):
             self.assertIn(b"function replayStage", response.read())
         with urlopen(self.base + "/planet/render.js") as response:
             self.assertIn(b"function drawRover", response.read())
+
+    def test_the_typing_help_comes_off_as_a_student_gets_further(self):
+        pid = self.join()
+        entry = server.planet_entry(server.players[pid])
+        def yours(key):
+            entry["unlocked"] = planet.SITE_ORDER.index(key)
+            return [y["key"] for y in self.get(f"/planet/state?id={pid}")["yours"]]
+        self.assertEqual(yours("1a"), [])
+        self.assertEqual(yours("2c"), [])
+        self.assertEqual(yours("3a"), ["brackets"])
+        self.assertEqual(yours("7a"), ["brackets", "closing", "quotes"])
+        self.assertEqual(yours("13a"), [t["key"] for t in planet.TYPE_YOURSELF])
+        # In the order they come off, so the note can say what's new.
+        zones = [planet.ZONE_ORDER.index(t["zone"]) for t in planet.TYPE_YOURSELF]
+        self.assertEqual(zones, sorted(set(zones)))
 
     def test_sites_open_one_at_a_time(self):
         pid = self.join()
@@ -1467,7 +1502,7 @@ class ClassroomTests(unittest.TestCase):
         self.assertIn("3 samples still out", row["now"]["said"])
         self.post("/planet/run", {"id": pid, "site": "1a", "code": "east(\n"})
         row = self.get("/planet/overview")["students"][0]
-        self.assertIn("Syntax error", row["now"]["said"])
+        self.assertIn("never closes it", row["now"]["said"])
         # Each site keeps the last few tries, to see where a student got stuck.
         for i in range(server.TRIES_KEPT):
             self.post("/planet/run", {"id": pid, "site": "1a", "code": f"east({i})"})
@@ -1577,6 +1612,15 @@ class ClassroomTests(unittest.TestCase):
         server.players[pid]["planet"]["badges"] += ["fixer", "loop"]
         self.assertTrue(garage()["ladybug"]["open"] and garage()["cheetah"]["open"])
         self.assertFalse(garage()["zebra"]["open"])   # that one wants an if
+
+    def test_the_camera_can_come_off_to_show_the_paint(self):
+        pid = self.join()
+        look = self.post("/planet/look", {"id": pid, "nomast": True})["look"]
+        self.assertTrue(look["nomast"])
+        self.assertTrue(self.get("/planet/overview")["students"][0]["look"]["nomast"])
+        # Fitting something else leaves it off; it comes back only when asked.
+        self.assertTrue(self.post("/planet/look", {"id": pid, "paint": "bone"})["look"]["nomast"])
+        self.assertFalse(self.post("/planet/look", {"id": pid, "nomast": False})["look"]["nomast"])
 
     def test_every_rank_up_picks_one_of_three_rewards(self):
         pid = self.join()
@@ -2019,6 +2063,25 @@ class ClassroomTests(unittest.TestCase):
         self.assertFalse(scout()["blanks"])
         self.assertFalse(self.get("/planet/overview")["blanks"])
         self.assertFalse(json.load(open(server.STATE_FILE))["planet_class"]["blanks"])
+
+    def test_minutes_played_count_pages_in_use_and_only_those(self):
+        ada = self.join("Ada")
+        self.get(f"/planet/ping?id={ada}&busy=1")          # the first ping only starts the clock
+        entry = server.players[ada]["planet"]
+        day = server.time.strftime("%Y-%m-%d")
+        entry["pinged"] -= 6
+        self.get(f"/planet/ping?id={ada}&busy=1")
+        self.assertAlmostEqual(entry["events"][day]["secs"], 6, delta=1)
+        entry["pinged"] -= 6
+        self.get(f"/planet/ping?id={ada}")                 # nothing pressed lately
+        self.assertAlmostEqual(entry["events"][day]["secs"], 6, delta=1)
+        entry["pinged"] -= 600
+        self.get(f"/planet/ping?id={ada}&busy=1")          # the laptop was shut
+        self.assertAlmostEqual(entry["events"][day]["secs"], 6, delta=1)
+        entry["events"][day]["secs"] = 125
+        row = next(s for s in self.get("/planet/overview")["students"] if s["id"] == ada)
+        self.assertEqual(row["played"], {"minutes": 2, "days": 1})
+        self.assertEqual(self.get("/planet/overview")["habits"]["secs"], 125)
 
     def test_a_class_challenge_opens_a_level_and_counts_who_finishes(self):
         self.addCleanup(lambda: server.planet_class_settings.update(challenge=None))
@@ -2502,7 +2565,9 @@ class PageScriptTests(unittest.TestCase):
             self.skipTest("node isn't installed")
         with tempfile.TemporaryDirectory() as folder:
             for name in ("planet.html", "planet_teacher.html", "planet_show.html", "planet_render.js",
-                         "planet_replay.js", "planet_halloween.js"):
+                         "planet_replay.js", "planet_halloween.js", "planet_lounge.js", "planet_team.js",
+                         "planet_team_watch.html", "planet_lounge_watch.html", "planet_race.html",
+                         "planet_predict.html", "planet_predict.js"):
                 text = open(os.path.join(HERE, name), encoding="utf-8").read()
                 parts = re.findall(r"<script>(.*?)</script>", text, re.S) if name.endswith(".html") else [text]
                 for i, part in enumerate(parts):
@@ -2560,6 +2625,22 @@ class HalloweenClassroomTests(unittest.TestCase):
         self.assertFalse(overview["halloween"])
         ada_row = next(s for s in overview["students"] if s["id"] == ada)
         self.assertEqual(ada_row["halloween"]["candy"], 5)
+
+    def test_witchs_woods_opens_with_the_haunted_mansion(self):
+        pid = self.join()
+        self.get(f"/planet/state?id={pid}")
+        self.admin("planet_invite", pid=pid, on=True)
+        entry = server.planet_entry(server.players[pid])
+        woods = lambda: next(z for z in self.get(f"/planet/state?id={pid}")["zones"] if z["key"] == "woods")
+        entry["solved"].update({k: 10 for k in planet.HALLOWEEN_ORDER[:8]})   # up to H8
+        self.assertFalse(woods()["sites"][0]["open"])
+        entry["solved"]["h9"] = 10   # the Mansion is next: the Woods open too
+        self.assertEqual([x["open"] for x in woods()["sites"]], [True, False, False, False])
+        self.assertNotIn("error", self.get(f"/planet/site?id={pid}&site=h11"))
+        self.assertIn("error", self.get(f"/planet/site?id={pid}&site=h12"))
+        entry["solved"]["h11"] = 10   # still one after another in the Woods
+        self.assertEqual([x["open"] for x in woods()["sites"]], [True, True, False, False])
+        self.assertEqual(self.get(f"/planet/state?id={pid}")["halloween"]["next"], "h10")
 
     def test_candy_is_the_best_haul_on_each_site_and_a_boo_drops_it(self):
         pid = self.join()
@@ -2645,6 +2726,278 @@ class HalloweenClassroomTests(unittest.TestCase):
                                           "moves": ["east", "east", "east", "east", "knock:north"]})
         self.assertTrue(out["run"]["reached"])
         self.assertIn("error", self.post("/planet/scout", {"id": pid, "site": "h1", "moves": ["knock:up"]}))
+
+
+class RoverShowTests(unittest.TestCase):
+    """A show for the Rover Lounge's stage, written in code."""
+
+    def test_loops_and_functions_make_the_steps(self):
+        out = planet.rover_show("def twirl():\n    spin()\n    wave()\n\nfor i in range(2):\n    twirl()\neast(2)\nwait()\nhonk()\n")
+        self.assertIsNone(out["error"])
+        self.assertEqual([s[0] for s in out["steps"]],
+                         ["spin", "wave", "spin", "wave", "east", "east", "wait", "honk"])
+        self.assertEqual(out["steps"][0], ["spin", planet.SHOW_BEATS["spin"]])
+
+    def test_a_show_stops_when_its_turn_runs_out(self):
+        short = planet.rover_show("while True:\n    east()\n")
+        self.assertEqual((len(short["steps"]), short["cut"], short["error"]), (planet.SHOW_STEPS, True, None))
+        slow = planet.rover_show("for i in range(100):\n    dance()\n")
+        self.assertTrue(slow["cut"])
+        self.assertLessEqual(sum(s[1] for s in slow["steps"]), planet.SHOW_SECONDS)
+
+    def test_a_loop_that_does_nothing_is_stopped(self):
+        self.assertIn("ran too long", planet.rover_show("while True:\n    pass\n")["error"])
+
+    def test_mission_words_are_explained(self):
+        for code in ('drill("east")', 'look("east")', "battery()", 'knock("north")'):
+            self.assertIn("for missions on the planet", planet.rover_show(code)["error"])
+
+    def test_a_show_cannot_say_anything(self):
+        self.assertIn("I don't know the command", planet.rover_show('say("hello")')["error"])
+        self.assertEqual(planet.rover_show('print("hello")')["steps"], [])
+
+    def test_show_words_are_kept_for_shows(self):
+        self.assertIn("already a word", planet.rover_show("def spin():\n    honk()\n")["error"])
+        self.assertIn("put it in a loop", planet.rover_show("spin(3)")["error"])
+        self.assertIn("spin()", planet.rover_show("spni()")["error"])
+
+
+class LoungeTests(unittest.TestCase):
+    """The Rover Lounge: the teacher opens it, everyone's rovers hang out, and
+    nothing in the room earns anything or says anything but the fixed words."""
+
+    setUp, get, post, join = ClassroomTests.setUp, ClassroomTests.get, ClassroomTests.post, ClassroomTests.join
+
+    def tearDown(self):
+        ClassroomTests.tearDown(self)
+        server.lounge_set(False)
+
+    def admin(self, action, **data):
+        return self.post("/admin", dict(data, key=server.ADMIN_KEY, action=action))
+
+    def room(self, pid, after=None):
+        return self.get(f"/planet/lounge?id={pid}" + ("" if after is None else f"&after={after}"))
+
+    def act(self, pid, what, **more):
+        # About one moment a second is allowed: these tests don't wait for it.
+        server.planet_lounge["here"].get(pid, {})["acted"] = 0
+        return self.post("/planet/lounge", dict(more, id=pid, after=more.pop("after", 0), do=what))
+
+    def enter(self, *names):
+        self.admin("planet_lounge", on=True)
+        pids = [self.join(n) for n in names]
+        for pid in pids:
+            self.room(pid)
+        return pids
+
+    def test_it_is_closed_until_the_teacher_opens_it(self):
+        pid = self.join()
+        self.assertEqual(self.room(pid), {"open": False})
+        self.assertEqual(self.post("/planet/lounge", {"id": pid, "do": "honk"}), {"open": False})
+        self.assertFalse(self.get(f"/planet/ping?id={pid}")["lounge"])
+        self.assertFalse(self.get(f"/planet/state?id={pid}")["lounge"])
+        self.assertFalse(self.get("/planet/overview")["lounge"])
+        self.assertIn("open", self.admin("planet_lounge", on=True)["ok"])
+        self.assertTrue(self.get(f"/planet/ping?id={pid}")["lounge"])
+        self.assertTrue(self.get(f"/planet/state?id={pid}")["lounge"])
+        self.assertTrue(self.get("/planet/overview")["lounge"])
+        self.assertTrue(self.room(pid)["open"])
+
+    def test_closing_clears_everyone_out(self):
+        ada, = self.enter("Ada")
+        self.act(ada, "stage")
+        self.admin("planet_lounge", on=False)
+        self.assertEqual(self.room(ada), {"open": False})
+        self.assertEqual(server.planet_lounge["here"], {})
+        self.assertIsNone(server.planet_lounge["stage"])
+
+    def test_a_restart_leaves_it_closed(self):
+        self.enter("Ada")
+        server.save_state()
+        with open(server.STATE_FILE, encoding="utf-8") as f:
+            self.assertNotIn("lounge", f.read())
+
+    def test_someone_who_has_not_joined_is_told_to(self):
+        self.admin("planet_lounge", on=True)
+        self.assertEqual(self.room("nobody"), {"error": "join"})
+        self.assertEqual(self.post("/planet/lounge", {"id": "nobody", "do": "honk"}), {"error": "join"})
+
+    def test_everyone_sees_everyone_and_nobody_sees_an_id(self):
+        ada, bo = self.enter("Ada", "Bo")
+        out = self.room(ada)
+        self.assertEqual(sorted(r["tag"] for r in out["rovers"]), ["Ada", "Bo"])
+        self.assertEqual(len({r["seat"] for r in out["rovers"]}), 2)
+        self.act(bo, "stage")
+        self.act(ada, "cheer", to=next(r["seat"] for r in out["rovers"] if r["tag"] == "Bo"), cheer="🔥")
+        text = json.dumps(self.room(ada, 0))
+        self.assertNotIn(ada, text)
+        self.assertNotIn(bo, text)
+
+    def test_the_room_shows_no_scores(self):
+        ada, = self.enter("Ada")
+        rover = self.room(ada)["rovers"][0]
+        self.assertEqual(set(rover), {"seat", "x", "y", "tag", "look", "best", "pet", "badge"})
+
+    def test_a_rover_card_says_what_it_has_on(self):
+        ada, = self.enter("Ada")
+        entry = server.planet_entry(server.players[ada])
+        item = next(i for i in server.GARAGE if i["slot"] == "pet" and i["rarity"] == "legendary")
+        entry["look"]["pet"] = item["key"]
+        entry["badges"].append("loop")
+        entry["showoff"] = "loop"
+        rover = self.room(ada)["rovers"][0]
+        self.assertEqual(rover["best"], {"name": item["name"], "rarity": "legendary"})
+        self.assertEqual(rover["pet"], item["name"])
+        self.assertEqual(rover["badge"]["name"], server.PLANET_BADGES["loop"][1])
+        entry["look"]["pet"] = "nopet"
+        self.assertIsNone(self.room(ada)["rovers"][0]["pet"])
+
+    def test_moves_stay_in_the_room(self):
+        ada, = self.enter("Ada")
+        where = lambda: next(iter(self.room(ada)["rovers"]))
+        self.act(ada, "move", x=5, y=6)
+        self.assertEqual((where()["x"], where()["y"]), (5, 6))
+        self.act(ada, "move", x=-100, y=100)
+        self.assertEqual((where()["x"], where()["y"]), (.5, server.LOUNGE_ROWS - .5))
+        self.act(ada, "move", x=100, y=0)   # the stage is only for taking the stage
+        self.assertEqual((where()["x"], where()["y"]), (server.LOUNGE_COLS - .5, server.LOUNGE_FLOOR))
+
+    def test_a_bad_move_is_ignored(self):
+        ada, = self.enter("Ada")
+        before = next(iter(self.room(ada)["rovers"]))
+        for x in ("5", None, True, float("nan"), float("inf")):
+            self.act(ada, "move", x=x, y=6)
+        after = next(iter(self.room(ada)["rovers"]))
+        self.assertEqual((after["x"], after["y"]), (before["x"], before["y"]))
+
+    def test_honks_and_dances_reach_the_room(self):
+        ada, bo = self.enter("Ada", "Bo")
+        seat = self.room(ada)["you"]
+        for kind in ("honk", "dance", "wave"):
+            self.act(ada, kind)
+        seen = self.room(bo, 0)["events"]
+        self.assertEqual([(e["kind"], e["seat"]) for e in seen], [("honk", seat), ("dance", seat), ("wave", seat)])
+        self.assertEqual(self.room(bo, seen[-1]["n"])["events"], [])
+        self.assertEqual(self.room(bo)["events"], [])   # coming in, there's nothing to catch up on
+
+    def test_a_rover_cannot_flood_the_room(self):
+        ada, = self.enter("Ada")
+        for _ in range(5):
+            self.post("/planet/lounge", {"id": ada, "do": "honk"})
+        self.assertEqual(len(self.room(ada, 0)["events"]), 1)
+
+    def test_cheers_come_from_the_list_and_go_to_someone_else(self):
+        ada, bo = self.enter("Ada", "Bo")
+        mine, theirs = self.room(ada)["you"], self.room(bo)["you"]
+        self.act(ada, "cheer", to=theirs, cheer="rude words")
+        self.act(ada, "cheer", to=theirs, cheer=["👏"])
+        self.act(ada, "cheer", to=mine, cheer="👏")
+        self.act(ada, "cheer", to=99, cheer="👏")
+        self.assertEqual(self.room(bo, 0)["events"], [])
+        self.act(ada, "cheer", to=theirs, cheer="👏")
+        e = self.room(bo, 0)["events"][0]
+        self.assertEqual((e["to"], e["seat"], e["cheer"], e["tag"]), (theirs, mine, "👏", "Ada"))
+
+    def test_a_quiet_rover_has_left(self):
+        ada, bo = self.enter("Ada", "Bo")
+        self.act(bo, "stage")
+        server.planet_lounge["here"][bo]["seen"] = 0
+        out = self.room(ada)
+        self.assertEqual([r["tag"] for r in out["rovers"]], ["Ada"])
+        self.assertIsNone(out["stage"])
+
+    def test_a_removed_student_leaves_the_room(self):
+        ada, bo = self.enter("Ada", "Bo")
+        del server.players[bo]
+        self.assertEqual([r["tag"] for r in self.room(ada)["rovers"]], ["Ada"])
+
+    def test_anyone_can_take_the_stage_without_any_code(self):
+        ada, = self.enter("Ada")
+        stage = self.act(ada, "stage")["stage"]
+        self.assertEqual([s[0] for s in stage["steps"]], ["spin", "dance", "honk", "wave"])
+        self.assertEqual((stage["seat"], stage["tag"]), (self.room(ada)["you"], "Ada"))
+
+    def test_the_stage_takes_one_rover_at_a_time(self):
+        ada, bo, cy = self.enter("Ada", "Bo", "Cy")
+        seat = {k: self.room(k)["you"] for k in (ada, bo, cy)}
+        self.act(ada, "stage")
+        self.act(bo, "stage")
+        self.act(bo, "stage")   # pressing twice doesn't queue twice
+        out = self.act(cy, "stage")
+        self.assertEqual(out["stage"]["seat"], seat[ada])
+        self.assertEqual(out["queue"], [seat[bo], seat[cy]])
+        self.act(ada, "stage")   # on stage already: no second go
+        self.assertEqual(self.room(cy)["queue"], [seat[bo], seat[cy]])
+        server.planet_lounge["stage"]["until"] = 0
+        out = self.room(cy)
+        self.assertEqual((out["stage"]["seat"], out["queue"]), (seat[bo], [seat[cy]]))
+        server.planet_lounge["stage"]["until"] = 0
+        out = self.room(cy)
+        self.assertEqual((out["stage"]["seat"], out["queue"]), (seat[cy], []))
+        server.planet_lounge["stage"]["until"] = 0
+        self.assertIsNone(self.room(cy)["stage"])
+
+    def test_someone_in_the_queue_can_wander_off(self):
+        ada, bo, cy = self.enter("Ada", "Bo", "Cy")
+        self.act(ada, "stage"); self.act(bo, "stage"); self.act(cy, "stage")
+        server.planet_lounge["here"][bo]["seen"] = 0
+        self.assertEqual(self.room(ada)["queue"], [self.room(cy)["you"]])
+
+    def test_a_kept_show_is_what_the_rover_does_on_stage(self):
+        ada, = self.enter("Ada")
+        out = self.act(ada, "try_show", code="for i in range(2):\n    honk()\n")
+        self.assertEqual(len(out["steps"]), 2)
+        self.assertFalse(self.get(f"/planet/state?id={ada}")["has_show"])   # only tried
+        self.assertEqual(self.get(f"/planet/state?id={ada}")["show_code"], "for i in range(2):\n    honk()\n")
+        self.assertIsNone(self.act(ada, "keep_show", code="for i in range(2):\n    honk()\n")["error"])
+        self.assertTrue(self.get(f"/planet/state?id={ada}")["has_show"])
+        self.assertEqual([s[0] for s in self.act(ada, "stage")["stage"]["steps"]], ["honk", "honk"])
+        self.assertAlmostEqual(server.planet_lounge["stage"]["until"] - server.planet_lounge["stage"]["start"],
+                               2 * server.STAGE_ROLL + 2 * planet.SHOW_BEATS["honk"], places=3)
+
+    def test_a_broken_or_empty_show_is_not_kept(self):
+        ada, = self.enter("Ada")
+        self.assertIn("I don't know", self.act(ada, "keep_show", code="sing()")["error"])
+        self.assertIn("doesn't do anything", self.act(ada, "keep_show", code="# nothing")["error"])
+        self.assertFalse(self.get(f"/planet/state?id={ada}")["has_show"])
+
+    def test_a_show_earns_nothing(self):
+        ada, = self.enter("Ada")
+        entry = server.planet_entry(server.players[ada])
+        before = json.dumps([entry["stars"], entry["badges"]])
+        self.act(ada, "keep_show", code="for i in range(3):\n    spin()\n")
+        self.act(ada, "stage")
+        self.assertEqual(json.dumps([entry["stars"], entry["badges"]]), before)
+
+    def test_the_rover_name_is_on_the_tag_until_the_teacher_wipes_it(self):
+        ada, = self.enter("Ada")
+        self.post("/planet/rover", {"id": ada, "name": "Zoomer"})
+        self.assertEqual(self.room(ada)["rovers"][0]["tag"], "Zoomer · Ada")
+        self.assertEqual(self.get("/planet/overview")["students"][0]["rover_name"], "Zoomer")
+        self.assertIn("Wiped", self.admin("planet_wipe_name", pid=ada)["ok"])
+        self.assertEqual(self.room(ada)["rovers"][0]["tag"], "Ada")
+        self.assertEqual(self.get("/planet/overview")["students"][0]["rover_name"], "")
+        self.assertEqual(self.admin("planet_wipe_name", pid="nobody")["ok"], "No such student.")
+
+    def test_wiped_paint_leaves_the_room_at_once(self):
+        ada, = self.enter("Ada")
+        self.post("/planet/paint", {"id": ada, "code": 'paint(1, 1, "red")', "wear": True})
+        self.assertEqual(self.room(ada)["rovers"][0]["look"]["paint"], "mine")
+        self.admin("planet_wipe_paint", pid=ada)
+        self.assertNotEqual(self.room(ada)["rovers"][0]["look"]["paint"], "mine")
+
+    def test_the_page_has_everything_the_script_asks_for(self):
+        page = open(os.path.join(HERE, "planet.html"), encoding="utf-8").read()
+        script = open(os.path.join(HERE, "planet_lounge.js"), encoding="utf-8").read()
+        self.assertIn('src="/planet/lounge.js"', page)
+        for name in set(re.findall(r'\$\("(\w+)"\)', script)):
+            self.assertIn(f'id="{name}"', page)
+        with urlopen(self.base + "/planet/lounge.js") as response:
+            self.assertIn(b"function openLounge", response.read())
+
+    def test_the_rooms_size_matches_the_page(self):
+        script = open(os.path.join(HERE, "planet_lounge.js"), encoding="utf-8").read()
+        self.assertIn(f"cols: {server.LOUNGE_COLS}, rows: {server.LOUNGE_ROWS}, floor: {server.LOUNGE_FLOOR}", script)
 
 
 if __name__ == "__main__":

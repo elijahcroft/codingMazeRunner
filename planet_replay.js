@@ -7,13 +7,20 @@ const REPLAY_TILE = {"#": "#1d1736", ".": "#4f4386", S: "#4f4386", "*": "#4f4386
                      O: "#4f4386", "+": "#7a6430", P: "#4f4386", D: "#7a4f2a", ">": "#4a4766", "<": "#4a4766",
                      "^": "#4a4766", v: "#4a4766", H: "#2f7a60", k: "#4f4386", B: "#4f4386",
                      h: "#1d1736", z: "#1d1736", m: "#1d1736", c: "#4f4386", g: "#4f4386"};
+const DANCE_MS = 900, DANCE_REST = 700;   // a dance at the beacon, then a breather
 const REPLAY_BELT = {"^": -Math.PI / 2, ">": 0, v: Math.PI / 2, "<": Math.PI};
 
-// The map, with what the rover has already picked up (`taken`) gone.
-function replayMap(g, map, cell, taken, now) {
+// The map, with what the rover has already picked up (`taken`) gone. `pal`
+// is the student's map look from the garage (planet_render's WORLDS), if any:
+// its ground and rock in place of the replay's own.
+function replayMap(g, map, cell, taken, now, pal) {
+  const tile = ch => {
+    const t = REPLAY_TILE[ch] || REPLAY_TILE["."];
+    return !pal ? t : t === REPLAY_TILE["."] ? pal.ground : t === REPLAY_TILE["#"] ? pal.rock : t;
+  };
   map.forEach((row, r) => [...row].forEach((ch, c) => {
     const x = c * cell, y = r * cell, cx = x + cell / 2, cy = y + cell / 2, at = r + "," + c;
-    g.fillStyle = REPLAY_TILE[ch] || REPLAY_TILE["."];
+    g.fillStyle = tile(ch);
     g.fillRect(x, y, cell + .5, cell + .5);
     if (ch === "#") {   // rock: dark, with a lit top edge
       g.fillStyle = "rgba(185,163,255,.16)"; g.fillRect(x, y, cell, cell * .14);
@@ -22,7 +29,7 @@ function replayMap(g, map, cell, taken, now) {
     }
     if (ch === "O") {
       const grad = g.createRadialGradient(cx, cy, cell * .05, cx, cy, cell * .46);
-      grad.addColorStop(0, "#000"); grad.addColorStop(.8, "#120d22"); grad.addColorStop(1, "#4f4386");
+      grad.addColorStop(0, "#000"); grad.addColorStop(.8, "#120d22"); grad.addColorStop(1, tile("."));
       g.fillStyle = grad; g.beginPath(); g.arc(cx, cy, cell * .46, 0, 7); g.fill();
     } else if (ch === "*" && !taken.has(at)) {
       g.fillStyle = "#ffb547"; g.beginPath();
@@ -94,7 +101,7 @@ function replayStage(screen, canvas) {
     const run = st.run;
     if (!run) return;
     const map = run.map, rows = map.length, cols = map[0].length;
-    const cell = Math.min((rect.width - 40) / cols, (rect.height - 40) / rows, 72);
+    const pad = st.pad == null ? 40 : st.pad, cell = Math.min((rect.width - pad) / cols, (rect.height - pad) / rows, 72);
     const ox = (rect.width - cols * cell) / 2, oy = (rect.height - rows * cell) / 2;
     const path = run.path, total = Math.max(0, path.length - 1);
     // A frame's time can be a moment before play() was called.
@@ -106,16 +113,24 @@ function replayStage(screen, canvas) {
       if (path[k][3]) taken.add(`knock ${path[k][3][0]},${path[k][3][1]}`);   // a door knocked on
     }
     g.save(); g.translate(ox, oy);
-    replayMap(g, map, cell, taken, now);
-    // The trail so far, broken where a pad sent the rover somewhere else.
-    g.strokeStyle = "rgba(140,242,198,.65)"; g.lineWidth = Math.max(2, cell * .1); g.lineCap = "round"; g.lineJoin = "round";
-    g.beginPath();
-    for (let k = 0; k <= pos.i; k++) {
-      const [r, c, e] = path[k], x = (c + .5) * cell, y = (r + .5) * cell;
-      if (!k || e === "portal") g.moveTo(x, y); else g.lineTo(x, y);
+    // The student's own map look, except on Halloween night's spooky streets.
+    const look = run.look || {};
+    replayMap(g, map, cell, taken, now, /^h\d+$/.test(run.site || "") ? null : WORLDS[look.world]);
+    if (look.trail && look.trail !== "tracks") {
+      // Their trail from the garage, as it looks on their own screen.
+      const frames = path.slice(0, pos.i + 1).map(([r, c, e]) => ({r, c, e}));
+      drawTrail(g, frames, frames.length - 1, {r: pos.r, c: pos.c}, cell, now, look);
+    } else {
+      // The route so far, broken where a pad sent the rover somewhere else.
+      g.strokeStyle = "rgba(140,242,198,.65)"; g.lineWidth = Math.max(2, cell * .1); g.lineCap = "round"; g.lineJoin = "round";
+      g.beginPath();
+      for (let k = 0; k <= pos.i; k++) {
+        const [r, c, e] = path[k], x = (c + .5) * cell, y = (r + .5) * cell;
+        if (!k || e === "portal") g.moveTo(x, y); else g.lineTo(x, y);
+      }
+      if (!st.done) g.lineTo((pos.c + .5) * cell, (pos.r + .5) * cell);
+      g.stroke();
     }
-    if (!st.done) g.lineTo((pos.c + .5) * cell, (pos.r + .5) * cell);
-    g.stroke();
     const dr = pos.b[0] - pos.a[0], dc = pos.b[1] - pos.a[1];
     if (dr || dc) st.angle = Math.atan2(Math.sign(dr), Math.sign(dc));
     const party = st.done && run.reached && !REPLAY_REDUCED;
@@ -125,9 +140,16 @@ function replayStage(screen, canvas) {
       g.fillStyle = "rgba(0,0,0,.35)"; g.beginPath();
       g.ellipse(x, (pos.r + .5) * cell + cell * .25, cell * .3 * (1 - pos.lift * .4), cell * .1, 0, 0, 7); g.fill();
     }
-    const hop = party ? Math.abs(Math.sin((now - st.held) / 160)) * cell * .25 : 0;
-    drawRover(g, x, y - hop, cell * 1.15 * (1 + pos.lift * .3) * shrink, st.angle + (party ? (now - st.held) / 300 : 0), 1, run.look, now);
-    if (run.look.pet && run.look.pet !== "nopet") drawPet(g, x + cell * .55, y - cell * .55, cell * 1.2, run.look.pet, now);
+    // At the beacon: the student's own victory dance, again and again.
+    const u2 = party ? ((now - st.held) % (DANCE_MS + DANCE_REST)) / DANCE_MS : 1;
+    const d = dance(u2 < 1 ? look.dance : "none", Math.min(1, u2));
+    const rx = x + d.dx * cell, ry = y + d.dy * cell - d.lift * cell * .6;
+    if (d.ring) discoRing(g, rx, ry, cell, d.ring, now);
+    g.save(); g.translate(rx, ry); g.scale(d.sx || .02, 1);
+    drawRover(g, 0, 0, cell * 1.15 * (1 + pos.lift * .3 + d.lift * .25) * shrink, st.angle + d.angle, d.alpha, look, now);
+    g.restore();
+    danceFx(g, rx, ry, cell, d);
+    if (look.pet && look.pet !== "nopet") drawPet(g, x + cell * .55, y - cell * .55, cell * 1.2, look.pet, now);
     // Halloween night's ghosts, floating to and fro (a square a tick, as on the planet).
     for (const gh of run.ghosts || []) {
       const n = gh.path.length, span = 2 * (n - 1) || 1, t = u, k = Math.floor(t), f = t - k;

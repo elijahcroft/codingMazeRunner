@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strange Planet — Class Race</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>🏁</text></svg>">
+<style>
+  /* For the class screen: every student who won the class challenge drives
+     their own program at the same moment, each on their own map. The page is
+     all on this computer: the server only hands over the routes. */
+  :root { color-scheme: dark; --sky: #120f24; --panel: #231d42; --edge: #3d3470; --bone: #f4eee2; --haze: #a99fca; --gold: #ffd36b; --mint: #8cf2c6; --ui: system-ui, "Segoe UI", Roboto, "Noto Sans", sans-serif; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin: 0; overflow: hidden; background: var(--sky); color: var(--bone); font: 18px/1.35 var(--ui); }
+  .race { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 10px; padding: 12px 18px; }
+  .top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; }
+  .top h1 { margin: 0; font-size: 28px; font-weight: 850; letter-spacing: -.02em; }
+  .top p { flex: 1 1 260px; margin: 0; color: var(--haze); }
+  button { padding: 10px 22px; border: 0; border-radius: 12px; background: linear-gradient(120deg, #ffd36b, #8cf2c6); color: #1d1240; font: 800 20px var(--ui); cursor: pointer; }
+  button:disabled { opacity: .45; cursor: default; }
+  .grid { display: grid; gap: 10px; min-height: 0; }
+  .tile { position: relative; display: grid; grid-template-rows: minmax(0, 1fr) auto; min-width: 0; min-height: 0; padding: 6px; border-radius: 12px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--edge); }
+  .tile.done { box-shadow: inset 0 0 0 3px var(--mint); }
+  .tile.first { box-shadow: inset 0 0 0 4px var(--gold); }
+  .screen { position: relative; min-height: 0; }
+  .screen canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .line { display: flex; justify-content: space-between; gap: 8px; font-weight: 750; white-space: nowrap; overflow: hidden; }
+  .line span { color: var(--haze); font-weight: 600; }
+  .tile.done .line span { color: var(--mint); }
+  .count { position: fixed; inset: 0; display: grid; place-items: center; font-size: 30vh; font-weight: 900; pointer-events: none; text-shadow: 0 8px 40px #000; }
+  .awards { display: flex; flex-wrap: wrap; gap: 8px 22px; min-height: 34px; font-size: 21px; font-weight: 750; color: var(--gold); }
+  .code { position: fixed; inset: 5vh 8vw; display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; justify-items: start; gap: 14px; padding: 28px; border-radius: 18px; background: var(--panel); box-shadow: 0 0 0 2px var(--gold), 0 30px 80px #000; }
+  .code h2, .code p { margin: 0; }
+  .code pre { justify-self: stretch; margin: 0; padding: 20px 24px; overflow: auto; border-radius: 14px; background: #0c0a19; color: var(--gold); font: clamp(20px, 3vh, 34px)/1.4 ui-monospace, Menlo, Consolas, monospace; }
+  .empty { align-self: center; margin: 0; color: var(--haze); text-align: center; font-size: 24px; }
+</style>
+</head>
+<body>
+<div class="race">
+  <div class="top"><h1>🏁 Class race</h1><p id="about"></p><button id="program" hidden>✂️ Show the shortest program</button><button id="go" disabled>🏁 Start the race</button></div>
+  <div class="grid" id="grid"></div>
+  <div class="awards" id="awards" aria-live="polite"></div>
+</div>
+<div class="count" id="count" hidden></div>
+<div class="code" id="codeBox" hidden><h2>✂️ The shortest program</h2><pre id="code"></pre><p>What does each line do? Could it be shorter still?</p><button id="codeClose">Close</button></div>
+<script src="/planet/render.js"></script>
+<script src="/planet/replay.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const CALM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const RACE_LONGEST_MS = 14000;   // how long the slowest rover takes, at most
+const RACE_FRAME_MS = 33;
+const race = {state: "waiting", racers: [], stages: [], seen: "", drawn: 0, finished: 0};
+
+const esc = v => String(v).replace(/[&<>"]/g, ch => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[ch]));
+const ticks = run => run.ticks;
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+// One tile each, with as many columns as gives the biggest maps.
+function layOut() {
+  const n = race.racers.length, grid = $("grid"), box = grid.getBoundingClientRect();
+  let best = 1, biggest = 0;
+  for (let cols = 1; cols <= n; cols++) {
+    const rows = Math.ceil(n / cols), size = Math.min(box.width / cols, box.height / rows * 1.5);
+    if (size > biggest) { biggest = size; best = cols; }
+  }
+  grid.style.gridTemplateColumns = `repeat(${best}, minmax(0, 1fr))`;
+  grid.style.gridTemplateRows = `repeat(${Math.ceil(n / best)}, minmax(0, 1fr))`;
+}
+function lineUp(racers) {
+  race.racers = racers;
+  $("awards").textContent = "";
+  $("grid").innerHTML = racers.map((run, i) => `<div class="tile" id="tile${i}"><div class="screen"><canvas></canvas></div><div class="line">${esc(run.name)}<span id="tick${i}"></span></div></div>`).join("");
+  layOut();
+  race.stages = racers.map((run, i) => {
+    const tile = $(`tile${i}`), stage = replayStage(tile.querySelector(".screen"), tile.querySelector("canvas"));
+    stage.play(run);
+    stage.pad = 4;
+    stage.started = Infinity;              // everyone waits on the line
+    stage.onFinish = () => finished(i);
+    return stage;
+  });
+}
+function start() {
+  const longest = Math.max(1, ...race.racers.map(ticks)), step = Math.max(70, Math.min(260, RACE_LONGEST_MS / longest));
+  const at = performance.now();
+  race.finished = 0;
+  race.fastest = Math.min(...race.racers.map(ticks));
+  race.racers.forEach((run, i) => {
+    Object.assign(race.stages[i], {step, started: at, done: false});
+    $(`tile${i}`).classList.remove("done", "first");
+    $(`tick${i}`).textContent = "";
+  });
+  race.state = "racing";
+}
+function finished(i) {
+  const run = race.racers[i];
+  $(`tile${i}`).classList.add("done");
+  if (ticks(run) === race.fastest) $(`tile${i}`).classList.add("first");
+  $(`tick${i}`).textContent = `🏁 ${plural(ticks(run), "tick")}`;
+  if (++race.finished === race.racers.length) awards();
+}
+function awards() {
+  race.state = "finished";
+  const names = list => { if (list.length > 1 && list.length === race.racers.length) return "everyone tied"; const shown = list.slice(0, 3).map(run => esc(run.name)).join(", "); return shown + (list.length > 3 ? ` and ${list.length - 3} more` : ""); };
+  const chars = Math.min(...race.racers.map(run => run.chars));
+  $("awards").innerHTML = `<span>⚡ Fastest rover: ${names(race.racers.filter(run => ticks(run) === race.fastest))} (${plural(race.fastest, "tick")})</span>`
+    + `<span>✂️ Shortest program: ${names(race.racers.filter(run => run.chars === chars))} (${plural(chars, "letter")})</span>`;
+  $("go").textContent = "🔁 Race again"; $("go").disabled = false;
+  $("code").textContent = race.racers.find(run => run.chars === chars).code;
+  $("program").hidden = false;
+}
+function countDown() {
+  $("go").disabled = true;
+  $("program").hidden = true;
+  $("awards").textContent = "";
+  race.state = "counting";
+  const count = $("count");
+  count.hidden = false;
+  ["3", "2", "1", "GO!"].forEach((word, i) => setTimeout(() => {
+    count.textContent = word;
+    if (word === "GO!") { start(); setTimeout(() => { count.hidden = true; }, 700); }
+  }, i * (CALM ? 500 : 900)));
+}
+function frame(now) {
+  // Thirty a second is plenty, and a class's worth of maps is a lot to draw.
+  if (now - race.drawn >= RACE_FRAME_MS) {
+    race.drawn = now;
+    for (const stage of race.stages) stage.draw(now);
+  }
+  requestAnimationFrame(frame);
+}
+async function refresh() {
+  if (race.state === "racing" || race.state === "counting") return;
+  const out = await (await fetch("/planet/race/lineup")).json().catch(() => null);
+  if (!out) return;
+  const seen = JSON.stringify(out.racers.map(run => [run.name, run.path.length, run.chars]));
+  $("about").textContent = !out.key ? "Pick a level for the 🎯 Class challenge on your teacher page first."
+    : `${out.key.toUpperCase()} ${out.name}: ${plural(out.racers.length, "rover")} ready. Win this level to join the race.`;
+  if (seen !== race.seen) {
+    race.seen = seen; race.state = "waiting";
+    lineUp(out.racers);
+    $("go").textContent = "🏁 Start the race";
+    $("grid").insertAdjacentHTML("beforeend", out.racers.length ? "" : `<p class="empty">Nobody's in the race yet. Everyone who wins the class challenge joins.</p>`);
+  }
+  if (race.state === "waiting") $("go").disabled = !out.racers.length;
+}
+$("go").addEventListener("click", countDown);
+$("program").addEventListener("click", () => { $("codeBox").hidden = false; });
+$("codeClose").addEventListener("click", () => { $("codeBox").hidden = true; });
+addEventListener("resize", () => { if (race.racers.length) layOut(); });
+requestAnimationFrame(frame);
+refresh();
+setInterval(refresh, 3000);
+</script>
+</body>
+</html>

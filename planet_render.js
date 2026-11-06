@@ -53,10 +53,13 @@ function drawRover(ctx, x, y, s, angle, alpha, gear, now = performance.now()) {
     ctx.beginPath(); ctx.moveTo(-.14 * s, -.18 * s); ctx.lineTo(-.14 * s, .18 * s); ctx.moveTo(-.29 * s, 0); ctx.lineTo(.01 * s, 0); ctx.stroke();
   }
   drawTopper(ctx, s, gear.topper, now);
-  ctx.fillStyle = "#e6dccb"; ctx.strokeStyle = "#6e6290"; ctx.lineWidth = Math.max(1, s * .03);
-  ctx.beginPath(); ctx.arc(.15 * s, 0, s * .1, 0, 7); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = "#231d3f"; roundRect(ctx, .18 * s, -.06 * s, .1 * s, .12 * s, .02 * s); ctx.fill();
-  ctx.fillStyle = "#8cf2c6"; ctx.beginPath(); ctx.arc(.25 * s, 0, s * .025, 0, 7); ctx.fill();
+  // The camera head at the front, unless the student hid it to show off their paint.
+  if (!gear.nomast) {
+    ctx.fillStyle = "#e6dccb"; ctx.strokeStyle = "#6e6290"; ctx.lineWidth = Math.max(1, s * .03);
+    ctx.beginPath(); ctx.arc(.15 * s, 0, s * .1, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#231d3f"; roundRect(ctx, .18 * s, -.06 * s, .1 * s, .12 * s, .02 * s); ctx.fill();
+    ctx.fillStyle = "#8cf2c6"; ctx.beginPath(); ctx.arc(.25 * s, 0, s * .025, 0, 7); ctx.fill();
+  }
   const set = fullSet(gear);
   if (set) { ctx.rotate(-angle); setSparkle(ctx, s, set, now); }
   ctx.restore();
@@ -1639,3 +1642,283 @@ Object.assign(PETS, {
   },
 });
 SETS.push({name: "Trick-or-Treat", icon: "🎃", items: {topper: "witchhat", paint: "candycorn", pet: "blackcat", trail: "candytrail"}});
+
+// ---- A student's whole loadout, for every screen: the map looks, the trail
+// behind the rover and the victory dance. The student page draws its own
+// rover with these, and so do the replays on the teacher's page and the class
+// screen (planet_replay.js).
+
+// The garage's map looks: one palette for every zone in place of the zone's
+// own. Rock stays much darker than ground (or, on the dark ones, lit along its
+// edge) so the two never blur together. Besides the three colours: ice (light
+// and dark), grit (speck colours), seam (tile lines), edge (rock's lit lip),
+// rim (round a crater), stars (specks in the bedrock) and pixel (blocky).
+const WORLDS = {
+  moon: {ground: "#a3a3ad", rock: "#56565f", bed: "#16161c"},
+  snow: {ground: "#e8eef5", rock: "#5a6a80", bed: "#1d2633", ice: ["#a6e0ff", "#3f8fd0"], seam: "rgba(60,80,110,.2)"},
+  candy: {ground: "#f6b3cf", rock: "#6b3a22", bed: "#2e1810", grit: ["#ff5a7a", "#5ad1ff", "#fff36b", "#8cf2a0", "#ffffff"]},
+  volcano: {ground: "#5e4a46", rock: "#2a1d1c", bed: "#3a0f06", edge: "#ff8a3d", rim: "#ff8a3d", stars: "rgba(255,122,46,.6)"},
+  space: {ground: "#3d3470", rock: "#1a1433", bed: "#07051a", edge: "#b9a3ff", rim: "#b9a3ff",
+          grit: ["rgba(10,6,30,.3)", "rgba(255,255,255,.75)"], stars: "rgba(255,255,255,.7)"},
+  neon: {ground: "#131a3a", rock: "#5a2a8a", bed: "#060914", edge: "#ff4fd8", rim: "#5af0ff",
+         seam: "rgba(90,240,255,.5)", ice: ["#8ff8ff", "#2aa8d8"]},
+  blocky: {ground: "#6dbb44", rock: "#505357", bed: "#5b3d24", ice: ["#a9d8ff", "#6fa8e0"], pixel: true},
+  factory: {ground: "#7d838c", rock: "#33373e", bed: "#111317", edge: "#ffb84d", seam: "rgba(20,22,26,.35)"},
+  sandstone: {ground: "#e0b77e", rock: "#8a5a32", bed: "#3a2414", grit: ["rgba(140,80,40,.18)", "rgba(255,240,210,.2)"]},
+  jungle: {ground: "#5f8f45", rock: "#2e4a26", bed: "#13210f", grit: ["rgba(30,60,20,.28)", "rgba(190,240,120,.2)"]},
+  clouds: {ground: "#eef3ff", rock: "#b9a3ff", bed: "#8fb8ff", grit: ["rgba(255,255,255,.7)", "rgba(150,170,220,.22)"], seam: "rgba(150,170,220,.25)"},
+  starry: {ground: "#1d2a5a", rock: "#0d1330", bed: "#050818", edge: "#ffd36b", rim: "#ffd36b",
+           grit: ["rgba(255,236,170,.85)", "rgba(10,20,50,.3)"], stars: "rgba(255,236,170,.8)"},
+  haunted: {ground: "#4a3f63", rock: "#1f1830", bed: "#0b0814", edge: "#9cff6b", rim: "#9cff6b",
+            grit: ["rgba(156,255,107,.3)", "rgba(10,6,20,.3)"], stars: "rgba(156,255,107,.5)"},
+  graveyard: {ground: "#3c4a3a", rock: "#20242c", bed: "#0a0c12", edge: "#ff9a3c", rim: "#b98cff",
+              grit: ["rgba(20,30,20,.35)", "rgba(200,220,200,.18)", "rgba(255,154,60,.35)"], stars: "rgba(255,210,150,.6)"},
+  jurassic: {ground: "#6b8f3a", rock: "#3a2a1c", bed: "#1a120b", edge: "#ff8a3d",
+             grit: ["rgba(40,70,20,.35)", "rgba(220,250,140,.2)"]},
+  underwater: {ground: "#d9c48f", rock: "#2a6f8a", bed: "#0a2a4a", edge: "#8ff0ff", rim: "#5ad1ff",
+               grit: ["rgba(255,255,255,.5)", "rgba(40,120,160,.25)", "rgba(255,120,150,.35)"], ice: ["#b8f0ff", "#4aa8d8"]},
+  deepcave: {ground: "#8a8a8f", rock: "#3a3a42", bed: "#141418", ice: ["#a8fff9", "#2aa3a0"], pixel: true},
+  nether: {ground: "#8a2f2f", rock: "#3a1414", bed: "#1a0606", ice: ["#ffe14d", "#c79a2a"], pixel: true},
+};
+
+// Smooth in and out, u from 0 to 1.
+function ease(u) { return u < .5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2; }
+
+// The trail behind the rover: `frames` up to `i`, then the rover's spot.
+// `gear` is the look to draw (the student page's own `look` if left out).
+// Behind the rover: wheel tracks, in the trail style from the garage.
+function drawTrail(ctx, frames, i, rover, cell, now, gear = look) {
+  const pts = frames.slice(0, i + 1).map(f => ({r: f.r, c: f.c, jump: f.e === "portal"}));
+  pts.push({r: rover.r, c: rover.c, jump: false});
+  const segs = [];
+  for (let k = 1; k < pts.length; k++) {
+    const p = pts[k], q = pts[k - 1];
+    if (!p.jump && Math.abs(p.r - q.r) + Math.abs(p.c - q.c) <= 1.01 && (p.r !== q.r || p.c !== q.c)) segs.push([q, p, k]);
+  }
+  ctx.lineCap = "round"; ctx.lineWidth = Math.max(1.5, cell * (gear.trail === "slime" ? .16 : .07));
+  for (const side of gear.trail === "paws" ? [] : [-.25, .25]) {
+    for (const [q, p, k] of segs) {
+      ctx.strokeStyle = gear.trail === "rainbow" ? `hsla(${(k * 24) % 360},90%,72%,.7)` : gear.trail === "slime" ? "rgba(126,224,74,.6)" : "rgba(30,14,30,.32)";
+      const dx = p.c - q.c, dy = p.r - q.r, len = Math.hypot(dx, dy) || 1;
+      const nx = -dy / len * side * cell, ny = dx / len * side * cell;
+      ctx.beginPath();
+      ctx.moveTo((q.c + .5) * cell + nx, (q.r + .5) * cell + ny);
+      ctx.lineTo((p.c + .5) * cell + nx, (p.r + .5) * cell + ny);
+      ctx.stroke();
+    }
+  }
+  if (gear.trail === "dust") {
+    for (const [, p, k] of segs.slice(-8)) {
+      const age = (segs.length - segs.findIndex(s => s[2] === k)) / 8;
+      ctx.fillStyle = `rgba(232,210,184,${.25 * (1 - age)})`;
+      ctx.beginPath(); ctx.arc((p.c + .5) * cell, (p.r + .5) * cell, cell * (.18 + age * .25), 0, 7); ctx.fill();
+    }
+  } else if (gear.trail === "sparkle") {
+    for (const [, p, k] of segs) {
+      const tw = CALM ? .6 : .5 + .5 * Math.sin(now / 200 + k * 1.7);
+      ctx.fillStyle = `rgba(255,236,170,${tw * .8})`;
+      ctx.beginPath(); ctx.arc((p.c + .5 + (hash(k, 1) - .5) * .5) * cell, (p.r + .5 + (hash(k, 2) - .5) * .5) * cell, Math.max(1, cell * .045), 0, 7); ctx.fill();
+    }
+  } else if (gear.trail === "hearts") {
+    for (const [, p, k] of segs) {
+      const z = cell * .15 * (CALM ? 1 : 1 + .15 * Math.sin(now / 250 + k));
+      ctx.fillStyle = "rgba(255,111,159,.85)"; heart(ctx, (p.c + .5) * cell, (p.r + .5) * cell, z);
+    }
+  } else if (gear.trail === "paws") {   // prints that turn the way the rover went
+    for (const [q, p, k] of segs) {
+      const a = Math.atan2(p.r - q.r, p.c - q.c), side = k % 2 ? .18 : -.18;
+      ctx.save(); ctx.translate((p.c + .5) * cell, (p.r + .5) * cell); ctx.rotate(a); ctx.translate(0, side * cell);
+      ctx.fillStyle = "rgba(60,30,45,.55)";
+      ctx.beginPath(); ctx.ellipse(0, 0, cell * .1, cell * .13, 0, 0, 7); ctx.fill();
+      for (const [tx, ty] of [[.13, -.12], [.17, -.04], [.17, .04], [.13, .12]]) { ctx.beginPath(); ctx.arc(tx * cell, ty * cell, cell * .04, 0, 7); ctx.fill(); }
+      ctx.restore();
+    }
+  } else if (gear.trail === "slime") {
+    ctx.fillStyle = "rgba(126,224,74,.7)";
+    for (const [, p, k] of segs) {
+      if (hash(k, 6) < .5) continue;
+      ctx.beginPath(); ctx.arc((p.c + .5 + (hash(k, 7) - .5) * .5) * cell, (p.r + .5 + (hash(k, 8) - .5) * .5) * cell, cell * (.05 + hash(k, 9) * .06), 0, 7); ctx.fill();
+    }
+  } else if (gear.trail === "pixels") {   // little blocks dropped along the way
+    const colors = ["#6dbb44", "#7a5230", "#9aa0a6", "#4ee6e0", "#ffd36b"];
+    for (const [, p, k] of segs) for (const j of [0, 1]) {
+      const z = cell * .17;
+      ctx.fillStyle = colors[Math.floor(hash(k, j, 10) * colors.length)];
+      ctx.fillRect((p.c + .5 + (hash(k, j, 11) - .5) * .6) * cell - z / 2, (p.r + .5 + (hash(k, j, 12) - .5) * .6) * cell - z / 2, z, z);
+    }
+  } else if (gear.trail === "notes") {   // music notes that bob along behind
+    ctx.font = `700 ${Math.round(cell * .46)}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    for (const [, p, k] of segs) {
+      const bob = CALM ? 0 : Math.sin(now / 300 + k) * cell * .05;
+      ctx.fillStyle = ["#ff6fae", "#8fc8ff", "#ffd36b", "#7ff0d6"][k % 4];
+      ctx.fillText(k % 2 ? "♪" : "♫", (p.c + .5 + (hash(k, 17) - .5) * .4) * cell, (p.r + .5) * cell + bob);
+    }
+  } else if (gear.trail === "stars") {   // little gold stars that twinkle
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    for (const [, p, k] of segs) {
+      const tw = CALM ? .8 : .45 + .55 * Math.abs(Math.sin(now / 260 + k * 1.3));
+      ctx.globalAlpha = tw; ctx.fillStyle = "#ffd36b";
+      ctx.font = `${Math.round(cell * (.3 + hash(k, 18) * .16))}px system-ui, sans-serif`;
+      ctx.shadowColor = "#ffd36b"; ctx.shadowBlur = cell * .2;
+      ctx.fillText("★", (p.c + .5 + (hash(k, 19) - .5) * .5) * cell, (p.r + .5 + (hash(k, 20) - .5) * .5) * cell);
+    }
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  } else if (gear.trail === "fireworks") {   // bursts on the newest squares, glitter behind
+    segs.forEach(([, p, k], n) => {
+      const age = (segs.length - 1 - n) / 6, x = (p.c + .5) * cell, y = (p.r + .5) * cell;
+      const color = ["#ff6fae", "#ffd36b", "#7ff0d6", "#8fc8ff", "#c69bff"][k % 5];
+      ctx.fillStyle = ctx.strokeStyle = color;
+      if (age >= 1) { ctx.globalAlpha = .6; ctx.beginPath(); ctx.arc(x, y, cell * .04, 0, 7); ctx.fill(); ctx.globalAlpha = 1; return; }
+      const r = cell * (.15 + .25 * (CALM ? .5 : age)) ;
+      ctx.lineWidth = Math.max(1, cell * .035); ctx.globalAlpha = 1 - age * .7;
+      for (let j = 0; j < 8; j++) {
+        const a = j * Math.PI / 4 + k;
+        ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r * .4, y + Math.sin(a) * r * .4); ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    });
+  } else if (gear.trail === "fire") {   // flames on the newest squares, scorch marks behind
+    segs.forEach(([, p, k], n) => {
+      const age = (segs.length - 1 - n) / 8, x = (p.c + .5) * cell, y = (p.r + .5) * cell;
+      if (age >= 1) {
+        ctx.fillStyle = "rgba(20,8,4,.3)"; ctx.beginPath(); ctx.arc(x, y, cell * .14, 0, 7); ctx.fill();
+        return;
+      }
+      const z = cell * (.12 + .28 * (1 - age)) * (CALM ? 1 : .85 + .3 * hash(k, Math.floor(now / 90)));
+      const grad = ctx.createRadialGradient(x, y, 0, x, y, z);
+      grad.addColorStop(0, "rgba(255,240,150,.95)"); grad.addColorStop(.45, "rgba(255,140,40,.8)"); grad.addColorStop(1, "rgba(220,40,20,0)");
+      ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(x, y, z, 0, 7); ctx.fill();
+    });
+  } else if (gear.trail === "lightning") {   // bolts crackling between squares, brightest at the front
+    const frame = CALM ? 0 : Math.floor(now / 80);
+    ctx.shadowColor = "#5ac8ff";
+    segs.forEach(([q, p, k], n) => {
+      const age = (segs.length - 1 - n) / 8;
+      if (age >= 1) return;
+      ctx.shadowBlur = cell * .3 * (1 - age);
+      ctx.beginPath(); ctx.moveTo((q.c + .5) * cell, (q.r + .5) * cell);
+      for (let j = 1; j < 4; j++) {
+        const u = j / 4, off = (hash(k, frame, j + 140) - .5) * cell * .35;
+        ctx.lineTo((q.c + .5 + (p.c - q.c) * u) * cell + off * (p.r - q.r ? 1 : 0), (q.r + .5 + (p.r - q.r) * u) * cell + off * (p.c - q.c ? 1 : 0));
+      }
+      ctx.lineTo((p.c + .5) * cell, (p.r + .5) * cell);
+      ctx.strokeStyle = `rgba(90,200,255,${.8 * (1 - age)})`; ctx.lineWidth = Math.max(2, cell * .12); ctx.stroke();
+      ctx.strokeStyle = `rgba(255,255,230,${1 - age * .8})`; ctx.lineWidth = Math.max(1, cell * .045); ctx.stroke();
+    });
+    ctx.shadowBlur = 0;
+  } else if (gear.trail === "clones") {   // see-through copies of the rover, a square apart
+    segs.slice(-3).forEach(([q, p], n) => {
+      const alpha = [.12, .2, .3][n + 3 - Math.min(3, segs.length)];
+      drawRover(ctx, (q.c + .5) * cell, (q.r + .5) * cell, cell * 1.12, Math.atan2(p.r - q.r, p.c - q.c), alpha, {...gear, glow: "noglow"}, now);
+    });
+  } else if (gear.trail === "coins") {   // gold coins spinning where the rover went
+    for (const [, p, k] of segs) {
+      if (hash(k, 150) < .2) continue;
+      const x = (p.c + .5 + (hash(k, 151) - .5) * .4) * cell, y = (p.r + .5 + (hash(k, 152) - .5) * .4) * cell;
+      const w = cell * .18 * (CALM ? 1 : Math.max(.15, Math.abs(Math.cos(now / 260 + k))));
+      ctx.fillStyle = "#ffd36b"; ctx.strokeStyle = "#c79a2a"; ctx.lineWidth = Math.max(1, cell * .03);
+      ctx.shadowColor = "#ffd36b"; ctx.shadowBlur = cell * .15;
+      ctx.beginPath(); ctx.ellipse(x, y, w, cell * .18, 0, 0, 7); ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
+      ctx.beginPath(); ctx.ellipse(x, y, w * .6, cell * .11, 0, 0, 7); ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,.6)"; ctx.beginPath(); ctx.ellipse(x - w * .3, y - cell * .06, w * .25, cell * .04, 0, 0, 7); ctx.fill();
+    }
+  } else if (gear.trail === "bubbles") {   // bubbles that wobble and drift up
+    ctx.lineWidth = Math.max(1, cell * .025);
+    for (const [, p, k] of segs) for (const j of [0, 1]) {
+      const rise = CALM ? 0 : ((now / 1800 + hash(k, j, 160)) % 1) * cell * .25;
+      const x = (p.c + .5 + (hash(k, j, 161) - .5) * .6) * cell + (CALM ? 0 : Math.sin(now / 300 + k + j) * cell * .04);
+      const y = (p.r + .5 + (hash(k, j, 162) - .5) * .6) * cell - rise, z = cell * (.06 + hash(k, j, 163) * .07);
+      ctx.strokeStyle = "rgba(200,240,255,.85)"; ctx.fillStyle = "rgba(143,227,255,.18)";
+      ctx.beginPath(); ctx.arc(x, y, z, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,.8)"; ctx.beginPath(); ctx.arc(x - z * .35, y - z * .35, z * .25, 0, 7); ctx.fill();
+    }
+  } else if (gear.trail === "candytrail") {   // wrapped sweets dropped along the way, a different one each square
+    for (const [, p, k] of segs) {
+      const x = (p.c + .5 + (hash(k, 1, 180) - .5) * .4) * cell, y = (p.r + .5 + (hash(k, 2, 180) - .5) * .4) * cell;
+      drawSweet(ctx, x, y, cell * .3, hash(k, 3, 180) * 3, ["#ff4f7a", "#ffe14d", "#7ff07a", "#b07aff", "#ff8a1f"][k % 5]);
+    }
+  }
+}
+
+// A wrapped sweet, `z` across, turned `a`: a round middle and a twist at each end.
+function drawSweet(ctx, x, y, z, a, color) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+  ctx.fillStyle = color;
+  for (const side of [-1, 1]) { ctx.beginPath(); ctx.moveTo(side * z * .3, 0); ctx.lineTo(side * z * .62, -z * .22); ctx.lineTo(side * z * .62, z * .22); ctx.fill(); }
+  ctx.beginPath(); ctx.ellipse(0, 0, z * .36, z * .25, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,.75)"; ctx.lineWidth = Math.max(1, z * .08);
+  ctx.beginPath(); ctx.moveTo(-z * .16, -z * .2); ctx.lineTo(z * .04, z * .22); ctx.moveTo(z * .06, -z * .22); ctx.lineTo(z * .22, z * .12); ctx.stroke();
+  ctx.restore();
+}
+function heart(ctx, x, y, z) {
+  ctx.beginPath(); ctx.moveTo(x, y + z * .9);
+  ctx.bezierCurveTo(x - z * 1.6, y - z * .2, x - z * .6, y - z * 1.3, x, y - z * .4);
+  ctx.bezierCurveTo(x + z * .6, y - z * 1.3, x + z * 1.6, y - z * .2, x, y + z * .9);
+  ctx.fill();
+}
+
+// The victory dance at the beacon, u from 0 to 1: how high, how far round,
+// how far off its square (in squares), and a flip squashes it side to side.
+function dance(kind, u) {
+  const d = {lift: 0, angle: 0, dx: 0, dy: 0, sx: 1, ring: 0, alpha: 1, flash: 0, boom: 0, puff: 0};
+  if (kind === "wiggle") { d.angle = Math.sin(u * Math.PI * 8) * .5 * (1 - u); d.lift = Math.abs(Math.sin(u * Math.PI * 4)) * .15; }
+  else if (kind === "flip") { d.lift = Math.sin(u * Math.PI) * .8; d.sx = Math.cos(u * Math.PI * 2); }
+  else if (kind === "moonwalk") { d.dx = -Math.sin(u * Math.PI * 2) * .35; d.angle = Math.sin(u * Math.PI * 4) * .08; }
+  else if (kind === "zoomies") { const a = u * Math.PI * 2; d.dx = Math.sin(a) * .4; d.dy = (Math.cos(a) - 1) * .25; d.angle = a; }
+  else if (kind === "disco") { d.angle = ease(u) * Math.PI * 4; d.lift = Math.sin(u * Math.PI) * .3; d.ring = Math.sin(u * Math.PI); }
+  else if (kind === "firework") { d.lift = Math.sin(u * Math.PI) * .35; d.angle = Math.sin(u * Math.PI * 2) * .2; }
+  else if (kind === "kaboom") {   // shakes and swells, flashes white, bursts into blocks, pops back
+    if (u < .55) {
+      d.dx = Math.sin(u * 140) * .06 * u / .55; d.sx = 1 + .3 * u / .55;
+      d.flash = u > .25 && Math.floor(u * 24) % 2 ? .8 : 0;
+    } else { d.boom = (u - .55) / .45; d.alpha = d.boom < .6 ? 0 : (d.boom - .6) / .4; }
+  }
+  else if (kind === "smokebomb") {   // poof, gone, poof, back
+    d.puff = u < .35 ? u / .35 : u > .6 && u < .95 ? (u - .6) / .35 : 0;
+    d.alpha = u > .12 && u < .72 ? 0 : 1;
+  }
+  else if (kind === "tornado") { d.angle = ease(u) * Math.PI * 8; d.lift = Math.sin(u * Math.PI) * .5; }
+  else if (kind === "zombieshuffle") {   // a slow lurch side to side, then a lunge forward
+    d.dx = Math.sin(u * Math.PI * 3) * .18 + (u > .7 ? Math.sin((u - .7) / .3 * Math.PI) * .25 : 0);
+    d.angle = Math.sin(u * Math.PI * 3) * .25; d.lift = Math.abs(Math.sin(u * Math.PI * 6)) * .06;
+  }
+  else if (kind === "pogo") {
+    const hop = Math.abs(Math.sin(u * Math.PI * 4));
+    d.lift = hop * .45 * (1 - u * .4); d.sx = 1 + .25 * (1 - hop) * (1 - u);
+  }
+  else { d.lift = Math.sin(u * Math.PI) * .6; d.angle = ease(u) * Math.PI * 2; }
+  return d;
+}
+// What some dances draw over the rover: a white flash, a burst of green
+// blocks, a cloud of smoke. (x, y) is the rover's middle.
+function danceFx(ctx, x, y, cell, d) {
+  if (d.flash) {
+    ctx.fillStyle = `rgba(255,255,255,${d.flash * .7})`;
+    ctx.beginPath(); ctx.arc(x, y, cell * .5, 0, 7); ctx.fill();
+  }
+  if (d.boom) {
+    const r = cell * (.3 + d.boom * .9), grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+    grad.addColorStop(0, `rgba(255,255,255,${1 - d.boom})`); grad.addColorStop(.5, `rgba(255,190,90,${.8 * (1 - d.boom)})`); grad.addColorStop(1, "rgba(255,120,40,0)");
+    ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+    for (let j = 0; j < 12; j++) {
+      const a = j * Math.PI / 6 + hash(j, 170), far = cell * (.2 + Math.sin(d.boom * Math.PI) * 1.1), z = cell * .14;
+      ctx.fillStyle = ["#5dae3f", "#4f9a35", "#6fc24e", "#10200b"][j % 4];
+      ctx.fillRect(x + Math.cos(a) * far - z / 2, y + Math.sin(a) * far - z / 2, z, z);
+    }
+  }
+  if (d.puff) {
+    ctx.fillStyle = `rgba(200,200,215,${.9 * (1 - d.puff * d.puff)})`;
+    for (let j = 0; j < 7; j++) {
+      const a = j * Math.PI * 2 / 7, far = cell * (.15 + d.puff * .35);
+      ctx.beginPath(); ctx.arc(x + Math.cos(a) * far, y + Math.sin(a) * far, cell * (.22 + d.puff * .12), 0, 7); ctx.fill();
+    }
+  }
+}
+// Disco: a ring of colours round the rover while it spins.
+function discoRing(ctx, x, y, cell, k, now) {
+  for (let j = 0; j < 12; j++) {
+    const a = j * Math.PI / 6 + now / 200;
+    ctx.fillStyle = `hsla(${j * 30 + now / 5},90%,65%,${k})`;
+    ctx.beginPath(); ctx.arc(x + Math.cos(a) * cell * .8, y + Math.sin(a) * cell * .8, cell * .13, 0, 7); ctx.fill();
+  }
+}

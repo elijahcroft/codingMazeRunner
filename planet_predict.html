@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strange Planet — Predict It</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>🔮</text></svg>">
+<style>
+  /* For the class screen: the code, how many have voted, and after the reveal
+     the rover driving it and how the votes fell. Never any names. */
+  :root { color-scheme: dark; --sky: #120f24; --panel: #231d42; --edge: #3d3470; --bone: #f4eee2; --haze: #a99fca; --gold: #ffd36b; --mint: #8cf2c6; --ui: system-ui, "Segoe UI", Roboto, "Noto Sans", sans-serif; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin: 0; overflow: hidden; background: var(--sky); color: var(--bone); font: 20px/1.35 var(--ui); }
+  .page { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 14px; padding: 16px 22px; }
+  .top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 20px; }
+  h1 { margin: 0; font-size: 30px; font-weight: 850; letter-spacing: -.02em; }
+  .top p { margin: 0; color: var(--gold); font-size: 24px; font-weight: 700; }
+  .body { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 18px; min-height: 0; }
+  pre { margin: 0; padding: 22px 26px; overflow: auto; border-radius: 16px; background: #0c0a19; color: var(--gold); font: clamp(22px, 3.4vh, 38px)/1.45 ui-monospace, Menlo, Consolas, monospace; }
+  .field { position: relative; min-height: 0; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .foot { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; min-height: 96px; }
+  button { margin-left: auto; padding: 8px 20px; border: 0; border-radius: 12px; background: linear-gradient(120deg, #ffd36b, #8cf2c6); color: #1d1240; font: 800 20px var(--ui); cursor: pointer; }
+  .answers { display: flex; flex: 1; gap: 12px; }
+  .answers div { flex: 1; padding: 8px 14px; border-radius: 12px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--edge); font-size: 30px; font-weight: 800; text-align: center; }
+  .answers .right { background: var(--gold); color: #33280a; }
+  .answers small { display: block; font-size: 17px; font-weight: 600; }
+  .empty { align-self: center; margin: 0; color: var(--haze); text-align: center; font-size: 26px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top"><h1>🔮 Predict it</h1><p id="ask"></p><button id="reveal" hidden>🎬 Reveal</button></div>
+  <p class="empty" id="empty">Pick a question under ⚙ Settings on your teacher page.</p>
+  <div class="body" id="body" hidden><pre id="code"></pre><div class="field" id="field"><canvas id="map" aria-label="The rover's field"></canvas></div></div>
+  <div class="foot"><div class="answers" id="answers"></div></div>
+</div>
+<script src="/planet/render.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const CALM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const STEP_MS = CALM ? 120 : 420;
+const show = {data: null, n: null, drove: 0};
+
+function draw(now) {
+  requestAnimationFrame(draw);
+  const d = show.data, box = $("field").getBoundingClientRect();
+  if (!d || !d.code || !box.width) return;
+  const cv = $("map"), dpr = devicePixelRatio || 1, [rows, cols] = d.field;
+  if (cv.width !== Math.round(box.width * dpr) || cv.height !== Math.round(box.height * dpr)) { cv.width = Math.round(box.width * dpr); cv.height = Math.round(box.height * dpr); }
+  const g = cv.getContext("2d"), cell = Math.min(box.width / cols, box.height / rows);
+  g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, box.width, box.height);
+  g.translate((box.width - cols * cell) / 2, (box.height - rows * cell) / 2);
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    g.fillStyle = r && c && r < rows - 1 && c < cols - 1 ? ((r + c) % 2 ? "#4f4386" : "#483d7c") : "#1d1736";
+    g.fillRect(c * cell, r * cell, cell + .5, cell + .5);
+  }
+  const path = d.path || [[1, 1]], total = path.length - 1;
+  const u = d.path ? Math.max(0, Math.min(total, (now - show.drove) / STEP_MS)) : 0, i = Math.floor(u), f = u - i;
+  const a = path[i], b = path[Math.min(total, i + 1)];
+  g.strokeStyle = "#8cf2c6"; g.lineWidth = cell * .1; g.lineCap = "round"; g.lineJoin = "round"; g.beginPath();
+  path.slice(0, i + 1).forEach(([r, c], k) => k ? g.lineTo((c + .5) * cell, (r + .5) * cell) : g.moveTo((c + .5) * cell, (r + .5) * cell));
+  const r = a[0] + (b[0] - a[0]) * f, c = a[1] + (b[1] - a[1]) * f;
+  g.lineTo((c + .5) * cell, (r + .5) * cell); g.stroke();
+  drawRover(g, (c + .5) * cell, (r + .5) * cell, cell * 1.05, Math.atan2(b[0] - a[0] || 0, b[1] - a[1] || 1), 1, {}, now);
+  if (d.path) $("ask").textContent = `Square ${Math.min(total, Math.round(u))} of ${total}`;
+  if (d.path && u >= total) $("ask").textContent = `The rover drove ${total} square${total === 1 ? "" : "s"}!`;
+}
+// The teacher's key from Mission Control, if this is the same browser: then
+// Reveal can be pressed right here on the class screen.
+function savedKey() { try { return localStorage.getItem("planetKey"); } catch (_) { return null; } }
+function paint(d) {
+  const open = !!d.code;
+  $("reveal").hidden = !open || !!d.path || !savedKey();
+  $("empty").hidden = open; $("body").hidden = !open;
+  if (!open) { $("ask").textContent = ""; $("answers").replaceChildren(); return; }
+  if (d.n !== show.n) { show.n = d.n; $("code").textContent = d.code; }
+  if (d.path && !(show.data && show.data.path)) show.drove = performance.now() + 500;
+  if (!d.path) $("ask").textContent = `How many squares will the rover drive? ${d.voted} of ${d.here} have voted.`;
+  $("answers").innerHTML = d.options.map(n => `<div class="${d.path && n === d.answer ? "right" : ""}">${n}${d.tally ? `<small>${d.tally[n]} vote${d.tally[n] === 1 ? "" : "s"}</small>` : ""}</div>`).join("");
+}
+$("reveal").addEventListener("click", async () => {
+  await fetch("/admin", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({key: savedKey(), action: "planet_predict_reveal"})}).catch(() => null);
+  refresh();
+});
+async function refresh() {
+  const d = await fetch("/planet/predict/view").then(r => r.json()).catch(() => null);
+  if (!d) return;
+  paint(d);
+  show.data = d;
+}
+refresh();
+setInterval(refresh, 1000);
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>

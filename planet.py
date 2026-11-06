@@ -44,6 +44,7 @@ them is the practice.
 import ast
 import difflib
 import random
+import re
 import zlib
 
 from cycles import (DIRS, BotError, Brain, _Break, _Continue, _Frame, _TooLong,
@@ -84,6 +85,35 @@ SENSOR_ARRIVES = {
 SENSOR_ZONE = {name: ZONE_ORDER.index(key) for name, key in SENSOR_ARRIVES.items()}
 RELAY_ZONE = ZONE_ORDER.index("relay")
 
+# The typing help comes off a piece at a time as a student gets further, so by
+# the end they write every character themselves. Each piece stays off once
+# they've reached its zone, even back on old sites. "say" tells them once.
+TYPE_YOURSELF = [
+    {"key": "brackets", "zone": "wind",
+     "say": "You're getting good, so now you try more yourself! Picking a word or "
+            "pressing a chip won't add the brackets any more. Type  (  after the "
+            "word: hold Shift and press 9."},
+    {"key": "closing", "zone": "solar",
+     "say": "New skill: closing brackets. Every  (  needs a  )  or the rover can't "
+            "read the line. Hold Shift and press 0. 📋 Use as code has gone too, "
+            "because you can write the code yourself now."},
+    {"key": "quotes", "zone": "signal",
+     "say": 'New skill: quotes. A word needs a  "  at both ends, so the rover knows '
+            "it's a word and not a command:  look(\"east\") . Hold Shift and press "
+            'the key that shows  " .'},
+    {"key": "shapes", "zone": "belts",
+     "say": "New skill: whole lines. Type all of  for i in range(3):  yourself. The  "
+            ":  at the end (hold Shift and press ;) tells the rover more lines are "
+            "coming under it."},
+    {"key": "indent", "zone": "gates",
+     "say": "New skill: pushing in. Press Tab on the line under a  :  and it moves "
+            "right. That's how the rover knows the line belongs to the loop or if "
+            "above it."},
+    {"key": "names", "zone": "push",
+     "say": "New skill: spelling. Words stop popping up now, because you know them! "
+            "Stuck? Hold Ctrl and press Space to see the list."},
+]
+
 # What look() calls each square.
 WORDS = {"#": "rock", ".": "ground", "S": "ground", "G": "beacon", "~": "ice",
          "O": "crater", "*": "ground", "+": "sun", "P": "pad",
@@ -98,7 +128,7 @@ LOOK_WORDS = set(WORDS.values()) | {"crack", "sample", "key", "flag", "sun", "ca
 OPEN_WORDS = {"empty", "open", "space", "free", "clear", "nothing", "floor", ""}
 
 
-def check_look_words(node):
+def check_look_words(node, words=LOOK_WORDS):
     """look() compared with a word it never gives back, like "wall" from the
     maze game or "Rock": the check is never true, so say so before it runs."""
     sides = [node.left] + node.comparators
@@ -107,9 +137,9 @@ def check_look_words(node):
         return
     for s in sides:
         if isinstance(s, ast.Constant) and isinstance(s.value, str) and \
-                s.value not in LOOK_WORDS:
+                s.value not in words:
             word = s.value.strip().lower()
-            near = difflib.get_close_matches(word, LOOK_WORDS, 1, 0.6)
+            near = difflib.get_close_matches(word, words, 1, 0.6)
             raise BotError(f'look() never gives back "{s.value}". '
                            + ('An open square is "ground".' if word in OPEN_WORDS else
                               f'Did you mean "{near[0]}"?' if near else
@@ -208,6 +238,7 @@ class _End(Exception):
 class Rover(Brain):
     """One student's program driving one rover. Unlike a Light Cycles bot,
     the program runs once from top to bottom, and its commands move the rover."""
+    look_words = LOOK_WORDS
 
     def __init__(self, code, world, sensors):
         self.world = world
@@ -233,8 +264,7 @@ class Rover(Brain):
             self.tree = ast.parse(code)
         except SyntaxError as e:
             # The maze game's sensor isn't on this planet: give one that is.
-            err = BotError(syntax_message(e, "def step():").replace(
-                "if not wall_ahead():", "while not at_beacon():"))
+            err = BotError(cant_read(e, code))
             err.syntax_line = e.lineno   # for the editor; the text already says it
             raise err
         # Every def in the program, so a call above its def can say where it is,
@@ -270,7 +300,7 @@ class Rover(Brain):
                            "Planet — use the commands and sensors, or make your "
                            "own with def.")
         if isinstance(node, ast.Compare):
-            check_look_words(node)
+            check_look_words(node, self.look_words)
         if isinstance(node, (ast.BinOp, ast.BoolOp)):
             check_drive_math(node)
         return super().eval(node, frame)
@@ -296,10 +326,21 @@ class Rover(Brain):
                                f'"{name.lower()}"')
             if name in self.sensors and name not in self.defs:
                 raise BotError(f"{name} needs brackets to run: write  {name}()")
-            if name.lower() in LOOK_WORDS and name not in self.defs:
+            if name.lower() in self.look_words and name not in self.defs:
                 raise BotError(f'Put quotes round words:  "{name.lower()}". look() '
                                f'gives back a word, like  look("east") == '
                                f'"{name.lower()}"')
+            if name.lower() in NUMBER_WORDS:
+                raise BotError(f"Use the number, not the word: write  "
+                               f"{NUMBER_WORDS[name.lower()]}  instead of  {name}")
+            try:
+                return super().lookup(name, frame)
+            except BotError as e:
+                if "the variable" not in str(e):
+                    raise
+                raise BotError(f'I don\'t know the word  {name} . If you meant words, '
+                               f'put quotes round them:  "{name}" . If you meant a '
+                               f"number to remember, set it first, like  {name} = 0")
         return super().lookup(name, frame)
 
     def assign(self, name, value, frame):
@@ -392,7 +433,8 @@ class Rover(Brain):
                 raise BotError(f"{name}() only drives {name}. To go the other way, "
                                f"use  {back}({-n})")
             if n < 0 or n > MAX_MOVE:
-                raise BotError(f"{name}() takes a number from 0 to {MAX_MOVE}.")
+                raise BotError(f"{name}() can only go up to {MAX_MOVE} squares in one "
+                               f"line. Use a smaller number.")
             if n == 0:
                 said = ast.unparse(node.args[0]).replace("'", '"')
                 self.zero = (f"{name}({said})", self.ops)
@@ -1065,14 +1107,82 @@ def far(frm, to):
     (r, c), (tr, tc) = frm, to
     parts = []
     if tc != c:
-        parts.append(n_squares(abs(tc - c), "east" if tc > c else "west"))
+        parts.append(n_squares(abs(tc - c), "east →" if tc > c else "west ←"))
     if tr != r:
-        parts.append(n_squares(abs(tr - r), "south" if tr > r else "north"))
+        parts.append(n_squares(abs(tr - r), "south ↓" if tr > r else "north ↑"))
     return " and ".join(parts)
+
+
+# Python's word for a mistake, and the shared wording for one, said for a child.
+NUMBER_WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+                "seven": 7, "eight": 8, "nine": 9, "ten": 10}
+PLAINER = {
+    "a bracket  (  is never closed with  )":
+        "This line opens a bracket  (  but never closes it. Add a  )  to close it: "
+        "hold Shift and press 0",
+    "a line that starts with def, if, elif, else, while or for has to end with a  :":
+        "Add a  :  at the very end of this line (hold Shift and press the ; key). It "
+        "shows the rover that more lines are coming under this one",
+    "the lines inside it need pushing in (indenting) with spaces":
+        "The line above ends with a  :  so this line has to be pushed in. Click at "
+        "the start of this line and press Tab",
+    "this line is pushed in further than the line above it":
+        "This line starts too far to the right. Click at the start of it and press "
+        "Backspace until it lines up with the line above",
+    "this line doesn't line up with the lines above it — check its spaces":
+        "This line doesn't line up with the lines above it. Click at the start of it "
+        "and use Tab or Backspace to move it",
+    'some text is missing its closing quote  "':
+        'A word needs a  "  at both ends. Add the missing  "  at the end of the word',
+    "there's a  )  with no  (  before it":
+        "This line has a  )  with no  (  to match it. Add the  (  or delete the  )",
+    "put each command on its own line":
+        "Only one command fits on a line. Press Enter to start a new line for the next one",
+}
+
+
+def read_fix(line):
+    """What to type for the slips a beginner makes most, or None."""
+    wrote = re.fullmatch(r"([A-Za-z_]+)\s+(\d+)", line)
+    near = wrote and difflib.get_close_matches(wrote[1].lower(), COMMANDS, 1, 0.6)
+    if near:
+        return f"The number goes inside brackets. Write  {near[0]}({wrote[2]})"
+    if re.match(r"for\b", line) and " in " not in line:
+        return "To repeat lines, write it like this:  for i in range(3):"
+    way = re.search(r"\b(north|south|east|west)\b", line.lower())
+    if way and "(" not in line and not re.match(r"(if|elif|while|def|else|return|print)\b", line):
+        return (f'Write it like this:  look("{way[1]}")' if line.lower().startswith("look")
+                else f"To drive that way, write  {way[1]}()")
+    return None
+
+
+def cant_read(e, code):
+    """Why the rover can't read a line, and what to do about it, for a child
+    who has never met a syntax error."""
+    lines = code.split("\n")
+    n = e.lineno or 1
+    line = lines[n - 1].strip() if n <= len(lines) else ""
+    hint = read_fix(line)
+    if not hint:
+        hint = re.sub(r"^Syntax error on line \S+: ", "", syntax_message(e, "def step():")
+                      .replace("if not wall_ahead():", "while not at_beacon():")).rstrip(".")
+        hint = PLAINER.get(hint, hint)
+        if hint.startswith("Python couldn't read it"):
+            hint = (f"The rover doesn't know what  {line}  means. Commands look like  "
+                    f"east(3) : a word, with brackets straight after it. Check the spelling")
+    return f"Line {n}: {hint}" + ("" if hint[-1] in ':)"' else ".")
 
 
 def where(p):
     return f"x {p[1]}, y {p[0]}"
+
+
+def first_line_to(frm, to):
+    """The one line that starts the rover towards `to`, like  east(2)."""
+    (r, c), (tr, tc) = frm, to
+    way, n = (("east" if tc > c else "west"), abs(tc - c)) if tc != c else \
+        (("south" if tr > r else "north"), abs(tr - r))
+    return f"{way}({n})" if n > 1 else f"{way}()"
 
 
 # Why the rover fell, by how it got onto the square.
@@ -1388,6 +1498,9 @@ def explain(world, unlocked=(), code=""):
                 nxt += (" On ice one move slides until rock stops it, so work "
                         "back from the beacon: find a rock that would stop a "
                         "slide right next to it.")
+    # On the very first levels, say the exact line to add.
+    if end == "stopped" and aim and nxt and "x" not in unlocked:
+        nxt += f" Add a new line at the bottom of your code, like  {first_line_to(at, aim)}"
     once = end == "stopped" and world.mission != "report" and nxt and called_once(code)
     if once:
         nxt = (f"{once}() ran once. To do its moves again, call it again, or put "
@@ -1395,6 +1508,8 @@ def explain(world, unlocked=(), code=""):
     if not what:
         return None
     extra = []
+    if end == "stopped" and "tick" not in unlocked:
+        extra.append("That's not a mistake: the rover does every line you wrote, then waits for more.")
     if world.drill_out:
         extra.append("The rover ran out of drills.")
     if world.stuck and end in ("stopped", "ticks"):
@@ -1694,6 +1809,105 @@ def paint_shop(code):
                                            for n in ast.walk(painter.tree))}
 
 
+# ---- 🐛 Bug hunts: the whole class fixes one broken program ---------------------
+# (level, what's wrong, the broken program, the one change that fixes it). Each
+# is played in test_team.py: the broken one must lose and the fixed one must win.
+
+BUG_HUNTS = (
+    ("1a", "a number that's one too small",
+     "south(2)\neast()\nsouth()\neast(6)\nsouth()\nnorth(3)\nwest()\n", ("east(6)", "east(7)")),
+    ("1a", "a wrong direction",
+     "south(2)\neast()\nsouth()\neast(7)\nnorth()\nnorth(3)\nwest()\n", ("east(7)\nnorth()", "east(7)\nsouth()")),
+    ("1a", "a missing bracket",
+     "south(2)\neast()\nsouth()\neast(7\nsouth()\nnorth(3)\nwest()\n", ("east(7\n", "east(7)\n")),
+    ("1b", "a loop that stops too soon",
+     "for i in range(3):\n    east()\n    south()\n", ("range(3)", "range(8)")),
+    ("1b", "a missing colon",
+     "for i in range(8)\n    east()\n    south()\n", ("range(8)\n", "range(8):\n")),
+    ("1b", "a line that isn't indented",
+     "for i in range(8):\n    east()\nsouth()\n", ("\nsouth()", "\n    south()")),
+    ("1b1", "a number inside the loop",
+     "for i in range(6):\n    east()\n    south()\n", ("east()", "east(2)")),
+    ("1c", "a loop that checks the wrong thing",
+     'for i in range(4):\n    while look("east") == "rock":\n        east()\n'
+     '    while look("south") != "rock":\n        south()\n', ('look("east") ==', 'look("east") !=')),
+    ("2b", "a slide that goes the wrong way",
+     "north()\neast()\nsouth()\neast()\nsouth()\neast()\n", ("south()\neast()\nsouth()\neast()\n", "south()\neast()\nsouth()\nwest()\n")),
+)
+
+
+# ---- The Rover Lounge's stage: a show written in code -------------------------
+
+SHOW_TRICKS = ("spin", "dance", "honk", "wave")
+SHOW_WORDS = "north(), south(), east(), west(), spin(), dance(), honk(), wave() and wait()"
+SHOW_BEATS = {"north": .5, "south": .5, "east": .5, "west": .5, "wait": .5,   # seconds each
+              "spin": 1, "dance": 1.6, "honk": .8, "wave": .9}
+SHOW_STEPS = 30      # a turn on the stage is short, so everyone gets one
+SHOW_SECONDS = 20
+SHOW_BASIC = "spin()\ndance()\nhonk()\nwave()\n"   # for anyone without a show of their own
+
+
+class _ShowOver(Exception):
+    """The show has used up its turn on the stage."""
+
+
+class ShowFloor(Easel):
+    """What a Performer runs on: nothing to drive into, and the steps are the show."""
+    spent = 0
+
+    def act(self, word, way=None):
+        if len(self.steps) >= SHOW_STEPS or self.spent + SHOW_BEATS[word] > SHOW_SECONDS:
+            raise _ShowOver()
+        self.spent += SHOW_BEATS[word]
+        self.steps.append([word, SHOW_BEATS[word]])
+
+
+class Performer(Rover):
+    """A show for the lounge's stage: loops, ifs and def all work, and the
+    only words are the fixed ones, so a show can't say anything to the class."""
+
+    def __init__(self, code):
+        super().__init__(code, ShowFloor(), dict.fromkeys(SHOW_TRICKS))
+
+    def run_statement(self, node, frame):
+        if isinstance(node, ast.FunctionDef) and node.name in SHOW_TRICKS:
+            raise BotError(f"{node.name}() is already a word your rover knows. Pick "
+                           f"another name, like  def my_{node.name}():")
+        super().run_statement(node, frame)
+
+    def call(self, node, frame):
+        name = node.func.id if isinstance(node.func, ast.Name) else None
+        if name in SHOW_TRICKS:
+            if node.args:
+                raise BotError(f"{name}() doesn't take anything in the ( ). To do it more "
+                               f"than once, put it in a loop.")
+            self.world.act(name)
+            return None
+        if name in SENSOR_ZONE or name in OWN_COMMANDS:
+            raise BotError(f"{name}() is for missions on the planet. In a show your "
+                           f"rover knows {SHOW_WORDS}.")
+        return super().call(node, frame)
+
+
+def rover_show(code):
+    """Run a show's code. Returns its steps as [word, seconds], and "cut" when
+    the show was longer than one turn on the stage and stops early."""
+    error = line = show = None
+    cut = False
+    try:
+        show = Performer(str(code)[:MAX_CODE + 1])
+        show.run()
+    except _ShowOver:
+        cut = True
+    except _TooLong as e:
+        error, line = str(e), e.line
+    except BotError as e:
+        error, line = str(e), e.line or getattr(e, "syntax_line", None)
+    except RecursionError:
+        error = "Your functions call each other too deeply."
+    return {"steps": show.world.steps if show else [], "error": error, "line": line, "cut": cut}
+
+
 # ---- building planets --------------------------------------------------------
 
 def path_map(legs, pad=1):
@@ -1930,7 +2144,7 @@ STEPS_FIELD = strings(STEPS_FIELD)
 
 ZONES = [
     {"key": "landing", "name": "Landing Site", "rules": set(),
-     "blurb": "Ordinary ground. Learn to drive by compass.",
+     "blurb": "This is where you learn to drive your rover.",
      "hints": [
          "The rover doesn't turn: it drives by compass. east(3) drives three "
          "squares east (to the right), south() one square down. Count the "
@@ -1943,7 +2157,9 @@ ZONES = [
      ],
      "sites": [
          site("1a", "Touchdown",
-              "Collect the three samples. Drive with north() south() east() west().",
+              "Your job: drive over the 3 green samples to collect them. north() goes "
+              "up ↑, south() goes down ↓, east() goes right →, west() goes left ←. "
+              "A number in the brackets goes further: east(3) goes 3 squares right.",
               [{"map": ["############",
                         "#S...#.....#",
                         "#....#..*..#",
@@ -5290,6 +5506,11 @@ def variant_index(student, s):
     if not s.get("per_student"):
         return 0
     return zlib.crc32(f"{student}:{s['key']}".encode()) % len(s["variants"])
+
+
+def type_yourself(zi):
+    """The typing help that's off for a student who has reached zone zi."""
+    return [t for t in TYPE_YOURSELF if ZONE_ORDER.index(t["zone"]) <= zi]
 
 
 def sensors_for(zi):

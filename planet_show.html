@@ -437,7 +437,7 @@ async function refresh() {
   renderMoments(data.feed);
   const c = data.challenge;
   $("challenge").hidden = !c;
-  if (c) $("challenge").textContent = `🎯 Class challenge: ${c.key.toUpperCase()} ${c.name} · ${c.done.length} of ${data.students.length} done${c.done.length ? `: ${c.done.slice(0, 5).join(", ")}${c.done.length > 5 ? "…" : ""}` : ""}`;
+  if (c) $("challenge").textContent = `${c.bug ? "🐛 Bug hunt" : "🎯 Class challenge"}: ${c.key.toUpperCase()} ${c.name} · ${c.done.length} of ${data.students.length} done${c.done.length ? `: ${c.done.slice(0, 5).join(", ")}${c.done.length > 5 ? "…" : ""}` : ""}`;
   takeRuns(data.runs);
   if (!stage.queue.length && (!stage.run || stage.run.live)) followCoder();
 }

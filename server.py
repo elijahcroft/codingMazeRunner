@@ -102,6 +102,8 @@ import cake
 import cycles
 import pixel
 import planet
+import planet_predict
+import planet_team
 
 PORT = int(os.environ.get("MAZE_PORT", "8000"))
 
@@ -2766,6 +2768,7 @@ SCOUT_MAX = 150     # hand-driven moves in one scouting trip: enough to drive an
 # is knock("north").
 SCOUT_ACTS = ("jump", "drill", "knock")
 FUNCTIONS_MAX = 12  # saved functions one student keeps
+PLAY_GAP = 20       # seconds between a page's pings that still count as playing
 FUNCTION_MAX = 1500 # characters in one saved function
 planet_feed = []    # the class's recent moments, newest last, for the projector
 # Every transmit, newest last, with its route: the teacher's live stage and
@@ -2773,6 +2776,16 @@ planet_feed = []    # the class's recent moments, newest last, for the projector
 planet_runs = []
 RUNS_KEPT = 30
 RUN_PATH_MAX = 400   # frames of a route kept for the replay
+# What the teacher can put on every student's screen, by name. A page shows a
+# new one once, on its next ping.
+TEACHER_NOTICES = {"eyes": ("👀", "Eyes on your teacher, please!", "Stop typing and look up."),
+                   "five": ("⏰", "Five minutes left", "Finish what you're doing. Your code is saved."),
+                   "stop": ("👋", "Time to stop for today", "Well done! Everything you did is saved.")}
+planet_notice = {"n": 0, "icon": "", "title": "", "text": ""}
+# 🏁 The class race on /planet/race: each student's quickest win on the class
+# challenge, by student id. Memory only, and it lasts until a new challenge is
+# picked, so the teacher can end the challenge and still run the race.
+planet_race = {"key": None, "runs": {}}
 # One student's code the teacher put on the class screen, without their name,
 # to talk about together; None when nothing is shown.
 planet_spotlight = [None]
@@ -2782,7 +2795,9 @@ planet_spotlight = [None]
 # coach: those words are typed letter by letter on every site, with the
 # right key shown and only the right letter going in.
 # halloween: Halloween night is out (for the students the teacher invites).
-planet_class_settings = {"blanks": True, "easy": False, "coach": False, "halloween": True, "sound": False, "challenge": None}
+planet_class_settings = {"blanks": True, "easy": False, "coach": False, "halloween": True, "sound": False, "challenge": None,
+                         "team_wins": [],   # Team Mission levels the class finished: trophies in the lounge
+                         "team_best": {}}   # the class's best time on each of them, in seconds
 # The mystery gifts on the main route. The practice zones' gifts are extra, for
 # a younger class, so Treasure Hunter doesn't wait on them.
 MAIN_GIFTS = [k for k in planet.GIFT_SQUARES if k in planet.SITE_ORDER]
@@ -3248,9 +3263,28 @@ def planet_events(p, counts):
             today[kind] = today.get(kind, 0) + n
 
 
+def planet_playtime(p, busy):
+    """A page says it's still there: time since the last one counts as
+    playing if the student pressed something lately. Pages ask every few
+    seconds, so a long gap means the laptop was shut, and that isn't play."""
+    entry, now = planet_entry(p), time.time()
+    gap, entry["pinged"] = now - entry.get("pinged", 0), now
+    if busy and gap <= PLAY_GAP:
+        today = entry.setdefault("events", {}).setdefault(time.strftime("%Y-%m-%d"), {})
+        today["secs"] = today.get("secs", 0) + round(gap)
+
+
+def planet_minutes(entry):
+    """Minutes played today, and how many days they've played at all."""
+    days = entry.get("events", {})
+    return {"minutes": days.get(time.strftime("%Y-%m-%d"), {}).get("secs", 0) // 60,
+            "days": sum(1 for day in days.values() if day.get("secs"))}
+
+
 def planet_rover_name(p, name):
     """The student's name for their rover: letters, numbers and spaces. It
-    only shows on their own screen."""
+    shows on their own screen and on their rover's tag in the Rover Lounge,
+    where the teacher can wipe it."""
     name = " ".join(re.sub(r"[^\w ]", "", str(name)).split())[:14]
     planet_entry(p)["rover_name"] = name
     return name
@@ -3307,10 +3341,22 @@ def halloween_frontier(entry):
     return next((i for i, k in enumerate(order) if k not in passed), len(order) - 1)
 
 
+def halloween_site_open(entry, key):
+    """Halloween sites open one after another, except that Witch's Woods opens
+    as soon as the Haunted Mansion does: nobody has to beat the hardest level
+    to get to the bonus zone. The Woods' own levels still go in order."""
+    order, frontier = planet.HALLOWEEN_ORDER, halloween_frontier(entry)
+    i, mansion = order.index(key), order.index("h10")
+    if i <= frontier:
+        return True
+    passed = set(entry["solved"]) | set(entry.get("skipped", []))
+    return frontier >= mansion and all(k in passed for k in order[mansion + 1:i])
+
+
 def planet_open(p, key):
     if key in planet.HALLOWEEN_ORDER:
         entry = planet_entry(p)
-        return halloween_on(entry) and planet.HALLOWEEN_ORDER.index(key) <= halloween_frontier(entry)
+        return halloween_on(entry) and halloween_site_open(entry, key)
     if key in planet.PRACTICE_ORDER:   # all open at once, in easy mode only
         return planet_class_settings["easy"]
     return key in planet.SITE_ORDER and \
@@ -3322,7 +3368,7 @@ def planet_challenge():
     now = planet_class_settings["challenge"]
     if not now:
         return None
-    return dict(now, name=planet.find_site(now["key"])[2]["name"])
+    return dict(now, name=planet.find_site(now["key"])[2]["name"], tag=now.get("tag", now["key"]))
 
 
 def planet_variant(p, key):
@@ -3550,7 +3596,6 @@ def planet_state(p):
                       for s in zone["sites"]]})
     spooky = halloween_on(entry)
     if spooky:
-        frontier_h = halloween_frontier(entry)
         for zone in planet.HALLOWEEN_ZONES:
             zones.append({
                 "key": zone["key"], "name": zone["name"], "blurb": zone["blurb"],
@@ -3560,13 +3605,14 @@ def planet_state(p):
                 "sites": [{"key": s["key"], "name": s["name"],
                            "solved": entry["solved"].get(s["key"]),
                            "stars": entry["stars"].get(s["key"], [False] * 3),
-                           "open": planet.HALLOWEEN_ORDER.index(s["key"]) <= frontier_h,
+                           "open": halloween_site_open(entry, s["key"]),
                            "gift": gift_for(p, s["key"]) is not None}
                           for s in zone["sites"]]})
     # Rewards to pick, while there's something left to pick.
     choices = pick_choices(entry) if picks_left(entry) > 0 else []
     return {"you": {"name": p["name"], "ran": any(entry["runs"].values())}, "zones": zones,
             "current": current, "last_site": entry["now"] and entry["now"]["site"],
+            "yours": planet.type_yourself(planet.find_site(current)[0]),
             "uncharted": entry["uncharted"],
             "total_stars": star_count(entry),
             "max_stars": 3 * len(planet.SITE_ORDER)
@@ -3585,6 +3631,9 @@ def planet_state(p):
             "halloween": halloween_view(entry) if spooky else None,
             "look": entry["look"], "garage": garage_for(entry), "showoff": entry["showoff"],
             "functions": entry["functions"], "paint_code": entry.get("paint_code"),
+            "presets": entry.get("presets") or [None] * PRESETS,
+            "lounge": planet_lounge["open"], "team": team_room["open"], "show_code": entry.get("show_code"),
+            "has_show": bool(entry.get("show")),
             "class": {"stars": class_stars(), "goals": CLASS_GOALS}}
 
 
@@ -3700,6 +3749,30 @@ def challenge_place(p, key, reached):
     return len(now["done"])
 
 
+def race_keep(p, key, code, result, run):
+    """A win on the class challenge goes in the race, if it's this student's
+    quickest. It's the route the rover really drove, so it has to get there."""
+    if key != (planet_class_settings["challenge"] or {}).get("key") or not result["reached"]:
+        return False
+    if key != planet_race["key"]:      # a challenge from before the server restarted
+        planet_race.update(key=key, runs={})
+    old = planet_race["runs"].get(p["id"])
+    if not old or result["ticks"] < old["ticks"]:
+        planet_race["runs"][p["id"]] = {"name": p["name"], "site": key, "look": run["look"], "map": run["map"],
+                                        "path": run["path"], "ghosts": run["ghosts"], "end": run["end"], "reached": True,
+                                        "ticks": result["ticks"], "chars": count_chars(code, "python"),
+                                        "code": "\n".join(line for line in code.strip().splitlines()
+                                                          if not line.strip().startswith("#"))}
+    return True
+
+
+def race_lineup():
+    """Everyone in the race, for the class screen."""
+    key = planet_race["key"]
+    return {"key": key, "name": planet.find_site(key)[2]["name"] if key else None,
+            "racers": sorted(planet_race["runs"].values(), key=lambda run: run["name"])}
+
+
 def planet_record(p, key, code, results):
     """Save a run and work out everything it earned: stars, badges, a class
     record, garage unlocks."""
@@ -3729,6 +3802,7 @@ def planet_record(p, key, code, results):
     zone_before = zone_done()
     # Never completed before, and this is the first transmit here.
     first_try = entry["runs"][key] == 1 and key not in entry["solved"]
+    new_level = key not in entry["solved"]
     # A mystery gift opens when the rover drives over it, mission or not.
     found = []
     gift = gift_for(p, key)
@@ -3908,7 +3982,15 @@ def planet_record(p, key, code, results):
         "record": bool(record), "first_try": bool(first_try and reached_any),
         "cleared": cleared and cleared["name"], "look": dict(entry["look"])})
     del planet_runs[:-RUNS_KEPT]
-    return {"stars": shown_stars(key, run_stars), "best": shown_stars(key, stars), "new_stars": new_stars,
+    in_race = race_keep(p, key, code, first, planet_runs[-1])
+    today = entry.setdefault("events", {}).setdefault(time.strftime("%Y-%m-%d"), {})
+    today["runs"] = today.get("runs", 0) + 1
+    today["wins"] = today.get("wins", 0) + bool(reached_any)
+    today["new_levels"] = today.get("new_levels", 0) + (new_level and key in entry["solved"])
+    hunt = planet_class_settings["challenge"] or {}
+    return {"stars": shown_stars(key, run_stars), "in_race": in_race,
+            "bug_clue": hunt.get("clue") if hunt.get("key") == key and not reached_any
+            and entry["misses"].get(key, 0) >= BUG_CLUE_AFTER else None, "best": shown_stars(key, stars), "new_stars": new_stars,
             "first_try": bool(first_try and reached_any), "rank_up": rank_up,
             "zone_cleared": cleared, "trophy": trophy,
             "missions_done": [{"icon": MISSIONS[k][0], "text": MISSIONS[k][1]} for k in done_now],
@@ -3992,6 +4074,9 @@ def planet_set_look(p, data):
         choice = str(data.get(slot, entry["look"].get(slot, "")))
         if (slot, choice) in open_items:
             entry["look"][slot] = choice
+    # The camera head on the front can come off, to show more of the paint.
+    if "nomast" in data:
+        entry["look"]["nomast"] = bool(data["nomast"])
     # One earned badge to wear on the class screen, or none.
     if "showoff" in data:
         wear = data["showoff"]
@@ -4019,6 +4104,436 @@ def planet_paint(p, data):
                 feed(f"{icon} {p['name']} earned {name}")
     out["look"] = entry["look"]
     return out
+
+
+PRESETS = 4   # saved looks a student can keep
+
+
+def planet_presets(p, data):
+    """Saved looks: "save" keeps what the rover wears in a slot, "wear" puts a
+    slot's look back on (only what's still unlocked), "clear" empties one."""
+    entry = planet_entry(p)
+    presets = entry.setdefault("presets", [None] * PRESETS)
+    slot = data.get("slot")
+    if not isinstance(slot, int) or not 0 <= slot < PRESETS:
+        return {"error": "No such slot."}
+    if "save" in data:
+        presets[slot] = dict(entry["look"])
+    elif "clear" in data:
+        presets[slot] = None
+    elif "wear" in data and presets[slot]:
+        saved = presets[slot]
+        if saved.get("art"):   # their Paint Shop painting from then
+            entry["look"]["art"] = saved["art"]
+        planet_set_look(p, dict(saved, nomast=bool(saved.get("nomast"))))
+    return {"presets": presets, "look": entry["look"]}
+
+
+# The Rover Lounge: a room the teacher opens, where everyone's rovers hang out
+# together and show off. It's for play, so it's kept in memory only: a restart
+# leaves it closed, and nothing in it earns or counts anything. Rovers are
+# known by a seat number here, because a player's id works as their login.
+LOUNGE_COLS, LOUNGE_ROWS = 14, 9   # the room's size in squares (LOUNGE in planet_lounge.js too)
+LOUNGE_FLOOR = 3                   # the rows above this are the wall and stage
+LOUNGE_GONE = 5                    # seconds of silence before a rover has left
+LOUNGE_EVENTS = 60                 # moments kept for the room's next polls
+LOUNGE_ACTS = ("honk", "dance", "wave", "spin", "jump")
+LOUNGE_CHEERS = ("👏", "🔥", "⭐", "🤩", "❤️")
+LOUNGE_EMOTES = ("😂", "😎", "🥳", "🙌", "🤖", "😴")
+LOUNGE_KICK = 7                    # the fastest the ball can go, in squares a second
+STAGE_ROLL = .8                    # seconds to roll onto the stage, and off again
+GARAGE_ITEM = {(item["slot"], item["key"]): item for item in GARAGE}
+
+
+def lounge_empty():
+    return {"open": False, "here": {}, "events": [], "seq": 0, "seats": 0,
+            "stage": None, "queue": [], "ball": {"x": 7, "y": 6.2, "vx": 0, "vy": 0, "n": 0, "at": 0}}
+
+
+planet_lounge = lounge_empty()
+
+
+def lounge_set(on):
+    """Open the room, or close it and clear everyone out."""
+    planet_lounge.update(lounge_empty(), open=bool(on))
+
+
+def lounge_keep_up():
+    """Rovers that went quiet have left. A show that's over gives the stage to
+    the next in the queue."""
+    lounge, now = planet_lounge, time.time()
+    for pid in [k for k, r in lounge["here"].items()
+                if k not in players or now - r["seen"] > LOUNGE_GONE]:
+        del lounge["here"][pid]
+    lounge["queue"] = [pid for pid in lounge["queue"] if pid in lounge["here"]]
+    stage = lounge["stage"]
+    if stage and (now >= stage["until"] or stage["pid"] not in lounge["here"]):
+        stage = lounge["stage"] = None
+    if not stage and lounge["queue"]:
+        pid = lounge["queue"].pop(0)
+        show = planet_entry(players[pid]).get("show") or planet.rover_show(planet.SHOW_BASIC)["steps"]
+        lounge["seq"] += 1
+        lounge["stage"] = {"pid": pid, "n": lounge["seq"], "steps": show, "start": now,
+                           "until": now + 2 * STAGE_ROLL + sum(s[1] for s in show)}
+
+
+def lounge_tag(q):
+    """The name over a rover: "Zoomer · Mia", or just "Mia"."""
+    rover = planet_entry(q).get("rover_name")
+    return f"{rover} · {q['name']}" if rover else q["name"]
+
+
+def lounge_row(q, spot):
+    """One rover for the room: what it looks like and what's on its card. No
+    stars or scores: this room is for the rovers, not for comparing kids."""
+    entry = planet_entry(q)
+    look = entry["look"]
+    worn = [GARAGE_ITEM[kv] for kv in look.items() if kv in GARAGE_ITEM]
+    best = max(worn, key=lambda i: RARITIES.index(i["rarity"]), default=None)
+    pet = GARAGE_ITEM.get(("pet", look.get("pet")))
+    badge = PLANET_BADGES[entry["showoff"]] if entry["showoff"] else None
+    return {"seat": spot["seat"], "x": spot["x"], "y": spot["y"], "tag": lounge_tag(q), "look": look,
+            "best": best and {"name": best["name"], "rarity": best["rarity"]},
+            "pet": pet["name"] if pet and look.get("pet") != "nopet" else None,
+            "badge": badge and {"icon": badge[0], "name": badge[1]}}
+
+
+def lounge_view(p, after):
+    """The room as one student sees it, and the moments since their last look.
+    Asking is what keeps a rover in the room."""
+    lounge = planet_lounge
+    if not lounge["open"]:
+        return {"open": False}
+    spot = None
+    if p:           # the class screen asks with no student, and has no rover
+        spot = lounge["here"].get(p["id"])
+        if not spot:
+            # These steps keep a whole class at least a square apart.
+            seat = lounge["seats"] = lounge["seats"] + 1
+            spot = lounge["here"][p["id"]] = {"seat": seat, "x": 1.2 + seat * 5.3 % 11.6, "y": 3.6 + seat * 3.1 % 4.6,
+                                              "seen": 0, "acted": 0, "kicked": 0}
+        spot["seen"] = time.time()
+    lounge_keep_up()
+    stage = lounge["stage"]
+    ball = lounge["ball"]
+    return {"open": True, "you": spot and spot["seat"], "seq": lounge["seq"],
+            "cheers": LOUNGE_CHEERS, "emotes": LOUNGE_EMOTES,
+            "ball": dict(ball, ago=round(time.time() - ball["at"], 2)),
+            "trophies": [{"name": level["name"], "won": i in planet_class_settings["team_wins"],
+                          "best": planet_class_settings["team_best"].get(str(i))}
+                         for i, level in enumerate(planet_team.LEVELS)],
+            "rovers": [lounge_row(players[k], r) for k, r in lounge["here"].items()],
+            "events": [e for e in lounge["events"] if isinstance(after, int) and e["n"] > after],
+            "stage": stage and {"n": stage["n"], "seat": lounge["here"][stage["pid"]]["seat"],
+                                "tag": lounge_tag(players[stage["pid"]]), "steps": stage["steps"],
+                                "roll": STAGE_ROLL, "ago": round(time.time() - stage["start"], 2)},
+            "queue": [lounge["here"][k]["seat"] for k in lounge["queue"]]}
+
+
+def lounge_event(spot, kind, **more):
+    """A moment everyone in the room sees, about one a second from each rover."""
+    now = time.time()
+    if now - spot["acted"] < 1:
+        return
+    spot["acted"] = now
+    planet_lounge["seq"] += 1
+    planet_lounge["events"].append(dict(more, n=planet_lounge["seq"], seat=spot["seat"], kind=kind))
+    del planet_lounge["events"][:-LOUNGE_EVENTS]
+
+
+def lounge_number(value, low, high):
+    """A place in the room, or None if it isn't a real number."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        return None
+    return round(max(low, min(high, value)), 2)
+
+
+def lounge_show(p, data):
+    """Try a show's code, or keep it for the stage. Coding a show is an extra:
+    anyone can take the stage without one."""
+    entry = planet_entry(p)
+    code = entry["show_code"] = code_in(data)[:planet.MAX_CODE]
+    out = planet.rover_show(code)
+    if data.get("do") == "keep_show":
+        if not out["error"] and not out["steps"]:
+            out["error"] = "Your show doesn't do anything yet. Try a line like  spin()"
+        if not out["error"]:
+            entry["show"] = out["steps"]
+    return out
+
+
+def lounge_kick(spot, data):
+    """A rover bumped the ball. Pages work out where it rolls from here."""
+    now, ball = time.time(), planet_lounge["ball"]
+    x = lounge_number(data.get("x"), .3, LOUNGE_COLS - .3)
+    y = lounge_number(data.get("y"), LOUNGE_FLOOR + .3, LOUNGE_ROWS - .3)
+    vx = lounge_number(data.get("vx"), -LOUNGE_KICK, LOUNGE_KICK)
+    vy = lounge_number(data.get("vy"), -LOUNGE_KICK, LOUNGE_KICK)
+    if None not in (x, y, vx, vy) and now - spot["kicked"] >= .25:
+        spot["kicked"] = now
+        ball.update(x=x, y=y, vx=vx, vy=vy, n=ball["n"] + 1, at=now)
+
+
+def lounge_act(p, data):
+    """Something a student does in the room. Returns the room as they now see it."""
+    lounge, what = planet_lounge, data.get("do")
+    if not lounge["open"]:
+        return {"open": False}
+    if what in ("try_show", "keep_show"):
+        return lounge_show(p, data)
+    spot = lounge["here"].get(p["id"])
+    if spot:
+        if what == "move":
+            x = lounge_number(data.get("x"), .5, LOUNGE_COLS - .5)
+            y = lounge_number(data.get("y"), LOUNGE_FLOOR, LOUNGE_ROWS - .5)
+            if x is not None and y is not None:
+                spot.update(x=x, y=y)
+        elif what in LOUNGE_ACTS:
+            lounge_event(spot, what)
+        elif what == "emote" and data.get("emote") in LOUNGE_EMOTES:
+            lounge_event(spot, "emote", emote=data["emote"])
+        elif what == "kick":
+            lounge_kick(spot, data)
+        elif what == "cheer" and data.get("cheer") in LOUNGE_CHEERS:
+            to = next((k for k, r in lounge["here"].items() if r["seat"] == data.get("to")), None)
+            if to and to != p["id"]:
+                lounge_event(spot, "cheer", to=data["to"], cheer=data["cheer"], tag=p["name"])
+        elif what == "stage":
+            on_stage = lounge["stage"] and lounge["stage"]["pid"] == p["id"]
+            if not on_stage and p["id"] not in lounge["queue"]:
+                lounge["queue"].append(p["id"])
+    return lounge_view(p, data.get("after"))
+
+
+# The Team Mission: the whole class on one map, live. The teacher opens it, and
+# the rules are in planet_team.py. Like the lounge it's in memory only, earns
+# nothing, and knows rovers by seat because a player's id works as their login.
+# Pages long-poll, so a push shows up on every screen straight away.
+TEAM_GONE = 5      # seconds of silence before a rover has left
+TEAM_WAIT = 2      # the longest a page's question waits for news
+TEAM_STEP = .08    # the quickest a rover can take steps, a bit under the page's own pace
+TEAM_PAUSE = 10    # seconds to enjoy a finished level before the next one
+TEAM_SHOUT_GAP = 2.5   # seconds between one rover's shouts
+TEAM_CODE_GAP = 1      # seconds between one rover's programs
+BUG_CLUE_AFTER = 2     # misses in a row on a bug hunt before the clue comes
+team_news = threading.Condition()
+team_room = {"open": False, "here": {}, "seats": 0, "seq": 0, "roster": 0, "mission": planet_team.Mission(), "helper": False}
+
+
+def team_changed():
+    team_room["seq"] += 1
+    with team_news:
+        team_news.notify_all()
+
+
+def team_set(on):
+    """Open or close the room. Closing keeps the mission, so a slip of the
+    switch costs nothing."""
+    team_room["open"] = bool(on)
+    team_changed()
+
+
+def team_restart(level=0):
+    """A fresh map. Everyone here rolls back onto the lander."""
+    room, now = team_room, time.time()
+    room["mission"] = planet_team.Mission(level)
+    for pid, spot in room["here"].items():
+        spot["last"] = None
+        if pid in players and now - spot["seen"] <= TEAM_GONE:
+            room["mission"].enter(spot["seat"], now)
+    team_helper(room["helper"])
+    team_changed()
+
+
+def team_helper(on):
+    """The teacher's helper rover: for trying the mission alone, or a very
+    small class. A level it helped on earns no trophy or class best."""
+    room, mission = team_room, team_room["mission"]
+    room["helper"] = bool(on)
+    if on and planet_team.HELPER not in mission.rovers:
+        mission.helped = True
+        mission.enter(planet_team.HELPER, time.time())
+        mission.helper_step()
+    elif not on:
+        mission.rovers.pop(planet_team.HELPER, None)
+    room["roster"] += 1
+    team_changed()
+
+
+def team_next():
+    """On to the next level. Says what it did, for the teacher."""
+    level = team_room["mission"].level + 1
+    if level == len(planet_team.LEVELS):
+        return "This is the last level."
+    team_restart(level)
+    return f"The class has moved on to {planet_team.LEVELS[level]['name']}."
+
+
+def team_next_in():
+    """Seconds until the next level starts, or 0 if none is coming."""
+    mission = team_room["mission"]
+    if not mission.won or mission.level + 1 == len(planet_team.LEVELS):
+        return 0
+    return max(0, math.ceil(mission.won + TEAM_PAUSE - time.time()))
+
+
+def team_keep_up():
+    """Rovers that went quiet have left, and a finished level moves on."""
+    room, now = team_room, time.time()
+    mission = room["mission"]
+    for pid, spot in room["here"].items():
+        if spot["seat"] in mission.rovers and (pid not in players or now - spot["seen"] > TEAM_GONE):
+            spot["last"] = mission.leave(spot["seat"])
+            room["roster"] += 1
+            team_changed()
+    if room["helper"] and not mission.won and mission.helper_step():
+        team_changed()
+    before = mission.won
+    mission.check_win(now)
+    if mission.won != before:
+        team_changed()
+        wins, best = planet_class_settings["team_wins"], planet_class_settings["team_best"]
+        if not mission.forced and not mission.helped:          # a win the class earned: a trophy
+            if mission.level not in wins:
+                wins.append(mission.level)
+            secs, old = round(mission.won - mission.began), best.get(str(mission.level))
+            if old is None or secs < old:
+                mission.record = old - secs if old else "first"
+                best[str(mission.level)] = secs
+            save_state()
+    if mission.won and mission.level + 1 < len(planet_team.LEVELS) and team_next_in() == 0:
+        team_next()
+
+
+def team_row(q, spot):
+    entry = planet_entry(q)
+    return {"seat": spot["seat"], "tag": q["name"][:10], "look": entry["look"]}
+
+
+def team_view(p, query):
+    """The map as one student sees it (or the class screen, with no student).
+    Asking is what keeps a rover on the map. The map itself and everyone's
+    looks are big, so they only come when the page doesn't have them yet."""
+    room = team_room
+    if not room["open"]:
+        return {"open": False}
+    now, spot = time.time(), None
+    if p:
+        spot = room["here"].get(p["id"])
+        if not spot:
+            room["seats"] += 1
+            spot = room["here"][p["id"]] = {"seat": room["seats"], "seen": now, "stepped": 0, "shouted": 0, "last": None}
+        spot["seen"] = now
+        if spot["seat"] not in room["mission"].rovers:
+            room["mission"].enter(spot["seat"], now, spot["last"])
+            room["roster"] += 1
+            team_changed()
+    team_keep_up()
+    mission = room["mission"]
+    out = dict(mission.view(now), open=True, you=spot and spot["seat"], seq=room["seq"],
+               roster=room["roster"], next_in=team_next_in(),
+               best=planet_class_settings["team_best"].get(str(mission.level)),
+               mine=spot and mission.your_job(spot["seat"]))
+    if query.get("level", [""])[0] != str(mission.level):
+        out["map"] = list(mission.map)
+    if query.get("roster", [""])[0] != str(room["roster"]):
+        out["people"] = [team_row(players[k], s) for k, s in room["here"].items() if s["seat"] in mission.rovers]
+        if room["helper"]:
+            out["people"].append({"seat": planet_team.HELPER, "tag": "🤖 Helper", "look": {}})
+    return out
+
+
+def team_ask(query):
+    """A page asks for the map. With `after` it waits a little for news."""
+    after = query.get("after", [""])[0]
+    if team_room["open"] and after.isdigit() and int(after) == team_room["seq"]:
+        with team_news:
+            team_news.wait(TEAM_WAIT)
+    with lock:
+        pid = query.get("id", [""])[0]
+        if pid and pid not in players:
+            return {"error": "join"}
+        return team_view(players.get(pid), query)
+
+
+def team_act(p, data):
+    """Something a student does on the map. Returns the map as they now see it."""
+    room, what = team_room, data.get("do")
+    if not room["open"]:
+        return {"open": False}
+    spot, now, tip, program = room["here"].get(p["id"]), time.time(), None, None
+    mission = room["mission"]
+    if spot and spot["seat"] in mission.rovers and not mission.won:
+        if what == "move" and data.get("way") in planet_team.WAYS and now - spot["stepped"] >= TEAM_STEP:
+            spot["stepped"] = now
+            tip = mission.move(spot["seat"], data["way"], p["name"][:10], now)
+            team_changed()
+        elif what == "home":
+            mission.go_home(spot["seat"])
+            team_changed()
+        elif what == "shout" and data.get("key") in planet_team.SHOUTS and now - spot["shouted"] >= TEAM_SHOUT_GAP:
+            spot["shouted"] = now
+            mission.shout(spot["seat"], data["key"], now)
+            team_changed()
+        elif what == "code" and now - spot.get("coded", 0) >= TEAM_CODE_GAP:
+            spot["coded"] = now
+            program = planet_team.fly(mission, spot["seat"], code_in(data)[:planet.MAX_CODE + 1])
+    out = team_view(p, {"level": [str(data.get("level"))], "roster": [str(data.get("roster"))]})
+    if tip is not None:
+        out["tip"] = tip
+    if program:
+        out["program"] = program
+    return out
+
+
+# 🔮 Predict it: the class votes on how far a program drives, then watches it.
+# In memory only, and it earns nothing. Votes are counted without names.
+predict_room = {"n": 0, "q": None, "votes": {}, "revealed": False}
+PREDICT_RECENT = 300    # seconds since a student's page last asked, to count them as here
+
+
+def predict_open(number):
+    """The teacher opens a question, or closes the room with anything else."""
+    room = predict_room
+    number = str(number)
+    if not number.isdigit() or int(number) >= len(planet_predict.QUESTIONS):
+        room.update(q=None, votes={}, revealed=False)
+        return "Predict it is closed."
+    room.update(n=room["n"] + 1, q=int(number), votes={}, revealed=False)
+    return "The question is on every student's screen. Press Reveal when they've voted."
+
+
+def predict_public():
+    """What a student's page gets: no answer until it's revealed."""
+    room = predict_room
+    if room["q"] is None:
+        return None
+    code, options = planet_predict.QUESTIONS[room["q"]]
+    out = {"n": room["n"], "code": code.strip(), "options": options, "revealed": room["revealed"]}
+    if room["revealed"]:
+        out["answer"] = len(planet_predict.play(code)) - 1
+    return out
+
+
+def predict_view():
+    """What the class screen gets. How the vote is going stays hidden until
+    the reveal, so nobody just copies the crowd."""
+    room, now = predict_room, time.time()
+    out = predict_public() or {}
+    out.update(field=[planet_predict.FIELD_ROWS, planet_predict.FIELD_COLS], voted=len(room["votes"]),
+               here=sum(now - q.get("planet", {}).get("pinged", 0) < PREDICT_RECENT for q in players.values()))
+    if room["q"] is not None and room["revealed"]:
+        out["path"] = planet_predict.play(planet_predict.QUESTIONS[room["q"]][0])
+        out["tally"] = {str(n): sum(v == n for v in room["votes"].values()) for n in out["options"]}
+    return out
+
+
+def predict_vote(p, data):
+    room = predict_room
+    open_now = room["q"] is not None and not room["revealed"]
+    if open_now and data.get("choice") in planet_predict.QUESTIONS[room["q"]][1]:
+        room["votes"][p["id"]] = data["choice"]
+    return {"voted": room["votes"].get(p["id"])}
 
 
 def planet_typing(p, key, code):
@@ -4081,6 +4596,22 @@ def planet_now(q, entry, frontier_key):
             "zone_name": zone["name"], "map": grid,
             "pos": pos, "end": now.get("end"), "code": now.get("code", ""),
             "said": now.get("said")}
+
+
+def planet_today():
+    """Who played today and how far they got, for after class."""
+    day, rows = time.strftime("%Y-%m-%d"), []
+    for q in players.values():
+        today = q.get("planet", {}).get("events", {}).get(day)
+        if not today:
+            continue
+        rows.append({"name": q["name"], "minutes": today.get("secs", 0) // 60, "runs": today.get("runs", 0),
+                     "wins": today.get("wins", 0), "new_levels": today.get("new_levels", 0),
+                     "on": planet.SITE_ORDER[planet_frontier(q)]})
+    best = planet_class_settings["team_best"]
+    return {"day": day, "students": sorted(rows, key=lambda row: (-row["minutes"], row["name"].lower())),
+            "team_best": [{"name": level["name"], "secs": best[str(i)]}
+                          for i, level in enumerate(planet_team.LEVELS) if str(i) in best]}
 
 
 def planet_report():
@@ -4154,7 +4685,7 @@ def planet_class():
                      "solved": len(entry["solved"]),
                      "stars": star_count(entry),
                      "badges": len(entry["badges"]),
-                     "look": entry["look"],
+                     "look": entry["look"], "rover_name": entry.get("rover_name", ""),
                      # The rarest thing they're wearing, for their card's frame.
                      "flair": max((RARITY_OF.get(kv, "common") for kv in entry["look"].items()),
                                   key=RARITIES.index),
@@ -4167,6 +4698,7 @@ def planet_class():
                      # Their last few tries where they are now, newest last.
                      "tries": entry.get("tries", {}).get(now["site"], []),
                      "active": entry["active"], "typed": entry.get("typed"),
+                     "played": planet_minutes(entry),
                      "skipped": [k for k in entry.get("skipped", []) if k not in entry["solved"]]})
     rows.sort(key=lambda x: (x["at"], -x["runs_here"], x["name"].lower()))
     return {"students": rows, "sites": len(planet.SITE_ORDER),
@@ -4406,11 +4938,42 @@ def admin_action(data):
         q = players.get(data.get("pid"))
         if not q or not q.get("planet"):
             return "No such student."
-        look = planet_entry(q)["look"]
-        look.pop("art", None)
-        if look["paint"] == "mine":
-            look["paint"] = "bone"
+        entry = planet_entry(q)
+        # Off the rover, and out of every saved look, so it can't come back.
+        for look in [entry["look"]] + [x for x in entry.get("presets", []) if x]:
+            look.pop("art", None)
+            if look.get("paint") == "mine":
+                look["paint"] = "bone"
         return f"Wiped {q['name']}'s Paint Shop paint."
+    if action == "planet_wipe_name":
+        q = players.get(data.get("pid"))
+        if not q or not q.get("planet"):
+            return "No such student."
+        planet_entry(q)["rover_name"] = ""
+        return f"Wiped {q['name']}'s rover name."
+    if action == "planet_lounge":
+        lounge_set(data.get("on"))
+        return ("🛋 The Rover Lounge is open. A Lounge button comes up on students' screens."
+                if planet_lounge["open"] else
+                "The Rover Lounge is closed. Everyone is back on their level.")
+    if action == "planet_team":
+        team_set(data.get("on"))
+        return ("🤝 The Team Mission is open. A Team Mission button comes up on students' screens."
+                if team_room["open"] else
+                "The Team Mission is closed. It stays just as it was until you open it again.")
+    if action == "planet_team_restart":
+        team_restart()
+        return "The Team Mission is starting again from level 1. Trophies in the lounge stay."
+    if action == "planet_team_helper":
+        team_helper(not team_room["helper"])
+        return ("🤖 The helper rover is on the map. It stands on plates, and this level won't earn a trophy."
+                if team_room["helper"] else "🤖 The helper rover has gone.")
+    if action == "planet_team_doors":
+        team_room["mission"].open_all()
+        team_changed()
+        return "Every door on this level is open and every crater is filled in."
+    if action == "planet_team_next":
+        return team_next()
     if action == "planet_halloween":
         # Halloween night out (for the students invited) or put away. What
         # students earned stays theirs either way.
@@ -4444,12 +5007,42 @@ def admin_action(data):
         planet_class_settings["blanks"] = bool(data.get("on"))
         return ("Scouted code now has a few words to finish." if planet_class_settings["blanks"]
                 else "Scouted code now comes out whole, nothing to finish.")
+    if action == "planet_bug":
+        hunt = str(data.get("n", ""))
+        if not hunt.isdigit() or int(hunt) >= len(planet.BUG_HUNTS):
+            planet_class_settings["challenge"] = None
+            return "No bug hunt now."
+        key, what, code, _ = planet.BUG_HUNTS[int(hunt)]
+        planet_class_settings["challenge"] = {"key": key, "done": [], "bug": code, "clue": what, "tag": f"{key}:{hunt}"}
+        planet_race.update(key=key, runs={})
+        feed(f"🐛 Bug hunt: {planet.find_site(key)[2]['name']}!")
+        return f"Bug hunt set on {key.upper()}: {what}."
+    if action == "planet_predict":
+        return predict_open(data.get("n", ""))
+    if action == "planet_predict_reveal":
+        if predict_room["q"] is None:
+            return "Pick a question first."
+        predict_room["revealed"] = True
+        return "Revealed. The rover is driving on the class screen."
+    if action == "planet_notice":
+        words = TEACHER_NOTICES.get(data.get("what"))
+        if not words:
+            return "Unknown message."
+        planet_notice.update(n=planet_notice["n"] + 1, icon=words[0], title=words[1], text=words[2])
+        return "Sent to every student's screen."
+    if action == "planet_team_level":
+        level = str(data.get("level", ""))
+        if not level.isdigit() or int(level) >= len(planet_team.LEVELS):
+            return "Unknown level."
+        team_restart(int(level))
+        return f"The class has moved to {planet_team.LEVELS[int(level)]['name']}."
     if action == "planet_challenge":
         key = str(data.get("site", ""))
         if key not in planet.SITE_ORDER:
             planet_class_settings["challenge"] = None
             return "No class challenge now."
         planet_class_settings["challenge"] = {"key": key, "done": []}
+        planet_race.update(key=key, runs={})
         feed(f"🎯 Class challenge: {planet.find_site(key)[2]['name']}!")
         return f"Class challenge set: everyone can open {key.upper()} now."
     if action == "planet_sound":
@@ -5647,6 +6240,17 @@ def load(path):
         return f.read()
 
 
+STARTED = time.time()
+
+
+def out_of_date():
+    """The files changed since this server started. It keeps its pages and
+    rules from then, so an update shows up only after a restart."""
+    folder = os.path.dirname(os.path.abspath(__file__))
+    names = {page[0] for page in PAGES.values()} | {"server.py", "planet.py", "planet_team.py"}
+    return sorted(name for name in names if os.path.getmtime(os.path.join(folder, name)) > STARTED)
+
+
 PAGES = {
     "/": ("studio.html", "text/html; charset=utf-8"),
     "/classic": ("game.html", "text/html; charset=utf-8"),
@@ -5659,6 +6263,13 @@ PAGES = {
     "/planet/render.js": ("planet_render.js", "text/javascript; charset=utf-8"),
     "/planet/replay.js": ("planet_replay.js", "text/javascript; charset=utf-8"),
     "/planet/halloween.js": ("planet_halloween.js", "text/javascript; charset=utf-8"),
+    "/planet/lounge.js": ("planet_lounge.js", "text/javascript; charset=utf-8"),
+    "/planet/lounge/watch": ("planet_lounge_watch.html", "text/html; charset=utf-8"),
+    "/planet/team.js": ("planet_team.js", "text/javascript; charset=utf-8"),
+    "/planet/team/watch": ("planet_team_watch.html", "text/html; charset=utf-8"),
+    "/planet/race": ("planet_race.html", "text/html; charset=utf-8"),
+    "/planet/predict": ("planet_predict.html", "text/html; charset=utf-8"),
+    "/planet/predict.js": ("planet_predict.js", "text/javascript; charset=utf-8"),
     "/cake": ("cake.html", "text/html; charset=utf-8"),
     "/cake/teacher": ("cake_teacher.html", "text/html; charset=utf-8"),
     "/cake/show": ("cake_show.html", "text/html; charset=utf-8"),
@@ -5761,6 +6372,33 @@ class Handler(BaseHTTPRequestHandler):
                 body = json.dumps(planet_report()).encode()
             self._send(200, body)
             return
+        if path == "/planet/team":
+            self._send(200, team_ask(parse_qs(urlsplit(self.path).query)))
+            return
+        if path == "/planet/today":
+            with lock:
+                body = json.dumps(planet_today()).encode()
+            self._send(200, body)
+            return
+        if path == "/planet/predict/view":
+            with lock:
+                body = json.dumps(dict(predict_view(), student=predict_public())).encode()
+            self._send(200, body)
+            return
+        if path == "/planet/race/lineup":
+            with lock:
+                body = json.dumps(race_lineup()).encode()
+            self._send(200, body)
+            return
+        if path == "/planet/lounge":
+            query = parse_qs(urlsplit(self.path).query)
+            after = query.get("after", [""])[0]
+            pid = query.get("id", [""])[0]
+            with lock:
+                p = players.get(pid)
+                body = lounge_view(p, int(after) if after.isdigit() else None) if p or not pid else {"error": "join"}
+            self._send(200, body)
+            return
         if path in ("/planet/state", "/planet/site", "/planet/overview", "/planet/ping"):
             address = f"http://{get_lan_ip()}:{PORT}/planet" if path == "/planet/overview" else ""
             query = parse_qs(urlsplit(self.path).query)
@@ -5777,14 +6415,26 @@ class Handler(BaseHTTPRequestHandler):
                                 challenge_sites=[{"key": k, "name": planet.find_site(k)[2]["name"]}
                                                  for k in planet.SITE_ORDER],
                                 easy=planet_class_settings["easy"],
-                                halloween=planet_class_settings["halloween"])
+                                halloween=planet_class_settings["halloween"],
+                                lounge=planet_lounge["open"], team=team_room["open"],
+                                out_of_date=out_of_date(), team_level=team_room["mission"].level,
+                                predict=predict_room["q"], predict_revealed=predict_room["revealed"],
+                                predict_count=len(planet_predict.QUESTIONS),
+                                team_rovers=len(set(team_room["mission"].rovers) - {planet_team.HELPER}),
+                                team_helper=team_room["helper"],
+                                team_vault=team_room["mission"].in_vault(),
+                                team_levels=[level["name"] for level in planet_team.LEVELS],
+                                bug_hunts=[{"key": key, "what": what} for key, what, _, _ in planet.BUG_HUNTS])
                 elif not p:
                     body = {"you": None}
                 elif path == "/planet/ping":
                     # A student page asks now and then: has Halloween night opened
                     # (or closed) for me since the page loaded?
+                    planet_playtime(p, query.get("busy", [""])[0] == "1")
                     body = {"halloween": halloween_on(planet_entry(p)),
-                            "challenge": (planet_class_settings["challenge"] or {}).get("key")}
+                            "challenge": (planet_challenge() or {}).get("tag"),
+                            "notice": planet_notice, "predict": predict_public(),
+                            "lounge": planet_lounge["open"], "team": team_room["open"]}
                 elif path == "/planet/state":
                     body = planet_state(p)
                 elif not planet_open(p, key):
@@ -5988,6 +6638,37 @@ class Handler(BaseHTTPRequestHandler):
                 look = planet_set_look(p, data)
                 save_state()
                 self._send(200, {"look": look})
+            return
+        if self.path == "/planet/predict":
+            with lock:
+                p = players.get(data.get("id"))
+                self._send(200, predict_vote(p, data) if p else {"error": "join"})
+            return
+        if self.path == "/planet/team":
+            with lock:
+                p = players.get(data.get("id"))
+                self._send(200, team_act(p, data) if p else {"error": "join"})
+            return
+        if self.path == "/planet/lounge":
+            with lock:
+                p = players.get(data.get("id"))
+                if not p:
+                    self._send(200, {"error": "join"})
+                    return
+                out = lounge_act(p, data)
+                if data.get("do") in ("try_show", "keep_show"):
+                    save_state()
+                self._send(200, out)
+            return
+        if self.path == "/planet/presets":
+            with lock:
+                p = players.get(data.get("id"))
+                if not p:
+                    self._send(200, {"error": "join"})
+                    return
+                out = planet_presets(p, data)
+                save_state()
+                self._send(200, out)
             return
         if self.path == "/planet/pick":
             with lock:
