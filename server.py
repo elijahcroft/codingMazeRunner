@@ -4636,7 +4636,7 @@ def pixel_state(p):
                     "friends": [s for s in pixel.FRIENDS if ("friend", s) not in pixel.LOCKED or ("friend", s) in opened],
                     "props": pixel.PROPS},
             "class_stars": pixel_class_stars(),
-            "ideas": pixel.IDEAS, "everything": list(pixel.EVERYTHING), "checking": pixel_class.get("check", True), "class_pals": sorted(q["name"] for q in players.values()
+            "room_words": pixel.ROOM_WORDS, "ideas": pixel.IDEAS, "everything": list(pixel.EVERYTHING), "checking": pixel_class.get("check", True), "class_pals": sorted(q["name"] for q in players.values()
                                   if (q.get("pixel") or {}).get("show") and not q["pixel"]["show"].get("hidden")),
             "my_show": {"title": show["title"], "hearts": len(show["hearts"]), "hidden": show.get("hidden", False),
                         "waiting": show.get("waiting", False)} if show else None}
@@ -4729,6 +4729,151 @@ def pixel_cast():
     return cast
 
 
+def live_names(page):
+    live = page.get("live")
+    return [m["name"] for m in live["base"]["members"]] if live else []
+
+
+# ---- The live room: everyone's pal on one stage, at the same moment -------------
+# Like the Rover Lounge: the teacher opens it, it's in memory only, and seats are
+# what travel, because a player id works as a login. Words are tapped from a list
+# unless the teacher turns typing on.
+ROOM_EVENTS = 500
+ROOM_AWAY = 14             # seconds without a word from a browser before a pal leaves
+room_news = threading.Condition()
+
+
+def room_empty():
+    return {"seq": 0, "seats": 0, "here": {}, "events": [], "scene": "wedding", "film": None}
+
+
+pixel_room = dict(room_empty(), open=False, words=False)
+
+
+def room_compact(pal):
+    return {"size": pal["size"], "palette": pal["palette"], "frames": pal["frames"][:1], "marks": pal.get("marks", "")}
+
+
+def room_row(spot):
+    return {k: spot[k] for k in ("seat", "name", "x", "y", "mood", "pal")}
+
+
+def room_event(kind, **more):
+    room = pixel_room
+    room["seq"] += 1
+    event = dict(more, n=room["seq"], kind=kind)
+    room["events"].append(event)
+    del room["events"][:-ROOM_EVENTS]
+    film = room["film"]
+    if film and len(film["events"]) < ROOM_EVENTS and kind != "film_start":
+        film["events"].append(dict(more, kind=kind, t=int((time.time() - film["start"]) * 1000)))
+    with room_news:
+        room_news.notify_all()
+
+
+def room_stop_film():
+    room = pixel_room
+    film, room["film"] = room["film"], None
+    if not film:
+        return
+    q = players.get(film["owner"])
+    if q and film["events"]:
+        pixel_entry(q)["take"] = {"base": film["base"], "events": film["events"], "seconds": int(time.time() - film["start"])}
+    room_event("film_stop", seat=film["seat"], kept=bool(film["events"]))
+
+
+def room_keep_up():
+    room, now = pixel_room, time.time()
+    for pid in [k for k, s in room["here"].items() if now - s["seen"] > ROOM_AWAY]:
+        room_event("leave", seat=room["here"].pop(pid)["seat"])
+    film = room["film"]
+    if film and (now - film["start"] > pixel.ROOM_SECONDS or film["owner"] not in room["here"]):
+        room_stop_film()
+
+
+def room_set(on):
+    pixel_room.update(room_empty(), open=bool(on), words=pixel_room["words"])
+    with room_news:
+        room_news.notify_all()
+
+
+def room_view(p, after):
+    room = pixel_room
+    room_keep_up()
+    spot = room["here"].get(p["id"]) if p else None
+    if spot:
+        spot["seen"] = time.time()
+    first = room["events"][0]["n"] if room["events"] else room["seq"] + 1
+    whole = after < 0 or after + 1 < first or after > room["seq"]
+    out = {"open": room["open"], "words": room["words"], "seq": room["seq"], "you": spot["seat"] if spot else None,
+           "film": ({"seat": room["film"]["seat"], "by": room["film"]["name"]} if room["film"] else None)}
+    if whole:
+        out.update(scene=room["scene"], members=[room_row(s) for s in room["here"].values()], events=[])
+    else:
+        out["events"] = [e for e in room["events"] if e["n"] > after]
+    return out
+
+
+def room_number(value, low, high):
+    return max(low, min(high, value)) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+
+
+def room_do(p, data):
+    room = pixel_room
+    if not room["open"]:
+        return {"error": "The room is closed."}
+    spot = room["here"].get(p["id"])
+    what = data.get("what")
+    if what == "join":
+        if not spot:
+            room["seats"] += 1
+            entry = pixel_entry(p)
+            spot = room["here"][p["id"]] = {
+                "seat": room["seats"], "name": p["name"], "x": 40 + room["seats"] * 47 % 240, "y": room["seats"] * .37 % 1,
+                "mood": None, "seen": time.time(), "pal": room_compact(pixel_pal(entry))}
+            room_event("join", member=room_row(spot))
+        return {"ok": True, "you": spot["seat"]}
+    if not spot:
+        return {"error": "join"}
+    spot["seen"] = time.time()
+    seat = spot["seat"]
+    if what == "leave":
+        room_event("leave", seat=room["here"].pop(p["id"])["seat"])
+    elif what == "walk":
+        x, y = room_number(data.get("x"), 8, 312), room_number(data.get("y"), 0, 1)
+        if x is None or y is None:
+            return {"error": "bad"}
+        spot["x"], spot["y"] = round(x), round(y, 2)
+        room_event("walk", seat=seat, x=spot["x"], y=spot["y"])
+    elif what == "move" and data.get("name") in pixel.ROOM_MOVES:
+        room_event("move", seat=seat, name=data["name"])
+    elif what == "feel" and data.get("name") in pixel.FEELINGS:
+        spot["mood"] = data["name"]
+        room_event("feel", seat=seat, name=data["name"])
+    elif what == "say":
+        text = " ".join(str(data.get("text", "")).split())[:pixel.LIVE_WORDS_MAX]
+        if not text or not (text in pixel.ROOM_SAYS or room["words"]):
+            return {"error": "bad"}
+        room_event("say", seat=seat, text=text)
+    elif what == "fx" and data.get("name") in pixel.ROOM_FX:
+        room_event("fx", seat=seat, name=data["name"], x=spot["x"])
+    elif what == "scene" and data.get("name") in pixel.SCENES and ("scene", data["name"]) not in pixel.LOCKED:
+        room["scene"] = data["name"]
+        room_event("scene", seat=seat, name=data["name"], by=spot["name"])
+    elif what == "film_start":
+        if room["film"]:
+            return {"error": "Someone is filming already."}
+        room["film"] = {"seat": seat, "owner": p["id"], "name": spot["name"], "start": time.time(), "events": [],
+                        "base": {"scene": room["scene"], "members": [room_row(s) for s in room["here"].values()]}}
+        room_event("film_start", seat=seat, by=spot["name"])
+    elif what == "film_stop":
+        if room["film"] and room["film"]["seat"] == seat:
+            room_stop_film()
+    else:
+        return {"error": "bad"}
+    return {"ok": True}
+
+
 # ---- The class story: one book, a page from each student ----------------------
 def pixel_story():
     if "story" not in pixel_class:
@@ -4764,9 +4909,12 @@ def pixel_film():
         cast, title, start = pixel_cast(), story["title"], story["start"]
     film = []
     for page in pages:
-        out = pixel.run_free(page["code"], page["pal"], {tuple(u) for u in page["unlocked"]}, page["id"],
-                             cast=cast, stand_in=True)
-        film.append({"id": page["id"], "by": page["by"], "line": page["line"], "pal": page["pal"], "steps": out["steps"]})
+        if page.get("live"):
+            steps = [{"do": "live", "live": page["live"]}]
+        else:
+            steps = pixel.run_free(page["code"], page["pal"], {tuple(u) for u in page["unlocked"]}, page["id"],
+                                   cast=cast, stand_in=True)["steps"]
+        film.append({"id": page["id"], "by": page["by"], "line": page["line"], "pal": page["pal"], "steps": steps})
     return {"title": title, "start": start, "pages": film}
 
 
@@ -4814,6 +4962,8 @@ def pixel_overview():
     return {"students": rows, "missions": [{"key": k, "name": pixel.LEVEL_BY_KEY[k]["name"]} for k in pixel.LEVEL_ORDER],
             "open": pixel_class.get("open", 0), "check": pixel_class.get("check", True), "feed": pixel_feed[-12:],
             "party": pixel_class.get("party", 0), "story_play": pixel_class.get("story_play", 0),
+            "room": {"open": pixel_room["open"], "words": pixel_room["words"], "here": [s["name"] for s in pixel_room["here"].values()],
+                     "said": [e["text"] for e in pixel_room["events"] if e["kind"] == "say"][-8:]},
             "class": {"stars": pixel_class_stars(), "goals": [u for u in pixel.UNLOCKS if "class" in u]}}
 
 
@@ -4828,6 +4978,13 @@ def pixel_teacher(data):
             pixel_feed_add(f"🎟️ {q['name']} put {show['title']} in the Theatre")
         show["hidden"] = action == "hide"
         show["waiting"] = False
+        return {"ok": True}
+    if action == "room":
+        room_set(data.get("on"))
+        return {"ok": True}
+    if action == "room_words":
+        pixel_room["words"] = bool(data.get("on"))
+        room_event("words", on=pixel_room["words"])
         return {"ok": True}
     if action == "all_in":                 # everything waiting, in one go
         for q in players.values():
@@ -4898,17 +5055,27 @@ def pixel_story_teacher():
     waiting = [{"owner": pixel_public(q), "by": q["name"], "picture": pixel_picture_of(q["pixel"]["cast"]["pal"])}
                for q in players.values() if ((q.get("pixel") or {}).get("cast") or {}).get("waiting")]
     return {"title": story["title"], "start": story["start"], "cast_waiting": waiting,
-            "pages": [dict(pixel_page_public(page), code=page["code"], picture=pixel_picture_of(page["pal"]))
-                      for page in story["pages"]]}
+            "pages": [dict(pixel_page_public(page), code=page["code"], picture=pixel_picture_of(page["pal"]),
+                           live=live_names(page)) for page in story["pages"]]}
 
 
 def pixel_get(path, query):
     if path == "/pixel/film":               # the projector has no login, and only let-in pages are in it
         return pixel_film()
+    if path == "/pixel/room":               # waits for news, so a tap reaches every screen at once
+        try:
+            after = int(query.get("after", ["-1"])[0])
+        except ValueError:
+            after = -1
+        if after >= 0 and query.get("wait") and pixel_room["open"] and pixel_room["seq"] <= after:
+            with room_news:
+                room_news.wait(5)
+        with lock:
+            return room_view(players.get(query.get("id", [""])[0]), after)
     with lock:
         if path == "/pixel/overview":       # the projector has no login, so no student rows
             over = pixel_overview()
-            return {"class": over["class"], "feed": over["feed"], "party": over["party"], "story_play": over["story_play"],
+            return {"class": over["class"], "feed": over["feed"], "party": over["party"], "story_play": over["story_play"], "room_open": pixel_room["open"],
                     "address": f"http://{get_lan_ip()}:{PORT}/pixel"}
         p = players.get(query.get("id", [""])[0])
         if path == "/pixel/story":
@@ -5034,6 +5201,32 @@ def pixel_post(path, data):
             rewards = pixel_record(p, key, code[:pixel.MAX_CODE], out)
             pixel_save_soon()
             return dict(out, rewards=rewards, state=pixel_state(p))
+    if path == "/pixel/room/do":
+        with lock:
+            return room_do(p, data)
+    if path == "/pixel/story/live":
+        line = " ".join(str(data.get("line", "")).split())[:pixel.LINE_MAX]
+        with lock:
+            take = entry.get("take")
+            if not take:
+                return {"error": "There's no film to add."}
+            if not line:
+                return {"error": "Write one sentence for the book first."}
+            story = pixel_story()
+            if len(story["pages"]) >= pixel.MAX_STORY_PAGES:
+                return {"error": "The book is full! Ask your teacher to start a new story."}
+            page = {"id": story["next"], "owner": p["id"], "by": p["name"], "line": line, "code": "", "live": take,
+                    "pal": dict(pal), "unlocked": [], "at": int(time.time()), "waiting": True}
+            story["next"] += 1
+            story["pages"].append(page)
+            entry["take"] = None
+            waiting = pixel_class.get("check", True)
+            if not waiting:
+                pixel_let_in(page)
+            earned = []
+            pixel_badge(p, "story", earned)
+            save_state()
+            return {"ok": True, "waiting": waiting, "badges": earned, "story": pixel_story_view(p)}
     if path == "/pixel/story/cast":
         if pal is pixel.PIP:
             return {"error": "Draw your pal first! Then it can join the story."}
@@ -5481,6 +5674,7 @@ PAGES = {
     "/pixel/studio.js": ("pixel_studio.js", "text/javascript; charset=utf-8"),
     "/pixel/life.js": ("pixel_life.js", "text/javascript; charset=utf-8"),
     "/pixel/story.js": ("pixel_story.js", "text/javascript; charset=utf-8"),
+    "/pixel/room.js": ("pixel_room.js", "text/javascript; charset=utf-8"),
     "/pixel/page.js": ("pixel_page.js", "text/javascript; charset=utf-8"),
     "/leaderboard": ("leaderboard.html", "text/html; charset=utf-8"),
     "/screen": ("screen.html", "text/html; charset=utf-8"),

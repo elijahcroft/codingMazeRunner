@@ -17,7 +17,7 @@ Both teacher pages are linked from `/admin`.
 ## How a class goes
 
 1. Students open `/pixel`, type their name and draw a pal. Anyone stuck at a blank
-   page can pick one of 18 pals from the gallery, three ways: 🖍️ colour it in,
+   page can pick one of 20 pals from the gallery, three ways: 🖍️ colour it in,
    🔢 by numbers, or ⭐ ready to change.
 2. While they draw, the little pal in the corner comes alive. It watches the pen, and
    the row of chips under it (👀 👄 💪 🦵 🐰 🐾) lights up as each part is found.
@@ -124,10 +124,38 @@ chapter's new words stay by the editor, and All words holds everything else.
 **🖨️ Print a class poster** on the teacher page prints everyone's current pal with
 their name, including pals that aren't in the Theatre, so check it before pinning it up.
 
+## Playing together, live
+
+On `/pixel/teacher`, press **🎪 Open the room**. Students go to the 📖 Story tab and
+their pals appear on one shared stage, and the projector switches to it by itself. What
+one child taps, everyone sees straight away. No code is needed.
+
+- **Walking:** click anywhere and your pal walks there. Click your pal and it jumps.
+- **👋 Do:** moves and faces. **💬 Say:** words to tap. **🎉 Party:** hearts, petals,
+  flowers to throw, bells and wedding music. **🏞️ Place:** moves everyone somewhere new.
+- **🔴 Film it:** whatever happens next is recorded, for up to 90 seconds. Stopping asks
+  for a sentence, and the film becomes a page of the class book.
+
+Sounds play on the projector and on a student's own taps, so the room hears one wedding
+march, not twenty. Students tap words from a list. **Let them type their own words** turns
+typing on, and what they say shows on your page. The room isn't saved, and closing it
+sends everyone out.
+
+### A wedding, or any story like it
+
+1. Everyone makes a pal. **Bride Bunny** and **Groom Bunny** are in the gallery, and the
+   Stamp tool has a veil, a top hat, a bow tie, a bouquet and a ring.
+2. Open the room. It starts in the wedding scene.
+3. Agree who's who, then let them play it through once. Two pals by the arch, a guest
+   saying "Here comes the bride!", and someone on 🎵 Wedding music.
+4. One child presses **🔴 Film it** and everyone does it again for the camera.
+5. **▶ Play the story on the projector** shows it to the room, and everyone takes a bow.
+
 ## The class story
 
-The 📖 Story tab is one book for the whole class. It's made for telling a story
-together, a page at a time.
+The book under **📖 Our book** is one story for the whole class. It's made for telling
+a story together, a page at a time. A page can be a film from the live room, or a short
+show made with code.
 
 1. On `/pixel/teacher`, give it a title and a first line, like "One day, a star fell
    into the park...". You can skip this and use the one that's there.

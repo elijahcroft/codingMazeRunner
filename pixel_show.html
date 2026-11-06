@@ -17,6 +17,7 @@
   .room { flex: 1; min-height: 0; display: flex; justify-content: center; align-items: flex-start; }
   .screen { position: relative; aspect-ratio: 16 / 9; border: 3px solid #fff; background: #000; }
   .screen canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+  .tag { position: absolute; transform: translateX(-50%); padding: 0 6px; background: rgba(255, 255, 255, .88); color: #1b1530; border-radius: 6px; font-size: clamp(12px, 1.3vw, 18px); font-weight: 800; pointer-events: none; white-space: nowrap; }
   .bubble { position: absolute; transform: translate(-50%, -100%); max-width: 46%; padding: 6px 12px; background: #fff; color: var(--ink); border: 3px solid var(--ink); border-radius: 10px; font-size: clamp(16px, 2vw, 30px); line-height: 1.2; text-align: center; overflow-wrap: anywhere; }
   .bubble.friend { background: #fff6cf; }
   .side { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
@@ -86,8 +87,21 @@ async function playClassStory() {
   await PalStage.playFilm(stage, film, narrator);
   $("narrate").hidden = true;
 }
+// While the room is open, this screen shows it, and it's the one that plays the sounds.
+let roomLive = false;
+async function watchRoom() {
+  $("showName").textContent = "🎪 Playing together";
+  $("showBy").textContent = "";
+  stage.setPal(PIP_PAL);
+  stage.fresh();
+  const stop = PalStage.follow(stage, {everySound: true});
+  while (roomLive && !storyWanted) await wait(500);
+  stop();
+  stage.fresh();
+}
 async function nextShow() {
   if (storyWanted) { await playClassStory(); return wait(1000); }
+  if (roomLive) return watchRoom();
   const pick = shows.length ? shows[turn++ % shows.length] : null;
   if (!pick) {
     $("showName").textContent = "Coming up: your show!";
@@ -141,6 +155,7 @@ async function refresh() {
   }));
   if (partySeen !== null && over.party > partySeen) startParty();
   partySeen = over.party;
+  if (over.room_open !== roomLive) { roomLive = over.room_open; stage.stop(); }
   if (storySeen !== null && over.story_play > storySeen) { storyWanted = true; stage.stop(); }
   storySeen = over.story_play;
 }

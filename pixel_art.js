@@ -115,8 +115,13 @@ const PixelArt = (() => {
     "Crown": ["y..y..y", "yy.y.yy", "yyyyyyy", "yrybyry"],
     "Glasses": ["kkkkk.kkkkk", "k...kkk...k", "k...k.k...k", "kkkkk.kkkkk"],
     "Note": ["..kkk", "..k.k", "..k..", "kkk..", "kkk.."],
+    "Veil": ["..www..", ".wwwww.", "wwwwwww", "ww...ww", "ww...ww", "w.....w"],
+    "Top hat": [".kkkkk.", ".kkkkk.", ".krrrk.", "kkkkkkk"],
+    "Bow tie": ["xx...xx", "xxxkxxx", "xx...xx"],
+    "Bouquet": [".pyp.", "pyrpy", ".prp.", "..g..", "..g.."],
+    "Ring": [".yy.", "y..y", "y..y", ".yy."],
   };
-  const STAMP_INK = {k: "#1b1530", w: "#ffffff", p: "#ff8fc7", r: "#e8294f", y: "#ffd93b", b: "#2f6fe4"};
+  const STAMP_INK = {k: "#1b1530", w: "#ffffff", p: "#ff8fc7", r: "#e8294f", y: "#ffd93b", b: "#2f6fe4", g: "#2fa84f"};
 
   function blank(size) { return new Array(size * size).fill(-1); }
 

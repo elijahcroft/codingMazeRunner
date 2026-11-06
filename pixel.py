@@ -127,7 +127,7 @@ MAX_LIST = 100
 SPOTS = 11                 # the stage is 11 spots wide: 0 on the left to 10 on the right
 START = 2
 
-SCENES = ("stage", "park", "beach", "night", "snowy", "candy", "space", "castle")
+SCENES = ("stage", "wedding", "park", "beach", "night", "snowy", "candy", "space", "castle")
 SOUNDS = ("ding", "boing", "pop", "tada", "meow", "drum", "whoosh", "yay")
 FRIENDS = ("cat", "bunny", "kid", "bean")
 PROPS = ("star", "gem", "cake", "ball")
@@ -1377,6 +1377,19 @@ IDEAS = [
 ]
 
 
+# The live room. Words are tapped, not typed, unless the teacher turns typing on.
+ROOM_WORDS = {
+    "Wedding": ["Here comes the bride!", "Do you promise?", "I do!", "I do too!", "You look beautiful!", "Congratulations!",
+                "Let's eat cake!", "Best wedding ever!", "Catch the flowers!"],
+    "Happy": ["Hello!", "Hooray!", "I love you!", "Thank you!", "Ha ha ha!", "Wow!", "Yes!", "You're my best friend!"],
+    "Story": ["Look over there!", "Come with me!", "Oh no!", "Help!", "I have an idea!", "Follow me!", "What was that?", "We did it!", "Bye bye!"],
+}
+ROOM_SAYS = {word for words in ROOM_WORDS.values() for word in words}
+ROOM_MOVES = ("wave", "dance", "jump", "cheer", "spin", "nap")
+ROOM_FX = ("hearts", "stars", "confetti", "petals", "bouquet", "bells", "march", "cake")
+ROOM_SECONDS = 90          # the longest film one take can be
+LIVE_WORDS_MAX = 60
+
 # The class story's Give me an idea button. These are beginnings, for changing.
 STORY_IDEAS = [
     'say("Where did it go?")\nlook("left")\nlook("right")\nfeel("sad")\nsay("I lost my map!")',
@@ -1385,6 +1398,7 @@ STORY_IDEAS = [
     'look("up")\nfeel("surprised")\nsay("What was that noise?")\nshake()\nhide()\nwait(1)\nappear()\nsay("Boo!")',
     'say("I have a plan!")\nfriend("cat")\nfriend_say("Tell me!")\nsay("We dance.")\neveryone("dance")',
     'feel("happy")\nsay("We did it!")\nhearts()\ncheer()\nconfetti()',
+    'scene("wedding")\nfriend("cat")\nfeel("happy")\nfriend_say("Do you promise?")\nsay("I do!")\neveryone("dance")\nhearts()\nconfetti()',
 ]
 MAX_PAGE_STEPS = 60        # a page, not a whole film
 MAX_STORY_PAGES = 80

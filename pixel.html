@@ -104,7 +104,7 @@
   .stage { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 8px; min-height: 0; min-width: 0; }
   #tip { margin: 0; padding: 6px 12px; background: var(--paper); border: 2px solid var(--ink); border-radius: 8px; font-size: 16px; height: 37px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .board-row { display: flex; gap: 8px; min-height: 0; min-width: 0; }
-  .stamp-bar { flex: none; display: grid; grid-template-columns: 36px 36px; grid-auto-rows: 36px; gap: 3px; align-content: start; }
+  .stamp-bar { flex: none; display: grid; grid-template-columns: 36px 36px 36px; grid-auto-rows: 36px; gap: 3px; align-content: start; }
   .stamp-bar button { width: 36px; height: 36px; display: grid; place-items: center; padding: 0; border: 2px solid var(--ink); border-radius: 6px; background: var(--paper); }
   .stamp-bar button:hover { background: var(--plum-soft); }
   .stamp-bar button[aria-pressed="true"] { background: var(--sun); }
@@ -191,7 +191,7 @@
   .gallery button { display: grid; justify-items: center; gap: 1px; padding: 5px 2px 3px; border: 2px solid var(--ink); border-radius: 8px; background: #fff; font-size: 14px; font-weight: 800; }
   .gallery button:hover:not(:disabled) { background: var(--plum-soft); }
   .gallery button:disabled { opacity: .45; }
-  .gallery canvas { width: 54px; height: 54px; image-rendering: pixelated; }
+  .gallery canvas { width: 46px; height: 46px; image-rendering: pixelated; }
   .guide-key { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; }
   .guide-key button { flex: 1 0 28px; max-width: 42px; height: 28px; padding: 0; border: 2px solid var(--ink); border-radius: 5px; font-size: 15px; font-weight: 900; line-height: 1; }
   .guide-key button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--pop-deep); }
@@ -275,7 +275,31 @@
   .keep { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .keep .btn { padding: 4px 9px; font-size: 15px; box-shadow: 2px 2px 0 var(--ink); }
   /* ---- The class story --------------------------------------------------------- */
-  .story-view { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 12px; padding: 10px 12px; min-height: 0; overflow: hidden; }
+  .story-wrap { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; }
+  .story-switch { display: flex; align-items: center; gap: 10px; padding: 7px 12px 0; }
+  #roomNews { font-weight: 900; color: var(--pop-deep); }
+  #roomNews.rec { color: #fff; background: #e8294f; padding: 2px 10px; border-radius: 8px; }
+  .live-view { display: grid; grid-template-columns: minmax(0, 1fr) clamp(286px, 30vw, 380px); gap: 12px; padding: 8px 12px 10px; min-height: 0; overflow: hidden; }
+  #roomCanvas { cursor: pointer; }
+  #roomTip { margin: 0; flex: none; font-size: 15px; text-align: center; color: var(--ink-soft); }
+  .tag { position: absolute; transform: translateX(-50%); padding: 0 5px; background: rgba(255, 255, 255, .85); border-radius: 5px; font-size: clamp(10px, 1.1vw, 13px); font-weight: 800; line-height: 1.3; pointer-events: none; white-space: nowrap; }
+  .tag.me { background: var(--sun); box-shadow: 0 0 0 1.5px var(--ink); }
+  .room-panel { display: flex; flex-direction: column; gap: 7px; min-height: 0; }
+  .room-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; flex: none; }
+  .room-tabs button { padding: 5px 0; border: 2px solid var(--ink); border-radius: 8px; background: var(--paper); font-size: 15px; font-weight: 900; }
+  .room-tabs button[aria-pressed="true"] { background: var(--sun); }
+  .room-buttons { flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: minmax(58px, auto); gap: 6px; align-content: start; padding: 1px 3px 3px 1px; }
+  .room-buttons.words { grid-template-columns: 1fr; grid-auto-rows: auto; gap: 4px; }
+  .room-buttons button { display: grid; justify-items: center; align-content: center; padding: 3px 2px; border: 2px solid var(--ink); border-radius: 10px; background: var(--paper); font-size: 15px; font-weight: 800; line-height: 1.15; box-shadow: 2px 2px 0 var(--ink); }
+  .room-buttons button span { font-size: 24px; line-height: 1.1; }
+  .room-buttons button:hover:not(:disabled) { background: var(--plum-soft); }
+  .room-buttons button:active:not(:disabled) { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--ink); }
+  .room-buttons button:disabled { opacity: .4; }
+  .room-buttons.words button { padding: 5px 8px; box-shadow: none; text-align: left; justify-items: start; }
+  .room-buttons h4 { grid-column: 1 / -1; margin: 3px 0 0; font-size: 14px; color: var(--ink-soft); }
+  .film { flex: none; width: 100%; font-size: 16px; }
+  .film.on { background: #e8294f; color: #fff; }
+  .story-view { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 12px; padding: 8px 12px 10px; min-height: 0; overflow: hidden; }
   .storybook { display: flex; flex-direction: column; min-height: 0; padding: 10px; }
   .storybook h2 { margin: 0; font-size: 20px; font-weight: 900; }
   #bookStart { margin: 3px 0 7px; font-size: 15px; font-style: italic; }
@@ -642,7 +666,37 @@
     </section>
   </div>
 
-  <div id="storyView" class="story-view" hidden>
+  <div id="storyView" class="story-wrap" hidden>
+    <div class="story-switch">
+      <div class="ways" style="margin:0">
+        <button id="segLive" aria-pressed="true">🎪 Play together</button>
+        <button id="segBook" aria-pressed="false">📖 Our book</button>
+      </div>
+      <span id="roomNews"></span>
+    </div>
+    <div id="liveView" class="live-view">
+      <section class="side">
+        <div class="screen-wrap"><div class="screen" id="roomHost"><canvas id="roomCanvas" aria-label="Everyone's pals together"></canvas>
+          <div class="life-empty" id="roomClosed" hidden><p>Your teacher will open this soon!</p></div>
+        </div></div>
+        <p id="roomTip">Click anywhere and your pal walks there. Click your pal to jump!</p>
+      </section>
+      <section class="room-panel panel">
+        <div class="room-tabs" id="roomTabs">
+          <button data-pane="do">👋 Do</button>
+          <button data-pane="say">💬 Say</button>
+          <button data-pane="party">🎉 Party</button>
+          <button data-pane="place">🏞️ Place</button>
+        </div>
+        <div class="room-buttons" id="roomButtons"></div>
+        <form id="roomType" class="life-say" hidden>
+          <input id="roomWords" maxlength="60" placeholder="Type what your pal says" aria-label="Type what your pal says" autocomplete="off">
+          <button class="btn main">Say</button>
+        </form>
+        <button class="btn main film" id="filmGo">🔴 Film it for the book</button>
+      </section>
+    </div>
+  <div id="bookView" class="story-view" hidden>
     <section class="storybook panel">
       <h2 id="bookTitle"></h2>
       <p id="bookStart"></p>
@@ -658,6 +712,7 @@
       </div>
       <p id="storyCast"></p>
     </section>
+  </div>
   </div>
 
   <div id="theatreView" class="theatre" hidden>
@@ -719,7 +774,7 @@
 </section>
 <section id="pageSheet" class="sheet" role="dialog" aria-modal="true" aria-label="Add your page" hidden>
   <div class="panel sheet-card" style="width:min(480px,100%)">
-    <h2 style="margin:0 0 6px;font-size:22px;font-weight:900">Add your page to the story</h2>
+    <h2 id="pageTitle" style="margin:0 0 6px;font-size:22px;font-weight:900">Add your page to the story</h2>
     <p style="margin:0 0 8px">What happens on your page? Write one sentence for the book.</p>
     <input id="pageWords" maxlength="90" placeholder="Then the bunny found a secret door." aria-label="One sentence for the book" autocomplete="off" style="width:100%;padding:8px 10px;border:2px solid var(--ink);border-radius:8px;font-size:17px">
     <p id="pageNote" style="margin:8px 0 0;color:#b3123c"></p>
@@ -798,6 +853,7 @@
 <script src="/pixel/studio.js"></script>
 <script src="/pixel/life.js"></script>
 <script src="/pixel/story.js"></script>
+<script src="/pixel/room.js"></script>
 <script src="/pixel/page.js"></script>
 </body>
 </html>

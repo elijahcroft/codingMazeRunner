@@ -95,6 +95,16 @@
     <span style="font-size:14px;color:var(--soft)">Students can always go past this by finishing missions.</span>
   </div>
 
+  <h2>🎪 Play together</h2>
+  <div class="card">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <button class="btn" id="roomOpen"></button>
+      <label style="display:flex;gap:6px;align-items:center;font-weight:700"><input type="checkbox" id="roomTyping"> Let them type their own words</label>
+    </div>
+    <p id="roomHere" style="margin:8px 0 0;font-size:14px"></p>
+    <p id="roomSaid" style="margin:4px 0 0;font-size:14px;color:var(--soft)"></p>
+  </div>
+
   <h2>The class story</h2>
   <div class="card">
     <div class="story-words">
@@ -169,6 +179,12 @@ async function refresh() {
     pick.innerHTML = data.missions.map((m, i) => `<option value="${esc(m.key)}">${i + 1}. ${esc(m.name)}</option>`).join("");
     pick.selectedIndex = data.open;
   }
+  const room = data.room;
+  roomIsOpen = room.open;
+  $("roomOpen").textContent = room.open ? "Close the room" : "🎪 Open the room";
+  $("roomTyping").checked = room.words;
+  $("roomHere").textContent = room.open ? (room.here.length ? `Here now: ${room.here.join(", ")}` : "Open, and nobody has come in yet. They go to 📖 Story.") : "Everyone's pals share one live stage. It shows on the projector too. Words are tapped from a list unless you tick the box.";
+  $("roomSaid").textContent = room.words && room.said.length ? `Just said: ${room.said.slice(-5).join(" / ")}` : "";
   const story = data.story;
   if (document.activeElement !== $("storyTitle") && document.activeElement !== $("storyStart")) {
     $("storyTitle").value = story.title;
@@ -183,7 +199,7 @@ async function refresh() {
     <div class="show">
       <b>${p.waiting ? "Waiting for you" : `Page ${++number}`}: ${esc(p.line)}</b>
       <small>by ${esc(p.by)}</small>
-      <pre>${esc(p.code)}</pre>
+      <pre>${p.live.length ? `A live scene with ${esc(p.live.join(", "))}` : esc(p.code)}</pre>
       <div>${p.waiting ? `<button class="btn" data-page-ok="${p.id}">Let it in</button>` : `<button class="btn" data-page-up="${p.id}" aria-label="Earlier">↑</button> <button class="btn" data-page-down="${p.id}" aria-label="Later">↓</button>`}
       <button class="btn" data-page-no="${p.id}">${p.waiting ? "Not this one" : "Take out"}</button></div>
     </div>`).join("");
@@ -218,6 +234,9 @@ function paintPal(cv) {
 $("gate").addEventListener("submit", e => { e.preventDefault(); key = $("key").value.trim(); refresh(); });
 $("openGo").addEventListener("click", async () => { await call({action: "open", level: $("openTo").value}); refresh(); });
 $("party").addEventListener("click", () => call({action: "party"}));
+let roomIsOpen = false;
+$("roomOpen").addEventListener("click", async () => { await call({action: "room", on: !roomIsOpen}); refresh(); });
+$("roomTyping").addEventListener("change", async e => { await call({action: "room_words", on: e.target.checked}); refresh(); });
 $("allIn").addEventListener("click", async () => { await call({action: "all_in"}); refresh(); });
 $("storyPlay").addEventListener("click", () => call({action: "story_play"}));
 $("storySave").addEventListener("click", async () => { await call({action: "story_words", title: $("storyTitle").value, start: $("storyStart").value}); refresh(); });

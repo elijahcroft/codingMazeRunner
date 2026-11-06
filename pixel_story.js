@@ -28,20 +28,47 @@ async function loadBook() {
   if (data) book = data;
   return book;
 }
+let storyPane = "live", bookTimer = 0;
+function showPane(pane) {
+  storyPane = pane;
+  $("liveView").hidden = pane !== "live";
+  $("bookView").hidden = pane !== "book";
+  $("segLive").setAttribute("aria-pressed", pane === "live");
+  $("segBook").setAttribute("aria-pressed", pane === "book");
+  if (pane === "book") { fitStoryScreen(); if (book) paintBook(); } else { stopBook(); fitRoomScreen(); }
+}
 async function openStory() {
   if (!filmStage) filmStage = PalStage.create($("storyCanvas"), $("storyHost"));
   filmStage.setPal(currentPal());
   filmStage.fresh();
-  filmStage.state.scene = "park";
-  fitStoryScreen();
+  filmStage.state.scene = "wedding";
+  openRoom();
+  showPane(storyPane);
   await loadBook();
   if (book) paintBook();
+  clearInterval(bookTimer);
+  bookTimer = setInterval(watchBook, 2500);        // pages turn up as they're added
 }
-function closeStory() {
+// The book updates itself, so everyone sees a new page as soon as it's in.
+async function watchBook() {
+  if (playingBook || $("storyView").hidden) return;
+  const had = book ? book.pages.length : 0, wait = book && book.waiting ? book.waiting.id : 0;
+  await loadBook();
+  if (!book || playingBook) return;
+  const fresh = book.pages.length > had ? book.pages[book.pages.length - 1] : null;
+  if (fresh || wait !== (book.waiting ? book.waiting.id : 0)) paintBook();
+  if (fresh && had) showRewards({badges: [{icon: "📖", name: `${fresh.by} added a page!`}]});
+}
+function stopBook() {
   if (!playingBook) return;
   playingBook = false;
   filmStage.stop();
   $("playStory").textContent = "▶ Play our story";
+}
+function closeStory() {
+  clearInterval(bookTimer);
+  stopBook();
+  closeRoom();
 }
 
 function paintBook() {
@@ -66,7 +93,7 @@ function paintBook() {
 }
 
 async function playBook(from) {
-  if (playingBook) { closeStory(); return; }
+  if (playingBook) { stopBook(); return; }
   const film = await get("/pixel/film").catch(() => null);
   if (!film || !film.pages.length) return;
   playingBook = true;
@@ -95,21 +122,27 @@ function castChips() {
   $("chips").insertAdjacentHTML("afterbegin", book.cast.filter(who => who.toLowerCase() !== name.toLowerCase()).slice(0, 5).map(pal =>
     `<button class="chip py" data-chip='friend("${esc(pal)}")' title="Bring ${esc(pal)}'s pal on stage">friend("${esc(pal)}")</button>`).join(""));
 }
-function openPageSheet() {
+let addingFilm = false;
+function openPageSheet(film = false) {
+  addingFilm = film;
+  $("pageTitle").textContent = film ? "Add your film to the book" : "Add your page to the story";
   $("pageNote").textContent = "";
-  $("pageWords").value = book && book.waiting ? book.waiting.line : "";
+  $("pageWords").value = !film && book && book.waiting ? book.waiting.line : "";
   $("pageSheet").hidden = false;
   $("pageWords").focus();
 }
 async function addMyPage() {
   saveCode();
-  const out = await post("/pixel/story/add", {id: me, code: $("code").value, line: $("pageWords").value}).catch(() => null);
+  const out = await post(addingFilm ? "/pixel/story/live" : "/pixel/story/add",
+                         {id: me, code: $("code").value, line: $("pageWords").value}).catch(() => null);
   if (!out) { $("pageNote").textContent = "The computer didn't answer. Try again."; return; }
   if (out.error) { $("pageNote").textContent = out.error; return; }
   book = out.story;
   $("pageSheet").hidden = true;
-  store(codeKey("story"), "");
   showRewards({badges: [...out.badges, out.waiting ? {icon: "💌", name: "Sent to your teacher!"} : {icon: "📖", name: "It's in the book!"}]});
+  if (addingFilm) return;
+  store(codeKey("story"), "");
+  storyPane = "book";
   await showView("story");
 }
 async function takeLeaf(id) {
@@ -127,6 +160,8 @@ async function joinTheCast() {
 new ResizeObserver(fitStoryScreen).observe($("storyHost").parentElement);
 $("playStory").addEventListener("click", () => playBook(0));
 $("addPage").addEventListener("click", startPage);
+$("segLive").addEventListener("click", () => showPane("live"));
+$("segBook").addEventListener("click", () => showPane("book"));
 $("joinCast").addEventListener("click", joinTheCast);
 $("pageGo").addEventListener("click", addMyPage);
 $("pageNo").addEventListener("click", () => { $("pageSheet").hidden = true; });

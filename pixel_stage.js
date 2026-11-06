@@ -37,6 +37,20 @@ const PalStage = (() => {
       drum: () => { tone(120, 0, .14, "sine", .14, -70); tone(120, .2, .14, "sine", .14, -70); },
       whoosh: () => tone(220, 0, .3, "sawtooth", .025, 900),
       yay: () => notes([659, 784, 988, 1319, 988, 1319], .07, .1),
+      bells: () => { notes([1319, 1047, 1319, 1047, 1319, 1047], .24, .55, "sine"); },
+      // Here Comes the Bride. It's 170 years old, so it's anyone's to play.
+      march: () => {
+        const C = 262, E = 330, F = 349, G = 392, A = 440, Bb = 466;
+        const tune = [[C, 1], [F, .75], [F, .25], [F, 2], [C, 1], [G, .75], [E, .25], [F, 2],
+                      [C, 1], [F, .75], [Bb, .25], [Bb, 1], [A, .75], [G, .25], [F, 1], [E, .75], [F, .25], [G, 2]];
+        let at = 0;
+        for (const [freq, beats] of tune) {
+          tone(freq, at, beats * .42, "triangle", .08);
+          tone(freq * 2, at, beats * .3, "sine", .025);
+          at += beats * .46;
+        }
+        [0, 2, 4, 6].forEach(i => tone(F / 2, i * .92, .8, "sine", .06));
+      },
       jig: () => { notes([523, 659, 784, 659, 880, 784, 659, 784, 523, 659, 784, 659, 988, 880, 784, 1047], .112, .1, "triangle");
                    [0, 4, 8, 12].forEach(i => tone(131, i * .112, .1, "sine", .07)); },
       nope: () => notes([233, 196], .13, .18, "triangle"),
@@ -168,6 +182,53 @@ const PalStage = (() => {
     }
   }
   const SCENE_ART = {
+    wedding(g) {
+      g.fillStyle = "#bfe6ff"; g.fillRect(0, 0, W, H);
+      g.fillStyle = "#e3f4ff"; g.fillRect(0, 60, W, 50);
+      cloud(g, 26, 20); cloud(g, 250, 14); cloud(g, 110, 34, "#f6fbff");
+      hill(g, 118, 12, 46, 20, "#a7e3a0");
+      hill(g, 130, 7, 30, 120, "#7fd38d");
+      tree(g, 14, 94); tree(g, 288, 92);
+      g.fillStyle = "#59c170"; g.fillRect(0, 140, W, 40);
+      // The path down the middle.
+      for (let y = 140; y < H; y++) {
+        const half = 14 + (y - 140) * .9;
+        g.fillStyle = y % 6 < 3 ? "#ffd3e6" : "#ffc2dc";
+        g.fillRect(160 - half, y, half * 2, 1);
+      }
+      // The arch, with flowers all the way round.
+      g.fillStyle = "#ffffff";
+      g.fillRect(118, 62, 7, 84); g.fillRect(195, 62, 7, 84);
+      for (let a = 0; a <= 28; a++) {
+        const t = Math.PI * a / 28, x = 160 - Math.cos(t) * 40, y = 62 - Math.sin(t) * 34;
+        g.fillStyle = "#ffffff"; g.fillRect(x - 3, y - 3, 7, 7);
+      }
+      const rnd = seeded(23), bloom = ["#ff8fc7", "#ff5fa2", "#ffd93b", "#ffffff", "#c5a3ff"];
+      for (let a = 0; a <= 40; a++) {
+        const t = Math.PI * a / 40, x = 160 - Math.cos(t) * 40, y = 62 - Math.sin(t) * 34;
+        g.fillStyle = bloom[Math.floor(rnd() * bloom.length)];
+        g.fillRect(x - 3 + rnd() * 5, y - 3 + rnd() * 5, 3, 3);
+      }
+      for (let y = 66; y < 144; y += 3) for (const x of [118, 124, 195, 201]) {
+        g.fillStyle = bloom[Math.floor(rnd() * bloom.length)];
+        g.fillRect(x + rnd() * 3 - 1, y, 3, 3);
+      }
+      // A heart hanging in the arch.
+      g.fillStyle = "#ff5fa2";
+      for (const [x, y, w] of [[153, 70, 5], [160, 70, 5], [152, 72, 15], [153, 75, 13], [155, 77, 9], [157, 79, 5], [159, 81, 1]]) g.fillRect(x, y, w, 2);
+      // Chairs for the guests.
+      for (const side of [0, 1]) for (let i = 0; i < 3; i++) {
+        const x = side ? 216 + i * 26 : 80 - i * 26;
+        g.fillStyle = "#ffffff"; g.fillRect(x, 128, 16, 3); g.fillRect(x, 118, 3, 20); g.fillRect(x + 13, 130, 3, 8);
+        g.fillStyle = "#ff8fc7"; g.fillRect(x, 116, 4, 4);
+      }
+      // Flags along the top.
+      for (let x = 6; x < W; x += 22) {
+        g.fillStyle = ["#ff8fc7", "#ffd93b", "#7ab8ff", "#c5a3ff"][(x - 6) / 22 % 4];
+        for (let i = 0; i < 8; i++) g.fillRect(x + i, 4 + Math.floor(x / 22) % 2 * 2, 16 - i * 2, 1);
+      }
+      for (let i = 0; i < 40; i++) { g.fillStyle = bloom[i % 5]; g.fillRect(rnd() * W, 146 + rnd() * 32, 2, 2); }
+    },
     stage(g) {
       g.fillStyle = "#2a1140"; g.fillRect(0, 0, W, H);
       g.fillStyle = "#3b1a59"; g.fillRect(44, 20, W - 88, 130);
@@ -345,6 +406,7 @@ const PalStage = (() => {
         const pose = livePose(rig, fp.lifeline, t + 3 + m.kind.length, {move: m.move, moveT: t + m.kind.length * .17, talk: m.talk});
         fp.draw(g, 0, pose, m.x, FLOOR + 4 - m.y, {flip: m.x > s.x});
       }
+      if (s.room) paintRoom(now, t);
       if (s.bow) paintBow(t);
       if (s.visible && pup) {
         const rig = pup.rigOf(s.frame);
@@ -365,6 +427,117 @@ const PalStage = (() => {
         g.fillText(`★ ${s.score}`, 9, 6);
       }
       placeBubbles();
+    }
+
+    // ---- The live room: every pal moves on its own, whenever someone taps ----------
+    const ROOM_LASTS = {wave: 1400, dance: 2400, cheer: 1400, nap: 3200, jump: 620, spin: 560};
+    function roomMember(m, you) {
+      return {seat: m.seat, name: m.name, x: m.x, y: m.y, tx: m.x, ty: m.y, flip: false, mood: m.mood, move: null, moveFrom: 0, until: 0,
+              talkUntil: 0, me: m.seat === you,
+              pup: puppet(m.pal, Math.max(1, Math.round((state.room && state.room.length > 11 ? 32 : 46) / m.pal.size)), m.seat + 1)};
+    }
+    function roomStart(data, you) {
+      roomStop();
+      state.visible = false;
+      state.scene = data.scene || state.scene;
+      state.room = data.members.map(m => roomMember(m, you));
+      state.you = you;
+    }
+    /** Which pal on this stage is yours. It's only known once you've joined. */
+    function roomYou(you) {
+      state.you = you;
+      for (const m of state.room || []) {
+        m.me = m.seat === you;
+        if (m.tag) m.tag.classList.toggle("me", m.me);
+      }
+    }
+    function roomStop() {
+      if (state && state.room) for (const m of state.room) clearTag(m);
+      if (state) state.room = null;
+      for (const key of Object.keys(bubbles)) if (key.startsWith("s")) clearBubble(key);
+    }
+    function clearTag(m) { if (m.tag) m.tag.remove(); }
+    const roomBase = m => FLOOR - 5 + m.y * 15;
+    function roomStep(dt, now) {
+      for (const m of state.room) {
+        const gx = m.tx - m.x, gy = m.ty - m.y, far = Math.hypot(gx, gy * 15);
+        if (far > 1) {
+          const go = Math.min(1, dt * .085 / far);
+          m.x += gx * go; m.y += gy * go;
+          if (Math.abs(gx) > 1) m.flip = gx < 0;
+          if (!m.move || m.move === "walk") { if (m.move !== "walk") m.moveFrom = now; m.move = "walk"; m.until = now + 200; }
+        }
+        if (m.move && now > m.until) m.move = null;
+      }
+    }
+    function paintRoom(now, t) {
+      for (const m of state.room.slice().sort((a, b) => a.y - b.y)) {
+        const rig = m.pup.rigOf(0), held = (now - m.moveFrom) / ROOM_LASTS[m.move];
+        const moveName = m.move === "nap" ? "sleep" : m.move === "spin" ? null : m.move;
+        const pose = livePose(rig, m.pup.lifeline, t + m.seat * 1.3, {move: moveName, moveT: (now - m.moveFrom) / 1000, jump: Math.min(1, held || 0),
+                                                                       mood: m.mood, talk: now < m.talkUntil});
+        const hop = m.move === "jump" ? Math.sin(Math.min(1, held) * Math.PI) * 44 : 0;
+        m.hop = hop;
+        const squeeze = m.move === "spin" ? Math.cos(held * Math.PI * 4) : 1;
+        m.pup.draw(g, 0, pose, m.x, roomBase(m) - hop, {flip: m.flip, squeeze});
+        if (host) placeTag(m);
+      }
+    }
+    function placeTag(m) {
+      if (!m.tag) {
+        m.tag = document.createElement("div");
+        m.tag.className = "tag" + (m.me ? " me" : "");
+        m.tag.textContent = m.name;
+        host.appendChild(m.tag);
+      }
+      m.tag.style.left = m.x / W * 100 + "%";
+      m.tag.style.top = (roomBase(m) + 2) / H * 100 + "%";
+    }
+    function roomFx(name, x) {
+      state.x = x;
+      if (name === "hearts") pictureRain(HEART, 18);
+      else if (name === "stars") pictureRain(TWINKLE, 16);
+      else if (name === "confetti") burst(i => ({x: Math.random() * W, y: -Math.random() * 60, vx: (Math.random() - .5), vy: 1 + Math.random() * 1.4,
+                                                 colour: ["#ff5fa2", "#ffd93b", "#35d0bd", "#7ab8ff", "#c5a3ff"][i % 5], w: 3, h: 3, life: 2400}), 90);
+      else if (name === "petals") burst(i => ({x: Math.random() * W, y: -Math.random() * 90, vx: .4 + Math.random() * .6, vy: .6 + Math.random() * .7,
+                                               colour: ["#ff8fc7", "#ffc9e3", "#ffffff"][i % 3], w: 3, h: 2, life: 3200}), 70);
+      else if (name === "bouquet") sparks.push({x: x - 8, y: FLOOR - 50, vx: x < W / 2 ? 1.3 : -1.3, vy: -3.4, g: .075, img: BOUQUET, life: 1900});
+      else if (name === "cake") {
+        if (state.props[5]) delete state.props[5]; else state.props[5] = "cake";
+      } else if (name === "march" || name === "bells") burst(i => ({x: 30 + Math.random() * 260, y: FLOOR - 40 - Math.random() * 40, vy: -.5, vx: (Math.random() - .5) * .4, img: NOTE, life: 1700}), name === "march" ? 14 : 7);
+    }
+    const FX_SOUND = {hearts: "ding", stars: "ding", confetti: "yay", petals: "whoosh", bouquet: "whoosh", bells: "bells", march: "march", cake: "tada"};
+    /** One thing that happened in the room. `sound` is off for other people's taps. */
+    function roomApply(e, sound) {
+      if (!state.room) return;
+      const m = state.room.find(x => x.seat === e.seat), now = performance.now();
+      if (e.kind === "join") {
+        if (!state.room.some(x => x.seat === e.member.seat)) state.room.push(roomMember(e.member, state.you));
+      } else if (e.kind === "leave" && m) {
+        clearTag(m);
+        clearBubble("s" + m.seat);
+        state.room = state.room.filter(x => x !== m);
+      } else if (e.kind === "walk" && m) {
+        m.tx = e.x; m.ty = e.y;
+      } else if (e.kind === "move" && m) {
+        m.move = e.name; m.moveFrom = now; m.until = now + ROOM_LASTS[e.name];
+        if (sound) SFX.play({jump: "jump", dance: "jig", cheer: "yay", wave: "ding", spin: "whoosh", nap: "pop"}[e.name]);
+      } else if (e.kind === "feel" && m) {
+        m.mood = e.name === "calm" ? null : e.name;
+        if (sound) SFX.play("pop");
+      } else if (e.kind === "say" && m) {
+        const ms = Math.min(5200, 1300 + e.text.length * 55);
+        bubble("s" + m.seat, e.text, ms);
+        m.talkUntil = now + Math.min(ms, 300 + e.text.length * 70);
+        if (sound) { SFX.voiceAt(300 + m.seat * 53 % 320); SFX.play("blip"); }
+      } else if (e.kind === "fx") {
+        roomFx(e.name, e.x || W / 2);
+        if (sound) SFX.play(FX_SOUND[e.name]);
+      } else if (e.kind === "scene") {
+        state.scene = e.name;
+        state.props = {};
+        if (sound) SFX.play("whoosh");
+      }
     }
 
     // The end of a story: everyone who made it, up and dancing.
@@ -400,7 +573,8 @@ const PalStage = (() => {
       }
     }
 
-    function burst(make, count) { for (let i = 0; i < count; i++) sparks.push(make(i)); }
+    // However many hands are on the button, there's always a stage left to see.
+    function burst(make, count) { for (let i = 0; i < count && sparks.length < 220; i++) sparks.push(make(i)); }
     function step(dt) {
       for (const p of sparks) {
         p.x += (p.vx || 0) * dt / 16; p.y += (p.vy || 0) * dt / 16;
@@ -414,7 +588,9 @@ const PalStage = (() => {
     let last = 0;
     function frameLoop(now) {
       loop = requestAnimationFrame(frameLoop);
-      step(Math.min(50, now - (last || now)));
+      const dt = Math.min(50, now - (last || now));
+      step(dt);
+      if (state.room) roomStep(dt, performance.now());
       last = now;
       paint();
     }
@@ -434,11 +610,11 @@ const PalStage = (() => {
       for (const who of Object.keys(bubbles)) {
         const b = bubbles[who];
         if (now > b.until) { b.el.remove(); delete bubbles[who]; continue; }
-        const m = state.crew.find(c => c.kind === who);
+        const m = state.crew.find(c => c.kind === who) || (state.room || []).find(c => "s" + c.seat === who);
         const x = m ? m.x : state.x;
         const left = Math.max(16, Math.min(84, x / W * 100));
         const tall = m ? 64 : palW * state.size;
-        const top = Math.max(2, (FLOOR - tall - 12 - (m ? m.y : state.y)) / H * 100);
+        const top = Math.max(2, (FLOOR - tall - 12 - (m ? m.hop || (who.startsWith("s") ? 0 : m.y) : state.y)) / H * 100);
         b.el.style.left = left + "%";
         b.el.style.top = top + "%";
       }
@@ -643,6 +819,14 @@ const PalStage = (() => {
         state.friend = state.crew.length ? state.crew[state.crew.length - 1].kind : null;
         clearBubble(m.kind);
       },
+      async live(s, t) {
+        const {base, events} = s.live, total = (events.length ? events[events.length - 1].t : 0) + 1600;
+        roomStart(base, null);
+        let i = 0;
+        await tween(total, t, u => {
+          while (i < events.length && events[i].t <= u * total) roomApply(events[i++], true);
+        });
+      },
       async everyone(s, t) {
         const move = {dance: "dance", wave: "wave", cheer: "cheer", jump: "happy"}[s.move];
         SFX.play(s.move === "dance" ? "jig" : "yay");
@@ -729,6 +913,7 @@ const PalStage = (() => {
       setPal,
       fresh() {
         run++; rate = 1;
+        roomStop();
         state = fresh();
         sparks = []; crowd = 0;
         clearBubbles();
@@ -764,6 +949,7 @@ const PalStage = (() => {
         const gx = x - state.x, gy = y - (FLOOR - palW / 2);
         state.aim = [Math.abs(gx) > 14 ? Math.sign(gx) * (state.flip ? -1 : 1) : 0, Math.abs(gy) > 22 ? Math.sign(gy) : 0];
       },
+      roomStart, roomApply, roomStop, roomYou,
       /** The curtain call: these pals all dance under these words. */
       bow(pals, title) {
         state.visible = false;
@@ -785,6 +971,8 @@ const PalStage = (() => {
 
   const HEART = rowsSprite([".kk.kk.", "krrkrrk", "krrrrrk", ".krrrk.", "..krk..", "...k..."], {k: "#1b1530", r: "#ff5fa2"});
   const TWINKLE = rowsSprite(["...y...", "...y...", "..yyy..", "yyyyyyy", "..yyy..", "...y...", "...y..."], {y: "#ffd93b"}, 2);
+  const NOTE = rowsSprite(["..kkk", "..k.k", "..k..", "kkk..", "kkk.."], {k: "#c2258c"}, 2);
+  const BOUQUET = rowsSprite(["..pyp..", ".pyrpy.", "pyrpypy", ".prypr.", "..ggg..", "..ggg..", "...g..."], {p: "#ff8fc7", y: "#ffd93b", r: "#ff5fa2", g: "#2fa84f"}, 2);
   const ZED = rowsSprite(["kkkkk", "...k.", "..k..", ".k...", "kkkkk"], {k: "#1b1530"});
   const PROPS = {};
   for (const [key, {rows, ink}] of Object.entries(PROP_ART)) PROPS[key] = rowsSprite(rows, ink, 2);
@@ -819,6 +1007,7 @@ const PalStage = (() => {
     for (const page of film.pages) if (add(page.by.toLowerCase(), page.pal)) names.push(page.by);
     for (const page of film.pages) for (const s of page.steps) {
       if (s.do === "friend" && s.pal && add(s.kind, s.pal)) guests.push(s.kind[0].toUpperCase() + s.kind.slice(1));
+      if (s.do === "live") for (const m of s.live.base.members) if (add(m.name.toLowerCase(), m.pal)) guests.push(m.name);
     }
     stage.fresh();
     stage.state.scene = place;
@@ -828,7 +1017,28 @@ const PalStage = (() => {
     return stage.play([{do: "confetti"}, {do: "wait", beats: 9}]);
   }
 
-  return {create, puppet, livePose, playFilm, sceneArt, HEART, PROPS, SFX, W, H};
+  // Keeps a stage up to date with the live room. The server holds each request until
+  // there's news, so a tap shows up everywhere straight away.
+  function follow(stage, {id = "", everySound = false, onState = () => {}} = {}) {
+    let after = -1, going = true;
+    (async () => {
+      while (going) {
+        const url = `/pixel/room?after=${after}&wait=1${id ? "&id=" + encodeURIComponent(id) : ""}`;
+        const data = await fetch(url).then(r => r.json()).catch(() => null);
+        if (!going) return;
+        if (!data) { await new Promise(r => setTimeout(r, 1500)); continue; }
+        if (data.members) stage.roomStart(data, data.you);
+        for (const e of data.events) stage.roomApply(e, everySound || e.seat === data.you);
+        stage.roomYou(data.you);
+        onState(data);
+        after = data.open ? data.seq : -1;
+        if (!data.open) await new Promise(r => setTimeout(r, 2000));
+      }
+    })();
+    return () => { going = false; };
+  }
+
+  return {create, puppet, livePose, playFilm, follow, sceneArt, HEART, PROPS, SFX, W, H};
 })();
 
 if (typeof module !== "undefined") module.exports = PalStage;

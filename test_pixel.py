@@ -4,6 +4,7 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import time
 import unittest
 from urllib.request import Request, urlopen
 
@@ -71,6 +72,7 @@ class StudioOverHttp(unittest.TestCase):
         self.folder = tempfile.TemporaryDirectory()
         self.saved = dict(server.players), server.STATE_FILE
         server.pixel_class["check"] = False       # the checking has its own tests
+        server.pixel_class.pop("story", None)
         server.players.clear()
         server.STATE_FILE = os.path.join(self.folder.name, "scores.json")
         self.httpd = server.ClassroomServer(("127.0.0.1", 0), server.Handler)
@@ -230,7 +232,7 @@ class StudioOverHttp(unittest.TestCase):
 
     def test_the_open_overview_has_no_student_rows(self):
         self.join()
-        self.assertEqual(set(self.get("/pixel/overview")), {"class", "feed", "address", "party", "story_play"})
+        self.assertEqual(set(self.get("/pixel/overview")), {"class", "feed", "address", "party", "story_play", "room_open"})
 
     def test_saves_reach_the_file_and_a_burst_shares_one_write(self):
         me = self.post("/join", {"name": "Mia"})["id"]
@@ -769,6 +771,21 @@ class TheStagePlays(unittest.TestCase):
         self.assertEqual(out["scene"], "park")           # the place carries over between pages
         self.assertEqual(out["bows"], 2)
 
+    def test_a_filmed_scene_replays_on_a_stage(self):
+        out = self.js("""
+            const blank = "0" + ".".repeat(255), pal = {size: 16, palette: ["#000000"], frames: [blank], names: []};
+            stage.setPal(pal);
+            stage.fresh();
+            const member = (seat, name) => ({seat, name, x: 50 * seat, y: .5, mood: null, pal});
+            const live = {base: {scene: "wedding", members: [member(1, "Mia")]}, events: [
+              {t: 10, kind: "join", member: member(2, "Ben")}, {t: 20, kind: "walk", seat: 1, x: 200, y: 0},
+              {t: 30, kind: "move", seat: 2, name: "dance"}, {t: 40, kind: "say", seat: 1, text: "I do!"},
+              {t: 50, kind: "fx", name: "bouquet", x: 100}, {t: 60, kind: "feel", seat: 2, name: "happy"},
+              {t: 70, kind: "scene", name: "park"}, {t: 80, kind: "leave", seat: 2}]};
+            await stage.play([{do: "live", live}]);
+            return {scene: stage.state.scene, left: stage.state.room.map(m => m.name)}""")
+        self.assertEqual(out, {"scene": "park", "left": ["Mia"]})
+
     def test_every_kind_of_step_runs(self):
         steps = [{"do": "friend", "kind": "cat"}, {"do": "friend", "kind": "bunny"}, {"do": "friend_say", "text": "Hi", "who": "cat"},
                  {"do": "friend_jump", "who": "bunny"}, {"do": "everyone", "move": "dance"}, {"do": "bye", "who": "cat"}, {"do": "bye"},
@@ -1016,6 +1033,122 @@ class TheClassStory(unittest.TestCase):
         server.save_state()
         with open(server.STATE_FILE) as saved:
             self.assertIn("Kept.", saved.read())
+
+
+class PlayingTogether(unittest.TestCase):
+    setUp, tearDown, post, get = StudioOverHttp.setUp, StudioOverHttp.tearDown, StudioOverHttp.post, StudioOverHttp.get
+
+    def open_room(self, words=False):
+        server.pixel_room.update(server.room_empty(), open=True, words=words)
+        self.addCleanup(lambda: server.pixel_room.update(server.room_empty(), open=False, words=False))
+
+    def join(self, name):
+        me = self.post("/join", {"name": name})["id"]
+        art = dict(drawing(), key="ink123", frames=["0" + "." * 255])
+        self.post("/pixel/save", {"id": me, "drawing": art})
+        return me
+
+    def do(self, me, what, **more):
+        return self.post("/pixel/room/do", dict(more, id=me, what=what))
+
+    def view(self, me="", after=-1):
+        return self.get(f"/pixel/room?id={me}&after={after}")
+
+    def teacher(self, **data):
+        return self.post("/pixel/teacher", dict(data, key=server.ADMIN_KEY))
+
+    def test_the_teacher_opens_the_room(self):
+        server.pixel_room.update(server.room_empty(), open=False, words=False)
+        mia = self.join("Mia")
+        self.assertIn("closed", self.do(mia, "join")["error"])
+        self.teacher(action="room", on=True)
+        self.addCleanup(lambda: server.pixel_room.update(server.room_empty(), open=False, words=False))
+        self.assertTrue(self.do(mia, "join")["ok"])
+        self.assertTrue(self.get("/pixel/overview")["room_open"])
+
+    def test_two_students_see_each_other(self):
+        self.open_room()
+        mia, ben = self.join("Mia"), self.join("Ben")
+        self.do(mia, "join")
+        self.do(ben, "join")
+        seen = self.view(ben)
+        self.assertEqual(sorted(m["name"] for m in seen["members"]), ["Ben", "Mia"])
+        self.do(mia, "walk", x=200, y=.5)
+        news = self.view(ben, seen["seq"])
+        self.assertEqual([(e["kind"], e["x"]) for e in news["events"]], [("walk", 200)])
+
+    def test_no_login_ever_leaves_the_server(self):
+        self.open_room()
+        mia = self.join("Mia")
+        self.do(mia, "join")
+        self.do(mia, "move", name="dance")
+        self.assertNotIn(mia, json.dumps(self.view()))
+        self.do(mia, "film_start")
+        self.assertNotIn(mia, json.dumps(self.view()))
+
+    def test_words_come_from_the_list_unless_typing_is_on(self):
+        self.open_room()
+        mia = self.join("Mia")
+        self.do(mia, "join")
+        self.assertTrue(self.do(mia, "say", text="I do!")["ok"])
+        self.assertIn("error", self.do(mia, "say", text="something else"))
+        self.teacher(action="room_words", on=True)
+        self.assertTrue(self.do(mia, "say", text="something else")["ok"])
+
+    def test_only_real_moves_and_places(self):
+        self.open_room()
+        mia = self.join("Mia")
+        self.do(mia, "join")
+        for what, more in (("move", {"name": "fly"}), ("fx", {"name": "bomb"}), ("scene", {"name": "castle"}), ("walk", {"x": "a", "y": 0}), ("nope", {})):
+            with self.subTest(what=what):
+                self.assertIn("error", self.do(mia, what, **more))
+        self.assertTrue(self.do(mia, "scene", name="wedding")["ok"])
+
+    def test_someone_who_goes_away_leaves_the_room(self):
+        self.open_room()
+        mia, ben = self.join("Mia"), self.join("Ben")
+        self.do(mia, "join")
+        self.do(ben, "join")
+        server.pixel_room["here"][mia]["seen"] -= server.ROOM_AWAY + 1
+        self.assertEqual([m["name"] for m in self.view(ben)["members"]], ["Ben"])
+
+    def test_a_tap_wakes_a_waiting_browser_at_once(self):
+        self.open_room()
+        mia = self.join("Mia")
+        self.do(mia, "join")
+        seq = self.view(mia)["seq"]
+        threading.Timer(.15, lambda: self.do(mia, "move", name="wave")).start()
+        start = time.time()
+        news = self.get(f"/pixel/room?id={mia}&after={seq}&wait=1")
+        self.assertLess(time.time() - start, 1.5)
+        self.assertEqual(news["events"][0]["kind"], "move")
+
+    def test_a_film_becomes_a_page_of_the_book(self):
+        self.open_room()
+        server.pixel_class.pop("story", None)
+        server.pixel_class["check"] = False
+        mia, ben = self.join("Mia"), self.join("Ben")
+        self.do(mia, "join")
+        self.do(ben, "join")
+        self.do(mia, "film_start")
+        self.assertIn("error", self.do(ben, "film_start"))
+        self.do(ben, "say", text="I do!")
+        self.do(mia, "fx", name="hearts")
+        self.do(ben, "film_stop")                                  # only the one filming can stop it
+        self.assertIsNotNone(server.pixel_room["film"])
+        self.do(mia, "film_stop")
+        self.assertIn("sentence", self.post("/pixel/story/live", {"id": mia, "line": " "})["error"])
+        self.assertTrue(self.post("/pixel/story/live", {"id": mia, "line": "They got married!"})["ok"])
+        self.assertIn("error", self.post("/pixel/story/live", {"id": mia, "line": "Again"}))
+        film = self.get("/pixel/film")
+        step = film["pages"][0]["steps"][0]
+        self.assertEqual(step["do"], "live")
+        self.assertEqual([e["kind"] for e in step["live"]["events"]], ["say", "fx"])
+        self.assertEqual(sorted(m["name"] for m in step["live"]["base"]["members"]), ["Ben", "Mia"])
+        self.assertNotIn(mia, json.dumps(film))
+
+    def test_the_wedding_is_open_to_everyone(self):
+        self.assertIsNone(pixel.run_free('scene("wedding")', pixel.PIP, set())["error"])
 
 
 class TheMarks(unittest.TestCase):

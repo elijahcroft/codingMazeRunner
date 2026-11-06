@@ -103,7 +103,7 @@ async function showView(name) {
   document.querySelectorAll(".stage-only").forEach(el => { el.hidden = ["draw", "life", "story"].includes(name); });
   $("palPick").hidden = name !== "stage";
   if (name === "life") openLife(); else closeLife();     // before the wait, so its buttons always work
-  if (name !== "story") closeStory();
+  if (name === "story") openRoom(); else closeStory();
   if (name !== "draw") await saveNow();
   if (name === "stage") {
     await refreshState();
@@ -638,7 +638,7 @@ document.addEventListener("click", e => {
   else if (d.chip !== undefined) { StageSFX.play("click"); $("bookSheet").hidden = true; addLine(d.chip); }
   else if (d.mission) openMission(d.mission);
   else if (d.publish) askPublish();
-  else if (d.pageAdd) openPageSheet();
+  else if (d.pageAdd) openPageSheet(false);
   else if (d.leaf) playBook(+d.leaf);
   else if (d.takeLeaf) takeLeaf(+d.takeLeaf);
   else if (d.copy) {
