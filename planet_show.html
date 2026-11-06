@@ -26,7 +26,7 @@
   .app { height: 100vh; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--gap); padding: var(--gap) calc(var(--gap) * 1.4); }
 
   /* ---- Header: name, where to join, the class meter ---- */
-  header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: calc(var(--gap) * 1.6); }
+  header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: calc(var(--gap) * 1.6); }
   .brand { display: flex; align-items: center; gap: 14px; }
   .brand .orb { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-size: 30px; background: radial-gradient(circle at 35% 30%, #4c3c86, #221b40); box-shadow: inset 0 0 0 1px var(--edge); }
   .brand h1 { margin: 0; font-size: clamp(24px, 2.2vw, 38px); font-weight: 850; letter-spacing: -.035em; line-height: 1; }
@@ -128,13 +128,32 @@
   .ship-body pre { margin: 0; min-height: 0; overflow: hidden; padding: 8px 10px; border-radius: 10px; background: #0c0a19; font: 12.5px/1.45 var(--mono); color: var(--gold); white-space: pre;
     -webkit-mask-image: linear-gradient(#000 75%, transparent); mask-image: linear-gradient(#000 75%, transparent); }
   .ship-body pre.empty { color: var(--dim); }
-  /* A big class: just name, level and state. */
-  .ships.compact { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: max-content; align-content: start; overflow: auto; scrollbar-width: none; }
-  .ships.compact .ship { grid-template-rows: auto; padding: 9px 10px; }
+  /* A big class: just name, level and state, sized so that everyone fits. */
+  .ships.compact { grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); grid-auto-rows: var(--row, 88px); align-content: start; gap: var(--ship-gap, 10px); }
+  .ships.compact .ship { grid-template-rows: auto; align-items: center; padding: 0 10px; }
   .ships.compact .ship-body { display: none; }
   .ships.compact .ship-top canvas { width: 36px; height: 36px; }
   .ships.compact .ship-top b { font-size: 16px; padding-right: 0; }
   .ships.compact .ship.on-stage::after { display: none; }
+  .ship .mark { display: none; }
+  /* Tighter still: the state becomes one mark beside the name. */
+  .ships.tight .state { display: none; }
+  .ships.tight .ship-top > div { position: relative; flex: 1; }
+  .ships.tight .mark { display: block; position: absolute; right: 0; bottom: 0; font-size: 13px; line-height: 1; color: var(--violet); }
+  .ships.tight .mark.ok { color: var(--mint); }
+  .ships.tight .ship-top .sub { padding-right: 16px; font-size: 13px; }
+  /* A very big class: one line each, and in three columns only if it must be. */
+  .ships.strip .ship { padding: 0 8px; border-radius: 10px; }
+  .ships.strip .ship-top { gap: 7px; }
+  .ships.strip .ship-top canvas { width: 26px; height: 26px; border-radius: 8px; }
+  .ships.strip .ship-top > div { display: flex; align-items: center; gap: 6px; }
+  .ships.strip .ship-top b { flex: 1; min-width: 0; font-size: 15px; }
+  .ships.strip .ship-top .sub { flex: none; padding-right: 18px; }
+  .ships.strip .ship-top .sub em { margin-right: 0; }
+  .ships.strip .ship-top .sub span { display: none; }
+  .ships.strip .mark { top: 50%; bottom: auto; transform: translateY(-50%); }
+  .ships.tiny .ship-top .sub { display: none; }
+  .ships.tiny .ship-top b { padding-right: 16px; font-size: 14px; }
   .empty-crew { color: var(--haze); font-size: 17px; padding: 20px 4px; }
 
   /* ---- Footer: the class's moments ---- */
@@ -155,6 +174,55 @@
   .spot pre { margin: 0; min-height: 0; overflow: auto; padding: 24px 28px; border-radius: 18px; background: #0c0a19; color: var(--gold); font: clamp(22px, 2.3vw, 38px)/1.5 var(--mono); white-space: pre-wrap; }
   .spot p { margin: 0; color: var(--haze); font-size: clamp(18px, 1.7vw, 28px); }
 
+  /* ---- Whatever the teacher has opened fills the board by itself ---- */
+  main { position: relative; }
+  .room { position: absolute; inset: 0; z-index: 3; width: 100%; height: 100%; border: 0; border-radius: 28px; background: #120f24; box-shadow: inset 0 0 0 1px var(--edge); }
+  main.roomy .stage, main.roomy .crew { visibility: hidden; }
+  .room-tip { flex: none; margin-left: auto; color: var(--haze); font-size: 14px; }
+
+  /* ---- The teacher's messages ---- */
+  .clock { padding: 6px 16px; border-radius: 14px; background: var(--panel-2); box-shadow: inset 0 0 0 2px var(--amber); color: var(--amber); font: 800 clamp(24px, 2.2vw, 38px)/1.1 var(--mono); white-space: nowrap; }
+  .clock.last { background: var(--coral); box-shadow: none; color: #2b0d09; animation: nudge 1s infinite; }
+  @keyframes nudge { 50% { transform: scale(1.06); } }
+  .notice { position: fixed; inset: 0; z-index: 8; display: grid; place-items: center; align-content: center; gap: 14px; padding: 5vh 6vw; text-align: center; background: rgba(12,9,26,.94); }
+  .notice i { font-style: normal; font-size: clamp(90px, 15vw, 260px); line-height: 1.1; animation: nudge 1.6s infinite; }
+  .notice b { font-size: clamp(44px, 6.4vw, 120px); font-weight: 900; letter-spacing: -.03em; line-height: 1; }
+  .notice p { margin: 0; color: var(--haze); font-size: clamp(22px, 2.6vw, 46px); }
+  .notice ul { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(14px, 2vw, 34px); margin: 18px 0 0; padding: 0; list-style: none; }
+  .notice li { min-width: clamp(130px, 13vw, 230px); padding: 16px 20px; border-radius: 22px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--edge); color: var(--haze); font-size: clamp(16px, 1.4vw, 24px); }
+  .notice li strong { display: block; color: var(--gold); font-size: clamp(40px, 4.6vw, 84px); line-height: 1.05; }
+
+  /* ---- Nothing running: where the whole crew has got to ---- */
+  .stage { position: relative; }
+  .trek { position: absolute; inset: 0; z-index: 2; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: var(--gap); padding: var(--gap) calc(var(--gap) * 1.2); border-radius: 28px; background: linear-gradient(165deg, #2a2350, #181430); animation: fade .6s; }
+  @keyframes fade { from { opacity: 0; } }
+  .trek h2 { margin: 0; font-size: clamp(26px, 2.5vw, 46px); font-weight: 850; letter-spacing: -.03em; }
+  .trek h2 small { margin-left: 12px; color: var(--haze); font-size: .5em; font-weight: 600; letter-spacing: 0; }
+  .road { position: relative; min-height: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 6px; }
+  .road svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .road path { fill: none; stroke: var(--edge); stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 2 14; }
+  .camp { position: relative; min-width: 0; min-height: 0; display: grid; grid-template-rows: auto auto minmax(0, 1fr); justify-items: center; align-content: start; gap: 3px; text-align: center; }
+  .camp > i { width: clamp(38px, 3.2vw, 58px); height: clamp(38px, 3.2vw, 58px); display: grid; place-items: center; border-radius: 50%; font-style: normal; font-size: clamp(20px, 1.8vw, 32px); background: var(--panel); box-shadow: inset 0 0 0 2px var(--edge); }
+  .camp.full > i { background: var(--panel-2); box-shadow: inset 0 0 0 3px var(--gold), 0 0 22px rgba(255,211,107,.25); }
+  .camp b { max-width: 100%; color: var(--dim); font-size: clamp(12px, .85vw, 15px); font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .camp.full b { color: var(--bone); }
+  .tents { display: flex; flex-wrap: wrap; justify-content: center; align-content: flex-start; gap: 2px; max-width: 100%; overflow: hidden; }
+  .tents canvas { width: var(--tent, 30px); height: var(--tent, 30px); }
+  .tents span { align-self: center; padding: 0 5px; color: var(--gold); font-size: 14px; font-weight: 800; }
+
+  /* ---- The spinner ---- */
+  .spin { position: fixed; inset: 0; z-index: 6; display: grid; place-items: center; align-content: center; gap: 10px; text-align: center; background: rgba(12,9,26,.95); }
+  .spin canvas { width: clamp(220px, 34vh, 420px); height: clamp(220px, 34vh, 420px); border-radius: 44px; background: radial-gradient(circle at 50% 40%, #4a3d86, #211b3e); box-shadow: inset 0 0 0 3px var(--edge); }
+  .spin b { font-size: clamp(50px, 8vw, 140px); font-weight: 900; letter-spacing: -.04em; line-height: 1.05; }
+  .spin p { margin: 0; color: var(--haze); font-size: clamp(22px, 2.4vw, 42px); }
+  .spin.landed canvas { box-shadow: inset 0 0 0 5px var(--gold), 0 0 70px rgba(255,211,107,.45); animation: pop .6s cubic-bezier(.2,1.6,.4,1); }
+  .spin.landed b { color: var(--gold); }
+
+  .ship.landed { animation: land .7s cubic-bezier(.2,1.5,.4,1); }
+  @keyframes land { from { transform: translateY(-34px) scale(.7); opacity: 0; } }
+
+  .sky { position: fixed; inset: 0; z-index: 7; width: 100%; height: 100%; pointer-events: none; }
+
   @media (max-width: 1100px) { main { grid-template-columns: 1fr; } .crew { display: none; } .view { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) 30%; } }
   /* A short projector: each crew card is one row, its map beside the name. */
   @media (max-height: 820px) {
@@ -173,7 +241,8 @@
   <header>
     <div class="brand"><div class="orb" aria-hidden="true">🪐</div><div><h1>Class Expedition</h1><p>Join at <b id="address">…</b></p></div></div>
     <div class="meter-box"><div class="meter-label"><span id="meterFrom"></span><span id="meterNext"></span></div><div class="meter"><div class="fill" id="fill"></div></div></div>
-    <div class="total"><b><span id="count">0</span> ★</b><small>earned together</small></div>
+    <div class="clock" id="clock" hidden></div>
+    <div class="total"><b><span id="count">0</span> ★</b><small id="totalNote">earned together</small></div>
   </header>
   <main>
     <section class="stage bare" id="stage" aria-live="polite">
@@ -191,16 +260,21 @@
         </div>
         <div class="code"><div class="code-head"><b id="file">rover.py</b><span id="lines"></span></div><pre id="code" class="empty">No code yet.</pre></div>
       </div>
+      <div class="trek" id="trek" hidden><h2>🗺 The expedition <small id="trekNote"></small></h2><div class="road" id="road"></div></div>
     </section>
     <aside class="crew">
       <h3>The crew <small id="crewCount"></small></h3>
       <div class="ships" id="ships"></div>
     </aside>
+    <iframe class="room" id="room" title="What the class is doing together" hidden></iframe>
   </main>
   <div class="challenge" id="challenge" hidden></div>
-  <footer><b>JUST NOW</b><div class="moments" id="moments"></div></footer>
+  <footer><b>JUST NOW</b><div class="moments" id="moments"></div><span class="room-tip" id="roomTip" hidden>Esc: back to the expedition</span></footer>
 </div>
 <div class="unlock" id="unlock" hidden><b>🎉 Class unlock!</b><span id="unlockText"></span></div>
+<div class="spin" id="spin" hidden><p>🎲 Spinning…</p><canvas id="spinRover"></canvas><b id="spinName"></b></div>
+<canvas class="sky" id="sky" hidden></canvas>
+<div class="notice" id="notice" hidden><i id="noticeIcon"></i><b id="noticeTitle"></b><p id="noticeText"></p><ul id="noticeDay" hidden></ul></div>
 <div class="spot" id="spot" hidden><h2 id="spotTitle"></h2><pre id="spotCode"></pre><p>What does each line do? What would you change?</p></div>
 <script>const CALM = true;   // pets and glows stay still; the replay still drives</script>
 <script src="/planet/render.js"></script>
@@ -258,7 +332,7 @@ stage.onFinish = run => {
   $("stamp").className = `stamp ${win ? "win" : "miss"}`;
   requestAnimationFrame(() => $("stamp").classList.add("show"));
   if (win) {
-    const notes = [run.new_stars ? `+${run.new_stars} ★` : "", run.first_try ? "🎯 First try" : "",
+    const notes = run.replay ? [] : [run.new_stars ? `+${run.new_stars} ★` : "", run.first_try ? "🎯 First try" : "",
                    run.record ? "🏆 Class record" : ""].filter(Boolean);
     $("result").innerHTML = `<div class="stars">${run.stars.map(s => s ? "<i>★</i>" : "★").join("")}</div>`
       + (notes.length ? `<div class="notes">${notes.map(n => `<span>${esc(n)}</span>`).join("")}</div>` : "");
@@ -268,6 +342,7 @@ stage.onFinish = run => {
   setLabel("done", `${run.name}'s run`);
   // A finished run stays up until another comes, and at least this long.
   stage.until = performance.now() + (win ? 3000 : 2200);
+  if (!run.replay) idleFrom = performance.now();
 };
 function setLabel(kind, text) {
   $("label").className = `label ${kind}${kind === "done" ? " still" : ""}`;
@@ -288,7 +363,7 @@ function playRun(run) {
   stage.until = Infinity;
   const s = students.find(x => x.id === run.id);
   introduce(run.id, run.name, s && s.showoff, run.look, `<b>${esc(tag(run.site))}</b>${esc(siteName(run.site, run.site_name))} · ${esc(run.zone)}`);
-  setLabel("", "Now running");
+  setLabel("", run.replay ? "⏪ One more time" : "Now running");
   $("stage").classList.remove("win", "miss");
   $("stamp").className = "stamp"; $("stamp").innerHTML = "";
   $("result").innerHTML = "";
@@ -297,7 +372,7 @@ function playRun(run) {
 }
 // Before anyone has run: the student who typed last, live.
 function followCoder() {
-  const s = students.filter(x => x.typed).sort((a, b) => b.typed - a.typed)[0];
+  const s = students.filter(x => x.typed && x.now.code.trim()).sort((a, b) => b.typed - a.typed)[0];
   if (!s) return;
   const n = s.now, pos = String(n.pos);
   if (!stage.run || stage.run.id !== s.id || stage.run.pos !== pos || stage.run.site !== n.site)
@@ -320,10 +395,25 @@ function takeRuns(runs) {
   // Four students running at once: the newest few, not a long backlog.
   stage.queue = stage.queue.slice(-4);
 }
+// A pause in the runs: the expedition map, then a good run from earlier, by turns.
+const IDLE_MS = 40000, SLIDE_MS = 15000;
+let idleFrom = performance.now(), nextSlide = 0, slideTurn = 0, latestRuns = [];
+function covered() { return !$("spot").hidden || !$("spin").hidden || !$("unlock").hidden || !$("room").hidden || !$("notice").hidden; }
+function attract(now) {
+  const run = stage.run;
+  if (stage.queue.length || now - idleFrom < IDLE_MS || now < nextSlide || (run && !run.live && !stage.done)) return;
+  nextSlide = now + SLIDE_MS;
+  const wins = latestRuns.filter(r => r.reached);
+  if (++slideTurn % 2 && students.some(s => s.here)) { $("trek").hidden = false; return; }
+  $("trek").hidden = true;
+  if (wins.length) playRun({...wins[Math.floor(Math.random() * wins.length)], replay: true});
+  else followCoder();
+}
 function frame(now) {
   const run = stage.run;
-  const free = !run || run.live || (stage.done && now > stage.until);
-  if (stage.queue.length && free && $("spot").hidden && $("unlock").hidden) playRun(stage.queue.shift());
+  const free = !run || run.live || run.replay || !$("trek").hidden || (stage.done && now > stage.until);
+  if (stage.queue.length && free && !covered()) { $("trek").hidden = true; playRun(stage.queue.shift()); }
+  else if (!covered()) attract(now);
   if (stage.run) {
     stage.draw(now);
     if (!stage.run.live) $("tick").textContent = stage.tick;
@@ -334,7 +424,7 @@ requestAnimationFrame(frame);
 
 // ---- The crew ---------------------------------------------------------------------------
 // By name, with no one's star count: a crew on the class screen, not a ranking.
-let students = [], lastShips = "", lastActive = {};
+let students = [], lastShips = "", lastActive = {}, onBoard = null;
 function markStage() {
   document.querySelectorAll(".ship").forEach(el => el.classList.toggle("on-stage", el.dataset.id === stage.who));
 }
@@ -355,25 +445,42 @@ function shipState(s) {
   if (s.now.end) return ["🔁 trying again", ""];
   return [s.runs_total ? "ready" : "just landed", ""];
 }
+// Everyone in the room gets a card, whatever the size of the class: the most
+// room that still fits them all, down to three columns of name and level.
+function fitShips(n) {
+  const box = $("ships"), compact = n > 5, gap = n > 20 ? 6 : 10;
+  box.classList.toggle("compact", compact);
+  if (!compact) { box.classList.remove("tight", "strip", "tiny"); return; }
+  const rowFor = cols => { const rows = Math.ceil(n / cols); return (box.clientHeight - gap * (rows - 1)) / rows; };
+  const cols = rowFor(2) >= 32 ? 2 : 3, row = Math.min(88, Math.floor(rowFor(cols)));
+  box.classList.toggle("tight", row < 76);
+  box.classList.toggle("strip", row < 48);
+  box.classList.toggle("tiny", cols === 3);
+  box.style.setProperty("--cols", cols);
+  box.style.setProperty("--row", row + "px");
+  box.style.setProperty("--ship-gap", gap + "px");
+}
 function renderShips(data) {
-  const ships = [...data.students].sort((a, b) => a.name.localeCompare(b.name));
+  const ships = data.students.filter(s => s.here).sort((a, b) => a.name.localeCompare(b.name));
   const compact = ships.length > 5;
-  $("ships").classList.toggle("compact", compact);
-  $("crewCount").textContent = ships.length ? plural(ships.length, "explorer") : "";
+  fitShips(ships.length);
+  $("crewCount").textContent = ships.length ? `${ships.length} here` : "";
   const sig = JSON.stringify([compact, ships.map(s => [s.id, s.name, s.look, s.now, s.showoff, s.flair, shipState(s)])]);
   if (sig !== lastShips) {
     lastShips = sig;
     $("ships").innerHTML = ships.length ? ships.map(s => {
       const [state, cls] = shipState(s), code = s.now.code.trim();
       return `<div class="ship f-${s.flair}" data-id="${esc(s.id)}">
-        <div class="ship-top"><canvas></canvas><div><b>${esc(s.name)}${s.showoff ? ` ${esc(s.showoff)}` : ""}</b><span class="sub"><em>${esc(tag(s.now.site))}</em>${esc(siteName(s.now.site, s.now.site_name))}</span><span class="sub state ${cls}">${esc(state)}</span></div></div>
+        <div class="ship-top"><canvas></canvas><div><b>${esc(s.name)}${s.showoff ? ` ${esc(s.showoff)}` : ""}</b><span class="sub"><em>${esc(tag(s.now.site))}</em> <span>${esc(siteName(s.now.site, s.now.site_name))}</span></span><span class="sub state ${cls}">${esc(state)}</span><i class="mark ${cls}" aria-hidden="true">${esc(state.split(" ")[0].length < 3 ? state.split(" ")[0] : "")}</i></div></div>
         <div class="ship-body"><canvas class="mini"></canvas><pre class="${code ? "" : "empty"}">${code ? esc(s.now.code) : "no code yet"}</pre></div>
       </div>`;
-    }).join("") : '<p class="empty-crew">Nobody has landed yet.</p>';
+    }).join("") : `<p class="empty-crew">Nobody here yet. Go to <b>${esc(data.address.replace(/^http:\/\//, ""))}</b> to join.</p>`;
     $("ships").querySelectorAll(".ship").forEach((el, i) => {
       replayAvatar(el.querySelector(".ship-top canvas"), ships[i].look, compact ? 36 : 46);
       if (!compact) mini(el.querySelector("canvas.mini"), ships[i]);
+      if (onBoard && !onBoard.has(ships[i].id) && !REDUCED) el.classList.add("landed");
     });
+    onBoard = new Set(ships.map(s => s.id));
     markStage();
   }
   // A new run: that student's card lights up.
@@ -406,10 +513,173 @@ function renderMeter(data) {
     const g = crossed[crossed.length - 1];
     $("unlockText").textContent = `The class reached ${g} ★ together. Everyone unlocked ${unlocks[g] || "something new"}!`;
     $("unlock").hidden = false;
+    fireworks(9000);
     clearTimeout(window.unlockTimer);
     window.unlockTimer = setTimeout(() => { $("unlock").hidden = true; }, 9000);
   }
 }
+// Rockets over the whole board, for a moment the class made together.
+function fireworks(ms) {
+  if (REDUCED) return;
+  const sky = $("sky"), g = sky.getContext("2d"), end = performance.now() + ms, sparks = [];
+  sky.width = innerWidth; sky.height = innerHeight; sky.hidden = false;
+  const colours = ["#8cf2c6", "#ffd36b", "#ff8ad8", "#b9a3ff", "#ffb547", "#ff7a6b"];
+  let last = 0;
+  (function burst(now) {
+    g.clearRect(0, 0, sky.width, sky.height);
+    if (now < end - 1500 && now - last > 450) {
+      last = now;
+      const x = sky.width * (.12 + Math.random() * .76), y = sky.height * (.1 + Math.random() * .5);
+      const colour = colours[Math.floor(Math.random() * colours.length)];
+      for (let i = 0; i < 70; i++) {
+        const a = Math.random() * 6.3, v = 1.5 + Math.random() * 6;
+        sparks.push({x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, colour});
+      }
+    }
+    for (const p of sparks) {
+      p.x += p.vx; p.y += p.vy; p.vy += .06; p.vx *= .985; p.life -= .012;
+      g.globalAlpha = Math.max(0, p.life); g.fillStyle = p.colour;
+      g.beginPath(); g.arc(p.x, p.y, 3, 0, 7); g.fill();
+    }
+    g.globalAlpha = 1;
+    sparks.splice(0, sparks.length, ...sparks.filter(p => p.life > 0));
+    if (now < end || sparks.length) requestAnimationFrame(burst); else sky.hidden = true;
+  })(performance.now());
+}
+
+// ---- What the teacher opens or sends -----------------------------------------------------
+// The board follows the class: Predict it, the Team Mission and the lounge
+// come up here by themselves, and Esc goes back to the expedition.
+const ROOMS = {predict: "/planet/predict", race: "/planet/race", team: "/planet/team/watch", lounge: "/planet/lounge/watch"};
+let roomOn = "", roomSkipped = "";
+function followRoom(data) {
+  const want = data.predict != null ? "predict" : data.race_on_board ? "race" : data.team ? "team" : data.lounge ? "lounge" : "";
+  if (roomSkipped !== want) roomSkipped = "";
+  const show = want === roomSkipped ? "" : want;
+  if (show === roomOn) return;
+  roomOn = show;
+  $("room").hidden = !show;
+  document.querySelector("main").classList.toggle("roomy", !!show);
+  if (show) { $("room").src = ROOMS[show]; stage.queue = []; $("trek").hidden = true; } else $("room").removeAttribute("src");
+  $("roomTip").hidden = !show;
+  clearTimeout(window.roomTipTimer);
+  window.roomTipTimer = setTimeout(() => { $("roomTip").hidden = true; }, 8000);
+}
+function backToBoard(e) {
+  if (e.key !== "Escape") return;
+  if (!$("notice").hidden) { $("notice").hidden = true; return; }
+  if (!$("spin").hidden) { $("spin").hidden = true; return; }
+  roomSkipped = roomOn;
+  $("room").hidden = true; $("roomTip").hidden = true; $("room").removeAttribute("src"); roomOn = "";
+  document.querySelector("main").classList.remove("roomy");
+}
+addEventListener("keydown", backToBoard);
+// After a click inside the room (Reveal, Start the race), the keys go to it.
+$("room").addEventListener("load", () => {
+  if ($("room").getAttribute("src")) $("room").contentWindow.addEventListener("keydown", backToBoard);
+});
+// The spinner flicks through the rovers in the room, slows down, and lands.
+let spinN = null;
+function hearSpin(spin) {
+  const fresh = spinN != null && spin.n !== spinN;
+  spinN = spin.n;
+  const winner = students.find(s => s.id === spin.id), crew = students.filter(s => s.here);
+  if (!fresh || !winner || !crew.length) return;
+  const show = s => { replayAvatar($("spinRover"), s.look, 400); $("spinName").textContent = s.name; };
+  const land = () => {
+    show(winner);
+    $("spin").classList.add("landed");
+    $("spin").querySelector("p").textContent = "🎲 The spinner picked";
+    fireworks(3500);
+    clearTimeout(window.spinTimer);
+    window.spinTimer = setTimeout(() => { $("spin").hidden = true; }, 12000);
+  };
+  $("spin").classList.remove("landed");
+  $("spin").querySelector("p").textContent = "🎲 Spinning…";
+  $("spin").hidden = false;
+  clearTimeout(window.spinTimer);
+  if (REDUCED) return land();
+  let turn = Math.floor(Math.random() * crew.length), wait = 60;
+  (function next() {
+    show(crew[turn++ % crew.length]);
+    wait *= 1.11;
+    if (wait < 520) setTimeout(next, wait); else setTimeout(land, 520);
+  })();
+}
+const NOTICE_MS = {eyes: 20000, five: 8000, stop: 600000};
+let noticeN = null, clockEnd = 0;
+function hearNotice(notice, day) {
+  const fresh = noticeN != null && notice.n !== noticeN;
+  // A class that reopens the page mid-countdown keeps its clock.
+  if (noticeN == null || fresh) {
+    clockEnd = notice.what === "five" ? (notice.at + 300) * 1000 : 0;
+    showClock();
+  }
+  noticeN = notice.n;
+  if (!fresh) return;
+  $("noticeIcon").textContent = notice.icon;
+  $("noticeTitle").textContent = notice.title;
+  $("noticeText").textContent = notice.text;
+  const stop = notice.what === "stop";
+  $("noticeDay").hidden = !stop || !day.runs;
+  if (stop) {
+    $("noticeDay").innerHTML = [[day.students, day.students === 1 ? "explorer" : "explorers"], [day.runs, day.runs === 1 ? "run" : "runs"],
+      [day.wins, day.wins === 1 ? "mission done" : "missions done"], [day.new_levels, day.new_levels === 1 ? "new level" : "new levels"]]
+      .map(([n, what]) => `<li><strong>${n}</strong>${what}</li>`).join("");
+    if (day.runs) fireworks(6000);
+  }
+  $("notice").hidden = false;
+  clearTimeout(window.noticeTimer);
+  window.noticeTimer = setTimeout(() => { $("notice").hidden = true; }, NOTICE_MS[notice.what] || 10000);
+}
+function showClock() {
+  const left = Math.ceil((clockEnd - Date.now()) / 1000);
+  $("clock").hidden = !clockEnd || left < -30;
+  if ($("clock").hidden) return;
+  const secs = Math.max(0, left);
+  $("clock").textContent = `⏰ ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
+  $("clock").classList.toggle("last", secs <= 60);
+}
+setInterval(showClock, 1000);
+
+// ---- The expedition map ------------------------------------------------------------------
+// Every stop on the journey, with the rovers that have got that far. Rovers,
+// not names or counts of stars: it shows the crew spread out, not who's last.
+const ZONE_ICONS = {landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐"};
+let lastRoad = "";
+function renderTrek(data) {
+  const here = data.students.filter(s => s.here), day = data.day;
+  $("trekNote").textContent = day.wins ? `${plural(day.wins, "mission")} done today` : "Where the crew has got to";
+  const sig = JSON.stringify([innerWidth, innerHeight, data.zones, here.map(s => [s.zone, s.look])]);
+  if (sig === lastRoad) return;
+  lastRoad = sig;
+  const road = $("road"), perRow = 6, tent = road.clientHeight > 560 ? 46 : road.clientHeight > 380 ? 34 : 28;
+  road.style.setProperty("--tent", tent + "px");
+  const fit = Math.max(1, Math.floor((road.clientHeight / 3 - 66) / (tent + 2))) * Math.floor((road.clientWidth / perRow - 4) / (tent + 2));
+  const stops = data.zones.map(name => ({name, key: data.zone_keys[name], crew: here.filter(s => s.zone === name)}));
+  // Back and forth across the screen, like a road.
+  road.innerHTML = '<svg aria-hidden="true"><path id="trail"/></svg>' + stops.map((z, i) => {
+    const row = Math.floor(i / perRow), col = row % 2 ? perRow - 1 - i % perRow : i % perRow;
+    const shown = z.crew.length > fit ? fit - 1 : z.crew.length;
+    return `<div class="camp${z.crew.length ? " full" : ""}" style="grid-row:${row + 1};grid-column:${col + 1}"><i>${ZONE_ICONS[z.key] || "🪐"}</i><b>${esc(z.name)}</b><div class="tents">${z.crew.slice(0, shown).map(() => "<canvas></canvas>").join("")}${z.crew.length > shown ? `<span>+${z.crew.length - shown}</span>` : ""}</div></div>`;
+  }).join("");
+  [...road.querySelectorAll(".camp")].forEach((el, i) =>
+    el.querySelectorAll("canvas").forEach((cv, k) => replayAvatar(cv, stops[i].crew[k].look, tent)));
+  // The road, swinging out past the end of a row to turn back.
+  const box = road.getBoundingClientRect(), swing = box.width / perRow / 2.2;
+  const points = [...road.querySelectorAll(".camp > i")].map(el => {
+    const r = el.getBoundingClientRect();
+    return [r.left + r.width / 2 - box.left, r.top + r.height / 2 - box.top];
+  });
+  $("trail").setAttribute("d", points.map(([x, y], i) => {
+    if (!i) return `M${x} ${y}`;
+    const [px, py] = points[i - 1];
+    if (py === y) return `L${x} ${y}`;
+    const out = px > box.width / 2 ? px + swing : px - swing;
+    return `C${out} ${py} ${out} ${y} ${x} ${y}`;
+  }).join(" "));
+}
+
 const seen = new Set();
 function renderMoments(feed) {
   const first = !seen.size;
@@ -437,9 +707,15 @@ async function refresh() {
   renderMoments(data.feed);
   const c = data.challenge;
   $("challenge").hidden = !c;
-  if (c) $("challenge").textContent = `${c.bug ? "🐛 Bug hunt" : "🎯 Class challenge"}: ${c.key.toUpperCase()} ${c.name} · ${c.done.length} of ${data.students.length} done${c.done.length ? `: ${c.done.slice(0, 5).join(", ")}${c.done.length > 5 ? "…" : ""}` : ""}`;
+  if (c) $("challenge").textContent = `${c.bug ? "🐛 Bug hunt" : "🎯 Class challenge"}: ${c.key.toUpperCase()} ${c.name} · ${c.done.length} of ${Math.max(c.done.length, students.filter(s => s.here).length)} done${c.done.length ? `: ${c.done.slice(0, 5).join(", ")}${c.done.length > 5 ? "…" : ""}` : ""}`;
+  $("totalNote").textContent = data.day.wins ? `${plural(data.day.wins, "mission")} today` : "earned together";
+  latestRuns = data.runs;
+  hearNotice(data.notice, data.day);
+  hearSpin(data.spin);
+  followRoom(data);
+  renderTrek(data);
   takeRuns(data.runs);
-  if (!stage.queue.length && (!stage.run || stage.run.live)) followCoder();
+  if ($("room").hidden && !stage.queue.length && (!stage.run || stage.run.live) && $("trek").hidden) followCoder();
 }
 refresh();
 setInterval(refresh, 1500);

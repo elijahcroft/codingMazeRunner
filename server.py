@@ -2781,11 +2781,14 @@ RUN_PATH_MAX = 400   # frames of a route kept for the replay
 TEACHER_NOTICES = {"eyes": ("👀", "Eyes on your teacher, please!", "Stop typing and look up."),
                    "five": ("⏰", "Five minutes left", "Finish what you're doing. Your code is saved."),
                    "stop": ("👋", "Time to stop for today", "Well done! Everything you did is saved.")}
-planet_notice = {"n": 0, "icon": "", "title": "", "text": ""}
+planet_notice = {"n": 0, "what": "", "at": 0, "icon": "", "title": "", "text": ""}
 # 🏁 The class race on /planet/race: each student's quickest win on the class
 # challenge, by student id. Memory only, and it lasts until a new challenge is
 # picked, so the teacher can end the challenge and still run the race.
-planet_race = {"key": None, "runs": {}}
+planet_race = {"key": None, "runs": {}, "on_board": False}
+# 🎲 The teacher's spinner: it lands on one student in the room, and nobody
+# gets a second turn until everyone has had one.
+planet_spin = {"n": 0, "id": "", "had": []}
 # One student's code the teacher put on the class screen, without their name,
 # to talk about together; None when nothing is shown.
 planet_spotlight = [None]
@@ -4598,6 +4601,32 @@ def planet_now(q, entry, frontier_key):
             "said": now.get("said")}
 
 
+def planet_spin_now():
+    """Land the spinner on someone here who hasn't had a turn lately."""
+    now = time.time()
+    here = [q for q in players.values() if now - q.get("planet", {}).get("pinged", 0) < PREDICT_RECENT]
+    if not here:
+        return "Nobody is here to pick yet."
+    fresh = [q for q in here if q["id"] not in planet_spin["had"]]
+    if not fresh:
+        planet_spin["had"].clear()
+        fresh = here
+    q = random.choice(fresh)
+    planet_spin["had"].append(q["id"])
+    planet_spin.update(n=planet_spin["n"] + 1, id=q["id"])
+    return "🎲 Spinning on the class screen."
+
+
+def planet_day_totals():
+    """The whole class's day so far, for the class screen."""
+    day = time.strftime("%Y-%m-%d")
+    days = [q.get("planet", {}).get("events", {}).get(day) for q in players.values()]
+    days = [d for d in days if d]
+    return {"students": len(days), "runs": sum(d.get("runs", 0) for d in days),
+            "wins": sum(d.get("wins", 0) for d in days),
+            "new_levels": sum(d.get("new_levels", 0) for d in days)}
+
+
 def planet_today():
     """Who played today and how far they got, for after class."""
     day, rows = time.strftime("%Y-%m-%d"), []
@@ -4698,6 +4727,8 @@ def planet_class():
                      # Their last few tries where they are now, newest last.
                      "tries": entry.get("tries", {}).get(now["site"], []),
                      "active": entry["active"], "typed": entry.get("typed"),
+                     # Their page is open now, for the class screen's crew.
+                     "here": time.time() - entry.get("pinged", 0) < PREDICT_RECENT,
                      "played": planet_minutes(entry),
                      "skipped": [k for k in entry.get("skipped", []) if k not in entry["solved"]]})
     rows.sort(key=lambda x: (x["at"], -x["runs_here"], x["name"].lower()))
@@ -5024,11 +5055,18 @@ def admin_action(data):
             return "Pick a question first."
         predict_room["revealed"] = True
         return "Revealed. The rover is driving on the class screen."
+    if action == "planet_race_board":
+        planet_race["on_board"] = not planet_race["on_board"]
+        return ("The race is on the class screen. Press Start the race there."
+                if planet_race["on_board"] else "The race is off the class screen.")
+    if action == "planet_spin":
+        return planet_spin_now()
     if action == "planet_notice":
         words = TEACHER_NOTICES.get(data.get("what"))
         if not words:
             return "Unknown message."
-        planet_notice.update(n=planet_notice["n"] + 1, icon=words[0], title=words[1], text=words[2])
+        planet_notice.update(n=planet_notice["n"] + 1, what=data.get("what"), at=time.time(),
+                             icon=words[0], title=words[1], text=words[2])
         return "Sent to every student's screen."
     if action == "planet_team_level":
         level = str(data.get("level", ""))
@@ -6411,6 +6449,9 @@ class Handler(BaseHTTPRequestHandler):
                                 blanks=planet_class_settings["blanks"],
                                 coach=planet_class_settings["coach"],
                                 sound=planet_class_settings["sound"],
+                                notice=planet_notice, day=planet_day_totals(),
+                                spin={"n": planet_spin["n"], "id": planet_spin["id"]},
+                                race_on_board=planet_race["on_board"],
                                 habits=planet_habits(), challenge=planet_challenge(),
                                 challenge_sites=[{"key": k, "name": planet.find_site(k)[2]["name"]}
                                                  for k in planet.SITE_ORDER],
@@ -6434,6 +6475,7 @@ class Handler(BaseHTTPRequestHandler):
                     body = {"halloween": halloween_on(planet_entry(p)),
                             "challenge": (planet_challenge() or {}).get("tag"),
                             "notice": planet_notice, "predict": predict_public(),
+                            "picked": planet_spin["n"] if planet_spin["id"] == p["id"] else 0,
                             "lounge": planet_lounge["open"], "team": team_room["open"]}
                 elif path == "/planet/state":
                     body = planet_state(p)

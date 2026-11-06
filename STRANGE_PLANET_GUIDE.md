@@ -596,6 +596,28 @@ the one before is done. Slow students aren't stuck behind a wall: open the
 next site for one student from `/planet/teacher` (type the admin key once,
 then **Unlock next**).
 
+## The class screen: one tab for the board
+
+Open **📽 Class screen** once and leave it on the board. It looks after itself:
+
+- **The crew** shows who's here now, not everyone who ever joined, and the
+  cards shrink so the whole class fits without scrolling. A kid who arrives
+  drops in.
+- **It follows the class.** Pick a 🔮 Predict question, press 🏁 Race, switch on
+  the 🤝 Team Mission or the 🛋 lounge, and that screen comes up by itself. It
+  goes back when you close it. Press **Esc** on the board to go back early.
+- **Your messages show on it.** 👀 Eyes up fills the board for 20 seconds. ⏰ 5
+  minutes shows for 8, then leaves a countdown in the top corner. 👋 Stop shows
+  what the class did today, for 10 minutes or until you press Esc.
+- **Quiet moments.** With no run for 40 seconds, it takes turns between 🗺 the
+  expedition map and a good run from earlier. The map shows rovers without
+  names, so it reads as a crew spread out, not a ranking. A new run always
+  takes over straight away.
+- **🎲 Spin**, next to Class screen on Mission Control, flicks through the
+  rovers in the room and lands on one, with fireworks. That kid gets a note on
+  their screen too. Everyone gets a turn before anyone goes twice.
+- **A class goal** sets off fireworks over the whole board.
+
 ## The screen, kept simple
 
 - The **route bar** at the top shows the zone you're in as a row of dots,

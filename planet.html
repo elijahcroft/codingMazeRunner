@@ -745,8 +745,15 @@
     .site-head h1 { font-size: 22px; }
     .goals { margin-top: 5px; }
     .timeline { padding: 6px 16px 8px; }
-    /* A long brief folds to four lines, so the map keeps its room. */
-    #siteBrief:not(.open) .words { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; }
+    /* The words and the example side by side, and a long brief folds to three
+       lines, so the map keeps its room. */
+    .title-row { flex-wrap: nowrap; align-items: flex-start; }
+    #siteBrief { flex: 1 1 0; min-width: 0; flex-wrap: nowrap; font-size: 14.5px; line-height: 1.32; }
+    #siteBrief pre { flex: none; max-height: 66px; overflow: auto; padding: 4px 8px; font-size: 12.5px; line-height: 1.4; }
+    #siteBrief:not(.open) .words { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+    .goals { flex-wrap: nowrap; overflow: hidden; }
+    .goals > * { flex: none; }
+    .steps { flex-wrap: nowrap; margin-top: 5px; white-space: nowrap; }
   }
   .brief-more { position: absolute; right: 0; bottom: 0; border: 0; border-radius: 99px; padding: 1px 10px; background: var(--panel); color: var(--bone); font-size: 13px; box-shadow: -14px 0 10px var(--sky); white-space: nowrap; }
   #siteBrief.open .brief-more { position: static; margin-top: 4px; box-shadow: none; }
@@ -2516,7 +2523,8 @@ function showBanner(cls, text, actions = "", next = "") {
   $("banner").className = "banner " + cls; $("bannerText").innerHTML = codeSpans(text);
   if (next) $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">👉 ${codeSpans(next)}</span>`);
   // A note with nothing to press can be put away, to see the map under it.
-  $("bannerActions").innerHTML = actions || (cls ? "" : `<button class="quiet" onclick="hideBanner()">OK</button>`);
+  $("bannerActions").innerHTML = actions + (!cls && !actions ? `<button class="quiet" onclick="hideBanner()">OK</button>`
+    : cls !== "win" && cls !== "scout" ? `<button class="quiet" onclick="hideBanner()">👀 See the map</button>` : "");
   $("banner").hidden = false;
 }
 function hideBanner() { $("banner").hidden = true; }
@@ -5244,12 +5252,21 @@ function hearNotice(notice) {
   }
   noticeSeen = notice.n;
 }
+// The teacher's spinner landed on this student.
+let pickedSeen = 0;
+function hearPicked(n) {
+  if (n && n !== pickedSeen) {
+    SFX.play("badge");
+    toast("🎲", "The spinner picked you!", "Look up at the class screen.");
+  }
+  pickedSeen = n || pickedSeen;
+}
 // A class challenge set or ended by the teacher shows up within a few seconds.
 setInterval(async () => {
   if (!me || !state || !site || busy) return;
   const lately = performance.now() - idleSince < IDLE_PLAY_MS ? "&busy=1" : "";
   const out = await get(`/planet/ping?id=${encodeURIComponent(me)}${lately}`).catch(() => null);
-  if (out) { loungeSet(!!out.lounge, true); teamSet(!!out.team, true); hearNotice(out.notice); predictHear(out.predict); }
+  if (out) { loungeSet(!!out.lounge, true); teamSet(!!out.team, true); hearNotice(out.notice); predictHear(out.predict); hearPicked(out.picked); }
   if (!out || (out.challenge || null) === ((state.challenge || {}).tag || null)) return;
   useState(await get(`/planet/state?id=${encodeURIComponent(me)}`));
   renderGoals();

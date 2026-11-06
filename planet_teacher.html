@@ -222,7 +222,8 @@
   <div class="join-at" id="joinAt">Students join at <b id="address">…</b></div>
   <div class="top-actions">
     <span class="live" id="live"><i></i>LIVE</span>
-    <a class="btn" href="/planet/show" target="_blank" title="The class screen for the projector">📽 Class screen</a>
+    <a class="btn" href="/planet/show" target="_blank" title="The class screen for the projector. Predict it, the race, the Team Mission and the lounge come up on it by themselves.">📽 Class screen</a>
+    <button class="btn" onclick="admin('planet_spin')" title="Spins through the rovers on the class screen and lands on one student. Everyone gets a turn before anyone goes twice.">🎲 Spin</button>
     <button class="btn" id="spotOff" hidden onclick="admin('planet_spotlight_off')">⏹ Stop showing code</button>
     <button class="btn" onclick="admin('planet_notice', null, {what: 'eyes'})" title="Puts a message on every student's screen">👀 Eyes up</button>
     <button class="btn" onclick="admin('planet_notice', null, {what: 'five'})" title="Puts a message on every student's screen">⏰ 5 minutes</button>
@@ -237,7 +238,7 @@
   <label title="Every student gets a short program and votes on how far the rover drives. Nothing is earned and no names show. Open the page beside it on the class screen.">🔮 Predict it <select id="predictPick" onchange="admin('planet_predict', null, {n: this.value})"></select></label>
   <a class="btn small" href="/planet/predict" target="_blank" title="The class screen for Predict it">📺 Show</a>
   <button class="btn small" id="predictReveal" onclick="admin('planet_predict_reveal')" title="Shows the answer and drives the rover on the class screen" hidden>🎬 Reveal</button>
-  <a class="btn small" href="/planet/race" target="_blank" title="Opens the class race for the class screen. Everyone who has won the class challenge races at the same moment, each on their own map.">🏁 Race</a>
+  <button class="btn small" id="raceBoard" onclick="admin('planet_race_board')" title="Puts the class race on the class screen, or takes it off. Everyone who has won the class challenge races at the same moment, each on their own map.">🏁 Race</button>
   <label title="On: 📋 Use as code after scouting leaves a few words for students to finish (r____ for range). Off: the code comes out whole."><span class="switch"><input type="checkbox" id="blanks" onchange="admin('planet_blanks', null, {on: this.checked})"><span></span></span> Scouted code has words to finish</label>
   <label title="For a younger class. On: nine practice zones (Practice Park, Loop Garden, Ice Rink, Pad Park, Jump Park, Look-Out Point, Fork Road, Trick School, Number Lab) before the Landing Site, where kids drive by hand first, then finish their code one letter at a time; classmates to ask after 3 misses (not 8), Skip for now after 6 (not 20)."><span class="switch"><input type="checkbox" id="easy" onchange="admin('planet_easy', null, {on: this.checked})"><span></span></span> Easy mode (younger class)</label>
   <label title="On: the game's sound starts on for students who haven't pressed the speaker button themselves. Headphones recommended. Off: it starts muted, and each student can still turn it on."><span class="switch"><input type="checkbox" id="sound" onchange="admin('planet_sound', null, {on: this.checked})"><span></span></span> Sound starts on</label>
@@ -621,7 +622,7 @@ async function refresh() {
   helpAfter = data.easy ? 3 : 8;
   $("address").textContent = (data.address || "").replace(/^http:\/\//, "");
   $("spotOff").hidden = !data.spotlight;
-  $("blanks").checked = data.blanks; $("easy").checked = data.easy; $("coach").checked = data.coach; $("sound").checked = data.sound; $("lounge").checked = data.lounge; $("loungeWatch").hidden = !data.lounge; $("team").checked = data.team; $("teamTools").hidden = !data.team;
+  $("raceBoard").textContent = data.race_on_board ? "🏁 Close the race" : "🏁 Race"; $("blanks").checked = data.blanks; $("easy").checked = data.easy; $("coach").checked = data.coach; $("sound").checked = data.sound; $("lounge").checked = data.lounge; $("loungeWatch").hidden = !data.lounge; $("team").checked = data.team; $("teamTools").hidden = !data.team;
   $("teamStatus").textContent = `${plural(data.team_rovers, "rover")} on the map, ${data.team_vault} in the vault`;
   $("teamHelper").textContent = data.team_helper ? "🤖 Send the helper away" : "🤖 Helper rover";
   const guess = $("predictPick");

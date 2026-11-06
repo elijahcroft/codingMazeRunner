@@ -1374,7 +1374,78 @@ class ClassRace(unittest.TestCase):
         self.assertIn("Class Race", urlopen(self.base + "/planet/race").read().decode())
 
     def test_the_teacher_page_links_to_it(self):
-        self.assertIn('href="/planet/race"', urlopen(self.base + "/planet/teacher").read().decode())
+        self.assertIn("admin('planet_race_board')", urlopen(self.base + "/planet/teacher").read().decode())
+        self.assertIn('race: "/planet/race"', urlopen(self.base + "/planet/show").read().decode())
+
+
+class ClassScreen(unittest.TestCase):
+    Base = test_planet.ClassroomTests
+    setUp, get, post, join = Base.setUp, Base.get, Base.post, Base.join
+
+    def tearDown(self):
+        self.Base.tearDown(self)
+        server.planet_race["on_board"] = False
+        server.planet_spin.update(n=0, id="", had=[])
+
+    def admin(self, action, **data):
+        return self.post("/admin", dict(data, key=server.ADMIN_KEY, action=action))
+
+    def row(self, pid):
+        return next(s for s in self.get("/planet/overview")["students"] if s["id"] == pid)
+
+    def test_a_student_is_here_while_their_page_is_open(self):
+        ada = self.join("Ada")
+        self.get(f"/planet/ping?id={ada}")
+        self.assertTrue(self.row(ada)["here"])
+        server.players[ada]["planet"]["pinged"] -= server.PREDICT_RECENT + 1
+        self.assertFalse(self.row(ada)["here"])
+
+    def test_the_days_totals_add_up_the_class(self):
+        ada, bob = self.join("Ada"), self.join("Bob")
+        day = server.time.strftime("%Y-%m-%d")
+        for pid, runs, wins in ((ada, 4, 2), (bob, 3, 1)):
+            self.get(f"/planet/ping?id={pid}")
+            server.players[pid]["planet"]["events"] = {day: {"runs": runs, "wins": wins, "new_levels": wins}}
+        self.assertEqual(self.get("/planet/overview")["day"],
+                         {"students": 2, "runs": 7, "wins": 3, "new_levels": 3})
+
+    def test_the_class_screen_hears_which_message_and_when(self):
+        self.admin("planet_notice", what="five")
+        notice = self.get("/planet/overview")["notice"]
+        self.assertEqual(notice["what"], "five")
+        self.assertAlmostEqual(notice["at"], server.time.time(), delta=5)
+
+    def test_the_spinner_gives_everyone_a_turn_before_anyone_goes_twice(self):
+        kids = [self.join(name) for name in ("Ada", "Bob", "Cy")]
+        for pid in kids:
+            self.get(f"/planet/ping?id={pid}")
+        picked = []
+        for _ in range(3):
+            self.admin("planet_spin")
+            picked.append(self.get("/planet/overview")["spin"]["id"])
+        self.assertEqual(sorted(picked), sorted(kids))
+        self.admin("planet_spin")
+        self.assertIn(self.get("/planet/overview")["spin"]["id"], kids)
+
+    def test_only_the_student_picked_hears_about_it(self):
+        ada = self.join("Ada")
+        self.get(f"/planet/ping?id={ada}")
+        self.assertEqual(self.get(f"/planet/ping?id={ada}")["picked"], 0)
+        self.admin("planet_spin")
+        bob = self.join("Bob")
+        self.assertEqual(self.get(f"/planet/ping?id={ada}")["picked"], 1)
+        self.assertEqual(self.get(f"/planet/ping?id={bob}")["picked"], 0)
+
+    def test_the_spinner_says_so_when_nobody_is_here(self):
+        self.assertIn("Nobody", self.admin("planet_spin")["ok"])
+        self.assertEqual(self.get("/planet/overview")["spin"]["n"], 0)
+
+    def test_the_race_goes_on_and_off_the_class_screen(self):
+        self.assertFalse(self.get("/planet/overview")["race_on_board"])
+        self.admin("planet_race_board")
+        self.assertTrue(self.get("/planet/overview")["race_on_board"])
+        self.admin("planet_race_board")
+        self.assertFalse(self.get("/planet/overview")["race_on_board"])
 
 
 if __name__ == "__main__":
