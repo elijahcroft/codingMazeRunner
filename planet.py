@@ -5116,6 +5116,198 @@ STAR_TIPS.update({
 })
 
 
+# ---- Builder's Yard: bigger programs ---------------------------------------------
+# Side missions whose programs are longer than the main route's: a route typed
+# out by hand is 12 to 20 lines, so loops, if and def are how to tame them.
+# Each opens once the student is past the main site that teaches its idea
+# (BUILD_AFTER), and none is in SITE_ORDER, so they never stand in the way.
+
+def comb_map(teeth, depth=3):
+    """A road along the top with teeth hanging down, a sample at each foot."""
+    g = [["#"] * (2 * teeth + 3) for _ in range(depth + 3)]
+    for c in range(1, 2 * teeth + 2):
+        g[1][c] = "."
+    for t in range(teeth):
+        for r in range(2, depth + 2):
+            g[r][1 + 2 * t] = "."
+        g[depth + 1][1 + 2 * t] = "*"
+    g[1][1] = "S"
+    return strings(g)
+
+
+def snake_map(lanes, width, nook):
+    """Lanes of samples joined at alternate ends, and a nook above the first."""
+    g = [["#"] * (width + 2) for _ in range(2 * lanes + 2)]
+    for k in range(lanes):
+        for c in range(1, width + 1):
+            g[2 + 2 * k][c] = "*"
+        if k < lanes - 1:
+            g[3 + 2 * k][width if k % 2 == 0 else 1] = "."
+    g[2][1], g[1][nook] = "S", "."
+    return strings(g)
+
+
+def spiral_map(rows, cols):
+    """One corridor that winds inward, east first, to the beacon in the middle."""
+    g = [["#"] * cols for _ in range(rows)]
+    r, c, d = 1, 1, 0
+    top, left, bottom, right = 1, 1, rows - 2, cols - 2
+    g[r][c] = "S"
+    while True:
+        dr, dc = ((0, 1), (1, 0), (0, -1), (-1, 0))[d]
+        moved = False
+        while (c < right, r < bottom, c > left, r > top)[d]:
+            r, c, moved = r + dr, c + dc, True
+            g[r][c] = "."
+        if not moved:
+            break
+        if d == 0:
+            top += 2
+        elif d == 1:
+            right -= 2
+        elif d == 2:
+            bottom -= 2
+        else:
+            left += 2
+        d = (d + 1) % 4
+    g[r][c] = "G"
+    return strings(g)
+
+
+def hurdle_road(hurdles, length=18):
+    """A road east to the beacon. Each hurdle is a rock on it with the way
+    round over the top ("n") or underneath ("s"), and rock on the other side."""
+    g = [["#"] * (length + 2) for _ in range(5)]
+    for c in range(1, length + 1):
+        g[2][c] = "."
+    for c, side in hurdles:
+        g[2][c] = "#"
+        for cc in (c - 1, c, c + 1):
+            g[1 if side == "n" else 3][cc] = "."
+    g[2][1], g[2][length] = "S", "G"
+    return strings(g)
+
+
+def box_map(sizes, nook):
+    """Square loops of track, each n squares a side, joined along the top.
+    Samples on three corners of each; a nook below the first join."""
+    g = [["#"] * (sum(n + 2 for n in sizes) + 2) for _ in range(max(sizes) + 3)]
+    left = 1
+    for n in sizes:
+        for k in range(n + 1):
+            for r, c in ((1, left + k), (1 + n, left + k), (1 + k, left), (1 + k, left + n)):
+                g[r][c] = "."
+        for r, c in ((1, left + n), (1 + n, left + n), (1 + n, left)):
+            g[r][c] = "*"
+        left += n + 2
+    for c in range(1, len(g[0]) - 3):
+        if g[1][c] == "#":
+            g[1][c] = "."
+    g[1][1], g[nook[0]][nook[1]] = "S", "."
+    return strings(g)
+
+
+BUILDERS_YARD = {
+    "key": "yard", "name": "Builder's Yard", "rules": set(),
+    "blurb": "Big missions that need big programs. Loops, if and def keep them short.",
+    "hints": [
+        "Say the route out loud first. Which part do you say again and again? "
+        "That part goes inside a loop, or inside a def.",
+        "Build it a bit at a time: type the first part, press Transmit, watch "
+        "it, then add the next part. Big programs are lots of small ones.",
+        "A def with a number in its ( ) can do different sizes:\n\n"
+        "def box(n):\n    east(n)\n    south(n)\n\nbox(2)\nbox(5)",
+    ],
+    "sites": [
+        site("b1", "The Comb",
+             "Collect the sample at the bottom of every tooth 🧪. Each tooth is "
+             "the same: down 3, back up 3, then 2 east to the next one.\n"
+             "Typed out, that's 15 lines. A for loop types it once:\n\n"
+             "for i in range(5):\n    south(3)\n    ...",
+             [{"map": comb_map(5)}],
+             reference="for i in range(5):\n    south(3)\n    north(3)\n    east(2)\n",
+             bonus={"kind": "def"}, compact=4),
+        site("b2", "Snake Field",
+             "Collect every sample 🧪. The rows wind back and forth like a snake: "
+             "east along one row, down 2, west along the next, down 2.\n"
+             "💎 A crystal hides in the nook above the first row. Can you grab "
+             "it and still use a loop for the rest?",
+             [{"map": snake_map(4, 9, 5), "crystals": [(1, 5)]}],
+             reference="for i in range(2):\n    east(8)\n    south(2)\n"
+                       "    west(8)\n    south(2)\n",
+             bonus={"kind": "crystals"}, compact=6),
+        site("b3", "The Spiral",
+             "Drive to the beacon 🛰 in the middle of the spiral. Every spiral "
+             "is a different size, so counting squares won't work on anyone "
+             "else's.\n"
+             "Each side is a while loop that drives until the rock:\n\n"
+             "while look(\"east\") != \"rock\":\n    east()\n\n"
+             "Then south, then west, then north… and again, until at_beacon().",
+             [{"map": spiral_map(r, c)} for r, c in
+              ((9, 13), (11, 11), (9, 15), (11, 13), (13, 13), (9, 11), (11, 15), (13, 11))],
+             per_student=True,
+             reference='while not at_beacon():\n'
+                       '    while look("east") != "rock":\n        east()\n'
+                       '    while look("south") != "rock":\n        south()\n'
+                       '    while look("west") != "rock":\n        west()\n'
+                       '    while look("north") != "rock":\n        north()\n',
+             bonus={"kind": "everywhere", "of": "spiral"}, compact=9),
+        site("b4", "Hurdles",
+             "Drive east to the beacon 🛰. Rocks block the road, and the way "
+             "round is over the top or underneath. Yours aren't where anyone "
+             "else's are.\n"
+             "Your program decides at every square: is the way east clear? If "
+             "not, is the way north clear? Use if, elif and else:\n\n"
+             "if look(\"east\") != \"rock\":\n    east()\n"
+             "elif look(\"north\") != \"rock\":\n    north()\n    ...",
+             [{"map": hurdle_road(h)} for h in (
+                 [(4, "n"), (8, "s"), (11, "s"), (15, "n")],
+                 [(3, "s"), (7, "n"), (12, "n"), (15, "s")],
+                 [(5, "n"), (8, "n"), (12, "s"), (16, "s")],
+                 [(4, "s"), (9, "s"), (12, "n"), (16, "n")],
+                 [(3, "n"), (6, "s"), (10, "n"), (14, "s")],
+                 [(5, "s"), (9, "n"), (13, "s"), (16, "n")],
+                 [(4, "n"), (7, "s"), (11, "n"), (15, "s")],
+                 [(3, "s"), (8, "n"), (11, "s"), (14, "n")])],
+             per_student=True,
+             reference='while not at_beacon():\n'
+                       '    if look("east") != "rock":\n        east()\n'
+                       '    elif look("north") != "rock":\n'
+                       '        north()\n        east(2)\n        south()\n'
+                       '    else:\n        south()\n        east(2)\n        north()\n',
+             bonus={"kind": "everywhere", "of": "road"}, compact=11),
+        site("b5", "Box Builder",
+             "Collect the samples 🧪 on the corners of the three boxes. The "
+             "boxes are 2, 3 and 4 squares a side.\n"
+             "Make one def that drives a box of any size, and call it three "
+             "times with a different number:\n\n"
+             "def box(n):\n    east(n)\n    south(n)\n    ...\n\nbox(2)",
+             [{"map": box_map((2, 3, 4), (2, 4)), "crystals": [(2, 4)]}],
+             reference="def box(n):\n    east(n)\n    south(n)\n    west(n)\n    north(n)\n\n"
+                       "box(2)\neast(4)\nbox(3)\neast(5)\nbox(4)\n",
+             bonus={"kind": "crystals"}, compact=10),
+    ]}
+BUILD_ZONES = [BUILDERS_YARD]
+BUILD_ORDER = [s["key"] for z in BUILD_ZONES for s in z["sites"]]
+# The main site each one waits for: the one that teaches its idea.
+BUILD_AFTER = {"b1": "1b", "b2": "1b", "b3": "1c", "b4": "3b", "b5": "4b"}
+STAR_TIPS.update({
+    "b1": {"bonus": "🧩 Put the three lines of one tooth under  def tooth():  "
+                    "and call tooth() in the loop.",
+           "compact": "One for loop that runs 5 times, with the 3 lines of a tooth inside."},
+    "b2": {"bonus": "💎 Do the first row by hand: east(4), north(), south(), "
+                    "east(4). Then a loop for the rest.",
+           "compact": "One loop that runs 2 times: east, south, west, south."},
+    "b3": {"compact": "One while not at_beacon() loop with four while loops "
+                      "inside it, one for each way."},
+    "b4": {"compact": "One while loop with an if, an elif and an else inside."},
+    "b5": {"bonus": "💎 After the first box, drive east(3), dip south() and "
+                    "north() for the crystal, then east() once more.",
+           "compact": "def box(n): with four drives in it, then three box() "
+                      "calls with an east() between each."},
+})
+
+
 # ---- Halloween night: a limited-time event ----------------------------------------
 # Two zones the teacher opens for the students they pick (see the server's
 # planet_halloween). The rover goes trick-or-treating: knock("north") on the
@@ -5494,7 +5686,7 @@ def find_site(key):
         for s in zone["sites"]:
             if s["key"] == key:
                 return zi, zone, s
-    for zone in PRACTICE_ZONES + HALLOWEEN_ZONES:
+    for zone in PRACTICE_ZONES + BUILD_ZONES + HALLOWEEN_ZONES:
         for s in zone["sites"]:
             if s["key"] == key:
                 return zone.get("zi", 0), zone, s

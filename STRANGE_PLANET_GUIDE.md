@@ -108,6 +108,34 @@ of it if the program stopped short.
 **One step at a time.** ⏭ next to Play moves the replay on by one step and lights up
 the line that did it.
 
+- **Students type more, and click less.** 1A starts with an empty editor
+  (it used to come with `south(2)` typed in), and a command or sensor under
+  the editor no longer types itself: pressing `east()` shows "✍️ Type it
+  yourself: `east()`" with what it does, and typing it on that line says
+  "✅ You typed it!". Autocomplete and the scouted-drive blanks still help.
+  A new site still starts with the last site's code ("will it still work
+  here?"), as before.
+- **✍️ Warm-ups** before the sites that bring in a new idea: 1A (commands),
+  1B (`for`), 1C (`while`), 2A (a variable and `report()`), 3B (`if`/`else`),
+  4B (`def`), B4 (`elif`) and B5 (a `def` with a number). Over the editor,
+  the student types the idea's shape one key at a time: the next key glows,
+  a wrong one shakes and names the key to look for ("Shift + 9" for `(`),
+  and Tab pushes a line in. Then they change one thing ("make it repeat 8
+  times") and it checks. Nothing is sent to the rover, there's a **Skip**,
+  and a warm-up done or skipped doesn't come back. None on easy-mode
+  practice sites, which have their own letter-by-letter coach.
+- **🏗 Builder's Yard**: five side missions whose programs are long (a route
+  typed out by hand is 12 to 20 lines): The Comb (`for`), Snake Field (`for`
+  plus a 💎 detour), The Spiral (`while` loops inside a `while`, a different
+  size for everyone), Hurdles (`if`/`elif`/`else` in a loop, different for
+  everyone) and Box Builder (`def box(n):` called with 2, 3 and 4). Each
+  opens when the student is past the main site that teaches its idea (1B,
+  1B, 1C, 3B, 4B), shows "after 1C" on its locked tile, and is never in the
+  way of the main route. Three stars each, which count like any other.
+- **Bigger and easier to read**: larger code (16px; 19px with *Bigger
+  text*), a wider code column, bigger command buttons, Transmit, goal chips,
+  brief and telemetry.
+
 - **Measuring sites have numbered steps,** and everyone's number is their own
   (2A ice length, 3A gust timing, 7A beacon distance; 5A is still 2 for
   everyone). A classmate's number gets "That's the number on someone else's
@@ -193,8 +221,8 @@ heads-up display shows the tick (plus battery and samples once they
 matter), and a timeline under the map marks every slide, gust, portal, fall
 and report with an icon, so students can jump straight to them. Code goes in
 on the right and is sent with **Transmit** (F5 or Ctrl+Enter). Clicking a
-command or sensor under the editor types it in, and a dot marks the sensors
-that are new in the zone. The route along the top shows every site as a
+command or sensor under the editor shows how to type it (students type it
+themselves), and a dot marks the sensors that are new in the zone. The route along the top shows every site as a
 waypoint.
 
 ## What keeps them coding
