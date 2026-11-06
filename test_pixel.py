@@ -1196,7 +1196,7 @@ class AliveOnStage(unittest.TestCase):
         self.assertEqual(steps[0]["do"], "pose")
 
     def test_every_page_script_is_served(self):
-        for path in ("/pixel/rig.js", "/pixel/gallery.js", "/pixel/life.js"):
+        for path in ("/pixel/rig.js", "/pixel/gallery.js", "/pixel/life.js", "/pixel/island.js"):
             self.assertIn(path, server.PAGES)
 
 

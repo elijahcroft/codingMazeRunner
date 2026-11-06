@@ -5674,6 +5674,7 @@ PAGES = {
     "/pixel/studio.js": ("pixel_studio.js", "text/javascript; charset=utf-8"),
     "/pixel/life.js": ("pixel_life.js", "text/javascript; charset=utf-8"),
     "/pixel/story.js": ("pixel_story.js", "text/javascript; charset=utf-8"),
+    "/pixel/island.js": ("pixel_island.js", "text/javascript; charset=utf-8"),
     "/pixel/room.js": ("pixel_room.js", "text/javascript; charset=utf-8"),
     "/pixel/page.js": ("pixel_page.js", "text/javascript; charset=utf-8"),
     "/leaderboard": ("leaderboard.html", "text/html; charset=utf-8"),

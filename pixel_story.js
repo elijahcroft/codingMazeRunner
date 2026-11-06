@@ -28,9 +28,12 @@ async function loadBook() {
   if (data) book = data;
   return book;
 }
-let storyPane = "live", bookTimer = 0;
+let storyPane = "island", bookTimer = 0;
 function showPane(pane) {
   storyPane = pane;
+  $("islandView").hidden = pane !== "island";
+  $("segIsland").setAttribute("aria-pressed", pane === "island");
+  if (pane === "island") PixelIsland.open(); else PixelIsland.close();
   $("liveView").hidden = pane !== "live";
   $("bookView").hidden = pane !== "book";
   $("segLive").setAttribute("aria-pressed", pane === "live");
@@ -66,6 +69,7 @@ function stopBook() {
   $("playStory").textContent = "▶ Play our story";
 }
 function closeStory() {
+  PixelIsland.close();
   clearInterval(bookTimer);
   stopBook();
   closeRoom();
@@ -166,3 +170,5 @@ $("joinCast").addEventListener("click", joinTheCast);
 $("pageGo").addEventListener("click", addMyPage);
 $("pageNo").addEventListener("click", () => { $("pageSheet").hidden = true; });
 $("pageWords").addEventListener("keydown", e => { if (e.key === "Enter") addMyPage(); });
+
+$("segIsland").addEventListener("click", () => showPane("island"));
