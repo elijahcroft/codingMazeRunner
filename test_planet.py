@@ -2083,6 +2083,83 @@ class ClassroomTests(unittest.TestCase):
         self.assertEqual(row["played"], {"minutes": 2, "days": 1})
         self.assertEqual(self.get("/planet/overview")["habits"]["secs"], 125)
 
+
+    def maker_on(self):
+        self.addCleanup(lambda: (server.planet_levels.clear(), planet.CLASS_LEVELS.clear(),
+                                 server.planet_class_settings.update(maker=False)))
+        self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_maker", "on": True})
+
+    DRAWING = ["S...G.......", *["............"] * 6, "............"]
+
+    def test_a_level_goes_live_when_its_maker_beats_it(self):
+        self.maker_on()
+        ada, bo = self.join("Ada"), self.join("Bo")
+        made = self.post("/planet/maker/save", {"id": ada, "name": "Zoom!", "rows": self.DRAWING})
+        key = made["key"]
+        self.assertEqual([s["key"] for s in made["state"]["zones"][-1]["sites"]], [key])
+        # Private until it's been beaten.
+        others = self.get(f"/planet/state?id={bo}")["zones"]
+        self.assertNotIn("workshop", [z["key"] for z in others])
+        self.assertIn("error", self.transmit(bo, key, "east(4)\n"))
+        stopped = self.transmit(ada, key, "east()\n")
+        self.assertFalse(stopped["rewards"]["published"])
+        won = self.transmit(ada, key, "east(4)\n")
+        self.assertTrue(won["rewards"]["published"])
+        self.assertIn("Level Maker", [b["name"] for b in won["rewards"]["badges"]])
+        before = self.get(f"/planet/state?id={ada}")["total_stars"]
+        self.assertEqual(before, 0)   # levels earn no stars
+        played = self.transmit(bo, key, "east(4)\n")
+        self.assertTrue(played["rewards"]["stars"][0])
+        self.assertEqual(self.get(f"/planet/site?id={bo}&site={key}")["stars"], [True])
+        self.assertEqual(self.get("/planet/overview")["levels"][0]["wins"], 1)
+
+    def test_a_changed_level_comes_down_until_its_beaten_again(self):
+        self.maker_on()
+        ada, bo = self.join("Ada"), self.join("Bo")
+        key = self.post("/planet/maker/save", {"id": ada, "name": "A", "rows": self.DRAWING})["key"]
+        self.transmit(ada, key, "east(4)\n")
+        self.assertIn("error", self.post("/planet/maker/save", {"id": bo, "key": key, "name": "Mine", "rows": self.DRAWING}))
+        self.post("/planet/maker/save", {"id": ada, "key": key, "name": "B", "rows": self.DRAWING})
+        self.assertIn("error", self.transmit(bo, key, "east(4)\n"))
+
+    def test_samples_on_a_level_with_a_beacon_count(self):
+        self.maker_on()
+        ada = self.join("Ada")
+        rows = ["S...G.......", "...*........", *["............"] * 6]
+        key = self.post("/planet/maker/save", {"id": ada, "name": "Both", "rows": rows})["key"]
+        self.assertFalse(self.transmit(ada, key, "east(4)\n")["runs"][0]["reached"])
+        self.assertTrue(self.transmit(ada, key, "south()\neast(3)\nnorth()\neast()\n")["runs"][0]["reached"])
+        self.assertIn("Every sample", self.get(f"/planet/site?id={ada}&site={key}")["goals"][0])
+
+    def test_a_drawing_needs_a_start_and_somewhere_to_go(self):
+        self.maker_on()
+        ada = self.join("Ada")
+        for rows, word in ((["." * 12] * 8, "start"), (["S" + "." * 11] + ["." * 12] * 7, "beacon"),
+                           (["S" * 2 + "G" + "." * 9] + ["." * 12] * 7, "start"), (["SG"], "properly"),
+                           (["SG" + "@" * 10] + ["." * 12] * 7, "properly"), (["S" + "*" * 11, "**"] + ["." * 12] * 6, "properly")):
+            self.assertIn(word, self.post("/planet/maker/save", {"id": ada, "name": "X", "rows": rows})["error"])
+        self.assertIn("name", self.post("/planet/maker/save", {"id": ada, "name": "<>", "rows": self.DRAWING})["error"])
+
+    def test_four_levels_each_and_the_teacher_can_remove_one(self):
+        self.maker_on()
+        ada = self.join("Ada")
+        keys = [self.post("/planet/maker/save", {"id": ada, "name": "L", "rows": self.DRAWING}).get("key") for _ in range(5)]
+        self.assertIsNone(keys[4])
+        self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_maker_remove", "level": keys[0]})
+        self.assertNotIn(keys[0], planet.CLASS_LEVELS)
+        self.assertNotIn(keys[0], server.planet_levels)
+        self.assertTrue(self.post("/planet/maker/save", {"id": ada, "name": "L", "rows": self.DRAWING}).get("key"))
+        self.assertIn("error", self.get(f"/planet/site?id={ada}&site={keys[0]}"))
+
+    def test_levels_come_back_after_a_restart(self):
+        self.maker_on()
+        ada = self.join("Ada")
+        key = self.post("/planet/maker/save", {"id": ada, "name": "Keep", "rows": self.DRAWING})["key"]
+        saved = json.load(open(server.STATE_FILE))
+        self.assertEqual(saved["planet_levels"][key]["name"], "Keep")
+        server.planet_levels.clear(); planet.CLASS_LEVELS.clear()
+        server.load_state()
+        self.assertEqual(planet.find_site(key)[2]["name"], "Keep")
     def test_a_class_challenge_opens_a_level_and_counts_who_finishes(self):
         self.addCleanup(lambda: server.planet_class_settings.update(challenge=None))
         ada, bo = self.join("Ada"), self.join("Bo")

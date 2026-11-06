@@ -131,6 +131,22 @@
   .levels-head h2 { margin: 0; font-size: 26px; font-weight: 850; letter-spacing: -.02em; }
   .levels-stars { color: var(--gold); font: 700 16px var(--mono); }
   .levels-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+  .maker-card { width: min(760px, 100%); border-radius: 22px; overflow: hidden; background: var(--dusk); box-shadow: 0 30px 80px rgba(0,0,0,.55), inset 0 0 0 1px var(--edge); }
+  .maker-tools { display: flex; gap: 6px; flex-wrap: wrap; padding: 12px 20px 0; }
+  .maker-tools button { padding: 7px 12px; border: 0; border-radius: 12px; background: var(--panel); color: var(--bone); font-weight: 650; box-shadow: inset 0 0 0 1px var(--edge); }
+  .maker-tools button.on { background: var(--panel-2); box-shadow: inset 0 0 0 2px var(--mint); }
+  .maker-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2px; width: min(calc(100% - 40px), calc((100vh - 270px) * 1.5)); margin: 12px auto; padding: 8px; border-radius: 12px; background: #4b4560; touch-action: none; user-select: none; }
+  .mk { aspect-ratio: 1; min-width: 0; padding: 0; border: 0; border-radius: 5px; background: #c98a5a; font-size: clamp(14px, 3vw, 24px); line-height: 1; }
+  .mk:hover { outline: 2px solid var(--mint); }
+  .mk.t-rock { background: #6d6780; }
+  .mk.t-hole { background: #1b1733; }
+  .maker-foot { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 0 20px 14px; }
+  .maker-foot input { width: 220px; padding: 9px 12px; border: 0; border-radius: 10px; background: var(--panel); color: var(--bone); box-shadow: inset 0 0 0 1px var(--edge); }
+  .maker-why { color: var(--haze); font-size: 14px; }
+  .maker-why.bad { color: #ffd9a0; }
+  .maker-mine { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 20px 16px; }
+  .maker-mine:empty { display: none; }
+  .tile .tby { color: var(--haze); font-size: 12px; }
   .zone-jump { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; padding: 8px 20px; border-bottom: 1px solid var(--edge); }
   .jump-zone { position: relative; width: 30px; height: 32px; padding: 0; border: 0; border-radius: 9px; overflow: hidden; background: var(--panel); font-size: 16px; line-height: 1; transition: transform .12s; }
   .jump-zone:hover:not(:disabled) { transform: translateY(-2px); background: var(--panel-2); }
@@ -1158,10 +1174,25 @@
     <div class="levels-head">
       <h2 id="levelsTitle">🗺 Levels</h2>
       <span class="levels-stars" id="levelsStars"></span>
-      <div class="levels-actions"><button class="go" id="levelsPlay"></button><button class="quiet" id="levelsClose">Close</button></div>
+      <div class="levels-actions"><button class="quiet" id="levelsMake" hidden>🛠 Make a level</button><button class="go" id="levelsPlay"></button><button class="quiet" id="levelsClose">Close</button></div>
     </div>
     <div class="zone-jump" id="zoneJump" aria-label="Jump to a zone"></div>
     <div class="zone-list" id="zoneList"></div>
+  </div>
+</div>
+<div class="dialog" id="maker" hidden role="dialog" aria-modal="true" aria-labelledby="makerTitle">
+  <div class="maker-card">
+    <div class="levels-head">
+      <h2 id="makerTitle">🛠 Make a level</h2>
+      <div class="levels-actions"><button class="go" id="makerTest">Test drive ▶</button><button class="quiet" id="makerClose">Close</button></div>
+    </div>
+    <div class="maker-tools" id="makerTools"></div>
+    <div class="maker-grid" id="makerGrid"></div>
+    <div class="maker-foot">
+      <input id="makerName" maxlength="24" placeholder="Name your level" autocomplete="off" aria-label="Your level's name">
+      <span class="maker-why" id="makerWhy">Beat your own level with code, and the class can play it.</span>
+    </div>
+    <div class="maker-mine" id="makerMine"></div>
   </div>
 </div>
 <div class="dialog spooky" id="invite" hidden role="dialog" aria-modal="true" aria-labelledby="inviteTitle">
@@ -1267,7 +1298,7 @@ let scene = null;     // what the canvas shows: map, zone, frames, events
 let pos = 0, playing = false, lastTs = 0, fps = 8, heard = 0;
 let errorLine = 0, errorCount = 0;
 
-const ZONE_ICONS = {practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", lookout: "👀", forks: "🔀", tricks: "🎓", numbers: "🔢", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐", street: "🎃", hollow: "👻", woods: "🧙", yard: "🏗"};
+const ZONE_ICONS = {practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", lookout: "👀", forks: "🔀", tricks: "🎓", numbers: "🔢", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐", street: "🎃", hollow: "👻", woods: "🧙", yard: "🏗", workshop: "🛠"};
 // Each sensor arrives with a zone (matches planet.SENSOR_ZONE).
 const SENSOR_ZONE = {look: 0, at_beacon: 0, x: 1, y: 1, report: 1, tick: 2, samples_left: 3,
   battery: 4, in_sun: 4, beacon_x: 6, beacon_y: 6, jump: 7, drill: 9, drills_left: 9,
@@ -2639,6 +2670,7 @@ async function celebrate(r, run) {
   const nz = r.zone_cleared && r.zone_cleared.next;
   if (nz) notes.push(`<span class="teaser">Next up: ${ZONE_ICONS[nz.key] || "🪐"} <b>${esc(nz.name)}</b>. ${esc(nz.blurb)}</span>`);
   if (r.candy) notes.push(candyNote(r.candy));
+  if (r.published) notes.push(`<span class="teaser">🌍 It's live! The class can play ${esc(site.name)} now.</span>`);
   if (r.challenge_place) notes.push(`<span class="teaser">🎯 Number ${r.challenge_place} to finish the class challenge!</span>`);
   if (r.in_race) notes.push(`<span class="teaser">🏁 Your rover is in the class race! A quicker win takes its place.</span>`);
   $("celeNote").innerHTML = notes.join(" &nbsp; ");
@@ -3042,7 +3074,8 @@ function openLevels() {
   const nextSite = allSites().find(s => s.key === next);
   $("levelsPlay").dataset.key = next || "";
   $("levelsPlay").textContent = next && next !== here ? `▶ Play next: ${siteLabel(next)} ${nextSite.name}` : "▶ Keep playing";
-  const groupOf = z => z.halloween ? "🎃 Halloween night" : z.practice ? "🛝 Practice parks" : "🪐 The planet";
+  $("levelsMake").hidden = !state.maker;
+  const groupOf = z => z.workshop ? "🛠 Made by your class" : z.halloween ? "🎃 Halloween night" : z.practice ? "🛝 Practice parks" : "🪐 The planet";
   const doneIn = z => z.sites.filter(s => s.solved != null || got(s)).length;
   let group = "";
   $("zoneList").innerHTML = state.zones.map((z, zi) => {
@@ -3062,7 +3095,7 @@ function openLevels() {
         const n = got(s), cls = [s.key === here ? "now" : "", s.key === next ? "next" : "", n && n === s.stars.length ? "gold" : n || s.solved != null ? "done" : ""].join(" ");
         const label = `${siteLabel(s.key)} ${s.name}${s.open ? `, ${n} of ${plural(s.stars.length, "star")}` : ", locked"}`;
         return s.open
-          ? `<button class="tile ${cls}" data-key="${esc(s.key)}" aria-label="${esc(label)}"><b>${siteLabel(s.key)}</b><span class="tname">${esc(s.name)}</span><span class="tstars">${s.stars.map(x => x ? "<i>★</i>" : "★").join("")}</span>${s.gift ? '<span class="tgift" title="A mystery gift is hidden here">🎁</span>' : ""}</button>`
+          ? `<button class="tile ${cls}" data-key="${esc(s.key)}" aria-label="${esc(label)}"><b>${siteLabel(s.key)}</b><span class="tname">${esc(s.name)}</span>${levelLine(s)}<span class="tstars">${s.stars.map(x => x ? "<i>★</i>" : "★").join("")}</span>${s.gift ? '<span class="tgift" title="A mystery gift is hidden here">🎁</span>' : ""}</button>`
           : `<button class="tile" disabled aria-label="${esc(label)}"><b>${siteLabel(s.key)}</b><span class="tname">${esc(s.name)}</span><span class="tlock">🔒${s.after ? `<small>after ${esc(s.after)}</small>` : ""}</span></button>`;
       }).join("")}</div></section>`;
   }).join("");
@@ -3084,6 +3117,73 @@ function foldZone(card, open) {
   card.querySelector(".zone-top").setAttribute("aria-expanded", open);
 }
 function closeLevels() { $("levels").hidden = true; }
+
+// ---- Make a level: paint a map, beat it with code, and the class can play it -------------
+const MAKER_TILES = [[".", "Ground", ""], ["#", "Rock", "🪨"], ["O", "Crater", "🕳"], ["*", "Sample", "🧪"], ["G", "Beacon", "🛰"], ["S", "Start", "🚙"]];
+const MAKER_ROWS = 8, MAKER_COLS = 12;
+let maker = null;   // what's on the drawing board
+function levelLine(s) {
+  if (!s.by) return "";
+  return `<small class="tby">${s.mine ? (s.live ? `yours · beaten by ${s.beaten}` : "beat it to publish") : `by ${esc(s.by)}`}</small>`;
+}
+function myLevels() { return allSites().filter(s => s.mine); }
+function openMaker(level) {
+  closeLevels();
+  const blank = Array.from({length: MAKER_ROWS}, (_, r) => ".".repeat(MAKER_COLS).split(""));
+  blank[0][0] = "S";
+  maker = {key: level ? level.key : null, brush: "#", grid: level ? level.rows.map(r => [...r]) : blank, sure: null};
+  $("makerName").value = level ? level.name : "";
+  $("makerWhy").classList.remove("bad");
+  $("makerWhy").textContent = "Beat your own level with code, and the class can play it.";
+  renderMaker();
+  $("maker").hidden = false;
+}
+function renderMaker() {
+  $("makerTools").innerHTML = MAKER_TILES.map(([ch, name, icon]) =>
+    `<button class="${ch === maker.brush ? "on" : ""}" data-tile="${ch}">${icon} ${name}</button>`).join("");
+  $("makerGrid").innerHTML = maker.grid.map((row, r) => row.map((ch, c) => {
+    const [, name, icon] = MAKER_TILES.find(t => t[0] === ch);
+    return `<button class="mk${ch === "#" ? " t-rock" : ch === "O" ? " t-hole" : ""}" data-r="${r}" data-c="${c}" aria-label="${name}">${icon}</button>`;
+  }).join("")).join("");
+  $("makerMine").innerHTML = myLevels().map(s => `<button class="quiet" data-edit="${esc(s.key)}">✏️ ${esc(s.name)}</button>`
+    + `<button class="quiet" data-drop="${esc(s.key)}">${maker.sure === s.key ? "Sure? Delete" : "🗑"}</button>`).join("");
+}
+// There's one start and one beacon: painting another moves it.
+function paintTile(r, c) {
+  if (maker.grid[r][c] === maker.brush) return;
+  if ("SG".includes(maker.brush)) maker.grid = maker.grid.map(row => row.map(ch => ch === maker.brush ? "." : ch));
+  maker.grid[r][c] = maker.brush;
+  renderMaker();
+}
+async function saveMaker() {
+  const out = await post("/planet/maker/save", {id: me, key: maker.key, name: $("makerName").value, rows: maker.grid.map(r => r.join(""))});
+  if (out.error) { $("makerWhy").classList.add("bad"); $("makerWhy").textContent = out.error; return; }
+  useState(out.state);
+  $("maker").hidden = true;
+  await openSite(out.key);
+  showBanner("", "🛠 Now beat your own level with code. When you do, the whole class can play it!");
+}
+async function dropLevel(key) {
+  if (maker.sure !== key) { maker.sure = key; return renderMaker(); }
+  const out = await post("/planet/maker/delete", {id: me, key});
+  if (out.state) useState(out.state);
+  maker.sure = null;
+  if (maker.key === key) maker.key = null;
+  renderMaker();
+}
+$("levelsMake").addEventListener("click", () => openMaker());
+$("makerClose").addEventListener("click", () => { $("maker").hidden = true; });
+$("makerTest").addEventListener("click", saveMaker);
+$("makerTools").addEventListener("click", e => { const t = e.target.closest("[data-tile]"); if (t) { maker.brush = t.dataset.tile; renderMaker(); } });
+$("makerMine").addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (b && b.dataset.edit) openMaker(myLevels().find(s => s.key === b.dataset.edit));
+  if (b && b.dataset.drop) dropLevel(b.dataset.drop);
+});
+for (const name of ["pointerdown", "pointerover"]) $("makerGrid").addEventListener(name, e => {
+  const cell = e.target.closest(".mk");
+  if (cell && (name === "pointerdown" || e.buttons)) { e.preventDefault(); paintTile(Number(cell.dataset.r), Number(cell.dataset.c)); }
+});
 function routeEdges() {
   const r = $("route");
   r.classList.toggle("more-l", r.scrollLeft > 2);

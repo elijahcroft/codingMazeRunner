@@ -1455,7 +1455,7 @@ def save_state():
                        "admin_key": ADMIN_KEY, "cycles_round": cycles_round,
                        "cake_class": cake_class,
                        "pixel_class": pixel_class,
-                       "planet_class": planet_class_settings}, f)
+                       "planet_class": planet_class_settings, "planet_levels": planet_levels}, f)
         os.replace(tmp, STATE_FILE)  # atomic: never leaves a half-written file
     except Exception:
         pass
@@ -1522,6 +1522,9 @@ def load_state():
     cake_class.update(data.get("cake_class") or {})
     pixel_class.update(data.get("pixel_class") or {})
     planet_class_settings.update(data.get("planet_class") or {})
+    planet_levels.update(data.get("planet_levels") or {})
+    for level in planet_levels.values():
+        planet.add_class_level(level["key"], level["name"], level["by_name"], level["rows"])
     # Reuse the same admin key across restarts so an open admin page keeps
     # working; fall back to this run's freshly generated one if none was saved.
     ADMIN_KEY = data.get("admin_key") or ADMIN_KEY
@@ -2798,7 +2801,8 @@ planet_spotlight = [None]
 # coach: those words are typed letter by letter on every site, with the
 # right key shown and only the right letter going in.
 # halloween: Halloween night is out (for the students the teacher invites).
-planet_class_settings = {"blanks": True, "easy": False, "coach": False, "halloween": True, "sound": False, "challenge": None,
+planet_levels = {}    # the class's own levels, by key: see maker_save
+planet_class_settings = {"blanks": True, "easy": False, "coach": False, "halloween": True, "sound": False, "maker": False, "maker_next": 1, "challenge": None,
                          "team_wins": [],   # Team Mission levels the class finished: trophies in the lounge
                          "team_best": {}}   # the class's best time on each of them, in seconds
 # The mystery gifts on the main route. The practice zones' gifts are extra, for
@@ -2825,6 +2829,8 @@ PLANET_BADGES = {
     "sharp": ("🎯", "Sharpshooter", "Complete 5 sites on your first transmit"),
     "daily": ("🏆", "Mission Day", "Finish all three of a day's missions"),
     "artist": ("🎨", "Pixel Artist", "Paint your own rover in the Paint Shop, with a loop"),
+    "maker": ("🛠", "Level Maker", "Beat your own level, so the class can play it"),
+    "fans": ("🎪", "Crowd Pleaser", "3 classmates beat a level you made"),
 }
 
 # Today's missions: three small goals a day, the same for the whole class (so
@@ -3354,7 +3360,13 @@ def planet_open(p, key):
     if key in planet.BUILD_ORDER:
         return build_open(p, key)
     return key in planet.SITE_ORDER and \
-        (planet.SITE_ORDER.index(key) <= planet_frontier(p) or key == (planet_class_settings["challenge"] or {}).get("key"))
+        (planet.SITE_ORDER.index(key) <= planet_frontier(p) or key == (planet_class_settings["challenge"] or {}).get("key")) \
+        or maker_open(p, key)
+
+
+def maker_open(p, key):
+    return key in planet_levels and planet_class_settings["maker"] and \
+        (planet_levels[key]["live"] or planet_levels[key]["by"] == p["id"])
 
 
 def build_open(p, key):
@@ -3559,6 +3571,96 @@ def shown_stars(key, stars):
     return stars[:planet.stars_max(planet.find_site(key)[2])]
 
 
+# ---- Levels the class makes. Nothing here earns stars: a level is for playing,
+# and its maker's reward is classmates beating it. A new level stays private
+# until its maker has beaten it with code, so every level can be done.
+MAKER_MAX = 4       # levels one student keeps
+MAKER_FANS = 3      # classmates beating a level, for its maker's badge
+MAKER_NAME_MAX = 24
+
+
+def maker_save(p, data):
+    """Save a drawing as a new level, or over one of this student's. Changing
+    a level takes it down until it's been beaten again."""
+    rows = data.get("rows")
+    playable, why = planet.class_map(rows)
+    if playable is None:
+        return {"error": why}
+    name = " ".join(re.sub(r"[^\w !?'-]", "", str(data.get("name", ""))).split())[:MAKER_NAME_MAX]
+    if not name:
+        return {"error": "Give your level a name."}
+    key = str(data.get("key"))
+    level = planet_levels.get(key)
+    if level and level["by"] != p["id"]:
+        return {"error": "That level is someone else's."}
+    if not level:
+        if sum(x["by"] == p["id"] for x in planet_levels.values()) >= MAKER_MAX:
+            return {"error": f"{MAKER_MAX} levels each. Delete one to make another."}
+        key = f"m{planet_class_settings['maker_next']}"
+        planet_class_settings["maker_next"] += 1
+        level = planet_levels[key] = {"key": key, "by": p["id"], "by_name": p["name"],
+                                      "plays": 0, "wins": 0, "best": None}
+    level.update(name=name, rows=rows, live=False)
+    planet.add_class_level(key, name, p["name"], rows)
+    return {"key": key}
+
+
+def maker_delete(key):
+    planet_levels.pop(key, None)
+    planet.drop_class_level(key)
+
+
+def maker_record(p, key, results):
+    """A run on a class level: published if it's its maker's first win, and
+    counted for the maker if not."""
+    entry = planet_entry(p)
+    level, run = planet_levels[key], results[0]
+    entry["active"] = int(time.time())
+    mine = level["by"] == p["id"]
+    wins = entry.setdefault("level_wins", {})
+    earned, published = [], False
+
+    def badge(who, name):
+        if name not in who["badges"]:
+            who["badges"].append(name)
+            icon, title, how = PLANET_BADGES[name]
+            if who is entry:
+                earned.append({"icon": icon, "name": title, "how": how})
+            feed(f"{icon} {players[level['by']]['name'] if name == 'fans' else p['name']} earned {title}")
+
+    if not mine:
+        level["plays"] += 1
+    if run["reached"]:
+        first = key not in wins
+        wins[key] = min(run["ticks"], wins.get(key, run["ticks"]))
+        if not level["best"] or run["ticks"] < level["best"]["ticks"]:
+            level["best"] = {"ticks": run["ticks"], "name": p["name"]}
+        if mine and not level["live"]:
+            level["live"] = published = True
+            feed(f"🛠 {p['name']} made a level: {level['name']}")
+            badge(entry, "maker")
+        elif first and not mine:
+            level["wins"] += 1
+            feed(f"🛠 {p['name']} beat {level['by_name']}'s level {level['name']}")
+            if level["wins"] >= MAKER_FANS and level["by"] in players:
+                badge(planet_entry(players[level["by"]]), "fans")
+    return {"stars": [run["reached"]], "best": [key in wins], "new_stars": 0, "total_stars": star_count(entry),
+            "record": None, "badges": earned, "unlocked": [], "found": [], "first_try": False, "rank_up": None,
+            "zone_cleared": None, "missions_done": [], "trophy": False, "can_skip": False, "closer": None,
+            "misses": 0, "helpers": [], "candy": None, "published": published}
+
+
+def maker_zone(p):
+    """The Class Workshop on the student's Levels screen."""
+    wins = planet_entry(p).get("level_wins", {})
+    sites = [{"key": k, "name": x["name"], "by": x["by_name"], "beaten": x["wins"],
+              "mine": x["by"] == p["id"], "live": x["live"], "open": True, "gift": False,
+              "solved": wins.get(k), "stars": [k in wins], "rows": x["rows"] if x["by"] == p["id"] else None}
+             for k, x in planet_levels.items() if x["live"] or x["by"] == p["id"]]
+    return {"key": planet.WORKSHOP["key"], "name": planet.WORKSHOP["name"], "blurb": planet.WORKSHOP["blurb"],
+            "zi": planet.WORKSHOP["zi"], "workshop": True, "hints": [], "hint_count": 0, "sites": sites}
+
+
 def planet_state(p):
     """The student's map of the planet: every zone and site, with stars,
     what's open, hints, saved functions, badges and the garage."""
@@ -3622,6 +3724,9 @@ def planet_state(p):
                            "open": True,
                            "gift": gift_for(p, s["key"]) is not None}
                           for s in zone["sites"]]})
+    workshop = maker_zone(p)
+    if planet_class_settings["maker"] and workshop["sites"]:
+        zones.append(workshop)
     # Rewards to pick, while there's something left to pick.
     choices = pick_choices(entry) if picks_left(entry) > 0 else []
     return {"you": {"name": p["name"], "ran": any(entry["runs"].values())}, "zones": zones,
@@ -3634,7 +3739,8 @@ def planet_state(p):
                if planet_class_settings["easy"] else 0),
             "rank": rank_for(star_count(entry)),
             "picks": min(picks_left(entry), len(pickable(entry))) if choices else 0,
-            "sound": planet_class_settings["sound"], "rover_name": entry.get("rover_name", ""),
+            "sound": planet_class_settings["sound"], "maker": planet_class_settings["maker"],
+            "rover_name": entry.get("rover_name", ""),
             "challenge": planet_challenge(),
             "pick_choices": choices,
             "missions": missions_view(entry),
@@ -3698,6 +3804,9 @@ def planet_site(p, key):
                     new=zone.get("new") if zone["sites"][0] is s else None,
                     ghost=ghost_for(p, key), ghosts=v.get("ghosts"),
                     halloween=key in planet.HALLOWEEN_ORDER)
+    if key in planet_levels:
+        wins = entry.get("level_wins", {})
+        view.update(stars=[key in wins], solved=wins.get(key), record=planet_levels[key]["best"])
     return view
 
 
@@ -3790,6 +3899,8 @@ def race_lineup():
 def planet_record(p, key, code, results):
     """Save a run and work out everything it earned: stars, badges, a class
     record, garage unlocks."""
+    if key in planet_levels:
+        return maker_record(p, key, results)
     entry = planet_entry(p)
     zi, zone, s = planet.find_site(key)
     entry["code"][key] = code
@@ -5089,6 +5200,13 @@ def admin_action(data):
             return "Unknown level."
         team_restart(int(level))
         return f"The class has moved to {planet_team.LEVELS[int(level)]['name']}."
+    if action == "planet_maker":
+        planet_class_settings["maker"] = bool(data.get("on"))
+        return ("Students can make levels for each other now." if planet_class_settings["maker"]
+                else "The Class Workshop is closed. Its levels are kept.")
+    if action == "planet_maker_remove":
+        maker_delete(str(data.get("level")))
+        return "That level is gone."
     if action == "planet_challenge":
         key = str(data.get("site", ""))
         if key not in planet.SITE_ORDER:
@@ -6467,7 +6585,10 @@ class Handler(BaseHTTPRequestHandler):
                                 notice=planet_notice, day=planet_day_totals(),
                                 spin={"n": planet_spin["n"], "id": planet_spin["id"]},
                                 race_on_board=planet_race["on_board"],
-                                habits=planet_habits(), challenge=planet_challenge(),
+                                habits=planet_habits(), maker=planet_class_settings["maker"],
+                                levels=[{k: x[k] for k in ("key", "name", "by_name", "live", "plays", "wins")}
+                                        for x in planet_levels.values()],
+                                challenge=planet_challenge(),
                                 challenge_sites=[{"key": k, "name": planet.find_site(k)[2]["name"]}
                                                  for k in planet.SITE_ORDER],
                                 easy=planet_class_settings["easy"],
@@ -6604,6 +6725,7 @@ class Handler(BaseHTTPRequestHandler):
             if not planet_open(p, key):
                 self._send(200, {"error": "🎃 Halloween night is closed now." if key in planet.HALLOWEEN_ORDER
                                  and not halloween_on(planet_entry(p)) else
+                                 "🛠 The Class Workshop is closed right now." if key in planet_levels else
                                  "🔒 Complete the site before this one to open it."})
                 return
             # Drive without the lock: other students keep working.
@@ -6657,6 +6779,22 @@ class Handler(BaseHTTPRequestHandler):
                              "blanks": planet_class_settings["blanks"],
                              "coach": planet_class_settings["coach"]})
             return
+        if self.path in ("/planet/maker/save", "/planet/maker/delete"):
+            with lock:
+                p = players.get(data.get("id"))
+                if not p or not planet_class_settings["maker"]:
+                    self._send(200, {"error": "The Class Workshop is closed."})
+                    return
+                key = str(data.get("key"))
+                if self.path.endswith("delete"):
+                    out = {"error": "That level is someone else's."} \
+                        if key in planet_levels and planet_levels[key]["by"] != p["id"] else {}
+                    if not out:
+                        maker_delete(key)
+                else:
+                    out = maker_save(p, data)
+                save_state()
+                self._send(200, dict(out, state=planet_state(p)))
         if self.path == "/planet/rover":
             with lock:
                 p = players.get(data.get("id"))
