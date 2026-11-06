@@ -2606,10 +2606,10 @@ class HalloweenClassroomTests(unittest.TestCase):
         state = self.get(f"/planet/state?id={ada}")
         spooky_zones = [z for z in state["zones"] if z.get("halloween")]
         self.assertEqual([z["key"] for z in spooky_zones], ["street", "hollow", "woods"])
-        self.assertEqual([x["open"] for x in spooky_zones[0]["sites"]], [True, False, False, False, False])
+        self.assertTrue(all(x["open"] for z in spooky_zones for x in z["sites"]))
         self.assertEqual(state["halloween"]["next"], "h1")
         self.assertIsNone(self.get(f"/planet/state?id={bo}")["halloween"])
-        self.assertIn("error", self.get(f"/planet/site?id={ada}&site=h2"))
+        self.assertIn("error", self.get(f"/planet/site?id={bo}&site=h2"))
         out = self.transmit(ada, "h1")
         self.assertTrue(out["runs"][0]["reached"])
         self.assertEqual(out["rewards"]["candy"]["total"], 5)
@@ -2717,6 +2717,26 @@ class HalloweenClassroomTests(unittest.TestCase):
         self.assertGreater(len(maps), 1)
         self.assertIn("🏚", [b["icon"] for b in self.get(f"/planet/state?id={pid}")["badges"] if b["earned"]])
         self.assertEqual(server.planet_runs[-1]["map"], list(out["runs"][0]["map"]))
+
+    def test_every_level_is_open_so_a_hard_one_can_be_skipped(self):
+        pid = self.join()
+        self.get(f"/planet/state?id={pid}")
+        self.admin("planet_invite", pid=pid, on=True)
+        # Straight to the witch's woods, without a level behind it done.
+        self.assertNotIn("error", self.get(f"/planet/site?id={pid}&site=h13"))
+        for key in [s["key"] for s in planet.HALLOWEEN_ZONES[2]["sites"]]:
+            out = self.transmit(pid, key)
+        self.assertTrue(out["runs"][0]["reached"])
+        cleared = out["rewards"]["zone_cleared"]
+        self.assertEqual(cleared["key"], "woods")
+        self.assertEqual(cleared["next"]["key"], "street")   # not "Halloween night complete" yet
+        self.assertEqual(out["state"]["halloween"]["next"], "h1")
+        # A few misses on a hard one and it can be skipped.
+        for _ in range(server.HALLOWEEN_SKIP_AFTER):
+            self.assertFalse(server.can_skip(server.players[pid], "h5"))
+            self.transmit(pid, "h5", "forward(1)")
+        self.assertTrue(server.can_skip(server.players[pid], "h5"))
+        self.assertNotIn("error", self.post("/planet/skip", {"id": pid, "site": "h5"}))
 
     def test_scouting_can_knock(self):
         pid = self.join()
