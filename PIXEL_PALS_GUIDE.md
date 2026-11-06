@@ -194,3 +194,19 @@ in the save file and begins a blank book.
   the picture changes.
 - **Bead pattern** prints the drawing as a pegboard pattern with bead counts, for
   Perler beads or cross-stitch.
+
+### Festival island (Story → Explore island)
+
+Story now opens a solo, 33 × 33 tile isometric island. The camera follows the
+student's selected pal, with shaded buildings, trees and a location overview.
+Click the ground or use arrow keys/WASD to walk. Destination buttons walk to a
+landmark; press E or the activity button when nearby.
+
+Six passport activities include a festival greeting, two-step café orders,
+wait-for-a-bite fishing, four-move dance patterns, flower growing, and finding
+three stars around the island before returning them to Lookout lodge. Completing
+an activity earns five local coins and its passport stamp. All six stamps award
+the Island Storykeeper title. Activities can be replayed. The passport, stars,
+coins and flower persist per student in this browser's local storage; these are
+separate from classroom stars. Existing Play together and Our book tabs retain
+the shared room, filming and teacher-reviewed story pages.

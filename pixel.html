@@ -442,6 +442,22 @@
   }
 
   #shelfNote { margin: 8px 0 0; font-size: 14px; color: var(--ink-soft); }
+  .app:has(#islandView:not([hidden])) { min-width:0; }
+  .app:has(#islandView:not([hidden])) .bar, .app:has(#islandView:not([hidden])) .tabs { flex-wrap:wrap; min-width:0; max-width:100%; }
+  .island-view { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:12px; padding:12px; min-height:0; overflow:auto; }
+  .island-world { min-width:0; display:flex; flex-direction:column; align-items:stretch; gap:8px; }
+  .island-heading { display:flex; justify-content:space-between; gap:8px; }
+  #islandCanvas { width:100%; height:auto; aspect-ratio:8/5; flex:none; background:#80c7db; border-radius:12px; cursor:crosshair; }
+  .island-world p { margin:0; font-size:14px; text-align:center; }
+  .island-sidebar { overflow:auto; }
+  .island-sidebar h2 { margin:0 0 8px; font-size:22px; }
+  .island-sidebar h3 { margin:16px 0 8px; }
+  #islandDestinations, #islandChoices { display:grid; gap:8px; margin-bottom:12px; }
+  .island-view button { min-height:44px; white-space:normal; }
+  .island-view :focus-visible { outline:3px solid #245cbe; outline-offset:3px; }
+  #islandActivity { border-top:3px solid var(--ink); padding:8px 0; }
+  .story-switch .ways { flex-wrap:wrap; }
+  @media(max-width:800px) { .island-view { grid-template-columns:1fr; } #islandCanvas { flex:none; aspect-ratio:8/5; } .island-sidebar { overflow:visible; } #islandDestinations { grid-template-columns:1fr 1fr; } }
 </style>
 </head>
 <body>
@@ -669,10 +685,29 @@
   <div id="storyView" class="story-wrap" hidden>
     <div class="story-switch">
       <div class="ways" style="margin:0">
+        <button id="segIsland" aria-pressed="false">🏝️ Explore island</button>
         <button id="segLive" aria-pressed="true">🎪 Play together</button>
         <button id="segBook" aria-pressed="false">📖 Our book</button>
       </div>
       <span id="roomNews"></span>
+    </div>
+    <div id="islandView" class="island-view" hidden>
+      <section class="island-world panel">
+        <div class="island-heading"><strong id="islandLocation">Island trails</strong><span>Festival island</span></div>
+        <canvas id="islandCanvas" tabindex="0" aria-label="Isometric island. Click to walk, or use arrow keys or WASD. E starts a nearby activity."></canvas>
+        <button class="btn main" id="islandInteract" disabled>Walk to a destination</button>
+        <p>Click to walk · Arrow keys / WASD · E to interact</p>
+      </section>
+      <aside class="island-sidebar panel">
+        <h2>Your island passport</h2><strong id="islandProgress" aria-live="polite"></strong>
+        <p id="islandJournal" aria-live="polite"></p>
+        <h3>Where shall we go?</h3><div id="islandDestinations"></div>
+        <section id="islandActivity" hidden aria-label="Island activity">
+          <h3 id="islandActivityTitle"></h3><p id="islandActivityText" aria-live="polite"></p>
+          <div id="islandChoices"></div><button class="btn" id="islandDismiss">Leave activity</button>
+        </section>
+        <small>A solo adventure with your pal. Progress saves on this device. Meet classmates in Play together.</small>
+      </aside>
     </div>
     <div id="liveView" class="live-view">
       <section class="side">
@@ -852,6 +887,7 @@
 <script src="/pixel/gallery.js"></script>
 <script src="/pixel/studio.js"></script>
 <script src="/pixel/life.js"></script>
+<script src="/pixel/island.js"></script>
 <script src="/pixel/story.js"></script>
 <script src="/pixel/room.js"></script>
 <script src="/pixel/page.js"></script>
