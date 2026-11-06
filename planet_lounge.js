@@ -13,7 +13,7 @@ const lounge = {rovers: new Map(), you: null, after: null, stage: null, queue: [
 const DANCE_FLOOR = {left: 3.4, top: 4.3, tile: .72, cols: 10, rows: 5};
 const DISCO = ["#ff8ad8", "#8cf2c6", "#ffd36b", "#8fc8ff", "#b9a3ff", "#ff8a7a"];
 const BALL = {size: .27, drag: 1.1, kick: 5, reach: .62, right: LOUNGE.cols - .3, top: LOUNGE.floor + .3, bottom: LOUNGE.rows - .3};
-const maker = {play: null};
+const showMaker = {play: null};
 const SHOW_START = `# Your rover's show. Change it any way you like!
 spin()
 dance()
@@ -443,7 +443,7 @@ function openShowMaker() {
   $("showCode").focus();
   requestAnimationFrame(makerLoop);
 }
-function closeShowMaker() { $("showMaker").hidden = true; maker.play = null; }
+function closeShowMaker() { $("showMaker").hidden = true; showMaker.play = null; }
 function showKey(e) {
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); showTry(); return; }
   shopKey(e);
@@ -461,7 +461,7 @@ async function showTry() {
   SFX.wake();
   const out = await showSend("try_show");
   if (!out) return;
-  maker.play = {steps: out.steps, start: performance.now(), played: -1, face: null, bubbles: []};
+  showMaker.play = {steps: out.steps, start: performance.now(), played: -1, face: null, bubbles: []};
   showSay(!out.steps.length ? `Your show doesn't do anything yet. Press a word below, or try a line like <code>spin()</code>.`
     : out.cut ? `That's longer than one turn on the stage, so your show stops after ${out.steps.length} moves. Like it? Press <b>💾 Keep this show</b>.`
     : `🎬 Watch your rover! Like it? Press <b>💾 Keep this show</b>.`);
@@ -482,7 +482,7 @@ function drawMaker(ts) {
   const ctx = cv.getContext("2d");
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
   ctx.save(); ctx.translate(-3 * cell, 0); paintRoom(ctx, cell);
-  const play = maker.play, roll = .3;
+  const play = showMaker.play, roll = .3;
   let [x, y] = LOUNGE.mid, pose = {}, angle = Math.PI / 2;
   if (play) {
     const p = stagePose(play.steps, roll, (ts - play.start) / 1000, LOUNGE.mid);

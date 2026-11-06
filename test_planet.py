@@ -2634,6 +2634,28 @@ class PageScriptTests(unittest.TestCase):
     """Every script the planet pages run parses, so one slip can't leave a
     student with a blank page."""
 
+    def test_a_pages_scripts_dont_declare_the_same_name(self):
+        # Scripts on a page share their top level: a name declared twice stops
+        # the page dead, though each file parses by itself. Read as one script,
+        # the clash is a syntax error.
+        import shutil
+        import subprocess
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("node isn't installed")
+        pages = [page for page, kind in server.PAGES.values() if page.startswith("planet") and "html" in kind]
+        with tempfile.TemporaryDirectory() as folder:
+            for page in pages:
+                text = open(os.path.join(HERE, page), encoding="utf-8").read()
+                parts = []
+                for src, inline in re.findall(r'<script(?: src="([^"]+)")?>(.*?)</script>', text, re.S):
+                    parts.append(open(os.path.join(HERE, server.PAGES[src][0]), encoding="utf-8").read() if src else inline)
+                path = os.path.join(folder, page + ".js")
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write("\n;\n".join(parts))
+                out = subprocess.run([node, "--check", path], capture_output=True, text=True)
+                self.assertEqual(out.returncode, 0, f"{page}: {out.stderr[-300:]}")
+
     def test_every_page_script_parses(self):
         import shutil
         import subprocess

@@ -3402,6 +3402,10 @@ function renderKit(zi) {
     return `<button class="chip${cmd ? " cmd" : " sense"}${fresh ? " new" : ""}${n === "knock" || n === "candy" ? " spooky" : ""}" data-name="${n}" title="${esc(HELP[n] || "")}${fresh ? " (new here)" : ""}">${esc(CHIP_TEXT[n] || n + "()")}</button>`;
   }).join("");
 }
+function insertAtCursor(text) {
+  const t = $("code");
+  replaceText(t.selectionStart, t.selectionEnd, text);
+}
 // A command goes on a line of its own (in line with the one it's typed on),
 // so clicking a few in a row never runs them together. A sensor goes where
 // the cursor is, since it's usually part of an  if  or  while.
