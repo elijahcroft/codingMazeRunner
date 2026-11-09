@@ -3262,3 +3262,12 @@ class StarVoyageTests(unittest.TestCase):
             self.assertIn(word, page)
         for colour in planet.PAINT_COLOURS:
             self.assertIn(f"{colour}: \"#", page.split("const PAINT = ")[1].split("};")[0])
+
+    def test_painting_every_picture_earns_a_badge_and_a_paint(self):
+        pid = self.join()
+        for site_ in planet.PAINT_PLANET["sites"]:
+            out = self.post("/planet/run", {"id": pid, "site": site_["key"], "code": site_["reference"]})
+            self.assertTrue(out["runs"][0]["reached"], site_["key"])
+        entry = server.planet_entry(server.players[pid])
+        self.assertIn("v_painter", entry["badges"])
+        self.assertTrue(any(i["key"] == "splatter" and i["open"] for i in server.garage_for(entry)))

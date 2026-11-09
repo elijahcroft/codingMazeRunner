@@ -3086,6 +3086,9 @@ GARAGE = [
     {"slot": "topper", "key": "cape", "name": "Hero cape", "badge": "master_wind", "legend": True},
     {"slot": "topper", "key": "lasereyes", "name": "Laser eyes", "badge": "master_laser", "legend": True},
     {"slot": "paint", "key": "goldtruck", "name": "Gold Truck", "badge": "master_cargo", "legend": True},
+    # 🚀 Star Voyage rewards.
+    {"slot": "paint", "key": "splatter", "name": "Paint Splatter", "badge": "v_painter"},
+    {"slot": "topper", "key": "beret", "name": "Artist's beret", "badge": "v_studio", "legend": True},
     # The Paint Shop: a paint the student codes themselves (look["art"]).
     {"slot": "paint", "key": "mine", "name": "My paint", "shop": True},
 ]
@@ -3122,6 +3125,12 @@ HALLOWEEN_BADGES = {
     "h_king": ("🎃", "Pumpkin King", "Earn every star of Halloween night"),
 }
 PLANET_BADGES.update(HALLOWEEN_BADGES)
+# 🚀 Star Voyage: one for each zone, and a garage reward for each (in GARAGE).
+VOYAGE_BADGES = {
+    "v_painter": ("🎨", "Planet Painter", "Paint every picture on Paint Planet"),
+    "v_studio": ("🖌", "Pattern Master", "Earn every star in Pattern Studio"),
+}
+PLANET_BADGES.update(VOYAGE_BADGES)
 HALLOWEEN_GARAGE = [
     # The candy road: candy in the bag unlocks them, in this order. Every
     # mission done gets every one, whichever streets a student was dealt
@@ -4055,6 +4064,10 @@ def planet_record(p, key, code, results):
     for z in planet.ZONES[:-1]:
         if all(all(entry["stars"].get(x["key"], [False])) for x in z["sites"]):
             badge("master_" + z["key"])
+    if all(x["key"] in entry["solved"] for x in planet.PAINT_PLANET["sites"]):
+        badge("v_painter")
+    if all(all(entry["stars"].get(x["key"], [False])) for x in planet.PATTERN_STUDIO["sites"]):
+        badge("v_studio")
 
     unlocked = [i for i in garage_for(entry)
                 if i["open"] and i["key"] not in before_open and "find" not in i]

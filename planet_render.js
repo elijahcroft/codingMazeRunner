@@ -304,6 +304,13 @@ function drawTopper(ctx, s, topper, now) {
       ctx.fillStyle = ["#ffffff", "#ffd34d", "#4dc3ff", "#7ff07a", "#b07aff"][k % 5];
       ctx.fillRect(-.018 * s, -.006 * s, .036 * s, .012 * s + .5); ctx.restore();
     }
+  } else if (topper === "beret") {   // an artist's beret, tilted, with a stalk and a dab of paint
+    ctx.fillStyle = "#c8323c"; ctx.beginPath(); ctx.ellipse(-.1 * s, -.02 * s, .2 * s, .17 * s, -.3, 0, 7); ctx.fill();
+    ctx.fillStyle = "#a3222c"; ctx.beginPath(); ctx.ellipse(-.1 * s, -.02 * s, .2 * s, .17 * s, -.3, .2, 1.6); ctx.lineTo(-.1 * s, -.02 * s); ctx.fill();
+    ctx.fillStyle = "#3a1218"; ctx.beginPath(); ctx.arc(-.08 * s, -.06 * s, .03 * s, 0, 7); ctx.fill();
+    for (const [x, y, c] of [[-.2, .06, "#ffd84a"], [-.02, .08, "#4d8dff"], [-.16, -.12, "#5fd068"]]) {
+      ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x * s, y * s, .028 * s, 0, 7); ctx.fill();
+    }
   } else if (topper === "witchhat") {   // a crooked witch's hat, an orange band and a gold buckle
     ctx.fillStyle = "#2a1838"; ctx.beginPath(); ctx.ellipse(-.07 * s, .06 * s, .22 * s, .06 * s, 0, 0, 7); ctx.fill();
     const tip = CALM ? 0 : Math.sin(now / 600) * .03;
@@ -1531,6 +1538,17 @@ Object.assign(PAINTS, {
     }
     ctx.fillStyle = "#f4f1ff";
     for (const y of [-.08, .08]) { ctx.beginPath(); ctx.moveTo(.3 * s, (y - .03) * s); ctx.lineTo(.3 * s, (y + .03) * s); ctx.lineTo(.22 * s, y * s); ctx.fill(); }
+  }},
+  splatter: {base: "#f6f3ff", swatch: "radial-gradient(circle at 30% 35%, #ff5d5d 12%, transparent 13%), radial-gradient(circle at 68% 60%, #4d8dff 14%, transparent 15%), radial-gradient(circle at 40% 75%, #ffd84a 10%, transparent 11%), radial-gradient(circle at 75% 25%, #5fd068 9%, #f6f3ff 10%)", draw(ctx, s, now) {
+    // Splashes of every colour from Paint Planet, with little drips round them.
+    for (const [x, y, r, c] of [[-.18, -.1, .09, "#ff5d5d"], [.08, .1, .1, "#4d8dff"], [-.05, .14, .06, "#ffd84a"],
+                                [.16, -.13, .07, "#5fd068"], [-.25, .12, .05, "#a368ff"], [.0, -.16, .05, "#ff8ad8"]]) {
+      ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x * s, y * s, r * s, 0, 7); ctx.fill();
+      for (let k = 0; k < 3; k++) {
+        const a = k * 2.1 + x * 9, d = (r + .035) * s;
+        ctx.beginPath(); ctx.arc(x * s + Math.cos(a) * d, y * s + Math.sin(a) * d, .015 * s, 0, 7); ctx.fill();
+      }
+    }
   }},
   ghostsheet: {base: "#f4f1ff", swatch: "radial-gradient(ellipse 10% 14% at 40% 45%, #1b1530 90%, transparent 100%), radial-gradient(ellipse 10% 14% at 64% 45%, #1b1530 90%, #f4f1ff 100%)", draw(ctx, s, now) {
     // A bedsheet costume: soft folds, and two eye holes that blink now and then.

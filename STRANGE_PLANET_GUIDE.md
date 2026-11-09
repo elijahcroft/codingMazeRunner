@@ -711,6 +711,44 @@ its stars, 🔒 for what's still locked,
 and **▶ Play next**. The ◀ ▶ arrows beside a level's name go to the level
 before or after.
 
+## 🚀 Star Voyage: new levels for everyone
+
+Twelve new levels that **every student can open straight away**, wherever they are on the
+planet, with easy mode on or off. Nothing has to be finished first, and they're off the main
+route, so they never hold anyone up. A glowing **🚀 New levels** button at the top of the page
+takes a student to the next one they haven't done, and stays until they've done them all. The
+first time a student opens the page after this, a pop-up says the new levels have landed. On the
+Levels screen they're at the very top.
+
+**🎨 Paint Planet** (6 levels, drive by hand first like a practice park, one star each). Dots of
+paint are laid out as a picture, and every dot the rover drives over paints its square. Painting
+every dot wins, so the picture comes out as the rover goes: a rainbow, a blue box, a smiley, a
+heart, a rocket and a space cat. Driving over bare ground doesn't spoil anything. The later
+pictures are big, and the card suggests a snake: across, down one, back, down one, in a loop.
+Painting all six earns 🎨 **Planet Painter** and the **Paint Splatter** paint.
+
+**🖌 Pattern Studio** (6 levels, typed, three stars). Bigger pictures made of a pattern, where
+the extra stars need the idea the level is about: stripes (a loop), a rainbow flag (a name for
+the width, `wide = 8`), three hearts (`def heart():`), towers that grow (`n = n + 1`), a spiral
+galaxy (`n = n + 2`) and a ringed planet (a snake loop). Painting it dot by dot by hand still
+finishes the picture, it just misses a star. Every star earns 🖌 **Pattern Master** and the
+legendary **Artist's beret**.
+
+| Level | A program that paints it |
+|---|---|
+| V1 Rainbow Road | `east(6)` |
+| V2 Big Blue Box | `east(4)`, `south(3)`, `west(3)`, `north(2)` |
+| V3 Smiley Face | `south()`, `east(6)`, `south(2)`, `east()`, `south()`, `west(6)`, `north()` |
+| V4 to V6 | `south()`, then a loop of 3: `east(w)`, `south()`, `west(w)`, `south()`, with w the picture's width (7, 5, 7); V5 and V6 then need one more `east(w)` |
+| V7 Stripes | `south()`, then a loop of 2: `east(8)`, `south(2)`, `west(8)`, `south(2)` |
+| V8 Rainbow Flag | `wide = 8`, then V4's snake with `wide` in it |
+| V9 Three Little Hearts | `def heart():` `south(2)`, `east()`, `south()`, `north()`, `east()`, `north(2)`, `east(2)`, then `heart()` three times |
+| V10 Rainbow Towers | `n = 1`, then a loop of 5: `north(n)`, `south(n)`, `east(2)`, `n = n + 1` |
+| V11 Spiral Galaxy | `n = 2`, then a loop of 2: `east(n)`, `south(n)`, `n = n + 2`, `west(n)`, `north(n)`, `n = n + 2` |
+| V12 Ringed Planet | V4's snake, 11 wide, then one more `east(11)` |
+
+⏭ Skip for now shows after 3 misses in a row, as on Halloween night: everything is open anyway.
+
 ## 🛋 The Rover Lounge: somewhere to show off
 
 A room where everyone's rovers hang out together. It's for play, so nothing in it
