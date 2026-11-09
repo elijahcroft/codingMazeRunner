@@ -444,20 +444,69 @@
   #shelfNote { margin: 8px 0 0; font-size: 14px; color: var(--ink-soft); }
   .app:has(#islandView:not([hidden])) { min-width:0; }
   .app:has(#islandView:not([hidden])) .bar, .app:has(#islandView:not([hidden])) .tabs { flex-wrap:wrap; min-width:0; max-width:100%; }
-  .island-view { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:12px; padding:12px; min-height:0; overflow:auto; }
-  .island-world { min-width:0; display:flex; flex-direction:column; align-items:stretch; gap:8px; }
-  .island-heading { display:flex; justify-content:space-between; gap:8px; }
-  #islandCanvas { width:100%; height:auto; aspect-ratio:8/5; flex:none; background:#80c7db; border-radius:12px; cursor:crosshair; }
-  .island-world p { margin:0; font-size:14px; text-align:center; }
-  .island-sidebar { overflow:auto; }
-  .island-sidebar h2 { margin:0 0 8px; font-size:22px; }
-  .island-sidebar h3 { margin:16px 0 8px; }
-  #islandDestinations, #islandChoices { display:grid; gap:8px; margin-bottom:12px; }
+  .story-wrap:has(#islandView:not([hidden])) { background:#e6f0e9; }
+  .story-wrap:has(#islandView:not([hidden])) .story-switch { padding:12px 18px 4px; }
+  .story-wrap:has(#islandView:not([hidden])) .ways button { border:0; border-radius:12px; background:transparent; color:#46635f; padding:9px 14px; font-size:14px; }
+  .story-wrap:has(#islandView:not([hidden])) .ways button[aria-pressed="true"] { background:#fffdf6; color:#224f50; box-shadow:0 2px 5px #244c5010; }
+  .island-view { display:grid; grid-template-columns:minmax(0,1fr) 286px; gap:16px; padding:12px 18px 18px; min-height:0; overflow:auto; color:#294f50; }
+  .island-world.panel { position:relative; min-width:0; min-height:440px; display:flex; flex-direction:column; padding:0; gap:0; overflow:hidden; border:1px solid #b6d2c5; border-radius:22px; box-shadow:0 8px 22px #365b4910; background:#a9cc91; }
+  .island-heading { position:absolute; top:16px; right:18px; z-index:1; text-align:right; pointer-events:none; background:#fffdf0e8; padding:9px 13px; border-radius:14px; }
+  .island-heading strong { display:block; font-size:22px; letter-spacing:-.6px; color:#254c4e; text-shadow:0 1px 1px #fff8; }
+  .island-heading span { font-size:12px; color:#3c6660; }
+  #islandCanvas { display:block; width:100%; height:0; min-height:340px; flex:1; background:#7bc6cb; cursor:crosshair; }
   .island-view button { min-height:44px; white-space:normal; }
-  .island-view :focus-visible { outline:3px solid #245cbe; outline-offset:3px; }
-  #islandActivity { border-top:3px solid var(--ink); padding:8px 0; }
+  .island-view .btn { border:1px solid #c9dace; border-radius:12px; box-shadow:none; color:#2c5352; background:#fffdf7; font-size:14px; transition:background .15s, border-color .15s; }
+  .island-view .btn:hover:not(:disabled) { background:#eef5e9; border-color:#81a89c; }
+  .island-view .btn:active:not(:disabled) { transform:translateY(1px); }
+  #islandInteract { position:absolute; bottom:45px; left:50%; transform:translateX(-50%); width:max-content; max-width:90%; padding:13px 24px; background:#245f60; color:#fffdf1; border:2px solid #fff9df; box-shadow:0 4px 12px #28564a30; border-radius:28px; font-size:15px; }
+  #islandInteract:hover:not(:disabled) { background:#327877; }
+  #islandInteract:disabled { background:#fffdf1ed; color:#4a6a5f; opacity:1; border-color:transparent; box-shadow:none; }
+  .island-world p { position:absolute; bottom:0; width:100%; margin:0; padding:9px; background:#fffdf1e8; font-size:12px; text-align:center; color:#45665e; }
+  .island-sidebar.panel { overflow:auto; border:0; border-radius:18px; padding:19px 15px; box-shadow:none; background:#fffdf7; }
+  .island-sidebar h2 { margin:0 0 10px; font-size:23px; letter-spacing:-.7px; }
+  .island-sidebar h3 { margin:20px 0 10px; font-size:15px; }
+  #islandProgress { display:block; padding:12px 10px; border-radius:10px; background:#f4ebd2; color:#756036; font-size:13px; }
+  #islandJournal { font-size:13px; line-height:1.65; font-weight:500; color:#54706a; margin:12px 0; }
+  #islandDestinations, #islandChoices { display:grid; gap:7px; margin-bottom:16px; }
+  #islandDestinations button { display:flex; align-items:center; gap:10px; width:100%; padding:10px 8px; text-align:left; background:transparent; border:1px solid transparent; }
+  #islandDestinations button.here { background:#edf4e8; border-color:#c3d7bc; }
+  .destination-icon { display:grid; place-items:center; width:36px; height:38px; flex:none; border-radius:10px; background:#f2e6cc; color:#a17e40; font:24px Georgia,serif; }
+  #islandDestinations button:nth-child(2) .destination-icon { background:#f6e1d9; color:#ae745c; }
+  #islandDestinations button:nth-child(3) .destination-icon { background:#dcefee; color:#408b94; }
+  #islandDestinations button:nth-child(4) .destination-icon { background:#ebe5f3; color:#8871af; }
+  #islandDestinations button:nth-child(5) .destination-icon { background:#e7eed8; color:#73914f; }
+  #islandDestinations button:nth-child(6) .destination-icon { background:#e2eaf0; color:#678799; }
+  .destination-name { display:block; font-size:13px; }
+  #islandDestinations small { display:block; font-size:10px; line-height:1.4; font-weight:500; color:#59756d; margin-top:3px; }
+  .destination-mark { margin-left:auto; color:#75927e; }
+  .island-sidebar > small { display:block; font-size:11px; line-height:1.6; font-weight:500; color:#60766e; }
+  #islandActivity { border-top:2px dashed #d2decf; padding:8px 0; }
+  #islandActivityText { font-size:14px; line-height:1.6; font-weight:500; }
+  .island-view :focus-visible { outline:3px solid #246f8e; outline-offset:3px; }
   .story-switch .ways { flex-wrap:wrap; }
-  @media(max-width:800px) { .island-view { grid-template-columns:1fr; } #islandCanvas { flex:none; aspect-ratio:8/5; } .island-sidebar { overflow:visible; } #islandDestinations { grid-template-columns:1fr 1fr; } }
+  @media(max-width:800px) {
+    .island-view { grid-template-columns:minmax(0,1fr); padding:10px; gap:10px; }
+    .island-world.panel { min-height:360px; }
+    #islandCanvas { min-height:360px; height:360px; flex:none; }
+    .island-sidebar.panel { overflow:visible; }
+    #islandDestinations { grid-template-columns:1fr 1fr; }
+    #islandDestinations button { gap:7px; padding:8px 3px; }
+    #islandDestinations small { display:none; }
+    .destination-icon { width:28px; height:32px; }
+    .island-heading strong { font-size:18px; }
+  }
+  @media(prefers-reduced-motion:reduce) { .island-view .btn { transition:none; } }
+  #islandExit { position:absolute; left:16px; top:16px; z-index:2; padding:8px 14px; }
+  #interiorObjective { padding:12px; border-radius:10px; background:#eef3e5; font-size:14px; line-height:1.5; }
+  #interiorStations, #interiorRoles { display:grid; gap:7px; margin:12px 0; }
+  #interiorStations .here { background:#e3edcf; border-color:#8ca774; }
+  #interiorBag, #interiorRole, #interiorHistory { font-size:12px; line-height:1.6; }
+  #interiorLineForm { display:grid; gap:7px; margin:12px 0; font-size:12px; }
+  #interiorLine { width:100%; min-width:0; padding:10px; border:1px solid #b8cdbd; border-radius:8px; }
+  #interiorProps, #interiorMood { margin-top:8px; }
+  #interiorPanel summary { cursor:pointer; padding:12px 0; font-size:13px; }
+  #interiorPanel button { width:100%; }
+  #interiorHistory { padding-left:18px; }
 </style>
 </head>
 <body>
@@ -693,15 +742,30 @@
     </div>
     <div id="islandView" class="island-view" hidden>
       <section class="island-world panel">
-        <div class="island-heading"><strong id="islandLocation">Island trails</strong><span>Festival island</span></div>
+        <div class="island-heading"><strong id="islandLocation">Island trails</strong><span>A little place for big adventures</span></div>
         <canvas id="islandCanvas" tabindex="0" aria-label="Isometric island. Click to walk, or use arrow keys or WASD. E starts a nearby activity."></canvas>
+        <button class="btn" id="islandExit" hidden>← Outside</button>
         <button class="btn main" id="islandInteract" disabled>Walk to a destination</button>
         <p>Click to walk · Arrow keys / WASD · E to interact</p>
       </section>
       <aside class="island-sidebar panel">
-        <h2>Your island passport</h2><strong id="islandProgress" aria-live="polite"></strong>
+        <h2>Festival passport</h2><strong id="islandProgress" aria-live="polite"></strong>
         <p id="islandJournal" aria-live="polite"></p>
-        <h3>Where shall we go?</h3><div id="islandDestinations"></div>
+        <h3 id="islandTravelTitle">Around the island</h3><div id="islandDestinations"></div>
+        <section id="interiorPanel" hidden>
+          <h3>Your scenario</h3><p id="interiorObjective" aria-live="polite"></p>
+          <div id="interiorStations"></div>
+          <button class="btn" id="interiorReplay" hidden>Play a new scenario</button>
+          <details class="interior-play"><summary>Make up your own scene</summary>
+            <p id="interiorRole"></p><div id="interiorRoles"></div>
+            <button class="btn" id="interiorTalk">Choose your next line</button>
+            <form id="interiorLineForm"><label for="interiorLine">Or write your own line</label><input id="interiorLine" maxlength="80" autocomplete="off" placeholder="What happens next?"><button class="btn">Say it</button></form>
+            <button class="btn" id="interiorProps">Use a backpack prop</button>
+            <button class="btn" id="interiorMood">Set the scene</button>
+          </details>
+          <p id="interiorBag"></p>
+          <details><summary>Story journal</summary><ul id="interiorHistory"></ul></details>
+        </section>
         <section id="islandActivity" hidden aria-label="Island activity">
           <h3 id="islandActivityTitle"></h3><p id="islandActivityText" aria-live="polite"></p>
           <div id="islandChoices"></div><button class="btn" id="islandDismiss">Leave activity</button>
@@ -887,6 +951,7 @@
 <script src="/pixel/gallery.js"></script>
 <script src="/pixel/studio.js"></script>
 <script src="/pixel/life.js"></script>
+<script src="/pixel/interiors.js"></script>
 <script src="/pixel/island.js"></script>
 <script src="/pixel/story.js"></script>
 <script src="/pixel/room.js"></script>

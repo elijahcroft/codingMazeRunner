@@ -210,3 +210,30 @@ the Island Storykeeper title. Activities can be replayed. The passport, stars,
 coins and flower persist per student in this browser's local storage; these are
 separate from classroom stars. Existing Play together and Our book tabs retain
 the shared room, filming and teacher-reviewed story pages.
+
+### Enterable story rooms
+
+Use **Enter** near any island building to walk inside its themed room. Click a
+furniture station (or its sidebar button) to walk over and interact. Arrow keys
+move your pal; E uses a nearby station. **Outside**, the floor exit or Escape
+returns to the island. All six rooms have a five-stage scenario:
+
+- **Festival hall:** choose a theme, costume and guests, rehearse, and launch it.
+- **Cocoa café:** take three different orders, gather ingredients, brew, serve,
+  and wash up. Wrong recipes can be corrected without restarting the shift.
+- **Crystal boathouse:** research a fish, pick bait, cast, identify, and release.
+- **Music club:** select music, match lighting cues, dress up, rehearse a pattern,
+  and start the performance.
+- **Sunny greenhouse:** pick seeds, plant, measure water, grow, and arrange flowers.
+- **Lookout lodge:** follow map symbols, decode clues, use a telescope, assemble
+  the correct lantern, and send a signal. Outdoor stars can also be returned here.
+
+Progress saves per student on this device, including partially finished café
+shifts. Completing each scenario earns a backpack prop. **Make up your own
+scene** offers roles, preset or custom dialogue (80 characters), time/weather
+settings, and backpack props that can be carried into other rooms. The local
+story journal keeps the last eight events. These rooms are solo play; the
+existing **Play together** room remains the shared classroom space. Replay
+resets only the selected room's scenario and preserves earned props.
+
+Room scenario checks: `node test_pixel_interiors.js`.
