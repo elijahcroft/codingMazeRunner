@@ -479,6 +479,16 @@ class DeepSpaceRuleTests(unittest.TestCase):
         self.assertIn("gem", job["text"])
         self.assertEqual(sorted(map(tuple, job["marks"])), [(1, 3), (2, 3)])
 
+    def test_each_rover_is_sent_to_a_different_gem(self):
+        g = self.game(self.GEMS)
+        g.enter(1, 0)
+        g.rovers[0], g.rovers[1] = (1, 2), (2, 2)
+        self.assertIn("1 square right", g.your_job(0))
+        self.assertIn("1 square right", g.your_job(1))
+        g.rovers[1] = (1, 1)                     # both nearest the same gem: one is sent further
+        self.assertNotEqual(g.your_job(0), g.your_job(1))
+        self.assertIn("down", g.your_job(1) + g.your_job(0))
+
     def test_the_teachers_button_opens_the_crystal_door(self):
         g = self.game(self.GEMS)
         g.open_all()

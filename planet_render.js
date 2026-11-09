@@ -1850,6 +1850,12 @@ function drawTrail(ctx, frames, i, rover, cell, now, gear = look) {
       ctx.beginPath(); ctx.arc(x, y, z, 0, 7); ctx.fill(); ctx.stroke();
       ctx.fillStyle = "rgba(255,255,255,.8)"; ctx.beginPath(); ctx.arc(x - z * .35, y - z * .35, z * .25, 0, 7); ctx.fill();
     }
+  } else if (gear.trail === "brushstrokes") {   // a dab of paint on every square, each a colour of Paint Planet
+    for (const [, p, k] of segs) {
+      const x = (p.c + .5 + (hash(k, 1, 190) - .5) * .3) * cell, y = (p.r + .5 + (hash(k, 2, 190) - .5) * .3) * cell;
+      ctx.fillStyle = ["#ff5d5d", "#ff9a3c", "#ffd84a", "#5fd068", "#4d8dff", "#a368ff"][k % 6];
+      ctx.globalAlpha = .75; ctx.beginPath(); ctx.ellipse(x, y, cell * .16, cell * .1, hash(k, 3, 190) * 3, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+    }
   } else if (gear.trail === "candytrail") {   // wrapped sweets dropped along the way, a different one each square
     for (const [, p, k] of segs) {
       const x = (p.c + .5 + (hash(k, 1, 180) - .5) * .4) * cell, y = (p.r + .5 + (hash(k, 2, 180) - .5) * .4) * cell;

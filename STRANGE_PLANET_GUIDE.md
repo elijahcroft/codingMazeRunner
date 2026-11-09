@@ -713,7 +713,7 @@ before or after.
 
 ## 🚀 Star Voyage: new levels for everyone
 
-Twelve new levels that **every student can open straight away**, wherever they are on the
+Eighteen new levels that **every student can open straight away**, wherever they are on the
 planet, with easy mode on or off. Nothing has to be finished first, and they're off the main
 route, so they never hold anyone up. A glowing **🚀 New levels** button at the top of the page
 takes a student to the next one they haven't done, and stays until they've done them all. The
@@ -746,6 +746,22 @@ legendary **Artist's beret**.
 | V10 Rainbow Towers | `n = 1`, then a loop of 5: `north(n)`, `south(n)`, `east(2)`, `n = n + 1` |
 | V11 Spiral Galaxy | `n = 2`, then a loop of 2: `east(n)`, `south(n)`, `n = n + 2`, `west(n)`, `north(n)`, `n = n + 2` |
 | V12 Ringed Planet | V4's snake, 11 wide, then one more `east(11)` |
+
+**🔍 Mystery Murals** (6 levels, typed, three stars). The picture is **different for every
+student**, so counting squares off your own map fails on a friend's (the 🌍 star runs your code on
+every mural). `look("east")` says `"paint"` when there's a dot that way, and `"ground"` once it's
+painted, so the rover can look for paint instead of counting. It's the Look-Out Point and Fork Road
+ideas (`while` and `if`) put to work. Every star earns 🔍 **Mystery Solver** and the legendary
+**Brush strokes** trail.
+
+| Level | The program |
+|---|---|
+| V13 Paint Trail | `while look("east") == "paint":` then `east()` |
+| V14 Paint Tower | the same, north |
+| V15 Round the Corner | a while loop east, then one south |
+| V16 Mystery Box | four while loops: east, south, west, north |
+| V17 Paint Stairs | `while True:` with `if look("east") == "paint": east()` and `else: south()` |
+| V18 The Winding Mural | `while True:` with `if`/`elif`/`elif`/`else` for east, south, west and north: wherever the paint is. The path never touches itself, so there's only ever one way to go |
 
 ⏭ Skip for now shows after 3 misses in a row, as on Halloween night: everything is open anyway.
 

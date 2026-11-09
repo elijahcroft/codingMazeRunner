@@ -492,7 +492,7 @@ function teamFog(ctx, cell) {
     if (view.seen[r * TEAM_COLS + c] === "1") g.fillRect(c * cell - .5, r * cell - .5, cell + 1, cell + 1);
   }
   for (const rover of team.rovers.values()) {
-    const x = (rover.c + .5) * cell, y = (rover.r + .5) * cell, R = cell * 2.7;
+    const x = (rover.c + .5) * cell, y = (rover.r + .5) * cell, R = cell * 3.4;
     const grad = g.createRadialGradient(x, y, cell * .6, x, y, R);
     grad.addColorStop(0, "rgba(0,0,0,1)"); grad.addColorStop(1, "rgba(0,0,0,0)");
     g.fillStyle = grad; g.beginPath(); g.arc(x, y, R, 0, 7); g.fill();

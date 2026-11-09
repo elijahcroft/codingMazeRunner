@@ -1,3 +1,4 @@
+import ast
 import json
 import os
 import re
@@ -3271,3 +3272,18 @@ class StarVoyageTests(unittest.TestCase):
         entry = server.planet_entry(server.players[pid])
         self.assertIn("v_painter", entry["badges"])
         self.assertTrue(any(i["key"] == "splatter" and i["open"] for i in server.garage_for(entry)))
+
+    def test_a_mural_is_different_for_everyone_so_counting_fails_and_looking_works(self):
+        for key in ("v13", "v14", "v15", "v16", "v17", "v18"):
+            s = planet.find_site(key)[2]
+            maps = {"/".join(v["map"]) for v in s["variants"]}
+            self.assertEqual(len(maps), len(s["variants"]), key)
+            counted = replay_as_code(planet.drive(s["reference"], s["variants"][0], set(), 0))
+            self.assertFalse(all(planet.drive(counted, v, set(), 0)["reached"] for v in s["variants"]), key)
+            self.assertTrue(all(planet.drive(s["reference"], v, set(), 0)["reached"] for v in s["variants"]), key)
+
+    def test_look_calls_a_dot_paint_only_on_paint_levels(self):
+        v = planet.find_site("v13")[2]["variants"][0]
+        out = planet.drive('print(look("east"))\neast()\nprint(look("west"))\n', v, set(), 0)
+        self.assertEqual([p["text"] for p in out["prints"]], ["paint", "ground"])
+        self.assertIsNone(planet.check_look_words(ast.parse('look("east") == "paint"', mode="eval").body))

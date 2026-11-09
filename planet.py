@@ -124,7 +124,7 @@ WORDS = {"#": "rock", ".": "ground", "S": "ground", "G": "beacon", "~": "ice",
          # and a grave (ground with a tombstone on it, where ghosts rise).
          "h": "house", "z": "haunted", "c": "ground", "g": "ground"}
 # Every word look() can give back, for spotting one written without quotes.
-LOOK_WORDS = set(WORDS.values()) | {"crack", "sample", "key", "flag", "sun", "candy", "ghost"}
+LOOK_WORDS = set(WORDS.values()) | {"crack", "sample", "key", "flag", "sun", "candy", "ghost", "paint"}
 OPEN_WORDS = {"empty", "open", "space", "free", "clear", "nothing", "floor", ""}
 
 
@@ -648,7 +648,7 @@ class World:
         if (r, c) in self.cracked:
             return "crack"
         if (r, c) in self.samples:
-            return "sample"
+            return "paint" if "paint" in self.v else "sample"
         if (r, c) in self.keys:
             return "key"
         if (r, c) in self.flags.values() and self.flag_at(r, c) >= self.flag:
@@ -5862,7 +5862,145 @@ STAR_TIPS.update({
     "v12": {"compact": "south(), then a loop of 3: east(11), south(), west(11), south(). Then one east(11)."},
 })
 
-VOYAGE_ZONES = [PAINT_PLANET, PATTERN_STUDIO]
+
+
+# 🔍 Mystery Murals: pictures that are different for every student, so a
+# program can't count squares off its own map: it has to look() for paint.
+MURAL_SEEDS = range(6)
+
+
+def rainbow(n, offset=0):
+    return "".join("roygbp"[(k + offset) % 6] for k in range(n))
+
+
+def mural_line(n):
+    return picture([rainbow(n)], start=(1, 0))
+
+
+def mural_tower(n):
+    return picture([c for c in rainbow(n)], start=(n + 1, 1))
+
+
+def mural_corner(a, b):
+    art = [rainbow(a)] + ["." * (a - 1) + "b" for _ in range(b)]
+    return picture(art, start=(1, 0))
+
+
+def mural_stairs(widths):
+    """Steps going down to the right, each `widths[k]` dots wide."""
+    w = sum(widths)
+    art, c = [], 0
+    for k, width in enumerate(widths):
+        row = ["."] * w
+        for i in range(width):
+            row[c + i] = "kyc"[k % 3]
+        c += width - 1
+        art.append("".join(row))
+    return picture(art, start=(1, 0))
+
+
+def mural_box(n):
+    art = ["g" * n] + ["g" + "." * (n - 2) + "g" for _ in range(n - 2)] + ["g" * n]
+    return picture(art, start=(1, 0))
+
+
+def winding(seed, length=18, rows=7, cols=11):
+    """A path that winds about without touching itself, so from any square
+    on it the only paint next to the rover is the next square along. It
+    starts on the left edge, just right of the rover."""
+    rng = random.Random(f"winding {seed}")
+    start = (rng.randrange(1, rows - 1), 0)
+
+    def ok(path, spot):
+        r, c = spot
+        return 0 <= r < rows and 0 <= c < cols and spot not in path \
+            and all(abs(r - pr) + abs(c - pc) > 1 for pr, pc in path[:-1])
+
+    def grow(path):
+        if len(path) == length:
+            return path
+        r, c = path[-1]
+        steps = [(r + dr, c + dc) for dr, dc in DIRS]
+        rng.shuffle(steps)
+        for spot in steps:
+            if ok(path, spot):
+                found = grow(path + [spot])
+                if found:
+                    return found
+        return None
+
+    path = grow([start])
+    art = [["."] * cols for _ in range(rows)]
+    for k, (r, c) in enumerate(path):
+        art[r][c] = "pkc"[k * 3 // length]
+    return picture(["".join(row) for row in art], start=(start[0] + 1, 0))
+
+
+FOLLOW = ('while True:\n    if look("east") == "paint":\n        east()\n'
+          '    elif look("south") == "paint":\n        south()\n'
+          '    elif look("west") == "paint":\n        west()\n    else:\n        north()\n')
+MURAL = {"kind": "everywhere", "of": "mural"}
+MYSTERY_MURALS = {
+    "key": "murals", "name": "Mystery Murals", "rules": set(), "sensors": ["look", "at_beacon"],
+    "blurb": "Everyone's picture is different! Count the dots on yours and it won't work on a "
+             "friend's. Let the rover look for the paint instead.",
+    "new": {"icon": "🔍", "what": 'look("east") says "paint" when there\'s a dot of paint '
+                                 "next to the rover that way.", "example": 'look("east") == "paint"'},
+    "hints": [
+        'look("east") says "paint" when the square to the east has a dot on it. Once the rover '
+        'has painted it, it says "ground".',
+        "Keep going while there's paint:\n\nwhile look(\"east\") == \"paint\":\n    east()",
+        "A picture that turns corners? Check every way, and go where the paint is:\n\n"
+        "if look(\"east\") == \"paint\":\n    east()\nelif look(\"south\") == \"paint\":\n    south()",
+    ],
+    "sites": [
+        site("v13", "Paint Trail",
+             "A line of paint, and everybody's is a different length! Don't count: keep "
+             "driving east while there's paint there.\n\n"
+             'while look("east") == "paint":\n    east()',
+             [mural_line(n) for n in (4, 6, 7, 9, 10, 12)], per_student=True,
+             reference='while look("east") == "paint":\n    east()\n', bonus=MURAL, compact=2),
+        site("v14", "Paint Tower",
+             "A tower of paint going up. How tall? Yours isn't the same as your friend's. "
+             'Look north for the paint.',
+             [mural_tower(n) for n in (3, 4, 5, 6, 7, 8)], per_student=True,
+             reference='while look("north") == "paint":\n    north()\n', bonus=MURAL, compact=2),
+        site("v15", "Round the Corner",
+             "This line goes east, then turns south. Two while loops: one for each way.",
+             [mural_corner(a, b) for a, b in ((4, 3), (6, 2), (3, 5), (7, 4), (5, 5), (8, 3))], per_student=True,
+             reference='while look("east") == "paint":\n    east()\nwhile look("south") == "paint":\n    south()\n',
+             bonus=MURAL, compact=4),
+        site("v16", "Mystery Box",
+             "A box of paint, and nobody knows how big yours is! Go round it: east, south, "
+             "west, then north, each one while there's paint.",
+             [mural_box(n) for n in (3, 4, 5, 6, 7, 8)], per_student=True,
+             reference="".join(f'while look("{w}") == "paint":\n    {w}()\n' for w in ("east", "south", "west", "north")),
+             bonus=MURAL, compact=8),
+        site("v17", "Paint Stairs",
+             "Stairs of paint, every step a different size. At each square: if there's paint "
+             "east, go east. If not, go south.\n\n"
+             'while True:\n    if look("east") == "paint":\n        east()\n    else:\n        south()',
+             [mural_stairs(w) for w in ((2, 3, 2, 4), (3, 1, 2, 3, 2), (4, 2, 3), (1, 3, 1, 3, 2), (2, 2, 2, 2, 2), (3, 4, 2, 2))],
+             per_student=True,
+             reference='while True:\n    if look("east") == "paint":\n        east()\n    else:\n        south()\n',
+             bonus=MURAL, compact=5),
+        site("v18", "The Winding Mural",
+             "The last mystery: paint that winds all over, a different way for everyone. Check "
+             "east, south, west and north, and go wherever the paint is.",
+             [winding(seed) for seed in MURAL_SEEDS], per_student=True,
+             reference=FOLLOW, bonus=MURAL, compact=9),
+    ]}
+STAR_TIPS.update({
+    "v13": {"bonus": "Use the while loop from the card: it fits any length.", "compact": "The while loop from the card: 2 lines."},
+    "v14": {"bonus": 'while look("north") == "paint": then north().', "compact": "One while loop: 2 lines."},
+    "v15": {"bonus": "A while loop east, then a while loop south.", "compact": "Two while loops, 2 lines each."},
+    "v16": {"bonus": "Four while loops: east, south, west, north.", "compact": "Four while loops, 2 lines each."},
+    "v17": {"bonus": "The while True loop from the card, with if and else.", "compact": "The loop from the card: 5 lines."},
+    "v18": {"bonus": "while True, then if, elif, elif and else: one for each way.",
+            "compact": "while True, then if / elif / elif / else, each with its move: 9 lines."},
+})
+
+VOYAGE_ZONES = [PAINT_PLANET, PATTERN_STUDIO, MYSTERY_MURALS]
 VOYAGE_ORDER = [s["key"] for z in VOYAGE_ZONES for s in z["sites"]]
 
 

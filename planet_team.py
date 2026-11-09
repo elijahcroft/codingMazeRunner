@@ -354,7 +354,7 @@ def after(level):
 DOORS = "ABCDEFGVQ"
 GEM_DOOR = "Q"       # opens once every gem is found, with no plate of its own
 PORTALS = "1234"
-LIGHT = 5            # a rover lights up squares this close (distance squared) on a dark level
+LIGHT = 9            # a rover lights up squares this close (distance squared) on a dark level
 SLIDE_MOST = 60      # the longest slide, so a ring of ice can never loop for ever
 WAYS = {"north": (-1, 0), "south": (1, 0), "east": (0, 1), "west": (0, -1)}
 BOULDER_REST = 20    # seconds since a push before ♻ counts a boulder as lost
@@ -478,7 +478,7 @@ class Mission:
         """A rover lights up the squares round it on a dark level."""
         if self.dark:
             r, c = spot
-            self.seen.update((r + i, c + j) for i in range(-2, 3) for j in range(-2, 3) if i * i + j * j <= LIGHT)
+            self.seen.update((r + i, c + j) for i in range(-3, 4) for j in range(-3, 4) if i * i + j * j <= LIGHT)
 
     def landing_spot(self, seat):
         """The nearest open ground to the lander with nobody on it, so a whole
@@ -721,6 +721,9 @@ class Mission:
             held = any(len(self.pressed(d)) == len(self.plates[d]) for d in self.doors if not self.done_for_good(d))
             return None if held else ("🚪 A door shut behind you. Press 🆘 Help so a friend comes to stand on "
                                        "its plate, or press 🏠 Back to the lander.")
+        gems = [tuple(m) for m in job["marks"] if tuple(m) in self.gems]
+        if gems:
+            return self.gem_hint(seat, gems)
         plates = [tuple(m) for m in job["marks"] if self.on_plate(tuple(m)) and tuple(m) not in self.rovers.values()]
         free = [s for s, at in self.rovers.items() if s != HELPER and at in reach and not self.on_plate(at)]
         if not plates:
@@ -728,6 +731,27 @@ class Mission:
         far = lambda at: min(abs(at[0] - p[0]) + abs(at[1] - p[1]) for p in plates)
         closest = min(free, key=lambda s: (far(self.rovers[s]), s))
         return f"👉 You're the closest rover, so go! {job['text']}" if closest == seat else None
+
+    def gem_hint(self, seat, gems):
+        """Which gem this rover should get: the nearest one that no closer
+        rover is going for, so the class spreads out. In words, the way to it."""
+        free = sorted((s for s, at in self.rovers.items() if s != HELPER and at not in self.vault), key=lambda s: s)
+        far = lambda at, g: abs(at[0] - g[0]) + abs(at[1] - g[1])
+        left, mine = list(gems), None
+        for other in sorted(free, key=lambda s: min(far(self.rovers[s], g) for g in gems)):
+            if not left:
+                break
+            pick = min(left, key=lambda g: (far(self.rovers[other], g), g))
+            left.remove(pick)
+            if other == seat:
+                mine = pick
+                break
+        mine = mine or min(gems, key=lambda g: (far(self.rovers[seat], g), g))
+        r, c = self.rovers[seat]
+        dr, dc = mine[0] - r, mine[1] - c
+        ways = [f"{abs(dc)} square{'s' if abs(dc) != 1 else ''} {'right' if dc > 0 else 'left'}" if dc else "",
+                f"{abs(dr)} {'down' if dr > 0 else 'up'}" if dr else ""]
+        return f"💎 The gem for you is {' and '.join(w for w in ways if w)}. Go get it!"
 
     def helper_step(self):
         """The helper rover stands on the next plate that needs someone, and

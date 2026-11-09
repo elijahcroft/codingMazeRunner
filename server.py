@@ -3089,6 +3089,7 @@ GARAGE = [
     # 🚀 Star Voyage rewards.
     {"slot": "paint", "key": "splatter", "name": "Paint Splatter", "badge": "v_painter"},
     {"slot": "topper", "key": "beret", "name": "Artist's beret", "badge": "v_studio", "legend": True},
+    {"slot": "trail", "key": "brushstrokes", "name": "Brush strokes", "badge": "v_murals", "legend": True},
     # The Paint Shop: a paint the student codes themselves (look["art"]).
     {"slot": "paint", "key": "mine", "name": "My paint", "shop": True},
 ]
@@ -3129,6 +3130,7 @@ PLANET_BADGES.update(HALLOWEEN_BADGES)
 VOYAGE_BADGES = {
     "v_painter": ("🎨", "Planet Painter", "Paint every picture on Paint Planet"),
     "v_studio": ("🖌", "Pattern Master", "Earn every star in Pattern Studio"),
+    "v_murals": ("🔍", "Mystery Solver", "Earn every star in Mystery Murals"),
 }
 PLANET_BADGES.update(VOYAGE_BADGES)
 HALLOWEEN_GARAGE = [
@@ -4068,6 +4070,8 @@ def planet_record(p, key, code, results):
         badge("v_painter")
     if all(all(entry["stars"].get(x["key"], [False])) for x in planet.PATTERN_STUDIO["sites"]):
         badge("v_studio")
+    if all(all(entry["stars"].get(x["key"], [False])) for x in planet.MYSTERY_MURALS["sites"]):
+        badge("v_murals")
 
     unlocked = [i for i in garage_for(entry)
                 if i["open"] and i["key"] not in before_open and "find" not in i]
@@ -4884,6 +4888,8 @@ def planet_class():
                                    "candy": candy_total(entry), "stars": halloween_stars(entry),
                                    "done": sum(k in entry["solved"] for k in planet.HALLOWEEN_ORDER)},
                      "practice_solved": sum(k in entry["solved"] for k in planet.PRACTICE_ORDER),
+                     "voyage": {"now": here in planet.VOYAGE_ORDER,
+                                "done": sum(k in entry["solved"] for k in planet.VOYAGE_ORDER)},
                      "misses": entry["misses"].get(here, 0),
                      "runs_now": entry["runs"].get(here, 0),
                      "stars_now": shown_stars(here, entry["stars"].get(here, [False] * 3)),
@@ -4912,8 +4918,10 @@ def planet_class():
     rows.sort(key=lambda x: (x["at"], -x["runs_here"], x["name"].lower()))
     return {"students": rows, "sites": len(planet.SITE_ORDER),
             "practice_sites": len(planet.PRACTICE_ORDER),
+            "voyage_sites": len(planet.VOYAGE_ORDER),
             "zones": [z["name"] for z in planet.ZONES],
             "practice_zones": [z["name"] for z in planet.PRACTICE_ZONES],
+            "voyage_zones": [z["name"] for z in planet.VOYAGE_ZONES],
             "zone_keys": {z["name"]: z["key"] for z in planet.PRACTICE_ZONES + planet.ZONES
                           + planet.BUILD_ZONES + planet.HALLOWEEN_ZONES + planet.VOYAGE_ZONES},
             "halloween_sites": len(planet.HALLOWEEN_ORDER),

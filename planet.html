@@ -1303,7 +1303,7 @@ let scene = null;     // what the canvas shows: map, zone, frames, events
 let pos = 0, playing = false, lastTs = 0, fps = 8, heard = 0;
 let errorLine = 0, errorCount = 0;
 
-const ZONE_ICONS = {paint: "🎨", studio: "🖌", practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", lookout: "👀", forks: "🔀", tricks: "🎓", numbers: "🔢", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐", street: "🎃", hollow: "👻", woods: "🧙", yard: "🏗", workshop: "🛠"};
+const ZONE_ICONS = {paint: "🎨", studio: "🖌", murals: "🔍", practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", lookout: "👀", forks: "🔀", tricks: "🎓", numbers: "🔢", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐", street: "🎃", hollow: "👻", woods: "🧙", yard: "🏗", workshop: "🛠"};
 // Each sensor arrives with a zone (matches planet.SENSOR_ZONE).
 const SENSOR_ZONE = {look: 0, at_beacon: 0, x: 1, y: 1, report: 1, tick: 2, samples_left: 3,
   battery: 4, in_sun: 4, beacon_x: 6, beacon_y: 6, jump: 7, drill: 9, drills_left: 9,
@@ -1536,6 +1536,8 @@ const GROUND = {
   // 🚀 Star Voyage. Paint Planet is a pale canvas, so the paint stands out.
   paint: {ground: "#d9d0e6", rock: "#6d5b8f", bed: "#251c3a", seam: "rgba(90,70,120,.14)",
           grit: ["rgba(120,90,160,.12)", "rgba(255,255,255,.25)"], stars: "rgba(255,216,74,.6)"},
+  murals: {ground: "#c9d3dc", rock: "#4f6070", bed: "#18212a", seam: "rgba(60,80,100,.16)",
+           grit: ["rgba(60,80,100,.12)", "rgba(255,255,255,.28)"], stars: "rgba(94,230,255,.5)"},
   studio: {ground: "#e3dccf", rock: "#7a5a46", bed: "#2b1f1a", seam: "rgba(110,80,60,.14)",
            grit: ["rgba(120,90,70,.12)", "rgba(255,255,255,.3)"], stars: "rgba(255,138,216,.5)"},
   // Halloween night: moonlit streets, then a dark hollow.
@@ -3100,7 +3102,7 @@ function playNext() {
   const open = allSites().filter(s => s.open);
   return (open.find(s => !s.solved && !(s.stars || []).some(Boolean)) || open[open.length - 1] || {}).key;
 }
-const NEW_ZONES = ["tricks", "numbers", "paint", "studio"];   // say NEW until a student has tried them
+const NEW_ZONES = ["tricks", "numbers", "paint", "studio", "murals"];   // say NEW until a student has tried them
 function openLevels() {
   if (!state) return;
   note("levels");
