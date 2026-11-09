@@ -832,7 +832,7 @@ After a chapter's last level they go back to the hub.
 **🗺 The Mission Hub.** The mission opens on the hub: a space station with a launch pad for
 every level, the trophies and class bests under the ones they've done, and **NEW!** under the
 ones they haven't. The class picks where to go by driving onto a pad. When half the class is on
-the same pad for 3 seconds, a countdown shows and everyone goes there. You can also pick a level
+the same pad for 3 seconds, a countdown shows and everyone goes there (after 25 seconds on the hub, a third of the class is enough, so a big class can't get stuck). You can also pick a level
 for them from the list beside 📺 Watch (Mission Hub is at the top of it), and **🗺 Back to the
 hub** sends them back to choose again.
 Nobody has to write code: they drive with the arrow keys, the on-screen arrows, or by clicking
