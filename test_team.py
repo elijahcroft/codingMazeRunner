@@ -5,6 +5,7 @@ import os
 import re
 import time
 import unittest
+import unittest.mock
 from collections import deque
 from urllib.request import urlopen
 
@@ -17,8 +18,8 @@ import test_planet
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FAR_LATER = 10_000
-BIG = len(LEVELS) - 1                  # most tests use the last map, which has everything
 NUMBER = {level["name"]: i for i, level in enumerate(LEVELS)}
+BIG = NUMBER["The Big Vault"]          # most tests use this map, which has every first-chapter thing
 
 
 class Crew:
@@ -45,9 +46,12 @@ class Crew:
                 break
             for way, (dr, dc) in planet_team.WAYS.items():
                 step = (at[0] + dr, at[1] + dc)
-                if step not in seen and self.free(step):
-                    seen[step] = (at, way)
-                    queue.append(step)
+                if not self.free(step):
+                    continue
+                land = self.game.glide(step, way)[-1]     # ice slides on, a teleport takes it across
+                if land not in seen:
+                    seen[land] = (at, way)
+                    queue.append(land)
         assert to in seen, f"rover {seat} can't reach {to} from {start}"
         ways = []
         while seen[to]:
@@ -235,6 +239,267 @@ class MapTests(unittest.TestCase):
         self.assertTrue(g.done_for_good("V"))
         self.finish(crew, one, two)
 
+    # ---- Deep Space -------------------------------------------------------------
+
+    def test_two_rovers_can_finish_ice_bowling(self):
+        crew = Crew(2, NUMBER["Ice Bowling"])
+        g, one, two = crew.game, 0, 1
+        crew.drive(one, (3, 4)); crew.push(one, "east", 4)        # bowl it down a lane, onto the plate
+        crew.drive(one, (5, 3)); crew.push(one, "east", 5)
+        crew.drive(one, (7, 4)); crew.push(one, "east", 4)
+        self.assertEqual(len(g.sunk), 3)
+        self.assertFalse(g.door_open("V"))
+        crew.drive(two, (1, 28))                                  # a slide to the end of the last lane
+        self.assertTrue(g.door_open("V"))
+        crew.drive(one, sorted(g.vault)[0])
+        g.check_win(crew.now)
+        self.assertTrue(g.won)
+
+    def test_two_rovers_can_finish_gem_hunt(self):
+        crew = Crew(2, NUMBER["Gem Hunt"])
+        g, one, two = crew.game, 0, 1
+        crew.drive(one, (7, 5)); crew.push(one, "east", 4)
+        self.assertTrue(g.done_for_good("A"))
+        crew.drive(one, (2, 17)); crew.push(one, "west", 4)
+        self.assertTrue(g.done_for_good("B"))
+        for gem in ((2, 2), (4, 7), (11, 3), (12, 12)):
+            crew.drive(two, gem)
+        for gem in ((4, 11), (2, 26), (4, 22), (10, 17)):
+            self.assertFalse(g.door_open("Q"))
+            crew.drive(one, gem)
+        self.assertEqual(g.found, 8)
+        self.assertTrue(g.done_for_good("Q"))
+        self.finish(crew, one, two)
+
+    def test_two_rovers_can_finish_teleport_town(self):
+        crew = Crew(2, NUMBER["Teleport Town"])
+        g, one, two = crew.game, 0, 1
+        crew.drive(one, (2, 4)); crew.push(one, "east", 3)        # the boulder goes through pad 1
+        self.assertIsNotNone(g.boulder_on((2, 13)))
+        crew.push(one, "east", 1)                                 # and the rover after it
+        self.assertEqual(g.rovers[one], (2, 12))
+        crew.push(one, "east", 2)
+        crew.drive(one, (1, 15)); crew.push(one, "south", 2)
+        crew.drive(two, (5, 4)); crew.push(two, "east", 3)        # through pad 2, to the room below
+        crew.push(two, "east", 1)
+        self.assertEqual(g.rovers[two], (9, 2))
+        crew.drive(two, (8, 3)); crew.push(two, "south", 2)
+        self.assertTrue(g.done_for_good("V"))
+        self.finish(crew, one, two)
+
+    def test_two_rovers_can_finish_lights_out(self):
+        crew = Crew(2, NUMBER["Lights Out"])
+        g, one, two = crew.game, 0, 1
+        crew.drive(one, (3, 15)); crew.push(one, "west", 2)
+        self.assertTrue(g.done_for_good("A"))
+        crew.drive(one, (8, 6)); crew.push(one, "south", 2)
+        crew.drive(two, (5, 26)); crew.push(two, "north", 2)
+        self.assertTrue(g.done_for_good("B"))
+        self.finish(crew, one, two)
+
+
+class DeepSpaceRuleTests(unittest.TestCase):
+    """Ice, gems, teleport pads and the dark, each on a small map of its own."""
+
+    def game(self, rows, **level):
+        patch = unittest.mock.patch.object(planet_team, "LEVELS", LEVELS + (dict(name="Test", map=tuple(rows), **level),))
+        patch.start()
+        self.addCleanup(patch.stop)
+        g = Mission(len(LEVELS))
+        g.enter(0, 0)
+        return g
+
+    ICE = ("#########",
+           "#S.~~~.@#",
+           "#..~~~~.#",
+           "#.@~~~~v#",
+           "#..~~~~o#",
+           "#########")
+
+    def test_a_rover_on_ice_slides_until_something_stops_it(self):
+        g = self.game(self.ICE)
+        g.rovers[0] = (2, 2)
+        g.move(0, "east", "Ada", 1)
+        self.assertEqual(g.rovers[0], (2, 7))               # past the ice, onto the ground beyond
+        g.rovers[0] = (1, 2)
+        g.move(0, "east", "Ada", 1)
+        self.assertEqual(g.rovers[0], (1, 6))               # stops short of a boulder: it doesn't push it
+
+    def test_a_rover_stops_on_ice_before_a_crater(self):
+        g = self.game(self.ICE)
+        g.rovers[0] = (4, 2)
+        g.move(0, "east", "Ada", 1)
+        self.assertEqual(g.rovers[0], (4, 6))
+
+    def test_a_boulder_on_ice_slides_onto_a_plate_or_into_a_crater(self):
+        g = self.game(self.ICE)
+        g.rovers[0] = (3, 1)
+        g.move(0, "east", "Ada", 1)
+        self.assertIn((3, 7), g.sunk)
+        self.assertEqual(g.rovers[0], (3, 2))               # the rover only goes the square it pushed
+        g.move(0, "east", "Ada", 1)
+        self.assertEqual(g.rovers[0], (3, 7))               # then slides after it, onto the plate
+        g.boulders.append({"at": (4, 3), "home": (4, 3), "pushed": 0, "plate": False})
+        g.rovers[0] = (4, 2)
+        g.move(0, "east", "Ada", 2)
+        self.assertIn((4, 7), g.filled)
+
+    def test_a_ring_of_ice_can_never_slide_for_ever(self):
+        g = self.game(("#####", "#S~~#", "#~~~#", "#~~~#", "#####"))
+        self.assertLessEqual(len(g.glide((1, 2), "east")), planet_team.SLIDE_MOST + 1)
+
+    PADS = ("##########",
+            "#S.@1#1..#",
+            "#....#...#",
+            "#.2..#.2.#",
+            "##########")
+
+    def test_a_teleport_takes_a_rover_across_and_leaves_it_on_the_pad(self):
+        g = self.game(self.PADS)
+        g.rovers[0] = (3, 1)
+        g.move(0, "east", "Ada", 1)
+        self.assertEqual(g.rovers[0], (3, 7))
+        g.move(0, "east", "Ada", 2)                         # stepping off doesn't go back
+        self.assertEqual(g.rovers[0], (3, 8))
+        g.move(0, "west", "Ada", 3)
+        self.assertEqual(g.rovers[0], (3, 2))               # stepping on again does
+
+    def test_a_boulder_comes_out_of_the_other_pad_still_rolling(self):
+        g = self.game(self.PADS)
+        g.rovers[0] = (1, 2)
+        g.move(0, "east", "Ada", 1)
+        self.assertEqual(g.boulders[0]["at"], (1, 7))
+        g.move(0, "east", "Ada", 2)
+        self.assertEqual(g.rovers[0], (1, 6))               # the rover follows it through
+
+    def test_a_pad_with_a_boulder_on_the_far_one_takes_nobody(self):
+        g = self.game(self.PADS)
+        g.boulders[0]["at"] = (1, 6)
+        g.rovers[0] = (1, 3)
+        g.move(0, "east", "Ada", 1)
+        self.assertEqual(g.rovers[0], (1, 4))
+
+    def test_the_class_can_reach_what_is_through_a_teleport(self):
+        g = self.game(self.PADS)
+        self.assertIn((2, 8), g.reachable())
+
+    GEMS = ("#########",
+            "#S.$..Q*#",
+            "#..$...##",
+            "#########")
+
+    def test_gems_open_the_crystal_door_and_say_how_many_are_left(self):
+        g = self.game(self.GEMS)
+        g.rovers[0] = (1, 5)
+        self.assertIn("2 still to find", g.move(0, "east", "Ada", 1))
+        g.rovers[0] = (1, 2)
+        g.move(0, "east", "Ada", 1)
+        self.assertEqual((g.found, g.door_open("Q")), (1, False))
+        self.assertIn("1 to go", g.news[-1])
+        g.rovers[0] = (2, 2)
+        g.move(0, "east", "Ada", 2)
+        self.assertTrue(g.done_for_good("Q"))
+        self.assertIn("last gem", g.news[-1])
+        door = g.view(3)["doors"]["Q"]
+        self.assertEqual((door["pressed"], door["plates"], door["good"]), (2, 2, True))
+
+    def test_the_job_on_a_gem_level_marks_the_gems(self):
+        g = self.game(self.GEMS)
+        job = g.next_job()
+        self.assertIn("gem", job["text"])
+        self.assertEqual(sorted(map(tuple, job["marks"])), [(1, 3), (2, 3)])
+
+    def test_the_teachers_button_opens_the_crystal_door(self):
+        g = self.game(self.GEMS)
+        g.open_all()
+        self.assertTrue(g.door_open("Q"))
+
+    def test_a_dark_level_lights_up_round_the_rovers_and_remembers(self):
+        g = self.game(self.GEMS, dark=True)
+        seen = g.view(1)["seen"]
+        self.assertEqual(len(seen), 4 * 9)
+        self.assertEqual(seen[1 * 9 + 1], "1")
+        self.assertEqual(seen[1 * 9 + 7], "0")
+        g.rovers[0] = (1, 3)
+        g.move(0, "east", "Ada", 1)
+        self.assertEqual(g.view(2)["seen"][1 * 9 + 6], "1")
+        self.assertEqual(g.view(2)["seen"][1 * 9 + 1], "1")     # where they've been stays lit
+
+    def test_a_level_in_the_light_sends_no_dark_map(self):
+        self.assertFalse(self.game(self.GEMS).view(1)["seen"])
+
+    def test_a_program_can_look_at_ice_gems_and_teleports(self):
+        g = self.game(self.PADS)
+        g.rovers[0] = (1, 3)
+        self.assertEqual(planet_team.fly(g, 0, 'print(look("east"))')["prints"], ["teleport"])
+        g = self.game(self.GEMS)
+        g.rovers[0] = (1, 2)
+        self.assertEqual(planet_team.fly(g, 0, 'print(look("east"))')["prints"], ["gem"])
+        g = self.game(self.ICE)
+        g.rovers[0] = (2, 2)
+        self.assertEqual(planet_team.fly(g, 0, 'print(look("east"))')["prints"], ["ice"])
+
+
+class HubTests(unittest.TestCase):
+    def setUp(self):
+        self.g = Mission(planet_team.HUB)
+
+    def test_every_level_has_a_pad_and_every_chapter_its_own_row(self):
+        self.assertEqual(sorted(planet_team.HUB_PADS.values()), list(range(len(LEVELS))))
+        for chapter in planet_team.CHAPTERS:
+            rows = {r for (r, c), level in planet_team.HUB_PADS.items() if level in chapter["levels"]}
+            self.assertEqual(len(rows), 1, chapter["name"])
+
+    def test_the_chapters_cover_every_level_once(self):
+        levels = [level for chapter in planet_team.CHAPTERS for level in chapter["levels"]]
+        self.assertEqual(levels, list(range(len(LEVELS))))
+
+    def test_half_the_class_on_a_pad_for_a_few_seconds_picks_that_level(self):
+        g, pad = self.g, next(s for s, level in planet_team.HUB_PADS.items() if level == 9)
+        for seat in range(4):
+            g.enter(seat, 0)
+        g.rovers[0] = pad
+        self.assertIsNone(g.vote(1))
+        g.rovers[1] = pad
+        self.assertIsNone(g.vote(1))                         # enough, but not for long enough yet
+        self.assertEqual(g.view(2)["choice"], {"level": 9, "in": planet_team.HUB_WAIT - 1})
+        self.assertEqual(g.vote(1 + planet_team.HUB_WAIT), 9)
+
+    def test_stepping_off_stops_the_count(self):
+        g, pad = self.g, next(iter(planet_team.HUB_PADS))
+        g.enter(0, 0)
+        g.rovers[0] = pad
+        g.vote(1)
+        g.rovers[0] = (1, 1)
+        self.assertIsNone(g.vote(1 + planet_team.HUB_WAIT))
+        self.assertIsNone(g.choice)
+
+    def test_the_helper_does_not_vote(self):
+        g, pad = self.g, next(iter(planet_team.HUB_PADS))
+        g.enter(0, 0)
+        g.rovers[planet_team.HELPER] = pad
+        g.vote(1)
+        self.assertIsNone(g.vote(1 + planet_team.HUB_WAIT))
+
+    def test_the_hub_is_never_won_and_tells_everyone_what_to_do(self):
+        g = self.g
+        g.enter(0, 0)
+        g.check_win(1)
+        self.assertFalse(g.won)
+        self.assertIn("vote", g.next_job()["text"])
+        g.rovers[0] = next(s for s, level in planet_team.HUB_PADS.items() if level == 0)
+        self.assertIn("Landing Bay", g.your_job(0))
+
+    def test_a_chapter_runs_in_order_and_its_last_level_goes_back_to_the_hub(self):
+        for chapter in planet_team.CHAPTERS:
+            levels = chapter["levels"]
+            self.assertEqual([planet_team.after(level) for level in levels], levels[1:] + [planet_team.HUB])
+
+    def test_the_view_says_which_chapter_and_where_in_it(self):
+        view = Mission(9).view(0)
+        self.assertEqual(view["chapter"], {"name": "Deep Space", "at": 2, "of": len(planet_team.CHAPTERS[1]["levels"])})
+        self.assertEqual(self.g.view(0)["name"], "Mission Hub")
+
 
 class RuleTests(unittest.TestCase):
     def setUp(self):
@@ -378,7 +643,7 @@ class NextJobTests(unittest.TestCase):
             job = game.next_job()
             self.assertTrue(job["marks"], LEVELS[number]["name"])
             for r, c in job["marks"]:
-                self.assertIn(game.map[r][c].upper(), "OABCDEFGV")
+                self.assertIn(game.map[r][c].upper(), "OABCDEFGV$")
 
     def test_it_never_asks_for_a_plate_nobody_can_reach(self):
         game = self.game("Crater Crossing")
@@ -919,17 +1184,44 @@ class ClassroomSide(unittest.TestCase):
         mission = server.team_room["mission"]
         self.assertIn("door", self.admin("planet_team_doors")["ok"])
         self.assertTrue(self.look(pid)["doors"]["V"]["open"])
-        self.assertIn("again", self.admin("planet_team_restart")["ok"])
+        self.assertIn("Hub", self.admin("planet_team_restart")["ok"])
         self.assertIsNot(server.team_room["mission"], mission)
+        server.team_restart(BIG)
         self.assertFalse(self.look(pid)["doors"]["A"]["open"])
 
-    def test_the_class_starts_on_the_first_level(self):
+    def test_the_class_starts_on_the_hub_and_sees_its_trophies(self):
         self.admin("planet_team_restart")
         self.admin("planet_team", on=True)
         pid = self.join("Ada")
         seen = self.look(pid)
-        self.assertEqual((seen["level"], seen["name"]), (0, LEVELS[0]["name"]))
-        self.assertEqual(seen["map"], list(LEVELS[0]["map"]))
+        self.assertEqual((seen["level"], seen["name"]), (planet_team.HUB, "Mission Hub"))
+        self.assertEqual(seen["map"], list(planet_team.HUB_MAP))
+        self.assertEqual(len(seen["hub"]), len(LEVELS))
+        self.assertIn("wins", seen)
+
+    def test_the_class_votes_its_way_to_a_level(self):
+        ada, bo = self.enter("Ada", "Bo", level=planet_team.HUB)
+        mission = server.team_room["mission"]
+        pad = next(s for s, level in planet_team.HUB_PADS.items() if level == 8)
+        mission.rovers[server.team_room["here"][ada]["seat"]] = pad
+        seen = self.look(bo)
+        self.assertEqual(seen["choice"]["level"], 8)
+        mission.choice[1] -= planet_team.HUB_WAIT
+        seen = self.look(bo, level=planet_team.HUB)
+        self.assertEqual((seen["level"], seen["map"]), (8, list(LEVELS[8]["map"])))
+
+    def test_the_last_level_of_a_chapter_goes_back_to_the_hub(self):
+        ada, bo = self.enter("Ada", "Bo")
+        seen = self.win([ada, bo])
+        self.assertTrue(seen["next_hub"])
+        server.team_room["mission"].won -= server.TEAM_PAUSE
+        seen = self.look(ada)
+        self.assertEqual(seen["level"], planet_team.HUB)
+
+    def test_the_teacher_can_send_the_class_to_the_hub(self):
+        pid = self.enter("Ada", level=0)[0]
+        self.assertIn("Hub", self.admin("planet_team_level", level="hub")["ok"])
+        self.assertEqual(self.look(pid)["level"], planet_team.HUB)
 
     def win(self, pids):
         room = server.team_room
@@ -962,21 +1254,13 @@ class ClassroomSide(unittest.TestCase):
         self.look(bo)
         self.assertIn(room["mission"].rovers[room["here"][bo]["seat"]], room["mission"].starts)
 
-    def test_the_last_level_stays_won(self):
-        ada, bo = self.enter("Ada", "Bo")
-        self.win([ada, bo])
-        server.team_room["mission"].won -= 1000
-        seen = self.look(ada)
-        self.assertEqual(seen["level"], BIG)
-        self.assertTrue(seen["won"])
-        self.assertEqual(seen["next_in"], 0)
-
     def test_the_teacher_can_skip_a_level(self):
         pid = self.enter("Ada", level=0)[0]
         self.assertIn(LEVELS[1]["name"], self.admin("planet_team_next")["ok"])
         self.assertEqual(self.look(pid)["level"], 1)
         server.team_restart(BIG)
-        self.assertIn("last", self.admin("planet_team_next")["ok"])
+        self.assertIn("last level of First Missions", self.admin("planet_team_next")["ok"])
+        self.assertIn("on the hub", self.admin("planet_team_next")["ok"])
 
     def test_a_student_the_teacher_removed_does_not_break_the_next_level(self):
         ada, bo = self.enter("Ada", "Bo", level=0)
@@ -1082,6 +1366,8 @@ class LoungeUpdates(unittest.TestCase):
 
     def win(self, *names):
         self.admin("planet_team", on=True)
+        if server.team_room["mission"].hub:
+            server.team_restart(0)
         pids = [self.join(n) for n in names]
         for pid in pids:
             self.get(f"/planet/team?id={pid}")
@@ -1101,6 +1387,7 @@ class LoungeUpdates(unittest.TestCase):
 
     def test_the_teachers_button_does_not_earn_a_trophy(self):
         self.admin("planet_team", on=True)
+        server.team_restart(0)
         self.admin("planet_team_doors")
         self.win("Ada")
         self.assertEqual(server.planet_class_settings["team_wins"], [])

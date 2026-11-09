@@ -4446,7 +4446,8 @@ TEAM_SHOUT_GAP = 2.5   # seconds between one rover's shouts
 TEAM_CODE_GAP = 1      # seconds between one rover's programs
 BUG_CLUE_AFTER = 2     # misses in a row on a bug hunt before the clue comes
 team_news = threading.Condition()
-team_room = {"open": False, "here": {}, "seats": 0, "seq": 0, "roster": 0, "mission": planet_team.Mission(), "helper": False}
+team_room = {"open": False, "here": {}, "seats": 0, "seq": 0, "roster": 0,
+             "mission": planet_team.Mission(planet_team.HUB), "helper": False}
 
 
 def team_changed():
@@ -4462,8 +4463,8 @@ def team_set(on):
     team_changed()
 
 
-def team_restart(level=0):
-    """A fresh map. Everyone here rolls back onto the lander."""
+def team_restart(level=planet_team.HUB):
+    """A fresh map, or the hub. Everyone here rolls back onto the lander."""
     room, now = team_room, time.time()
     room["mission"] = planet_team.Mission(level)
     for pid, spot in room["here"].items():
@@ -4490,18 +4491,23 @@ def team_helper(on):
 
 
 def team_next():
-    """On to the next level. Says what it did, for the teacher."""
-    level = team_room["mission"].level + 1
-    if level == len(planet_team.LEVELS):
-        return "This is the last level."
+    """On to the next level of the chapter, or back to the hub after its
+    last one. Says what it did, for the teacher."""
+    mission = team_room["mission"]
+    if mission.hub:
+        return "The class is on the hub. They pick a level by driving onto it, or pick one for them above."
+    level = planet_team.after(mission.level)
     team_restart(level)
+    if level == planet_team.HUB:
+        return (f"That was the last level of {planet_team.chapter_of(mission.level)['name']}. "
+                f"The class is back on the hub to pick what's next.")
     return f"The class has moved on to {planet_team.LEVELS[level]['name']}."
 
 
 def team_next_in():
-    """Seconds until the next level starts, or 0 if none is coming."""
+    """Seconds until the next level (or the hub) comes, or 0 if nothing's won."""
     mission = team_room["mission"]
-    if not mission.won or mission.level + 1 == len(planet_team.LEVELS):
+    if not mission.won:
         return 0
     return max(0, math.ceil(mission.won + TEAM_PAUSE - time.time()))
 
@@ -4517,6 +4523,14 @@ def team_keep_up():
             team_changed()
     if room["helper"] and not mission.won and mission.helper_step():
         team_changed()
+    if mission.hub:
+        was = mission.choice and mission.choice[0]
+        chosen = mission.vote(now)
+        if chosen is not None:
+            team_restart(chosen)
+        elif was != (mission.choice and mission.choice[0]):
+            team_changed()
+        return
     before = mission.won
     mission.check_win(now)
     if mission.won != before:
@@ -4530,7 +4544,7 @@ def team_keep_up():
                 mission.record = old - secs if old else "first"
                 best[str(mission.level)] = secs
             save_state()
-    if mission.won and mission.level + 1 < len(planet_team.LEVELS) and team_next_in() == 0:
+    if mission.won and team_next_in() == 0:
         team_next()
 
 
@@ -4562,7 +4576,10 @@ def team_view(p, query):
     out = dict(mission.view(now), open=True, you=spot and spot["seat"], seq=room["seq"],
                roster=room["roster"], next_in=team_next_in(),
                best=planet_class_settings["team_best"].get(str(mission.level)),
-               mine=spot and mission.your_job(spot["seat"]))
+               mine=spot and mission.your_job(spot["seat"]),
+               next_hub=bool(mission.won) and planet_team.after(mission.level) == planet_team.HUB)
+    if mission.hub:
+        out.update(wins=planet_class_settings["team_wins"], bests=planet_class_settings["team_best"])
     if query.get("level", [""])[0] != str(mission.level):
         out["map"] = list(mission.map)
     if query.get("roster", [""])[0] != str(room["roster"]):
@@ -5120,7 +5137,7 @@ def admin_action(data):
                 "The Team Mission is closed. It stays just as it was until you open it again.")
     if action == "planet_team_restart":
         team_restart()
-        return "The Team Mission is starting again from level 1. Trophies in the lounge stay."
+        return "The class is on the Mission Hub: they pick a level by driving onto it. Trophies in the lounge stay."
     if action == "planet_team_helper":
         team_helper(not team_room["helper"])
         return ("🤖 The helper rover is on the map. It stands on plates, and this level won't earn a trophy."
@@ -5196,6 +5213,9 @@ def admin_action(data):
         return "Sent to every student's screen."
     if action == "planet_team_level":
         level = str(data.get("level", ""))
+        if level in ("hub", str(planet_team.HUB)):
+            team_restart()
+            return "The class is on the Mission Hub: they pick a level by driving onto it."
         if not level.isdigit() or int(level) >= len(planet_team.LEVELS):
             return "Unknown level."
         team_restart(int(level))
@@ -6602,6 +6622,7 @@ class Handler(BaseHTTPRequestHandler):
                                 team_helper=team_room["helper"],
                                 team_vault=team_room["mission"].in_vault(),
                                 team_levels=[level["name"] for level in planet_team.LEVELS],
+                                team_chapters=[{"name": c["name"], "levels": c["levels"]} for c in planet_team.CHAPTERS],
                                 bug_hunts=[{"key": key, "what": what} for key, what, _, _ in planet.BUG_HUNTS])
                 elif not p:
                     body = {"you": None}

@@ -22,6 +22,14 @@ Map squares:
     @  boulder       o  crater        *  vault floor
     %  ♻ sends lost boulders home
     A  a door        a  its plate (the same letter, small)
+
+The Deep Space levels add:
+    ~  ice: a rover or a boulder on it slides on until something stops it
+    $  a gem: the first rover over it picks it up for the whole class
+    Q  the crystal door: it opens for good once the class has every gem
+    1  a teleport pad, and so on up to 4: the two pads with the same
+       number take whatever arrives on one across to the other
+A level can be "dark": the class only sees where its rovers have been.
 """
 
 import ast
@@ -32,7 +40,7 @@ from collections import deque
 import planet
 
 LEVELS = (
-    {"name": "Landing Bay", "map": (
+    {"name": "Landing Bay", "biome": "landing", "map": (
         "##############################",
         "#.......#.......#.......#****#",
         "#.......#.......#.......#****#",
@@ -49,7 +57,7 @@ LEVELS = (
         "#%......#.......#.......#****#",
         "##############################",
     )},
-    {"name": "Four Corners", "map": (
+    {"name": "Four Corners", "biome": "wind", "map": (
         "##############################",
         "#.....................#******#",
         "#.....................#******#",
@@ -66,7 +74,7 @@ LEVELS = (
         "#%....................#******#",
         "##############################",
     )},
-    {"name": "Crater Crossing", "map": (
+    {"name": "Crater Crossing", "biome": "crumble", "map": (
         "##############################",
         "#........#..........#...#****#",
         "#........#..........#.@.#****#",
@@ -83,7 +91,7 @@ LEVELS = (
         "#%.......o.....#........#****#",
         "##############################",
     )},
-    {"name": "The Long Road", "map": (
+    {"name": "The Long Road", "biome": "signal", "map": (
         "##############################",
         "#.SS.........................#",
         "#.SS.....@...............a...#",
@@ -100,7 +108,7 @@ LEVELS = (
         "#%.....................#*****#",
         "##############################",
     )},
-    {"name": "Three-Step Bridge", "map": (
+    {"name": "Three-Step Bridge", "biome": "solar", "map": (
         "##############################",
         "#.............ooo......#*****#",
         "#.............ooo......#*****#",
@@ -117,7 +125,7 @@ LEVELS = (
         "#%............ooo......#*****#",
         "##############################",
     )},
-    {"name": "The Ring", "map": (
+    {"name": "The Ring", "biome": "hops", "map": (
         "##############################",
         "#.SS.........................#",
         "#.SS.........................#",
@@ -134,7 +142,7 @@ LEVELS = (
         "#............................#",
         "##############################",
     )},
-    {"name": "Pass It Back", "map": (
+    {"name": "Pass It Back", "biome": "gates", "map": (
         "##############################",
         "#......#......#......#.......#",
         "#......#......#......#.......#",
@@ -151,7 +159,7 @@ LEVELS = (
         "#%.....#......#......#*******#",
         "##############################",
     )},
-    {"name": "The Big Vault", "map": (
+    {"name": "The Big Vault", "biome": "push", "map": (
         "##############################",
         "#.........#********#.........#",
         "#.v.@...@.#********#...@...v.#",
@@ -167,9 +175,120 @@ LEVELS = (
         "#....oo.@.#.a.SS.b.#.f.F..@..#",
         "#....oo...#%..SS...#...#.....#",
         "##############################",
+    )},    # ---- Deep Space: the second chapter, each level with something new ----
+    {"name": "Ice Bowling", "biome": "rink", "map": (
+        "##############################",
+        "#........~~~~~~~~~~~~~~~~~~~v#",
+        "#........#####################",
+        "#....@...~~~~~~~~~~~~~~~~~~~v#",
+        "#........#####################",
+        "#...@....~~~~~~~~~~~~~~~~~~~v#",
+        "#........#####################",
+        "#....@...~~~~~~~~~~~~~~~~~~~v#",
+        "#........#####################",
+        "#........#*******************#",
+        "#.SS.....#*******************#",
+        "#.SS.....V*******************#",
+        "#........#*******************#",
+        "#%.......#*******************#",
+        "##############################",
+    )},
+    {"name": "Gem Hunt", "biome": "drill", "map": (
+        "##############################",
+        "#........#.........#.........#",
+        "#.$......#..b...@..#......$..#",
+        "#........#.........#.........#",
+        "#......$.#.$.......#..$......#",
+        "#........#.........#.........#",
+        "####.#########A#########B#####",
+        "#.....@...a...SS.............#",
+        "#.............SS.............#",
+        "####.#########.#########Q#####",
+        "#........#.......$.#*********#",
+        "#..$.....#.........#*********#",
+        "#........#..$..@...#*********#",
+        "#%.......#.........#*********#",
+        "##############################",
+    )},
+    {"name": "Teleport Town", "biome": "portals", "map": (
+        "##############################",
+        "#.........#.........#********#",
+        "#....@..1.#.1.......#********#",
+        "#..SS.....#.........#********#",
+        "#..SS.....#....v....#********#",
+        "#....@..2.#.......4.#********#",
+        "#%........#.........#********#",
+        "#####################********#",
+        "#.........#.......4.#********#",
+        "#.2.......#.........#********#",
+        "#.........#.........V********#",
+        "#..v......#.........#********#",
+        "#.......3.#.3.......#********#",
+        "#.........#.........#********#",
+        "##############################",
+    )},
+    {"name": "Lights Out", "biome": "hollow", "dark": True, "map": (
+        "##############################",
+        "#.......#.........#..........#",
+        "#.SS..............#.......b..#",
+        "#.SS....#...a.@...#..........#",
+        "#.......#.................@..#",
+        "#%......#.........#..........#",
+        "####A########.##########B#####",
+        "#.........#.........#********#",
+        "#.........#.........#********#",
+        "#.....@...#......@..#********#",
+        "#.........#...@.....#********#",
+        "#.....b...#.........#********#",
+        "#.........#.........#********#",
+        "#.........#.........#********#",
+        "##############################",
     )},
 )
-DOORS = "ABCDEFGV"
+# The chapters, each a run of levels the class goes through in order. The
+# class picks one on the hub, and comes back to the hub at the end of it.
+CHAPTERS = ({"name": "First Missions", "levels": list(range(0, 8))},
+            {"name": "Deep Space", "levels": list(range(8, len(LEVELS)))})
+HUB = -1             # the hub's level number
+HUB_WAIT = 3         # seconds half the class stands on a level before it goes there
+HUB_MAP = (
+        "##############################",
+        "#............................#",
+        "#............................#",
+        "#...=..=..=..=..=..=..=..=...#",
+        "#............................#",
+        "#............................#",
+        "#.............SS.............#",
+        "#.............SS.............#",
+        "#............................#",
+        "#............................#",
+        "#...=..=..=..=..=..=..=..=...#",
+        "#............................#",
+        "#............................#",
+        "#............................#",
+        "##############################",
+)
+# Which level each pad on the hub goes to: the top row is the first chapter.
+HUB_PADS = dict(zip(sorted((r, c) for r, row in enumerate(HUB_MAP) for c, ch in enumerate(row) if ch == "="),
+                    [level for chapter in CHAPTERS for level in chapter["levels"]]))
+
+
+def chapter_of(level):
+    return next((chapter for chapter in CHAPTERS if level in chapter["levels"]), {"name": "", "levels": [level]})
+
+
+def after(level):
+    """The level that comes after this one in its chapter, or the hub."""
+    levels = chapter_of(level)["levels"]
+    i = levels.index(level)
+    return levels[i + 1] if i + 1 < len(levels) else HUB
+
+
+DOORS = "ABCDEFGVQ"
+GEM_DOOR = "Q"       # opens once every gem is found, with no plate of its own
+PORTALS = "1234"
+LIGHT = 5            # a rover lights up squares this close (distance squared) on a dark level
+SLIDE_MOST = 60      # the longest slide, so a ring of ice can never loop for ever
 WAYS = {"north": (-1, 0), "south": (1, 0), "east": (0, 1), "west": (0, -1)}
 BOULDER_REST = 20    # seconds since a push before ♻ counts a boulder as lost
 NEWS_KEPT = 4
@@ -187,8 +306,16 @@ class Mission:
     a (row, column) pair."""
 
     def __init__(self, level=0):
-        self.level, self.map = level, LEVELS[level]["map"]
+        self.level, self.hub = level, level == HUB
+        self.map = HUB_MAP if self.hub else LEVELS[level]["map"]
+        self.dark = not self.hub and bool(LEVELS[level].get("dark"))
+        self.seen = set()                 # squares the class has lit up on a dark level
+        self.recycler = None
         self.doors, self.plates = {}, {}
+        self.gems, self.found = set(), 0
+        self.links = {}                   # teleport pad: the pad it takes you to
+        self.pads = dict(HUB_PADS) if self.hub else {}
+        self.choice = None                # on the hub: [level, since] while half the class stands on it
         self.boulders = []                # at None once it has gone into the ground
         self.starts, self.vault = [], set()
         self.filled, self.sunk = set(), set()
@@ -212,10 +339,18 @@ class Mission:
                     self.vault.add((r, c))
                 elif ch == "%":
                     self.recycler = (r, c)
+                elif ch == "$":
+                    self.gems.add((r, c))
+                elif ch in PORTALS:
+                    self.links.setdefault(ch, []).append((r, c))
                 elif ch in DOORS:
                     self.doors.setdefault(ch, []).append((r, c))
                 elif ch.upper() in DOORS:     # a door's plate: the same letter, small
                     self.plates.setdefault(ch.upper(), []).append((r, c))
+        self.gem_count = len(self.gems)
+        if GEM_DOOR in self.doors:
+            self.plates[GEM_DOOR] = []
+        self.links = {a: b for one, two in self.links.values() for a, b in ((one, two), (two, one))}
 
     def boulder_on(self, spot):
         return next((b for b in self.boulders if b["at"] == spot), None)
@@ -228,11 +363,13 @@ class Mission:
     def door_open(self, letter):
         """A door stays open while something is in the doorway, so it can't
         shut on a rover or a boulder."""
-        if letter in self.forced or len(self.pressed(letter)) == len(self.plates[letter]):
+        if self.done_for_good(letter) or (letter != GEM_DOOR and len(self.pressed(letter)) == len(self.plates[letter])):
             return True
         return any(s in self.rovers.values() or self.boulder_on(s) for s in self.doors[letter])
 
     def done_for_good(self, letter):
+        if letter == GEM_DOOR:
+            return letter in self.forced or not self.gems
         return letter in self.forced or all(p in self.sunk for p in self.plates[letter])
 
     def shut_door(self, spot):
@@ -242,6 +379,39 @@ class Mission:
 
     def crater(self, spot):
         return self.map[spot[0]][spot[1]] == "o" and spot not in self.filled
+
+    def icy(self, spot):
+        return self.map[spot[0]][spot[1]] == "~"
+
+    def rover_stops(self, spot):
+        """Whether a sliding rover stops before this square."""
+        return self.map[spot[0]][spot[1]] == "#" or bool(self.shut_door(spot)) \
+            or self.crater(spot) or bool(self.boulder_on(spot))
+
+    def glide(self, spot, way):
+        """Where a rover that has just driven onto `spot` going `way` ends up:
+        a teleport pad takes it across, and ice slides it on. The squares it
+        passes come first, then where it stops."""
+        dr, dc = WAYS[way]
+        passed = [spot]
+        for _ in range(SLIDE_MOST):
+            here = passed[-1]
+            if here in self.links and not self.boulder_on(self.links[here]):
+                passed.append(self.links[here])
+                break
+            if not self.icy(here):
+                break
+            ahead = (here[0] + dr, here[1] + dc)
+            if self.rover_stops(ahead):
+                break
+            passed.append(ahead)
+        return passed
+
+    def see(self, spot):
+        """A rover lights up the squares round it on a dark level."""
+        if self.dark:
+            r, c = spot
+            self.seen.update((r + i, c + j) for i in range(-2, 3) for j in range(-2, 3) if i * i + j * j <= LIGHT)
 
     def landing_spot(self, seat):
         """The nearest open ground to the lander with nobody on it, so a whole
@@ -255,7 +425,7 @@ class Mission:
                 return at
             for dr, dc in WAYS.values():
                 step = (at[0] + dr, at[1] + dc)
-                if step not in seen and self.map[step[0]][step[1]] in ".S@":
+                if step not in seen and self.map[step[0]][step[1]] in ".S@=":
                     seen.add(step)
                     queue.append(step)
         return self.starts[seat % len(self.starts)]
@@ -264,6 +434,7 @@ class Mission:
         """A rover comes in, back where it was or on the lander."""
         self.began = self.began or now
         self.rovers[seat] = spot or self.landing_spot(seat)
+        self.see(self.rovers[seat])
 
     def leave(self, seat):
         """A rover goes. Returns where it was, for if it comes back."""
@@ -271,6 +442,26 @@ class Mission:
 
     def say(self, text):
         self.news = (self.news + [text])[-NEWS_KEPT:]
+
+    def push(self, boulder, way, name, now):
+        """A rover pushes a boulder a square. On ice it slides on, and through
+        a teleport pad it comes out of the other pad still rolling, until
+        something stops it or the ground swallows it."""
+        dr, dc = WAYS[way]
+        spot = (boulder["at"][0] + dr, boulder["at"][1] + dc)
+        for _ in range(SLIDE_MOST):
+            self.roll(boulder, spot, name, now)
+            if boulder["at"] is None:
+                return
+            rolling = self.icy(spot)
+            if spot in self.links and not self.boulder_on(self.links[spot]):
+                boulder["at"] = spot = self.links[spot]
+                rolling = True
+                self.say(f"✨ {name} sent a boulder through teleport {self.map[spot[0]][spot[1]]}")
+            ahead = (spot[0] + dr, spot[1] + dc)
+            if not rolling or self.map[ahead[0]][ahead[1]] == "#" or self.shut_door(ahead) or self.boulder_on(ahead):
+                return
+            spot = ahead
 
     def roll(self, boulder, spot, name, now):
         """A pushed boulder arrives. Craters and plates swallow it."""
@@ -293,6 +484,9 @@ class Mission:
         dr, dc = WAYS[way]
         to = (r + dr, c + dc)
         door = self.shut_door(to)
+        if door == GEM_DOOR:
+            left = len(self.gems)
+            return f"The crystal door opens when the class has found every 💎 gem. {left} still to find!"
         if door:
             return f"Door {door} is shut. Something heavy on plate {door} opens it."
         if self.crater(to):
@@ -304,14 +498,26 @@ class Mission:
             past = (to[0] + dr, to[1] + dc)
             if self.map[past[0]][past[1]] == "#" or self.shut_door(past) or self.boulder_on(past):
                 return "That boulder can't go that way. Stuck? Drive onto ♻ in the landing room."
-            self.roll(boulder, past, name, now)
+            self.push(boulder, way, name, now)
             self.pushes += 1
-        self.rovers[seat] = to
         self.steps += 1
-        self.trail[to] = self.trail.get(to, 0) + 1
-        if to == self.recycler:
-            self.send_boulders_home(name, now)
+        for spot in self.glide(to, way):
+            self.arrive(seat, spot, name, now)
         return None
+
+    def arrive(self, seat, spot, name, now):
+        """A rover gets to a square, driving, sliding or through a teleport."""
+        self.rovers[seat] = spot
+        self.trail[spot] = self.trail.get(spot, 0) + 1
+        self.see(spot)
+        if spot in self.gems:
+            self.gems.discard(spot)
+            self.found += 1
+            left = len(self.gems)
+            self.say(f"💎 {name} found a gem! {left} to go" if left else
+                     f"💎 {name} found the last gem! The crystal door is open!")
+        if spot == self.recycler:
+            self.send_boulders_home(name, now)
 
     def send_boulders_home(self, name, now):
         """♻ Lost boulders go back where they started, even ones that went into
@@ -335,6 +541,7 @@ class Mission:
 
     def go_home(self, seat):
         self.rovers[seat] = self.landing_spot(seat)
+        self.see(self.rovers[seat])
 
     def open_all(self):
         """The teacher opens every door and fills every crater: the way to end
@@ -358,7 +565,16 @@ class Mission:
                     continue
                 seen.add(spot)
                 queue.append(spot)
+                if spot in self.links and self.links[spot] not in seen:
+                    seen.add(self.links[spot])
+                    queue.append(self.links[spot])
         return seen
+
+    def gem_job(self, reach):
+        left, marks = len(self.gems), [list(g) for g in sorted(self.gems) if g in reach]
+        where = " Look in the dark!" if self.dark else " Spread out and look!"
+        return {"text": f"The crystal door opens when the class has found every 💎 gem. "
+                        f"{self.found} of {self.gem_count} found.{where}", "marks": marks}
 
     def door_job(self, letter):
         plates, doors = self.plates[letter], self.doors[letter]
@@ -383,6 +599,9 @@ class Mission:
         anyone off to something that's already done."""
         if self.won:
             return None
+        if self.hub:
+            return {"text": "Pick a level together! Drive onto one to vote for it. When half the class "
+                            "is on the same level, you all go there.", "marks": []}
         reach = self.reachable()
         if reach & self.vault:
             return {"text": "The way is clear! Everyone drive to the gold vault.", "marks": []}
@@ -393,8 +612,10 @@ class Mission:
                     if ch != "#" and (r, c) not in reach and (r - dr, c - dc) in reach:
                         beside.append(((r, c), (dr, dc)))
         doors = sorted({self.map[r][c] for (r, c), _ in beside if self.map[r][c] in DOORS})
-        ready = [d for d in doors if all(p in reach or p in self.sunk for p in self.plates[d])]
+        ready = [d for d in doors if d != GEM_DOOR and all(p in reach or p in self.sunk for p in self.plates[d])]
         craters = [(s, way) for s, way in beside if self.crater(s)]
+        if GEM_DOOR in doors and self.gems & reach:
+            return self.gem_job(reach)
         if ready:
             return self.door_job(ready[0])
         if craters:
@@ -402,9 +623,10 @@ class Mission:
             text = ("Wide craters! Push boulders along one row, one after another, to make a bridge." if wide else
                     "A crater is in the way. Push a boulder into it to fill it in, then you can drive over it.")
             return {"text": text, "marks": [list(s) for s, _ in craters]}
+        doors = [d for d in doors if d != GEM_DOOR]
         if doors:
             return self.door_job(doors[0])
-        return {"text": "Look for a plate you haven't pressed yet.", "marks": []}
+        return {"text": "Look for a plate you haven't pressed yet, or a gem you haven't found.", "marks": []}
 
     def on_plate(self, spot):
         """The door this square holds, if a rover standing here is holding one."""
@@ -418,6 +640,10 @@ class Mission:
         spot, job = self.rovers.get(seat), self.next_job()
         if not spot or not job:
             return None
+        if self.hub:
+            level = self.pads.get(spot)
+            return None if level is None else \
+                f"🗳 You're voting for {LEVELS[level]['name']}. Wait here for your friends!"
         if spot in self.vault:
             return "🎉 You're in the vault! Stay here and cheer for your friends."
         holding = self.on_plate(spot)
@@ -458,7 +684,28 @@ class Mission:
         keep the class from finishing."""
         return max(1, math.ceil(len(set(self.rovers) - {HELPER}) / 2))
 
+    def vote(self, now):
+        """On the hub: the level half the class has stood on for HUB_WAIT
+        seconds, or None. A level counts its votes from when it got enough."""
+        votes = self.votes()
+        top = max(votes, key=lambda level: (votes[level], -level), default=None)
+        if top is None or votes[top] < self.needed():
+            self.choice = None
+            return None
+        if not self.choice or self.choice[0] != top:
+            self.choice = [top, now]
+        return top if now - self.choice[1] >= HUB_WAIT else None
+
+    def votes(self):
+        out = {}
+        for seat, spot in self.rovers.items():
+            if seat != HELPER and spot in self.pads:
+                out[self.pads[spot]] = out.get(self.pads[spot], 0) + 1
+        return out
+
     def check_win(self, now):
+        if self.hub:
+            return
         if not self.won and self.rovers and self.in_vault() >= self.needed():
             self.won = now
             self.say("🎉 The class did it together!")
@@ -474,14 +721,33 @@ class Mission:
                 "sunk": [list(s) for s in self.sunk],
                 "doors": {letter: {"open": self.door_open(letter),
                                    "good": self.done_for_good(letter),
-                                   "pressed": len(self.pressed(letter)),
-                                   "plates": len(self.plates[letter])} for letter in self.doors},
+                                   "pressed": self.found if letter == GEM_DOOR else len(self.pressed(letter)),
+                                   "plates": self.gem_count if letter == GEM_DOOR else len(self.plates[letter])}
+                          for letter in self.doors},
                 "pressed": [list(p) for letter in self.doors for p in self.pressed(letter)],
                 "news": self.news, "in_vault": self.in_vault(), "needed": self.needed(),
                 "job": self.next_job(), "recap": recap, "record": self.record,
                 "shouts": [s[:3] for s in self.shouts if now - s[3] < SHOUT_LASTS],
                 "secs": round((self.won or now) - self.began) if self.began else 0, "won": bool(self.won),
-                "level": self.level, "levels": len(LEVELS), "name": LEVELS[self.level]["name"]}
+                "level": self.level, "levels": len(LEVELS), **self.where(),
+                "gems": [list(g) for g in sorted(self.gems)], "found": self.found, "gem_count": self.gem_count,
+                "seen": self.dark and "".join("1" if (r, c) in self.seen else "0"
+                                              for r in range(len(self.map)) for c in range(len(self.map[0]))),
+                "hub": self.hub and [{"r": r, "c": c, "level": level, "name": LEVELS[level]["name"]}
+                                     for (r, c), level in sorted(self.pads.items())],
+                "votes": self.hub and {str(k): v for k, v in self.votes().items()},
+                "choice": self.hub and self.choice and {"level": self.choice[0],
+                                                         "in": max(0, math.ceil(self.choice[1] + HUB_WAIT - now))}}
+
+    def where(self):
+        """The level's name and place, for the page: its chapter, and which of
+        that chapter's levels it is."""
+        if self.hub:
+            return {"name": "Mission Hub", "chapter": None, "biome": "hub"}
+        chapter = chapter_of(self.level)
+        return {"name": LEVELS[self.level]["name"], "biome": LEVELS[self.level].get("biome", "team"),
+                "chapter": {"name": chapter["name"], "at": chapter["levels"].index(self.level) + 1,
+                            "of": len(chapter["levels"])}}
 
 
 # ---- 🤖 Code my rover ------------------------------------------------------------
@@ -535,11 +801,17 @@ class PilotFloor(planet.Easel):
             return "boulder"
         if spot in game.vault:
             return "vault"
+        if spot in game.gems:
+            return "gem"
+        if spot in game.links:
+            return "teleport"
+        if game.icy(spot):
+            return "ice"
         return "plate" if ch.islower() and ch.upper() in game.plates else "ground"
 
 
 class Pilot(planet.Rover):
-    look_words = {"rock", "door", "crater", "boulder", "plate", "vault", "ground"}
+    look_words = {"rock", "door", "crater", "boulder", "plate", "vault", "ground", "gem", "teleport", "ice"}
 
     def __init__(self, code, world):
         super().__init__(code, world, {"look": None})
