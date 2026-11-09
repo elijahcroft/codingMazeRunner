@@ -610,6 +610,12 @@ function teamFollow(out) {
   for (const [seat, r, c] of out.rovers) {
     here.add(seat);
     const rover = team.rovers.get(seat);
+    // Your own rover going further than a square: through a teleport, or a slide on ice.
+    if (rover && seat === team.you && Math.abs(rover.tr - r) + Math.abs(rover.tc - c) > 1 && team.map) {
+      const ch = teamSquare(r, c);
+      if (teamIsPortal(ch)) teamSound("portal");
+      else if (teamSquare(rover.tr, rover.tc) === "~" || teamSquare(r, c) === "~" || ch === "$") teamSound("slide");
+    }
     if (rover) Object.assign(rover, {tr: r, tc: c});
     else team.rovers.set(seat, {seat, r, c, tr: r, tc: c, angle: Math.PI / 2});
   }
@@ -622,7 +628,7 @@ function teamCheer(old, out) {
   for (const [r, c] of fresh) team.pops.push({r, c, at: performance.now()});
   if (fresh.length) teamSound(out.sunk.length > old.sunk.length ? "gift" : "sample");
   if (out.won && !old.won) { teamSound("win"); team.wonAt = performance.now(); teamBurst(team.size / TEAM_COLS); }
-  if (out.found > old.found) teamSound(out.gems.length ? "sample" : "gift");
+  if (out.found > old.found) teamSound(out.gems.length ? "crystal" : "gift");
 }
 function teamHear(out) {
   for (const [n, seat, words] of out.shouts) if (n > team.heard) {
@@ -673,7 +679,8 @@ function teamTake(out) {
     if (team.auto) teamCodeSay("New level! Your program stopped, so check your code still fits this map.");
     Object.assign(team, {map: out.map, bg: null, boulders: [], path: [], auto: null, bubbles: [], heard: 0, confetti: [], links: teamLinks(out.map)});
     team.rovers.clear();
-    if (out.hub && team.level == null) teamSay("🗳 Drive onto a level's pad to vote for it. When half the class is on one, you all go!");
+    if (team.level == null && out.hub) teamSay("🗳 Drive onto a level's pad to vote for it. When half the class is on one, you all go!");
+    else if (team.level == null && TEAM_NEWS[out.biome]) teamSay(TEAM_NEWS[out.biome]);
   }
   if (out.people) team.people = new Map(out.people.map(p => [p.seat, p]));
   Object.assign(team, {you: out.you, seq: out.seq, roster: out.roster, level: out.level, view: out});

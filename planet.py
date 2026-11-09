@@ -6000,7 +6000,32 @@ STAR_TIPS.update({
             "compact": "while True, then if / elif / elif / else, each with its move: 9 lines."},
 })
 
-VOYAGE_ZONES = [PAINT_PLANET, PATTERN_STUDIO, MYSTERY_MURALS]
+
+# 🦋 Picture Zoo: more pictures to paint by hand, for the youngest. Animals.
+ZOO = (("v19", "Goldfish", "A goldfish 🐟 with a big white eye.",
+        ["..ooo.o", ".oooooo", "owooooo", ".oooooo", "..ooo.o"]),
+       ("v20", "Butterfly", "A purple butterfly 🦋 with a brown body down the middle.",
+        ["pp...pp", "pppnppp", ".ppnpp.", "pppnppp", "pp...pp"]),
+       ("v21", "Happy Frog", "A frog 🐸 with white eyes and a pink smile.",
+        [".w...w.", "ggg.ggg", "ggggggg", "gkkkkkg", "ggggggg", "g.g.g.g"]),
+       ("v22", "Night Owl", "An owl 🦉 with big yellow eyes and an orange beak.",
+        ["n...n", "nnnnn", "nynyn", "nnonn", "nnnnn", ".n.n."]),
+       ("v23", "Octopus", "An octopus 🐙 waving its legs.",
+        ["..ppp..", ".ppppp.", ".pwpwp.", ".ppppp.", "p.p.p.p", "p.p.p.p"]),
+       ("v24", "Dinosaur", "The biggest animal in the zoo: a dinosaur 🦕!",
+        [".....ggg", ".....gwg", "g...gggg", "gg.gggg.", ".ggggg..", ".g...g.."]))
+PICTURE_ZOO = {
+    "key": "zoo", "name": "Picture Zoo", "rules": set(), "sensors": ["look", "at_beacon"], "kids": True,
+    "blurb": "Paint the animals! Drive over every dot and the animal appears.",
+    "hints": PAINT_PLANET["hints"],
+    "sites": [site(key, name, brief + " Paint every dot. Try a snake: across, down one, back, down one.",
+                   [picture(art)], reference=sweep(len(art), len(art[0])), compact=len(sweep(len(art), len(art[0])).splitlines()))
+              for key, name, brief, art in ZOO]}
+for _s in PICTURE_ZOO["sites"]:
+    _s["stars_max"] = 1
+STAR_TIPS.update({key: {"compact": "Paint every dot."} for key, *_ in ZOO})
+
+VOYAGE_ZONES = [PAINT_PLANET, PICTURE_ZOO, PATTERN_STUDIO, MYSTERY_MURALS]
 VOYAGE_ORDER = [s["key"] for z in VOYAGE_ZONES for s in z["sites"]]
 
 

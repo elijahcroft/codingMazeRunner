@@ -713,7 +713,7 @@ before or after.
 
 ## 🚀 Star Voyage: new levels for everyone
 
-Eighteen new levels that **every student can open straight away**, wherever they are on the
+Twenty-four new levels that **every student can open straight away**, wherever they are on the
 planet, with easy mode on or off. Nothing has to be finished first, and they're off the main
 route, so they never hold anyone up. A glowing **🚀 New levels** button at the top of the page
 takes a student to the next one they haven't done, and stays until they've done them all. The
@@ -726,6 +726,11 @@ every dot wins, so the picture comes out as the rover goes: a rainbow, a blue bo
 heart, a rocket and a space cat. Driving over bare ground doesn't spoil anything. The later
 pictures are big, and the card suggests a snake: across, down one, back, down one, in a loop.
 Painting all six earns 🎨 **Planet Painter** and the **Paint Splatter** paint.
+
+**🦋 Picture Zoo** (6 levels, drive by hand first, one star each). More pictures for the youngest,
+all animals: a goldfish, a butterfly, a frog, an owl, an octopus and a dinosaur. Each can be
+painted by the snake loop (`south()`, then a loop of across, down, back, down), but driving it
+by hand is just as good. All six earn 🦋 **Zookeeper** and a pet **Butterfly**.
 
 **🖌 Pattern Studio** (6 levels, typed, three stars). Bigger pictures made of a pattern, where
 the extra stars need the idea the level is about: stripes (a loop), a rainbow flag (a name for

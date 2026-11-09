@@ -3088,6 +3088,7 @@ GARAGE = [
     {"slot": "paint", "key": "goldtruck", "name": "Gold Truck", "badge": "master_cargo", "legend": True},
     # 🚀 Star Voyage rewards.
     {"slot": "paint", "key": "splatter", "name": "Paint Splatter", "badge": "v_painter"},
+    {"slot": "pet", "key": "butterfly", "name": "Butterfly", "badge": "v_zoo"},
     {"slot": "topper", "key": "beret", "name": "Artist's beret", "badge": "v_studio", "legend": True},
     {"slot": "trail", "key": "brushstrokes", "name": "Brush strokes", "badge": "v_murals", "legend": True},
     # The Paint Shop: a paint the student codes themselves (look["art"]).
@@ -3129,6 +3130,7 @@ PLANET_BADGES.update(HALLOWEEN_BADGES)
 # 🚀 Star Voyage: one for each zone, and a garage reward for each (in GARAGE).
 VOYAGE_BADGES = {
     "v_painter": ("🎨", "Planet Painter", "Paint every picture on Paint Planet"),
+    "v_zoo": ("🦋", "Zookeeper", "Paint every animal in the Picture Zoo"),
     "v_studio": ("🖌", "Pattern Master", "Earn every star in Pattern Studio"),
     "v_murals": ("🔍", "Mystery Solver", "Earn every star in Mystery Murals"),
 }
@@ -4068,6 +4070,8 @@ def planet_record(p, key, code, results):
             badge("master_" + z["key"])
     if all(x["key"] in entry["solved"] for x in planet.PAINT_PLANET["sites"]):
         badge("v_painter")
+    if all(x["key"] in entry["solved"] for x in planet.PICTURE_ZOO["sites"]):
+        badge("v_zoo")
     if all(all(entry["stars"].get(x["key"], [False])) for x in planet.PATTERN_STUDIO["sites"]):
         badge("v_studio")
     if all(all(entry["stars"].get(x["key"], [False])) for x in planet.MYSTERY_MURALS["sites"]):
@@ -4155,6 +4159,8 @@ def planet_record(p, key, code, results):
     today["runs"] = today.get("runs", 0) + 1
     today["wins"] = today.get("wins", 0) + bool(reached_any)
     today["new_levels"] = today.get("new_levels", 0) + (new_level and key in entry["solved"])
+    if new_level and key in entry["solved"] and "paint" in planet_variant(p, key):
+        feed(f"🎨 {p['name']} painted {s['name']}!")   # the class screen's feed
     hunt = planet_class_settings["challenge"] or {}
     return {"stars": shown_stars(key, run_stars), "in_race": in_race,
             "bug_clue": hunt.get("clue") if hunt.get("key") == key and not reached_any

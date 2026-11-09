@@ -1573,6 +1573,19 @@ Object.assign(PAINTS, {
   }},
 });
 Object.assign(PETS, {
+  butterfly(ctx, s, t) {   // a butterfly from the Picture Zoo, wings opening and closing, in Paint Planet colours
+    const open = CALM ? 1 : .55 + .45 * Math.abs(Math.sin(t / 160));
+    for (const side of [-1, 1]) {
+      ctx.save(); ctx.scale(side * open, 1);
+      ctx.fillStyle = "#a368ff"; ctx.beginPath(); ctx.ellipse(.22 * s, -.14 * s, .2 * s, .17 * s, -.4, 0, 7); ctx.fill();
+      ctx.fillStyle = "#ff8ad8"; ctx.beginPath(); ctx.ellipse(.18 * s, .14 * s, .14 * s, .12 * s, .4, 0, 7); ctx.fill();
+      ctx.fillStyle = "#ffd84a"; ctx.beginPath(); ctx.arc(.25 * s, -.15 * s, .05 * s, 0, 7); ctx.fill();
+      ctx.restore();
+    }
+    ctx.fillStyle = "#5a3a22"; ctx.beginPath(); ctx.ellipse(0, 0, .045 * s, .22 * s, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = "#5a3a22"; ctx.lineWidth = s * .025; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(0, -.2 * s); ctx.lineTo(-.08 * s, -.34 * s); ctx.moveTo(0, -.2 * s); ctx.lineTo(.08 * s, -.34 * s); ctx.stroke();
+  },
   blackcat(ctx, s, t) {   // a black cat with green eyes, its tail swishing, an ear flicking now and then
     const swish = Math.sin(t / 380) * .25, flick = t % 3000 > 2850 ? .08 : 0;
     ctx.strokeStyle = "#16121c"; ctx.lineWidth = s * .09; ctx.lineCap = "round";

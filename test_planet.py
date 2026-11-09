@@ -3287,3 +3287,8 @@ class StarVoyageTests(unittest.TestCase):
         out = planet.drive('print(look("east"))\neast()\nprint(look("west"))\n', v, set(), 0)
         self.assertEqual([p["text"] for p in out["prints"]], ["paint", "ground"])
         self.assertIsNone(planet.check_look_words(ast.parse('look("east") == "paint"', mode="eval").body))
+
+    def test_a_first_painting_goes_on_the_class_feed(self):
+        pid = self.join()
+        self.post("/planet/run", {"id": pid, "site": "v1", "code": "east(6)\n"})
+        self.assertTrue(any("painted Rainbow Road" in line["text"] for line in server.planet_feed[-3:]))
