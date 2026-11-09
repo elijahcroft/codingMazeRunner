@@ -81,7 +81,7 @@ class MapTests(unittest.TestCase):
         for number, level in enumerate(LEVELS):
             g = Mission(number)
             self.assertEqual(set(g.doors), set(g.plates), level["name"])
-            self.assertTrue(g.starts and g.vault and g.recycler, level["name"])
+            self.assertTrue(g.starts and (g.vault or g.mural) and g.recycler, level["name"])
 
     def finish(self, crew, one, two):
         crew.drive(one, sorted(crew.game.vault)[0])
@@ -93,7 +93,8 @@ class MapTests(unittest.TestCase):
         for number in range(len(LEVELS)):
             crew = Crew(1, number)
             crew.game.open_all()
-            crew.drive(0, sorted(crew.game.vault)[0])
+            if not crew.game.mural:          # a mural has no vault: painting it is the level
+                crew.drive(0, sorted(crew.game.vault)[0])
 
     def test_two_rovers_can_finish_landing_bay(self):
         crew = Crew(2, NUMBER["Landing Bay"])
@@ -366,6 +367,46 @@ class MapTests(unittest.TestCase):
         crew.drive(two, sorted(g.vault)[0])
         g.check_win(crew.now)
         self.assertTrue(g.won)
+
+    # ---- Paint Party ------------------------------------------------------------
+
+    def test_two_rovers_can_paint_every_mural(self):
+        for chapter_level in planet_team.CHAPTERS[2]["levels"]:
+            crew = Crew(2, chapter_level)
+            g = crew.game
+            self.assertGreater(g.gem_count, 60, LEVELS[chapter_level]["name"])
+            seat = 0
+            while g.gems:
+                at = g.rovers[seat]
+                dot = min(g.gems, key=lambda d: (abs(d[0] - at[0]) + abs(d[1] - at[1]), d))
+                crew.drive(seat, dot)
+                g.check_win(crew.now)
+                seat = 1 - seat
+            self.assertTrue(g.won, LEVELS[chapter_level]["name"])
+
+    def test_a_mural_is_won_by_the_last_dot_not_the_vault(self):
+        g = Mission(planet_team.CHAPTERS[2]["levels"][0])
+        g.enter(0, 0)
+        g.check_win(1)
+        self.assertFalse(g.won)
+        self.assertIn("Paint the picture together", g.next_job()["text"])
+        self.assertIn("🎨", g.your_job(0))
+        last = g.gems.pop()
+        g.gems.clear()
+        g.gems.add(last)
+        g.rovers[0] = (last[0], last[1] - 1) if g.map[last[0]][last[1] - 1] != "#" else (last[0] - 1, last[1])
+        way = "east" if g.rovers[0][0] == last[0] else "south"
+        g.move(0, way, "Ada", 2)
+        g.check_win(3)
+        self.assertTrue(g.won)
+        self.assertIn("last dot", " ".join(g.news))
+
+    def test_every_dot_of_a_mural_has_a_colour(self):
+        for level in planet_team.CHAPTERS[2]["levels"]:
+            m, paint = LEVELS[level]["map"], LEVELS[level]["paint"]
+            for row, colours in zip(m, paint):
+                for ch, colour in zip(row, colours):
+                    self.assertEqual(ch == "$", colour in planet.PAINT_COLOURS, LEVELS[level]["name"])
 
 
 class DeepSpaceRuleTests(unittest.TestCase):
@@ -721,6 +762,9 @@ class NextJobTests(unittest.TestCase):
         for number in range(len(LEVELS)):
             game = Mission(number)
             job = game.next_job()
+            if game.mural:                   # hundreds of dots: the words say what to do, and each rover gets its own patch
+                self.assertIn("Paint", job["text"])
+                continue
             self.assertTrue(job["marks"], LEVELS[number]["name"])
             for r, c in job["marks"]:
                 self.assertIn(game.map[r][c].upper(), "OABCDEFGV$")

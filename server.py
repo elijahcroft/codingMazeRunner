@@ -4159,7 +4159,7 @@ def planet_record(p, key, code, results):
     today["runs"] = today.get("runs", 0) + 1
     today["wins"] = today.get("wins", 0) + bool(reached_any)
     today["new_levels"] = today.get("new_levels", 0) + (new_level and key in entry["solved"])
-    if new_level and key in entry["solved"] and "paint" in planet_variant(p, key):
+    if new_level and key in entry["solved"] and any("paint" in v for v in s.get("variants", ())):
         feed(f"🎨 {p['name']} painted {s['name']}!")   # the class screen's feed
     hunt = planet_class_settings["challenge"] or {}
     return {"stars": shown_stars(key, run_stars), "in_race": in_race,
@@ -4394,7 +4394,8 @@ def lounge_view(p, after):
             "cheers": LOUNGE_CHEERS, "emotes": LOUNGE_EMOTES,
             "ball": dict(ball, ago=round(time.time() - ball["at"], 2)),
             "trophies": [{"name": level["name"], "won": i in planet_class_settings["team_wins"],
-                          "best": planet_class_settings["team_best"].get(str(i))}
+                          "best": planet_class_settings["team_best"].get(str(i)),
+                          "chapter": planet_team.CHAPTERS.index(planet_team.chapter_of(i))}
                          for i, level in enumerate(planet_team.LEVELS)],
             "rovers": [lounge_row(players[k], r) for k, r in lounge["here"].items()],
             "events": [e for e in lounge["events"] if isinstance(after, int) and e["n"] > after],
@@ -4627,6 +4628,8 @@ def team_view(p, query):
         out.update(wins=planet_class_settings["team_wins"], bests=planet_class_settings["team_best"])
     if query.get("level", [""])[0] != str(mission.level):
         out["map"] = list(mission.map)
+        if mission.mural:
+            out["paint"] = list(planet_team.LEVELS[mission.level]["paint"])
     if query.get("roster", [""])[0] != str(room["roster"]):
         out["people"] = [team_row(players[k], s) for k, s in room["here"].items() if s["seat"] in mission.rovers]
         if room["helper"]:

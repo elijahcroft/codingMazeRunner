@@ -814,16 +814,18 @@ can type a new name after a wipe. If that keeps happening, close the lounge.
 shows the room with no rover of its own.
 
 **Trophies:** the shelf on the wall has one trophy for each Team Mission level, lit up once the class
-has finished that level: 🏆 for First Missions on the top shelf, 💎 for Deep Space below. They stay
+has finished that level: 🏆 for First Missions, 💎 for Deep Space and 🎨 for Paint Party, half on
+each shelf. They stay
 after a restart and after 🗺 Back to the hub. A level finished
 with 🔓 Open the doors doesn't earn one. They're for the whole class, so no names go on them.
 
 ## 🤝 The Team Mission: the whole class on one map, live
 
 Everyone's rover is on the same map at the same moment, and everyone sees every rover and
-every boulder move as it happens. There are sixteen levels in two chapters: **First Missions**
-(the eight your class already finished) and **Deep Space** (eight new ones, each with something
-new: ice, gems, teleport pads and the dark). When enough rovers reach the gold vault, the class
+every boulder move as it happens. There are twenty levels in three chapters: **First Missions**
+(the eight your class already finished), **Deep Space** (eight new ones, each with something
+new: ice, gems, teleport pads and the dark) and **🎨 Paint Party** (four giant pictures the class
+paints together). When enough rovers reach the gold vault, the class
 gets a 10 second celebration and everyone rolls onto the next level of the chapter together.
 After a chapter's last level they go back to the hub.
 
@@ -888,6 +890,11 @@ Turning the switch off keeps the mission as it is until you open it again.
 - ✨ **Teleport pads.** Drive onto one and you come out on the pad with the same number. A boulder
   pushed onto a pad comes out of the other one still rolling, one square further on (and keeps
   sliding if that's ice).
+- 🎨 **Paint Party.** No doors and no vault: the map is a giant picture made of dots of paint,
+  and the first rover over a dot paints it. The level is won when every dot is painted, so
+  everyone can help, however new they are. Each rover is told which way its own patch of dots
+  is, so the class spreads out. A rainbow (235 dots), a smiling sun, a rocket at night and a
+  ringed planet. With a whole class it takes a minute or two; with two rovers, several.
 - 🔦 **The dark.** On Lights Out and Crystal Caves the map is black except round the rovers, and
   everywhere the class has been stays dimly lit. The more the class spreads out, the more it sees.
 

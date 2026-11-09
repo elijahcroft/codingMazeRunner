@@ -312,32 +312,114 @@ LEVELS = (
         "##############################",
     )},
 )
+# ---- 🎨 Paint Party: the class paints one giant picture together ----------------
+# Every square of the picture is a dot of paint, and the first rover over one
+# paints it. When every dot is painted the level is won: no doors, no vault, so
+# anyone can help. Each is (name, look, lander's top left, ♻, the picture),
+# counted inside the rock edge, the picture in Paint Planet's colours.
+MURALS = (
+    ("Rainbow Party", "paintparty", (11, 13), (12, 10), (
+        "........rrrrrrrrrrrr........",
+        "..w...rrrrroooooorrrwr......",
+        "....rrrroooyyyyyyooorrrr.w..",
+        "...rrrowyyyggggggyyyoorrr...",
+        ".wrrrooyyggbbbbbbggyyoorrr..",
+        "..rrooyggbbppppppbbggyoorr..",
+        ".rrooyggbppp....pppbggyoorr.",
+        ".rroyggbpp........ppbggyorr.",
+        "rrooygbp............pbgyoorr",
+        "rroygbpp............ppbgyorr",
+        "rroygbp..............pbgyorr",
+        "rroygbp..............pbgyorr",
+        "royygbp..............pbgyyor",
+    )),
+    ("Sunny Day", "paintparty", (11, 1), (0, 0), (
+        ".............o..............",
+        "......o......o.......o......",
+        ".......o....yyyy....o.......",
+        "..........yyyyyyyy..........",
+        ".........yynyyyynyy.........",
+        "........yyyyyyyyyyyy........",
+        "...o.o..yyyyyyyyyyyy..o.o...",
+        "........yyryyyyyyryy........",
+        ".........yyrrrrrryy.........",
+        "..........yyyyyyyy..........",
+        ".......o....yyyy....o.......",
+        "......o.......o......o......",
+        "..............o.............",
+    )),
+    ("Rocket Night", "paintnight", (11, 6), (12, 0), (
+        "..............r.............",
+        "..y..........rrr............",
+        "............wwwww.....y.....",
+        ".....y......wwbww...........",
+        "............wbbbw.y.........",
+        "............wwbww........y..",
+        ".y..........wwwww...........",
+        "...........rwwwwwr..........",
+        "..........rrwwwwwrr..y......",
+        "....y.....r.ooooo.r.........",
+        ".............ooo..........y.",
+        "..y...........o.............",
+        ".................y..........",
+    )),
+    ("Ringed Planet", "paintnight", (11, 12), (12, 0), (
+        "..w.........................",
+        ".........................w..",
+        ".....w....pppppppp..........",
+        "yyyyyyyykkkkkkkkkkkk........",
+        "yyyy...pppppppppppppp.......",
+        ".yyy...ppppppppppppppy......",
+        "w...yy.kkkkkkkkkkkkkk.yy....",
+        "......yyyyppppppppppp...yyy.",
+        ".......pppyyyyppppppp...yyyy",
+        "........kkkkkkkyyyyyyyyyyyyy",
+        "..........pppppppp..........",
+        "...w........................",
+        "........................w...",
+    )),
+)
+
+
+def mural_level(name, biome, lander, recycler, art):
+    rows = [["$" if ch != "." else "." for ch in line] for line in art]
+    for dr in (0, 1):
+        for dc in (0, 1):
+            rows[lander[0] + dr][lander[1] + dc] = "S"
+    rows[recycler[0]][recycler[1]] = "%"
+    wall = "#" * (len(art[0]) + 2)
+    return {"name": name, "biome": biome, "mural": True,
+            "map": tuple([wall] + ["#" + "".join(r) + "#" for r in rows] + [wall]),
+            "paint": tuple(["." * len(wall)] + ["." + line + "." for line in art] + ["." * len(wall)])}
+
+
+LEVELS = LEVELS + tuple(mural_level(*m) for m in MURALS)
+
 # The chapters, each a run of levels the class goes through in order. The
 # class picks one on the hub, and comes back to the hub at the end of it.
 CHAPTERS = ({"name": "First Missions", "levels": list(range(0, 8))},
-            {"name": "Deep Space", "levels": list(range(8, len(LEVELS)))})
+            {"name": "Deep Space", "levels": list(range(8, 16))},
+            {"name": "Paint Party", "levels": list(range(16, len(LEVELS)))})
 HUB = -1             # the hub's level number
 HUB_WAIT = 3         # seconds half the class stands on a level before it goes there
-HUB_MAP = (
-        "##############################",
-        "#............................#",
-        "#............................#",
-        "#...=..=..=..=..=..=..=..=...#",
-        "#............................#",
-        "#............................#",
-        "#.............SS.............#",
-        "#.............SS.............#",
-        "#............................#",
-        "#............................#",
-        "#...=..=..=..=..=..=..=..=...#",
-        "#............................#",
-        "#............................#",
-        "#............................#",
-        "##############################",
-)
-# Which level each pad on the hub goes to: the top row is the first chapter.
-HUB_PADS = dict(zip(sorted((r, c) for r, row in enumerate(HUB_MAP) for c, ch in enumerate(row) if ch == "="),
-                    [level for chapter in CHAPTERS for level in chapter["levels"]]))
+def hub_map():
+    """The hub: a row of pads for each chapter, four rows apart, with room
+    above each row for its name and below for the levels' names. The lander
+    is in the bottom right corner, out of the way."""
+    rows = [["."] * 28 for _ in range(13)]
+    pads = {}
+    for i, chapter in enumerate(CHAPTERS):
+        for k, level in enumerate(chapter["levels"]):
+            rows[1 + 4 * i][3 + 3 * k] = "="
+            pads[(2 + 4 * i, 4 + 3 * k)] = level
+    for r, c in ((11, 26), (11, 27), (12, 26), (12, 27)):
+        rows[r][c] = "S"
+    wall = "#" * 30
+    return tuple([wall] + ["#" + "".join(r) + "#" for r in rows] + [wall]), pads
+
+
+# Which level each pad on the hub goes to.
+HUB_MAP, HUB_PADS = hub_map()
 
 
 def chapter_of(level):
@@ -376,6 +458,7 @@ class Mission:
         self.level, self.hub = level, level == HUB
         self.map = HUB_MAP if self.hub else LEVELS[level]["map"]
         self.dark = not self.hub and bool(LEVELS[level].get("dark"))
+        self.mural = not self.hub and bool(LEVELS[level].get("mural"))
         self.seen = set()                 # squares the class has lit up on a dark level
         self.recycler = None
         self.doors, self.plates = {}, {}
@@ -581,8 +664,14 @@ class Mission:
             self.gems.discard(spot)
             self.found += 1
             left = len(self.gems)
-            self.say(f"💎 {name} found a gem! {left} to go" if left else
-                     f"💎 {name} found the last gem! The crystal door is open!")
+            if self.mural:      # a dot of paint: news only at the halfway mark and the end
+                if not left:
+                    self.say(f"🎨 {name} painted the last dot!")
+                elif self.found == self.gem_count // 2:
+                    self.say("🎨 Half the picture is painted!")
+            else:
+                self.say(f"💎 {name} found a gem! {left} to go" if left else
+                         f"💎 {name} found the last gem! The crystal door is open!")
         if spot == self.recycler:
             self.send_boulders_home(name, now)
 
@@ -669,6 +758,9 @@ class Mission:
         if self.hub:
             return {"text": "Pick a level together! Drive onto one to vote for it. When half the class "
                             "is on the same level, you all go there.", "marks": []}
+        if self.mural:
+            return {"text": f"Paint the picture together! {self.found} of {self.gem_count} dots are painted. "
+                            f"Spread out, so everyone paints a different part.", "marks": []}
         reach = self.reachable()
         if reach & self.vault:
             return {"text": "The way is clear! Everyone drive to the gold vault.", "marks": []}
@@ -711,6 +803,8 @@ class Mission:
             level = self.pads.get(spot)
             return None if level is None else \
                 f"🗳 You're voting for {LEVELS[level]['name']}. Wait here for your friends!"
+        if self.mural:
+            return self.gem_hint(seat, sorted(self.gems)) if self.gems else None
         if spot in self.vault:
             return "🎉 You're in the vault! Stay here and cheer for your friends."
         holding = self.on_plate(spot)
@@ -751,6 +845,8 @@ class Mission:
         dr, dc = mine[0] - r, mine[1] - c
         ways = [f"{abs(dc)} square{'s' if abs(dc) != 1 else ''} {'right' if dc > 0 else 'left'}" if dc else "",
                 f"{abs(dr)} {'down' if dr > 0 else 'up'}" if dr else ""]
+        if self.mural:
+            return f"🎨 Paint the dots {' and '.join(w for w in ways if w)} from you. Keep going!"
         return f"💎 The gem for you is {' and '.join(w for w in ways if w)}. Go get it!"
 
     def helper_step(self):
@@ -797,6 +893,11 @@ class Mission:
     def check_win(self, now):
         if self.hub:
             return
+        if self.mural:
+            if not self.won and self.rovers and not self.gems:
+                self.won = now
+                self.say("🎉 The class painted the whole picture together!")
+            return
         if not self.won and self.rovers and self.in_vault() >= self.needed():
             self.won = now
             self.say("🎉 The class did it together!")
@@ -822,10 +923,13 @@ class Mission:
                 "secs": round((self.won or now) - self.began) if self.began else 0, "won": bool(self.won),
                 "level": self.level, "levels": len(LEVELS), **self.where(),
                 "gems": [list(g) for g in sorted(self.gems)], "found": self.found, "gem_count": self.gem_count,
+                "mural": self.mural,
                 "seen": self.dark and "".join("1" if (r, c) in self.seen else "0"
                                               for r in range(len(self.map)) for c in range(len(self.map[0]))),
-                "hub": self.hub and [{"r": r, "c": c, "level": level, "name": LEVELS[level]["name"]}
+                "hub": self.hub and [{"r": r, "c": c, "level": level, "name": LEVELS[level]["name"],
+                                      "chapter": CHAPTERS.index(chapter_of(level))}
                                      for (r, c), level in sorted(self.pads.items())],
+                "chapters": self.hub and [c["name"] for c in CHAPTERS],
                 "votes": self.hub and {str(k): v for k, v in self.votes().items()},
                 "choice": self.hub and self.choice and {"level": self.choice[0],
                                                          "in": max(0, math.ceil(self.choice[1] + HUB_WAIT - now))}}

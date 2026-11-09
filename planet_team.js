@@ -20,7 +20,9 @@ const TEAM_NEWS = {rink: "❄️ Ice! A rover or a boulder on ice slides until s
                    ice: "❄️ Ice and craters! A boulder that slides into a crater fills it in.",
                    laser: "🔦💎 Dark caves full of gems. Spread out and light them up!",
                    relay: "✨❄️ Teleports and ice together. Watch where things come out!",
-                   tour: "🏁 The last mission: a bit of everything. You can do it together!"};
+                   tour: "🏁 The last mission: a bit of everything. You can do it together!",
+                   paintparty: "🎨 Paint Party! Every dot you drive over turns into paint. Paint the whole picture together!",
+                   paintnight: "🎨 Paint Party at night! Drive over every dot together, and watch the picture appear."};
 const TEAM_EXAMPLES = {repeat: 'for i in range(3):\n    east()\n', rock: 'while look("east") != "rock":\n    east()\n',
                        check: 'if look("south") == "boulder":\n    south()\n'};
 const team = {open: false, watching: false, map: null, you: null, view: null, seq: null, roster: null, level: null,
@@ -56,6 +58,8 @@ const TEAM_BIOMES = {
   laser: {ground: "#5f5a80", rock: "#2c2846", bed: "#100e1c", stars: "rgba(140,242,198,.5)"},
   relay: {ground: "#b08a72", rock: "#5a4335", bed: "#281c15"},
   tour: {ground: "#a7866a", rock: "#53402f", bed: "#241b13"},
+  paintparty: {ground: "#e4dcef", rock: "#7a68a0", bed: "#251c3a", stars: "rgba(255,216,74,.6)"},
+  paintnight: {ground: "#3a3f6e", rock: "#1f2347", bed: "#080a1c", stars: "rgba(255,255,255,.75)"},
   hollow: {ground: "#3c4a37", rock: "#1b1f25", bed: "#07080c", edge: "#9cff6b",
            grit: ["rgba(156,255,107,.16)", "rgba(10,6,20,.35)"], stars: "rgba(185,140,255,.6)"},
 };
@@ -196,16 +200,17 @@ function teamPaintGround(g, cell, biome) {
 // The hub is a space station: metal deck plates with rivets, and lit lanes
 // that lead out from the lander to the two rows of levels.
 function teamDeck(g, r, c, cell) {
-  const x = c * cell, y = r * cell, lane = c === 14 || c === 15 || r === 3 || r === 10;
+  const x = c * cell, y = r * cell, padRow = (team.map[r] || "").includes("=");
+  const lane = (padRow && c < 28) || c === 27;
   g.fillStyle = lane ? "#3d3a6e" : (r + c) % 2 ? "#34325f" : "#2f2d58"; g.fillRect(x, y, cell + .5, cell + .5);
   g.fillStyle = "rgba(255,255,255,.06)"; g.fillRect(x + 1, y + 1, cell - 2, cell * .06);
   g.fillStyle = "rgba(0,0,0,.22)"; g.fillRect(x + 1, y + cell * .9, cell - 2, cell * .08);
   g.fillStyle = "rgba(200,190,255,.22)";
   for (const [i, j] of [[.14, .14], [.86, .14], [.14, .86], [.86, .86]]) { g.beginPath(); g.arc(x + i * cell, y + j * cell, Math.max(.8, cell * .035), 0, 7); g.fill(); }
   if (lane) {
-    g.fillStyle = r === 3 ? "rgba(255,211,107,.35)" : r === 10 ? "rgba(140,242,198,.35)" : "rgba(185,163,255,.3)";
-    if (r === 3 || r === 10) g.fillRect(x, y + cell * .47, cell + .5, cell * .06);
-    else g.fillRect(x + (c === 14 ? cell * .88 : 0), y, cell * .12, cell + .5);
+    g.fillStyle = padRow ? ["rgba(255,211,107,.35)", "rgba(140,242,198,.35)", "rgba(255,138,216,.35)"][Math.floor(r / 4) % 3] : "rgba(185,163,255,.3)";
+    if (c === 27) g.fillRect(x + cell * .44, y, cell * .12, cell + .5);
+    else g.fillRect(x, y + cell * .47, cell + .5, cell * .06);
   }
 }
 function teamCrater(ctx, r, c, cell) {
@@ -300,6 +305,26 @@ function teamPortal(ctx, r, c, cell, ch, ts) {
     ctx.beginPath(); ctx.arc(cx, cy, cell * (.28 + k * .07), spin * (k % 2 ? -1 : 1) + k, spin * (k % 2 ? -1 : 1) + k + 2.2); ctx.stroke();
   }
   teamLetter(ctx, ch, cx, cy, cell * .32, "#1b1734");
+}
+// 🎨 Paint Party: a dot of paint, then the square it painted. The colours are Paint Planet's.
+const TEAM_PAINT = {r: "#ff5d5d", o: "#ff9a3c", y: "#ffd84a", g: "#5fd068", b: "#4d8dff", p: "#a368ff",
+                    k: "#ff8ad8", w: "#f6f3ff", n: "#b07a48", c: "#5ee6ff"};
+function teamPaintSquare(ctx, r, c, cell, colour, painted, ts) {
+  const x = c * cell, y = r * cell;
+  if (painted) {
+    ctx.fillStyle = colour; roundRect(ctx, x + cell * .04, y + cell * .04, cell * .92, cell * .92, cell * .16); ctx.fill();
+    ctx.strokeStyle = "rgba(40,24,60,.3)"; ctx.lineWidth = Math.max(1, cell / 22); ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,.26)"; roundRect(ctx, x + cell * .12, y + cell * .1, cell * .76, cell * .16, cell * .08); ctx.fill();
+    return;
+  }
+  const pulse = CALM ? .5 : Math.sin(ts / 380 + r * 1.3 + c) * .5 + .5;
+  ctx.fillStyle = colour; ctx.globalAlpha = .55 + pulse * .35;
+  ctx.beginPath(); ctx.arc(x + cell / 2, y + cell / 2, cell * .17, 0, 7); ctx.fill();
+  for (let k = 0; k < 3; k++) {
+    const a = k * 2.1 + r + c, d = cell * .28;
+    ctx.beginPath(); ctx.arc(x + cell / 2 + Math.cos(a) * d, y + cell / 2 + Math.sin(a) * d, cell * .045, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
 }
 // A gem: a little diamond that bobs and twinkles.
 function teamGem(ctx, r, c, cell, ts) {
@@ -398,25 +423,26 @@ function teamHub(ctx, cell, ts) {
   const view = team.view, wins = view.wins || [], bests = view.bests || {}, votes = view.votes || {};
   const choice = view.choice && view.choice.level;
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  // A heading over each chapter's row.
-  for (const [row, chapter] of [[1, 0], [8, 1]]) {
-    const levels = view.hub.filter(p => p.r === (row === 1 ? 3 : 10));
-    if (!levels.length) continue;
-    const done = levels.filter(p => wins.includes(p.level)).length, fresh = done === 0;
+  // A heading over each chapter's row: its name, and how many of its levels are done.
+  const HUES = ["#ffd36b", "#8cf2c6", "#ff8ad8"];
+  (view.chapters || []).forEach((title, i) => {
+    const levels = view.hub.filter(p => p.chapter === i);
+    if (!levels.length) return;
+    const done = levels.filter(p => wins.includes(p.level)).length, row = levels[0].r - 1;
     ctx.font = `900 ${cell * .46}px system-ui, sans-serif`; ctx.textAlign = "left";
-    const name = (chapter ? "DEEP SPACE" : "FIRST MISSIONS"), x0 = cell * 1.3, y0 = (row + .55) * cell;
+    const name = title.toUpperCase(), x0 = cell * 1.3, y0 = (row + .5) * cell;
     ctx.fillStyle = "rgba(10,6,24,.55)"; ctx.fillText(name, x0 + 2, y0 + 2);
-    ctx.fillStyle = chapter ? "#8cf2c6" : "#ffd36b"; ctx.fillText(name, x0, y0);
+    ctx.fillStyle = HUES[i % HUES.length]; ctx.fillText(name, x0, y0);
     const w = ctx.measureText(name).width;
     ctx.font = `700 ${cell * .32}px system-ui, sans-serif`;
-    const note = fresh ? "✨ NEW: nobody has been here yet!" : `🏆 ${done} of ${levels.length} done`;
-    ctx.fillStyle = "rgba(244,238,226,.85)"; ctx.fillText(note, x0 + w + cell * .4, y0 + 1);
-  }
+    ctx.fillStyle = "rgba(244,238,226,.85)";
+    ctx.fillText(done ? `🏆 ${done} of ${levels.length} done` : "✨ NEW: nobody has been here yet!", x0 + w + cell * .4, y0 + 1);
+  });
   ctx.textAlign = "center";
   for (const pad of view.hub) {
     const cx = (pad.c + .5) * cell, cy = (pad.r + .5) * cell, won = wins.includes(pad.level), n = votes[pad.level] || 0;
-    const chosen = choice === pad.level, deep = pad.level >= 8;
-    const colour = won ? "#ffd36b" : deep ? "#8cf2c6" : "#b9a3ff";
+    const chosen = choice === pad.level, deep = pad.chapter > 0;
+    const colour = won ? "#ffd36b" : pad.chapter === 2 ? "#ff8ad8" : deep ? "#8cf2c6" : "#b9a3ff";
     const pulse = CALM ? 0 : Math.sin(ts / 300 + pad.c) * .5 + .5;
     // A launch pad: a glow, a metal ring and the level's number.
     const glow = ctx.createRadialGradient(cx, cy, cell * .2, cx, cy, cell * (chosen ? 1.2 : .9));
@@ -450,7 +476,7 @@ function teamHub(ctx, cell, ts) {
       ctx.fillStyle = "#ffd36b"; ctx.fillText(`🏆${best ? " " + teamClockShort(best) : ""}`, cx, y);
     } else {
       const w = cell * 1.05, h = cell * .34;
-      ctx.fillStyle = deep ? "#8cf2c6" : "#b9a3ff"; roundRect(ctx, cx - w / 2, y - h / 2, w, h, h / 2); ctx.fill();
+      ctx.fillStyle = colour; roundRect(ctx, cx - w / 2, y - h / 2, w, h, h / 2); ctx.fill();
       ctx.fillStyle = "#1b1734"; ctx.fillText(deep ? "NEW!" : "TRY IT", cx, y + 1);
     }
     // How many rovers are voting for it.
@@ -470,7 +496,7 @@ function teamCountdown(ctx, cell, ts) {
   const pad = view.hub.find(p => p.level === view.choice.level);
   const text = `🚀 Off to ${pad ? pad.name : "the level"} in ${left || "…"}`;
   ctx.font = `900 ${cell * .55}px system-ui, "Noto Color Emoji", sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  const w = ctx.measureText(text).width + cell * 1.2, h = cell * 1.05, x = TEAM_COLS * cell / 2, y = 6.95 * cell;
+  const w = ctx.measureText(text).width + cell * 1.2, h = cell * 1.05, x = TEAM_COLS * cell / 2, y = 8.5 * cell;
   ctx.fillStyle = "rgba(18,15,36,.9)"; roundRect(ctx, x - w / 2, y - h / 2, w, h, h / 2); ctx.fill();
   ctx.strokeStyle = "#ffd36b"; ctx.lineWidth = 3; ctx.stroke();
   ctx.fillStyle = "#ffd36b"; ctx.fillText(text, x, y + 2);
@@ -543,7 +569,12 @@ function drawTeam(ts) {
     else if (teamIsDoor(ch)) teamDoor(ctx, r, c, cell, ch, view.doors[ch], ts);
     else if (teamIsPortal(ch)) teamPortal(ctx, r, c, cell, ch, ts);
   }
-  for (const [r, c] of view.gems || []) teamGem(ctx, r, c, cell, ts);
+  if (view.mural && team.paint) {
+    const left = new Set((view.gems || []).map(g => g[0] * 100 + g[1]));
+    for (let r = 0; r < TEAM_ROWS; r++) for (let c = 0; c < TEAM_COLS; c++) {
+      if (teamSquare(r, c) === "$") teamPaintSquare(ctx, r, c, cell, TEAM_PAINT[team.paint[r][c]] || "#f6f3ff", !left.has(r * 100 + c), ts);
+    }
+  } else for (const [r, c] of view.gems || []) teamGem(ctx, r, c, cell, ts);
   if (view.hub) teamHub(ctx, cell, ts);
   teamMarks(ctx, cell, ts);
   teamTrail(ctx, cell, ts);
@@ -639,6 +670,7 @@ function teamHear(out) {
 function teamPanel(out) {
   $("teamLevel").textContent = out.hub ? "🗺 Mission Hub" : `${out.chapter.name} ${out.chapter.at} of ${out.chapter.of}: ${out.name}${out.seen ? " 🔦" : ""}`;
   $("teamGoal").textContent = out.hub ? `Pick a level together! ${out.needed} ${out.needed === 1 ? "rover needs" : "rovers need"} to stand on it.`
+    : out.mural ? `Paint the picture together! ${out.found} of ${out.gem_count} dots painted.`
     : `Get to the gold vault together! ${out.in_vault} of ${out.needed} ${out.needed === 1 ? "rover is" : "rovers are"} in.`;
   $("teamJob").textContent = out.mine || (out.job ? out.job.text : "");
   $("teamJob").parentElement.style.visibility = out.job ? "" : "hidden";
@@ -677,7 +709,8 @@ function teamTake(out) {
       teamSound("fanfare");
     }
     if (team.auto) teamCodeSay("New level! Your program stopped, so check your code still fits this map.");
-    Object.assign(team, {map: out.map, bg: null, boulders: [], path: [], auto: null, bubbles: [], heard: 0, confetti: [], links: teamLinks(out.map)});
+    Object.assign(team, {map: out.map, bg: null, boulders: [], path: [], auto: null, bubbles: [], heard: 0, confetti: [], links: teamLinks(out.map),
+                         paint: out.paint || null});
     team.rovers.clear();
     if (team.level == null && out.hub) teamSay("🗳 Drive onto a level's pad to vote for it. When half the class is on one, you all go!");
     else if (team.level == null && TEAM_NEWS[out.biome]) teamSay(TEAM_NEWS[out.biome]);
