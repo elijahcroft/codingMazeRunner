@@ -3359,6 +3359,8 @@ def planet_open(p, key):
         return planet_class_settings["easy"]
     if key in planet.BUILD_ORDER:
         return build_open(p, key)
+    if key in planet.VOYAGE_ORDER:   # 🚀 Star Voyage: open to everyone, wherever they are
+        return True
     return key in planet.SITE_ORDER and \
         (planet.SITE_ORDER.index(key) <= planet_frontier(p) or key == (planet_class_settings["challenge"] or {}).get("key")) \
         or maker_open(p, key)
@@ -3438,6 +3440,9 @@ def can_skip(p, key):
     entry = planet_entry(p)
     if key in planet.HALLOWEEN_ORDER:
         return key not in entry["solved"] and key != planet.HALLOWEEN_ORDER[-1] \
+            and entry["misses"].get(key, 0) >= HALLOWEEN_SKIP_AFTER
+    if key in planet.VOYAGE_ORDER:
+        return key not in entry["solved"] and key != planet.VOYAGE_ORDER[-1] \
             and entry["misses"].get(key, 0) >= HALLOWEEN_SKIP_AFTER
     return key in planet.SITE_ORDER and key != planet.UNCHARTED["key"] \
         and key not in entry["solved"] \
@@ -3724,6 +3729,19 @@ def planet_state(p):
                            "open": True,
                            "gift": gift_for(p, s["key"]) is not None}
                           for s in zone["sites"]]})
+    # 🚀 Star Voyage: every site open, for everyone. Kids zones drive by hand first.
+    for zone in planet.VOYAGE_ZONES:
+        zones.append({
+            "key": zone["key"], "name": zone["name"], "blurb": zone["blurb"],
+            "zi": zone.get("zi", 0), "voyage": True, "practice": zone.get("kids", False),
+            "typed": not zone.get("kids", False),
+            "hints": zone["hints"][:entry["hints"].get(zone["key"], 0)],
+            "hint_count": len(zone["hints"]),
+            "sites": [{"key": s["key"], "name": s["name"],
+                       "solved": entry["solved"].get(s["key"]),
+                       "stars": entry["stars"].get(s["key"], [False] * planet.stars_max(s))[:planet.stars_max(s)],
+                       "open": True, "gift": gift_for(p, s["key"]) is not None}
+                      for s in zone["sites"]]})
     workshop = maker_zone(p)
     if planet_class_settings["maker"] and workshop["sites"]:
         zones.append(workshop)
@@ -3735,6 +3753,7 @@ def planet_state(p):
             "uncharted": entry["uncharted"],
             "total_stars": star_count(entry),
             "max_stars": 3 * len(planet.SITE_ORDER + planet.BUILD_ORDER)
+            + sum(planet.stars_max(planet.find_site(k)[2]) for k in planet.VOYAGE_ORDER)
             + (sum(planet.stars_max(planet.find_site(k)[2]) for k in planet.PRACTICE_ORDER)
                if planet_class_settings["easy"] else 0),
             "rank": rank_for(star_count(entry)),
@@ -3802,7 +3821,7 @@ def planet_site(p, key):
                     tips=planet.star_tips(s, v), coach=s["coach"], gift=gift_for(p, key), drills=v.get("drills"),
                     # A zone that brings something new says what it is on its first site.
                     new=zone.get("new") if zone["sites"][0] is s else None,
-                    ghost=ghost_for(p, key), ghosts=v.get("ghosts"),
+                    ghost=ghost_for(p, key), ghosts=v.get("ghosts"), paint=v.get("paint"),
                     halloween=key in planet.HALLOWEEN_ORDER)
     if key in planet_levels:
         wins = entry.get("level_wins", {})
@@ -4055,6 +4074,9 @@ def planet_record(p, key, code, results):
                         if any(t["key"] not in entry["solved"] for t in z["sites"])), None)
         elif zone in planet.BUILD_ZONES:
             nxt = None
+        elif zone in planet.VOYAGE_ZONES:
+            later = planet.VOYAGE_ZONES[planet.VOYAGE_ZONES.index(zone) + 1:]
+            nxt = later[0] if later else None
         elif zone in planet.PRACTICE_ZONES:
             nxt = (planet.PRACTICE_ZONES + planet.ZONES[:1])[planet.PRACTICE_ZONES.index(zone) + 1]
         else:
@@ -4793,7 +4815,7 @@ def planet_report():
     entries = [(q, planet_entry(q)) for q in players.values() if q.get("planet")]
     frontier = {q["id"]: planet.SITE_ORDER[planet_frontier(q)] for q, e in entries}
     zones, sites = [], []
-    for zone in planet.ZONES + planet.BUILD_ZONES + planet.HALLOWEEN_ZONES:
+    for zone in planet.ZONES + planet.BUILD_ZONES + planet.HALLOWEEN_ZONES + planet.VOYAGE_ZONES:
         zones.append({"name": zone["name"], "hints": sum(e["hints"].get(zone["key"], 0)
                                                          for q, e in entries)})
         for s in zone["sites"]:
@@ -4880,7 +4902,7 @@ def planet_class():
             "zones": [z["name"] for z in planet.ZONES],
             "practice_zones": [z["name"] for z in planet.PRACTICE_ZONES],
             "zone_keys": {z["name"]: z["key"] for z in planet.PRACTICE_ZONES + planet.ZONES
-                          + planet.BUILD_ZONES + planet.HALLOWEEN_ZONES},
+                          + planet.BUILD_ZONES + planet.HALLOWEEN_ZONES + planet.VOYAGE_ZONES},
             "halloween_sites": len(planet.HALLOWEEN_ORDER),
             "runs": planet_runs[-10:],
             "class": {"stars": class_stars(), "goals": CLASS_GOALS, "unlocks": CLASS_UNLOCKS,
@@ -6943,7 +6965,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not p:
                     self._send(200, {"error": "join"})
                     return
-                if key not in planet.SITE_ORDER + planet.HALLOWEEN_ORDER or not can_skip(p, key):
+                if key not in planet.SITE_ORDER + planet.HALLOWEEN_ORDER + planet.VOYAGE_ORDER or not can_skip(p, key):
                     self._send(200, {"error": "This site can't be skipped yet."})
                     return
                 entry = planet_entry(p)
@@ -6958,7 +6980,7 @@ class Handler(BaseHTTPRequestHandler):
             with lock:
                 p = players.get(data.get("id"))
                 zone = next((z for z in planet.ZONES + planet.PRACTICE_ZONES + planet.BUILD_ZONES + planet.HALLOWEEN_ZONES
-                             if z["key"] == data.get("zone")), None)
+                             + planet.VOYAGE_ZONES if z["key"] == data.get("zone")), None)
                 if not p:
                     self._send(200, {"error": "join"})
                     return

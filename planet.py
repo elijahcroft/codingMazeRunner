@@ -821,6 +821,9 @@ class World:
                 if self.home:
                     self.cargo += 1
                     self.say(f"🧪 sample on board, {self.cargo} of {CARGO_MAX}")
+                elif "paint" in self.v:
+                    left = len(self.samples)
+                    self.say(f"🎨 painted! {left} dot{'s' if left != 1 else ''} left" if left else "🎨 painted the last dot!")
                 else:
                     self.say(f"🧪 sample collected, {len(self.samples)} left")
         if (r, c) == self.home and self.cargo:
@@ -1084,7 +1087,7 @@ class World:
             else:
                 self.finish("goal", "🎉 beacon reached")
         elif self.mission == "samples" and not self.samples:
-            self.finish("goal", "🎉 every sample collected")
+            self.finish("goal", "🎉 the picture is painted!" if "paint" in self.v else "🎉 every sample collected")
         elif self.mission == "deliver" and not self.samples and not self.cargo:
             self.finish("goal", "🎉 every sample brought home")
         elif self.mission == "treats" and self.houses <= self.knocked:
@@ -3995,6 +3998,8 @@ def goals(s, variant):
         mission = "🧪 Every sample, then 🛰 the beacon"
     elif mission_of(variant) == "report" and any(ch in row for row in variant["map"] for ch in "hm"):
         mission = "🧙 Tell the witch your candy count"
+    elif "paint" in variant:
+        mission = "🎨 Paint every dot"
     return [mission,
             bonus_label(variant.get("bonus", s["bonus"])),
             f"✂️ {compact} line{'' if compact == 1 else 's'} of code or fewer"][:stars_max(s)]
@@ -5684,6 +5689,183 @@ STAR_TIPS.update({
 })
 
 
+# ---- 🚀 Star Voyage: new levels for everyone ---------------------------------------
+# A chapter that's open to every student wherever they are on the planet, so a
+# class that has played everything else has somewhere new to go. It's off the
+# main route (no site here is in SITE_ORDER), so it never holds anyone up.
+
+# 🎨 Paint Planet: dots of paint laid out as a picture. Every dot the rover
+# drives over turns into paint, so the picture appears as it goes.
+PAINT_COLOURS = "roygbpkwnc"   # red orange yellow green blue purple pink white brown cyan
+
+
+def picture(art, start=(0, 0)):
+    """A Paint Planet map from a picture: every letter in `art` is a dot of
+    paint in that colour, and '.' is bare ground. A square of ground goes
+    round the picture, then rock. The rover starts at `start`, counted on that
+    ground (0, 0 is its top left corner). "paint" says each dot's colour."""
+    h, w = len(art), len(art[0])
+    rows = [["."] * (w + 2) for _ in range(h + 2)]
+    paint = [["."] * (w + 2) for _ in range(h + 2)]
+    for r, line in enumerate(art):
+        for c, ch in enumerate(line):
+            if ch != ".":
+                rows[r + 1][c + 1], paint[r + 1][c + 1] = "*", ch
+    rows[start[0]][start[1]] = "S"
+    wall = "#" * (w + 4)
+    return {"map": [wall] + ["#" + "".join(r) + "#" for r in rows] + [wall],
+            "paint": ["." * (w + 4)] + ["." + "".join(r) + "." for r in paint] + ["." * (w + 4)]}
+
+
+def sweep(rows, width):
+    """A snake over a picture from the corner above its top left: across, down
+    one, back, down one. It paints any picture `rows` tall and `width` wide."""
+    code = f"south()\nfor i in range({rows // 2}):\n    east({width})\n    south()\n    west({width})\n    south()\n"
+    return code + (f"east({width})\n" if rows % 2 else "")
+
+
+PAINT_PLANET = {
+    "key": "paint", "name": "Paint Planet", "rules": set(), "sensors": ["look", "at_beacon"], "kids": True,
+    "blurb": "Every dot the rover drives over turns into paint. Paint them all to finish the picture!",
+    "new": {"icon": "🎨", "what": "Drive over a dot of paint and it paints the ground. Paint every dot "
+                                 "and the picture is done.", "example": "east(6)"},
+    "hints": [
+        "Drive the rover over a dot 🎨 and that square turns into paint. Paint every dot to win. "
+        "You can drive over bare ground too: it doesn't spoil the picture.",
+        "Drive with the arrows first, then press 📋 Use as code. Your drive turns into code.",
+        "A big picture? Drive in a snake: all the way across, down one, all the way back, down "
+        "one. A for loop can do the snake for you:\n\nfor i in range(3):\n    east(5)\n    south()\n"
+        "    west(5)\n    south()",
+    ],
+    "sites": [
+        site("v1", "Rainbow Road",
+             "Welcome to Paint Planet! 🎨 Drive over the dots and they turn into paint. "
+             "Paint the whole rainbow:\n\neast(6)",
+             [picture(["roygbp"], start=(1, 0))],
+             reference="east(6)\n", compact=1),
+        site("v2", "Big Blue Box",
+             "Paint a blue box! Go right along the top, down the side, back along the "
+             "bottom, and up the last side.",
+             [picture(["bbbb", "b..b", "b..b", "bbbb"], start=(1, 0))],
+             reference="east(4)\nsouth(3)\nwest(3)\nnorth(2)\n", compact=4),
+        site("v3", "Smiley Face",
+             "Two eyes and a big smile 😊. Paint every yellow dot. You can drive over the "
+             "empty squares in between.",
+             [picture([".y...y.", ".......", "y.....y", ".yyyyy."])],
+             reference="south()\neast(6)\nsouth(2)\neast()\nsouth()\nwest(6)\nnorth()\n", compact=7),
+        site("v4", "Love Heart",
+             "A big red heart ❤️. Try a snake: all the way across, down one, all the way "
+             "back, down one. Can a for loop do it?",
+             [picture([".rr.rr.", "rrrrrrr", "rrrrrrr", ".rrrrr.", "..rrr..", "...r..."])],
+             reference=sweep(6, 7), compact=6),
+        site("v5", "Rocket Ship",
+             "Paint a rocket 🚀 with a blue window and orange flames!",
+             [picture(["..r..", ".www.", ".wbw.", ".www.", ".www.", "rwwwr", "o.o.o"])],
+             reference=sweep(7, 5), compact=7),
+        site("v6", "Space Cat",
+             "The last picture: a space cat 🐱 with green eyes and a pink nose. "
+             "It's big, so a loop will save you lots of driving!",
+             [picture(["n.....n", "nn...nn", "nnnnnnn", "ngnnngn", "nnnknnn", ".nnnnn.", "..w.w.."])],
+             reference=sweep(7, 7), compact=7),
+    ]}
+for _s in PAINT_PLANET["sites"]:
+    _s["stars_max"] = 1          # like a practice park: painting it is the star
+STAR_TIPS.update({k: {"compact": "Paint every dot."} for k in ("v1", "v2", "v3", "v4", "v5", "v6")})
+
+
+
+def trail_art(legs, colours):
+    """A picture of the path some drives take from a start square, each
+    drive painted the next colour in `colours`. Returns the art and where the
+    start is in it, for picture(). The start isn't painted."""
+    r = c = 0
+    spots = []
+    for k, (way, n) in enumerate(legs):
+        dr, dc = DIRS[COMPASS[way]]
+        for _ in range(n):
+            r, c = r + dr, c + dc
+            spots.append((r, c, colours[k % len(colours)]))
+    top, left = min(min(r for r, c, _ in spots), 0), min(min(c for r, c, _ in spots), 0)
+    h = max(max(r for r, c, _ in spots), 0) - top + 1
+    w = max(max(c for r, c, _ in spots), 0) - left + 1
+    art = [["."] * w for _ in range(h)]
+    for r, c, colour in spots:
+        art[r - top][c - left] = colour
+    return ["".join(row) for row in art], (1 - top, 1 - left)
+
+
+SPIRAL_ART, SPIRAL_START = trail_art([(way, n) for n in (2, 4, 6, 8) for way in
+                                      (("east", "south") if n % 4 == 2 else ("west", "north"))], "cpkwcpkw")
+
+PATTERN_STUDIO = {
+    "key": "studio", "name": "Pattern Studio", "rules": set(), "sensors": ["look", "at_beacon"],
+    "blurb": "Bigger pictures, made of patterns. A loop, a def or a number with a name paints them fast.",
+    "hints": [
+        "Look for the part of the picture that repeats. Paint it once, then put those lines in a for loop.",
+        "A shape that comes again and again, like a heart? Teach the rover the shape:\n\n"
+        "def heart():\n    south(2)\n    ...\n\nThen say heart() for each one.",
+        "Things that grow, like a tower or a spiral: give the size a name, and make it bigger each time:"
+        "\n\nn = 1\nfor i in range(5):\n    north(n)\n    n = n + 1",
+    ],
+    "sites": [
+        site("v7", "Stripes",
+             "Four stripes, with a gap between each one. Paint a stripe going right, drop down "
+             "two, paint the next one coming back. That's a pattern a for loop can repeat!",
+             [picture(["rrrrrrrr", "........", "wwwwwwww", "........", "rrrrrrrr", "........",
+                       "wwwwwwww", "........"])],
+             reference="south()\nfor i in range(2):\n    east(8)\n    south(2)\n    west(8)\n    south(2)\n",
+             compact=6),
+        site("v8", "Rainbow Flag",
+             "A flag with every colour of the rainbow 🌈. It's 8 squares wide: give that number a "
+             "name, like  wide = 8 , and use the name in your loop.",
+             [picture(["rrrrrrrr", "oooooooo", "yyyyyyyy", "gggggggg", "bbbbbbbb", "pppppppp"])],
+             reference="wide = 8\n" + sweep(6, 8).replace("(8)", "(wide)"),
+             bonus={"kind": "variable"}, compact=7),
+        site("v9", "Three Little Hearts",
+             "Three hearts in a row ❤️❤️❤️. Teach the rover to paint one heart, ending above where "
+             "the next one starts. Then say heart() three times, or in a loop.",
+             [picture(["r.r.r.r.r.r.", "rrr.rrr.rrr.", ".r...r...r.."], start=(0, 1))],
+             reference="def heart():\n    south(2)\n    east()\n    south()\n    north()\n    east()\n"
+                       "    north(2)\n    east(2)\n\nfor i in range(3):\n    heart()\n",
+             bonus={"kind": "def"}, compact=10),
+        site("v10", "Rainbow Towers",
+             "Five towers, each one taller than the last. Go up a tower, back down, and two "
+             "squares right to the next. Let a number n grow by one each time:\n\n"
+             "n = 1\nfor i in range(5):\n    north(n)\n    ...",
+             [picture(["........b.", "......g.b.", "....y.g.b.", "..o.y.g.b.", "r.o.y.g.b."], start=(6, 1))],
+             reference="n = 1\nfor i in range(5):\n    north(n)\n    south(n)\n    east(2)\n    n = n + 1\n",
+             bonus={"kind": "variable"}, compact=6),
+        site("v11", "Spiral Galaxy",
+             "A galaxy 🌌 that spirals out from the middle, where the rover starts. Every two arms "
+             "get two longer: east 2, south 2, west 4, north 4, east 6…",
+             [picture(SPIRAL_ART, start=SPIRAL_START)],
+             reference="n = 2\nfor i in range(2):\n    east(n)\n    south(n)\n    n = n + 2\n"
+                       "    west(n)\n    north(n)\n    n = n + 2\n",
+             bonus={"kind": "variable"}, compact=8),
+        site("v12", "Ringed Planet",
+             "The studio's biggest picture: a planet 🪐 with a golden ring. Paint all 59 dots! "
+             "A snake in a loop gets you there.",
+             [picture(["....ppp....", "..ppppppp..", ".ppppppppp.", "yyyyyyyyyyy", ".ppppppppp.",
+                       "..ppppppp..", "....ppp...."])],
+             reference=sweep(7, 11), compact=7),
+    ]}
+STAR_TIPS.update({
+    "v7": {"compact": "south(), then a loop that runs 2 times: east(8), south(2), west(8), south(2)."},
+    "v8": {"bonus": "Put  wide = 8  at the top, then write east(wide) and west(wide).",
+           "compact": "wide = 8, south(), then a loop of 3 with four lines in it."},
+    "v9": {"bonus": "Put the moves for one heart under  def heart():  and call heart().",
+           "compact": "A def heart() of 7 lines, then a for loop that calls it 3 times."},
+    "v10": {"bonus": "n = 1 at the top, north(n) and south(n) in the loop, and  n = n + 1  last.",
+            "compact": "n = 1, then a loop of 5 with four lines in it."},
+    "v11": {"bonus": "n = 2, then east(n), south(n), and make n two bigger before west(n) and north(n).",
+            "compact": "n = 2, then a loop of 2 with six lines in it."},
+    "v12": {"compact": "south(), then a loop of 3: east(11), south(), west(11), south(). Then one east(11)."},
+})
+
+VOYAGE_ZONES = [PAINT_PLANET, PATTERN_STUDIO]
+VOYAGE_ORDER = [s["key"] for z in VOYAGE_ZONES for s in z["sites"]]
+
+
 # Levels the class draws for each other. They're ordinary sites, in a zone with
 # no strange rules, added while the server runs. A student's drawing is the
 # middle of the map: the rock wall round it comes with every level.
@@ -5732,7 +5914,7 @@ def find_site(key):
         for s in zone["sites"]:
             if s["key"] == key:
                 return zi, zone, s
-    for zone in PRACTICE_ZONES + BUILD_ZONES + HALLOWEEN_ZONES:
+    for zone in PRACTICE_ZONES + BUILD_ZONES + HALLOWEEN_ZONES + VOYAGE_ZONES:
         for s in zone["sites"]:
             if s["key"] == key:
                 return zone.get("zi", 0), zone, s

@@ -754,15 +754,26 @@ can type a new name after a wipe. If that keeps happening, close the lounge.
 **On the class screen:** **📺 Watch the lounge** comes up on the teacher page while it's open. It
 shows the room with no rover of its own.
 
-**Trophies:** the shelf on the wall has one 🏆 for each Team Mission level, lit up once the class
-has finished that level. They stay after a restart and after 🔄 Start again. A level finished
+**Trophies:** the shelf on the wall has one trophy for each Team Mission level, lit up once the class
+has finished that level: 🏆 for First Missions on the top shelf, 💎 for Deep Space below. They stay
+after a restart and after 🗺 Back to the hub. A level finished
 with 🔓 Open the doors doesn't earn one. They're for the whole class, so no names go on them.
 
 ## 🤝 The Team Mission: the whole class on one map, live
 
 Everyone's rover is on the same map at the same moment, and everyone sees every rover and
-every boulder move as it happens. There are eight levels. When enough rovers reach the gold
-vault, the class gets a 10 second celebration and everyone rolls onto the next map together.
+every boulder move as it happens. There are sixteen levels in two chapters: **First Missions**
+(the eight your class already finished) and **Deep Space** (eight new ones, each with something
+new: ice, gems, teleport pads and the dark). When enough rovers reach the gold vault, the class
+gets a 10 second celebration and everyone rolls onto the next level of the chapter together.
+After a chapter's last level they go back to the hub.
+
+**🗺 The Mission Hub.** The mission opens on the hub: a space station with a launch pad for
+every level, the trophies and class bests under the ones they've done, and **NEW!** under the
+ones they haven't. The class picks where to go by driving onto a pad. When half the class is on
+the same pad for 3 seconds, a countdown shows and everyone goes there. You can also pick a level
+for them from the list beside 📺 Watch (Mission Hub is at the top of it), and **🗺 Back to the
+hub** sends them back to choose again.
 Nobody has to write code: they drive with the arrow keys, the on-screen arrows, or by clicking
 a square, and 🤖 Code my rover is there for anyone who wants it. It earns no stars. All it keeps
 is the class's trophies and best times.
@@ -788,7 +799,8 @@ Turning the switch off keeps the mission as it is until you open it again.
   up everywhere the class drove.
 - **🤖 Code my rover.** An extra. It opens a box beside the map, and the program drives their
   rover: `north(3)`, `south()`, `east()`, `west()`, `wait()`, plus `for`, `while`, `if`, `def` and
-  variables. `look("east")` says `rock`, `door`, `crater`, `boulder`, `plate`, `vault` or `ground`.
+  variables. `look("east")` says `rock`, `door`, `crater`, `boulder`, `plate`, `vault` or `ground`,
+  and on Deep Space levels `ice`, `gem` or `teleport` too.
   So `while look("east") == "ground":` then `east()` drives to the next thing. A program is
   worked out at the moment they press Run, and can do 60 moves. If it would hit something, it
   stops there and names the line. If the map changes on the way, the rover stops and says so.
@@ -806,6 +818,20 @@ Turning the switch off keeps the mission as it is until you open it again.
 - Half the rovers need to be in the vault to finish a level, so one kid off doing something
   else can't hold up the class.
 
+**Deep Space adds:**
+
+- ❄️ **Ice.** A rover or a boulder on ice slides until something stops it: rock, a door, a
+  boulder, a crater (a rover stops before it; a boulder falls in and fills it), or a square that
+  isn't ice. A rover never pushes a boulder by sliding into it: it stops next to it.
+- 💎 **Gems.** The first rover over a gem picks it up for the whole class. The 💎 crystal door
+  opens for good once every gem is found, so the class has to spread out. The chip beside the
+  doors counts them.
+- ✨ **Teleport pads.** Drive onto one and you come out on the pad with the same number. A boulder
+  pushed onto a pad comes out of the other one still rolling, one square further on (and keeps
+  sliding if that's ice).
+- 🔦 **The dark.** On Lights Out and Crystal Caves the map is black except round the rovers, and
+  everywhere the class has been stays dimly lit. The more the class spreads out, the more it sees.
+
 **When something goes wrong:**
 
 - *A boulder is stuck.* Drive onto ♻. Every boulder nobody has pushed for 20 seconds goes back
@@ -813,8 +839,9 @@ Turning the switch off keeps the mission as it is until you open it again.
   stay done, so this can never lose progress.
 - *A rover is shut in.* **🏠 Back to the lander** works from anywhere.
 - *Time's nearly up.* **🔓 Open the doors** opens every door and fills every crater on the level.
-- *The class has done this level.* **⏭ Next level** skips ahead.
-- **🔄 Start again** goes back to level 1. Restarting the server does too.
+- *The class has done this level.* **⏭ Next level** skips ahead (after a chapter's last level, to
+  the hub).
+- **🗺 Back to the hub** lets the class choose again. Restarting the server starts on the hub too.
 
 At least two rovers are needed, because some doors can't be opened alone. To try it by yourself
 or with a very small class, press **🤖 Helper rover**: it stands on the plate that's needed next.
@@ -854,6 +881,38 @@ also join from a second computer, or use 🔓 Open the doors.
    each door's plate is on the far side of the other door, so one rover stands while the other
    pushes a boulder through. Over the crater, boulder onto plate G. The three V plates are in the
    hall, the top left room and the top right room.
+
+*Deep Space:*
+
+9. **Ice Bowling.** Four ice lanes with a V plate at the end of each, and three boulders. Push a
+   boulder into a lane from the landing room and it slides all the way onto the plate. The fourth
+   plate needs a rover: drive into the empty lane and you slide to the end and hold it, while
+   everyone else goes through door V.
+10. **Gem Hunt.** Push the corridor's boulder right onto plate A. In the room behind door A, push
+    the boulder left onto plate B. Eight gems are in the six rooms: send people different ways.
+    The 💎 door opens when the eighth is found.
+11. **Teleport Town.** The rooms only join by teleport pads. Push the top boulder right onto pad 1:
+    it comes out in the room next door. Follow it, then push it right two and down two onto a V
+    plate. Push the other boulder onto pad 2: it comes out in the room below, where a rover pushes
+    it down onto the other V plate. Pad 3 or 4 leads to door V.
+12. **Lights Out** (dark). In the room right of the lander, push the boulder left onto plate A.
+    Through door A, the boulder in the bottom left room goes down onto a B plate. In the top right
+    room, the boulder goes up onto the other B plate. The rooms in the bottom middle are a dead end.
+13. **Frozen Lake.** Craters run down the far side of the lake. Push a boulder right through either
+    gap in the wall: it slides across and fills the crater in its row. Then rovers can slide over.
+    Push a third boulder the same way: it stops on the filled crater, and a rover that slides up
+    behind it pushes it on and then onto a V plate. The same in the other row for the second plate.
+14. **Crystal Caves** (dark). Push the lander's boulder right onto plate A. Eight gems are hidden in
+    the caves: two in the cave below the lander, two in the east cave, two in the cave below that,
+    and two up past the gap on the right. Then the 💎 door, and the vault.
+15. **Portal Relay.** Push a boulder onto pad 1: it shoots across the ice rink, into pad 2 and out
+    into the bottom room. Follow it the same way (pad 1, then slide right into pad 2). Push it right
+    onto a V plate. Send a second boulder the same way and push it up onto the other V plate.
+16. **The Last Frontier.** Push a boulder onto plate A. Two boulders pushed right through door A, one
+    after the other, bridge the double crater. Gems: three on the ice rink above the lander (slide to
+    each one: a gem is a square that stops you), one through pad 1, one past the craters and one in
+    the room past the gap on the far right. Then the boulder in the crater room goes up onto a V
+    plate, one rover stands on the V plate behind the 💎 door, and the rest go through door V.
 
 ## 🎃 Halloween night: a limited-time event
 

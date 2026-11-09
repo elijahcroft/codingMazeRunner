@@ -2301,8 +2301,9 @@ class ClassroomTests(unittest.TestCase):
             state = self.get(f"/planet/state?id={self.join()}")
             many = sum(len(z["sites"]) for z in (planet.TRICK_SCHOOL, planet.NUMBER_LAB))
             self.assertEqual(state["max_stars"], 3 * len(planet.SITE_ORDER + planet.BUILD_ORDER)
-                             + len(planet.PRACTICE_ORDER) + 2 * many)
-            typed = {z["key"] for z in state["zones"] if z.get("typed")}
+                             + len(planet.PRACTICE_ORDER) + 2 * many
+                             + sum(planet.stars_max(planet.find_site(k)[2]) for k in planet.VOYAGE_ORDER))
+            typed = {z["key"] for z in state["zones"] if z.get("typed") and not z.get("voyage")}
             self.assertEqual(typed, {"lookout", "forks", "tricks", "numbers"})
         finally:
             self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_easy", "on": False})
@@ -3165,3 +3166,99 @@ class BuildersYardTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StarVoyageTests(unittest.TestCase):
+    """🚀 Star Voyage: new levels, open to every student wherever they are."""
+
+    setUp, get, post, join = ClassroomTests.setUp, ClassroomTests.get, ClassroomTests.post, ClassroomTests.join
+    tearDown = ClassroomTests.tearDown
+
+    def voyage_sites(self):
+        for zone in planet.VOYAGE_ZONES:
+            for s in zone["sites"]:
+                yield zone, s
+
+    def test_every_reference_clears_every_variant_without_a_bump(self):
+        for zone, s in self.voyage_sites():
+            for vi, v in enumerate(s["variants"]):
+                out = planet.drive(s["reference"], v, zone["rules"], zone.get("zi", 0))
+                self.assertTrue(out["reached"], (s["key"], vi, out["error"], out["log"][-3:]))
+                self.assertEqual(out["bumps"], 0, (s["key"], vi))
+            self.assertNotIn(s["key"], planet.SITE_ORDER)
+            self.assertEqual(planet.find_site(s["key"])[2], s)
+
+    def test_no_level_is_won_without_code_and_every_map_has_one_start(self):
+        for zone, s in self.voyage_sites():
+            for v in s["variants"]:
+                self.assertFalse(planet.drive("", v, zone["rules"], 0)["reached"], s["key"])
+                width = len(v["map"][0])
+                self.assertTrue(all(len(row) == width for row in v["map"]), s["key"])
+                self.assertEqual("".join(v["map"]).count("S"), 1, s["key"])
+
+    def test_every_dot_of_paint_has_a_colour_and_every_colour_a_dot(self):
+        for zone, s in self.voyage_sites():
+            v = s["variants"][0]
+            for row, colours in zip(v["map"], v["paint"]):
+                self.assertEqual(len(row), len(colours), s["key"])
+                for ch, colour in zip(row, colours):
+                    self.assertEqual(ch == "*", colour in planet.PAINT_COLOURS, s["key"])
+
+    def test_the_first_level_is_short_and_the_pictures_get_bigger(self):
+        dots = [sum(row.count("*") for row in s["variants"][0]["map"]) for s in planet.PAINT_PLANET["sites"]]
+        self.assertLessEqual(dots[0], 6)
+        self.assertEqual(dots[-1], max(dots))
+
+    def test_the_studio_needs_its_idea_for_the_extra_stars(self):
+        """Painting dot by dot finishes a picture, but the bonus and compact
+        stars take the loop, def or name the site is about."""
+        for key in ("v8", "v9", "v10", "v11", "v12"):
+            s = planet.find_site(key)[2]
+            v = s["variants"][0]
+            out = planet.drive(s["reference"], v, set(), 0)
+            self.assertEqual(planet.stars(s, v, out, s["reference"]), [True] * 3, key)
+            by_hand = replay_as_code(out)
+            plain = planet.stars(s, v, planet.drive(by_hand, v, set(), 0), by_hand)
+            self.assertTrue(plain[0], key)
+            self.assertFalse(plain[1] and plain[2], key)
+
+    def test_paint_says_paint(self):
+        s = planet.find_site("v1")[2]
+        v = s["variants"][0]
+        self.assertEqual(planet.goals(s, v), ["🎨 Paint every dot"])
+        out = planet.drive(s["reference"], v, set(), 0)
+        self.assertIn("painted", out["log"][-1]["text"] if isinstance(out["log"][-1], dict) else str(out["log"][-1]))
+
+    def test_a_brand_new_student_can_play_it_and_sees_it_open(self):
+        pid = self.join()
+        state = self.get(f"/planet/state?id={pid}")
+        voyage = [z for z in state["zones"] if z.get("voyage")]
+        self.assertEqual([z["key"] for z in voyage], [z["key"] for z in planet.VOYAGE_ZONES])
+        self.assertTrue(all(s["open"] for z in voyage for s in z["sites"]))
+        self.assertTrue(voyage[0]["practice"])            # Paint Planet drives by hand first
+        out = self.post("/planet/run", {"id": pid, "site": "v1", "code": "east(6)\n"})
+        self.assertTrue(out["runs"][0]["reached"])
+        self.assertEqual(out["state"]["total_stars"], 1)
+        view = self.get(f"/planet/site?id={pid}&site=v3")
+        self.assertEqual(len(view["paint"]), len(view["map"]))
+
+    def test_it_stays_open_with_easy_mode_on_or_off(self):
+        pid = self.join()
+        for easy in (True, False):
+            self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_easy", "on": easy})
+            self.assertTrue(server.planet_open(server.players[pid], "v4"))
+
+    def test_a_stuck_student_can_skip_on(self):
+        pid = self.join()
+        for _ in range(server.HALLOWEEN_SKIP_AFTER):
+            self.post("/planet/run", {"id": pid, "site": "v2", "code": "east()\n"})
+        out = self.post("/planet/skip", {"id": pid, "site": "v2"})
+        self.assertNotIn("error", out)
+        self.assertIn("v2", server.planet_entry(server.players[pid])["skipped"])
+
+    def test_the_page_draws_paint_and_has_the_new_levels_button(self):
+        page = open(os.path.join(HERE, "planet.html"), encoding="utf-8").read()
+        for word in ("function drawPaint", 'id="voyageButton"', "function renderVoyage", "paint:", "studio:"):
+            self.assertIn(word, page)
+        for colour in planet.PAINT_COLOURS:
+            self.assertIn(f"{colour}: \"#", page.split("const PAINT = ")[1].split("};")[0])

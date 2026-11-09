@@ -733,6 +733,10 @@
   .team-news li:first-child { color: var(--bone); }
   @media (max-width: 760px) { .team-body { grid-template-columns: minmax(0, 1fr); } }
   /* ---- The Rover Lounge: everyone's rovers in one room ---------------------- */
+  .voyage-button { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 0; border-radius: 12px; background: linear-gradient(120deg, #ffd84a, #ff8ad8 55%, #5ee6ff); color: #1d1240; font: 800 14px var(--ui); animation: garage-glow 1.8s ease-in-out infinite; }
+  .voyage-button:hover { filter: brightness(1.08); }
+  @media (max-width: 1180px) { .voyage-button span { display: none; } }
+  .zone-group.voyage { color: var(--gold); }
   .lounge-button { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 0; border-radius: 12px; background: linear-gradient(120deg, #ff8ad8, #b9a3ff); color: #1d1240; font: 800 14px var(--ui); animation: garage-glow 1.8s ease-in-out infinite; }
   .lounge-card { width: min(1320px, 100%, calc((100vh - 122px) * 14 / 9 + 276px)); padding: 18px 20px 16px; background: var(--dusk); border-radius: 20px; box-shadow: 0 30px 80px rgba(0,0,0,.5), inset 0 0 0 1px var(--edge); }
   .lounge-card h2 { margin: 0; font-size: 24px; font-weight: 850; letter-spacing: -.02em; }
@@ -856,7 +860,7 @@
   .candy-button b { color: #fff3e0; }
   @keyframes candy-glow { 50% { box-shadow: inset 0 0 0 1.5px var(--pumpkin), 0 0 16px rgba(255,138,31,.55); } }
   .calm .candy-button { animation: none; }
-  .calm .lounge-button, .calm .team-button { animation: none; }
+  .calm .lounge-button, .calm .team-button, .calm .voyage-button { animation: none; }
   .candy-button.bump { animation: bump .5s; }
   .gauge.spooky small { color: var(--pumpkin-2); }
   .chip.spooky { color: var(--pumpkin-2); box-shadow: inset 0 0 0 1px rgba(255,138,31,.5); }
@@ -938,6 +942,7 @@
     <button class="levels-button" id="levelsButton" title="Every level: pick one to play">🗺<span>Levels</span></button>
     <nav class="route" id="route" aria-label="Your route across the planet"></nav>
     <div class="who">
+      <button class="voyage-button" id="voyageButton" hidden title="Star Voyage: new levels, open for everyone">🚀 <span>New levels</span></button>
       <button class="team-button" id="teamButton" hidden title="Join your whole class on one big map">🤝 Team Mission</button>
       <button class="lounge-button" id="loungeButton" hidden title="Go to the Rover Lounge and show off your rover">🛋 Lounge</button>
       <button class="candy-button" id="candyButton" hidden aria-label="Halloween night: your candy and the candy road">🎃<b id="candyCount">0</b><span class="cw">🍬</span></button>
@@ -1298,7 +1303,7 @@ let scene = null;     // what the canvas shows: map, zone, frames, events
 let pos = 0, playing = false, lastTs = 0, fps = 8, heard = 0;
 let errorLine = 0, errorCount = 0;
 
-const ZONE_ICONS = {practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", lookout: "👀", forks: "🔀", tricks: "🎓", numbers: "🔢", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐", street: "🎃", hollow: "👻", woods: "🧙", yard: "🏗", workshop: "🛠"};
+const ZONE_ICONS = {paint: "🎨", studio: "🖌", practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", lookout: "👀", forks: "🔀", tricks: "🎓", numbers: "🔢", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐", street: "🎃", hollow: "👻", woods: "🧙", yard: "🏗", workshop: "🛠"};
 // Each sensor arrives with a zone (matches planet.SENSOR_ZONE).
 const SENSOR_ZONE = {look: 0, at_beacon: 0, x: 1, y: 1, report: 1, tick: 2, samples_left: 3,
   battery: 4, in_sun: 4, beacon_x: 6, beacon_y: 6, jump: 7, drill: 9, drills_left: 9,
@@ -1528,6 +1533,11 @@ const GROUND = {
   cargo: {ground: "#9aa07e", rock: "#4a4f3a", bed: "#1e2117"},
   tour: {ground: "#a7866a", rock: "#53402f", bed: "#241b13"},
   uncharted: {ground: "#7d8c84", rock: "#3d4945", bed: "#18201d"},
+  // 🚀 Star Voyage. Paint Planet is a pale canvas, so the paint stands out.
+  paint: {ground: "#d9d0e6", rock: "#6d5b8f", bed: "#251c3a", seam: "rgba(90,70,120,.14)",
+          grit: ["rgba(120,90,160,.12)", "rgba(255,255,255,.25)"], stars: "rgba(255,216,74,.6)"},
+  studio: {ground: "#e3dccf", rock: "#7a5a46", bed: "#2b1f1a", seam: "rgba(110,80,60,.14)",
+           grit: ["rgba(120,90,70,.12)", "rgba(255,255,255,.3)"], stars: "rgba(255,138,216,.5)"},
   // Halloween night: moonlit streets, then a dark hollow.
   street: {ground: "#4b4060", rock: "#231b33", bed: "#0e0a18", edge: "#ff9a3c", rim: "#ff9a3c",
            grit: ["rgba(255,154,60,.22)", "rgba(10,6,20,.3)"], stars: "rgba(255,210,150,.55)"},
@@ -1807,6 +1817,7 @@ function render(now = performance.now()) {
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     const ch = now_map[r][c];
     if ("hzmcg".includes(ch)) drawSpookySquare(ctx, ch, r, c, cell, now, knocked, picked);
+    else if (ch === "*" && site.paint) drawPaint(ctx, r, c, cell, PAINT[site.paint[r][c]] || "#f6f3ff", picked.has(r + "," + c), now);
     else if (ch === "*" && !picked.has(r + "," + c)) drawSample(ctx, r, c, cell, now);
     else if (ch === "B") drawBoulder(ctx, r, c, cell);
     else if (ch === "H") drawHome(ctx, r, c, cell);
@@ -2076,6 +2087,30 @@ function drawSample(ctx, r, c, cell, now) {
     ctx.moveTo(cx + dx * cell - wd * cell, cy + .18 * cell); ctx.lineTo(cx + dx * cell, cy + (.18 - hgt) * cell);
     ctx.lineTo(cx + dx * cell + wd * cell, cy + .18 * cell); ctx.closePath(); ctx.fill(); ctx.stroke();
   }
+}
+// 🎨 Paint Planet: a dot of paint waiting, then the square it painted when the
+// rover drove over it, so the picture comes out as the rover goes.
+const PAINT = {r: "#ff5d5d", o: "#ff9a3c", y: "#ffd84a", g: "#5fd068", b: "#4d8dff", p: "#a368ff",
+               k: "#ff8ad8", w: "#f6f3ff", n: "#b07a48", c: "#5ee6ff"};
+function drawPaint(ctx, r, c, cell, colour, painted, now) {
+  const x = c * cell, y = r * cell, cx = x + cell / 2, cy = y + cell / 2;
+  if (painted) {
+    ctx.fillStyle = colour; roundRect(ctx, x + cell * .04, y + cell * .04, cell * .92, cell * .92, cell * .16); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,.28)"; roundRect(ctx, x + cell * .12, y + cell * .1, cell * .76, cell * .18, cell * .09); ctx.fill();
+    ctx.fillStyle = "rgba(0,0,0,.14)"; roundRect(ctx, x + cell * .04, y + cell * .78, cell * .92, cell * .18, cell * .09); ctx.fill();
+    return;
+  }
+  const pulse = CALM ? 0 : Math.sin(now / 380 + r * 1.3 + c) * .5 + .5;
+  ctx.strokeStyle = colour; ctx.globalAlpha = .35 + pulse * .35; ctx.lineWidth = Math.max(1, cell / 20);
+  roundRect(ctx, x + cell * .08, y + cell * .08, cell * .84, cell * .84, cell * .16); ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = colour;                    // a splat: a blob and a few drops
+  ctx.beginPath(); ctx.arc(cx, cy, cell * .2, 0, 7); ctx.fill();
+  for (let k = 0; k < 4; k++) {
+    const a = k * 1.7 + r + c, d = cell * (.27 + (k % 2) * .05);
+    ctx.beginPath(); ctx.arc(cx + Math.cos(a) * d, cy + Math.sin(a) * d, cell * (.04 + (k % 3) * .015), 0, 7); ctx.fill();
+  }
+  ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.beginPath(); ctx.arc(cx - cell * .07, cy - cell * .07, cell * .06, 0, 7); ctx.fill();
 }
 // A bonus crystal: a violet gem that bobs and catches the light.
 function drawCrystal(ctx, r, c, cell, now) {
@@ -2375,7 +2410,7 @@ function markFeed() {
 // A tick is a step, to the youngest.
 function ticks(t) { return plural(t, kidsMode() ? "step" : "tick"); }
 const DONE = {beacon: ["Beacon reached", t => `🎉 Beacon reached in ${ticks(t)}`],
-  samples: ["Samples collected", t => `🎉 Every sample collected in ${ticks(t)}`],
+  samples: ["Samples collected", t => site && site.paint ? `🎨 The picture is painted, in ${ticks(t)}!` : `🎉 Every sample collected in ${ticks(t)}`],
   report: ["Report confirmed", () => "📡 Mission control: that matches what we measured! 🎉"],
   deliver: ["Samples home", t => `🎉 Every sample brought home in ${ticks(t)}`],
   treats: ["Trick or treat!", t => `🎃 Every lit house trick-or-treated in ${ticks(t)}`],
@@ -2390,7 +2425,8 @@ function ending(run) {
   const mission = run.mission || "beacon", t = run.ticks;
   const witch = mission === "report" && scene && scene.spooky;   // the witch's candy counts
   return {
-    goal: witch ? ["win", "The witch agrees!", "🧙 The witch counted exactly the same! 🎉"] : ["win", DONE[mission][0], DONE[mission][1](t)],
+    goal: witch ? ["win", "The witch agrees!", "🧙 The witch counted exactly the same! 🎉"]
+      : ["win", site && site.paint ? "Picture painted" : DONE[mission][0], DONE[mission][1](t)],
     wrong: witch ? ["lost", "Wrong count", "🧙 The witch counted something different. Did every lit house get a knock first?"]
       : ["lost", "Wrong number", "📡 Mission control measured something different. Watch the replay again: what number did you see?"],
     fell: ["lost", "Fell", `💥 The rover fell at tick ${t}. What happened just before?`],
@@ -2985,6 +3021,7 @@ function useState(data) {
   renderCandyChip();
   loungeSet(!!data.lounge);
   teamSet(!!data.team);
+  renderVoyage();
   renderRoute();
   renderFunctions();
   if (site) renderSiteNav();
@@ -3063,7 +3100,7 @@ function playNext() {
   const open = allSites().filter(s => s.open);
   return (open.find(s => !s.solved && !(s.stars || []).some(Boolean)) || open[open.length - 1] || {}).key;
 }
-const NEW_ZONES = ["tricks", "numbers"];   // say NEW until a student has tried them
+const NEW_ZONES = ["tricks", "numbers", "paint", "studio"];   // say NEW until a student has tried them
 function openLevels() {
   if (!state) return;
   note("levels");
@@ -3075,15 +3112,15 @@ function openLevels() {
   $("levelsPlay").dataset.key = next || "";
   $("levelsPlay").textContent = next && next !== here ? `▶ Play next: ${siteLabel(next)} ${nextSite.name}` : "▶ Keep playing";
   $("levelsMake").hidden = !state.maker;
-  const groupOf = z => z.workshop ? "🛠 Made by your class" : z.halloween ? "🎃 Halloween night" : z.practice ? "🛝 Practice parks" : "🪐 The planet";
+  const groupOf = z => z.workshop ? "🛠 Made by your class" : z.voyage ? "🚀 Star Voyage: new levels for everyone!" : z.halloween ? "🎃 Halloween night" : z.practice ? "🛝 Practice parks" : "🪐 The planet";
   const doneIn = z => z.sites.filter(s => s.solved != null || got(s)).length;
   let group = "";
-  $("zoneList").innerHTML = state.zones.map((z, zi) => {
+  $("zoneList").innerHTML = voyageFirst(state.zones).map((z, zi, zones) => {
     const open = z.sites.some(s => s.open), isHere = z.sites.some(s => s.key === here);
     const done = doneIn(z), name = groupOf(z);
     const stars = z.sites.reduce((n, s) => n + got(s), 0), max = z.sites.reduce((n, s) => n + s.stars.length, 0);
-    const before = state.zones[zi - 1];
-    const head = name === group ? "" : `<h3 class="zone-group">${name}</h3>`;
+    const before = zones[zi - 1];
+    const head = name === group ? "" : `<h3 class="zone-group${z.voyage ? " voyage" : ""}">${name}</h3>`;
     group = name;
     if (!open) return `${head}<section class="zone-card locked" data-zone="${esc(z.key)}"><div class="zone-top"><span class="zone-ico">${ZONE_ICONS[z.key] || "🪐"}</span><div><h3>🔒 ${esc(z.name)}</h3><p>${z.build ? `Big missions for your loops. The first one opens after ${esc(z.sites[0].after)}.` : before ? `Finish ${esc(before.name)} to open it.` : "Locked."}</p></div></div></section>`;
     // Only where you are and where you're going start unfolded.
@@ -3099,8 +3136,8 @@ function openLevels() {
           : `<button class="tile" disabled aria-label="${esc(label)}"><b>${siteLabel(s.key)}</b><span class="tname">${esc(s.name)}</span><span class="tlock">🔒${s.after ? `<small>after ${esc(s.after)}</small>` : ""}</span></button>`;
       }).join("")}</div></section>`;
   }).join("");
-  $("zoneJump").innerHTML = state.zones.map((z, zi) => {
-    const gap = zi && groupOf(z) !== groupOf(state.zones[zi - 1]) ? '<span class="jump-gap" aria-hidden="true"></span>' : "";
+  $("zoneJump").innerHTML = voyageFirst(state.zones).map((z, zi, zones) => {
+    const gap = zi && groupOf(z) !== groupOf(zones[zi - 1]) ? '<span class="jump-gap" aria-hidden="true"></span>' : "";
     const open = z.sites.some(s => s.open), isHere = z.sites.some(s => s.key === here), done = doneIn(z);
     const label = `${z.name}: ${open ? `${done} of ${z.sites.length} done` : "locked"}`;
     return `${gap}<button class="jump-zone${isHere ? " here" : ""}" data-zone="${esc(z.key)}"${open ? "" : " disabled"} title="${esc(label)}" aria-label="${esc(label)}">${ZONE_ICONS[z.key] || "🪐"}<i style="width:${done / z.sites.length * 100}%"></i></button>`;
@@ -3111,6 +3148,27 @@ function openLevels() {
   if (card) card.scrollIntoView({block: "start"});
   $("levelsPlay").focus();
 }
+// 🚀 Star Voyage: new levels open to everyone. The button at the top takes a
+// student to the next one they haven't painted, and shows while there is one.
+function voyageNext() {
+  const sites = state.zones.filter(z => z.voyage).flatMap(z => z.sites);
+  const left = sites.find(s => s.solved == null);
+  return left && left.key;
+}
+function renderVoyage() {
+  const next = voyageNext();
+  $("voyageButton").hidden = !next;
+  if (next && recall(`planetVoyage:${me}`) !== "1" && recall("planetIntroSeen") === "1") {
+    store(`planetVoyage:${me}`, "1");
+    setTimeout(() => toast("🚀", "New levels have landed!", "Paint Planet: drive over the dots to paint a picture. Press here to go!", () => openSite(voyageNext())), 1500);
+  }
+}
+function playVoyage() {
+  const next = voyageNext();
+  if (next) { closeLevels(); openSite(next); }
+}
+// The Levels screen shows 🚀 Star Voyage first, so nobody misses the new levels.
+function voyageFirst(zones) { return zones.filter(z => z.voyage).concat(zones.filter(z => !z.voyage)); }
 function foldZone(card, open) {
   card.classList.toggle("open", open);
   card.querySelector(".tiles").hidden = !open;
@@ -3283,7 +3341,7 @@ function resetScene() {
     $("batteryGauge").hidden = site.battery == null;
     $("sampleGauge").hidden = !scene.samples;
     // On a cargo run the samples on board aren't home yet, so say what it counts.
-    $("sampleLabel").textContent = site.mission === "deliver" ? "to pick up" : "samples";
+    $("sampleLabel").textContent = site.mission === "deliver" ? "to pick up" : site.paint ? "dots" : "samples";
     $("crystalGauge").hidden = !scene.crystals.length;
     $("crystalLabel").textContent = scene.spooky ? "🎃" : "💎";
     $("drillGauge").hidden = site.drills == null;
@@ -3368,7 +3426,8 @@ function popBelow(pop, button) {
 // The squares on this map that do something new, in words.
 function legend(map) {
   const text = map.join(""), flags = text.replace(/[^1-9]/g, "").length, early = zoneOf(site.key).zi <= 1;
-  return [early && text.includes("*") && "🟢 sample: the green spikes. Drive over one to collect it",
+  return [site.paint && "🎨 dot of paint: drive over it to paint that square",
+          early && !site.paint && text.includes("*") && "🟢 sample: the green spikes. Drive over one to collect it",
           early && text.includes("G") && "🛰 beacon: the glowing rings",
           early && text.includes("O") && "🕳 crater: the rover falls in, so go round it",
           /[<>^v]/.test(text) && "🛤 belt: carries you the way its arrows point",
@@ -5508,6 +5567,7 @@ $("map").addEventListener("click", e => {
 });
 window.addEventListener("resize", () => { render(); refreshEditor(); foldBrief(); });
 $("candyButton").addEventListener("click", openCandyRoad);
+$("voyageButton").addEventListener("click", playVoyage);
 $("inviteGo").addEventListener("click", playHalloween);
 $("inviteLater").addEventListener("click", closeInvite);
 $("roadPlay").addEventListener("click", playHalloween);
