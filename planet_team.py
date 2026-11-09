@@ -402,6 +402,7 @@ CHAPTERS = ({"name": "First Missions", "levels": list(range(0, 8))},
             {"name": "Paint Party", "levels": list(range(16, len(LEVELS)))})
 HUB = -1             # the hub's level number
 HUB_WAIT = 3         # seconds half the class stands on a level before it goes there
+HUB_PATIENCE = 25    # seconds on the hub after which a third of the class is enough
 def hub_map():
     """The hub: a row of pads for each chapter, four rows apart, with room
     above each row for its name and below for the levels' names. The lander
@@ -866,17 +867,21 @@ class Mission:
     def in_vault(self):
         return sum(spot in self.vault for seat, spot in self.rovers.items() if seat != HELPER)
 
-    def needed(self):
+    def needed(self, now=None):
         """Half the rovers here, so one kid off doing something else can't
-        keep the class from finishing."""
-        return max(1, math.ceil(len(set(self.rovers) - {HELPER}) / 2))
+        keep the class from finishing. On the hub, once the class has had
+        HUB_PATIENCE seconds to agree, a third will do."""
+        rovers = len(set(self.rovers) - {HELPER})
+        if self.hub and now is not None and self.began is not None and now - self.began >= HUB_PATIENCE:
+            return max(1, math.ceil(rovers / 3))
+        return max(1, math.ceil(rovers / 2))
 
     def vote(self, now):
         """On the hub: the level half the class has stood on for HUB_WAIT
         seconds, or None. A level counts its votes from when it got enough."""
         votes = self.votes()
         top = max(votes, key=lambda level: (votes[level], -level), default=None)
-        if top is None or votes[top] < self.needed():
+        if top is None or votes[top] < self.needed(now):
             self.choice = None
             return None
         if not self.choice or self.choice[0] != top:
@@ -917,7 +922,7 @@ class Mission:
                                    "plates": self.gem_count if letter == GEM_DOOR else len(self.plates[letter])}
                           for letter in self.doors},
                 "pressed": [list(p) for letter in self.doors for p in self.pressed(letter)],
-                "news": self.news, "in_vault": self.in_vault(), "needed": self.needed(),
+                "news": self.news, "in_vault": self.in_vault(), "needed": self.needed(now),
                 "job": self.next_job(), "recap": recap, "record": self.record,
                 "shouts": [s[:3] for s in self.shouts if now - s[3] < SHOUT_LASTS],
                 "secs": round((self.won or now) - self.began) if self.began else 0, "won": bool(self.won),

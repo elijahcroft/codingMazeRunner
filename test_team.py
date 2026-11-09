@@ -586,6 +586,17 @@ class HubTests(unittest.TestCase):
         self.assertEqual(g.view(2)["choice"], {"level": 9, "in": planet_team.HUB_WAIT - 1})
         self.assertEqual(g.vote(1 + planet_team.HUB_WAIT), 9)
 
+    def test_after_a_while_a_third_of_the_class_is_enough(self):
+        g, pad = self.g, next(s for s, level in planet_team.HUB_PADS.items() if level == 3)
+        for seat in range(6):
+            g.enter(seat, 0)
+        g.rovers[0] = g.rovers[1] = pad
+        self.assertIsNone(g.vote(1))
+        self.assertIsNone(g.vote(1 + planet_team.HUB_WAIT))       # 2 of 6 isn't half
+        later = planet_team.HUB_PATIENCE
+        self.assertIsNone(g.vote(later))
+        self.assertEqual(g.vote(later + planet_team.HUB_WAIT), 3)  # but it's a third
+
     def test_stepping_off_stops_the_count(self):
         g, pad = self.g, next(iter(planet_team.HUB_PADS))
         g.enter(0, 0)
