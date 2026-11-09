@@ -104,13 +104,15 @@ function drawDanceFloor(ctx, cell, ts) {
   }
   ctx.globalAlpha = 1;
 }
-// One trophy for each Team Mission level: dim until the class has finished it.
+// One trophy for each Team Mission level, dim until the class has finished
+// it: the first chapter on the top shelf and Deep Space on the one below.
 function drawTrophies(ctx, cell) {
-  ctx.font = `${cell * .46}px system-ui, "Noto Color Emoji", sans-serif`;
+  const row = Math.ceil(lounge.trophies.length / 2) || 1, gap = Math.min(.55, 2.2 / row);
+  ctx.font = `${cell * Math.min(.46, gap * .95)}px system-ui, "Noto Color Emoji", sans-serif`;
   ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "#fff";
   lounge.trophies.forEach((t, i) => {
     ctx.globalAlpha = t.won ? 1 : .16;
-    ctx.fillText("🏆", (11.8 + (i % 4) * .55) * cell, (i < 4 ? .98 : 1.98) * cell);
+    ctx.fillText(i < row ? "🏆" : "💎", (11.5 + gap / 2 + (i % row) * gap) * cell, (i < row ? 1.05 : 2.05) * cell);
   });
   ctx.globalAlpha = 1;
 }

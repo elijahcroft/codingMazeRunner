@@ -77,6 +77,7 @@ function teamPaintGround(g, cell, biome) {
   for (let r = 0; r < TEAM_ROWS; r++) for (let c = 0; c < TEAM_COLS; c++) {
     const ch = teamSquare(r, c), x = c * cell, y = r * cell;
     if (ch === "#") continue;
+    if (biome === "hub") { teamDeck(g, r, c, cell); continue; }
     g.fillStyle = teamShade(pal.ground, .9 + hash(r, c) * .14);
     g.fillRect(x, y, cell + .5, cell + .5);
     for (let k = 0; k < 6; k++) {   // grit
@@ -190,6 +191,21 @@ function teamPaintGround(g, cell, biome) {
     if (!teamRock(r, c) || !teamRock(r - 1, c) || !teamRock(r + 1, c)) continue;
     g.fillStyle = pal.stars;
     g.beginPath(); g.arc((c + hash(k, 3)) * cell, (r + hash(k, 4)) * cell, .4 + hash(k, 5) * 1.1, 0, 7); g.fill();
+  }
+}
+// The hub is a space station: metal deck plates with rivets, and lit lanes
+// that lead out from the lander to the two rows of levels.
+function teamDeck(g, r, c, cell) {
+  const x = c * cell, y = r * cell, lane = c === 14 || c === 15 || r === 3 || r === 10;
+  g.fillStyle = lane ? "#3d3a6e" : (r + c) % 2 ? "#34325f" : "#2f2d58"; g.fillRect(x, y, cell + .5, cell + .5);
+  g.fillStyle = "rgba(255,255,255,.06)"; g.fillRect(x + 1, y + 1, cell - 2, cell * .06);
+  g.fillStyle = "rgba(0,0,0,.22)"; g.fillRect(x + 1, y + cell * .9, cell - 2, cell * .08);
+  g.fillStyle = "rgba(200,190,255,.22)";
+  for (const [i, j] of [[.14, .14], [.86, .14], [.14, .86], [.86, .86]]) { g.beginPath(); g.arc(x + i * cell, y + j * cell, Math.max(.8, cell * .035), 0, 7); g.fill(); }
+  if (lane) {
+    g.fillStyle = r === 3 ? "rgba(255,211,107,.35)" : r === 10 ? "rgba(140,242,198,.35)" : "rgba(185,163,255,.3)";
+    if (r === 3 || r === 10) g.fillRect(x, y + cell * .47, cell + .5, cell * .06);
+    else g.fillRect(x + (c === 14 ? cell * .88 : 0), y, cell * .12, cell + .5);
   }
 }
 function teamCrater(ctx, r, c, cell) {
@@ -621,6 +637,7 @@ function teamPanel(out) {
   $("teamJob").textContent = out.mine || (out.job ? out.job.text : "");
   $("teamJob").parentElement.style.visibility = out.job ? "" : "hidden";
   $("teamClock").textContent = out.hub ? "" : `⏱ ${teamClock(out.secs)}${out.best ? ` · Class best ${teamClock(out.best)}` : ""}`;
+  $("teamDoors").parentElement.hidden = out.hub;
   $("teamDoors").innerHTML = Object.keys(out.doors).sort().map(letter => {
     const d = out.doors[letter], state = d.good ? "good" : d.open ? "held" : "";
     const what = letter === "Q" ? `${d.pressed}/${d.plates}` : d.good ? "✓" : d.plates > 1 ? `${d.pressed}/${d.plates}` : d.open ? "open" : "shut";
@@ -656,6 +673,7 @@ function teamTake(out) {
     if (team.auto) teamCodeSay("New level! Your program stopped, so check your code still fits this map.");
     Object.assign(team, {map: out.map, bg: null, boulders: [], path: [], auto: null, bubbles: [], heard: 0, confetti: [], links: teamLinks(out.map)});
     team.rovers.clear();
+    if (out.hub && team.level == null) teamSay("🗳 Drive onto a level's pad to vote for it. When half the class is on one, you all go!");
   }
   if (out.people) team.people = new Map(out.people.map(p => [p.seat, p]));
   Object.assign(team, {you: out.you, seq: out.seq, roster: out.roster, level: out.level, view: out});

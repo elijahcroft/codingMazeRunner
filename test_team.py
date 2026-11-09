@@ -297,6 +297,76 @@ class MapTests(unittest.TestCase):
         self.assertTrue(g.done_for_good("B"))
         self.finish(crew, one, two)
 
+    def test_two_rovers_can_finish_frozen_lake(self):
+        crew = Crew(2, NUMBER["Frozen Lake"])
+        g, one, two = crew.game, 0, 1
+        crew.drive(one, (4, 3)); crew.push(one, "east", 4)        # across the ice and into the moat
+        self.assertIn((4, 20), g.filled)
+        crew.drive(two, (10, 3)); crew.push(two, "east", 4)
+        self.assertIn((10, 20), g.filled)
+        crew.drive(one, (7, 3)); crew.push(one, "north", 2)
+        crew.drive(one, (4, 2)); crew.push(one, "east", 5)        # this one stops on the filled crater
+        self.assertIsNotNone(g.boulder_on((4, 20)))
+        crew.push(one, "east", 1)                                 # slide up behind it
+        crew.push(one, "east", 2)
+        crew.drive(one, (5, 22)); crew.push(one, "north", 1)
+        crew.drive(two, (8, 3)); crew.push(two, "south", 1)
+        crew.drive(two, (10, 2)); crew.push(two, "east", 5)
+        crew.push(two, "east", 1)
+        crew.push(two, "east", 2)
+        crew.drive(two, (9, 22)); crew.push(two, "south", 1)
+        self.assertTrue(g.done_for_good("V"))
+        self.finish(crew, one, two)
+
+    def test_two_rovers_can_finish_crystal_caves(self):
+        crew = Crew(2, NUMBER["Crystal Caves"])
+        g, one, two = crew.game, 0, 1
+        crew.drive(one, (5, 1)); crew.push(one, "east", 3)
+        self.assertTrue(g.done_for_good("A"))
+        for gem in ((2, 12), (5, 18), (2, 25), (6, 27)):
+            crew.drive(one, gem)
+        for gem in ((9, 2), (12, 3), (12, 11), (9, 18)):
+            crew.drive(two, gem)
+        self.assertTrue(g.done_for_good("Q"))
+        self.assertGreater(len(g.seen), 200)                      # the class lit up most of the caves
+        self.finish(crew, one, two)
+
+    def test_two_rovers_can_finish_portal_relay(self):
+        crew = Crew(2, NUMBER["Portal Relay"])
+        g, one, two = crew.game, 0, 1
+        crew.drive(one, (4, 3)); crew.push(one, "east", 3)        # through pad 1, over the ice, out of pad 2
+        self.assertIsNotNone(g.boulder_on((12, 10)))
+        crew.push(one, "east", 2)                                 # the rover goes the same way
+        self.assertEqual(g.rovers[one], (12, 9))
+        crew.push(one, "east", 4)
+        crew.drive(two, (10, 4)); crew.push(two, "north", 5)
+        crew.drive(two, (4, 3)); crew.push(two, "east", 3)
+        crew.push(two, "east", 2)
+        crew.drive(two, (13, 10)); crew.push(two, "north", 3)
+        self.assertTrue(g.done_for_good("V"))
+        self.finish(crew, one, two)
+
+    def test_two_rovers_can_finish_the_last_frontier(self):
+        crew = Crew(2, NUMBER["The Last Frontier"])
+        g, one, two = crew.game, 0, 1
+        crew.drive(two, (12, 2)); crew.push(two, "east", 3)       # plate A, for good
+        self.assertTrue(g.done_for_good("A"))
+        crew.drive(two, (10, 5)); crew.push(two, "east", 8)       # two boulders bridge the double crater
+        crew.drive(two, (8, 4)); crew.push(two, "south", 1)
+        crew.drive(two, (10, 3)); crew.push(two, "east", 11)
+        self.assertEqual({(10, 14), (10, 15)}, g.filled)
+        for gem in ((2, 5), (2, 1), (2, 9), (1, 18)):              # slide to the gems on the ice, then teleport
+            crew.drive(one, gem)
+        for gem in ((12, 18), (12, 26)):
+            crew.drive(two, gem)
+        self.assertTrue(g.done_for_good("Q"))
+        crew.drive(two, (11, 18)); crew.push(two, "north", 2)
+        crew.drive(one, (2, 22))                                  # hold the last plate
+        self.assertTrue(g.door_open("V"))
+        crew.drive(two, sorted(g.vault)[0])
+        g.check_win(crew.now)
+        self.assertTrue(g.won)
+
 
 class DeepSpaceRuleTests(unittest.TestCase):
     """Ice, gems, teleport pads and the dark, each on a small map of its own."""
