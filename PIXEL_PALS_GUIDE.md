@@ -27,14 +27,14 @@ Both teacher pages are linked from `/admin`.
    their pal, and "My pal" at the top swaps it. Until they've drawn something, they play
    as Pip.
 5. After 3 missions, the Hang out opens and stays open.
-6. The last mission is **My Move**. They code their own routine and it becomes a big
-   button in the Hang out.
+6. Mission 9 is **My Move**. They code their own routine and it becomes a big
+   button in the Hang out. Eight more missions come after it, for students who finish.
 
 A big button at the top right always says what comes next.
 
 ## The missions
 
-9 missions and 27 stars. The first star opens the next mission, and the other two are
+17 missions and 51 stars. The first star opens the next mission, and the other two are
 for going further.
 
 | Chapter | Missions | What it teaches |
@@ -43,6 +43,14 @@ for going further.
 | ✨ Come Alive | Big wave, How do you feel?, Dance floor | `wave()`, `feel()`, `dance()`, `cheer()` |
 | 🔁 Again! Again! | Bounce!, Side step | `for` loops |
 | 🌟 My Move | My Move | Putting it together, their own way |
+| 🎪 Encore! | Grow big, Who's there? | `grow()`, `shrink()`, `shake()`, `look()` |
+| 🔢 Count on Me | Count with me, Hello, everyone | The loop's `i`, and looping over a list |
+| 🏷️ Name Tags | Name tag, How many? | Variables, `.upper()`, f-strings |
+| 🧠 Smart Pal | Make a move, Number three | `def`, and `if` inside a loop |
+
+The last eight come after My Move on purpose, so a student who has already made their
+move doesn't have it locked behind new missions. They start easy (one new command each)
+and get harder.
 
 **Every mission walks them through it.** The top says the job in one plain sentence. Under
 it, the guide gives one line at a time: what the line does, the exact keys as tiles, and

@@ -26,10 +26,19 @@ const WORDS = {
   left: "Walks left. The number is how many spots.", jump: "Jumps once.", spin: "Spins round.",
   wait: "Waits a moment. Bigger numbers wait longer.",
   hearts: "Hearts float up.", stars: "Stars float up.", confetti: "Confetti falls everywhere.",
+  grow: "Gets bigger.", shrink: "Gets smaller again.", shake: "Wobbles like a jelly.",
+  look: "Moves its eyes: left, right, up, down or front.",
 };
-const SAMPLE = {say: 'say("Hello!")', right: "right(3)", left: "left(3)", wait: "wait(2)", feel: 'feel("happy")'};
+const SAMPLE = {say: 'say("Hello!")', right: "right(3)", left: "left(3)", wait: "wait(2)", feel: 'feel("happy")', look: 'look("left")'};
 const sample = name => SAMPLE[name] || name + "()";
-const PYTHON = {for: ["for loop", "for i in range(3):\n    ", "Repeats the lines pushed in under it."]};
+const PYTHON = {
+  for: ["for loop", "for i in range(3):\n    ", "Repeats the lines pushed in under it."],
+  list: ["list", 'for name in ["Ana", "Ben"]:\n    ', "Visits each thing in the [ ] list, one at a time."],
+  variable: ["variable", 'name = "Luna"', "A name tag that keeps a word or a number."],
+  fstring: ["f-string", 'say(f"{name}!")', "Puts a variable inside the words, in { } brackets."],
+  def: ["def", "def my_move():\n    ", "Makes a new command. The lines pushed in under it are what it does."],
+  if: ["if", "if i == 3:\n    ", "Only runs the lines pushed in under it when the answer is yes."],
+};
 const ALL_PYTHON = Object.keys(PYTHON);
 
 // ---- Getting going --------------------------------------------------------------------
@@ -298,6 +307,8 @@ function editorKeys(e) {
 const KEY_HELP = {
   "(": "Hold Shift and press 9", ")": "Hold Shift and press 0", '"': "Hold Shift and press the ' key, next to Enter",
   ":": "Hold Shift and press the ; key", "!": "Hold Shift and press 1", " ": "Press the long space bar", "\n": "Press Enter", ".": "Press the . key",
+  "+": "Hold Shift and press the = key, next to Backspace", "=": "Press the = key, next to Backspace", ",": "Press the , key, next to M",
+  "-": "Press the - key, next to 0", "[": "Press the [ key, next to P", "]": "Press the ] key, next to [", "{": "Hold Shift and press the [ key", "}": "Hold Shift and press the ] key",
 };
 const ACTIONS = /^\s*(say|jump|right|left|wave|dance|cheer|spin|hearts|stars|confetti|feel)\(/gm;
 let coachWay = null, coachOops = "", coachEarly = false;     // coachWay: "type", "build", or "own" for a student's own way
@@ -599,7 +610,7 @@ function winButtons(r) {
   const order = S.chapters.flatMap(c => c.levels), next = order[order.findIndex(l => l.key === mode) + 1];
   const hang = !S.hang.needs;
   if (r.hang_opened) return `<button class="btn main" data-view="hang">🎉 Go to the Hang out!</button>${next ? ` <button class="btn" data-mission="${esc(next.key)}">Next mission →</button>` : ""}`;
-  if (mode === "m1") return `<button class="btn main" data-view="hang">🎉 Go show everyone!</button>`;
+  if (mode === "m1") return `<button class="btn main" data-view="hang">🎉 Go show everyone!</button>${next ? ` <button class="btn" data-mission="${esc(next.key)}">Next mission →</button>` : ""}`;
   return `${next ? `<button class="btn main" data-mission="${esc(next.key)}">Next mission →</button>` : ""}${hang ? ` <button class="btn" data-view="hang">🎉 Hang out</button>` : ""}`;
 }
 function celebrate(r) {

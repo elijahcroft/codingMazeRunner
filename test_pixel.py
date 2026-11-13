@@ -197,6 +197,10 @@ class StudioOverHttp(unittest.TestCase):
         self.assertEqual([d["key"] for d in kept], ["b", "a"])
 
 
+# Every mission up to My Move. More missions come after it.
+BEFORE_MOVE = tuple(pixel.LEVEL_ORDER[:pixel.LEVEL_ORDER.index("m1")])
+
+
 def run(key, code, seed=0):
     return pixel.run_level(pixel.LEVEL_BY_KEY[key], code, pixel.PIP, seed=seed)
 
@@ -785,7 +789,7 @@ class TheHangOut(unittest.TestCase):
         return self.post("/pixel/run", {"id": me, "level": key, "code": code})
 
     def with_move(self, name, code=None):
-        me = self.student(name, tuple(pixel.LEVEL_ORDER[:-1]))
+        me = self.student(name, BEFORE_MOVE)
         out = self.mission(me, "m1", code or self.MOVE)
         self.assertTrue(out["stars"][0], out)
         self.do(me, "join")
@@ -823,7 +827,7 @@ class TheHangOut(unittest.TestCase):
 
     def test_the_finale_makes_a_my_move_with_its_perks(self):
         self.setup_room()
-        me = self.student("Mia", tuple(pixel.LEVEL_ORDER[:-1]))
+        me = self.student("Mia", BEFORE_MOVE)
         small = self.mission(me, "m1", "jump()\nspin()\ndance()")
         self.assertEqual(small["rewards"]["move"], {"title": "My Move", "loop": False, "big": False, "actions": 3})
         big = self.mission(me, "m1", self.MOVE)
@@ -833,9 +837,23 @@ class TheHangOut(unittest.TestCase):
         self.assertEqual(named["state"]["hang"]["move"]["title"], "Moon Hop")
         self.assertEqual(self.mission(me, "m1", self.MOVE)["rewards"]["move"]["title"], "Moon Hop")
 
+    def test_after_my_move_the_new_missions_open_one_at_a_time(self):
+        self.setup_room()
+        me = self.student("Mia", BEFORE_MOVE)
+        self.assertTrue(self.mission(me, "m1", self.MOVE)["stars"][0])
+        state = self.get(f"/pixel/state?id={me}")
+        self.assertEqual(state["current"], "t1")
+        out = self.mission(me, "t2", pixel.LEVEL_BY_KEY["t2"]["reference"])
+        self.assertIn("error", out)
+        out = self.mission(me, "t1", pixel.LEVEL_BY_KEY["t1"]["reference"])
+        self.assertEqual(out["stars"], [True, True, True])
+        self.assertGreater(out["rewards"]["coins"], 0)
+        self.assertEqual(self.get(f"/pixel/state?id={me}")["current"], "t2")
+        self.assertTrue(server.pixel_entry(server.players[me])["move"], "My Move is still kept")
+
     def test_a_failed_finale_changes_nothing(self):
         self.setup_room()
-        me = self.student("Mia", tuple(pixel.LEVEL_ORDER[:-1]))
+        me = self.student("Mia", BEFORE_MOVE)
         self.assertNotIn("move", self.mission(me, "m1", "jump()")["rewards"])
         self.assertIsNone(server.pixel_entry(server.players[me])["move"])
 
@@ -1200,7 +1218,7 @@ class TheHangOut(unittest.TestCase):
         entry["show"] = {"title": "Old"}
         state = self.get(f"/pixel/state?id={me}")
         self.assertEqual(state["stars"], 9)
-        self.assertEqual(state["max_stars"], 27)
+        self.assertEqual(state["max_stars"], 3 * len(pixel.LEVELS))
 
 
 class TheMarks(unittest.TestCase):

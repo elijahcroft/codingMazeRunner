@@ -911,6 +911,10 @@ CHAPTERS = [
     {"key": "h", "name": "Come Alive", "icon": "✨"},
     {"key": "b", "name": "Again! Again!", "icon": "🔁"},
     {"key": "m", "name": "My Move", "icon": "🌟"},
+    {"key": "t", "name": "Encore!", "icon": "🎪"},
+    {"key": "l", "name": "Count on Me", "icon": "🔢"},
+    {"key": "v", "name": "Name Tags", "icon": "🏷️"},
+    {"key": "w", "name": "Smart Pal", "icon": "🧠"},
 ]
 
 # `adds` opens commands, and `python` opens the shapes of Python on the chips.
@@ -1058,9 +1062,149 @@ LEVELS = [
                "A loop repeats the lines pushed in under it. Try  for i in range(3):  and push  jump()  in under it.",
                "spin()\nfor i in range(3):\n    jump()\n    hearts()\ndance()\ncheer()"],
      "reference": "spin()\nfor i in range(3):\n    jump()\n    hearts()\ndance()\ncheer()"},
+    # After My Move: more to code for students who have finished it. Easy first, then harder.
+    {"key": "t1", "chapter": 4, "name": "Grow big", "adds": ["grow", "shrink", "shake"], "python": [],
+     "pip": "Encore! The crowd wants more. Your pal can change size: grow() makes it bigger and shrink() makes it small again. shake() gives it the wobbles.",
+     "job": "Grow big, shake, then shrink back and say something.",
+     "coach": [
+               ('grow()', 'This line makes your pal bigger.'),
+               ('shake()', 'Now your pal shakes, like a jelly!'),
+               ('shrink()', 'This line makes your pal small again.'),
+               ('say("Ta-da!")', 'Last, your pal says Ta-da!'),
+     ],
+     "goals": [("Your pal grows", lambda r: r.n("grow") >= 1, "Type  grow()"),
+               ("Then it shakes", lambda r: r.first("grow", "shake"), "Put  shake()  on the line after  grow()"),
+               ("Then it shrinks back and says something", lambda r: r.first("grow", "shake", "shrink", "say"), None)],
+     "hints": ["grow() makes your pal bigger, and shrink() makes it smaller.", 'grow()\nshake()\nshrink()\nsay("Ta-da!")'],
+     "reference": 'grow()\nshake()\nshrink()\nsay("Ta-da!")'},
+
+    {"key": "t2", "chapter": 4, "name": "Who's there?", "adds": ["look"], "python": [],
+     "pip": 'Your pal can move its eyes! look("left") makes them look left. The ways are left, right, up, down and front.',
+     "job": "Look left, then right, then look at us and say hello.",
+     "coach": [
+               ('look("left")', "This line makes your pal's eyes look left."),
+               ('wait(1)', 'Wait, so we can see it.'),
+               ('look("right")', 'Now the eyes look right.'),
+               ('wait(1)', 'Wait again.'),
+               ('look("front")', 'Now your pal looks right at us!'),
+               ('say("Oh, hello!")', 'Last, your pal says hello.'),
+     ],
+     "goals": [("Your pal looks left", lambda r: ("look", ("left",)) in r.log, 'Type  look("left")'),
+               ("Then it looks right", lambda r: _in_order(r, ("look", ("left",)), ("look", ("right",))), 'Add  look("right")  after  look("left")'),
+               ("Then it looks at us and talks", lambda r: _in_order(r, ("look", ("right",)), ("look", ("front",))) and r.first("look", "look", "look", "say"), None)],
+     "hints": ['The ways are "left", "right", "up", "down" and "front".',
+               'look("left")\nwait(1)\nlook("right")\nwait(1)\nlook("front")\nsay("Oh, hello!")'],
+     "reference": 'look("left")\nwait(1)\nlook("right")\nwait(1)\nlook("front")\nsay("Oh, hello!")'},
+
+    {"key": "l1", "chapter": 5, "name": "Count with me", "adds": [], "python": ["for"],
+     "pip": "A loop has a secret: i is a number that changes each time round. It starts at 0, so i + 1 starts at 1.",
+     "job": "Make your pal count out loud from 1 to 5, and jump on every number.",
+     "coach": [
+               ('for i in range(5):', 'This loop goes round 5 times. Each time round, i is the next number: 0, 1, 2, 3, 4.'),
+               ('    say(i + 1)', 'i starts at 0, so i + 1 says 1, then 2, then 3. The + adds one.'),
+               ('    jump()', 'This line is inside the loop too. Jump on every number!'),
+     ],
+     "goals": [("Your pal says 1, 2, 3, 4, 5", lambda r: all(str(n) in r.said for n in range(1, 6)), lambda r: f"I heard: {', '.join(r.said[:6]) or 'nothing'}. I need 1 to 5."),
+               ("You use a for loop", lambda r: r.fors >= 1, "Try  for i in range(5):  and push  say(i + 1)  in under it."),
+               ("Your pal jumps on every number", lambda r: r.n("jump") >= 5, None)],
+     "hints": ["Inside the loop, try  say(i + 1)", "for i in range(5):\n    say(i + 1)\n    jump()"],
+     "reference": "for i in range(5):\n    say(i + 1)\n    jump()"},
+
+    {"key": "l2", "chapter": 5, "name": "Hello, everyone", "adds": [], "python": ["for", "list"],
+     "pip": "Three friends came to see you! A list keeps them together in [ ] brackets, and a loop can visit each one.",
+     "job": 'Say hi to three names from a list, like  ["Ana", "Ben", "Cy"]',
+     "coach": [
+               ('for name in ["Ana", "Ben", "Cy"]:', 'A list goes in [ ] brackets, with a comma between the names. The loop visits each name, one at a time.'),
+               ('    say("Hi " + name)', 'name is a different friend each time round. The + sticks the words together.'),
+               ('    jump()', 'This line is inside the loop too. A jump for each friend!'),
+     ],
+     "goals": [("Your pal greets three different names", lambda r: len(set(r.said)) >= 3, "I need three different hellos."),
+               ("You use a list and a for loop", lambda r: r.lists >= 1 and r.fors >= 1, 'Try  for name in ["Ana", "Ben", "Cy"]:'),
+               ("A jump for each one too", lambda r: r.n("jump") >= 3, None)],
+     "hints": ['for name in ["Ana", "Ben", "Cy"]:   then push in  say("Hi " + name)',
+               'for name in ["Ana", "Ben", "Cy"]:\n    say("Hi " + name)\n    jump()'],
+     "reference": 'for name in ["Ana", "Ben", "Cy"]:\n    say("Hi " + name)\n    jump()'},
+
+    {"key": "v1", "chapter": 6, "name": "Name tag", "adds": [], "python": ["variable"],
+     "pip": "A variable is a name tag for something you want to keep. Give it a name once at the top, then use it anywhere.",
+     "job": 'Keep your pal\'s name in a variable, like  name = "Luna"  , and use it in a say.',
+     "coach": [
+               ('name = "Luna"', 'This is a variable. It is like a name tag: now name means "Luna".'),
+               ('say("I am " + name)', 'Your pal says I am, then the word kept in name.'),
+               ('say(name.upper() + " IS HERE")', '.upper() makes the word SHOUT in big letters.'),
+     ],
+     "goals": [("Your pal says its name from a variable", lambda r: r.said_var() >= 1, 'Try  name = "Luna"  and then  say("I am " + name)'),
+               ("Your pal says it twice", lambda r: r.said_var() >= 2, None),
+               ("One time it SHOUTS with .upper()", lambda r: r.upper >= 1, None)],
+     "hints": ['name = "Luna"\nsay("I am " + name)', 'name = "Luna"\nsay("I am " + name)\nsay(name.upper() + " IS HERE")'],
+     "reference": 'name = "Luna"\nsay("I am " + name)\nsay(name.upper() + " IS HERE")'},
+
+    {"key": "v2", "chapter": 6, "name": "How many?", "adds": [], "python": ["for", "variable", "fstring"],
+     "pip": "If a number lives in a variable, you can change the whole show by changing one line. And an f in front of the quotes lets you put it inside words!",
+     "job": "Keep a number in a variable, and jump that many times.",
+     "coach": [
+               ('jumps = 4', 'A variable can keep a number. Now jumps means 4.'),
+               ('for i in range(jumps):', 'The loop goes round jumps times. Change the 4 later, and the loop changes too!'),
+               ('    jump()', 'This line is inside the loop. Jump!'),
+               ('grow()', 'This line is NOT pushed in, so it runs once, after the loop. I moved it back for you.'),
+               ('say(f"{jumps} jumps!")', 'The f lets you put the variable inside the words, in { } brackets.'),
+     ],
+     "goals": [("A variable sets how many times the loop goes", lambda r: r.range_name and r.n("jump") >= 1, "Try  jumps = 4  and then  for i in range(jumps):"),
+               ("Your pal says the number with an f-string", lambda r: r.fstrings >= 1, 'Try  say(f"{jumps} jumps!")'),
+               ("Your pal grows bigger too", lambda r: r.n("grow") >= 1, None)],
+     "hints": ["jumps = 4\nfor i in range(jumps):\n    jump()", 'jumps = 4\nfor i in range(jumps):\n    jump()\ngrow()\nsay(f"{jumps} jumps!")'],
+     "reference": 'jumps = 4\nfor i in range(jumps):\n    jump()\ngrow()\nsay(f"{jumps} jumps!")'},
+
+    {"key": "w1", "chapter": 7, "name": "Make a move", "adds": [], "python": ["def"],
+     "pip": "You can make your own commands! def teaches your pal a new word, like boogie. The lines pushed in under it are what the word does.",
+     "job": "Teach your pal a move with def, then use it twice.",
+     "coach": [
+               ('def boogie():', 'def makes a new command called boogie. It ends with a : mark.'),
+               ('    jump()', 'Lines pushed in under def are what boogie does. They wait until you use it.'),
+               ('    spin()', 'boogie spins too.'),
+               ('    jump()', 'And one more jump.'),
+               ('boogie()', 'This line is NOT pushed in. It uses your new command! I moved it back for you.'),
+               ('boogie()', 'Use it one more time. Now your pal does the whole move again.'),
+     ],
+     "goals": [("You make your own move and use it", lambda r: len(r.defs) >= 1 and sum(r.own_calls.values()) >= 1, "Try  def boogie():  with moves pushed in, then  boogie()  with no push."),
+               ("You use it twice", lambda r: sum(r.own_calls.values()) >= 2, None),
+               ("Your move has 3 lines or more", lambda r: r.n("jump") + r.n("spin") + r.n("right") + r.n("left") >= 6, None)],
+     "hints": ["Lines pushed in under def don't run until you use the new word.", "def boogie():\n    jump()\n    spin()\n    jump()\nboogie()\nboogie()"],
+     "reference": "def boogie():\n    jump()\n    spin()\n    jump()\nboogie()\nboogie()"},
+
+    {"key": "w2", "chapter": 7, "name": "Number three", "adds": [], "python": ["for", "if"],
+     "pip": "An if asks a question. Inside a loop, it asks every time round. Count to 5, but jump only on 3!",
+     "job": "Count to 5 out loud and jump only on 3.",
+     "coach": [
+               ('for i in range(1, 6):', 'range(1, 6) counts 1, 2, 3, 4, 5. It stops just before 6.'),
+               ('    say(i)', 'Your pal says the number.'),
+               ('    if i == 3:', 'if asks a question. == means "is it the same?" So this asks: is i 3?'),
+               ('        jump()', 'This line is pushed in under the if, so it only runs when i is 3.'),
+     ],
+     "goals": [("Your pal counts to 5", lambda r: all(str(n) in r.said for n in range(1, 6)), "Try  for i in range(1, 6):  and  say(i)  pushed in."),
+               ("It jumps only once, right after saying 3", lambda r: r.n("jump") == 1 and _after_three(r), "Try  if i == 3:  with  jump()  pushed in under it."),
+               ("You use if in a loop", lambda r: r.ifs >= 1 and r.fors >= 1, None)],
+     "hints": ["range(1, 6) counts 1, 2, 3, 4, 5.", "for i in range(1, 6):\n    say(i)\n    if i == 3:\n        jump()"],
+     "reference": "for i in range(1, 6):\n    say(i)\n    if i == 3:\n        jump()"},
 ]
 LEVEL_ORDER = [lv["key"] for lv in LEVELS]
 LEVEL_BY_KEY = {lv["key"]: lv for lv in LEVELS}
+
+
+def _in_order(r, first, then):
+    """True if `first` is in the log and `then` comes after it."""
+    return first in r.log and then in r.log[r.log.index(first) + 1:]
+
+
+def _after_three(r):
+    """True if the first jump comes right after saying 3."""
+    was = None
+    for name, args in r.log:
+        if name == "jump":
+            return was == "3"
+        if name == "say" and args:
+            was = str(args[0])
+    return False
 
 
 def _visited(r):
