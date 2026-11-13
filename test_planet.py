@@ -973,6 +973,11 @@ class ChallengeTests(unittest.TestCase):
         self.assertEqual(self.met('print("moo", "sss")\n'), {"moo", "hiss"})
         self.assertEqual(self.met('print("mo", "o")\nmoo = 1\n'), set())
 
+    def test_six_seven_is_printed_as_words_or_numbers(self):
+        for code in ('print("six seven")', 'print(67)', 'print(6, 7)', 'print("6 7!")', 'print("SIX SEVEN")'):
+            self.assertEqual(self.met(code + "\neast()\n"), {"sixseven"}, code)
+        self.assertEqual(self.met('print(6)\nprint(7)\nx = 67\n'), set())
+
     def test_a_loop_inside_a_loop(self):
         self.assertEqual(self.met("for i in range(2):\n    for j in range(3):\n        east()\n"), {"nested"})
         self.assertEqual(self.met("while not at_beacon():\n    for i in range(2):\n        east()\n"), {"nested"})
@@ -1939,8 +1944,9 @@ class ClassroomTests(unittest.TestCase):
         self.assertEqual(self.post("/planet/look", {"id": pid, "paint": "gold"})["look"]["paint"],
                          "bone")
         self.assertEqual(self.transmit(pid, "1a", site("1a")[2]["reference"])
-                         ["rewards"]["unlocked"],   # 2 stars: the bunny, not the paint yet
-                         [{"slot": "pet", "key": "bunny", "name": "Bunny", "rarity": "common"}])
+                         ["rewards"]["unlocked"],   # 2 stars: the bunny and the pet rock, not the paint yet
+                         [{"slot": "pet", "key": "bunny", "name": "Bunny", "rarity": "common"},
+                          {"slot": "pet", "key": "petrock", "name": "Pet rock", "rarity": "common"}])
         out = self.transmit(pid, "1a", BONUS_PROGRAMS["1a"])   # the third star
         self.assertEqual(out["rewards"]["unlocked"], [{"slot": "paint", "key": "coral", "name": "Coral", "rarity": "common"}])
         self.assertEqual(self.post("/planet/look", {"id": pid, "paint": "coral"})["look"]["paint"],
@@ -2114,6 +2120,40 @@ class ClassroomTests(unittest.TestCase):
         self.assertEqual(self.get(f"/planet/site?id={bo}&site={key}")["stars"], [True])
         self.assertEqual(self.get("/planet/overview")["levels"][0]["wins"], 1)
 
+    def test_the_class_hears_about_a_new_level_and_its_maker_hears_who_beat_it(self):
+        self.maker_on()
+        ada, bo = self.join("Ada"), self.join("Bo")
+        quiet = self.get(f"/planet/ping?id={bo}")["levels"]
+        key = self.post("/planet/maker/save", {"id": ada, "name": "Zoom!", "rows": self.DRAWING})["key"]
+        self.assertEqual(self.get(f"/planet/ping?id={bo}")["levels"], quiet)   # not live yet: nothing to say
+        self.transmit(ada, key, "east(4)\n")
+        # The ping changes, so Bo's page fetches the state, where the news has the same mark.
+        news = self.get(f"/planet/ping?id={bo}")["levels"]
+        self.assertNotEqual(news, quiet)
+        self.assertEqual(self.get(f"/planet/state?id={bo}")["levels_news"], news)
+        mine = self.get(f"/planet/ping?id={ada}")["levels"]
+        self.transmit(bo, key, "east(4)\n")
+        self.assertNotEqual(self.get(f"/planet/ping?id={ada}")["levels"], mine)   # Ada's level was beaten
+        tile = self.get(f"/planet/state?id={ada}")["zones"][-1]["sites"][0]
+        self.assertEqual([tile["beaten"], tile["fans"]], [1, ["Bo"]])
+        # Only its maker is told who: nobody else's tile lists names.
+        self.assertIsNone(self.get(f"/planet/state?id={bo}")["zones"][-1]["sites"][0]["fans"])
+        self.transmit(bo, key, "east(4)\n")   # beating it again isn't news
+        self.assertEqual(self.get(f"/planet/state?id={ada}")["zones"][-1]["sites"][0]["fans"], ["Bo"])
+        # With the workshop closed there's nothing to hear.
+        self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_maker", "on": False})
+        self.assertEqual(self.get(f"/planet/ping?id={bo}")["levels"], "")
+
+    def test_beating_three_classmates_levels_earns_level_tester(self):
+        self.maker_on()
+        ada, bo = self.join("Ada"), self.join("Bo")
+        keys = [self.post("/planet/maker/save", {"id": ada, "name": f"L{i}", "rows": self.DRAWING})["key"] for i in range(3)]
+        for key in keys:
+            self.transmit(ada, key, "east(4)\n")
+        self.assertNotIn("tester", server.players[ada]["planet"]["badges"])   # your own don't count
+        badges = [[b["name"] for b in self.transmit(bo, key, "east(4)\n")["rewards"]["badges"]] for key in keys]
+        self.assertEqual(badges, [[], [], ["Level Tester"]])
+
     def test_a_changed_level_comes_down_until_its_beaten_again(self):
         self.maker_on()
         ada, bo = self.join("Ada"), self.join("Bo")
@@ -2189,6 +2229,17 @@ class ClassroomTests(unittest.TestCase):
         self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_sound", "on": True})
         self.assertTrue(self.get(f"/planet/state?id={pid}")["sound"])
         self.assertTrue(self.get("/planet/overview")["sound"])
+
+    def test_warmups_are_off_until_the_teacher_turns_them_on(self):
+        pid = self.join()
+        site = lambda: self.get(f"/planet/site?id={pid}&site=1a")
+        self.assertFalse(site()["warmup"])
+        self.assertFalse(self.get("/planet/overview")["warmup"])
+        self.post("/admin", {"key": "nope", "action": "planet_warmup", "on": True})
+        self.assertFalse(site()["warmup"])
+        self.post("/admin", {"key": server.ADMIN_KEY, "action": "planet_warmup", "on": True})
+        self.assertTrue(site()["warmup"])
+        self.assertTrue(self.get("/planet/overview")["warmup"])
 
     def test_teacher_switches_letter_by_letter_typing(self):
         pid = self.join()

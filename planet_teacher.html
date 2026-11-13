@@ -243,12 +243,16 @@
   <button class="btn small" id="predictReveal" onclick="admin('planet_predict_reveal')" title="Shows the answer and drives the rover on the class screen" hidden>🎬 Reveal</button>
   <button class="btn small" id="raceBoard" onclick="admin('planet_race_board')" title="Puts the class race on the class screen, or takes it off. Everyone who has won the class challenge races at the same moment, each on their own map.">🏁 Race</button>
   <label title="On: 📋 Use as code after scouting leaves a few words for students to finish (r____ for range). Off: the code comes out whole."><span class="switch"><input type="checkbox" id="blanks" onchange="admin('planet_blanks', null, {on: this.checked})"><span></span></span> Scouted code has words to finish</label>
+  <label title="On: nobody stays stuck on a level. After many misses in a row (5 in easy mode, 10 otherwise, and at least a minute and a half) the rover offers to build the level's answer with the student: each line says what it does, and they type it in. It earns the first star only, and their card here shows 🙌. Off: they still get hints, classmates to ask, and Skip."><span class="switch"><input type="checkbox" id="together" onchange="admin('planet_together', null, {on: this.checked})"><span></span></span> 🙌 Build it together when stuck</label>
   <label title="For a younger class. On: nine practice zones (Practice Park, Loop Garden, Ice Rink, Pad Park, Jump Park, Look-Out Point, Fork Road, Trick School, Number Lab) before the Landing Site, where kids drive by hand first, then finish their code one letter at a time; classmates to ask after 3 misses (not 8), Skip for now after 6 (not 20)."><span class="switch"><input type="checkbox" id="easy" onchange="admin('planet_easy', null, {on: this.checked})"><span></span></span> Easy mode (younger class)</label>
   <label title="On: the game's sound starts on for students who haven't pressed the speaker button themselves. Headphones recommended. Off: it starts muted, and each student can still turn it on."><span class="switch"><input type="checkbox" id="sound" onchange="admin('planet_sound', null, {on: this.checked})"><span></span></span> Sound starts on</label>
   <label title="On: students can draw levels for each other in the Levels screen. A level goes live once its maker has beaten it with code. Level names show on the class screen: you can remove any level here."><span class="switch"><input type="checkbox" id="maker" onchange="admin('planet_maker', null, {on: this.checked})"><span></span></span> Students can make levels</label>
   <div class="levels-list" id="levelsList"></div>
   <label title="On: after 📋 Use as code, students finish each word one letter at a time on every site: the word shows as keys, the next key lights up, and only the right letter goes in. The practice sites always work this way. 📋 Use as code itself goes once a student reaches Solar Valley."><span class="switch"><input type="checkbox" id="coach" onchange="admin('planet_coach', null, {on: this.checked})"><span></span></span> Letter-by-letter typing help</label>
+  <label title="On: before a level that brings in a new idea (for loop, while, if, def...), a ✍️ warm-up covers the code box: students type the idea's shape key by key, then change one thing. Each student sees each warm-up once, and can press Skip. Off: they go straight to the code."><span class="switch"><input type="checkbox" id="warmup" onchange="admin('planet_warmup', null, {on: this.checked})"><span></span></span> ✍️ Warm-ups before new ideas</label>
   <label title="A room where everyone's rovers hang out and show off. Open it for a treat, like the last ten minutes of class. A Lounge button comes up on students' screens. Off sends everyone back to their level, with their code as they left it."><span class="switch"><input type="checkbox" id="lounge" onchange="admin('planet_lounge', null, {on: this.checked})"><span></span></span> 🛋 Rover Lounge</label>
+  <label title="Every student gets a farm of their own, on its own page. Their program is one farm day: the rover picks and plants, crops sell for coins, and coins buy a bigger field, new crops and things for the yard. It never runs out of levels, and a better program earns more. A Farm button comes up on students' screens. Off closes it, and every farm is kept."><span class="switch"><input type="checkbox" id="farm" onchange="admin('planet_farm', null, {on: this.checked})"><span></span></span> 🌱 Rover Farm</label>
+  <div class="levels-list" id="farmList"></div>
   <a class="btn small" id="loungeWatch" href="/planet/lounge/watch" target="_blank" hidden title="The live lounge, for the class screen. Watching doesn't put a rover in it.">📺 Watch the lounge</a>
   <label title="The whole class on one big map, live. They start on the Mission Hub and pick a level together: 8 First Missions, then 8 Deep Space levels with ice, gems, teleports and the dark. They push boulders onto plates to open doors, and need each other to get through. A Team Mission button comes up on students' screens. Off keeps the mission as it is until you open it again."><span class="switch"><input type="checkbox" id="team" onchange="admin('planet_team', null, {on: this.checked})"><span></span></span> 🤝 Team Mission</label>
   <span class="team-tools" id="teamTools" hidden><span id="teamStatus"></span><a class="btn small" href="/planet/team/watch" target="_blank" title="The live map, for you or the class screen. Watching doesn't put a rover on it.">📺 Watch</a><select id="teamPick" aria-label="Team Mission level" title="Moves the class to this level, for a new try at the class best" onchange="admin('planet_team_level', null, {level: this.value})"></select><button class="btn small" id="teamHelper" onclick="admin('planet_team_helper')" title="Adds a rover that stands on the plate that's needed next. Use it to try the mission alone, or with a very small class. A level it helps on earns no trophy or class best.">🤖 Helper rover</button><button class="btn small" onclick="admin('planet_team_doors')" title="Opens every door and fills every crater on this level, so the class can finish it if time is short">🔓 Open the doors</button><button class="btn small" onclick="admin('planet_team_next')" title="Moves the class straight on to the next level">⏭ Next level</button><button class="btn small" onclick="admin('planet_team_restart')" title="Sends the class to the Mission Hub, where they pick a level by driving onto it">🗺 Back to the hub</button></span>
@@ -307,10 +311,10 @@
   </section>
 
   <details class="report" id="todayBox">
-    <summary>📋 Today's class: who played and how far they got</summary>
+    <summary>📋 Today's class: who played and how far they got <span id="topStars"></span></summary>
     <p class="note">Everyone who played today, longest first. Minutes count only while they were pressing things. New levels are ones they cleared for the first time.</p>
     <table>
-      <thead><tr><th>STUDENT</th><th>MINUTES</th><th>RUNS</th><th>WINS</th><th>NEW LEVELS</th><th>NOW ON</th></tr></thead>
+      <thead><tr><th>STUDENT</th><th>MINUTES</th><th>RUNS</th><th>WINS</th><th>NEW LEVELS</th><th>★ TODAY</th><th>NOW ON</th></tr></thead>
       <tbody id="today"></tbody>
     </table>
     <p class="note" id="todayTeam" hidden></p>
@@ -509,7 +513,8 @@ function cardHtml(s, data, st) {
   const stars = (s.stars_now || []).map(x => x ? "<i>★</i>" : "★").join("");
   const dots = s.misses ? `<div class="misses">${Array.from({length: Math.min(s.misses, 12)}, (_, i) => `<i class="${i >= helpAfter ? "red" : ""}"></i>`).join("")} ${s.misses} ${s.misses === 1 ? "miss" : "misses"} in a row here</div>` : "";
   const said = s.now && s.now.said && s.now.end !== "goal" ? `<div class="said">💬 ${esc(s.now.said)}</div>` : "";
-  const skipped = s.skipped && s.skipped.length ? `<div class="skip">⏭ skipped ${esc(s.skipped.map(siteTag).join(", "))}</div>` : "";
+  const together = s.together && s.together.length ? `<div class="skip" title="After many misses in a row the rover offered to build the answer with them, and they typed it in. It earned the first star only. A level leaves this list when they do it their own way.">🙌 built with the rover: ${esc(s.together.map(siteTag).join(", "))}</div>` : "";
+  const skipped = (s.skipped && s.skipped.length ? `<div class="skip">⏭ skipped ${esc(s.skipped.map(siteTag).join(", "))}</div>` : "") + together;
   return `<div class="card-top"><canvas width="108" height="108"></canvas><div class="nm"><b title="${esc(s.name)}">${esc(s.name)}</b>${s.rover_name ? `<small title="Their rover's name, shown on its tag in the Rover Lounge">🏷 ${esc(s.rover_name)}</small>` : ""}<span class="pill ${st.cls}">${esc(st.text)}</span></div><div class="st">★ ${s.stars}<small>${plural(s.badges, "badge")}</small></div></div>
     <div class="loc"><span class="tag">${esc(siteTag(w.key))}</span><span class="sn">${esc(w.name)}</span><span class="mini-stars">${stars}</span><small>${ZONE_ICONS[w.zoneKey] || ""} ${esc(w.zone)}</small></div>
     <div class="prog" title="${w.done} of ${w.of} ${w.what} done"><span style="width:${pct}%"></span></div>
@@ -631,7 +636,9 @@ async function refresh() {
   helpAfter = data.easy ? 3 : 8;
   $("address").textContent = (data.address || "").replace(/^http:\/\//, "");
   $("spotOff").hidden = !data.spotlight;
-  $("raceBoard").textContent = data.race_on_board ? "🏁 Close the race" : "🏁 Race"; $("blanks").checked = data.blanks; $("easy").checked = data.easy; $("coach").checked = data.coach; $("sound").checked = data.sound; $("maker").checked = data.maker; $("lounge").checked = data.lounge; $("loungeWatch").hidden = !data.lounge; $("team").checked = data.team; $("teamTools").hidden = !data.team;
+  $("raceBoard").textContent = data.race_on_board ? "🏁 Close the race" : "🏁 Race"; $("blanks").checked = data.blanks; $("easy").checked = data.easy; $("coach").checked = data.coach; $("together").checked = data.together; $("sound").checked = data.sound; $("warmup").checked = data.warmup; $("maker").checked = data.maker; $("lounge").checked = data.lounge; $("farm").checked = data.farm;
+  $("farmList").innerHTML = (data.farms || []).map(f => `<span>🌱 <b>${esc(f.name)}</b>: day ${f.days}, field ${esc(f.field)}, best day 🪙 ${f.best}, job ${f.job} of ${f.jobs}, ${f.lines} lines${f.ideas.length ? `, uses ${esc(f.ideas.join(", "))}` : ""}</span>`).join("");
+   $("loungeWatch").hidden = !data.lounge; $("team").checked = data.team; $("teamTools").hidden = !data.team;
   $("teamStatus").textContent = `${plural(data.team_rovers, "rover")} on the map, ${data.team_vault} in the vault`;
   $("teamHelper").textContent = data.team_helper ? "🤖 Send the helper away" : "🤖 Helper rover";
   const guess = $("predictPick");
@@ -669,7 +676,8 @@ async function refreshReport() {
     const head = s.zone !== zone ? `<tr class="zone-row"><td colspan="5">${esc(s.zone)} · ${plural(hints[s.zone] || 0, "hint")} opened</td></tr>` : "";
     zone = s.zone;
     const missed = s.not_cleared.map(([name, runs, here]) => `${esc(name)} (${runs}${here ? "" : ", elsewhere now"})`).join(", ");
-    const skipped = s.skipped.length ? `<small class="stuck">skipped: ${esc(s.skipped.join(", "))}</small>` : "";
+    const skipped = (s.skipped.length ? `<small class="stuck">skipped: ${esc(s.skipped.join(", "))}</small>` : "")
+      + (s.built && s.built.length ? `<small class="stuck" title="After many misses in a row, they built this level's answer with the rover. Many names here means the level is too hard where it is.">🙌 built with the rover: ${esc(s.built.join(", "))}</small>` : "");
     const said = s.said.length ? `<ul class="said-list">${s.said.map(g => `<li>${esc(g.text)} <b>${plural(g.students, "student")}, ${g.tries} ${g.tries === 1 ? "try" : "tries"}</b></li>`).join("")}</ul>` : "—";
     return `${head}<tr>
       <td>${esc(siteTag(s.key))} · ${esc(s.name)}</td>
@@ -680,16 +688,18 @@ async function refreshReport() {
   }).join("") || `<tr><td colspan="5" class="empty">Nobody has run a level yet.</td></tr>`;
 }
 async function refreshToday() {
-  if (!$("todayBox").open) return;
   let data;
   try { data = await (await fetch("/planet/today")).json(); } catch (_) { return; }
-  $("today").innerHTML = data.students.map(s => `<tr><td>${esc(s.name)}</td><td class="num">${s.minutes}</td><td class="num">${s.runs}</td><td class="num">${s.wins}</td><td class="num">${s.new_levels}</td><td>${esc(siteTag(s.on))}</td></tr>`).join("")
-    || `<tr><td colspan="6" class="empty">Nobody has played today yet.</td></tr>`;
+  $("today").innerHTML = data.students.map(s => `<tr><td>${esc(s.name)}</td><td class="num">${s.minutes}</td><td class="num">${s.runs}</td><td class="num">${s.wins}</td><td class="num">${s.new_levels}</td><td class="num">${s.stars}</td><td>${esc(siteTag(s.on))}</td></tr>`).join("")
+    || `<tr><td colspan="7" class="empty">Nobody has played today yet.</td></tr>`;
+  const top = Math.max(0, ...data.students.map(s => s.stars));
+  $("topStars").textContent = top ? `· ★ Most stars today: ${data.students.filter(s => s.stars === top).map(s => s.name).join(", ")} (${top})` : "";
   $("todayTeam").hidden = !data.team_best.length;
   $("todayTeam").textContent = `🤝 Team Mission class bests: ${data.team_best.map(t => `${t.name} ${Math.floor(t.secs / 60)}:${String(t.secs % 60).padStart(2, "0")}`).join(" · ")}`;
 }
 $("todayBox").addEventListener("toggle", refreshToday);
 setInterval(refreshToday, 30000);
+refreshToday();
 $("reportBox").addEventListener("toggle", () => { store("planetReport", $("reportBox").open ? "1" : ""); refreshReport(); });
 $("reportBox").open = recall("planetReport") === "1";
 setInterval(refreshReport, 30000);

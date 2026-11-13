@@ -119,6 +119,8 @@
 
   /* Levels: a big button in the bar, and a map of every zone and level. */
   .levels-button { flex: none; display: flex; align-items: center; gap: 7px; border: 0; border-radius: 12px; padding: 7px 14px 7px 11px; background: var(--violet); color: #1d1240; font: 800 15px var(--ui); box-shadow: 0 3px 0 #7b62d6; }
+  .levels-button { position: relative; }
+  .levels-pip { position: absolute; top: -7px; right: -7px; min-width: 19px; padding: 0 5px; border-radius: 99px; background: #ff8ad8; color: #2a0f24; font: 800 11px/19px var(--ui); font-style: normal; text-align: center; box-shadow: 0 0 0 2px var(--dusk); }
   .levels-button:hover { background: #cbb9ff; }
   .levels-button:active { transform: translateY(2px); box-shadow: 0 1px 0 #7b62d6; }
   .site-nav { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; margin-top: 2px; }
@@ -210,7 +212,7 @@
   #siteBrief { flex: 1 1 380px; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px 16px; margin: 0; color: #c9bfe6; font-size: 17px; white-space: pre-line; }
   #siteBrief .words-box { flex: 1 1 300px; min-width: 0; position: relative; }
   #siteBrief pre { margin: 0; padding: 8px 12px; border-radius: 10px; background: rgba(0,0,0,.25); font: 15.5px/1.5 var(--mono); white-space: pre; overflow-x: auto; max-width: 100%; }
-  .goals { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .goals { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
   .goal { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px 4px 7px; border-radius: 99px; background: var(--dusk); color: var(--haze); font-size: 14.5px; }
   .goal i { font-style: normal; color: var(--dim); font-size: 15px; line-height: 1; }
   .goal.got { color: var(--bone); background: #3a3218; }
@@ -260,12 +262,12 @@
   .caption code { font: 600 15px var(--mono); color: var(--mint); margin: 0 4px; }
   .where { position: absolute; left: 12px; bottom: 12px; font: 12px var(--mono); color: var(--haze); background: rgba(18,13,34,.6); padding: 3px 8px; border-radius: 6px; pointer-events: none; }
   .banner { position: absolute; left: 16px; right: 16px; bottom: 16px; width: fit-content; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 10px 12px 10px 18px; border-radius: 14px; background: rgba(27,21,52,.92); backdrop-filter: blur(6px); box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 1px var(--edge); }
-  .banner p { margin: 0; font-weight: 650; font-size: 16.5px; max-width: 62ch; white-space: pre-wrap; }
+  .banner p { flex: 1 1 280px; margin: 0; font-weight: 650; font-size: 16.5px; max-width: 62ch; white-space: pre-wrap; }
   .banner p .next { display: block; margin-top: 4px; color: var(--mint); }
   .banner code { font: 600 .95em var(--mono); color: var(--mint); background: rgba(140,242,198,.1); padding: 1px 6px; border-radius: 6px; }
   #siteBrief code, .feed .err code, .msg code, .cele-tip code { font: 600 .92em var(--mono); color: var(--mint); background: rgba(140,242,198,.1); padding: 1px 5px; border-radius: 5px; white-space: nowrap; }
   .goal-tag { color: var(--bone); font-size: 13px; font-weight: 700; }
-  .goal.legend { background: none; padding-left: 4px; color: var(--haze); }
+  .goal.legend { background: none; padding-left: 4px; color: var(--haze); gap: 0; }
   .banner.win { box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 2px var(--mint); }
   .banner.lost { box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 2px var(--coral); }
   .banner.scout { box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 0 0 2px var(--violet); }
@@ -466,6 +468,13 @@
   .type-coach kbd.got { background: #2f5a46; color: var(--bone); }
   .type-coach kbd.next { background: var(--violet); color: #1b1733; animation: nudge 1.4s ease-in-out infinite; }
   .type-coach .oops { color: var(--amber); }
+  .type-coach .why { margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid rgba(185,163,255,.35); color: var(--bone); }
+  .building .kit, .building .chip-tip { display: none; }   /* every key goes to the build: room for the code instead */
+  .type-coach .back { float: right; margin-left: 8px; padding: 2px 8px; font-size: 13px; }
+  .type-coach .recap { margin-top: 4px; font-size: 13px; line-height: 1.45; }
+  .type-coach .recap summary { cursor: pointer; color: var(--violet); font-weight: 700; }
+  .type-coach .recap ol { max-height: 132px; overflow: auto; margin: 4px 0 0; padding-left: 26px; }
+  .type-coach .recap code { color: var(--mint); font-family: var(--mono); }
   .type-coach.shake { animation: shake .35s; }
   .calm .type-coach kbd.next, .calm .type-coach.shake { animation: none; }
   .scout-help .kid { display: none; font-size: 15px; }
@@ -787,7 +796,23 @@
   .announce { position: absolute; top: 0; left: 0; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
   /* Short screens (a Chromebook with its browser bars) give the height to the map. */
-  @media (max-height: 700px) and (min-width: 861px) {
+  @media (max-height: 640px) and (min-width: 861px) {
+    /* Transmit has to show, however many command buttons there are. */
+    .uplink { grid-template-rows: auto minmax(100px, 1fr) auto auto auto auto minmax(56px, 18%); }
+    .building .uplink { grid-template-rows: auto minmax(100px, 1fr) auto auto auto auto 44px; }   /* the code needs the room */
+    .building .type-coach { font-size: 15px; line-height: 1.4; }
+    .building .type-coach kbd { height: 34px; font-size: 19px; }
+    .uplink-head { padding: 8px 14px 6px; }
+    .kit { gap: 5px; padding-top: 7px; }
+    .chip { padding: 4px 8px; font-size: 13.5px; }
+    .actions { padding: 8px 12px; }
+    .banner { left: 10px; right: 10px; bottom: 10px; padding: 8px 10px 8px 14px; }
+    .banner p { font-size: 14.5px; }
+    .legend-more { display: none; }
+    .goal { font-size: 13.5px; padding: 3px 9px 3px 6px; }
+    .goals { gap: 4px; }
+  }
+  @media (max-height: 800px) and (min-width: 861px) {
     .site-head { padding: 6px 20px 6px; }
     .site-head h1 { font-size: 22px; }
     .goals { margin-top: 5px; }
@@ -798,8 +823,6 @@
     #siteBrief { flex: 1 1 0; min-width: 0; flex-wrap: nowrap; font-size: 14.5px; line-height: 1.32; }
     #siteBrief pre { flex: none; max-height: 66px; overflow: auto; padding: 4px 8px; font-size: 12.5px; line-height: 1.4; }
     #siteBrief:not(.open) .words { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
-    .goals { flex-wrap: nowrap; overflow: hidden; }
-    .goals > * { flex: none; }
     .steps { flex-wrap: nowrap; margin-top: 5px; white-space: nowrap; }
   }
   .brief-more { position: absolute; right: 0; bottom: 0; border: 0; border-radius: 99px; padding: 1px 10px; background: var(--panel); color: var(--bone); font-size: 13px; box-shadow: -14px 0 10px var(--sky); white-space: nowrap; }
@@ -807,7 +830,7 @@
   .brief-more:hover { background: var(--panel-2); }
   @media (max-width: 1100px) and (min-width: 861px) {
     .main { grid-template-columns: minmax(0, 1fr) 380px; }
-    .zname { display: none; }
+    .zname { font-size: 13px; margin-left: 4px; }
     .actions { gap: 6px; }
     .transmit { padding: 12px 10px; }
     .tool { min-width: 48px; padding: 0 5px; }
@@ -860,7 +883,9 @@
   .candy-button b { color: #fff3e0; }
   @keyframes candy-glow { 50% { box-shadow: inset 0 0 0 1.5px var(--pumpkin), 0 0 16px rgba(255,138,31,.55); } }
   .calm .candy-button { animation: none; }
-  .calm .lounge-button, .calm .team-button, .calm .voyage-button { animation: none; }
+  .farm-button { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 0; border-radius: 12px; background: linear-gradient(120deg, #ffd36b, #9be36b); color: #1d2a12; font: 800 14px var(--ui); animation: garage-glow 1.8s ease-in-out infinite; }
+  .farm-button:hover { filter: brightness(1.08); }
+  .calm .lounge-button, .calm .team-button, .calm .voyage-button, .calm .farm-button { animation: none; }
   .candy-button.bump { animation: bump .5s; }
   .gauge.spooky small { color: var(--pumpkin-2); }
   .chip.spooky { color: var(--pumpkin-2); box-shadow: inset 0 0 0 1px rgba(255,138,31,.5); }
@@ -939,12 +964,13 @@
 <main class="app" id="app" hidden>
   <header class="bar">
     <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#352d60"/><rect x="8" y="13" width="16" height="9" rx="2" fill="#f2eadb"/><rect x="6" y="11" width="4" height="4" rx="1" fill="#2a2440"/><rect x="22" y="11" width="4" height="4" rx="1" fill="#2a2440"/><rect x="6" y="20" width="4" height="4" rx="1" fill="#2a2440"/><rect x="22" y="20" width="4" height="4" rx="1" fill="#2a2440"/><circle cx="20" cy="17" r="2.4" fill="#8cf2c6"/></svg>Strange Planet</div>
-    <button class="levels-button" id="levelsButton" title="Every level: pick one to play">🗺<span>Levels</span></button>
+    <button class="levels-button" id="levelsButton" title="Every level: pick one to play">🗺<span>Levels</span><i class="levels-pip" id="levelsPip" hidden></i></button>
     <nav class="route" id="route" aria-label="Your route across the planet"></nav>
     <div class="who">
       <button class="voyage-button" id="voyageButton" hidden title="Star Voyage: new levels, open for everyone">🚀 <span>New levels</span></button>
       <button class="team-button" id="teamButton" hidden title="Join your whole class on one big map">🤝 Team Mission</button>
       <button class="lounge-button" id="loungeButton" hidden title="Go to the Rover Lounge and show off your rover">🛋 Lounge</button>
+      <button class="farm-button" id="farmButton" hidden title="Your own farm, run by your code. It earns more with every star you get here.">🌱 Farm</button>
       <button class="candy-button" id="candyButton" hidden aria-label="Halloween night: your candy and the candy road">🎃<b id="candyCount">0</b><span class="cw">🍬</span></button>
       <button class="stars-button" id="starsButton" title="Your stars, the garage and your badges"><span id="rankIcon"></span>★ <span id="totalStars">0</span><span class="garage-word">🔧 Garage</span><i class="new-pip" id="newPip" hidden>NEW</i><i class="rank-bar"><b id="rankBar"></b></i></button>
       <b id="driver"></b>
@@ -1481,6 +1507,12 @@ const SFX = (() => {
     dingdong: () => { tone(659, .6, {type: "triangle", vol: .3}); tone(523, .9, {type: "triangle", vol: .3, at: .35}); },
     scream: () => { tone(900, .9, {type: "sawtooth", vol: .1, slide: 700}); tone(1250, .8, {type: "square", vol: .05, slide: 400, at: .05}); },
     cackle: () => [0, .14, .28, .42, .56, .7].forEach((at, i) => tone(820 - i * 50, .1, {type: "sawtooth", vol: .1, slide: 260, at})),
+    // The meme shelf: "siiix seven", a bonk on the head, a sad trombone and a long low "bruh".
+    sixsevenhorn: () => { tone(392, .5, {type: "sawtooth", vol: .12, slide: 30}); tone(396, .5, {type: "triangle", vol: .2, slide: 30});
+                          [.55, .72].forEach((at, i) => { tone(i ? 494 : 587, i ? .35 : .15, {type: "sawtooth", vol: .12, at, slide: i ? -40 : 0}); tone(i ? 494 : 587, i ? .35 : .15, {type: "triangle", vol: .2, at, slide: i ? -40 : 0}); }); },
+    bonk: () => { tone(520, .12, {type: "triangle", vol: .5, slide: -300}); tone(180, .1, {type: "square", vol: .1, slide: -80}); noise(.05, {vol: .3, from: 1800, to: 600}); },
+    womp: () => [[294, 0], [262, .5]].forEach(([f, at]) => { tone(f, .45, {type: "sawtooth", vol: .13, slide: -f * .22, at}); tone(f / 2, .45, {type: "triangle", vol: .2, slide: -f * .11, at}); }),
+    bruh: () => { tone(160, .7, {type: "sawtooth", vol: .2, slide: -75}); tone(82, .7, {type: "triangle", vol: .3, slide: -30}); noise(.12, {vol: .2, from: 500, to: 200, q: .6}); },
     // Halloween night: a knock on a door, sweets in the bag, and BOO.
     knock: () => [0, .16].forEach(at => { tone(190, .07, {type: "triangle", vol: .5, slide: -60, at}); noise(.05, {vol: .3, at, from: 900, to: 400}); }),
     treat: () => notes([1047, 1319, 1568, 2093], {type: "triangle", vol: .26, dur: .16, gap: .06}),
@@ -1795,12 +1827,18 @@ function render(now = performance.now()) {
   // Room for the map between the HUD (top) and the result banner (bottom).
   // The whole map shows whenever its squares can be a readable size; a long,
   // thin map zooms in and the view follows the rover along it.
+  // A message box or the scouting help sits under the map, not on top of it.
+  let bottom = 76, covered = h;
+  for (const id of ["banner", "scoutHelp"]) if (!$(id).hidden) {
+    covered = Math.min(covered, $(id).offsetTop);
+    bottom = Math.max(bottom, Math.min(h * .4, h - $(id).offsetTop + 10));
+  }
   const top = $("planets").hidden ? 56 : $("planets").offsetTop + $("planets").offsetHeight + 34,
-    bottom = 76, roomW = w - 24, roomH = Math.max(80, h - top - bottom);
+    roomW = w - 24, roomH = Math.max(80, h - top - bottom);
   const fitW = roomW / cols, fitH = roomH / rows;
   let cell = Math.min(fitW, fitH);
-  if (cell < 20) cell = Math.max(cell, Math.min(fitH, roomW / 15), Math.min(fitW, roomH / 11));
-  cell = Math.floor(Math.max(w < 520 ? 16 : 20, Math.min(56, cell)));
+  if (cell < 14) cell = Math.max(cell, Math.min(fitH, roomW / 15), Math.min(fitW, roomH / 11));
+  cell = Math.floor(Math.max(14, Math.min(56, cell)));
   const rover = roverAt(pos);
   const worldW = cols * cell, worldH = rows * cell;
   const ox = worldW <= roomW ? (w - worldW) / 2 : clamp(w / 2 - (rover.c + .5) * cell, w - worldW - 12, 12);
@@ -1932,6 +1970,7 @@ function render(now = performance.now()) {
   drawPops(ctx, cell, now);
   ctx.restore();
   vignette(ctx, w, h);
+  moreMap(ctx, ox, oy, worldW, worldH, top, roomH, w, covered);
   const said = speech(f, now);
   if (said) drawBubble(ctx, ox + rx, oy + ry - (rover.lift * .6 + .55) * cell, said, w);
   drawConfetti(ctx, dt);
@@ -1957,6 +1996,21 @@ function render(now = performance.now()) {
     $("crystals").textContent = `${scene.crystals.filter(([r, c]) => visited.has(r + "," + c)).length}/${scene.crystals.length}`;
   }
   setStatus(i);
+}
+// A map too big to show whole says which way the rest of it is.
+function moreMap(ctx, ox, oy, worldW, worldH, top, roomH, w, covered) {
+  const tags = [];
+  if (oy + worldH > top + roomH + 2) tags.push(["▼ more map below", w / 2, Math.min(top + roomH, covered - 6) - 14]);
+  if (oy < top - 2) tags.push(["▲ more map above", w / 2, top + 14]);
+  if (ox + worldW > w - 10) tags.push(["more map ▶", w - 70, top + roomH / 2]);
+  if (ox < 10) tags.push(["◀ more map", 70, top + roomH / 2]);
+  ctx.font = "700 14px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (const [text, x, y] of tags) {
+    const tw = ctx.measureText(text).width + 22;
+    ctx.fillStyle = "rgba(27,21,52,.9)"; roundRect(ctx, x - tw / 2, y - 13, tw, 26, 13); ctx.fill();
+    ctx.strokeStyle = "#ffd36b"; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = "#ffd36b"; ctx.fillText(text, x, y);
+  }
 }
 // What the rover says: a line when it's clicked, else the program's latest
 // print(), for up to 8 ticks so there's time to read it.
@@ -2549,8 +2603,8 @@ function finished() {
   const [cls, , say] = ending(run);
   const buttons = [];
   if (run.end === "goal") {
-    const next = nextSite();
-    if (next && site.key !== "7") buttons.push(`<button class="go" onclick="openSite('${next}')">Next level ▶</button>`);
+    const next = nextUp();
+    if (next && site.key !== "7") buttons.push(`<button class="go" onclick="openSite('${next.key}')">${next.label}</button>`);
   } else if (run.end === "error") {
     SFX.play("error");
     if (run.line) buttons.push(`<button class="quiet" onclick="goToLine(${run.line})">Go to line ${run.line}</button>`);
@@ -2563,13 +2617,19 @@ function finished() {
   // waiting for the teacher to come over. Little kids start with the arrows,
   // so a miss offers those back straight away.
   const misses = site.misses || 0;
-  if (!["goal", "error"].includes(run.end) && (misses >= 3 || kidsMode())) {
+  // A younger class that has left the practice parks gets them back after one
+  // miss too, while 📋 Use as code is still there to turn the drive into code.
+  const driveFirst = easyClass() && !zoneOf(site.key).practice && site.solved == null && !typesOwn("closing");
+  if (!["goal", "error"].includes(run.end) && (misses >= 3 || kidsMode() || driveFirst)) {
     const zone = zoneOf(site.key);
     if (site.key !== "7") buttons.push(`<button class="quiet" onclick="toggleScout()">🕹 Try it by hand</button>`);
     if (misses >= 3 && zone.hints.length < zone.hint_count) buttons.push(`<button class="quiet" onclick="openPop($('radioPop'), $('radioButton'))">📻 Get a hint</button>`);
   }
   // Many misses in a row: the next site can open, so nobody stays stuck
   // in one place (and classmates who cleared it are named below).
+  // Missed many times, and for a while: the rover offers to build the answer
+  // with them, so the way out of a level that's too hard is a win.
+  if (site.can_together && run.end !== "goal" && !site.together) buttons.push(togetherButton());
   if (sitesRewards && sitesRewards.can_skip) buttons.push(`<button class="quiet" onclick="skipSite()">⏭ Skip for now</button>`);
   // A def that never ran is the likeliest reason a program stopped short.
   const unused = run.end === "stopped" && run.log.find(l => l.includes("🧩"));
@@ -2632,7 +2692,7 @@ function hideBanner() { $("banner").hidden = true; }
 function foldBrief() {
   const box = $("siteBrief"), words = box.querySelector(".words");
   let more = box.querySelector(".brief-more");
-  if (!matchMedia("(max-height: 700px) and (min-width: 861px)").matches) box.classList.remove("open");
+  if (!matchMedia("(max-height: 800px) and (min-width: 861px)").matches) box.classList.remove("open");
   const cut = words && !box.classList.contains("open") && words.scrollHeight > words.clientHeight + 2;
   if (!cut && !box.classList.contains("open")) { if (more) more.remove(); return; }
   if (!more) {
@@ -2676,7 +2736,8 @@ async function celebrate(r, run) {
   $("bigStars").innerHTML = r.stars.map((s, i) => `<div class="big-star${s ? " got" : r.best[i] ? " was" : ""}" title="${esc(goals[i] || "")}"><i>★</i><span>${esc([...(goals[i] || "★")][0])}</span></div>`).join("");
   const missing = goals.filter((g, i) => !r.best[i] && !rep && !twin && !count);
   // One thing to try next at a time: a trick on offer takes the tips' place.
-  $("celeTip").innerHTML = site.key !== "7" && !rep && !twin && !count ? starTips(r.best, $("code").value).map(codeSpans).join("\n") : "";
+  // (Built with the rover: the other stars' hints wait for when they come back.)
+  $("celeTip").innerHTML = site.key !== "7" && !rep && !twin && !count && !r.together ? starTips(r.best, $("code").value).map(codeSpans).join("\n") : "";
   if (taught && taught.word) $("celeTip").innerHTML += `\n🧰 Save ${esc(taught.word)}() in Functions to use it on any level.`;
   $("celeTrick").hidden = !rep && !twin && !count;
   if (rep) $("celeTrick").innerHTML = repeatWords(rep, scene.code);
@@ -2684,10 +2745,10 @@ async function celebrate(r, run) {
   if (count) $("celeTrick").innerHTML = `🪄 Your loop counts to <b>${count.times}</b>. What if the beacon were further away?<button class="go trick" onclick="teachLook()">Teach ${esc(roverName())} to look</button>`;
   if (rep || twin || count) note("shortcut_offered");
   if (taught) note("shortcut_won");
-  $("celeMiss").textContent = missing.length && site.key !== "7" && !$("celeTip").textContent ? `Still to earn: ${missing.join(" · ")}` : "";
+  $("celeMiss").textContent = missing.length && site.key !== "7" && !$("celeTip").textContent && !r.together ? `Still to earn: ${missing.join(" · ")}` : "";
   $("celeNote").innerHTML = "";
-  const next = nextSite();
-  $("celeActions").innerHTML = (next && site.key !== "7" ? `<button class="go" onclick="openSite('${next}')">Next level ▶</button>` : "")
+  const next = nextUp();
+  $("celeActions").innerHTML = (next && site.key !== "7" ? `<button class="go" onclick="openSite('${next.key}')">${next.label}</button>` : "")
     + (rep || twin || count || r.best.every(Boolean) ? "" : `<button class="quiet" onclick="hideCelebrate();$('code').focus()">Go for ${r.best.length - r.best.filter(Boolean).length} more ★</button>`)
     + `<button class="quiet" onclick="hideCelebrate();togglePlay()">Watch again</button>`;
   $("celebrate").hidden = false;
@@ -2706,6 +2767,8 @@ async function celebrate(r, run) {
   const notes = [];
   if (r.new_stars) notes.push(`+${r.new_stars} ★`);
   if (r.first_try) notes.push(`<span class="first">🎯 First try!</span>`);
+  if (r.own_way) notes.push(`<span class="first">💪 All your own code this time!</span>`);
+  if (r.together) notes.push(`<span class="teaser">🙌 You and ${esc(roverName())} built it together! Come back and do it your own way for the other stars.</span>`);
   if (r.record) notes.push(`<span class="rec">🏆 ${r.record.first ? "First to complete it!" : "New class record!"}</span>`);
   if (r.rank_up) notes.push(`<span class="rank">${esc(r.rank_up.icon)} Rank up: ${esc(r.rank_up.name)}!</span>`);
   const nz = r.zone_cleared && r.zone_cleared.next;
@@ -3024,12 +3087,13 @@ function useState(data) {
   if (!holdRank) { renderRank(data.rank); markGarageNew(); }
   classUnlocks(data);
   renderCandyChip();
-  loungeSet(!!data.lounge);
+  loungeSet(!!data.lounge); farmSet(!!data.farm);
   teamSet(!!data.team);
   renderVoyage();
   renderRoute();
   renderFunctions();
   if (site) renderSiteNav();
+  renderClassLevels();
 }
 
 // The rank beside the stars: its icon, a bar to the next one, and the words on hover.
@@ -3061,6 +3125,44 @@ function zoneOf(key) { return state.zones.find(z => z.sites.some(s => s.key === 
 function nextSite() {
   const order = allSites(), i = order.findIndex(s => s.key === site.key);
   return order[i + 1] && order[i + 1].open ? order[i + 1].key : null;
+}
+// After a win: the level after this one. On a level a classmate made, it's
+// another one of those they haven't beaten, or back to their own next level.
+function nextUp() {
+  if (!zoneOf(site.key).workshop) { const key = nextSite(); return key && {key, label: "Next level ▶"}; }
+  const more = freshLevels().find(s => s.key !== site.key);
+  if (more) return {key: more.key, label: "🛠 Another class level ▶"};
+  const key = playNext();
+  return key && key !== site.key ? {key, label: "▶ Back to my levels"} : null;
+}
+// ---- 🛠 Levels the class made: say so when there's a new one, and tell a maker
+// when theirs is beaten. What a student has been told is kept in this browser.
+function classLevels() { const z = state.zones.find(z => z.workshop); return z ? z.sites : []; }
+function freshLevels() { return classLevels().filter(s => s.live && !s.mine && s.solved == null); }
+function listOf(key) { try { return JSON.parse(recall(key) || "null"); } catch (_) { return null; } }
+function renderClassLevels() {
+  const fresh = freshLevels();
+  $("levelsPip").hidden = !fresh.length; $("levelsPip").textContent = fresh.length;
+  $("levelsButton").title = fresh.length ? `Every level. Your class made ${plural(fresh.length, "level")} you haven't beaten yet!` : "Every level: pick one to play";
+  if (!me || recall("planetIntroSeen") !== "1") return;
+  const seenKey = `planetLevelsSeen:${me}`, seen = listOf(seenKey) || [];
+  const news = fresh.filter(s => !seen.includes(s.key));
+  if (news.length) {
+    store(seenKey, JSON.stringify([...seen, ...news.map(s => s.key)].slice(-200)));
+    const one = news[0];
+    setTimeout(() => news.length === 1
+      ? toast("🛠", `${one.by} made a level: ${one.name}`, "Can you beat it? Press here to play it.", () => openSite(one.key))
+      : toast("🛠", `Your class made ${news.length} levels`, "Can you beat them? Press here to see them.", openLevels), 1800);
+  }
+  const fansKey = `planetLevelFans:${me}`, known = listOf(fansKey) || {}, now = {};
+  for (const s of classLevels().filter(s => s.mine && s.live)) {
+    now[s.key] = s.beaten;
+    if (s.beaten > (known[s.key] || 0)) {
+      const who = (s.fans || []).slice(-1)[0] || "A classmate";
+      setTimeout(() => toast("🎉", `${who} beat your level ${s.name}!`, `${plural(s.beaten, "classmate")} ${s.beaten === 1 ? "has" : "have"} beaten it now.`), 2300);
+    }
+  }
+  store(fansKey, JSON.stringify(now));
 }
 function renderRoute() {
   const here = site && zoneOf(site.key);
@@ -3105,6 +3207,7 @@ function playNext() {
   const open = allSites().filter(s => s.open);
   return (open.find(s => !s.solved && !(s.stars || []).some(Boolean)) || open[open.length - 1] || {}).key;
 }
+const levelsShown = new Set();   // the class levels the Levels screen has opened on
 const NEW_ZONES = ["tricks", "numbers", "paint", "zoo", "studio", "murals"];   // say NEW until a student has tried them
 function openLevels() {
   if (!state) return;
@@ -3129,9 +3232,10 @@ function openLevels() {
     group = name;
     if (!open) return `${head}<section class="zone-card locked" data-zone="${esc(z.key)}"><div class="zone-top"><span class="zone-ico">${ZONE_ICONS[z.key] || "🪐"}</span><div><h3>🔒 ${esc(z.name)}</h3><p>${z.build ? `Big missions for your loops. The first one opens after ${esc(z.sites[0].after)}.` : before ? `Finish ${esc(before.name)} to open it.` : "Locked."}</p></div></div></section>`;
     // Only where you are and where you're going start unfolded.
-    const unfold = isHere || z.sites.some(s => s.key === next);
+    const freshN = z.workshop ? freshLevels().length : 0;
+    const unfold = isHere || z.sites.some(s => s.key === next) || freshN > 0;
     return `${head}<section class="zone-card${isHere ? " here" : ""}${unfold ? " open" : ""}${z.halloween ? " spooky" : ""}" data-zone="${esc(z.key)}">
-      <button class="zone-top" aria-expanded="${unfold}"><span class="zone-ico">${ZONE_ICONS[z.key] || "🪐"}</span><div><h3>${esc(z.name)}${z.halloween ? ' <span class="limited">🕸 Limited time</span>' : ""}${!done && NEW_ZONES.includes(z.key) ? ' <span class="zone-new">NEW</span>' : ""}</h3><p>${esc(z.blurb || "")}</p></div>
+      <button class="zone-top" aria-expanded="${unfold}"><span class="zone-ico">${ZONE_ICONS[z.key] || "🪐"}</span><div><h3>${esc(z.name)}${z.halloween ? ' <span class="limited">🕸 Limited time</span>' : ""}${freshN ? ` <span class="zone-new">${freshN} NEW</span>` : !done && NEW_ZONES.includes(z.key) ? ' <span class="zone-new">NEW</span>' : ""}</h3><p>${esc(z.blurb || "")}</p></div>
         <div class="zone-prog"><span class="zone-bar" title="${done} of ${z.sites.length} done"><i style="width:${done / z.sites.length * 100}%"></i></span><b class="${stars === max ? "all" : ""}">★ ${stars}/${max}</b><span class="zone-chev" aria-hidden="true">▾</span></div></button>
       <div class="tiles"${unfold ? "" : " hidden"}>${z.sites.map(s => {
         const n = got(s), cls = [s.key === here ? "now" : "", s.key === next ? "next" : "", n && n === s.stars.length ? "gold" : n || s.solved != null ? "done" : ""].join(" ");
@@ -3150,7 +3254,11 @@ function openLevels() {
   $("levels").hidden = false;
   const focus = $("zoneList").querySelector(".tile.now") || $("zoneList").querySelector(".tile.next");
   const card = focus && focus.closest(".zone-card");
-  if (card) card.scrollIntoView({block: "start"});
+  // A class level they haven't seen in this list yet: stay at the top, where it is.
+  const unseen = freshLevels().filter(s => !levelsShown.has(s.key));
+  if (unseen.length) $("zoneList").scrollTop = 0;
+  else if (card) card.scrollIntoView({block: "start"});
+  for (const s of unseen) levelsShown.add(s.key);
   $("levelsPlay").focus();
 }
 // 🚀 Star Voyage: new levels open to everyone. The button at the top takes a
@@ -3173,7 +3281,9 @@ function playVoyage() {
   if (next) { closeLevels(); openSite(next); }
 }
 // The Levels screen shows 🚀 Star Voyage first, so nobody misses the new levels.
-function voyageFirst(zones) { return zones.filter(z => z.voyage).concat(zones.filter(z => !z.voyage)); }
+function voyageFirst(zones) {
+  return zones.filter(z => z.workshop).concat(zones.filter(z => z.voyage), zones.filter(z => !z.voyage && !z.workshop));
+}
 function foldZone(card, open) {
   card.classList.toggle("open", open);
   card.querySelector(".tiles").hidden = !open;
@@ -3187,7 +3297,7 @@ const MAKER_ROWS = 8, MAKER_COLS = 12;
 let maker = null;   // what's on the drawing board
 function levelLine(s) {
   if (!s.by) return "";
-  return `<small class="tby">${s.mine ? (s.live ? `yours · beaten by ${s.beaten}` : "beat it to publish") : `by ${esc(s.by)}`}</small>`;
+  return `<small class="tby">${s.mine ? (s.live ? `yours · beaten by ${s.beaten}` : "beat it to publish") : `by ${esc(s.by)}`}${!s.mine && s.live && s.solved == null ? ' <span class="zone-new">NEW</span>' : ""}</small>`;
 }
 function myLevels() { return allSites().filter(s => s.mine); }
 function openMaker(level) {
@@ -3254,6 +3364,20 @@ function routeEdges() {
 }
 
 // ---- Opening a site -----------------------------------------------------------------------
+// A class with the practice parks: younger, and used to driving a level first.
+function easyClass() { return !!state && state.zones.some(z => z.practice); }
+// Is the code from the level before worth trying on this one? Not if it uses a
+// word this level doesn't have: jump() after Jump Park stopped on its first
+// line. And for a younger class, only an idea carries over (a loop, an if, a
+// def), and only inside a zone: a route counted off another map can't work
+// here, and a wall of old lines is in the way of a first typed program.
+function worthCarrying(code, prev, view) {
+  const here = new Set([...COMMANDS, ...view.sensors, "print", "range"]);
+  const called = code.match(/\b[a-z_]+(?=\s*\()/g) || [];
+  if (called.some(w => (w in SENSOR_ZONE || w === "knock" || w === "candy") && !here.has(w))) return false;
+  if (!easyClass()) return true;
+  return zoneOf(prev) === zoneOf(view.key) && /^\s*(for|while|if|def)\b/m.test(code);
+}
 async function openSite(key) {
   if (busy) return;
   let view;
@@ -3287,9 +3411,13 @@ async function openSite(key) {
   if (code == null) {
     const order = allSites().map(s => s.key), prev = order[order.indexOf(key) - 1];
     code = prev && !kidsMode() ? recall(codeKey(prev)) : null;
+    if (code && !worthCarrying(code, prev, view)) code = null;
     carried = !!code;
   }
   $("code").value = code || "";
+  site.typing = kidsMode() ? JSON.parse(recall(`${codeKey(key)}:typing`) || "null") : null;
+  const built = view.can_together && JSON.parse(recall(`${codeKey(key)}:together`) || "null");
+  if (built) { site.typing = built.typing; site.together = built.together; site.handed = true; gapAt(); }
   $("code").scrollTop = 0; $("lines").scrollTop = 0; syncPaint();
   errorLine = 0;
   updateEditor();
@@ -3330,9 +3458,10 @@ async function openSite(key) {
   for (const y of yours.slice(-2)) $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">✍️ ${codeSpans(y.say)}</span>`);
   $("status").className = "status"; $("status").textContent = "Ready";
   // Little kids drive by hand first: their drive becomes their code.
-  if (kidsMode() && !view.solved) toggleScout();
+  if (kidsMode() && !view.solved && !site.together) toggleScout();
   document.body.classList.toggle("kids", kidsMode());
   $("code").placeholder = kidsMode() ? "Drive the rover with the arrows first.\nThen press 📋 Use as code, and your drive appears here."
+    : easyClass() && !typesOwn("closing") && key !== "7" ? "Write your program here, one command a line,\nthen Transmit ▶.\n\nNot sure of the way? Press 🕹 Scout and drive it first."
     : typesOwn("brackets") ? "Write your program here, one command a line,\nthen Transmit ▶."
     : "Write your program here, one command a line.\nPress a command under this box to add it, then Transmit ▶.";
   renderSteps();
@@ -3368,7 +3497,9 @@ function renderGoals() {
     ? `<button class="goal hint" onclick="showStarTip(${i})" title="Press for a hint"><i>★</i>${esc(g)} <b>💡</b></button>`
     : `<span class="goal${best[i] ? " got" : ""}"><i>★</i>${esc(g)}</span>`)).join("")
     + (site.gift ? '<span class="goal gift">🎁 A mystery gift is hidden here: drive over it</span>' : "")
-    + legend(site.map || []).map(t => `<span class="goal legend">${esc(t)}</span>`).join("")
+    + legend(site.map || []).map(t => { const at = t.indexOf(": ");
+      return at < 0 ? `<span class="goal legend">${esc(t)}</span>`
+        : `<span class="goal legend" title="${esc(t)}">${esc(t.slice(0, at))}<span class="legend-more">${esc(t.slice(at))}</span></span>`; }).join("")
     + challengeChip() + todayChip() + brainChip();
 }
 // Today's missions: a chip with how many are done, and the list it opens.
@@ -3550,7 +3681,7 @@ function warmSeen(key) { return recall(`planetWarm:${me}:${key}`) === "1"; }
 function startWarmup(view) {
   warm = null;
   $("warmup").hidden = true;
-  if (!WARMUPS[view.key] || view.solved != null || kidsMode() || warmSeen(view.key)) return;
+  if (!view.warmup || !WARMUPS[view.key] || view.solved != null || kidsMode() || warmSeen(view.key)) return;
   warm = {key: view.key, stage: 1, at: 0, oops: false};
   renderWarmup();
 }
@@ -3676,6 +3807,44 @@ function nudgeFirstRun() {
     $("runButton").classList.add("nudge");
     showBanner("", "Press Transmit ▶ to run the code in the editor and watch your rover drive. Then change one thing and run it again.");
   }, 45000);
+}
+// A student who does nothing for a while on a level that isn't done often
+// doesn't know what to try next, and with no Transmit there are no misses to
+// bring the help out. The rover has asked twice by now (IDLE_LINES); once on
+// each visit to a level, the ways forward come up one press away. Quiet: no
+// sound, and nothing moves in calm mode.
+const IDLE_MS = 75000;
+let lastAct = Date.now();
+for (const kind of ["keydown", "pointerdown", "wheel"]) window.addEventListener(kind, () => { lastAct = Date.now(); }, {capture: true, passive: true});
+setInterval(() => {
+  if (!me || !site || !scene || busy || playing || document.hidden || Date.now() - lastAct < IDLE_MS) return;
+  if (site.idled || site.solved != null || (site.stars || [])[0] || site.key === "7") return;
+  if (!$("celebrate").hidden || !$("warmup").hidden || $("app").hidden || document.querySelector(".dialog:not([hidden])")) return;
+  site.idled = true;
+  note("idle_help");
+  idleHelp();
+}, 5000);
+function idleHelp() {
+  const zone = zoneOf(site.key), blank = gapAt() >= 0 || BLANK.test($("code").value);
+  if (blank) { say("Press the key that's lit up!"); goToBlank(); return; }
+  if (scout) {
+    if (scout.over) return say(scout.reached ? "Press Use as code!" : "Press Scout again!");
+    say("Drive me with the arrows!");
+    const pad = $("pad");
+    pad.classList.remove("wake"); void pad.offsetWidth; pad.classList.add("wake");
+    setTimeout(() => pad.classList.remove("wake"), 1600);
+    return;
+  }
+  const buttons = [`<button class="quiet" onclick="toggleScout()">🕹 Try it by hand</button>`];
+  if (zone.hints.length < zone.hint_count) buttons.push(`<button class="quiet" onclick="openPop($('radioPop'), $('radioButton'))">📻 Get a hint</button>`);
+  if (site.can_together) buttons.unshift(togetherButton());
+  const text = noCode() ? `Not sure how to start? Drive ${roverName("the rover")} by hand to see the way, then write it as code.`
+    : `Not sure what to try next? Press Transmit ▶ to see what your code does so far. Or drive ${roverName("the rover")} by hand to find the way.`;
+  if ($("banner").hidden) return showBanner("", text, buttons.join(""));
+  // Something is already being said: the help goes under it, with any button it lacks.
+  const there = $("bannerActions").innerHTML;
+  $("bannerText").insertAdjacentHTML("beforeend", `<span class="next">👉 ${codeSpans(text)}</span>`);
+  $("bannerActions").insertAdjacentHTML("afterbegin", buttons.filter(b => !there.includes(/onclick="([^"]+)"/.exec(b)[1])).join(""));
 }
 async function skipSite() {
   const key = site.key, name = site.name;
@@ -3822,10 +3991,12 @@ function garageLoop(ts) {
 const GARAGE_TABS = [["paint", "Paint"], ["topper", "Hats"], ["wheels", "Wheels"], ["pet", "Pets"], ["glow", "Glow"], ["trail", "Trails"],
                      ["horn", "Horns"], ["dance", "Dances"], ["world", "Maps"], ["badges", "Badges"]];
 const DANCE_ICONS = {spin: "🌀", wiggle: "〰️", moonwalk: "🕺", firework: "🎆", flip: "🤸", zoomies: "💨", disco: "🪩",
-                     kaboom: "💥", smokebomb: "🥷", tornado: "🌪", pogo: "🏀", zombieshuffle: "🧟"};
+                     kaboom: "💥", smokebomb: "🥷", tornado: "🌪", pogo: "🏀", zombieshuffle: "🧟",
+                     sixsevendance: "🤷", floss: "🪥", ragequit: "😤"};
 const HORN_ICONS = {beep: "🤖", honk: "📢", quack: "🦆", pew: "⚡", moo: "🐄", airhorn: "📯", fanfare: "🎺", icecream: "🍦",
                     hiss: "🐍", spooky: "👻", roar: "🦖", weewoo: "🚨", boom: "💥",
-                    dingdong: "🔔", scream: "😱", cackle: "🧙"};
+                    dingdong: "🔔", scream: "😱", cackle: "🧙",
+                    sixsevenhorn: "🤷", bonk: "🔨", womp: "🎺", bruh: "😐"};
 let garageTab = "paint", garagePeek = null;
 function itemNeed(i) {
   return i.shop ? "🎨 Paint Shop" : i.candy != null ? `🍬 ${i.candy}` : i.find ? `🎁 ${i.find.toUpperCase()}` : i.stars != null ? `★ ${i.stars}` : i.trophies != null ? `🏆 ${i.trophies}`
@@ -3859,7 +4030,7 @@ function renderGarage() {
       : `<div class="badge no${b.limited ? " ltd" : ""}"><span class="ico">${b.icon}</span><div>${esc(b.name)}${b.limited ? ` <span class="ltd-tag">🎃 Halloween</span>` : ""}<small>${esc(b.how)}</small></div></div>`).join("") + "</div>";
   } else {
     const RANK = Object.keys(RARITY_NAMES), shelf = state.garage.filter(i => onTab(i, garageTab))
-      .sort((a, b) => RANK.indexOf(a.rarity) - RANK.indexOf(b.rarity));   // common first, legendary last
+      .sort((a, b) => (b.open ? 1 : 0) - (a.open ? 1 : 0) || RANK.indexOf(a.rarity) - RANK.indexOf(b.rarity));   // yours first, then common to legendary
     const door = garageTab === "halloween" ? `<button class="shop-door spooky" id="roadDoor"><span class="big">🎃</span><span><b>Halloween only!</b>${state.halloween ? `${state.halloween.candy} 🍬 in your bag. Candy, gifts and badges on Halloween night unlock these. Yours to keep.` : "Halloween night is over. These are yours to keep."}</span>${state.halloween ? '<span class="gn-go">🍬 Candy road ▶</span>' : ""}</button>`
       : garageTab !== "paint" ? "" : `<button class="shop-door" id="shopDoor"><span class="big">🎨</span><span><b>Paint Shop</b>Code your own paint: <code>paint(3, 2, "red")</code></span><span class="gn-go">Open ▶</span></button>`;
     $("garageShelf").innerHTML = door + `<div class="cards">` + shelf.map(i => {
@@ -4444,9 +4615,12 @@ function withBlanks(code) {
 const BLANK = /\b[a-z]+_+\b/;
 function scoutAsCode() {
   if (!scout || !scout.moves.length) return;
-  const code = movesAsCode(scout.moves, scout.blanks), coached = kidsMode() || !!scout.coach;
+  const guided = kidsMode() && scout.blanks, full = guided && movesAsCode(scout.moves, false);
+  const code = guided ? maskTyping(full) : movesAsCode(scout.moves, scout.blanks), coached = kidsMode() || !!scout.coach;
   stopScout();
   site.handed = true; site.coached = coached;
+  site.typing = guided ? {target: full, mask: code} : null;
+  if (guided) store(`${codeKey(site.key)}:typing`, JSON.stringify(site.typing));
   replaceText(0, $("code").value.length, code);
   const n = (code.match(new RegExp(BLANK, "g")) || []).length;
   if (!coached) toast("📋", "Your drive is now code", n ? `Finish the ${n === 1 ? "word" : `${n} words`} with _ in: each _ is one missing letter, and the first letter is a clue. Ctrl+Z brings back what was there.`
@@ -4455,15 +4629,17 @@ function scoutAsCode() {
 }
 // Put the cursor on the first _ of the first unfinished word.
 function goToBlank() {
-  const t = $("code"), m = BLANK.exec(t.value);
-  if (!m) return;
-  const at = m.index + m[0].indexOf("_");
+  const t = $("code"), gap = gapAt(), m = BLANK.exec(t.value);
+  if (gap < 0 && !m) return;
+  const at = gap >= 0 ? gap : m.index + m[0].indexOf("_");
   t.focus(); t.setSelectionRange(at, at);
 }
 // In an unfinished word each letter typed fills one _, and backspace gives
 // it back, so the word keeps its length. Only words withBlanks makes, so
 // names like beacon_x type as usual.
 function fillBlank(e) {
+  gapAt();
+  if (site.typing) return;   // guidedKey fills these
   const t = $("code"), v = t.value, at = t.selectionStart;
   const typed = e.inputType === "insertText" && /^[a-z]$/i.test(e.data || "");
   if (at !== t.selectionEnd || !typed && e.inputType !== "deleteContentBackward") return;
@@ -4499,10 +4675,110 @@ function fillBlank(e) {
 // at a time, then Transmit.
 let blanked = [];      // the words withBlanks cut, for the typing coach
 let coachOops = "";    // the key a wrong letter should have been
+// The typing ramp on the drive-first levels: each step hides a bit more of the
+// code the rover's drive turned into. Off the p-levels (Star Voyage's long
+// paint routes), step 2.
+const TYPING_STEPS = [
+  {n: 1, from: 1,  news: ""},                                      // e___()
+  {n: 2, from: 3,  news: "🆕 New: type the brackets too!"},         // e_____  for east()
+  {n: 3, from: 8,  news: "🆕 New: a loop line ends with a colon. Type it too!"},   // for i in r________
+  {n: 4, from: 13, news: "🆕 New: finish every line, and the word for!"},          // f__ i in r________
+  {n: 5, from: 17, news: "🆕 New: the whole for line is yours!"},   // f__ _ __ r________
+  {n: 6, from: 25, news: "🆕 New: no first letters now. You know these words!"},   // ______
+];
+const SHIFT_KEYS = {"(": "9", ")": "0", ":": ";", '"': "'", "!": "1", "%": "5", "+": "=", "<": ",", ">": "."};   // on a US keyboard
+function typingStep() {
+  const m = /^p(\d+)$/.exec(site.key);
+  return m ? TYPING_STEPS.filter(s => s.from <= Number(m[1])).pop() : TYPING_STEPS[1];
+}
+// One _ for each character the student has to type, so the blanked code is
+// exactly as long as the real code and each _ lines up with its character.
+function maskTyping(code) {
+  const step = typingStep().n, lines = code.split("\n");
+  const call = /^(\s*)([a-z]+)(\(.*\))$/, loop = /^(\s*)for (\w+) in range(\(\d+\))(:)$/;
+  const hide = text => "_".repeat(text.length);
+  const clue = word => step >= 6 ? hide(word) : word[0] + hide(word.slice(1));
+  const mask = line => {
+    let m = loop.exec(line);
+    if (m) return m[1] + (step >= 4 ? clue("for") : "for") + " " + (step >= 5 ? `${hide(m[2])} __` : `${m[2]} in`) + " "
+      + clue("range") + (step >= 2 ? hide(m[3]) : m[3]) + (step >= 3 ? "_" : ":");
+    m = call.exec(line);
+    return m ? m[1] + clue(m[2]) + (step >= 2 ? hide(m[3]) : m[3]) : line;
+  };
+  const word = line => (call.exec(line) || [])[2] || "for";
+  // Loop lines first, then from the top. Early on, a few different words; later, every line (to 8).
+  const can = lines.map((l, i) => i).filter(i => loop.test(lines[i]) || call.test(lines[i]))
+    .sort((a, b) => loop.test(lines[b]) - loop.test(lines[a]) || a - b);
+  const seen = new Set(), picks = step >= 3 ? can : can.filter(i => !seen.has(word(lines[i])) && seen.add(word(lines[i])));
+  const most = step >= 4 ? 8 : step === 3 ? 4 : Math.max(1, Math.min(3, Math.round(can.length / 3)));
+  for (const i of picks.slice(0, most)) lines[i] = mask(lines[i]);
+  return lines.join("\n");
+}
+// Where the next _ is, or -1. If the code no longer lines up with what was
+// blanked (Ctrl+Z past the drive, say), the guided typing is over.
+function gapAt() {
+  const g = site && site.typing, v = $("code").value;
+  if (!g) return -1;
+  if ([...v].length !== g.target.length || [...v].some((c, i) => c !== g.target[i] && !(c === "_" && g.mask[i] === "_"))) { site.typing = null; site.together = null; return -1; }
+  // (A real _ in a name, like beacon_x, isn't a gap.)
+  for (let i = 0; i < v.length; i++) if (v[i] === "_" && g.target[i] !== "_") return i;
+  return -1;
+}
+// While there are blanks, every key goes to the next one. Only the right key
+// goes in; Backspace gives back the last one. True if the key was dealt with.
+function guidedKey(event) {
+  const gap = gapAt(), key = event.key;
+  if (gap < 0) return false;
+  if (event.ctrlKey || event.metaKey || event.altKey) {
+    if (!/^[vx]$/i.test(key)) return false;
+    event.preventDefault();
+    return true;
+  }
+  if (key.length > 1 && !["Backspace", "Delete", "Enter", "Tab"].includes(key)) return false;
+  event.preventDefault();
+  const {target, mask} = site.typing, t = $("code");
+  if (key === "Backspace") {
+    let back = gap - 1;
+    while (back >= 0 && !(mask[back] === "_" && target[back] !== "_")) back--;
+    if (back >= 0) { coachOops = ""; replaceText(back, back + 1, "_"); t.setSelectionRange(back, back); }
+    return true;
+  }
+  if (key.length > 1 || key === " ") { goToBlank(); return true; }   // (the spaces are already there)
+  const want = target[gap];
+  if (key.toLowerCase() !== want.toLowerCase()) {   // (a capital, like the T of True, needs no Shift)
+    coachOops = want;
+    $("typeCoach").classList.remove("shake"); void $("typeCoach").offsetWidth; $("typeCoach").classList.add("shake");
+    renderSteps();
+    goToBlank();
+    return true;
+  }
+  coachOops = "";
+  replaceText(gap, gap + 1, want);
+  const next = gapAt();
+  t.setSelectionRange(next >= 0 ? next : t.value.length, next >= 0 ? next : t.value.length);
+  return true;
+}
+// The press-these-keys helper for the blanks of guided typing.
+function guidedCoach(gap) {
+  const {target} = site.typing, spot = /\S/;
+  let from = gap, to = gap + 1;
+  while (from > 0 && spot.test(target[from - 1])) from--;
+  while (to < target.length && spot.test(target[to])) to++;
+  const part = target.slice(from, to), want = target[gap], key = SHIFT_KEYS[want];
+  const tg = site.together, at = target.slice(0, gap).split("\n").length - 1;
+  const step = typingStep(), first = !tg && "p" + step.from === site.key && step.news;
+  const why = tg ? `<div class="why"><button class="quiet back" onclick="endTogether(true)" title="Puts back the code you had before">✕ Back to my code</button>🙌 <b>Line ${at + 1} of ${tg.lines}</b>${tg.notes[at] ? `: ${esc(tg.notes[at])}` : ""}</div>` : "";
+  const shift = key ? `Hold <b>Shift</b> and press <b>${esc(key)}</b>.` : "";
+  const oops = coachOops && (SHIFT_KEYS[coachOops] ? `Not that one. ${shift}` : `Not that one. Find the <b>${esc(coachOops)}</b> key.`);
+  return why + (first ? `<div>${first}</div>` : "") +
+    (tg ? `✏️ Type <b>${esc(part)}</b>, one key at a time:` : `✏️ Press these keys one at a time to type <b>${esc(part)}</b>`) +
+    `<div class="keys">${[...part].map((ch, i) => `<kbd class="${from + i < gap ? "got" : from + i === gap ? "next" : ""}">${esc(ch)}</kbd>`).join("")}</div>` +
+    (oops ? `<div class="oops">${oops}</div>` : shift ? `<div>${shift}</div>` : "");
+}
 function kidsMode() { const z = site && zoneOf(site.key); return !!(z && z.practice && !z.typed); }
 // Letter by letter: always on the practice sites, and on every site when the
 // teacher's switch was on for the scouted code.
-function typingHelp() { return kidsMode() || !!(site && site.coached); }
+function typingHelp() { return kidsMode() || !!(site && (site.coached || site.together)); }
 // Has this piece of help come off (planet.TYPE_YOURSELF)? The little kids'
 // drive-first sites keep all of it: their way in leans on it.
 function typesOwn(key) { return !kidsMode() && state.yours.some(y => y.key === key); }
@@ -4520,12 +4796,13 @@ function blankTarget(letters, length) {
   return blanked.find(fits) || BLANK_WORDS.find(fits) || null;
 }
 function renderSteps() {
-  const kids = kidsMode(), code = $("code").value, blank = BLANK.exec(code);
+  const kids = kidsMode(), code = $("code").value, gap = gapAt(), blank = gap >= 0 || BLANK.exec(code);
   $("steps").hidden = !kids;
   $("typeCoach").hidden = true;
+  document.body.classList.toggle("building", !!(site && site.together) && gap >= 0);
   if (kids) {
     const now = scout ? (scout.reached ? 2 : 1) : blank ? 3 : site.handed ? 4 : 1;
-    const names = ["🕹 Drive the rover", "📋 Use as code", "✏️ Finish the words", "▶ Transmit"];
+    const names = ["🕹 Drive the rover", "📋 Use as code", "✏️ Finish the code", "▶ Transmit"];
     $("steps").innerHTML = names.map((name, i) => {
       const cls = `step${i + 1 === now ? " now" : i + 1 < now ? " done" : ""}`;
       const label = `${i + 1 < now ? "✓" : `${i + 1}.`} ${name}`;
@@ -4534,20 +4811,64 @@ function renderSteps() {
   }
   if (!typingHelp()) return;
   const coach = $("typeCoach");
-  if (blank) {
+  if (gap >= 0) {
+    coach.innerHTML = guidedCoach(gap);
+    coach.hidden = false;
+  } else if (blank) {
     const word = blank[0], letters = word.replace(/_/g, ""), target = blankTarget(letters, word.length);
     if (!target) return;
     coach.innerHTML = `✏️ Finish the word <b>${esc(target)}</b>. Press the keys one at a time:` +
       `<div class="keys">${[...target].map((ch, i) => `<kbd class="${i < letters.length ? "got" : i === letters.length ? "next" : ""}">${esc(ch)}</kbd>`).join("")}</div>` +
       (coachOops ? `<div class="oops">Not that one. Find the <b>${esc(coachOops)}</b> key.</div>` : "");
     coach.hidden = false;
+  } else if (site.together && code === site.together.code && code !== site.lastSent) {
+    const tg = site.together, lines = tg.code.split("\n");
+    coach.innerHTML = `✅ That's the whole program! Press <b>Transmit ▶</b> and watch ${esc(roverName())} do it.`
+      + `<details class="recap"><summary>What each line does</summary><ol>${lines.map((line, i) => line.trim() ? `<li><code>${esc(line.trim())}</code> ${esc(tg.notes[i] || "")}</li>` : "").join("")}</ol></details>`;
+    coach.hidden = false;
+    $("runButton").classList.add("nudge");
   } else if (site.handed && !site.lastSent) {
-    coach.innerHTML = "✅ All the words are done! Now press <b>Transmit ▶</b> to send your code to the rover.";
+    coach.innerHTML = "✅ All done! Now press <b>Transmit ▶</b> to send your code to the rover.";
     coach.hidden = false;
     $("runButton").classList.add("nudge");
   }
 }
 function restartScout() { if (scout) { stopScout(true); toggleScout(); } }
+
+// ---- 🙌 Build it together: the last rung of the help. After many misses the
+// rover builds the level's answer with the student, a line at a time: each
+// line says what it does, and the student types it with the key helper. The
+// win earns the level's first star; the others wait for their own way.
+function togetherButton() { return `<button class="go trick" onclick="buildTogether()">🙌 Build it together</button>`; }
+async function buildTogether() {
+  if (busy || !site) return;
+  const key = site.key;
+  let out;
+  try { out = await post("/planet/together", {id: me, site: key}); } catch (_) { showBanner("lost", NO_ANSWER); return; }
+  if (!out || site.key !== key) return;
+  if (out.error) { showBanner("", out.error === "join" ? NO_ANSWER : out.error); return; }
+  stopScout(true); closePops(); clearToasts();
+  site.together = {code: out.code, notes: out.notes, lines: out.code.trimEnd().split("\n").length, before: site.together ? site.together.before : $("code").value};
+  site.typing = {target: out.code, mask: out.mask};
+  site.handed = true;
+  store(`${codeKey(key)}:together`, JSON.stringify({typing: site.typing, together: site.together}));
+  coachOops = "";
+  replaceText(0, $("code").value.length, out.mask);
+  resetScene(); setPlaying(false); render();
+  showBanner("", `🙌 Let's build it together! ${roverName("Your rover")} knows one way to do this level. Type it one line at a time: each line says what it does.`);
+  say("Let's do it together!");
+  goToBlank();
+  renderSteps();
+}
+// The build is over: the level is done, or the student wants their own code back.
+function endTogether(back) {
+  if (!site || !site.together) return;
+  const before = site.together.before;
+  site.together = null; site.typing = null;
+  try { localStorage.removeItem(`${codeKey(site.key)}:together`); } catch (_) {}
+  if (back) { replaceText(0, $("code").value.length, before || ""); hideBanner(); $("code").focus(); }
+  renderSteps();
+}
 
 // ---- Transmitting ------------------------------------------------------------------------
 // Nothing in the editor (or only comments), so nothing to send: a run would
@@ -4595,11 +4916,16 @@ async function sameCode() {
   if (last()) { site.same = true; togglePlay(); }   // (a code error has nothing to replay)
   const out = await post("/planet/again", {id: me, site: key}).catch(() => null);
   if (!out || out.error || site.key !== key) return;
-  site.misses = out.misses;
+  site.misses = out.misses; site.can_together = out.can_together;
   if (playing && scene === was) rewards = {badges: [], unlocked: [], found: [], new_stars: 0, can_skip: out.can_skip, helpers: out.helpers};
 }
 async function transmit() {
   if (busy || !me || !site) return;
+  if (gapAt() >= 0) {
+    showBanner("lost", "Fill in every _ first. The helper shows which key to press.", `<button class="quiet" onclick="goToBlank()">Show me the blank</button>`);
+    goToBlank();
+    return;
+  }
   if (BLANK.test($("code").value)) {
     showBanner("lost", "Finish each word with _ in it first. Each _ is one missing letter, and the first letter is a clue: the commands under the editor can help.",
                `<button class="quiet" onclick="goToBlank()">Show me the blank</button>`);
@@ -4635,7 +4961,8 @@ async function transmit() {
     holdRank = false;
     $("totalStars").textContent = data.rewards.total_stars - data.rewards.new_stars;
     site.stars = data.rewards.best;
-    site.misses = data.rewards.misses;
+    site.misses = data.rewards.misses; site.can_together = data.rewards.can_together;
+    if (data.rewards.together || !site.lastMissed) endTogether();
     nudgeHints();
     const rec = data.rewards.record;
     if (rec) { site.record = {ticks: rec.ticks, name: rec.name}; $("record").hidden = false; $("record").textContent = `🏆 Class record: ${plural(rec.ticks, "tick")} · ${rec.name}`; }
@@ -4706,7 +5033,7 @@ function updateEditor() {
 function refreshEditor() {
   const t = $("code"), code = t.value, count = Math.max(1, code.split("\n").length);
   const caret = document.activeElement === t ? code.slice(0, t.selectionStart).split("\n").length : 0;
-  problems = errorLine ? {} : problemsIn(code, caret);
+  problems = errorLine || gapAt() >= 0 ? {} : problemsIn(code, caret);
   const jumps = !!(scene && scene.run && scene.code === code);
   $("lines").classList.toggle("jumps", jumps);
   $("lines").title = jumps ? "Click a line number to see when it ran" : "";
@@ -4773,6 +5100,7 @@ function editorKey(event) {
   if (event.key === "Escape") { tabLeaves = true; closeComplete(); return; }
   if (event.key === "Tab" && tabLeaves) return;
   tabLeaves = false;
+  if (guidedKey(event)) return;
   if (event.ctrlKey || event.metaKey || event.altKey) return;
   const lineStart = v.lastIndexOf("\n", start - 1) + 1;
   let lineEnd = v.indexOf("\n", start); if (lineEnd < 0) lineEnd = v.length;
@@ -5195,7 +5523,7 @@ function paintCode(code, caret = 0) {
     if (comment) return `<i class="t-note">${esc(comment)}</i>`;
     if (text) return `<i class="t-text">${esc(text)}</i>`;
     if (num) return `<i class="t-num">${num}</i>`;
-    const cls = BLANK.test(word) || word === "_" ? "t-blank" : COMMANDS.includes(word) || (LINE_CHIPS.includes(word) && sensors.has(word)) ? "t-cmd" : sensors.has(word) ? "t-sense" : own.has(word) ? "t-own"
+    const cls = BLANK.test(word) || /^_+$/.test(word) ? "t-blank" : COMMANDS.includes(word) || (LINE_CHIPS.includes(word) && sensors.has(word)) ? "t-cmd" : sensors.has(word) ? "t-sense" : own.has(word) ? "t-own"
       : KEYWORDS.has(word) ? "t-key" : "";
     return cls ? `<i class="${cls}">${word}</i>` : word;
   });
@@ -5479,7 +5807,7 @@ $("code").addEventListener("input", e => {
   fillBlank(e);
   updateEditor();
   chipTyped();
-  complete(e.inputType === "insertText");
+  complete(e.inputType === "insertText" && gapAt() < 0);
   showSignature();
 });
 // The cursor moved (typing, arrows, a click): the lit line, the brackets and
@@ -5599,6 +5927,15 @@ function hearNotice(notice) {
   }
   noticeSeen = notice.n;
 }
+// The teacher opened or closed the Rover Farm (its own page: planet_farm.html).
+let farmOpen = null;
+function farmSet(on, tell) {
+  if (on === farmOpen) return;
+  farmOpen = on;
+  $("farmButton").hidden = !on;
+  if (on && tell) toast("🌱", "The Rover Farm is open!", "Press 🌱 Farm at the top of the page to visit your own farm.");
+}
+$("farmButton").addEventListener("click", () => { location.href = "/planet/farm"; });
 // The teacher's spinner landed on this student.
 let pickedSeen = 0;
 function hearPicked(n) {
@@ -5613,8 +5950,8 @@ setInterval(async () => {
   if (!me || !state || !site || busy) return;
   const lately = performance.now() - idleSince < IDLE_PLAY_MS ? "&busy=1" : "";
   const out = await get(`/planet/ping?id=${encodeURIComponent(me)}${lately}`).catch(() => null);
-  if (out) { loungeSet(!!out.lounge, true); teamSet(!!out.team, true); hearNotice(out.notice); predictHear(out.predict); hearPicked(out.picked); }
-  if (!out || (out.challenge || null) === ((state.challenge || {}).tag || null)) return;
+  if (out) { loungeSet(!!out.lounge, true); teamSet(!!out.team, true); farmSet(!!out.farm, true); hearNotice(out.notice); predictHear(out.predict); hearPicked(out.picked); }
+  if (!out || (out.challenge || null) === ((state.challenge || {}).tag || null) && (out.levels || "") === (state.levels_news || "")) return;
   useState(await get(`/planet/state?id=${encodeURIComponent(me)}`));
   renderGoals();
 }, 6000);

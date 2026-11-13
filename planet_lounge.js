@@ -296,7 +296,7 @@ function loungeSay() {
     : waiting && place === 0 ? `🎤 ${s ? `${s.tag} is on stage. ` : ""}You're next!`
     : waiting ? `🎤 ${place + 1} rovers to go before you. You're in the queue.`
     : s ? `🎤 Now on stage: ${s.tag}`
-    : "Click the floor to drive. Bump the ball! Click a rover to see it up close.";
+    : "Click the floor to drive. Bump the ball to kick it.";
   $("loungeStage").disabled = mine || waiting;
 }
 // The emote buttons and the line about the class's trophies.
@@ -365,7 +365,7 @@ function openLounge() {
   clearToasts();
   lounge.run++;
   lounge.rovers.clear();
-  Object.assign(lounge, {you: null, after: null, stage: null, queue: [], card: null, last: 0, ball: null});
+  Object.assign(lounge, {you: null, after: null, stage: null, queue: [], card: null, last: 0, ball: null, since: performance.now()});
   $("loungeSay").textContent = "Your rover is rolling in…";
   $("lounge").hidden = false;
   closeRoverCard();

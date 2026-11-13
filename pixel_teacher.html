@@ -28,7 +28,6 @@
   tr.stuck td { background: #fff1f3; }
   .err { color: var(--warn); font-size: 13px; }
   .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .shows { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
   #poster-page { display: none; }
   @media print {
     body > *:not(#poster-page) { display: none !important; }
@@ -40,13 +39,6 @@
     #posterGrid b { font-size: 20px; }
   }
   canvas.pal { width: 40px; height: 40px; margin-right: 8px; vertical-align: middle; image-rendering: pixelated; background: #f6f3fd; border-radius: 4px; }
-  .story-words { display: grid; grid-template-columns: 200px minmax(0, 1fr) auto; gap: 6px; }
-  .story-words input { padding: 6px 8px; font: inherit; border: 2px solid var(--ink); border-radius: 6px; }
-  .cast-row { display: flex; flex-wrap: wrap; gap: 8px; }
-  .cast-row div { display: flex; align-items: center; gap: 4px; }
-  .show { border: 2px solid var(--ink); border-radius: 8px; padding: 8px; display: grid; gap: 4px; align-content: start; }
-  .show.hidden { background: #f0eef4; border-style: dashed; }
-  .show pre { margin: 0; max-height: 130px; overflow: auto; font: 12.5px/1.35 ui-monospace, Menlo, Consolas, monospace; background: #f6f3fd; padding: 6px; border-radius: 6px; }
   .feed { margin: 0; padding: 0; list-style: none; font-size: 14px; }
   .bar { height: 14px; background: #e7defd; border: 2px solid var(--ink); border-radius: 7px; overflow: hidden; }
   .bar i { display: block; height: 100%; background: var(--sun); }
@@ -70,7 +62,7 @@
     <span class="address" id="address"></span>
   </div>
 
-  <h2>Class stars</h2>
+  <h2>🎉 Class party meter</h2>
   <div class="card">
     <div class="row"><b id="classStars" style="white-space:nowrap"></b><div class="bar" style="flex:1"><i id="classBar"></i></div></div>
     <p style="margin:6px 0 0;font-size:14px;color:var(--soft)" id="classGoal"></p>
@@ -79,7 +71,7 @@
   <h2>Who's where</h2>
   <div class="card scroll">
     <table>
-      <thead><tr><th>Name</th><th>Mission</th><th>Tries here</th><th>Stars</th><th>Drawings</th><th>Trophies</th><th>Show</th><th>Last problem</th></tr></thead>
+      <thead><tr><th>Name</th><th>Mission</th><th>Tries here</th><th>Stars</th><th>Drawings</th><th>Trophies</th><th>Hang out</th><th>Last problem</th></tr></thead>
       <tbody id="rows"></tbody>
     </table>
     <p id="none" style="margin:8px 0 0;color:var(--soft)" hidden>Nobody has opened Pixel Pals yet.</p>
@@ -90,42 +82,22 @@
     <span>Everyone can reach:</span>
     <select id="openTo"></select>
     <button class="btn" id="openGo">Open up to here</button>
-    <button class="btn" id="party">🎉 Dance party on the projector</button>
     <button class="btn" id="poster">🖨️ Print a class poster</button>
     <span style="font-size:14px;color:var(--soft)">Students can always go past this by finishing missions.</span>
   </div>
 
-  <h2>🎪 Play together</h2>
+  <h2>🎉 The Hang out</h2>
   <div class="card">
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
       <button class="btn" id="roomOpen"></button>
+      <button class="btn" id="party">🎉 Party now</button>
+      <button class="btn" id="shower">🌠 Star shower now</button>
       <label style="display:flex;gap:6px;align-items:center;font-weight:700"><input type="checkbox" id="roomTyping"> Let them type their own words</label>
     </div>
     <p id="roomHere" style="margin:8px 0 0;font-size:14px"></p>
     <p id="roomSaid" style="margin:4px 0 0;font-size:14px;color:var(--soft)"></p>
+    <div id="roomPlaced" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px;font-size:14px"></div>
   </div>
-
-  <h2>The class story</h2>
-  <div class="card">
-    <div class="story-words">
-      <input id="storyTitle" maxlength="40" aria-label="The story's title">
-      <input id="storyStart" maxlength="180" aria-label="How the story starts">
-      <button class="btn" id="storySave">Save</button>
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-      <button class="btn" id="allIn">✅ Let everyone in</button>
-      <button class="btn" id="storyPlay">▶ Play the story on the projector</button>
-      <button class="btn" id="storyNew">Start a new story</button>
-    </div>
-    <p id="castNote" style="margin:8px 0 0;font-size:14px"></p>
-    <div id="castWaiting" class="cast-row"></div>
-    <div id="pages" class="shows" style="margin-top:8px"></div>
-  </div>
-
-  <h2>The Theatre</h2>
-  <label style="display:flex;gap:8px;align-items:center;margin:0 0 4px;font-weight:700"><input type="checkbox" id="checkFirst"> Check shows before the class sees them</label>
-  <p style="margin:0 0 8px;font-size:14px;color:var(--soft)" id="checkNote"></p>
-  <div class="shows" id="shows"></div>
 
   <h2>Just now</h2>
   <div class="card"><ul class="feed" id="feed"></ul></div>
@@ -159,10 +131,10 @@ async function refresh() {
   $("gate").hidden = true;
   $("page").hidden = false;
   $("address").textContent = data.address;
-  const goal = data.class.goals[0], stars = data.class.stars;
-  $("classStars").textContent = `★ ${stars}`;
-  $("classBar").style.width = goal ? Math.min(100, stars / goal.class * 100) + "%" : "100%";
-  $("classGoal").textContent = goal ? `At ${goal.class} stars the ${goal.key} ${goal.kind} opens for everyone.` : "";
+  const meter = data.meter;
+  $("classStars").textContent = `${meter.points} of ${meter.goal}`;
+  $("classBar").style.width = Math.min(100, meter.points / meter.goal * 100) + "%";
+  $("classGoal").textContent = `A finished mission adds 2, and a My Move adds 1. ${meter.next ? `The next party brings: ${meter.next}.` : "Every full meter is a party."} The class has ${data.stars} stars.`;
   $("none").hidden = data.students.length > 0;
   classRows = data.students;
   setTimeout(() => document.querySelectorAll("canvas.pal").forEach(paintPal));
@@ -171,7 +143,8 @@ async function refresh() {
       <td><canvas class="pal" data-picture="${esc(JSON.stringify(s.picture || null))}"></canvas>${esc(s.name)}</td>
       <td>${esc(s.level_name)}<br><small style="color:var(--soft)">${esc(s.chapter)}</small></td>
       <td>${s.misses >= 3 ? `<b style="color:var(--warn)">${s.misses} misses</b>` : s.runs_here}</td>
-      <td>${s.stars}</td><td>${s.drawings}</td><td>${s.badges}</td><td>${s.show ? "Yes" : ""}</td>
+      <td>${s.stars}</td><td>${s.drawings}</td><td>${s.badges}</td><td>${s.hang ? (s.move ? "Yes, with My Move" : "Yes") : ""}${s.let_in ? ` <button class="btn" data-let-in="${esc(s.name)}" data-on="">Lock again</button>`
+        : s.hang ? "" : `<button class="btn" data-let-in="${esc(s.name)}" data-on="1">🔓 Let in</button>`}</td>
       <td class="err">${esc(s.last_error)}</td>
     </tr>`).join("");
   const pick = $("openTo");
@@ -181,41 +154,15 @@ async function refresh() {
   }
   const room = data.room;
   roomIsOpen = room.open;
-  $("roomOpen").textContent = room.open ? "Close the room" : "🎪 Open the room";
+  $("roomOpen").textContent = room.open ? "Close the Hang out" : "Open the Hang out";
   $("roomTyping").checked = room.words;
-  $("roomHere").textContent = room.open ? (room.here.length ? `Here now: ${room.here.join(", ")}` : "Open, and nobody has come in yet. They go to 📖 Story.") : "Everyone's pals share one live stage. It shows on the projector too. Words are tapped from a list unless you tick the box.";
+  const placed = Object.entries(data.placed);
+  $("roomPlaced").innerHTML = placed.length ? "<b>Drawings left in the world:</b> " + placed.map(([name, count]) => {
+    const safe = name.replace(/[&<>"']/g, ch => "&#" + ch.charCodeAt(0) + ";");
+    return `<button class="btn" data-placed="${safe}">Remove ${safe}'s (${count})</button>`;
+  }).join("") + `<button class="btn" data-placed-all="1">Remove all</button>` : "";
+  $("roomHere").textContent = room.open ? (room.here.length ? `Here now: ${room.here.join(", ")}` : "Open, and nobody is here yet. It opens for a student after 3 missions.") : "Closed. Students who open it see a closed sign until you open it again.";
   $("roomSaid").textContent = room.words && room.said.length ? `Just said: ${room.said.slice(-5).join(" / ")}` : "";
-  const story = data.story;
-  if (document.activeElement !== $("storyTitle") && document.activeElement !== $("storyStart")) {
-    $("storyTitle").value = story.title;
-    $("storyStart").value = story.start;
-  }
-  $("castNote").textContent = story.cast_waiting.length ? "These pals want to join the story:" : "";
-  $("castWaiting").innerHTML = story.cast_waiting.map(c => `<div><canvas class="pal" data-picture="${esc(JSON.stringify(c.picture))}"></canvas><b>${esc(c.by)}</b>
-    <button class="btn" data-cast-ok="${esc(c.owner)}">Let in</button><button class="btn" data-cast-no="${esc(c.owner)}">No</button></div>`).join("");
-  const pages = story.pages.slice().sort((a, b) => b.waiting - a.waiting);
-  let number = 0;
-  $("pages").innerHTML = pages.map(p => `
-    <div class="show">
-      <b>${p.waiting ? "Waiting for you" : `Page ${++number}`}: ${esc(p.line)}</b>
-      <small>by ${esc(p.by)}</small>
-      <pre>${p.live.length ? `A live scene with ${esc(p.live.join(", "))}` : esc(p.code)}</pre>
-      <div>${p.waiting ? `<button class="btn" data-page-ok="${p.id}">Let it in</button>` : `<button class="btn" data-page-up="${p.id}" aria-label="Earlier">↑</button> <button class="btn" data-page-down="${p.id}" aria-label="Later">↓</button>`}
-      <button class="btn" data-page-no="${p.id}">${p.waiting ? "Not this one" : "Take out"}</button></div>
-    </div>`).join("");
-  $("checkFirst").checked = data.check;
-  $("checkNote").textContent = data.check
-    ? "New shows wait here until you press Let it in, because students can type anything into say()."
-    : "Shows go up straight away. Read them here, and press Hide if one isn't right for the class.";
-  const order = data.shows.slice().sort((a, b) => b.waiting - a.waiting);
-  $("shows").innerHTML = order.length ? order.map(s => `
-    <div class="show${s.hidden && !s.waiting ? " hidden" : ""}">
-      <b>${esc(s.title)}</b>
-      <small>by ${esc(s.by)} · ♥ ${s.hearts}${s.waiting ? " · Waiting for you" : s.hidden ? " · Hidden" : ""}</small>
-      <pre>${esc(s.code)}</pre>
-      ${s.waiting ? `<button class="btn" data-show="${esc(s.owner)}">Let it in</button> <button class="btn" data-hide="${esc(s.owner)}">Not this one</button>`
-        : `<button class="btn" data-${s.hidden ? "show" : "hide"}="${esc(s.owner)}">${s.hidden ? "Show it again" : "Hide"}</button>`}
-    </div>`).join("") : `<p style="margin:0;color:var(--soft)">No shows yet.</p>`;
   $("feed").innerHTML = data.feed.slice().reverse().map(f => `<li>${esc(f.text)}</li>`).join("") || `<li style="color:var(--soft)">Nothing yet.</li>`;
 }
 const LETTERS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -234,37 +181,23 @@ function paintPal(cv) {
 $("gate").addEventListener("submit", e => { e.preventDefault(); key = $("key").value.trim(); refresh(); });
 $("openGo").addEventListener("click", async () => { await call({action: "open", level: $("openTo").value}); refresh(); });
 $("party").addEventListener("click", () => call({action: "party"}));
+$("shower").addEventListener("click", () => call({action: "shower"}));
 let roomIsOpen = false;
 $("roomOpen").addEventListener("click", async () => { await call({action: "room", on: !roomIsOpen}); refresh(); });
+$("roomPlaced").addEventListener("click", async e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  await call(b.dataset.placedAll ? {action: "placed_clear"} : {action: "placed_clear", name: b.dataset.placed});
+  refresh();
+});
+$("rows").addEventListener("click", async e => {
+  const b = e.target.closest("[data-let-in]");
+  if (!b) return;
+  b.disabled = true;
+  await call({action: "let_in", name: b.dataset.letIn, on: !!b.dataset.on});
+  refresh();
+});
 $("roomTyping").addEventListener("change", async e => { await call({action: "room_words", on: e.target.checked}); refresh(); });
-$("allIn").addEventListener("click", async () => { await call({action: "all_in"}); refresh(); });
-$("storyPlay").addEventListener("click", () => call({action: "story_play"}));
-$("storySave").addEventListener("click", async () => { await call({action: "story_words", title: $("storyTitle").value, start: $("storyStart").value}); refresh(); });
-let newStorySure = false;
-$("storyNew").addEventListener("click", async () => {
-  if (!newStorySure) {       // a second click makes it certain
-    newStorySure = true;
-    $("storyNew").textContent = "Click again: this one gets put away";
-    return;
-  }
-  newStorySure = false;
-  $("storyNew").textContent = "Start a new story";
-  await call({action: "story_new"});
-  refresh();
-});
-$("pages").addEventListener("click", async e => {
-  const d = (e.target.closest("button") || {}).dataset;
-  if (!d) return;
-  const [action, page] = d.pageOk ? ["page_ok", d.pageOk] : d.pageNo ? ["page_no", d.pageNo] : d.pageUp ? ["page_up", d.pageUp] : ["page_down", d.pageDown];
-  await call({action, page: +page});
-  refresh();
-});
-$("castWaiting").addEventListener("click", async e => {
-  const d = (e.target.closest("button") || {}).dataset;
-  if (!d) return;
-  await call(d.castOk ? {action: "cast_ok", owner: d.castOk} : {action: "cast_no", owner: d.castNo});
-  refresh();
-});
 // Every pal in the class on one page, to print and pin up.
 let classRows = [];
 $("poster").addEventListener("click", () => {
@@ -272,13 +205,6 @@ $("poster").addEventListener("click", () => {
   $("posterGrid").innerHTML = pals.map(s => `<div><canvas class="pal" data-picture="${esc(JSON.stringify(s.picture))}"></canvas><b>${esc(s.name)}</b></div>`).join("");
   $("posterGrid").querySelectorAll("canvas").forEach(paintPal);
   print();
-});
-$("checkFirst").addEventListener("change", async e => { await call({action: "check", on: e.target.checked}); refresh(); });
-$("shows").addEventListener("click", async e => {
-  const b = e.target.closest("button");
-  if (!b) return;
-  await call(b.dataset.hide ? {action: "hide", owner: b.dataset.hide} : {action: "show", owner: b.dataset.show});
-  refresh();
 });
 refresh();
 setInterval(refresh, 8000);

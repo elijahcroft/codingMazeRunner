@@ -255,9 +255,6 @@
   .tip-try { margin-left: 8px; padding: 0 8px; border: 2px solid var(--ink); border-radius: 6px; background: var(--sun); font-weight: 900; }
   .life-empty { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 8px; }
   .life-empty p { margin: 0; padding: 4px 14px; background: var(--paper); border: 2px solid var(--ink); border-radius: 8px; font-size: 19px; font-weight: 900; }
-  #gameLayer { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
-  .game-hud { position: absolute; left: 50%; top: 6px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 3px 10px; background: var(--ink); color: #fff; border-radius: 8px; font-weight: 900; white-space: nowrap; }
-  .game-hud button { padding: 0 8px; border: 2px solid #fff; border-radius: 6px; background: none; color: #fff; font-size: 14px; font-weight: 800; }
   #cardCanvas { display: block; width: 300px; max-width: 100%; margin: 10px auto; }
   .life-say { display: flex; gap: 6px; flex: none; }
   .life-say input { flex: 1; min-width: 0; padding: 6px 10px; border: 2px solid var(--ink); border-radius: 8px; }
@@ -275,45 +272,14 @@
   .keep { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .keep .btn { padding: 4px 9px; font-size: 15px; box-shadow: 2px 2px 0 var(--ink); }
   /* ---- The class story --------------------------------------------------------- */
-  .story-wrap { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; }
-  .story-switch { display: flex; align-items: center; gap: 10px; padding: 7px 12px 0; }
-  #roomNews { font-weight: 900; color: var(--pop-deep); }
-  #roomNews.rec { color: #fff; background: #e8294f; padding: 2px 10px; border-radius: 8px; }
-  .live-view { display: grid; grid-template-columns: minmax(0, 1fr) clamp(286px, 30vw, 380px); gap: 12px; padding: 8px 12px 10px; min-height: 0; overflow: hidden; }
   #roomCanvas { cursor: pointer; }
-  #roomTip { margin: 0; flex: none; font-size: 15px; text-align: center; color: var(--ink-soft); }
   .tag { position: absolute; transform: translateX(-50%); padding: 0 5px; background: rgba(255, 255, 255, .85); border-radius: 5px; font-size: clamp(10px, 1.1vw, 13px); font-weight: 800; line-height: 1.3; pointer-events: none; white-space: nowrap; }
   .tag.me { background: var(--sun); box-shadow: 0 0 0 1.5px var(--ink); }
-  .room-panel { display: flex; flex-direction: column; gap: 7px; min-height: 0; }
-  .room-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; flex: none; }
-  .room-tabs button { padding: 5px 0; border: 2px solid var(--ink); border-radius: 8px; background: var(--paper); font-size: 15px; font-weight: 900; }
-  .room-tabs button[aria-pressed="true"] { background: var(--sun); }
-  .room-buttons { flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: minmax(58px, auto); gap: 6px; align-content: start; padding: 1px 3px 3px 1px; }
-  .room-buttons.words { grid-template-columns: 1fr; grid-auto-rows: auto; gap: 4px; }
-  .room-buttons button { display: grid; justify-items: center; align-content: center; padding: 3px 2px; border: 2px solid var(--ink); border-radius: 10px; background: var(--paper); font-size: 15px; font-weight: 800; line-height: 1.15; box-shadow: 2px 2px 0 var(--ink); }
-  .room-buttons button span { font-size: 24px; line-height: 1.1; }
-  .room-buttons button:hover:not(:disabled) { background: var(--plum-soft); }
-  .room-buttons button:active:not(:disabled) { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--ink); }
-  .room-buttons button:disabled { opacity: .4; }
-  .room-buttons.words button { padding: 5px 8px; box-shadow: none; text-align: left; justify-items: start; }
-  .room-buttons h4 { grid-column: 1 / -1; margin: 3px 0 0; font-size: 14px; color: var(--ink-soft); }
-  .film { flex: none; width: 100%; font-size: 16px; }
-  .film.on { background: #e8294f; color: #fff; }
-  .story-view { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 12px; padding: 8px 12px 10px; min-height: 0; overflow: hidden; }
-  .storybook { display: flex; flex-direction: column; min-height: 0; padding: 10px; }
-  .storybook h2 { margin: 0; font-size: 20px; font-weight: 900; }
   #bookStart { margin: 3px 0 7px; font-size: 15px; font-style: italic; }
   #bookPages { display: grid; gap: 6px; align-content: start; flex: 1; min-height: 0; overflow: auto; padding-right: 3px; }
-  .leaf { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; align-items: center; width: 100%; padding: 5px; border: 2px solid var(--ink); border-radius: 8px; background: #fffdf4; text-align: left; font-size: 15px; font-weight: 700; line-height: 1.2; }
   button.leaf:hover { background: var(--plum-soft); }
-  .leaf.now { outline: 3px solid var(--pop); outline-offset: 1px; }
-  .leaf.waits { background: #f6f3fd; border-style: dashed; }
-  .leaf canvas { width: 52px; height: 52px; image-rendering: pixelated; background: #e9f4ff; border-radius: 4px; }
-  .leaf small { display: block; margin-top: 2px; font-size: 13px; color: var(--ink-soft); }
-  .leaf-empty { padding: 16px 8px; text-align: center; color: var(--ink-soft); font-size: 16px; }
   #storyLine { margin: 0; flex: none; min-height: 62px; padding: 5px 12px; background: #fffdf4; border: 2px solid var(--ink); border-radius: 8px; font-size: 18px; font-weight: 800; line-height: 1.25; text-align: center; }
   #storySmall { display: block; font-size: 13px; color: var(--ink-soft); }
-  .story-do { display: flex; gap: 6px; flex-wrap: wrap; flex: none; }
   #storyCast { margin: 0; flex: none; font-size: 14px; color: var(--ink-soft); }
   /* ---- The Stage -------------------------------------------------------------- */
   .stage-view { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr); gap: 12px; padding: 10px 12px; min-height: 0; }
@@ -373,9 +339,7 @@
   #verdict p { margin: 0; }
   #verdict p + p { margin-top: 3px; }
   #verdict .next { margin-top: 5px; }
-  .live { display: flex; align-items: center; gap: 6px; flex: none; flex-wrap: wrap; font-size: 14px; font-weight: 800; }
-  .live .btn { padding: 3px 10px; font-size: 14px; }
-  .toast { position: fixed; right: 16px; top: 66px; z-index: 30; max-width: 480px; padding: 8px 16px; background: var(--sun); border: 2px solid var(--ink); border-radius: 10px; box-shadow: var(--hard); font-weight: 900; text-align: center; pointer-events: none; }
+  .toast { position: fixed; right: 16px; top: 66px; z-index: 45; max-width: 480px; padding: 8px 16px; background: var(--sun); border: 2px solid var(--ink); border-radius: 10px; box-shadow: var(--hard); font-weight: 900; text-align: center; pointer-events: none; }
   body:has(#drawView:not([hidden])) .toast { right: auto; left: 222px; top: 64px; }
 
   /* Missions, trophies, word book */
@@ -397,29 +361,21 @@
   .trophy b { display: block; }
   .book { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 3px 16px; margin: 0; }
   .book div { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; font-size: 14px; }
-  #kitWords p { margin: 2px 0; }
 
-  /* The Theatre */
-  .park { display: block; width: 100%; aspect-ratio: 960 / 210; margin-bottom: 10px; border: 2px solid var(--ink); border-radius: 10px; box-shadow: var(--hard); image-rendering: pixelated; cursor: pointer; }
-  .theatre { padding: 12px; overflow: auto; min-height: 0; }
-  .theatre-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
-  .theatre-head h2 { margin: 0; font-size: 22px; font-weight: 900; }
-  .show-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
-  .show-card { padding: 0; overflow: hidden; border: 2px solid var(--ink); border-radius: 10px; box-shadow: var(--hard); background: #fff; text-align: left; }
-  .show-card button { width: 100%; padding: 8px; border: 0; background: none; text-align: left; }
-  .show-card button:hover { background: var(--plum-soft); }
-  .show-card canvas { display: block; width: 100%; aspect-ratio: 1; image-rendering: pixelated; background: #f6f3fd; }
-  .show-card strong { display: block; margin-top: 6px; font-size: 15px; font-weight: 900; line-height: 1.15; overflow-wrap: anywhere; }
-  .show-card small { color: var(--ink-soft); font-size: 13px; font-weight: 700; }
-  .empty { padding: 26px; text-align: center; color: var(--ink-soft); font-size: 17px; }
-  .watch-card { width: min(760px, 100%); padding: 12px; }
-  .watch-card h2 { margin: 0; font-size: 20px; font-weight: 900; }
-  .watch-card .screen { margin: 8px 0 10px; width: 100%; }
-  .watch-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
   
   /* Art as code */
   .code-art { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start; margin-top: 10px; }
+  .thing-card { width: min(940px, 100%); }
+  .thing-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 330px); gap: 12px; margin-top: 6px; }
+  .thing-grid > div { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+  #thingCode { height: min(220px, calc(100vh - 330px)); min-height: 120px; padding: 8px 10px; border: 2px solid var(--ink); border-radius: 10px; font: 16px/22px var(--mono); white-space: pre; tab-size: 4; resize: none; background: #1f1933; color: #f4efff; caret-color: #fff; outline: none; }
+  #thingChips { max-height: none; padding-top: 0; }
+  #thingError { margin: 0; min-height: 20px; color: #c0254e; font-weight: 800; font-size: 14px; }
+  #thingHost { width: 100%; }
+  .thing-ideas { display: flex; flex-wrap: wrap; gap: 5px; }
+  .thing-ideas button { padding: 3px 9px; font-size: 13px; }
+  @media (max-width: 760px) { .thing-grid { grid-template-columns: 1fr; } }
   #artCode { display: block; padding: 8px 10px; border: 2px solid var(--ink); border-radius: 8px; font: 700 15px/18px var(--mono); letter-spacing: .08em; white-space: pre; resize: none; background: #1f1933; color: #f4efff; }
   #artPreview { width: 128px; height: 128px; border: 2px solid var(--ink); border-radius: 6px; image-rendering: pixelated; }
   .key { display: flex; flex-wrap: wrap; gap: 3px 10px; margin-top: 8px; font: 700 14px var(--mono); }
@@ -442,71 +398,181 @@
   }
 
   #shelfNote { margin: 8px 0 0; font-size: 14px; color: var(--ink-soft); }
-  .app:has(#islandView:not([hidden])) { min-width:0; }
-  .app:has(#islandView:not([hidden])) .bar, .app:has(#islandView:not([hidden])) .tabs { flex-wrap:wrap; min-width:0; max-width:100%; }
-  .story-wrap:has(#islandView:not([hidden])) { background:#e6f0e9; }
-  .story-wrap:has(#islandView:not([hidden])) .story-switch { padding:12px 18px 4px; }
-  .story-wrap:has(#islandView:not([hidden])) .ways button { border:0; border-radius:12px; background:transparent; color:#46635f; padding:9px 14px; font-size:14px; }
-  .story-wrap:has(#islandView:not([hidden])) .ways button[aria-pressed="true"] { background:#fffdf6; color:#224f50; box-shadow:0 2px 5px #244c5010; }
-  .island-view { display:grid; grid-template-columns:minmax(0,1fr) 286px; gap:16px; padding:12px 18px 18px; min-height:0; overflow:auto; color:#294f50; }
-  .island-world.panel { position:relative; min-width:0; min-height:440px; display:flex; flex-direction:column; padding:0; gap:0; overflow:hidden; border:1px solid #b6d2c5; border-radius:22px; box-shadow:0 8px 22px #365b4910; background:#a9cc91; }
-  .island-heading { position:absolute; top:16px; right:18px; z-index:1; text-align:right; pointer-events:none; background:#fffdf0e8; padding:9px 13px; border-radius:14px; }
-  .island-heading strong { display:block; font-size:22px; letter-spacing:-.6px; color:#254c4e; text-shadow:0 1px 1px #fff8; }
-  .island-heading span { font-size:12px; color:#3c6660; }
-  #islandCanvas { display:block; width:100%; height:0; min-height:340px; flex:1; background:#7bc6cb; cursor:crosshair; }
-  .island-view button { min-height:44px; white-space:normal; }
-  .island-view .btn { border:1px solid #c9dace; border-radius:12px; box-shadow:none; color:#2c5352; background:#fffdf7; font-size:14px; transition:background .15s, border-color .15s; }
-  .island-view .btn:hover:not(:disabled) { background:#eef5e9; border-color:#81a89c; }
-  .island-view .btn:active:not(:disabled) { transform:translateY(1px); }
-  #islandInteract { position:absolute; bottom:45px; left:50%; transform:translateX(-50%); width:max-content; max-width:90%; padding:13px 24px; background:#245f60; color:#fffdf1; border:2px solid #fff9df; box-shadow:0 4px 12px #28564a30; border-radius:28px; font-size:15px; }
-  #islandInteract:hover:not(:disabled) { background:#327877; }
-  #islandInteract:disabled { background:#fffdf1ed; color:#4a6a5f; opacity:1; border-color:transparent; box-shadow:none; }
-  .island-world p { position:absolute; bottom:0; width:100%; margin:0; padding:9px; background:#fffdf1e8; font-size:12px; text-align:center; color:#45665e; }
-  .island-sidebar.panel { overflow:auto; border:0; border-radius:18px; padding:19px 15px; box-shadow:none; background:#fffdf7; }
-  .island-sidebar h2 { margin:0 0 10px; font-size:23px; letter-spacing:-.7px; }
-  .island-sidebar h3 { margin:20px 0 10px; font-size:15px; }
-  #islandProgress { display:block; padding:12px 10px; border-radius:10px; background:#f4ebd2; color:#756036; font-size:13px; }
-  #islandJournal { font-size:13px; line-height:1.65; font-weight:500; color:#54706a; margin:12px 0; }
-  #islandDestinations, #islandChoices { display:grid; gap:7px; margin-bottom:16px; }
-  #islandDestinations button { display:flex; align-items:center; gap:10px; width:100%; padding:10px 8px; text-align:left; background:transparent; border:1px solid transparent; }
-  #islandDestinations button.here { background:#edf4e8; border-color:#c3d7bc; }
   .destination-icon { display:grid; place-items:center; width:36px; height:38px; flex:none; border-radius:10px; background:#f2e6cc; color:#a17e40; font:24px Georgia,serif; }
-  #islandDestinations button:nth-child(2) .destination-icon { background:#f6e1d9; color:#ae745c; }
-  #islandDestinations button:nth-child(3) .destination-icon { background:#dcefee; color:#408b94; }
-  #islandDestinations button:nth-child(4) .destination-icon { background:#ebe5f3; color:#8871af; }
-  #islandDestinations button:nth-child(5) .destination-icon { background:#e7eed8; color:#73914f; }
-  #islandDestinations button:nth-child(6) .destination-icon { background:#e2eaf0; color:#678799; }
   .destination-name { display:block; font-size:13px; }
-  #islandDestinations small { display:block; font-size:10px; line-height:1.4; font-weight:500; color:#59756d; margin-top:3px; }
   .destination-mark { margin-left:auto; color:#75927e; }
-  .island-sidebar > small { display:block; font-size:11px; line-height:1.6; font-weight:500; color:#60766e; }
-  #islandActivity { border-top:2px dashed #d2decf; padding:8px 0; }
-  #islandActivityText { font-size:14px; line-height:1.6; font-weight:500; }
-  .island-view :focus-visible { outline:3px solid #246f8e; outline-offset:3px; }
-  .story-switch .ways { flex-wrap:wrap; }
   @media(max-width:800px) {
-    .island-view { grid-template-columns:minmax(0,1fr); padding:10px; gap:10px; }
-    .island-world.panel { min-height:360px; }
-    #islandCanvas { min-height:360px; height:360px; flex:none; }
-    .island-sidebar.panel { overflow:visible; }
-    #islandDestinations { grid-template-columns:1fr 1fr; }
-    #islandDestinations button { gap:7px; padding:8px 3px; }
-    #islandDestinations small { display:none; }
     .destination-icon { width:28px; height:32px; }
-    .island-heading strong { font-size:18px; }
   }
-  @media(prefers-reduced-motion:reduce) { .island-view .btn { transition:none; } }
-  #islandExit { position:absolute; left:16px; top:16px; z-index:2; padding:8px 14px; }
-  #interiorObjective { padding:12px; border-radius:10px; background:#eef3e5; font-size:14px; line-height:1.5; }
-  #interiorStations, #interiorRoles { display:grid; gap:7px; margin:12px 0; }
-  #interiorStations .here { background:#e3edcf; border-color:#8ca774; }
-  #interiorBag, #interiorRole, #interiorHistory { font-size:12px; line-height:1.6; }
-  #interiorLineForm { display:grid; gap:7px; margin:12px 0; font-size:12px; }
-  #interiorLine { width:100%; min-width:0; padding:10px; border:1px solid #b8cdbd; border-radius:8px; }
-  #interiorProps, #interiorMood { margin-top:8px; }
-  #interiorPanel summary { cursor:pointer; padding:12px 0; font-size:13px; }
-  #interiorPanel button { width:100%; }
-  #interiorHistory { padding-left:18px; }
+  /* ---- The Hang out: soft and rounded, like a picture book ---- */
+  .hang-view { display: grid; grid-template-columns: minmax(0, 1fr) clamp(290px, 28vw, 370px); gap: 14px; padding: 12px 16px 14px; min-height: 0; overflow: hidden; background: var(--place); color: #2c5352; transition: background-color .9s ease; --place: #d9edd2; --place-ink: #2d6a68; }
+  /* The page around the world takes the colour of the place you're standing in. */
+  .hang-view[data-place="wedding"] { --place: #fbdfe9; --place-ink: #b8406f; }
+  .hang-view[data-place="beach"] { --place: #c8ebf3; --place-ink: #1f7a94; }
+  .hang-view[data-place="night"] { --place: #c6c5ea; --place-ink: #3f3f86; }
+  .hang-view[data-place="snowy"] { --place: #dbebf8; --place-ink: #3d6a94; }
+  .hang-view[data-place="candy"] { --place: #ffd9ea; --place-ink: #c23d86; }
+  .hang-view[data-place="space"] { --place: #d2c8f0; --place-ink: #5a3fa0; }
+  .hang-view[data-place="home"] { --place: #f6e3c8; --place-ink: #a8642c; }
+  body.calm .hang-view { transition: none; }
+  .hang-main { display: flex; flex-direction: column; justify-content: center; gap: 10px; min-height: 0; min-width: 0; }
+  .hang-main .screen-wrap { flex: none; overflow: visible; padding: 8px; }
+  .hang-meter { flex: none; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 7px 14px; background: #fffdf6; border-radius: 16px; font-weight: 800; font-size: 15px; box-shadow: 0 2px 10px #2c535218; }
+  .hang-meter .track { height: 14px; background: #e8efe4; border-radius: 8px; overflow: hidden; }
+  .hang-meter .track i { display: block; height: 100%; width: 0; border-radius: 8px; background: linear-gradient(90deg, #ff9fb5, #ffd27a, #8fd0c8); transition: width .5s ease; }
+  #meterNext { color: #7a6a40; font-size: 14px; white-space: nowrap; }
+  .hang-screen { border: 0; border-radius: 20px; box-shadow: 0 0 0 7px #fffdf6, 0 7px 0 7px var(--place-ink); background: #bfe3dc; overflow: hidden; transition: box-shadow .9s ease; }
+  .hang-screen canvas { position: absolute; inset: 0; }
+  .hang-screen #hangBack { image-rendering: auto; }
+  .hang-screen .tag { background: #fffdf6e8; color: #2c5352; border-radius: 9px; padding: 0 7px; }
+  .hang-screen .tag.me { background: #ffd27a; color: #4a3a10; box-shadow: none; }
+  .hang-screen .bubble { border: 0; border-radius: 16px; box-shadow: 0 3px 12px #2c535240; }
+  .hang-screen .bubble::after { border: 0; }
+  #roomTip { margin: 6px 0 0; flex: none; font-size: 16px; font-weight: 800; text-align: center; color: #27484a; }
+  #hangBanner { position: absolute; left: 50%; top: 6%; transform: translateX(-50%); max-width: 90%; padding: 6px 18px; background: #fffdf6f2; border-radius: 18px; font-size: clamp(15px, 1.7vw, 22px); font-weight: 800; white-space: nowrap; pointer-events: none; box-shadow: 0 4px 16px #2c535233; animation: drop-in .3s ease-out; }
+  #hangBanner.big { top: 24%; padding: 14px 34px; text-align: center; font-size: clamp(26px, 4vw, 52px); font-weight: 900; color: #d9477e; animation: party-in .5s cubic-bezier(.3, 1.6, .5, 1); }
+  #hangBanner small { display: block; font-size: .42em; color: #2c5352; font-weight: 800; }
+  .float { position: absolute; transform: translate(-50%, 0); font-size: clamp(16px, 2vw, 26px); font-weight: 900; color: #fff; text-shadow: 0 1px 0 #2c5352, 0 0 4px #2c5352; pointer-events: none; animation: float-up 1.4s ease-out forwards; }
+  .float.combo { color: #ffd93b; font-size: clamp(24px, 3.2vw, 42px); }
+  @keyframes float-up { to { transform: translate(-50%, -64px); opacity: 0; } }
+  @keyframes drop-in { from { transform: translate(-50%, -12px); opacity: 0; } }
+  @keyframes party-in { from { transform: translateX(-50%) scale(.3); opacity: 0; } }
+  .hang-side { display: flex; flex-direction: column; gap: 8px; min-height: 0; padding: 12px; background: #fffdf6; border-radius: 22px; box-shadow: 0 4px 18px #2c535220; }
+  #myMove { flex: none; display: grid; gap: 1px; padding: 11px 10px; border: 0; border-radius: 18px; background: linear-gradient(135deg, #ff8fb3, #ffc46b); color: #4a1f33; box-shadow: 0 4px 0 #d9779a; cursor: pointer; font: inherit; }
+  #myMove b { font-size: 21px; font-weight: 900; overflow-wrap: anywhere; }
+  #myMove small { font-size: 13px; font-weight: 800; opacity: .85; }
+  #myMove:hover:not(:disabled) { filter: brightness(1.05); }
+  #myMove:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 #d9779a; }
+  #myMove:disabled { background: #e7e4d8; color: #6d6a58; box-shadow: none; cursor: default; }
+  #myMove.none-yet:not(:disabled) { background: linear-gradient(135deg, #bfe7dc, #d7c9f4); color: #2c4a52; box-shadow: 0 4px 0 #a3bcc4; }
+  #coinBar { flex: none; display: flex; align-items: baseline; gap: 6px; padding: 6px 12px; background: #fff3c4; border-radius: 14px; font-size: 16px; font-weight: 800; color: #5a4208; }
+  #coinBar b { font-size: 22px; font-weight: 900; }
+  #coinBar small { margin-left: auto; font-size: 12px; font-weight: 700; text-align: right; color: #7a6a40; }
+  #coinBar.bump b { display: inline-block; animation: coin-bump .5s ease-out; }
+  @keyframes coin-bump { 40% { transform: scale(1.5); color: #d9477e; } }
+  body.calm #coinBar.bump b { animation: none; }
+  .room-buttons button small { font-size: 12px; font-weight: 700; color: #6a5a20; }
+  .room-buttons button.dear { opacity: .6; }
+  .room-buttons button.locked { background: #f1efe6; box-shadow: none; color: #6d6a58; }
+  .room-buttons button.locked canvas { opacity: .5; filter: saturate(.5); }
+  .room-buttons button.goal { grid-auto-flow: column; justify-content: start; gap: 10px; text-align: left; background: #fff3c4; }
+  .room-buttons button.goal span { display: grid; gap: 2px; min-width: 0; }
+  .goal-bar { display: block; height: 8px; border-radius: 4px; background: #e7dcae; overflow: hidden; }
+  .goal-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #ff8fb3, #ffc46b); }
+  .room-buttons button:disabled { cursor: default; background: #e9f3e2; box-shadow: none; }
+  .room-buttons .swatch { display: block; width: 34px; height: 26px; border-radius: 7px; box-shadow: inset 0 0 0 2px #2c535233; }
+  .room-buttons .wide { grid-column: 1 / -1; min-height: 46px; grid-auto-flow: column; justify-content: center; gap: 8px; font-size: 16px; }
+  .fish-book { font-size: 20px; letter-spacing: 2px; }
+  .fish-book small { font-size: 12px; letter-spacing: 0; }
+  .dance-seq { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
+  .dance-seq span { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: #eef3e8; font-size: 24px; }
+  .dance-seq .done { background: #bfe7c8; }
+  .dance-seq .now { background: #ffd27a; box-shadow: 0 0 0 3px #e0a93f; }
+  #clapGo { flex: none; padding: 9px; border: 0; border-radius: 16px; background: #ffd27a; color: #4a3a10; font: inherit; font-size: 18px; font-weight: 900; cursor: pointer; animation: clap-pulse .7s ease-in-out infinite alternate; }
+  @keyframes clap-pulse { to { transform: scale(1.04); } }
+  #palStrip { flex: none; display: flex; align-items: center; gap: 10px; padding: 5px 8px 5px 5px; background: var(--place); border-radius: 18px; font-size: 16px; font-weight: 700; transition: background-color .9s ease; }
+  #palStripPic { flex: none; background: #fffdf6; border-radius: 14px; image-rendering: pixelated; }
+  #palStrip[hidden] { display: none; }
+  #palStrip span { flex: 1; min-width: 0; line-height: 1.15; }
+  #palStrip button[hidden] { display: none; }
+  #palStrip b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #palStrip button { flex: none; padding: 8px 12px; border: 0; border-radius: 12px; background: var(--place-ink); color: #fffdf6; font: inherit; font-weight: 800; cursor: pointer; }
+  .game-status { border: 2px solid #c6dac2; border-radius: 14px; background: #fffdf6; color: #27484a; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; padding: 10px 14px; min-height: 48px; text-align: left; cursor: pointer; font-size: 15px; }
+  .game-status span { font-size: 14px; }
+  .game-status:hover { background: #eef5e8; }
+  .game-status:focus-visible, .games-pane button:focus-visible { outline: 3px solid #376dba; outline-offset: 2px; }
+  .room-buttons.games-pane { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .games-pane button small { font-size: 12px; font-weight: 600; line-height: 1.4; }
+  .games-pane .me-note { grid-column: 1 / -1; }
+  .games-pane button:disabled { opacity: .5; cursor: default; }
+  #seekerCurtain { position: absolute; inset: 0; z-index: 20; background: #e9f1e2; color: #27484a; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 16px; border-radius: inherit; }
+  #seekerCurtain[hidden] { display: none; }
+  #seekerCurtain strong { font-size: clamp(32px, 6vw, 80px); line-height: 1; }
+  .room-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; flex: none; }
+  .room-tabs button { padding: 8px 3px; white-space: nowrap; border: 0; border-radius: 12px; background: #eef3e8; color: #3b5f5b; font-size: 15px; font-weight: 800; cursor: pointer; }
+  .room-tabs button[aria-pressed="true"] { background: var(--place-ink); color: #fffdf6; transition: background-color .9s ease; }
+  .room-buttons { flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: auto; gap: 7px; align-content: start; padding: 2px 3px 5px 0; }
+  .room-buttons button { display: grid; justify-items: center; align-content: center; gap: 2px; min-height: 62px; min-width: 0; padding: 7px 3px; border: 0; border-radius: 14px; background: #f3f5ea; box-shadow: 0 3px 0 #dbe2cf; color: #2c5352; font-weight: 800; font-size: 14px; line-height: 1.15; overflow-wrap: anywhere; cursor: pointer; }
+  .room-buttons button span { font-size: 24px; line-height: 1.1; }
+  .room-buttons button:hover:not(:disabled) { background: #e5efdc; }
+  .room-buttons button:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #dbe2cf; }
+  .room-buttons button[aria-pressed="true"], .room-buttons button[aria-pressed="true"]:hover:not(:disabled) { background: #ffd27a; box-shadow: 0 3px 0 #e0a93f; }
+  .hang-view button:focus-visible { outline: 3px solid var(--place-ink); outline-offset: 2px; }
+  .room-buttons.words { grid-template-columns: 1fr; grid-auto-rows: auto; gap: 4px; }
+  .room-buttons.words button { min-height: 0; padding: 7px 10px; text-align: left; justify-items: start; }
+  .room-buttons h4 { grid-column: 1 / -1; margin: 7px 0 0; font-size: 15px; color: #27484a; }
+  .room-buttons h4:first-child { margin-top: 0; }
+  .room-buttons canvas { image-rendering: pixelated; max-width: 100%; height: 30px; width: auto; }
+  .me-note { grid-column: 1 / -1; margin: 0; font-size: 14px; font-weight: 700; color: #4d6f68; }
+  #roomClosed { background: #fffdf6e0; color: #2c5352; }
+  .next-step { background: #2d6a68 !important; color: #fffdf6 !important; }
+  #hangNote { font-size: 14px; font-weight: 800; color: var(--ink-soft); white-space: nowrap; }
+  #calm[aria-pressed="true"] { background: #c9ecd9; }
+  #tags[aria-pressed="true"] { background: #c9ecd9; }
+  body.no-tags .tag { visibility: hidden; }
+
+  /* ---- The big win ---- */
+  .win { position: fixed; inset: 0; z-index: 40; display: grid; place-items: safe center; padding: 16px; overflow: auto; background: #1b153099; }
+  .win-bits { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
+  .win-bits i { position: absolute; top: -14px; width: 10px; height: 14px; border-radius: 3px; animation: bit-fall 1.8s ease-in forwards; }
+  @keyframes bit-fall { to { transform: translateY(105vh) rotate(540deg); } }
+  .win-card { position: relative; width: min(520px, 100%); padding: 20px 22px; background: #fffdf6; border-radius: 26px; text-align: center; box-shadow: 0 12px 40px #1b153055; animation: party-card .4s cubic-bezier(.3, 1.5, .5, 1); }
+  @keyframes party-card { from { transform: scale(.7); opacity: 0; } }
+  .win-card h2 { margin: 0; font-size: 34px; font-weight: 900; color: #d9477e; }
+  #winClose { position: absolute; right: 12px; top: 10px; padding: 2px 10px; border: 0; border-radius: 10px; background: #f0ece0; font-size: 14px; font-weight: 800; cursor: pointer; }
+  .win-stars { display: flex; justify-content: center; gap: 8px; margin: 6px 0; font-size: 52px; line-height: 1; color: #e5e0d0; }
+  .win-stars .on { color: #ffc93b; animation: star-pop .45s cubic-bezier(.3, 1.8, .5, 1) backwards; }
+  @keyframes star-pop { from { transform: scale(0) rotate(-90deg); } }
+  .gift-box { display: inline-grid; justify-items: center; margin: 6px; padding: 6px 26px 10px; border: 0; border-radius: 22px; background: #fff1d6; color: #7a4a20; font: inherit; font-size: 20px; font-weight: 900; cursor: pointer; animation: gift-wiggle 1s ease-in-out infinite; }
+  .gift-box span { font-size: 84px; line-height: 1.1; }
+  @keyframes gift-wiggle { 0%, 60%, 100% { transform: rotate(0); } 70% { transform: rotate(-6deg); } 80% { transform: rotate(6deg); } 90% { transform: rotate(-3deg); } }
+  .gift-open { display: grid; justify-items: center; gap: 2px; margin: 6px 0; font-size: 24px; animation: party-card .4s cubic-bezier(.3, 1.8, .5, 1); }
+  .gift-open canvas { image-rendering: pixelated; max-height: 110px; }
+  .gift-open small { font-size: 15px; font-weight: 700; color: #4d6f68; }
+  .win-do { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .win-do:empty { display: none; }
+  .win-ask { margin: 8px 0 6px; font-weight: 900; }
+  .move-perks { list-style: none; margin: 8px 0 0; padding: 0; font-size: 15px; font-weight: 700; color: #5f7c75; text-align: left; display: inline-block; }
+  .move-perks .on { color: #2d6a68; }
+  .name-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 5px; }
+  .name-tiles .btn { padding: 5px 4px; font-size: 14px; }
+  .named { grid-column: 1 / -1; margin: 4px 0; font-size: 26px; font-weight: 900; color: #d9477e; }
+  .fly-star { position: fixed; left: 50%; top: 50%; z-index: 50; font-size: 44px; color: #ffc93b; text-shadow: 0 2px 0 #b98a10; pointer-events: none; animation: star-fly .8s ease-in backwards; }
+  @keyframes star-fly { from { transform: translate(-50%, -50%) scale(1.5); } to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.5); opacity: .6; } }
+  #starCount.bump { animation: bump .3s ease-out; display: inline-block; }
+  @keyframes bump { 40% { transform: scale(1.4); } }
+  body.calm .gift-box, body.calm #clapGo, body.calm #hangBanner, body.calm .win-card, body.calm .gift-open, body.calm .win-stars .on, body.calm #starCount.bump { animation: none; }
+
+  /* ---- The step-by-step guide on the Code tab ---- */
+  .coach { flex: none; padding: 9px 11px; background: #fffbe8; border: 3px solid var(--sun); border-radius: 12px; }
+  .coach-steps { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 6px; padding: 0; list-style: none; font-size: 13px; font-weight: 800; }
+  .coach-steps li { padding: 1px 8px; border-radius: 99px; background: #eee9dc; color: #6d6a58; }
+  .coach-steps li.done { background: #c9ecd9; color: #1f6b4a; }
+  .coach-steps li.now { background: var(--pop-deep); color: #fff; }
+  .coach-say { margin: 0; font-size: 17px; font-weight: 800; line-height: 1.25; }
+  .coach-do { margin: 6px 0 2px; font-size: 14px; font-weight: 900; color: var(--pop-deep); }
+  .coach-keys { display: flex; flex-wrap: wrap; gap: 3px; }
+  .coach-keys kbd { min-width: 22px; padding: 2px 5px; border: 2px solid #c9c3b0; border-radius: 6px; background: #fff; color: var(--ink); font: 800 18px/22px var(--mono); text-align: center; }
+  .coach-keys kbd.got { border-color: #7fc9a4; background: #c9ecd9; color: #1f6b4a; }
+  .coach-keys kbd.next { border-color: var(--ink); background: var(--sun); box-shadow: 0 3px 0 var(--ink); transform: translateY(-2px); }
+  .coach-keys kbd.gap { min-width: 34px; }
+  .coach-keys kbd.enter { padding: 2px 10px; font-family: var(--ui); }
+  .coach-next { margin: 7px 0 0; font-size: 16px; font-weight: 800; }
+  .coach-next b { padding: 0 6px; background: var(--sun); border-radius: 5px; }
+  .coach-oops { margin: 5px 0 0; font-size: 16px; font-weight: 900; color: #b3123c; }
+  .coach-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+  .coach-row .btn { padding: 2px 9px; font-size: 14px; box-shadow: none; }
+  .coach.shake { animation: coach-shake .3s; }
+  @keyframes coach-shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+  #runButton.nudge { outline: 4px solid var(--sun); outline-offset: 2px; animation: run-nudge .8s ease-in-out infinite alternate; }
+  @keyframes run-nudge { to { transform: scale(1.08); } }
+  body.calm .coach.shake, body.calm #runButton.nudge { animation: none; }
+  .hl-ghost { color: #6f6890; }
+  body.coaching #pipSays, body.coaching #goals, body.coaching #hint, body.coaching #openBook { display: none; }
+  body.coaching:not(.building) #chips { display: none; }
+  body.coaching #job { font-size: 18px; }
+  body.building #chips .chip { padding: 5px 10px; font-size: 16px; line-height: 20px; background: #d9f5e4; }
+  body.building #chips { max-height: 140px; }
 </style>
 </head>
 <body>
@@ -515,7 +581,7 @@
   <div class="panel join-card">
     <canvas id="joinArt" width="480" height="150" aria-hidden="true"></canvas>
     <h1>Pixel <span>Pals</span></h1>
-    <p>Draw a pal. Bring it to life. Teach it to dance.</p>
+    <p>Draw a pal. Code its moves. Hang out with friends.</p>
     <form id="joinForm">
       <input id="name" maxlength="20" placeholder="Type your name" aria-label="Your name" autocomplete="off">
       <button class="btn main" id="joinButton">Start drawing</button>
@@ -528,10 +594,8 @@
     <div class="brand">Pixel <span>Pals</span></div>
     <nav class="tabs" aria-label="Pixel Pals">
       <button data-view="draw" class="on">🎨 Draw</button>
-      <button data-view="life">💓 Life</button>
-      <button data-view="stage">🎭 Stage</button>
-      <button data-view="story">📖 Story</button>
-      <button data-view="theatre">🎟️ Theatre</button>
+      <button data-view="stage">💻 Code</button>
+      <button data-view="hang" id="tabHang">🎉 Hang out</button>
     </nav>
     <span class="draw-only title-box"><input id="title" maxlength="24" placeholder="Name your drawing" aria-label="Name your drawing" autocomplete="off"></span>
     <button class="btn draw-only" id="undo">↶ Undo</button>
@@ -543,6 +607,10 @@
     <label class="namer stage-only" id="palPick" hidden>My pal <select id="palSelect"></select></label>
     <span id="starCount" class="stage-only" hidden></span>
     <button class="btn stage-only" id="openMissions" hidden>Missions</button>
+    <span id="hangNote" hidden></span>
+    <button class="btn main next-step" id="goNext" hidden></button>
+    <button class="btn" id="calm" aria-pressed="false" title="Less movement and fewer flying bits">🌿 Calm</button>
+    <button class="btn" id="tags" aria-pressed="false" title="Hide the names over the pals">🏷️ Hide names</button>
     <button class="btn" id="mute" aria-label="Sound on or off">🔊</button>
   </header>
 
@@ -664,15 +732,10 @@
 
   <div id="lifeView" class="life-view" hidden>
     <section class="side">
-      <div class="screen-wrap"><div class="screen" id="lifeHost"><canvas id="lifeCanvas" aria-label="Your pal, alive"></canvas><canvas id="gameLayer" hidden></canvas>
+      <div class="screen-wrap"><div class="screen" id="lifeHost"><canvas id="lifeCanvas" aria-label="Your pal, alive"></canvas>
         <div class="life-empty" id="lifeEmpty" hidden><p>Your pal isn't here yet!</p><button class="btn main" data-view="draw" id="goDraw">🎨 Draw your pal</button></div>
-        <div class="game-hud" id="gameHud" hidden><span id="gameWords"></span> <button id="gameStop">Stop</button></div></div></div>
+        </div></div>
       <div class="moves" id="moves"></div>
-      <form class="life-say" id="lifeSay">
-        <input id="lifeWords" maxlength="60" placeholder="Talk to your pal! Try: tell me a joke" aria-label="Talk to your pal" autocomplete="off">
-        <button class="btn main">Say</button>
-        <button class="btn" type="button" id="nextPlace" title="Take your pal somewhere new">🏞️ Place</button>
-      </form>
     </section>
     <section class="bones">
       <div class="panel">
@@ -685,9 +748,7 @@
       </div>
       <div class="panel">
         <div class="keep">
-          <button class="btn main" id="playCatch">🌟 Catch stars</button>
-          <button class="btn main" id="playCopy">🧠 Copy me</button>
-          <button class="btn" id="openCard">🃏 Pal card</button>
+          <button class="btn" id="nextPlace" title="Take your pal somewhere new">🏞️ Place</button>
           <button class="btn" id="bakeMove">Turn into frames</button>
           <button class="btn" id="gifMove">Download a GIF</button>
           <button class="btn" id="bonesAgain">Guess again</button>
@@ -707,6 +768,7 @@
         <p id="job"></p>
         <ul id="goals"></ul>
       </div>
+      <div class="coach" id="coach" hidden></div>
       <div class="editor">
         <pre id="lines" aria-hidden="true"></pre>
         <div class="code-box">
@@ -721,106 +783,49 @@
         <button class="btn" id="skip">Skip ⏩</button>
         <button class="btn" id="hint">Help me</button>
         <button class="btn" id="openBook">All words</button>
+        <button class="btn" id="coachBack" hidden>🖐 Show me step by step</button>
       </div>
     </section>
     <section class="side">
       <div class="screen-wrap"><div class="screen" id="stageHost"><canvas id="stageCanvas" aria-label="The stage"></canvas></div></div>
       <p id="caption">Press Show time! to see your code run.</p>
-      <div class="live" id="liveBar" hidden></div>
       <div class="panel" id="verdict"></div>
     </section>
   </div>
 
-  <div id="storyView" class="story-wrap" hidden>
-    <div class="story-switch">
-      <div class="ways" style="margin:0">
-        <button id="segIsland" aria-pressed="false">🏝️ Explore island</button>
-        <button id="segLive" aria-pressed="true">🎪 Play together</button>
-        <button id="segBook" aria-pressed="false">📖 Our book</button>
-      </div>
-      <span id="roomNews"></span>
-    </div>
-    <div id="islandView" class="island-view" hidden>
-      <section class="island-world panel">
-        <div class="island-heading"><strong id="islandLocation">Island trails</strong><span>A little place for big adventures</span></div>
-        <canvas id="islandCanvas" tabindex="0" aria-label="Isometric island. Click to walk, or use arrow keys or WASD. E starts a nearby activity."></canvas>
-        <button class="btn" id="islandExit" hidden>← Outside</button>
-        <button class="btn main" id="islandInteract" disabled>Walk to a destination</button>
-        <p>Click to walk · Arrow keys / WASD · E to interact</p>
-      </section>
-      <aside class="island-sidebar panel">
-        <h2>Festival passport</h2><strong id="islandProgress" aria-live="polite"></strong>
-        <p id="islandJournal" aria-live="polite"></p>
-        <h3 id="islandTravelTitle">Around the island</h3><div id="islandDestinations"></div>
-        <section id="interiorPanel" hidden>
-          <h3>Your scenario</h3><p id="interiorObjective" aria-live="polite"></p>
-          <div id="interiorStations"></div>
-          <button class="btn" id="interiorReplay" hidden>Play a new scenario</button>
-          <details class="interior-play"><summary>Make up your own scene</summary>
-            <p id="interiorRole"></p><div id="interiorRoles"></div>
-            <button class="btn" id="interiorTalk">Choose your next line</button>
-            <form id="interiorLineForm"><label for="interiorLine">Or write your own line</label><input id="interiorLine" maxlength="80" autocomplete="off" placeholder="What happens next?"><button class="btn">Say it</button></form>
-            <button class="btn" id="interiorProps">Use a backpack prop</button>
-            <button class="btn" id="interiorMood">Set the scene</button>
-          </details>
-          <p id="interiorBag"></p>
-          <details><summary>Story journal</summary><ul id="interiorHistory"></ul></details>
-        </section>
-        <section id="islandActivity" hidden aria-label="Island activity">
-          <h3 id="islandActivityTitle"></h3><p id="islandActivityText" aria-live="polite"></p>
-          <div id="islandChoices"></div><button class="btn" id="islandDismiss">Leave activity</button>
-        </section>
-        <small>A solo adventure with your pal. Progress saves on this device. Meet classmates in Play together.</small>
-      </aside>
-    </div>
-    <div id="liveView" class="live-view">
-      <section class="side">
-        <div class="screen-wrap"><div class="screen" id="roomHost"><canvas id="roomCanvas" aria-label="Everyone's pals together"></canvas>
-          <div class="life-empty" id="roomClosed" hidden><p>Your teacher will open this soon!</p></div>
-        </div></div>
-        <p id="roomTip">Click anywhere and your pal walks there. Click your pal to jump!</p>
-      </section>
-      <section class="room-panel panel">
-        <div class="room-tabs" id="roomTabs">
-          <button data-pane="do">👋 Do</button>
-          <button data-pane="say">💬 Say</button>
-          <button data-pane="party">🎉 Party</button>
-          <button data-pane="place">🏞️ Place</button>
-        </div>
-        <div class="room-buttons" id="roomButtons"></div>
-        <form id="roomType" class="life-say" hidden>
-          <input id="roomWords" maxlength="60" placeholder="Type what your pal says" aria-label="Type what your pal says" autocomplete="off">
-          <button class="btn main">Say</button>
-        </form>
-        <button class="btn main film" id="filmGo">🔴 Film it for the book</button>
-      </section>
-    </div>
-  <div id="bookView" class="story-view" hidden>
-    <section class="storybook panel">
-      <h2 id="bookTitle"></h2>
-      <p id="bookStart"></p>
-      <div id="bookPages"></div>
+  <div id="hangView" class="hang-view" hidden>
+    <section class="hang-main">
+      <div class="hang-meter"><span>🎉 Class party</span><div class="track"><i id="meterBar"></i></div><span id="meterWords"></span><span id="meterNext"></span></div>
+      <button id="gameStatus" class="game-status"><strong id="gameTitle">Play with friends</strong><span id="gameDetail">Start tag or hide &amp; seek →</span></button>
+      <div class="screen-wrap"><div class="screen hang-screen" id="roomHost"><canvas id="hangBack" aria-hidden="true"></canvas><canvas id="roomCanvas" aria-label="Everyone's pals together"></canvas>
+        <div id="hangBanner" role="status" hidden></div>
+        <div id="seekerCurtain" hidden><b>You’re the seeker!</b><strong id="seekerCount">20</strong><span>Count while your friends hide…</span></div>
+        <div class="life-empty" id="roomClosed" hidden><p>The Hang out is closed for now.</p></div>
+      </div></div>
+      <p id="roomTip">Walk to the edge to explore! Gold ring: sit. Pink ring: play. Blue ring: fish. Find the 💎 gems!</p>
     </section>
-    <section class="side">
-      <div class="screen-wrap"><div class="screen" id="storyHost"><canvas id="storyCanvas" aria-label="The class story"></canvas></div></div>
-      <p id="storyLine"><small id="storySmall"></small><span id="storyWords"></span></p>
-      <div class="story-do">
-        <button class="btn main" id="playStory">▶ Play our story</button>
-        <button class="btn main" id="addPage">✏️ Add a page</button>
-        <button class="btn" id="joinCast">🙋 Put my pal in the story</button>
+    <section class="hang-side">
+      <div id="coinBar">🪙 <b id="coinCount">0</b> coins<small id="coinNote"></small></div>
+      <button id="myMove"></button>
+      <button id="clapGo" hidden></button>
+      <div id="palStrip" hidden><canvas id="palStripPic"></canvas><span>You are <b id="palStripName"></b></span><button id="palSwitch">🔄 Switch</button><button id="palFollow" aria-pressed="true"></button><button id="palProp" aria-pressed="false">🪑 Prop: off</button></div>
+      <div class="room-tabs" id="roomTabs">
+        <button data-pane="games">Games</button>
+        <button data-pane="do">👋 Do</button>
+        <button data-pane="say">💬 Say</button>
+        <button data-pane="party">🎉 Party</button>
+        <button data-pane="place">🏞️ Place</button>
+        <button data-pane="art">🖼️ Art</button>
+        <button data-pane="home">🏠 Home</button>
+        <button data-pane="shop">🛍️ Shop</button>
+        <button data-pane="me">🧢 Me</button>
       </div>
-      <p id="storyCast"></p>
+      <div class="room-buttons" id="roomButtons"></div>
+      <form id="roomType" class="life-say" hidden>
+        <input id="roomWords" maxlength="60" placeholder="Type what your pal says" aria-label="Type what your pal says" autocomplete="off">
+        <button class="btn main">Say</button>
+      </form>
     </section>
-  </div>
-  </div>
-
-  <div id="theatreView" class="theatre" hidden>
-    <canvas id="park" class="park" width="960" height="210" aria-label="The class park: everyone's pals together" hidden></canvas>
-    <div class="theatre-head">
-      <h2>The Class Theatre</h2>
-      <span id="myShowNote"></span>
-    </div>
-    <div class="show-grid" id="showGrid"></div>
   </div>
 </div>
 
@@ -830,8 +835,6 @@
     <div id="missionList"></div>
     <h3>Trophies</h3>
     <div class="trophies" id="trophies"></div>
-    <h3>Stars open</h3>
-    <div class="trophies" id="unlockList"></div>
   </div>
 </section>
 
@@ -840,49 +843,34 @@
     <div class="shelf-head"><h2 style="margin:0;font-size:24px;font-weight:900">All the words you know</h2><button class="btn" id="closeBook">Close</button></div>
     <p style="margin:6px 0 8px">Click a word to add it to your code.</p>
     <dl class="book" id="book"></dl>
-    <div id="kitWords" style="margin-top:10px"></div>
   </div>
 </section>
 
-<section id="watch" class="sheet" role="dialog" aria-modal="true" aria-labelledby="watchTitle" hidden>
-  <div class="panel watch-card">
-    <div class="shelf-head"><h2 id="watchTitle"></h2><button class="btn" id="closeWatch">Close</button></div>
-    <small id="watchBy"></small>
-    <div class="screen" id="watchHost"><canvas id="watchCanvas" aria-label="The show"></canvas></div>
-    <div class="live" id="watchLive" hidden></div>
-    <div class="watch-row" style="margin-top:8px">
-      <button class="btn" id="watchAgain">▶ Play again</button>
-      <button class="btn" id="watchHeart">♥</button>
-      <button class="btn" id="watchRemix">Remix this code</button>
-      <button class="btn" id="watchTake" hidden>Take down my show</button>
+<section id="thingSheet" class="sheet" role="dialog" aria-modal="true" aria-label="Code your thing" hidden>
+  <div class="panel sheet-card thing-card">
+    <div class="shelf-head"><h2 style="margin:0;font-size:22px;font-weight:900" id="thingTitle">💻 Code your thing</h2><button class="btn" id="closeThing">Close</button></div>
+    <p style="margin:4px 0 0">When anyone clicks it in the Hang out, the code under <code>def on_click():</code> runs. Every line under it starts with 4 spaces.</p>
+    <div class="thing-grid">
+      <div>
+        <textarea id="thingCode" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off" aria-label="Your thing's code"></textarea>
+        <p id="thingError" role="status"></p>
+        <div class="chips" id="thingChips"></div>
+      </div>
+      <div>
+        <div class="screen" id="thingHost"><canvas id="thingCanvas" aria-label="Try your thing here"></canvas></div>
+        <div class="do-row">
+          <button class="btn main" id="thingTry">👆 Click it!</button>
+          <button class="btn" id="thingAgain">↺ Start again</button>
+          <span id="thingClicks"></span>
+        </div>
+        <button class="btn main" id="thingSave">💾 Save it</button>
+        <h3 style="margin:4px 0 0;font-size:15px">Ideas to start from</h3>
+        <div class="thing-ideas" id="thingIdeas"></div>
+      </div>
     </div>
   </div>
 </section>
 
-<section id="publish" class="sheet" role="dialog" aria-modal="true" aria-label="Add to the Theatre" hidden>
-  <div class="panel sheet-card" style="width:min(460px,100%)">
-    <h2 style="margin:0 0 8px;font-size:22px;font-weight:900">Add your show to the Theatre</h2>
-    <p style="margin:0 0 10px"><span id="publishWho"></span> The whole class can watch it and press ♥. A new show takes the place of your old one.</p>
-    <input id="showTitle" maxlength="30" placeholder="Name your show" aria-label="Name your show" autocomplete="off" style="width:100%;padding:8px 10px;border:2px solid var(--ink);border-radius:8px;font-size:17px">
-    <p id="publishNote" style="margin:8px 0 0;color:#b3123c"></p>
-    <div class="watch-row" style="margin-top:10px">
-      <button class="btn main" id="publishGo">Add it</button>
-      <button class="btn" id="publishNo">Not yet</button>
-    </div>
-  </div>
-</section>
-<section id="pageSheet" class="sheet" role="dialog" aria-modal="true" aria-label="Add your page" hidden>
-  <div class="panel sheet-card" style="width:min(480px,100%)">
-    <h2 id="pageTitle" style="margin:0 0 6px;font-size:22px;font-weight:900">Add your page to the story</h2>
-    <p style="margin:0 0 8px">What happens on your page? Write one sentence for the book.</p>
-    <input id="pageWords" maxlength="90" placeholder="Then the bunny found a secret door." aria-label="One sentence for the book" autocomplete="off" style="width:100%;padding:8px 10px;border:2px solid var(--ink);border-radius:8px;font-size:17px">
-    <p id="pageNote" style="margin:8px 0 0;color:#b3123c"></p>
-    <div class="watch-row" style="margin-top:10px">
-      <button class="btn main" id="pageGo">Add my page</button>
-      <button class="btn" id="pageNo">Not yet</button>
-    </div>
-  </div>
-</section>
 <section id="artSheet" class="sheet" role="dialog" aria-modal="true" aria-label="Your art as code" hidden>
   <div class="panel sheet-card" style="width:min(640px,100%)">
     <div class="shelf-head"><h2 style="margin:0;font-size:22px;font-weight:900">Your drawing is code!</h2><button class="btn" id="closeArt">Close</button></div>
@@ -893,17 +881,6 @@
         <canvas id="artPreview" aria-label="Your drawing"></canvas>
         <div class="key" id="artKey"></div>
       </div>
-    </div>
-  </div>
-</section>
-
-<section id="cardSheet" class="sheet" role="dialog" aria-modal="true" aria-label="Your pal card" hidden>
-  <div class="panel sheet-card" style="width:min(380px,100%)">
-    <div class="shelf-head"><div class="ways" style="margin:0"><button id="showCard" aria-pressed="true">🃏 Card</button><button id="showStickers" aria-pressed="false">🏷️ Stickers</button></div><button class="btn" id="closeCard">Close</button></div>
-    <canvas id="cardCanvas" width="600" height="840" aria-label="Your pal's trading card"></canvas>
-    <div class="watch-row" style="justify-content:center">
-      <button class="btn main" id="printCard">Print</button>
-      <button class="btn" id="saveCard">Download</button>
     </div>
   </div>
 </section>
@@ -920,6 +897,17 @@
   </div>
 </section>
 <div id="toast" class="toast" role="status" hidden></div>
+
+<section id="win" class="win sheet" role="dialog" aria-modal="true" aria-labelledby="winTitle" hidden>
+  <div class="win-bits" id="winBits" aria-hidden="true"></div>
+  <div class="win-card">
+    <button id="winClose">Close</button>
+    <h2 id="winTitle"></h2>
+    <div class="win-stars" id="winStars"></div>
+    <div id="winBody"></div>
+    <div class="win-do" id="winDo"></div>
+  </div>
+</section>
 
 <section id="shelf" class="shelf" role="dialog" aria-modal="true" aria-labelledby="shelfTitle" hidden>
   <div class="panel shelf-card">
@@ -939,6 +927,8 @@
       <button data-way="ready" aria-pressed="false">⭐ Ready to change</button>
     </div>
     <div class="gallery" id="gallery"></div>
+    <h3 id="furnStart">Or start from furniture, then code it in 🎉 Hang out</h3>
+    <div class="gallery" id="furnGallery"></div>
     <h3>Or start with an empty page</h3>
     <div class="picks" id="picks"></div>
     <p id="shelfNote"></p>
@@ -951,10 +941,9 @@
 <script src="/pixel/gallery.js"></script>
 <script src="/pixel/studio.js"></script>
 <script src="/pixel/life.js"></script>
-<script src="/pixel/interiors.js"></script>
-<script src="/pixel/island.js"></script>
-<script src="/pixel/story.js"></script>
+<script src="/pixel/hangout.js"></script>
 <script src="/pixel/room.js"></script>
+<script src="/pixel/games.js"></script>
 <script src="/pixel/page.js"></script>
 </body>
 </html>

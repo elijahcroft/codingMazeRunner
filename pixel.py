@@ -138,32 +138,6 @@ LOOKS = ("left", "right", "up", "down", "front")
 EVERYONE = ("dance", "wave", "cheer", "jump")
 MAX_CREW = 3
 
-# What stars open. "class" counts the whole class's stars together.
-UNLOCKS = [
-    {"kind": "scene", "key": "beach", "stars": 6},
-    {"kind": "sound", "key": "meow", "stars": 9},
-    {"kind": "scene", "key": "night", "stars": 12},
-    {"kind": "friend", "key": "bunny", "stars": 15},
-    {"kind": "scene", "key": "snowy", "stars": 20},
-    {"kind": "friend", "key": "kid", "stars": 25},
-    {"kind": "scene", "key": "candy", "stars": 30},
-    {"kind": "friend", "key": "bean", "stars": 40},
-    {"kind": "scene", "key": "space", "stars": 50},
-    {"kind": "scene", "key": "castle", "class": 150},
-]
-LOCKED = {(u["kind"], u["key"]) for u in UNLOCKS}
-
-
-def open_unlocks(stars, class_stars):
-    return {(u["kind"], u["key"]) for u in UNLOCKS
-            if ("stars" in u and stars >= u["stars"]) or ("class" in u and class_stars >= u["class"])}
-
-
-def unlock_hint(kind, key):
-    u = next(x for x in UNLOCKS if (x["kind"], x["key"]) == (kind, key))
-    return f"opens at {u['stars']} stars" if "stars" in u else f"opens when the class has {u['class']} stars"
-
-
 # Each command: what it needs, in words a child can copy. None in `numbers`
 # means the command takes no number.
 USAGE = {
@@ -195,11 +169,8 @@ def word_list(words):
 class Show:
     """What happens on stage. Every command is a step the browser plays back."""
 
-    def __init__(self, pal, unlocked, seed, cast=None, stand_in=False):
+    def __init__(self, pal, seed):
         self.pal = pal
-        self.cast = cast or {}       # classmates' pals, by lowercase name
-        self.stand_in = stand_in     # a shared show keeps going if a classmate's pal has left
-        self.unlocked = unlocked
         self.rng = random.Random(seed)
         self.steps = []
         self.mark = 0                # where the steps for this click start
@@ -216,7 +187,6 @@ class Show:
         self.since_nap = 0
         self.forecast = None
         self.posed = set()           # faces and moves shown with pose(), not frames
-        self.classmates = 0          # how many times a classmate's pal came on
         self.log = []                # (command, arguments) in order, for judging
         self.fired = []              # where in the log each click starts
 
@@ -227,10 +197,6 @@ class Show:
         if self.line:
             arg["line"] = self.line
         self.steps.append(dict(arg, do=do))
-
-    def locked(self, kind, key, what):
-        if (kind, key) in LOCKED and (kind, key) not in self.unlocked:
-            raise BotError(f"🔒 {what} {unlock_hint(kind, key)}. Keep earning stars to open it!")
 
     def do(self, name, args):
         if name in NO_ARGS and args:
@@ -370,13 +336,11 @@ class Show:
     def c_sound(self, name, *args):
         if len(args) != 1 or args[0] not in SOUNDS:
             raise BotError(f'Pick a sound, like  sound("ding"). The sounds are: {word_list(SOUNDS)}.')
-        self.locked("sound", args[0], f'The "{args[0]}" sound')
         self.step("sound", name=args[0])
 
     def c_scene(self, name, *args):
         if len(args) != 1 or args[0] not in SCENES:
             raise BotError(f'Pick a place, like  scene("park"). The places are: {word_list(SCENES)}.')
-        self.locked("scene", args[0], f'The "{args[0]}" scene')
         self.scene = args[0]
         self.step("scene", name=args[0])
 
@@ -391,18 +355,9 @@ class Show:
     def c_friend(self, name, *args):
         who = args[0].strip().lower() if len(args) == 1 and isinstance(args[0], str) else ""
         if who in FRIENDS:
-            self.locked("friend", who, f'The {who} friend')
             self.bring(who)
-        elif who in self.cast:
-            pal = self.cast[who]
-            self.classmates += 1
-            self.bring(who, pal={"size": pal["size"], "palette": pal["palette"], "frames": pal["frames"][:1],
-                                 "marks": pal.get("marks", "")})
-        elif self.stand_in and who:
-            self.bring(who, stand_in="bean")
         else:
-            raise BotError(f'Pick a friend, like  friend("cat"). The friends are: {word_list(FRIENDS)}. '
-                           f"A classmate's pal can come too, by name, once it's in the Theatre or the story.")
+            raise BotError(f'Pick a friend, like  friend("cat"). The friends are: {word_list(FRIENDS)}.')
 
     def c_bye(self, name, *args):
         if len(args) > 1:
@@ -903,10 +858,9 @@ class Report:
         return at == len(names)
 
 
-def perform(code, pal=PIP, events=(), seed=0, commands=EVERYTHING, unlocked=LOCKED, setup=None,
-            cast=None, stand_in=False):
+def perform(code, pal=PIP, events=(), seed=0, commands=EVERYTHING, setup=None):
     """Run a program. `events` are clicks, like "click", "feed" or "key:left"."""
-    show = Show(pal, unlocked, seed, cast, stand_in)
+    show = Show(pal, seed)
     error, line, director = None, None, None
     if setup:
         setup(show)
@@ -935,10 +889,6 @@ def public(result):
     return {k: result[k] for k in ("steps", "error", "line", "events")}
 
 
-def used_classmate(result):
-    return any(s["do"] == "friend" and "pal" in s for s in result["steps"])
-
-
 # ---- Missions ------------------------------------------------------------------
 
 def _mark(spot):
@@ -947,45 +897,36 @@ def _mark(spot):
     return setup
 
 
-def _anywhere(show):
-    show.x = show.rng.randint(0, 6)
-    show.step("place", at=show.x)
-    show.step("mark", at=9)
+# What counts as one action in a My Move.
+MOVE_ACTIONS = ("say", "jump", "right", "left", "wave", "dance", "cheer", "spin", "hearts", "stars", "confetti", "feel")
+MOVE_BIG = 8               # this many actions earns a big finish
 
 
-def _three_ways(r):
-    return len({tuple(o.log) for o in r.others}) >= 2
-
-
-def _weather_fits(r):
-    return all((o.forecast == "rain" and o.n("rain")) or (o.forecast == "snow" and o.n("snow"))
-               or (o.forecast == "sun" and o.said and not o.n("rain") and not o.n("snow"))
-               for o in r.others)
-
-
-def _steps_grow(r):
-    return len(r.walks) >= 3 and all(b > a for a, b in zip(r.walks, r.walks[1:]))
+def _actions(r):
+    return sum(r.n(name) for name in MOVE_ACTIONS)
 
 
 CHAPTERS = [
     {"key": "a", "name": "Opening Night", "icon": "🎭"},
     {"key": "h", "name": "Come Alive", "icon": "✨"},
     {"key": "b", "name": "Again! Again!", "icon": "🔁"},
-    {"key": "c", "name": "Name Tags", "icon": "🏷️"},
-    {"key": "d", "name": "Story Time", "icon": "📖"},
-    {"key": "e", "name": "Surprise!", "icon": "🎲"},
-    {"key": "f", "name": "Pet Pal", "icon": "🐾"},
-    {"key": "g", "name": "Game Maker", "icon": "🕹️"},
+    {"key": "m", "name": "My Move", "icon": "🌟"},
 ]
 
 # `adds` opens commands, and `python` opens the shapes of Python on the chips.
 # A goal is (what it asks, check, and what Pip says when it's missing).
 # The last hint is always a program that does the job.
+# `coach` is that program again, one line at a time with what each line does, and
+# the page walks a student through typing it. `build` missions start with buttons instead.
 LEVELS = [
     {"key": "a1", "chapter": 0, "name": "Say hello", "adds": ["say"], "python": [],
-     "pip": "Hi, I'm Pip! Welcome to the Pixel Theatre. The crowd is here, and your pal goes first. "
+     "pip": "Hi, I'm Pip! The crowd is here, and your pal goes first. "
             "Make your pal say hello!",
-     "job": 'Type  say("Hello")  then press Show time!',
+     "job": "Make your pal say two things.",
+     "coach": [
+               ('say("Hello")', 'This line makes your pal talk. The words go inside the " marks.'),
+               ('say("I am so happy to be here")', 'Now your pal says something longer. This line gets you all 3 stars!'),
+     ],
      "goals": [("Your pal says something", lambda r: r.n("say") >= 1, "Your pal didn't say anything yet. Type  say(\"Hello\")"),
                ("Your pal says two things", lambda r: r.n("say") >= 2, None),
                ("One of them has 3 words or more", lambda r: any(len(s.split()) >= 3 for s in r.said), None)],
@@ -995,7 +936,12 @@ LEVELS = [
 
     {"key": "a2", "chapter": 0, "name": "Jump for joy", "adds": ["jump"], "python": [],
      "pip": "The crowd loves a jump! Each line runs one after the other, from top to bottom.",
-     "job": "Make your pal jump two times.",
+     "job": "Make your pal jump, say something, then jump again.",
+     "coach": [
+               ('jump()', 'This line makes your pal jump. Every command ends with ( ) marks.'),
+               ('say("Wheee!")', 'Now your pal talks. Lines run from top to bottom, one at a time.'),
+               ('jump()', 'Jump one more time!'),
+     ],
      "goals": [("Your pal jumps two times", lambda r: r.n("jump") >= 2, lambda r: f"I counted {r.n('jump')} jump{'' if r.n('jump') == 1 else 's'}. I need 2."),
                ("Your pal says something too", lambda r: r.n("say") >= 1, None),
                ("Your pal talks between the two jumps", lambda r: r.first("jump", "say", "jump"), None)],
@@ -1006,64 +952,42 @@ LEVELS = [
     {"key": "a3", "chapter": 0, "name": "Find the spotlight", "adds": ["right", "left"], "python": [],
      "setup": _mark(7),
      "pip": "See the spotlight? Your pal is on spot 2 and the light is on spot 7. The number says how far to walk.",
-     "job": "Walk your pal into the spotlight, on spot 7.",
+     "job": "Walk to the spotlight, say something, then walk back.",
+     "coach": [
+               ('right(5)', 'Your pal is on spot 2. The light is on spot 7. That is 5 steps to the right.'),
+               ('say("Here I am!")', 'Your pal talks when it gets to the light.'),
+               ('left(5)', 'Now walk 5 steps left, back to where it started.'),
+     ],
      "goals": [("Your pal goes to spot 7", lambda r: 7 in _visited(r), lambda r: f"Your pal stopped on spot {r.x}. The light is on spot 7. How many steps is that from spot 2?"),
                ("Your pal says something there", lambda r: r.first("right", "say"), None),
                ("Then your pal walks back to spot 2", lambda r: r.x == 2 and r.n("left") >= 1, None)],
      "hints": ["From 2 to 7 is 5 steps, so try  right(5)", 'right(5)\nsay("Here I am!")\nleft(5)'],
      "reference": 'right(5)\nsay("Here I am!")\nleft(5)'},
 
-    {"key": "a4", "chapter": 0, "name": "Take a bow", "adds": ["spin", "hearts", "stars", "shake"], "python": [],
-     "pip": "A great show ends with a big finish. Try the two new commands!",
-     "job": "Spin, then fill the stage with hearts.",
-     "goals": [("Your pal spins, then hearts appear", lambda r: r.first("spin", "hearts"), "I need  spin()  first, then  hearts()  on the line after."),
-               ("Your pal jumps as well", lambda r: r.n("jump") >= 1, None),
-               ("You use 5 lines or more", lambda r: r.lines >= 5, None)],
-     "hints": ["Type  spin()  and then  hearts()  on the next line.",
-               'say("Thank you!")\njump()\nspin()\nhearts()\nsay("Bye!")'],
-     "reference": 'say("Thank you!")\njump()\nspin()\nhearts()\nsay("Bye!")'},
-
-    {"key": "a5", "chapter": 0, "name": "Strike a pose", "adds": ["pose", "wait"], "python": [],
-     "pip": "pose() shows a frame you drew, by its name or number. Your pal can make faces too, even with no frames at all.",
-     "job": 'Strike a pose. Try "happy" and "sad".',
-     "goals": [("Your pal shows a frame", lambda r: r.n("pose") >= 1, 'Try  pose("happy")  or use a frame number, like  pose(2)'),
-               ("You use wait() after it", lambda r: r.first("pose", "wait"), None),
-               ("Your pal shows two different frames", lambda r: len(r.poses) >= 2, None)],
-     "hints": ['Type  pose("happy")  then  wait(2)  on the next line.',
-               'pose("happy")\nwait(2)\npose("sad")'],
-     "reference": 'pose("happy")\nwait(2)\npose("sad")'},
-
-    {"key": "a6", "chapter": 0, "name": "Change the scene", "adds": ["scene", "sound"], "python": [],
-     "pip": 'Time to leave the theatre! scene() changes the place and sound() plays a noise. '
-            'The places open up as you earn stars.',
-     "job": 'Take your pal to the park with  scene("park")',
-     "goals": [("The scene changes", lambda r: r.n("scene") >= 1, 'Type  scene("park")'),
-               ("You play a sound", lambda r: r.n("sound") >= 1, None),
-               ("Your pal walks in the new scene", lambda r: r.first("scene", "right") or r.first("scene", "left"), None)],
-     "hints": ['Type  scene("park")  on the first line.', 'scene("park")\nsound("tada")\nright(4)\nsay("Fresh air!")'],
-     "reference": 'scene("park")\nsound("tada")\nright(4)\nsay("Fresh air!")'},
-
     {"key": "h1", "chapter": 1, "name": "Big wave", "adds": ["wave"], "python": [],
      "pip": "Your pal has real arms now! The computer found them when you drew it. If you drew no arms, it wiggles instead.",
-     "job": "Say hello, then wave.",
+     "job": "Say hello, then wave two times.",
+     "coach": [
+               ('say("Hello!")', 'First your pal says hello.'),
+               ('wave()', 'This line makes your pal wave its arm.'),
+               ('wave()', 'Wave one more time!'),
+     ],
      "goals": [("Your pal waves", lambda r: r.n("wave") >= 1, "Type  wave()  on a line of its own."),
                ("Your pal says something first", lambda r: r.first("say", "wave"), "Put  say()  on the line above  wave()"),
                ("Your pal waves two times", lambda r: r.n("wave") >= 2, None)],
      "hints": ["Type  say(\"Hello!\")  and then  wave()  on the next line.", 'say("Hello!")\nwave()\nwave()'],
      "reference": 'say("Hello!")\nwave()\nwave()'},
 
-    {"key": "h2", "chapter": 1, "name": "Who's there?", "adds": ["look"], "python": [],
-     "pip": "Your pal can move its eyes. Try  look(\"left\")  and see! The ways are left, right, up, down and front.",
-     "job": "Look left, then look right.",
-     "goals": [("Your pal looks left", lambda r: ("look", ("left",)) in r.log, 'Type  look("left")'),
-               ("Then it looks right", lambda r: r.first("look", "look") and ("look", ("right",)) in r.log, 'Now add  look("right")  on the next line.'),
-               ("Then it looks at us", lambda r: bool(r.log) and r.log[-1] == ("look", ("front",)) or ("look", ("front",)) in r.log, None)],
-     "hints": ['look("left")  makes the eyes go left.', 'look("left")\nwait(1)\nlook("right")\nwait(1)\nlook("front")\nsay("Oh, it\'s you!")'],
-     "reference": 'look("left")\nwait(1)\nlook("right")\nwait(1)\nlook("front")\nsay("Oh, it\'s you!")'},
-
-    {"key": "h3", "chapter": 1, "name": "How do you feel?", "adds": ["feel"], "python": [],
+    {"key": "h3", "chapter": 1, "name": "How do you feel?", "adds": ["feel", "wait"], "python": [],
      "pip": "Faces change too! feel() changes your pal's eyes and mouth. Watch them: it's your own drawing, moving.",
-     "job": 'Make your pal sad, then happy.',
+     "job": "Make your pal sad, then surprised, then happy.",
+     "coach": [
+               ('feel("sad")', "This line changes your pal's face to sad."),
+               ('wait(1)', 'This line makes your pal wait, so we can see the face.'),
+               ('feel("surprised")', 'Now change the face to surprised.'),
+               ('wait(1)', 'Wait again, so we can see it.'),
+               ('feel("happy")', 'Last, a happy face!'),
+     ],
      "goals": [("Your pal feels sad", lambda r: ("feel", ("sad",)) in r.log, 'Type  feel("sad")'),
                ("Then your pal feels happy", lambda r: ("feel", ("happy",)) in r.log and r.log.index(("feel", ("happy",))) > (r.log.index(("feel", ("sad",))) if ("feel", ("sad",)) in r.log else 10**6), 'Put  feel("happy")  after  feel("sad")'),
                ("Three feelings or more", lambda r: len({a for c, a in r.log if c == "feel"}) >= 3, None)],
@@ -1071,28 +995,27 @@ LEVELS = [
                'feel("sad")\nwait(1)\nfeel("surprised")\nwait(1)\nfeel("happy")'],
      "reference": 'feel("sad")\nwait(1)\nfeel("surprised")\nwait(1)\nfeel("happy")'},
 
-    {"key": "h4", "chapter": 1, "name": "Dance floor", "adds": ["dance", "cheer"], "python": [],
+    {"key": "h4", "chapter": 1, "name": "Dance floor", "adds": ["dance", "cheer", "hearts"], "python": [],
      "pip": "Time to move! dance() uses every part your pal has: arms, legs, ears and tail. cheer() throws its arms up.",
-     "job": "Dance, then cheer.",
+     "job": "Dance, then cheer, then fill the stage with hearts.",
+     "coach": [
+               ('dance()', 'This line makes every part of your pal dance.'),
+               ('cheer()', 'This line makes your pal throw its arms up.'),
+               ('hearts()', 'This line fills the stage with hearts.'),
+     ],
      "goals": [("Your pal dances", lambda r: r.n("dance") >= 1, "Type  dance()"),
                ("Then your pal cheers", lambda r: r.first("dance", "cheer"), "Add  cheer()  on the line after  dance()"),
                ("Hearts or stars at the end", lambda r: bool(r.log) and r.log[-1][0] in ("hearts", "stars"), None)],
      "hints": ["Type  dance()  then  cheer()  then  hearts()", "dance()\ncheer()\nhearts()"],
      "reference": "dance()\ncheer()\nhearts()"},
 
-    {"key": "h5", "chapter": 1, "name": "A tiny play", "adds": [], "python": [],
-     "pip": "Now put it all together. A play needs a sad bit, a surprise and a happy ending. It's your play, so you pick the words!",
-     "job": "Make a little play: sad, then surprised, then happy.",
-     "goals": [("Your pal feels sad first", lambda r: r.first("feel", "say") and any(c == "feel" and a == ("sad",) for c, a in r.log), 'Start with  feel("sad")  and then  say()  something.'),
-               ("Something surprises it", lambda r: ("feel", ("surprised",)) in r.log or ("look", ("left",)) in r.log or ("look", ("right",)) in r.log, None),
-               ("A happy ending with dancing", lambda r: ("feel", ("happy",)) in r.log and r.n("dance") >= 1, None)],
-     "hints": ['feel("sad")  then  say("I lost my hat.")  . What happens next?',
-               'feel("sad")\nsay("I lost my hat.")\nlook("left")\nfeel("surprised")\nsay("There it is!")\nfeel("happy")\ndance()'],
-     "reference": 'feel("sad")\nsay("I lost my hat.")\nlook("left")\nfeel("surprised")\nsay("There it is!")\nfeel("happy")\ndance()'},
-
     {"key": "b1", "chapter": 2, "name": "Bounce!", "adds": [], "python": ["for"],
      "pip": "Five jumps would take five lines. A loop says it in two! The line under it is pushed in, and it repeats.",
-     "job": "Make your pal jump 5 times with a for loop.",
+     "job": "Make your pal jump 5 times with a loop.",
+     "coach": [
+               ('for i in range(5):', 'A loop repeats things. This line means: do this 5 times. It ends with a : mark.'),
+               ('    jump()', 'This line is pushed in, so it is inside the loop. I pushed it in for you. Now type jump().'),
+     ],
      "goals": [("Your pal jumps 5 times", lambda r: r.n("jump") >= 5, lambda r: f"I counted {r.n('jump')} jumps. I need 5."),
                ("You use a for loop", lambda r: r.fors >= 1, "Try  for i in range(5):  and push  jump()  in under it."),
                ("Your whole program is 2 lines", lambda r: r.fors >= 1 and r.code_lines <= 2, None)],
@@ -1102,246 +1025,42 @@ LEVELS = [
 
     {"key": "b2", "chapter": 2, "name": "Side step", "adds": ["confetti"], "python": ["for"],
      "pip": "A loop can repeat lots of lines. Everything pushed in goes round together. A line that isn't pushed in runs once, after the loop.",
-     "job": "Step right, then left, 4 times over, then throw confetti once.",
+     "job": "Step right and left 4 times with a loop, then throw confetti.",
+     "coach": [
+               ('for i in range(4):', 'This loop goes round 4 times.'),
+               ('    right(1)', 'This line is pushed in, so it is inside the loop. Step right.'),
+               ('    left(1)', 'This line is inside the loop too. Step left.'),
+               ('confetti()', 'This line is NOT pushed in, so it runs once, after the loop. I moved it back for you.'),
+     ],
      "goals": [("Right and left, 4 times over", lambda r: r.n("right") >= 4 and r.n("left") >= 4, lambda r: f"I saw {r.n('right')} right and {r.n('left')} left. I need 4 of each."),
                ("Confetti comes once, at the end", lambda r: r.n("confetti") == 1 and r.log[-1][0] == "confetti", "Confetti should run once. Don't push it in. Line it up with the word for."),
                ("You use a for loop", lambda r: r.fors >= 1, None)],
      "hints": ["Push in  right(1)  and  left(1)  under the for line.", "for i in range(4):\n    right(1)\n    left(1)\nconfetti()"],
      "reference": "for i in range(4):\n    right(1)\n    left(1)\nconfetti()"},
 
-    {"key": "b3", "chapter": 2, "name": "Count with me", "adds": [], "python": ["for"],
-     "pip": "That i in the loop is a number that changes each time round. It starts at 0, so i + 1 starts at 1.",
-     "job": "Make your pal count out loud from 1 to 5.",
-     "goals": [("Your pal says 1, 2, 3, 4, 5", lambda r: all(str(n) in r.said for n in range(1, 6)), lambda r: f"I heard: {', '.join(r.said[:6]) or 'nothing'}. I need 1 to 5."),
-               ("You use a for loop", lambda r: r.fors >= 1, None),
-               ("Your pal jumps on every number", lambda r: r.n("jump") >= 5, None)],
-     "hints": ["Inside the loop, try  say(i + 1)", "for i in range(5):\n    say(i + 1)\n    jump()"],
-     "reference": "for i in range(5):\n    say(i + 1)\n    jump()"},
-
-    {"key": "b4", "chapter": 2, "name": "Hello, everyone", "adds": [], "python": ["for", "list"],
-     "pip": "Three friends came to see you! A list keeps them together in square brackets, and a loop can visit each one.",
-     "job": 'Say hi to three names from a list, like  ["Ana", "Ben", "Cy"]',
-     "goals": [("Your pal greets three different names", lambda r: len(set(r.said)) >= 3, "I need three different hellos."),
-               ("You use a list and a for loop", lambda r: r.lists >= 1 and r.fors >= 1, "Try  for name in [\"Ana\", \"Ben\", \"Cy\"]:"),
-               ("It's a wave for each one too", lambda r: r.n("spin") >= 3 or r.n("jump") >= 3, None)],
-     "hints": ['for name in ["Ana", "Ben", "Cy"]:   then push in  say("Hi " + name)',
-               'for name in ["Ana", "Ben", "Cy"]:\n    say("Hi " + name)\n    jump()'],
-     "reference": 'for name in ["Ana", "Ben", "Cy"]:\n    say("Hi " + name)\n    jump()'},
-
-    {"key": "b5", "chapter": 2, "name": "Flip book", "adds": ["play"], "python": ["for"],
-     "pip": "Here's a secret: a walk is just two drawings swapped again and again. play() shows all your frames in order, like a flip book. "
-            "Only one frame? In 💓 Life, press a move, then Turn into frames.",
-     "job": "Use a loop to play your frames 3 times.",
-     "goals": [("Your frames play 3 times", lambda r: r.n("play") >= 3, lambda r: f"They played {r.n('play')} times. I need 3."),
-               ("You use a for loop", lambda r: r.fors >= 1, None),
-               ("Your pal walks while it plays", lambda r: r.n("right") >= 3 or r.n("left") >= 3, None)],
-     "hints": ["Push  play()  in under  for i in range(3):", "for i in range(3):\n    play()\n    right(1)"],
-     "reference": "for i in range(3):\n    play()\n    right(1)"},
-
-    {"key": "c1", "chapter": 3, "name": "Name tag", "adds": [], "python": ["variable"],
-     "pip": "A variable is a name tag for something you want to keep. Say it once at the top, then use it anywhere.",
-     "job": 'Keep your pal\'s name in a variable, like  name = "Luna"  , and use it in a say.',
-     "goals": [("Your pal says its name from a variable", lambda r: r.said_var() >= 1, 'Try  name = "Luna"  and then  say("I am " + name)'),
-               ("Your pal says it twice", lambda r: r.said_var() >= 2, None),
-               ("One time it SHOUTS with .upper()", lambda r: r.upper >= 1, None)],
-     "hints": ['name = "Luna"\nsay("I am " + name)', 'name = "Luna"\nsay("I am " + name)\nsay(name.upper() + " IS HERE")'],
-     "reference": 'name = "Luna"\nsay("I am " + name)\nsay(name.upper() + " IS HERE")'},
-
-    {"key": "c2", "chapter": 3, "name": "How many?", "adds": ["grow", "shrink"], "python": ["for", "variable", "fstring"],
-     "pip": "If a number lives in a variable, you can change the whole show by changing one line. And an f in front of the quotes lets you put it inside words!",
-     "job": "Keep a number in a variable, and jump that many times.",
-     "goals": [("A variable sets how many times the loop goes", lambda r: r.range_name and r.n("jump") >= 1, "Try  jumps = 4  and then  for i in range(jumps):"),
-               ("Your pal says the number with an f-string", lambda r: r.fstrings >= 1, 'Try  say(f"{jumps} jumps!")'),
-               ("Your pal grows bigger too", lambda r: r.n("grow") >= 1, None)],
-     "hints": ["jumps = 4\nfor i in range(jumps):\n    jump()", 'jumps = 4\nfor i in range(jumps):\n    jump()\ngrow()\nsay(f"{jumps} jumps!")'],
-     "reference": 'jumps = 4\nfor i in range(jumps):\n    jump()\ngrow()\nsay(f"{jumps} jumps!")'},
-
-    {"key": "c3", "chapter": 3, "name": "Bigger steps", "adds": ["hide", "appear"], "python": ["for", "variable"],
-     "pip": "A variable can change as the show goes on. steps = steps + 1 means: take steps, add one, and keep the answer.",
-     "job": "Walk 3 times, and make each walk longer than the last.",
-     "goals": [("Each walk is longer than the last", _steps_grow, lambda r: f"Your walks were {r.walks or 'none yet'}. Each one needs to be longer."),
-               ("A variable changes inside a loop", lambda r: r.changes >= 1 and r.fors >= 1, "Try  steps = steps + 1  inside the loop."),
-               ("Your pal vanishes and comes back", lambda r: r.first("hide", "appear"), None)],
-     "hints": ["Start with  steps = 1  , then push  right(steps)  and  steps = steps + 1  into a loop.",
-               "steps = 1\nfor i in range(3):\n    right(steps)\n    steps = steps + 1\nhide()\nappear()"],
-     "reference": "steps = 1\nfor i in range(3):\n    right(steps)\n    steps = steps + 1\nhide()\nappear()"},
-
-    {"key": "c4", "chapter": 3, "name": "Where am I?", "adds": ["x"], "python": ["fstring"],
-     "pip": "Some commands answer you! x() tells you which spot your pal is on.",
-     "job": "Walk somewhere, then say which spot you're on, using x().",
-     "goals": [("Your pal says its spot", lambda r: r.n("x") >= 1 and any(str(r.x) in s for s in r.said), 'Try  say(f"I am on spot {x()}")'),
-               ("It walks first", lambda r: r.first("right", "x") or r.first("left", "x"), None),
-               ("It tells you two different spots", lambda r: r.n("x") >= 2, None)],
-     "hints": ['right(3)\nsay(f"I am on spot {x()}")', 'right(3)\nsay(f"I am on spot {x()}")\nleft(1)\nsay(f"Now spot {x()}")'],
-     "reference": 'right(3)\nsay(f"I am on spot {x()}")\nleft(1)\nsay(f"Now spot {x()}")'},
-
-    {"key": "d1", "chapter": 4, "name": "Make a move", "adds": [], "python": ["def"],
-     "pip": "You can make your own commands! def teaches your pal a new word, like boogie. "
-            "You're getting good, so from now on the command buttons only start the line, and you type the rest.",
-     "job": "Teach your pal a move with def, then use it twice.",
-     "goals": [("You make your own move and use it", lambda r: len(r.defs) >= 1 and sum(r.own_calls.values()) >= 1, "Try  def boogie():  with moves pushed in, then  boogie()  with no push."),
-               ("You use it twice", lambda r: sum(r.own_calls.values()) >= 2, None),
-               ("Your move has 3 lines or more", lambda r: r.n("jump") + r.n("spin") + r.n("right") + r.n("left") >= 6, None)],
-     "hints": ["Lines pushed in under def don't run until you use the new word.", "def boogie():\n    jump()\n    spin()\n    jump()\n\nboogie()\nboogie()"],
-     "reference": "def boogie():\n    jump()\n    spin()\n    jump()\n\nboogie()\nboogie()"},
-
-    {"key": "d2", "chapter": 4, "name": "Say hi to a friend", "adds": ["friend", "friend_say"], "python": [],
-     "pip": "Every story needs a friend. Bring the cat on, then the two can talk. Shows are best when someone has something to say!",
-     "job": "Bring a friend on and have a little chat, taking turns.",
-     "goals": [("A friend joins you", lambda r: r.n("friend") >= 1, 'Type  friend("cat")'),
-               ("You take turns talking", lambda r: r.first("say", "friend_say", "say") or r.first("friend_say", "say", "friend_say"), "Your pal says something, then  friend_say(\"Hi!\")  , then your pal again."),
-               ("4 lines of talking or more", lambda r: r.n("say") + r.n("friend_say") >= 4, None)],
-     "hints": ['friend("cat")\nsay("Hi cat!")\nfriend_say("Meow!")\nsay("Nice to meet you")',
-               'friend("cat")\nsay("Hi cat!")\nfriend_say("Meow!")\nsay("Want to dance?")\nfriend_say("Meow!!")'],
-     "reference": 'friend("cat")\nsay("Hi cat!")\nfriend_say("Meow!")\nsay("Want to dance?")\nfriend_say("Meow!!")'},
-
-    {"key": "d3", "chapter": 4, "name": "Hi, you!", "adds": [], "python": ["def"],
-     "pip": "A move can take a word in its brackets, and do something different each time. It's like a blank to fill in.",
-     "job": "Make  def greet(name):  and greet two people with it.",
-     "goals": [("Your move takes a name", lambda r: r.params >= 1, "Put a word in the brackets:  def greet(name):"),
-               ("You use it for two people", lambda r: len(set(r.said)) >= 2 and sum(r.own_calls.values()) >= 2, 'Try  greet("Ana")  and  greet("Ben")'),
-               ("You use it in a loop or 3 times", lambda r: sum(r.own_calls.values()) >= 3 or r.fors >= 1, None)],
-     "hints": ['def greet(name):\n    say("Hi " + name)\n\ngreet("Ana")', 'def greet(name):\n    say("Hi " + name)\n    jump()\n\ngreet("Ana")\ngreet("Ben")\ngreet("Cy")'],
-     "reference": 'def greet(name):\n    say("Hi " + name)\n    jump()\n\ngreet("Ana")\ngreet("Ben")\ngreet("Cy")'},
-
-    {"key": "d4", "chapter": 4, "name": "A story in two acts", "adds": ["friend_jump", "bye", "everyone"], "python": ["def"],
-     "pip": "Real shows have acts. Put each act in its own def, and the bottom of your program reads like a list of what happens.",
-     "job": "Write two acts with def, in two different scenes, then run them.",
-     "goals": [("Two acts made with def", lambda r: len(r.defs) >= 2 and sum(r.own_calls.values()) >= 2, "Make  def act_one():  and  def act_two():  and use them both."),
-               ("The scene changes", lambda r: r.n("scene") >= 1, None),
-               ("A friend comes on and says bye at the end", lambda r: r.first("friend", "bye"), None)],
-     "hints": ['def act_one():\n    say("Once upon a time...")\n\ndef act_two():\n    scene("park")\n    say("The end")\n\nact_one()\nact_two()',
-               'def act_one():\n    say("Once upon a time...")\n    friend("cat")\n\ndef act_two():\n    scene("park")\n    friend_jump()\n    say("The end")\n    bye()\n\nact_one()\nact_two()'],
-     "reference": 'def act_one():\n    say("Once upon a time...")\n    friend("cat")\n\ndef act_two():\n    scene("park")\n    friend_jump()\n    say("The end")\n    bye()\n\nact_one()\nact_two()'},
-
-    {"key": "e1", "chapter": 5, "name": "Happy or sad?", "adds": [], "python": ["if", "choice"], "seeds": range(12),
-     "pip": "Let's make a show that's different every time! choice() picks one thing from a list, and if decides what to do about it.",
-     "job": "Pick a mood at random, and do something different for each.",
-     "goals": [("The show changes from run to run", _three_ways, 'Start with  mood = choice(["happy", "sad"])'),
-               ("You use if and else", lambda r: r.ifs >= 1 and r.elses >= 1, 'Try  if mood == "happy":  and  else:'),
-               ("Your pal tells you the mood too", lambda r: all(any(w in " ".join(o.said) for w in o.values.values() if isinstance(w, str)) for o in r.others), None)],
-     "hints": ['Two equals signs ask a question:  if mood == "happy":', 'mood = choice(["happy", "sad"])\nsay("I feel " + mood)\nif mood == "happy":\n    hearts()\nelse:\n    shake()'],
-     "reference": 'mood = choice(["happy", "sad"])\nsay("I feel " + mood)\nif mood == "happy":\n    hearts()\nelse:\n    shake()'},
-
-    {"key": "e2", "chapter": 5, "name": "What's the weather?", "adds": ["weather", "rain", "snow"], "python": ["if", "elif"], "seeds": range(12),
-     "pip": "weather() looks outside and tells you \"sun\", \"rain\" or \"snow\". You can't know which, so your show has to be ready for all three!",
-     "job": 'Rain gets rain(), snow gets snow(), and sun gets a say.',
-     "goals": [("The show fits all three kinds of weather", _weather_fits, 'Use  if weather() == "rain":  then  elif  and  else'),
-               ("You use if and elif", lambda r: r.ifs >= 2, None),
-               ("Your pal says something in rain and in snow too", lambda r: all(o.said for o in r.others), None)],
-     "hints": ['now = weather()\nif now == "rain":\n    rain()\nelif now == "snow":\n    snow()\nelse:\n    say("Sunny!")',
-               'now = weather()\nsay("It is " + now)\nif now == "rain":\n    rain()\nelif now == "snow":\n    snow()\nelse:\n    say("Sunny!")'],
-     "reference": 'now = weather()\nsay("It is " + now)\nif now == "rain":\n    rain()\nelif now == "snow":\n    snow()\nelse:\n    say("Sunny!")'},
-
-    {"key": "e3", "chapter": 5, "name": "Number three jumps", "adds": [], "python": ["for", "if"],
-     "pip": "An if inside a loop asks its question every time round. It's like a game: count to 5, but jump only on 3.",
-     "job": "Count to 5 out loud and jump only on 3.",
-     "goals": [("Your pal counts to 5", lambda r: all(str(n) in r.said for n in range(1, 6)), "Try  for i in range(1, 6):  and  say(i)  pushed in."),
-               ("It jumps only once, right after saying 3", lambda r: r.n("jump") == 1 and _after_three(r), "Try  if i == 3:  with  jump()  pushed in under it."),
-               ("You use if in a loop", lambda r: r.ifs >= 1 and r.fors >= 1, None)],
-     "hints": ["range(1, 6) counts 1, 2, 3, 4, 5.", "for i in range(1, 6):\n    say(i)\n    if i == 3:\n        jump()"],
-     "reference": "for i in range(1, 6):\n    say(i)\n    if i == 3:\n        jump()"},
-
-    {"key": "e4", "chapter": 5, "name": "Walk into the light", "adds": [], "python": ["while"], "setup": _anywhere, "seeds": range(8),
-     "pip": "Your pal starts on a different spot each time, so right(5) won't always work! while keeps going until the answer changes.",
-     "job": "Walk one step at a time until you reach spot 9.",
-     "goals": [("Your pal always ends on spot 9", lambda r: all(o.x == 9 for o in r.others), "Try  while x() < 9:  and push  right(1)  in under it."),
-               ("You use a while loop", lambda r: r.whiles >= 1, None),
-               ("Your pal cheers when it gets there", lambda r: r.n("say") >= 1 or r.n("hearts") >= 1, None)],
-     "hints": ["x() < 9 means: am I still before spot 9?", 'while x() < 9:\n    right(1)\nsay("Made it!")'],
-     "reference": 'while x() < 9:\n    right(1)\nsay("Made it!")'},
-
-    {"key": "f1", "chapter": 6, "name": "Hey, that tickles!", "adds": [], "python": ["on_click"], "rehearse": ["click"],
-     "pip": "So far your pal only does what's written. Now it can wait for YOU. The lines under  def on_click():  run each time someone clicks your pal.",
-     "job": "Make your pal react when it's clicked.",
-     "goals": [("Your pal does something when clicked", lambda r: bool(r.reacts) and bool(r.reacts[0]), "Write  def on_click():  and push  say(\"That tickles!\")  in under it."),
-               ("It says something", lambda r: r.did(0, "say"), None),
-               ("And moves too", lambda r: r.did(0, "jump") or r.did(0, "spin") or r.did(0, "shake"), None)],
-     "hints": ["Nothing happens until the click, so there's nothing to see at first. After Show time, click your pal!", 'def on_click():\n    say("That tickles!")\n    shake()'],
-     "reference": 'def on_click():\n    say("That tickles!")\n    shake()'},
-
-    {"key": "f2", "chapter": 6, "name": "Count the pokes", "adds": ["clicks"], "python": ["on_click", "if"], "rehearse": ["click", "click", "click"],
-     "pip": "clicks() remembers how many times you've been clicked. On the third click, your pal should do something special.",
-     "job": "Say how many clicks so far, and throw hearts on click number 3.",
-     "goals": [("Your pal says the number of clicks", lambda r: r.n("clicks") >= 1 and {"1", "2", "3"} <= {w for s in r.said for w in s.split()}, 'Try  say(clicks())  inside on_click.'),
-               ("Hearts come on click 3, not before", lambda r: r.did(2, "hearts") and not r.did(0, "hearts") and not r.did(1, "hearts"), "Try  if clicks() == 3:  with  hearts()  pushed in."),
-               ("You use else as well", lambda r: r.elses >= 1, None)],
-     "hints": ["def on_click():\n    say(clicks())\n    if clicks() == 3:\n        hearts()", "def on_click():\n    say(clicks())\n    if clicks() == 3:\n        hearts()\n    else:\n        jump()"],
-     "reference": "def on_click():\n    say(clicks())\n    if clicks() == 3:\n        hearts()\n    else:\n        jump()"},
-
-    {"key": "f3", "chapter": 6, "name": "Feed me", "adds": ["hungry", "eat"], "python": ["on_feed", "if"], "rehearse": ["feed", "feed"],
-     "pip": "Your pal has become a pet! A Feed button shows up when you write  def on_feed():  Then  hungry()  says True or False. Pets don't eat when they're full.",
-     "job": "If your pet is hungry it eats. If it's full, it says so.",
-     "goals": [("A hungry pet eats", lambda r: r.did(0, "eat"), "Inside on_feed, try  if hungry():  with  eat()  pushed in."),
-               ("A full pet doesn't eat", lambda r: not r.did(1, "eat") and r.did(1, "say"), 'Add  else:  with  say("I am full!")'),
-               ("It shows it's happy after eating", lambda r: r.did(0, "hearts") or r.did(0, "spin") or r.did(0, "jump"), None)],
-     "hints": ['def on_feed():\n    if hungry():\n        eat()\n    else:\n        say("I am full!")', 'def on_feed():\n    if hungry():\n        eat()\n        hearts()\n    else:\n        say("I am full!")'],
-     "reference": 'def on_feed():\n    if hungry():\n        eat()\n        hearts()\n    else:\n        say("I am full!")'},
-
-    {"key": "f4", "chapter": 6, "name": "Bedtime", "adds": ["sleepy", "nap"], "python": ["on_play", "on_sleep", "if"], "rehearse": ["play", "play", "play", "play", "sleep", "sleep"],
-     "pip": "Pets get tired from playing. on_play and on_sleep add two more buttons. After a few games, sleepy() turns True.",
-     "job": "Your pet plays when you press Play, and naps when it's sleepy.",
-     "goals": [("Your pet does something on Play", lambda r: r.did(0, "spin") or r.did(0, "jump") or r.did(0, "say"), "Write  def on_play():  with a move pushed in."),
-               ("A sleepy pet naps", lambda r: r.did(4, "nap"), "Write  def on_sleep():  and inside it  if sleepy():  then  nap()"),
-               ("A wide-awake pet won't nap", lambda r: not r.did(5, "nap") and r.did(5, "say"), 'Add an else with  say("Not tired!")'),
-               ],
-     "hints": ['def on_play():\n    spin()\n\ndef on_sleep():\n    if sleepy():\n        nap()', 'def on_play():\n    spin()\n\ndef on_sleep():\n    if sleepy():\n        nap()\n    else:\n        say("Not tired!")'],
-     "reference": 'def on_play():\n    spin()\n\ndef on_sleep():\n    if sleepy():\n        nap()\n    else:\n        say("Not tired!")'},
-
-    {"key": "f5", "chapter": 6, "name": "The perfect pet", "adds": [], "python": ["on_click", "on_feed", "on_play", "on_sleep", "if"],
-     "rehearse": ["click", "feed", "feed", "play", "play", "sleep", "sleep"],
-     "pip": "This one is all yours. Build a whole pet that answers everything. Then press Add to the Theatre in Free Stage and let the class look after it!",
-     "job": "Make click, Feed, Play and Sleep all work.",
-     "goals": [("All four do something", lambda r: all(any(ev) for ev in r.reacts), lambda r: "Something didn't react. You need on_click, on_feed, on_play and on_sleep."),
-               ("It's hungry or full, sleepy or not", lambda r: r.n("hungry") >= 1 and r.n("sleepy") >= 1, None),
-               ("It starts with a hello", lambda r: bool(r.reacts) and r.n("say") > sum(1 for ev in r.reacts for n, _ in ev if n == "say"), None)],
-     "hints": ["Copy the shape from Feed me and Bedtime, then add on_click.",
-               'say("Hello! Look after me.")\n\ndef on_click():\n    jump()\n\ndef on_feed():\n    if hungry():\n        eat()\n    else:\n        say("Full!")\n\ndef on_play():\n    spin()\n\ndef on_sleep():\n    if sleepy():\n        nap()\n    else:\n        say("Not tired!")'],
-     "reference": 'say("Hello! Look after me.")\n\ndef on_click():\n    jump()\n\ndef on_feed():\n    if hungry():\n        eat()\n    else:\n        say("Full!")\n\ndef on_play():\n    spin()\n\ndef on_sleep():\n    if sleepy():\n        nap()\n    else:\n        say("Not tired!")'},
-
-    {"key": "g1", "chapter": 7, "name": "Arrow keys", "adds": [], "python": ["on_key", "if"], "rehearse": ["key:right", "key:right", "key:left", "key:space"],
-     "pip": "Now YOU can steer! on_key runs each time a key is pressed, and key tells you which one.",
-     "job": "Left and right arrows walk your pal. Space makes it jump.",
-     "goals": [("The right arrow walks right", lambda r: r.did(0, "right"), 'Try  if key == "right":  with  right(1)  pushed in.'),
-               ("The left arrow walks left", lambda r: r.did(2, "left"), None),
-               ("Space jumps", lambda r: r.did(3, "jump"), None)],
-     "hints": ['def on_key(key):\n    if key == "right":\n        right(1)', 'def on_key(key):\n    if key == "right":\n        right(1)\n    if key == "left":\n        left(1)\n    if key == "space":\n        jump()'],
-     "reference": 'def on_key(key):\n    if key == "right":\n        right(1)\n    if key == "left":\n        left(1)\n    if key == "space":\n        jump()'},
-
-    {"key": "g2", "chapter": 7, "name": "Grab the star", "adds": ["put", "take", "touching"], "python": ["on_key", "if"], "rehearse": ["key:right"] * 4,
-     "pip": "A game needs something to get! put() places a star, and touching() checks if your pal is on it.",
-     "job": 'Put a star on spot 6. When your pal reaches it, take it.',
-     "goals": [("There's a star on spot 6", lambda r: ("put", ("star", 6)) in r.log, 'At the top, write  put("star", 6)'),
-               ("Your pal takes it", lambda r: r.n("take") >= 1, 'Inside on_key, after moving:  if touching("star"):  and  take("star")'),
-               ("Something great happens", lambda r: r.first("take", "hearts") or r.first("take", "say") or r.first("take", "confetti"), None)],
-     "hints": ['put("star", 6)\n\ndef on_key(key):\n    if key == "right":\n        right(1)\n    if touching("star"):\n        take("star")',
-               'put("star", 6)\n\ndef on_key(key):\n    if key == "right":\n        right(1)\n    if key == "left":\n        left(1)\n    if touching("star"):\n        take("star")\n        hearts()'],
-     "reference": 'put("star", 6)\n\ndef on_key(key):\n    if key == "right":\n        right(1)\n    if key == "left":\n        left(1)\n    if touching("star"):\n        take("star")\n        hearts()'},
-
-    {"key": "g3", "chapter": 7, "name": "Keep score", "adds": ["point", "score"], "python": ["on_key", "if"], "rehearse": ["key:right"] * 2 + ["key:left"] * 4,
-     "pip": "point() adds one to the score on the screen, and score() tells you what it is. Two stars means you win!",
-     "job": "Two stars on the stage: each one scores a point. Say you won on 2 points.",
-     "goals": [("Two stars on the stage", lambda r: r.n("put") >= 2, 'put("star", 4)  and  put("star", 0)'),
-               ("Each star scores a point", lambda r: r.score >= 2, "After take, add  point()"),
-               ("Your pal says you won", lambda r: r.n("score") >= 1 and r.said, 'Try  if score() == 2:  with  say("You win!")')],
-     "hints": ["Pal starts on spot 2. Two rights reach 4, then four lefts reach 0.",
-               'put("star", 4)\nput("star", 0)\n\ndef on_key(key):\n    if key == "right":\n        right(1)\n    if key == "left":\n        left(1)\n    if touching("star"):\n        take("star")\n        point()\n    if score() == 2:\n        say("You win!")'],
-     "reference": 'put("star", 4)\nput("star", 0)\n\ndef on_key(key):\n    if key == "right":\n        right(1)\n    if key == "left":\n        left(1)\n    if touching("star"):\n        take("star")\n        point()\n    if score() == 2:\n        say("You win!")'},
-
-    {"key": "g4", "chapter": 7, "name": "Your own game", "adds": [], "python": ["on_key", "if", "randint"], "seeds": range(4),
-     "rehearse": ["key:right"] * 8 + ["key:left"] * 10 + ["key:right"] * 10,
-     "pip": "Your final show! randint(0, 10) picks a random spot, so the game is different every time. Make it, then put it in the Theatre for everyone to play.",
-     "job": "Put a star on a random spot. Walking onto it scores a point.",
-     "goals": [("The star lands somewhere new each time", _three_ways, 'Try  put("star", randint(0, 10))'),
-               ("Reaching it scores a point", lambda r: all(o.score >= 1 for o in r.others), None),
-               ("A new star appears after you score", lambda r: r.n("put") >= 2, 'After  point()  , put another star with randint.')],
-     "hints": ['put("star", randint(0, 10))\n\ndef on_key(key):\n    if key == "right":\n        right(1)\n    if key == "left":\n        left(1)\n    if touching("star"):\n        take("star")\n        point()',
-               'put("star", randint(0, 10))\n\ndef on_key(key):\n    if key == "right":\n        right(1)\n    if key == "left":\n        left(1)\n    if touching("star"):\n        take("star")\n        point()\n        put("star", randint(0, 10))'],
-     "reference": 'put("star", randint(0, 10))\n\ndef on_key(key):\n    if key == "right":\n        right(1)\n    if key == "left":\n        left(1)\n    if touching("star"):\n        take("star")\n        point()\n        put("star", randint(0, 10))'},
+    {"key": "m1", "chapter": 3, "name": "My Move", "adds": ["spin", "stars"], "python": ["for"],
+     "pip": "This one is all yours! Code your own routine. It becomes a big button in the Hang out, and when you press it, "
+            "everyone sees your pal do it. A loop gives it a sparkle trail, and a long routine gets a big finish.",
+     "job": "Make up your own move. Use 3 actions or more.",
+     "coach": [
+               ('spin()', 'Your pal starts with a spin.'),
+               ('for i in range(3):', 'This loop goes round 3 times. A loop gives your move a sparkle trail!'),
+               ('    jump()', 'This line is inside the loop. Jump!'),
+               ('    hearts()', 'This line is inside the loop too. Hearts!'),
+               ('dance()', 'This line is NOT pushed in, so it runs after the loop. I moved it back for you.'),
+               ('cheer()', 'One last move. Now you have enough for a big finish!'),
+     ],
+     "build": True,
+     "goals": [("Your move has 3 actions or more", lambda r: _actions(r) >= 3, lambda r: f"I counted {_actions(r)} action{'' if _actions(r) == 1 else 's'}. I need 3. Try  jump()  spin()  dance()"),
+               ("It uses a for loop: sparkle trail!", lambda r: r.fors >= 1, None),
+               (f"It has {MOVE_BIG} actions or more: big finish!", lambda r: _actions(r) >= MOVE_BIG, None)],
+     "hints": ["Pick three things your pal can do, and put each on its own line.",
+               "A loop repeats the lines pushed in under it. Try  for i in range(3):  and push  jump()  in under it.",
+               "spin()\nfor i in range(3):\n    jump()\n    hearts()\ndance()\ncheer()"],
+     "reference": "spin()\nfor i in range(3):\n    jump()\n    hearts()\ndance()\ncheer()"},
 ]
 LEVEL_ORDER = [lv["key"] for lv in LEVELS]
 LEVEL_BY_KEY = {lv["key"]: lv for lv in LEVELS}
-HELPERS_AT = {"choice": "e1", "randint": "g4"}
 
 
 def _visited(r):
@@ -1354,29 +1073,6 @@ def _visited(r):
     return seen
 
 
-def _after_three(r):
-    was = None
-    for name, args in r.log:
-        if name == "jump":
-            return was == "3"
-        if name == "say" and args:
-            was = str(args[0])
-    return False
-
-
-# Free Stage's Give me an idea button: little shows to start from.
-IDEAS = [
-    'scene("park")\nfeel("sleepy")\nsay("Yawn...")\nwait(2)\nfeel("happy")\nsay("Good morning!")\nwave()',
-    'for i in range(3):\n    dance()\n    hearts()\ncheer()',
-    'look("left")\nlook("right")\nfriend("cat")\nfriend_say("Boo!")\nfeel("surprised")\njump()\nsay("You scared me!")\nfeel("happy")',
-    'say("Watch this!")\nspin()\njump()\nspin()\nconfetti()\nsay("Ta-da!")',
-    'def on_click():\n    jump()\n    say("That tickles!")\n\nsay("Click me!")',
-    'for i in range(3):\n    right(2)\n    jump()\nsay("I made it!")\nstars()',
-    'scene("park")\nsnow()\nfeel("surprised")\nsay("Snow!")\ndance()',
-    'feel("cool")\nsay("I am the coolest pal.")\nfeel("silly")\nsay("Just kidding!")\ncheer()',
-]
-
-
 # The live room. Words are tapped, not typed, unless the teacher turns typing on.
 ROOM_WORDS = {
     "Wedding": ["Here comes the bride!", "Do you promise?", "I do!", "I do too!", "You look beautiful!", "Congratulations!",
@@ -1386,23 +1082,168 @@ ROOM_WORDS = {
 }
 ROOM_SAYS = {word for words in ROOM_WORDS.values() for word in words}
 ROOM_MOVES = ("wave", "dance", "jump", "cheer", "spin", "nap")
+ROOM_RESTS = ("sit", "read")
+ROOM_BUDDIES = 3           # how many of a student's other drawings come to the Hang out
 ROOM_FX = ("hearts", "stars", "confetti", "petals", "bouquet", "bells", "march", "cake")
-ROOM_SECONDS = 90          # the longest film one take can be
 LIVE_WORDS_MAX = 60
 
-# The class story's Give me an idea button. These are beginnings, for changing.
-STORY_IDEAS = [
-    'say("Where did it go?")\nlook("left")\nlook("right")\nfeel("sad")\nsay("I lost my map!")',
-    'friend("cat")\nfriend_say("Quick! Follow me!")\nfeel("surprised")\nright(3)\nsay("Wait for me!")',
-    'scene("park")\nrain()\nfeel("sad")\nsay("Oh no, it\'s raining.")\nwait(2)\nfeel("happy")\nsay("A rainbow!")',
-    'look("up")\nfeel("surprised")\nsay("What was that noise?")\nshake()\nhide()\nwait(1)\nappear()\nsay("Boo!")',
-    'say("I have a plan!")\nfriend("cat")\nfriend_say("Tell me!")\nsay("We dance.")\neveryone("dance")',
-    'feel("happy")\nsay("We did it!")\nhearts()\ncheer()\nconfetti()',
-    'scene("wedding")\nfriend("cat")\nfeel("happy")\nfriend_say("Do you promise?")\nsay("I do!")\neveryone("dance")\nhearts()\nconfetti()',
-]
-MAX_PAGE_STEPS = 60        # a page, not a whole film
-MAX_STORY_PAGES = 80
-LINE_MAX = 90
+# ---- Hang out ------------------------------------------------------------------
+HANG_AFTER = "a3"          # finishing this mission opens the Hang out
+HANG_PLACES = ("park", "wedding", "beach", "night")
+
+# Each mission's first finish opens a box with one of these. "class" ones come
+# from the class party meter, for everyone at once.
+GIFTS = {
+    "party": {"name": "Party hat", "slot": "hat"}, "tophat": {"name": "Top hat", "slot": "hat"},
+    "flower": {"name": "Flower", "slot": "hat"}, "bow": {"name": "Big bow", "slot": "hat"},
+    "cap": {"name": "Cool cap", "slot": "hat"}, "wizard": {"name": "Wizard hat", "slot": "hat"},
+    "shades": {"name": "Cool shades", "slot": "face"}, "heartglasses": {"name": "Heart glasses", "slot": "face"},
+    "moustache": {"name": "Silly moustache", "slot": "face"},
+    "goldspark": {"name": "Gold sparkles", "slot": "sparkle"}, "heartspark": {"name": "Heart sparkles", "slot": "sparkle"},
+    "crown": {"name": "Golden crown", "slot": "hat", "class": True}, "rainbow": {"name": "Rainbow sparkles", "slot": "sparkle", "class": True},
+    # These have a price: they come from the shop, never from a box.
+    "beanie": {"name": "Rainbow hat", "slot": "hat", "price": 40}, "bunny": {"name": "Bunny ears", "slot": "hat", "price": 50},
+    "catears": {"name": "Cat ears", "slot": "hat", "price": 50}, "pirate": {"name": "Pirate hat", "slot": "hat", "price": 60},
+    "halo": {"name": "Halo", "slot": "hat", "price": 80}, "starglasses": {"name": "Star glasses", "slot": "face", "price": 60},
+    "icespark": {"name": "Ice sparkles", "slot": "sparkle", "price": 70}, "leafspark": {"name": "Leaf sparkles", "slot": "sparkle", "price": 70},
+    "frog": {"name": "Frog hat", "slot": "hat", "price": 55}, "witch": {"name": "Witch hat", "slot": "hat", "price": 60},
+    "flowercrown": {"name": "Flower crown", "slot": "hat", "price": 70}, "unicorn": {"name": "Unicorn horn", "slot": "hat", "price": 90},
+    "monocle": {"name": "Fancy monocle", "slot": "face", "price": 45}, "heromask": {"name": "Hero mask", "slot": "face", "price": 55},
+    "galaxyspark": {"name": "Galaxy sparkles", "slot": "sparkle", "price": 90},
+    # More for gift boxes.
+    "tiara": {"name": "Tiara", "slot": "hat"}, "chef": {"name": "Chef hat", "slot": "hat"},
+    "cowboy": {"name": "Cowboy hat", "slot": "hat"}, "headphones": {"name": "Headphones", "slot": "hat"},
+    "roundglasses": {"name": "Round glasses", "slot": "face"}, "clownnose": {"name": "Clown nose", "slot": "face"},
+    "blush": {"name": "Rosy cheeks", "slot": "face"},
+    "candyspark": {"name": "Candy sparkles", "slot": "sparkle"}, "firespark": {"name": "Fire sparkles", "slot": "sparkle"},
+    # These unlock by themselves when a goal is reached: [what is counted, how many].
+    "gemcrown": {"name": "Gem crown", "slot": "hat", "goal": ["gems", 9]},
+    "fishhat": {"name": "Fish hat", "slot": "hat", "goal": ["fish", 5]},
+    "friendspark": {"name": "Friendship sparkles", "slot": "sparkle", "goal": ["friends", 5]},
+    "goldshades": {"name": "Gold shades", "slot": "face", "goal": ["rounds", 10]},
+    "dragon": {"name": "Dragon horns", "slot": "hat", "goal": ["stars", 15]},
+    "astro": {"name": "Space helmet", "slot": "hat", "goal": ["gems", 21]},
+    "superspark": {"name": "Superstar sparkles", "slot": "sparkle", "goal": ["stars", 27]},
+}
+BOX_GIFTS = tuple(key for key, gift in GIFTS.items() if not gift.get("class") and not gift.get("price") and not gift.get("goal"))
+GOAL_GIFTS = tuple(key for key, gift in GIFTS.items() if gift.get("goal"))
+WEAR_SLOTS = ("hat", "face", "sparkle")
+
+# What each full party meter brings, in order. After these it's just a party.
+HANG_REWARDS = [{"kind": "place", "key": "snowy", "name": "Snowy hill"}, {"kind": "gift", "key": "crown", "name": "Golden crown"},
+                {"kind": "place", "key": "candy", "name": "Candy land"}, {"kind": "gift", "key": "rainbow", "name": "Rainbow sparkles"},
+                {"kind": "place", "key": "space", "name": "Outer space"}]
+# The Hang out is one long world: each place sits beside the last, and a new place
+# from the party meter makes it longer.
+PLACE_W = 320
+HANG_WORLD = HANG_PLACES + tuple(r["key"] for r in HANG_REWARDS if r["kind"] == "place")
+HANG_FINDS = tuple(f"{place}{i}" for place in HANG_WORLD for i in range(3))     # gems to find, three in each place
+HANG_TOYS = ("splash", "bounce", "apples", "bells", "cake", "petals", "sand", "coconut", "sparks", "fireflies", "stars", "snow", "candy", "rocket")
+PLACED_EACH = 5            # drawings each student can leave out in the world
+PLACED_ALL = 60            # and in the whole world, oldest going first
+PLACE_GAP = .5             # seconds between placing drawings
+TOY_GAP = 1                # seconds between toys
+MISSION_POINTS = 2         # a mission's first finish fills the meter this much
+MOVE_POINTS = 1            # and a My Move this much, once in a while per student
+MOVE_POINT_GAP = 45        # seconds
+
+
+# ---- Coins, the shop and homes ---------------------------------------------------
+# Coding pays the most. Coins from playing stop at PLAY_COINS_DAY each day, so the
+# way to more is always a mission.
+COINS_FIRST = 20           # a mission's first finish
+COINS_STAR = 10            # and each new star
+COINS_GEM = 3
+COINS_CATCH = 1            # a star in a star shower
+COINS_FRIEND = 3           # a first high-five with someone
+COINS_ROUND = 5            # finishing a round of a game
+COINS_WIN = 5              # and winning it
+COINS_FISH = 1
+COINS_NEW_FISH = 4         # more, the first time for each kind
+PLAY_COINS_DAY = 40
+
+# Things for a home. A price of 0 is there from the start.
+FURNITURE = {
+    "rug": {"name": "Round rug", "price": 0}, "plant": {"name": "Pot plant", "price": 0},
+    "balloons": {"name": "Balloons", "price": 15}, "lamp": {"name": "Lamp", "price": 20}, "teddy": {"name": "Teddy", "price": 20},
+    "table": {"name": "Table", "price": 25}, "beanbag": {"name": "Bean bag", "price": 25}, "toybox": {"name": "Toy box", "price": 30},
+    "shelf": {"name": "Bookshelf", "price": 35}, "bed": {"name": "Bed", "price": 40}, "sofa": {"name": "Sofa", "price": 40},
+    "tv": {"name": "TV", "price": 45}, "tank": {"name": "Fish tank", "price": 50}, "disco": {"name": "Disco ball", "price": 60},
+}
+HOME_WALLS = {"w_cream": {"name": "Cream walls", "price": 0}, "w_pink": {"name": "Pink walls", "price": 30},
+              "w_blue": {"name": "Blue walls", "price": 30}, "w_night": {"name": "Starry walls", "price": 40}}
+HOME_FLOORS = {"f_wood": {"name": "Wood floor", "price": 0}, "f_check": {"name": "Checked floor", "price": 30},
+               "f_grass": {"name": "Grass floor", "price": 30}, "f_cloud": {"name": "Cloud floor", "price": 40}}
+# More rooms, bought in the shop. Each has its own walls, floor and things. They join on
+# in the order they're bought: the door on the right of a room goes to the next one.
+HOME_ROOMS = {"r_bed": {"name": "Bedroom", "price": 50}, "r_play": {"name": "Playroom", "price": 70},
+              "r_attic": {"name": "Attic", "price": 90}}
+HOME_FIRST = "Living room"
+# Everything with a price, and which shelf of the shop it's on.
+SHOP = dict({key: dict(gift, kind="wear") for key, gift in GIFTS.items() if gift.get("price")},
+            **{key: dict(item, kind="furniture") for key, item in FURNITURE.items() if item["price"]},
+            **{key: dict(item, kind="wall") for key, item in HOME_WALLS.items() if item["price"]},
+            **{key: dict(item, kind="floor") for key, item in HOME_FLOORS.items() if item["price"]},
+            **{key: dict(item, kind="room") for key, item in HOME_ROOMS.items()})
+HOME_ART = 5               # drawings a student can hang up at home
+
+# Fishing at the beach: (picture, name, how often out of 100).
+FISH = {"minnow": ("🐟", "Little fish", 34), "stripy": ("🐠", "Stripy fish", 22), "shell": ("🐚", "Shell", 12), "boot": ("🥾", "Old boot", 10),
+        "puffer": ("🐡", "Puffer fish", 9), "crab": ("🦀", "Crab", 7), "octopus": ("🐙", "Octopus", 4), "whale": ("🐳", "Tiny whale", 2)}
+FISH_X = 140               # where the pier is, from the left of the Beach
+FISH_WAIT = (2, 5)         # seconds until a bite
+FISH_BITE = 2.5            # seconds to reel it in
+DANCE_MOVES = ("wave", "jump", "spin", "cheer")
+
+
+def party_goal(level):
+    return min(10 + 5 * level, 30)
+
+
+MOVE_NAMES = ("Moon Hop", "Super Spin", "Wiggle Blast", "Star Dance", "Happy Stomp", "Noodle Arms", "Sparkle Slide", "Turbo Twirl",
+              "Bunny Bounce", "Disco Dash", "Jelly Jump", "Rocket Roll", "Silly Shuffle", "Thunder Clap", "Cloud Skip", "Pixel Party")
+MOVE_MAX = 24              # the most steps one My Move can play
+MOVE_GAP = 6               # seconds between presses, however short the move is
+MOVE_MS = {"jump": 650, "wave": 1400, "dance": 2400, "cheer": 1400, "spin": 600, "hearts": 600, "stars": 600, "confetti": 600}
+ROOM_SPOT = 26             # how far one spot on the Code stage is in the Hang out
+WALK_MS_PER_PIXEL = 12
+
+
+def compile_move(steps):
+    """A finished program's steps, as the list the Hang out replays."""
+    out, spot = [], START
+    for s in steps:
+        do = s["do"]
+        if do == "walk":
+            out.append({"do": "walk", "dx": (s["to"] - spot) * ROOM_SPOT,
+                        "ms": max(200, abs(s["to"] - spot) * ROOM_SPOT * WALK_MS_PER_PIXEL)})
+            spot = s["to"]
+        elif do == "say":
+            out.append({"do": "say", "text": str(s["text"])[:LIVE_WORDS_MAX], "ms": 1200})
+        elif do == "feel":
+            out.append({"do": "feel", "mood": s["mood"], "ms": 400})
+        elif do == "wait":
+            out.append({"do": "wait", "ms": min(2000, int(s["beats"] * 450))})
+        elif do in MOVE_MS:
+            out.append({"do": do, "ms": MOVE_MS[do]})
+    return out[:MOVE_MAX]
+
+
+def stage_move(steps, x, words_allowed, max_x=312):
+    """A saved move, ready for this pal at this spot in the room. say() takes
+    any words, so only words from the tap list show unless typing is on.
+    Returns the steps, where the pal ends up, and how long it all takes."""
+    played, total = [], 0
+    for s in steps:
+        if s["do"] == "say" and not (words_allowed or s["text"] in ROOM_SAYS):
+            continue
+        s = dict(s)
+        if s["do"] == "walk":
+            x = max(8, min(max_x, x + s.pop("dx")))
+            s["x"] = x
+        played.append(s)
+        total += s["ms"]
+    return played, x, total
 
 
 def commands_for(key):
@@ -1415,12 +1256,12 @@ def commands_for(key):
     return EVERYTHING
 
 
-def run_level(lv, code, pal, unlocked=LOCKED, seed=0):
+def run_level(lv, code, pal, seed=0):
     """Run a mission. Random missions run on many seeds, so the stars mean the
     program works every time. The first run is the one the student watches."""
     commands = commands_for(lv["key"])
     seeds = list(lv.get("seeds", [0]))
-    runs = [perform(code, pal, lv.get("rehearse", ()), s + seed, commands, unlocked, lv.get("setup"))
+    runs = [perform(code, pal, lv.get("rehearse", ()), s + seed, commands, lv.get("setup"))
             for s in seeds]
     main = runs[0]
     report = main["report"]
@@ -1440,23 +1281,73 @@ def run_level(lv, code, pal, unlocked=LOCKED, seed=0):
                 rehearsed=list(lv.get("rehearse", ())))
 
 
-def run_free(code, pal, unlocked, seed=0, events=(), cast=None, stand_in=False):
-    return public(perform(code, pal, events, seed, EVERYTHING, unlocked, None, cast, stand_in))
+# ---- Furniture students draw and code ----------------------------------------------
+# Any drawing put out at home (or in the world) can have a program. Clicking it
+# runs the program's on_click, and everyone in that place sees what it does.
+THING_COMMANDS = ("say", "sound", "jump", "spin", "shake", "grow", "shrink", "hide", "appear",
+                  "pose", "play", "wait", "hearts", "stars", "confetti", "clicks") + HELPERS
+THING_FRAMES = 4           # frames a placed drawing keeps, for pose() and play()
+THING_STEPS = 30           # the most steps one click can play
+THING_GAP = .6             # seconds between one student's clicks on things
+THING_MS = {"jump": 620, "spin": 560, "shake": 500, "hearts": 600, "stars": 600, "confetti": 600,
+            "sound": 250, "size": 300, "hide": 300, "appear": 300, "pose": 350}
+THING_START = 'def on_click():\n    jump()\n    sound("boing")\n    say("Hello!")\n'
 
 
-def react(code, pal, unlocked, seed, events, level=None, cast=None, stand_in=False):
-    """One new click on a show that's already playing: replay it all, and send
-    back only what the newest click did."""
-    if len(events) > MAX_EVENTS:
-        return {"steps": [], "error": None, "line": None, "full": True}
-    lv = LEVEL_BY_KEY.get(level)
-    result = perform(code, pal, events, seed, commands_for(level) if lv else EVERYTHING,
-                     unlocked, lv.get("setup") if lv else None, cast, stand_in)
-    return {"steps": result["after"], "error": result["error"], "line": result["line"]}
+def run_thing(code, drawing, clicks, seed=0):
+    """One click on a thing a student drew and coded. The program replays every
+    click so far, so clicks() and the program's variables carry on from last time.
+    Returns the steps this click makes, or an error with its line."""
+    clicks = (max(1, clicks) - 1) % MAX_EVENTS + 1
+    out = perform(code, drawing, ["click"] * clicks, seed, THING_COMMANDS)
+    error = out["error"]
+    closed = re.search(r"(\w+)\(\) isn't open yet.*", error or "")
+    if closed:
+        error = error[:closed.start()] + (f"Furniture can't {closed[1]}(). It can do: "
+                                          + ", ".join(f"{c}()" for c in THING_COMMANDS if c not in HELPERS) + ".")
+    elif error:
+        error = error.replace("Your pal has", "Your drawing has")
+        if "can't work" in error:
+            error += " To draw another frame, open it in 🎨 Draw and press + Copy frame."
+    if not error and "click" not in out["events"]:
+        error = "Nothing happens when it's clicked yet. Put your code under  def on_click():"
+    return {"steps": [] if error else [s for s in out["after"] if s["do"] != "event"],
+            "error": error, "line": out["line"]}
 
 
-FREE_STARTER = '''# This is your own stage. Anything goes!
-scene("park")
-say("Welcome to my show")
-jump()
-'''
+def thing_steps(steps, frames, words_allowed, look=None):
+    """A click's steps, ready for the Hang out, and how the thing looks after them.
+    say() takes any words, so only words from the tap list show unless typing is on."""
+    look = dict(look or {"frame": 0, "size": 1, "hidden": False})
+    out = []
+    for s in steps:
+        do = s["do"]
+        if do == "say":
+            if not (words_allowed or s["text"] in ROOM_SAYS):
+                continue
+            step = {"do": "say", "text": str(s["text"])[:LIVE_WORDS_MAX], "ms": 1300}
+        elif do == "wait":
+            step = {"do": "wait", "ms": min(2000, s["beats"] * 450)}
+        elif do == "sound":
+            step = {"do": "sound", "name": s["name"], "ms": THING_MS["sound"]}
+        elif do == "size":
+            look["size"] = s["to"]
+            step = {"do": "size", "to": s["to"], "ms": THING_MS["size"]}
+        elif do in ("hide", "appear"):
+            look["hidden"] = do == "hide"
+            step = {"do": do, "ms": THING_MS[do]}
+        elif do == "pose":
+            if s["frame"] >= frames:
+                continue
+            look["frame"] = s["frame"]
+            step = {"do": "pose", "frame": s["frame"], "ms": THING_MS["pose"]}
+        elif do == "play":
+            step = {"do": "play", "ms": 250 * max(2, frames)}
+        elif do in THING_MS:
+            step = {"do": do, "ms": THING_MS[do]}
+        else:
+            continue                 # a face made with pose("happy"), say: nothing to show on a thing
+        out.append(step)
+        if len(out) >= THING_STEPS:
+            break
+    return out, look

@@ -207,6 +207,54 @@ upright, on every screen: 💥 Blocky Boom, 👻 Spooky, 🥷 Ninja, 🦖 Dino,
 `planet_render.js`). Pointing at a piece in the garage says how much of its
 set is on ("Thunder set: 1 of 4 on").
 
+## Batch 5: the meme shelf, built (November 9)
+
+Things kids quote at each other, kept school-safe: no brand characters, nothing
+rude, and no speech (the horns are tones). Nearly all of it unlocks at low
+star counts, so the easy-mode class (about 40 ★) gets most of it.
+
+| Item | Slot | Unlock | What it does |
+|---|---|---|---|
+| Pet rock | pet | 1 ★ | a rock with googly eyes that roll |
+| Siiix seven! | horn | 6 ★ | a long note, then two short ones |
+| 6 7 6 7 | trail | 7 ★ | the numbers all along the route, bobbing in turn |
+| Traffic cone | topper | 7 ★ | a cone seen from above |
+| Cheese wheels | wheels | 9 ★ | six wheels of cheese |
+| Bonk | horn | 10 ★ | a knock on the head |
+| No cap | topper | 11 ★ | a red baseball cap on backwards |
+| Womp womp | horn | 14 ★ | a sad trombone |
+| Hot Dog | paint | 15 ★ | a bun, a sausage and a squiggle of mustard |
+| Cheese Moon | world | 18 ★ | yellow ground |
+| Floss | dance | 22 ★ | swings side to side, fast |
+| Capybara | pet | 23 ★ | perfectly calm, an orange on its head |
+| Bruh | horn | 25 ★ | a long low note |
+| Loading… | paint | 29 ★ | a spinner, and a bar that stops at 99% |
+| Lil Nugget | pet | 30 ★ | a chicken nugget running on the spot |
+| Pixel shades | topper | 37 ★ | black pixel sunglasses over the camera |
+| Sneakers | wheels | 38 ★ | a trainer on every wheel, stepping in turn |
+| The Floor is Lava | world | 39 ★ | orange ground, dark rocks |
+| Side Eye | paint | 42 ★ | two eyes that look one way, then the other |
+| Gold chain | topper | 45 ★ | a chain with a star medallion |
+| Stone Head | pet | 49 ★ | a very serious stone face that nods |
+| LOL | trail | 51 ★ | 😂 🔥 💯 dropped along the route |
+| Rage quit | dance | 63 ★ | shakes, storms off, rolls back in |
+| Six Seven | paint | 67 ★ | a team shirt with a big 6 and 7 |
+| Missing Texture | paint | 70 ★ | pink and black squares; a row slips now and then |
+| +1000 Aura | glow | 77 ★ | gold glow, "+1000" floating up |
+| The GOAT | pet | 99 ★ | a goat in pixel shades with a gold medal |
+| Six seven | dance | 🤷 badge **Six Seven** (new) | tips side to side, a 6 and a 7 going up and down |
+
+The new code challenge, 🤷 **Six Seven**, wants `print("six seven")`,
+`print(67)` or `print(6, 7)` in a run that completes its mission
+(`PRINT_CHALLENGES` now reads numbers as well as words).
+
+Three new sets: 🤷 **Six Seven** (paint, trail, dance, horn), 🌭 **Snack
+Attack** (Hot Dog, Donut, Cheese wheels, Lil Nugget) and 🐐 **GOAT** (The
+GOAT, Gold chain, +1000 Aura, Sneakers).
+
+Pixel shades are the one topper drawn after the camera (`pixelShades`, called
+from `drawRover`), since they sit on top of it.
+
 ## Batch 2: the ideas list (1, 2, 4, 5, 7 and 8 are built, see Batch 4)
 
 Roughly the most kid excitement for the least work first.

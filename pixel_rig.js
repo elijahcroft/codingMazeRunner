@@ -795,6 +795,14 @@ const PixelRig = (() => {
       const breath = Math.sin(t * Math.PI * .7);
       return {eyes: "shut", mouth: "flat", squash: .95 + breath * .05, headY: Math.round(rig.size / 16), lean: rig.size / 16 * 1.2, ear: 22, tail: 22, wing: 30, arm: rig.arms.map(() => 12)};
     },
+    sit(t, rig) {
+      const big = rig.size / 16, breath = Math.sin(t * Math.PI * .7);
+      return {squash: .8 + breath * .02, legs: [{dx: -2 * big}, {dx: 2 * big}], arm: rig.arms.map(() => 20), tail: Math.sin(t * 1.6) * 12, mouth: "smile"};
+    },
+    read(t, rig) {
+      const big = rig.size / 16, breath = Math.sin(t * Math.PI * .7);
+      return {squash: .8 + breath * .02, legs: [{dx: -2 * big}, {dx: 2 * big}], arm: rig.arms.map(() => 75), look: [0, 1], mouth: "smile", tail: Math.sin(t * 1.2) * 8};
+    },
     giggle(t, rig) {
       return {eyes: "happy", mouth: "open", lean: Math.sin(t * 30) * rig.size / 16, lift: Math.abs(Math.sin(t * 15)) * rig.size / 16, squash: 1 + Math.sin(t * 30) * .05};
     },

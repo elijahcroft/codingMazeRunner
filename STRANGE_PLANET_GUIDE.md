@@ -20,6 +20,43 @@ The skill you're teaching is as much **experimenting** as coding:
 
 ## Since the first lesson (what students will notice)
 
+**🙌 Build it together: nobody stays stuck** (⚙ Settings: "Build it together when
+stuck", on by default). After many misses in a row on a level (5 in easy mode, 10
+otherwise, and at least a minute and a half since the first of them, so pressing
+Transmit over and over doesn't bring it), the banner offers a gold **🙌 Build it
+together** button. The rover then builds the level's own answer with the student: the
+code box shows the program as blanks, a card above the buttons says what the current
+line does in plain words ("A loop: do the pushed-in lines under it 5 times."), and the
+student types it key by key with the same lit-key helper as the practice levels. Short
+answers are typed whole. Long ones (more than about 70 characters) give the plain lines
+and have the student type the lines that carry the idea: the `for`, `while`, `if` and
+`def` lines and the first of each command. **✕ Back to my code** puts their own code back.
+
+A level built this way counts as done, so the next one opens, but it earns **the first
+star only**, no class record and no coding badges. Their card on Mission Control shows
+"🙌 built with the rover: 5A" until they come back and do the level their own way, which
+earns the other stars as usual. It comes before **⏭ Skip for now** (6 misses in easy
+mode, 20 otherwise), so the way out of a level that's too hard is a win and a program
+they have read and typed, not a hole. It works on every level except Uncharted, the
+finale, and levels classmates made. See "Nobody stays stuck" below.
+
+**A student who freezes gets asked.** Misses bring help out, but a student who doesn't
+press Transmit has no misses. After 75 seconds with no key or click on a level that
+isn't done, once per visit, the banner offers the ways forward (🕹 Try it by hand, 📻 Get
+a hint, and 🙌 Build it together when it's open). A little kid in the middle of driving
+or typing gets the rover saying what to press instead ("Drive me with the arrows!",
+"Press the key that's lit up!").
+
+**A flat battery says the real reason.** A rover that ran flat because it sat driving
+into a rock used to be told to charge up first, which sent students the wrong way (one
+sent the same idea to Uncharted 79 times). Now it says "the rover was stuck there for 95
+ticks, bumping into rock" and to check `look("east")` first; going to and fro over the
+same squares until flat says that.
+
+**🌱 The Rover Farm** (⚙ Settings: "Rover Farm", off by default). Every student gets a
+farm of their own, where their program is one farm day and a better program earns more.
+It has no levels to run out of. See "The Rover Farm" below.
+
 **Your rover is your pupil.** It says what it learned at the beacon ("You taught me
 to repeat!"), says which line confused it, says "Ow! Rock!" on its first bump, and
 when nobody has touched anything for 30 seconds it asks what to do (three times at
@@ -33,6 +70,16 @@ shows in the Class Workshop for everyone. Four levels each. Changing a level tak
 down until it's beaten again. Levels earn no stars, but publishing earns Level Maker and
 three classmates beating one earns Crowd Pleaser. Level names show on the class screen:
 you can remove any level from Settings.
+
+**The class hears about a new level.** Levels used to sit at the bottom of the Levels
+screen, and most were played once or never. Now a level going live puts a note on every
+student's screen within a few seconds ("harvey made a level: moo", and pressing it opens
+the level). A pink number on the 🗺 Levels button counts the class levels a student hasn't
+beaten, the Class Workshop is at the top of the Levels screen, and those levels say NEW.
+Beating one offers **🛠 Another class level ▶**. The maker gets a note naming who beat it
+("Asher beat your level moo!"), which is the reward for making one. Beating three levels
+classmates made earns 🧭 **Level Tester**. Still no stars. The first time students open
+the page after this, they get one note for all the levels already made.
 
 **Two levels where a loop is the only way.** After 1B, **1B1 Short Memory** and **1B2
 Memory Full** give the rover a memory of 4 and 6 lines, shown above the editor. The long
@@ -123,7 +170,9 @@ the line that did it.
   yourself: `east()`" with what it does, and typing it on that line says
   "✅ You typed it!". Autocomplete and the scouted-drive blanks still help.
   A new site still starts with the last site's code ("will it still work
-  here?"), as before.
+  here?"), as before, unless that code uses a word the new site doesn't have
+  (`jump()` after Jump Park used to stop on its first line). An easy-mode
+  class gets less carried over: see "Leaving the practice parks" below.
 - **✍️ Warm-ups** before the sites that bring in a new idea: 1A (commands),
   1B (`for`), 1C (`while`), 2A (a variable and `report()`), 3B (`if`/`else`),
   4B (`def`), B4 (`elif`) and B5 (a `def` with a number). Over the editor,
@@ -295,7 +344,8 @@ lost.
   loop earns the Cheetah paint, an `if` the Zebra, a `while` loop the Robot,
   fixing a code error the Ladybug, and beating a class record the Race Car.
   Silly ones: a mission with `print("moo")` in it earns the Cow paint, and
-  `print("sssss")` the Creeper. Every locked item in the garage says how to
+  `print("sssss")` the Creeper, and `print("six seven")` or `print(67)` the
+  Six seven dance. Every locked item in the garage says how to
   get it. Earning every star in a zone (its Master badge) gives a legendary:
   a Frost Crown for the Ice Field, a Hero cape for Wind Canyon, Laser eyes
   for the Laser Range and more.
@@ -533,7 +583,11 @@ board while they work.
       every site someone tried, how many cleared it, typical runs, who
       hasn't cleared it, the hints each zone took, and what the game told
       students most often when they missed. Use it to pick where the next
-      lesson starts and what to explain on the board.
+      lesson starts and what to explain on the board. It also names who
+      **🙌 built a level with the rover**, and keeps the name after they do
+      the level their own way: several names on one level means that level
+      is too hard where it is. In easy mode the practice levels are in the
+      table too.
 - [ ] **📽 Show code** on a student's row puts their last transmitted code
       on the class screen, big and without their name, with "it works ✓" or
       "not working yet: can we fix it?". Good for the end-of-lesson
@@ -689,6 +743,21 @@ words letter by letter and press **Transmit**:
 | 🎓 Trick School | P52–P57 | `def`: teach the rover a trick, call it, put it in a loop, give it a number |
 | 🔢 Number Lab | P58–P63 | variables: name a number, change one number to fit your own field, `n = n + 1` stairs and spirals |
 
+**The typing builds up level by level.** After **Use as code**, each level hides
+more of the code. The helper still shows each key, only accepts the right one,
+and says when to hold Shift (it assumes a US keyboard):
+
+| Levels | They type | Looks like |
+|---|---|---|
+| P1–P2 | the end of a word | `e___(3)` |
+| P3–P7 | the brackets and what's in them | `e______` |
+| P8–P12 | the colon on a loop line | `for i in r________` |
+| P13–P16 | the word `for`, and every line (up to 8) | `f__ i in r________` |
+| P17–P24 | the whole `for` line | `f__ _ __ r________` |
+| P25–P38 | no first letters | `___ _ __ _________` |
+
+Paint Planet and the other drive-first Star Voyage levels stay at the P3–P7 step.
+
 Look-Out Point and Fork Road get the class ready for the Landing Site's
 `look()` and `while`. Kids who had already moved on to the Landing Site
 before they were added aren't sent back: the zones are open for them, but
@@ -699,6 +768,24 @@ Look-Out Point, Fork Road, Trick School and Number Lab are typed: there's no
 driving by hand first, because the code is the lesson (🕹 Scout is still there
 for looking around). Trick School and Number Lab also give all three stars,
 not one: the 🧩 or 🔢 star is for using the new idea, and ✂️ is for keeping it short.
+
+**Leaving the practice parks.** In the parks a level takes about 40 seconds: drive it,
+finish the words, Transmit. The first levels where students type the whole program
+take a minute or two, and what tripped them there was mostly left-over code, not the
+typing. So for an easy-mode class:
+
+- **A new level starts with an empty code box**, unless the level before it is in the same
+  zone and its code has an idea in it (a loop, an `if`, a `def`). A while loop carries from
+  one Look-Out Point level to the next, and 1B's loop carries to 1B1. A route counted off
+  another map doesn't, and nothing carries into the Landing Site.
+- **The empty box says how to start**: "Not sure of the way? Press 🕹 Scout and drive it
+  first."
+- **One miss offers 🕹 Try it by hand** on a level they haven't finished (it used to take
+  three). Driving it and pressing 📋 Use as code is the way they already know, with the
+  words still to finish. This stops at Solar Valley, where 📋 Use as code goes.
+
+Nothing changes on the practice levels themselves, or for a class without easy mode
+(apart from the missing-word rule above).
 
 Wind Canyon has two new levels before The Ledge: **3A1 Hold On!** (`wait()` by
 hand) and **3A2 Gust Guard** (the `if tick() % 5 == 4` check), so The Ledge
@@ -979,6 +1066,116 @@ also join from a second computer, or use 🔓 Open the doors.
     each one: a gem is a square that stops you), one through pad 1, one past the craters and one in
     the room past the gap on the far right. Then the boulder in the crater room goes up onto a V
     plate, one rover stands on the V plate behind the 💎 door, and the rest go through door V.
+
+## 🌱 The Rover Farm: the part that doesn't run out
+
+Levels get used up. On the easy practice levels the class clears about one every 40
+seconds, nearly always on the first try, so no amount of new levels keeps up for long. The
+farm is built the other way round: there are no levels in it. Every student has a field of
+their own, and **their program is one farm day**. The rover picks and plants, the crops sell
+for coins, and coins buy a bigger field, a bigger battery, new crops and things for the
+yard. A better program earns more, so the reason to learn a loop, an `if` or a `def` is the
+student's own farm.
+
+**Opening it:** turn on **🌱 Rover Farm** under ⚙ Settings on the teacher page. A green
+**🌱 Farm** button comes up at the top of students' screens within about six seconds, and
+takes them to their farm (`/planet/farm`). It stays open after a restart. Turning it off
+closes the farm page for everyone and keeps every farm as it was.
+
+**What a student does:**
+
+- Writes a few lines and presses **▶ Run a day**. The rover drives by compass, as on the
+  planet, with three new commands: `harvest()`, `plant("berry")` and `dig()`.
+- Watches the day play back, with the line that's running lit up. Coins go up as crops are
+  picked. Night falls, everything grows, and it's the next day.
+- Presses **🔁 Auto** to have the same program run day after day while they watch. They can
+  change the code while it runs. Auto stops by itself after 25 days if nobody touches
+  the page, so a laptop left alone doesn't farm all lesson.
+- Spends coins in the **🛒 Shop**. The button shows how many things they can afford.
+
+**Nothing fails and nothing is lost.** Picking a plant too early does nothing but waste a
+tick of battery. A flat battery just ends the day, and what was picked still counts. Code
+that can't be read doesn't use up a day. A weak program earns a little, a good one earns a
+lot, and both are progress.
+
+**What makes them write better code:**
+
+| The farm gives them | So they need |
+|---|---|
+| 🧠 Memory: the rover remembers 10 lines (more can be bought) | a `for` loop, then a `def` |
+| 🔋 Battery: 14 ticks a day, one for each command | no wasted moves, so `if ripe():` |
+| A field that grows from 3 by 1 to 8 by 7 | loops inside loops, `width()` and `height()`, or `while look("east") != "fence":` |
+| Crops that take 2 to 6 days | `if ripe():` and `if empty():` |
+| 🌻 Sun blooms, which only grow with no sun bloom beside them | a chess board: `if (x() + y()) % 2 == 0:` |
+
+**The first 13 jobs teach it,** one idea each, on a gold card above the code. A job that
+needs code shows it beside the code box under **✍️ Type this**, and each line gets a ✓ as
+the student types it. After two days that don't finish the job, **✍️ Put this in my code**
+appears. Buying jobs are always affordable by then (a test checks).
+
+| Job | What they do | The idea |
+|---|---|---|
+| 1 to 4 | pick a berry, drive and pick, plant, run it again | a program is a day you can repeat |
+| 5 | buy a bigger field | |
+| 6 | the same day as a loop | `for i in range(3):` |
+| 7, 8 | buy a battery, farm both rows | two loops, `south()` between them |
+| 9, 10 | buy carrots, pick only ripe ones | `if ripe():` and `if empty():` |
+| 11, 12 | buy memory, make a trick | `def care():` |
+| 13 | a loop that looks | `while look("east") != "fence":` |
+
+After the jobs, the card shows **📦 orders** from the space station ("12 × 🍓 Glowberry"),
+one after another, for ever. Every third order brings a **🎁 crate** with something for the
+yard that can't be bought (a frog, a dinosaur, a parked UFO, a dragon...). A student who
+doesn't like an order presses **🔄 Different order**: it's free.
+
+**It stays fresh without you doing anything:**
+
+- **📈 Wanted today.** One crop pays double each day, the same one for the whole class. It
+  changes at midnight, so most lessons start with a reason to change the program.
+- **Orders** ask for a crop the student may not be growing.
+- **Things that are only in the shop for part of the year**: a turkey in November, a
+  snowman and a twinkle tree in December, hearts in February, and so on. They appear and
+  go by the date on your laptop. A student who buys one keeps it.
+- **✨ Golden plants.** About one plant in twelve grows golden and pays five times over.
+  It shows as soon as it's planted, so they can see it coming.
+
+**The farm sends them back to the levels.** Every star a student has earned in the levels
+makes their farm earn 1% more (**⭐ Star bonus**, at the top of the farm). 40 stars is
++40% on every day. Worth saying out loud.
+
+**Showing off:** **👀 Visit** lists classmates' farms. A visit shows their field, their
+yard and their rover in its garage look. It never shows their code or their coins. Clicking
+a thing in a yard makes it say something. A title grows with the coins a farm has ever
+earned: Sprout, Farm Hand, Farmer, Rancher, Tycoon, Farm Legend. Four badges are earned on
+the farm and show in the garage with the rest: 🌱 Green Wheels, 🚜 Automator (6 picked in a
+day with a loop), ✨ Golden Touch and 💰 Money Bags.
+
+**Keeping an eye on it:** under the switch, your page lists every farm: its day, the size
+of its field, its best day, which job it's on, how many lines its program is and **which
+ideas the program uses** (`for`, `if`, `def`, `while`, loops in loops, variables). A big
+field with a program that uses nothing is a student pressing Run a lot: that works, slowly,
+and is allowed, like brute force on the planet. 👀 Eyes up and the other messages reach the
+farm page too, and minutes on the farm count as minutes played.
+
+**When to use it:** it's a good last 15 minutes, or a place for a student who has finished
+everything, or who is stuck and needs a win. It's built to be left on.
+
+### Adding to the farm
+
+Everything in it is a row in a table at the top of `planet_farm.py`. Restart the server
+after a change.
+
+- **A crop**: a row in `CROPS` with its icon, name, days to grow, pay and price. Students
+  plant it by its key: `plant("corn")`.
+- **Something for the yard**: a row in `DECOR` with an icon, a name and what it says when
+  clicked. Give it a `cost` to sell it, or `"crate": True` to hide it in crates. `"from"`
+  and `"until"` (month-day, like `"12-01"`) keep it in the shop for part of the year.
+- **A bigger field, battery or memory**: one more entry at the end of `FIELDS`, `BATTERIES`
+  or `MEMORIES`. Fields over 8 by 7 get small on a class laptop.
+- **A job**: an entry in `JOBS` with what the card says, code to show (if any) and a check.
+
+`test_farm.py` checks the tables (prices rise, every row is whole), that every job can be
+done by typing what its card shows, and the rules above.
 
 ## 🎃 Halloween night: a limited-time event
 
@@ -1492,6 +1689,29 @@ the sun win the rest, and `test_planet.py` checks that leaving out any idea
 
 **Discussion:** "Your rover ran flat by the lander. Why? What did it need to
 check before it set off?"
+
+## Nobody stays stuck: the help, in the order it comes
+
+Every level has a way on, and each step does a little more of the work:
+
+| When | What the student gets |
+|---|---|
+| Every miss | What happened and where, then one thing to try (👉). **Show me** rings the spot. |
+| The same code sent again | "Same code, same trip": the replay, and nothing new is sent. |
+| 1 miss (easy mode, before Solar Valley) or 3 misses | **🕹 Try it by hand**, and 📋 Use as code turns the drive into code. |
+| 2 misses | The 📻 button glows: **Get a hint**. |
+| 3 misses (easy mode) or 8 | **🙋 Ask Ada**: up to two classmates who cleared it today. |
+| 5 misses (easy mode) or 10, and 90 seconds | **🙌 Build it together**: the level's answer, a line at a time, typed in. First star only. |
+| 6 misses (easy mode) or 20 | **⏭ Skip for now** on the main route (after 3 on Star Voyage and Halloween, where everything is open anyway). |
+| 75 seconds without a key or click | The ways forward come up without a miss. |
+
+🙌 Build it together uses each level's reference program, the same one the tests run on
+every student's planet, so it always works. The four levels whose planets differ too
+much for one program get their own answer worked out (P59, 2C, 3C, 6C). The numbers are
+at the top of the help code in `server.py` (`TOGETHER_AFTER`, `EASY_TOGETHER_AFTER`,
+`TOGETHER_WAIT`), and the words for each kind of line are in `planet.py` (`line_notes`).
+`python3 -m unittest test_stuck` checks that every level's answer wins on every planet,
+that every line of every answer has words, and that the build earns one star.
 
 ## What's checked automatically
 

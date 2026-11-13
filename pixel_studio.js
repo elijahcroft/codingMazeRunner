@@ -1025,7 +1025,9 @@ function buildGallery() {
   document.querySelectorAll("[data-way]").forEach(b => b.setAttribute("aria-pressed", b.dataset.way === galleryWay));
   $("gallery").innerHTML = PalGallery.names.map(name =>
     `<button data-gallery="${name}" ${full ? "disabled" : ""}><canvas></canvas>${name}</button>`).join("");
-  for (const name of PalGallery.names) {
+  $("furnGallery").innerHTML = PalGallery.furniture.map(name =>
+    `<button data-gallery="${name}" ${full ? "disabled" : ""}><canvas></canvas>${name}</button>`).join("");
+  for (const name of [...PalGallery.names, ...PalGallery.furniture]) {
     thumbInto(document.querySelector(`[data-gallery="${name}"] canvas`), galleryPicture(name), PalGallery.size, A.PALETTE);
   }
 }

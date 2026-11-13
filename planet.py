@@ -1387,7 +1387,23 @@ def explain(world, unlocked=(), code=""):
                f'== "ghost":  wait()')
     elif end == "battery":
         what = f"The battery ran out at {where(at)}, on tick {world.t}"
-        if world.sunlit:
+        # Flat because it sat in one place driving into rock: charging first
+        # wouldn't have helped, so say what really used the battery up.
+        still = 0
+        for f in reversed(world.frames):
+            if (f["r"], f["c"]) != at:
+                break
+            still += 1
+        paced = None if still >= 10 else pacing(world, unlocked)
+        if still >= 10 and world.bumps >= 10:
+            way = next(w for w, d in COMPASS.items() if d == world.d)
+            what += f": the rover was stuck there for {still - 1} ticks, bumping into rock"
+            nxt = (f'It kept driving {way} into rock, and every try used battery. Check '
+                   f'look("{way}") first, and drive another way when it says "rock".')
+        elif paced:
+            what += paced[0]
+            nxt = paced[1]
+        elif world.sunlit:
             t, spot, charge = world.sunlit
             nxt = (f"It was in the sun at {where(spot)} on tick {t} with {charge} "
                    f"battery, and drove on. Charge up there before you go:  "
@@ -6098,3 +6114,284 @@ def type_yourself(zi):
 
 def sensors_for(zi):
     return [name for name, z in SENSOR_ZONE.items() if z <= zi]
+
+
+# ---- 🙌 Build it together -----------------------------------------------------
+# The last rung of the help ladder. A student who keeps missing a site can
+# build its answer with the rover: the site's own reference program, a line at
+# a time, each line with what it does in plain words, typed in through the
+# page's typing coach. Every site has an answer (answer_for), so no site can
+# hold anyone for good. It earns the mission star only (see server.py).
+
+SENSOR_SAYS = {
+    "x": "the rover's x", "y": "the rover's y", "tick": "the planet's clock",
+    "battery": "the battery level", "beacon_x": "the beacon's x", "beacon_y": "the beacon's y",
+    "samples_left": "the number of samples still out", "cargo": "the number of samples on board",
+    "candy": "the candy in the bag", "drills_left": "the drills left",
+    "flags_left": "the flags left", "gust_in": "the ticks until the next gust",
+    "key_x": "the key's x", "key_y": "the key's y",
+    "next_x": "the next flag's x", "next_y": "the next flag's y",
+    "home_x": "home's x", "home_y": "home's y",
+    "sample_x": "the nearest sample's x", "sample_y": "the nearest sample's y",
+}
+COMPARE_SAYS = {ast.Eq: "is", ast.NotEq: "is not", ast.Lt: "is less than",
+                ast.Gt: "is more than", ast.LtE: "is at most", ast.GtE: "is at least"}
+MATH_SAYS = {ast.Add: "plus", ast.Sub: "minus", ast.Mult: "times"}
+TOGETHER_KEYS = 70   # characters a student types in one build: the rest is given
+
+
+def _called(node):
+    """The name a call calls, or None."""
+    return node.func.id if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) else None
+
+
+def _way(node):
+    """A direction argument in words: "to the east", or "that way" for a name."""
+    if isinstance(node, ast.Constant) and node.value in COMPASS:
+        return f"to the {node.value}"
+    return "that way"
+
+
+def _value(node):
+    """A number in a program, in words a beginner would use."""
+    name = _called(node)
+    if isinstance(node, ast.Constant):
+        return f'"{node.value}"' if isinstance(node.value, str) else str(node.value)
+    if isinstance(node, ast.Name):
+        return node.id
+    if name in SENSOR_SAYS:
+        return SENSOR_SAYS[name]
+    if name == "distance" and node.args:
+        return f"the free squares {_way(node.args[0])}"
+    if isinstance(node, ast.BinOp) and type(node.op) in MATH_SAYS:
+        return f"{_value(node.left)} {MATH_SAYS[type(node.op)]} {_value(node.right)}"
+    return ast.unparse(node)
+
+
+def _check(node):
+    """A test (after if or while) as words that can follow "while" or "if"."""
+    name = _called(node)
+    if isinstance(node, ast.BoolOp):
+        return (" and " if isinstance(node.op, ast.And) else " or ").join(_check(v) for v in node.values)
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+        if _called(node.operand) == "at_beacon":
+            return "the rover is not on the beacon yet"
+        return f"it is not true that {_check(node.operand)}"
+    if name == "at_beacon":
+        return "the rover is on the beacon"
+    if name == "in_sun":
+        return "the rover is in the sun"
+    if name == "has_key":
+        return "the rover holds a key"
+    if name:   # a check the student made with def
+        with_ = f" {_way(node.args[0])}" if node.args else ""
+        return f"{name}() says yes{with_}"
+    if isinstance(node, ast.Compare) and len(node.ops) == 1 and type(node.ops[0]) in COMPARE_SAYS:
+        left, right, how = node.left, node.comparators[0], COMPARE_SAYS[type(node.ops[0])]
+        if _called(left) == "look" and left.args and isinstance(right, ast.Constant):
+            thing = {"paint": "a paint dot", "sample": "a sample", "house": "a lit house",
+                     "ghost": "a ghost", "beacon": "the beacon", "crater": "a crater",
+                     "belt": "a belt"}.get(right.value, right.value)
+            return f"the square {_way(left.args[0])} {how} {thing}"
+        if isinstance(left, ast.BinOp) and isinstance(left.op, ast.Mod) and isinstance(node.ops[0], ast.Eq):
+            return f"{_value(left.left)} divided by {_value(left.right)} leaves {_value(right)} over"
+        return f"{_value(left)} {how} {_value(right)}"
+    if isinstance(node, ast.Constant) and node.value is True:
+        return "forever"
+    return f"{ast.unparse(node)} is true"
+
+
+def _squares(node):
+    """How far a drive goes, to follow "Drive east"."""
+    if not node:
+        return " 1 square"
+    if isinstance(node, ast.Constant):
+        return f" {node.value} square{'' if node.value == 1 else 's'}"
+    if isinstance(node, ast.Name):
+        return f" {node.id} squares"
+    return f", as many squares as {_value(node)}"
+
+
+def _statement(node, defs):
+    """One statement in a sentence."""
+    if isinstance(node, ast.FunctionDef):
+        takes = [a.arg for a in node.args.args]
+        gets = f" It is given {' and '.join(takes)}." if takes else ""
+        return (f"Teach the rover a new word, {node.name}.{gets} "
+                f"The pushed-in lines under it are what {node.name} does.")
+    if isinstance(node, ast.For):
+        times = node.iter.args[0] if _called(node.iter) == "range" and node.iter.args else None
+        many = (f"{times.value} time{'' if times.value == 1 else 's'}" if isinstance(times, ast.Constant)
+                else f"{_value(times)} times" if times else "again and again")
+        counts = any(isinstance(n, ast.Name) and n.id == node.target.id
+                     for b in node.body for n in ast.walk(b)) if isinstance(node.target, ast.Name) else False
+        extra = f" {node.target.id} counts the turns: 0, 1, 2 and up." if counts else ""
+        return f"A loop: do the pushed-in lines under it {many}.{extra}"
+    if isinstance(node, ast.While):
+        if isinstance(node.test, ast.Constant) and node.test.value is True:
+            return ("A loop that never stops by itself: do the pushed-in lines again "
+                    "and again. The run ends when the mission is done.")
+        if isinstance(node.test, ast.UnaryOp) and _called(node.test.operand) == "at_beacon":
+            return "A loop: keep doing the pushed-in lines until the rover is on the beacon."
+        return f"A loop: keep doing the pushed-in lines while {_check(node.test)}."
+    if isinstance(node, ast.If):
+        return f"A check: only if {_check(node.test)}, do the pushed-in lines under it."
+    if isinstance(node, ast.Return):
+        return f"Give back the answer: yes if {_check(node.value)}, and no if not."
+    if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name):
+        name, value = node.targets[0].id, node.value
+        if isinstance(value, ast.BinOp) and isinstance(value.left, ast.Name) and value.left.id == name \
+                and type(value.op) in (ast.Add, ast.Sub):
+            return (f"Make {name} {'bigger' if isinstance(value.op, ast.Add) else 'smaller'} "
+                    f"by {_value(value.right)}.")
+        return f"Remember {_value(value)}, and call it {name}."
+    if isinstance(node, ast.Expr) and isinstance(node.value, ast.Call):
+        call, name = node.value, _called(node.value)
+        arg = call.args[0] if call.args else None
+        if name in COMPASS:
+            if _called(arg) == "distance":
+                return f"Drive {name} as far as the way is clear: distance() measures it."
+            return f"Drive {name}{_squares(arg)}."
+        if name == "wait":
+            one = not arg or isinstance(arg, ast.Constant) and arg.value == 1
+            return f"Wait {1 if one else _value(arg)} tick{'' if one else 's'}, without moving."
+        if name == "jump":
+            return f"Jump 2 squares {_way(arg)}, over whatever is in between."
+        if name == "drill":
+            return f"Drill the rock {_way(arg)}, so it turns into ground."
+        if name == "knock":
+            return f"Knock on the house {_way(arg)}."
+        if name == "report":
+            return f"Report a number: {_value(arg)}."
+        if name in defs:
+            given = f", with {', '.join(_value(a) for a in call.args)}" if call.args else ""
+            return f"Use your new word {name}{given}. The rover does every line inside it."
+    return ""
+
+
+def line_notes(code):
+    """What each line of a program does, in plain words: a list as long as
+    the program's lines ("" for a blank line, or one there are no words for)."""
+    lines = str(code).split("\n")
+    notes = [""] * len(lines)
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return notes
+    defs = {n.name for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.stmt) and not notes[node.lineno - 1]:
+            notes[node.lineno - 1] = _statement(node, defs)
+    for i, line in enumerate(lines):
+        word = line.strip()
+        if word.startswith("elif "):
+            notes[i] = "If not, another check: " + notes[i][len("A check: "):] if notes[i].startswith("A check: ") else notes[i]
+        elif word == "else:":
+            notes[i] = "If none of the checks above were true, do these pushed-in lines."
+    return notes
+
+
+def together_mask(code, keys=TOGETHER_KEYS):
+    """The program with the characters a student types turned into _ (one
+    each, so it's as long as the program). Spaces and line breaks stay, and so
+    does a real _ in a name like beacon_x. The lines that start a block and
+    the first of each kind of command come first, up to about `keys`
+    characters: long programs give the rest, so the build stays short."""
+    lines = str(code).split("\n")
+    seen, order = set(), []
+    for i, line in enumerate(lines):
+        word = line.strip()
+        if not word or word.startswith("#"):
+            continue
+        kind = word.split("(")[0].split(" ")[0]
+        order.append((0 if word.endswith(":") else 1 if kind not in seen else 2, i))
+        seen.add(kind)
+    budget, picked = keys, set()
+    for _, i in sorted(order):
+        cost = sum(1 for ch in lines[i] if not ch.isspace() and ch != "_")
+        if picked and cost > budget:
+            continue
+        picked.add(i)
+        budget -= cost
+    return "\n".join("".join(ch if ch.isspace() or ch == "_" else "_" for ch in line)
+                     if i in picked else line for i, line in enumerate(lines))
+
+
+def wind_answer(gust, legs):
+    """A ridge walked with a wait before every gust: the answer to a site
+    whose variants give their gust number and their ridge's legs."""
+    calls = "".join(f"{'go_south' if d == 2 else 'go_east'}({n})\n" for d, n in legs)
+    return (f"gust = {gust}\n\ndef guard():\n    if tick() % gust == gust - 1:\n"
+            f"        wait()\n\ndef go_south(n):\n    for i in range(n):\n"
+            f"        guard()\n        south()\n\ndef go_east(n):\n"
+            f"    for i in range(n):\n        guard()\n        east()\n\n" + calls)
+
+
+def find_route(variant, rules, zi, limit=6000):
+    """The shortest program of plain compass drives that completes a small
+    site, found breadth first by driving every route (None if `limit` drives
+    don't find one). For the route puzzles that have no reference."""
+    samples = {(r, c) for r, row in enumerate(variant["map"])
+               for c, ch in enumerate(row) if ch == "*"}
+    queue, seen, drives = [[]], set(), 0
+    while queue:
+        route = queue.pop(0)
+        for way in COMPASS:
+            drives += 1
+            if drives > limit:
+                return None
+            out = drive("".join(f"{w}()\n" for w in route + [way]), variant, rules, zi)
+            if out["reached"]:
+                return route + [way]
+            last = out["frames"][-1]
+            state = (last["r"], last["c"],
+                     frozenset(samples & {(f["r"], f["c"]) for f in out["frames"]}),
+                     out["ticks"] % variant["wind"] if variant.get("wind") else 0)
+            if out["end"] == "stopped" and state not in seen:
+                seen.add(state)
+                queue.append(route + [way])
+    return None
+
+
+_ANSWERS = {}   # (site key, variant index) -> a program, for sites with no reference
+
+
+def answer_for(key, vi):
+    """A program that completes site `key` on its variant `vi`, or None. The
+    site's reference when it has one; a worked-out answer for the few whose
+    planets differ too much for one program."""
+    found = find_site(key)
+    if not found or "variants" not in found[2] or key in CLASS_LEVELS:
+        return None
+    zi, zone, s = found
+    if s.get("reference"):
+        return s["reference"]
+    if (key, vi) not in _ANSWERS:
+        v = s["variants"][vi]
+        if "size" in v:
+            code = f"size = {v['size']}\neast(size)\nsouth(size)\nwest(size)\n"
+        elif v.get("wind") and v.get("legs"):
+            code = wind_answer(v["wind"], v["legs"])
+        else:
+            route, legs = find_route(v, zone["rules"], zi), []
+            for way in route or ():
+                if legs and legs[-1][0] == way:
+                    legs[-1][1] += 1
+                else:
+                    legs.append([way, 1])
+            code = "".join(f"{way}({n if n > 1 else ''})\n" for way, n in legs) if route else None
+        if code and not drive(code, v, zone["rules"], zi)["reached"]:
+            code = None
+        _ANSWERS[key, vi] = code
+    return _ANSWERS[key, vi]
+
+
+def together(key, vi):
+    """What the page needs to build a site's answer with the student: the
+    program, the same program with the typed characters as _, and a note for
+    each line. None for a site with no answer to build."""
+    code = answer_for(key, vi)
+    if not code or not code.isascii():
+        return None
+    code = code.strip("\n") + "\n"
+    return {"code": code, "mask": together_mask(code), "notes": line_notes(code)}

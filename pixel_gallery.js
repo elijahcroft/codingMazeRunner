@@ -276,11 +276,30 @@ const PalGallery = (() => {
     Mushroom: ["........", ".....rrr", "...rrrrr", "..rrwwrr", ".rrrwwrr", ".rwwrrrr", ".rwwrrrr", ".rrrrrrr",
                "...uuuuu", "...ukuuu", "...ukuuu", "...uuuuk", "...uuuuu", "....uuuu", "....kk..", "........"],
   };
+  // Furniture to start from, the left half too. Students draw over them, then code them.
+  const FURNITURE = {
+    Chair: ["........", "..hhhhhh", "..hnnnnn", "..hnpppp", "..hnpPPP", "..hnpPPP", "..hnpppp", "..hnnnnn",
+            ".ppppppp", ".pPPPPPP", ".hhhhhhh", "..hh....", "..hh....", "..hh....", "..hh....", "........"],
+    Lamp: ["........", "........", ".....yyy", "....yuuu", "...yuuuu", "..yuuuuu", "..yyyyyy", "......hh",
+           "......hh", "......hh", "......hh", "......hh", "......hh", "....hhhh", "...hhhhh", "........"],
+    Bed: ["........", "........", ".hhhhhhh", ".hnnnnnn", ".hnwwwww", ".hnwwwww", ".hnVVVVV", ".hnVvVVV",
+          ".hnVVVVv", ".hnVVVVV", ".hhhhhhh", ".hh.....", "........", "........", "........", "........"],
+    Sofa: ["........", "........", "........", "........", "..rrrrrr", "..rccccc", ".rrccccc", ".rcrrrrr",
+           ".rcccccc", ".rcccccc", ".rrrrrrr", "..dd....", "........", "........", "........", "........"],
+    TV: ["........", "........", "........", ".BBBBBBB", ".BTTTTTT", ".BTaTTTT", ".BTTaTTT", ".BTTTTTT",
+         ".BTTTTTT", ".BBBBBBB", "......xx", "....xxxx", "........", "........", "........", "........"],
+    Table: ["........", "........", "......pp", "......pg", ".......g", ".nnnnnnn", ".hhhhhhh", "..h.....",
+            "..h.....", "..h.....", "..h.....", "..h.....", "..h.....", "........", "........", "........"],
+    Wardrobe: ["........", ".hhhhhhh", ".hnnnnnh", ".hnnnnnh", ".hnnnnnh", ".hnnnnnh", ".hnnnnYh", ".hnnnnnh",
+               ".hnnnnnh", ".hnnnnnh", ".hnnnnnh", ".hnnnnnh", ".hhhhhhh", "..h.....", "........", "........"],
+    Clock: ["........", "........", "....YYYY", "...Ywwww", "..Ywwwwk", "..Ywwwwk", "..Ywwwwk", "..Ywwwww",
+            "..Ywwwww", "...Ywwww", "....YYYY", "........", "........", "........", "........", "........"],
+  };
   const pictures = {};
   for (const [name, rows] of Object.entries(PALS)) {
     pictures[name] = Array.from(rows.join(""), ch => ch === "." ? -1 : INK[ch]);
   }
-  for (const [name, rows] of Object.entries(HALVES)) {
+  for (const [name, rows] of [...Object.entries(HALVES), ...Object.entries(FURNITURE)]) {
     const whole = rows.map(r => r + Array.from(r).reverse().join("")).join("");
     const f = Array.from(whole, ch => ch === "." ? -1 : INK[ch]);
     for (const at of Art.outline(f, 16)) f[at] = INK.k;
@@ -288,7 +307,7 @@ const PalGallery = (() => {
   }
   // Every coloured square goes white, and the ink stays.
   const outlined = f => f.map(n => n < 0 ? -1 : n === INK.k ? n : INK.w);
-  return {names: Object.keys(pictures), pictures, outlined, size: 16};
+  return {names: Object.keys(pictures).filter(n => !(n in FURNITURE)), furniture: Object.keys(FURNITURE), pictures, outlined, size: 16};
 })();
 
 if (typeof module !== "undefined") module.exports = PalGallery;

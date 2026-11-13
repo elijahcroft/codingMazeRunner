@@ -22,8 +22,6 @@ const PART_CHIPS = [
   {key: "tail", icon: "🐾", word: "Tail", has: r => r.limbs.some(l => l.kind === "tail" || l.kind === "wing"), move: "dance", cheer: "🐾 Wag, wag, wag!"},
 ];
 const NEXT_PART = [
-  {key: "eyes", ask: "<b>Next:</b> draw two dots for eyes. 👀"},
-  {key: "mouth", ask: "<b>Next:</b> add a mouth under the eyes. 👄"},
   {key: "arms", ask: "<b>Next:</b> draw arms sticking out. 💪"},
   {key: "legs", ask: "<b>Next:</b> draw two legs with a gap. 🦵"},
 ];
@@ -135,12 +133,11 @@ function wakeUp() {
   const met = `pixelMet:${art.key}`, back = recall(met);
   store(met, "1");
   const words = back ? `You're back, ${name}! I missed you!`
-    : art.title ? `Hello ${name}! I'm ${art.title}!` : `Hello ${name}! What's my name? Tell me: your name is...`;
+    : art.title ? `Hello ${name}! I'm ${art.title}!` : `Hello ${name}! I'm your new pal!`;
   lifeStage.state.mood = "sleepy";
   act([{do: "wait", beats: 2}, {do: "feel", mood: "calm"}, {do: "say", text: words}, {do: "wave"}]);
 }
 function closeLife() {
-  endGame(false);
   if (lifeStage) lifeStage.stop();
 }
 
@@ -150,7 +147,6 @@ function fitLifeScreen() {
   host.style.width = Math.max(120, Math.floor(width)) + "px";
 }
 
-let playing = false;     // a game is on, so the pal doesn't wander off
 function tellServer(path, data) {
   post(path, Object.assign({id: me}, data)).then(out => {
     if (out.badges && out.badges.length) showRewards({badges: out.badges});
@@ -159,7 +155,7 @@ function tellServer(path, data) {
 function refreshBones() {
   lifeRig = PixelRig.build(art.frames[0], art.size, art.palette, art.marks || "");
   $("lifeEmpty").hidden = !lifeRig.empty;
-  document.querySelectorAll("#moves button, #playCatch, #playCopy, #openCard, #bakeMove, #gifMove, #nextPlace, #lifeSay .main, #boneKeys button")
+  document.querySelectorAll("#moves button, #bakeMove, #gifMove, #nextPlace, #boneKeys button")
     .forEach(b => { b.disabled = lifeRig.empty; });
   paintBones();
   document.querySelectorAll("[data-bone]").forEach(b => b.setAttribute("aria-pressed", b.dataset.bone === boneKey));
@@ -175,7 +171,7 @@ function boneWords(rig) {
   const list = [say(rig.eyes.length, "eye", "eyes"), rig.mouth ? "a mouth" : "", say(count("arm"), "arm", "arms"), say(count("leg"), "leg", "legs"),
                 say(count("ear"), "ear", "ears"), say(count("tail"), "tail", "tails"), say(count("wing"), "wing", "wings")].filter(Boolean);
   const found = list.length ? `I found ${list.length > 1 ? list.slice(0, -1).join(", ") + " and " + list[list.length - 1] : list[0]}.` : "I can't find any parts yet.";
-  if (!rig.eyes.length) return `${found} <b>No eyes yet!</b> Draw two dots on its face in 🎨 Draw. Or press 👀 Eyes and click them here.`;
+  if (!rig.eyes.length) return `${found} No eyes is fine! If it should have eyes, press 👀 Eyes and click them here.`;
   return `${found} Wrong? Press a part, then click the squares.`;
 }
 
@@ -223,8 +219,6 @@ function markSquare(n) {
 
 let moveTicket = 0;
 async function playMove(word) {
-  if (copying) { copyAnswer(word); return; }
-  if (playing) return;
   lastMove = word;
   const ticket = ++moveTicket;
   noticed();
@@ -305,37 +299,15 @@ $("bonesAgain").addEventListener("click", () => {
   lifeStage.setPal(artAsPal());
   changed();
 });
-$("playCatch").addEventListener("click", startCatch);
-$("playCopy").addEventListener("click", startCopy);
-$("gameStop").addEventListener("click", () => endGame(false));
-$("openCard").addEventListener("click", () => showSheet("card"));
-$("showCard").addEventListener("click", () => showSheet("card"));
-$("showStickers").addEventListener("click", () => showSheet("stickers"));
-$("closeCard").addEventListener("click", () => { $("cardSheet").hidden = true; });
-$("printCard").addEventListener("click", () => printSheet("cardSheet"));
-$("saveCard").addEventListener("click", () => $("cardCanvas").toBlob(blob => hand(blob, fileName("-card.png"))));
 $("nextPlace").addEventListener("click", () => {
   const open = S.kit.scenes, at = open.indexOf(lifeStage.state.scene);
   noticed();
   act([{do: "scene", name: open[(at + 1) % open.length]}]);
 });
-addEventListener("keydown", e => {
-  if (!catching || !["ArrowLeft", "ArrowRight"].includes(e.key)) return;
-  e.preventDefault();
-  catching.aim = Math.max(10, Math.min(PalStage.W - 10, lifeStage.state.x + (e.key === "ArrowLeft" ? -40 : 40)));
-});
 $("bakeMove").addEventListener("click", bakeMove);
 $("gifMove").addEventListener("click", gifMove);
 
-// Talking, poking, and watching the pointer.
-$("lifeSay").addEventListener("submit", e => {
-  e.preventDefault();
-  const text = $("lifeWords").value.trim();
-  if (!text) return;
-  $("lifeWords").value = "";
-  noticed();
-  if (!playing) act(chatSteps(text));
-});
+// Poking, and watching the pointer.
 const lifeCanvas = $("lifeCanvas");
 function onLifeCanvas(e) {
   const r = lifeCanvas.getBoundingClientRect();
@@ -344,295 +316,16 @@ function onLifeCanvas(e) {
 lifeCanvas.addEventListener("pointermove", e => {
   const [x, y] = onLifeCanvas(e);
   noticed();
-  if (catching) catching.aim = x; else lifeStage.aim(x, y);
+  lifeStage.aim(x, y);
 });
 lifeCanvas.addEventListener("pointerleave", () => lifeStage.aim(null));
 lifeCanvas.addEventListener("click", e => {
   const [x, y] = onLifeCanvas(e);
   noticed();
-  if (playing) return;
   if (lifeStage.touching(x, y)) { act([{do: "giggle"}]); return; }
   const spot = Math.max(0, Math.min(10, Math.round((x - 26) / 26.8)));     // come here!
   act([{do: "walk", to: spot}]);
 });
-
-// ---- Catch the stars: slide your finger and your pal runs ---------------------------------------
-const CATCH_SECONDS = 30, GROUND = 162;
-const FALLING = [{prop: "star", points: 1, odds: 62}, {prop: "gem", points: 3, odds: 14}, {prop: "cake", points: 2, odds: 8}, {prop: "ball", points: -2, odds: 16}];
-let catching = null, catchFrame = 0, copying = null;
-
-function hud(words) {
-  $("gameHud").hidden = !words;
-  $("gameWords").textContent = words || "";
-}
-function bestCatch() { return +(recall("pixelBestCatch") || 0); }
-
-function startCatch() {
-  if (playing || lifeRig.empty) return;
-  noticed();
-  playing = true;
-  lifeBusy = false;
-  lifeStage.stop();
-  const st = lifeStage.state;
-  Object.assign(st, {move: null, y: 0, tilt: 0, mood: null, talk: false});
-  catching = {aim: st.x, score: 0, left: CATCH_SECONDS, items: [], drop: 0, last: performance.now(), wall: 0};
-  $("gameLayer").hidden = false;
-  $("gameLayer").width = PalStage.W;
-  $("gameLayer").height = PalStage.H;
-  catchFrame = requestAnimationFrame(catchStep);
-}
-function pickFalling() {
-  let roll = Math.random() * 100;
-  return FALLING.find(f => (roll -= f.odds) < 0) || FALLING[0];
-}
-function catchStep(now) {
-  if (!catching) return;
-  catchFrame = requestAnimationFrame(catchStep);
-  const c = catching, st = lifeStage.state, dt = Math.min(50, now - c.last);
-  c.last = now;
-  c.left -= dt / 1000;
-  // It gets busier as the time runs out.
-  const hurry = 1 + (CATCH_SECONDS - c.left) / CATCH_SECONDS;
-  c.drop -= dt;
-  if (c.drop <= 0) {
-    c.drop = 620 / hurry;
-    c.items.push({x: 16 + Math.random() * (PalStage.W - 32), y: -24, vy: (.7 + Math.random() * .5) * hurry, kind: pickFalling()});
-  }
-  const gap = c.aim - st.x, speed = dt * .22;
-  if (Math.abs(gap) > 2) {
-    st.x += Math.sign(gap) * Math.min(Math.abs(gap), speed);
-    st.flip = gap < 0;
-    if (st.move !== "walk") { st.move = "walk"; st.moveFrom = now; }
-  } else st.move = null;
-  const g = $("gameLayer").getContext("2d");
-  g.clearRect(0, 0, PalStage.W, PalStage.H);
-  g.imageSmoothingEnabled = false;
-  const reach = Math.max(20, lifeRig.size * Math.floor(68 / lifeRig.size) * .4);
-  c.items = c.items.filter(item => {
-    item.y += item.vy * dt / 16;
-    const img = PalStage.PROPS[item.kind.prop];
-    g.drawImage(img, Math.round(item.x - img.width / 2), Math.round(item.y));
-    if (item.y > GROUND - 62 && item.y < GROUND && Math.abs(item.x - st.x) < reach) {
-      c.score = Math.max(0, c.score + item.kind.points);
-      PalStage.SFX.play(item.kind.points > 0 ? "ding" : "nope");
-      if (item.kind.points < 0) { st.mood = "surprised"; setTimeout(() => { if (catching) st.mood = null; }, 450); }
-      return false;
-    }
-    return item.y < PalStage.H;
-  });
-  hud(`★ ${c.score}   ${Math.ceil(c.left)}s`);
-  if (c.left <= 0) endGame(true);
-}
-function endGame(finished) {
-  if (catching) {
-    const score = catching.score, best = bestCatch();
-    cancelAnimationFrame(catchFrame);
-    catching = null;
-    $("gameLayer").hidden = true;
-    lifeStage.state.move = null;
-    if (finished) {
-      if (score > best) {
-        store("pixelBestCatch", score);
-        tellServer("/pixel/caught", {score});
-      }
-      act([{do: "cheer"}, {do: "say", text: score > best ? `${score}! That's my best ever!` : `I got ${score}! Best is ${best}.`}]);
-    }
-  }
-  copying = null;
-  playing = false;
-  hud("");
-}
-
-// ---- Copy me: a row of moves to do back, one longer each time ---------------------------------
-const COPY_MOVES = ["Wave", "Jump", "Happy", "Sad", "Wow", "Cool"];
-
-function startCopy() {
-  if (playing || lifeRig.empty) return;
-  noticed();
-  playing = true;
-  copying = {list: [], at: 0, turn: false};
-  copyRound();
-}
-function light(word, on) {
-  const b = document.querySelector(`[data-move="${word}"]`);
-  if (b) b.setAttribute("aria-pressed", on ? "true" : "false");
-}
-async function copyRound() {
-  const c = copying;
-  c.list.push(COPY_MOVES[Math.floor(Math.random() * COPY_MOVES.length)]);
-  if (c.list.length < 2) c.list.push(COPY_MOVES[Math.floor(Math.random() * COPY_MOVES.length)]);
-  c.at = 0;
-  c.turn = false;
-  hud(`Watch! ${c.list.length} moves`);
-  await lifeStage.play([{do: "feel", mood: "calm"}, {do: "wait", beats: 1}]);
-  for (const word of c.list) {
-    if (copying !== c) return;
-    light(word, true);
-    await lifeStage.play([MOVE_BUTTONS.find(m => m[1] === word)[2], {do: "wait", beats: 1}]);
-    light(word, false);
-    await lifeStage.play([{do: "feel", mood: "calm"}]);
-  }
-  if (copying !== c) return;
-  c.turn = true;
-  hud(`Your turn! ${c.list.length} moves`);
-}
-async function copyAnswer(word) {
-  const c = copying;
-  if (!c.turn) return;
-  if (word === c.list[c.at]) {
-    c.at++;
-    lifeStage.act("noop");
-    lifeStage.state.mood = (MOVE_BUTTONS.find(m => m[1] === word)[2] || {}).mood || null;
-    PalStage.SFX.play("ding");
-    if (c.at < c.list.length) return;
-    c.turn = false;
-    await lifeStage.play([{do: "cheer"}]);
-    if (copying === c) copyRound();
-    return;
-  }
-  const score = c.list.length - 1;
-  tellServer("/pixel/game", {game: "copy", score});
-  copying = null;
-  playing = false;
-  hud("");
-  act([{do: "feel", mood: "sad"}, {do: "say", text: score > 1 ? `Oops! You got ${score} right!` : "Oops! Try again?"}, {do: "feel", mood: "calm"}]);
-}
-
-// ---- A trading card -----------------------------------------------------------------------------
-const CARD_TRAITS = ["Loves long naps", "Always a bit hungry", "Brave when it counts", "Shy at first", "Super silly", "Best dancer in class",
-                     "Tells great jokes", "Afraid of nothing", "Collects shiny things", "Very good at hugs", "Sings in the rain", "Never stops bouncing"];
-function palHash() {
-  let h = 7;
-  for (const ch of A.encode(art.frames[0])) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return h;
-}
-function mainColour() {
-  const counts = new Map();
-  for (const n of art.frames[0]) if (n >= 0 && n !== A.INK) counts.set(n, (counts.get(n) || 0) + 1);
-  const top = [...counts].sort((a, b) => b[1] - a[1])[0];
-  return top ? art.palette[top[0]] : "#ff5fa2";
-}
-function drawCard() {
-  const cv = $("cardCanvas"), g = cv.getContext("2d"), W2 = cv.width, H2 = cv.height, rig = lifeRig, ink = "#1b1530";
-  const hash = palHash(), colour = mainColour();
-  g.imageSmoothingEnabled = false;
-  g.fillStyle = ink; g.fillRect(0, 0, W2, H2);
-  g.fillStyle = colour; g.fillRect(14, 14, W2 - 28, H2 - 28);
-  g.fillStyle = "#ffffff"; g.fillRect(34, 34, W2 - 68, H2 - 68);
-  g.fillStyle = ink;
-  g.textAlign = "left";
-  g.textBaseline = "alphabetic";
-  g.font = "900 46px ui-rounded, system-ui, sans-serif";
-  g.fillText(art.title || "My Pal", 54, 94, W2 - 108);
-  g.font = "700 25px ui-rounded, system-ui, sans-serif";
-  g.fillStyle = "#57506e";
-  g.fillText(`Made by ${name}`, 54, 128, W2 - 108);
-  g.drawImage(PalStage.sceneArt("park"), 40, 60, 240, 120, 54, 146, W2 - 108, 330);
-  g.strokeStyle = ink; g.lineWidth = 6; g.strokeRect(54, 146, W2 - 108, 330);
-  const size = art.size, tall = rig.empty ? 1 : rig.feet - rig.top + 1, px = Math.max(1, Math.floor(270 / Math.max(tall, size * .8)));
-  const left = W2 / 2 - (rig.axis + .5) * px, top = 462 - (rig.feet + 1) * px;
-  art.frames[0].forEach((n, i) => {
-    if (n < 0) return;
-    g.fillStyle = art.palette[n];
-    g.fillRect(left + i % size * px, top + Math.floor(i / size) * px, px, px);
-  });
-  const parts = PART_CHIPS.filter(c => !rig.empty && c.has(rig)).map(c => c.icon).join(" ");
-  const count = art.frames[0].filter(n => n >= 0).length;
-  const colours = new Set(art.frames[0].filter(n => n >= 0)).size;
-  g.fillStyle = ink;
-  g.font = "800 30px ui-rounded, system-ui, sans-serif";
-  g.fillText(CARD_TRAITS[hash % CARD_TRAITS.length], 54, 530, W2 - 108);
-  g.font = "700 26px ui-rounded, system-ui, sans-serif";
-  g.fillText(`Bounce  ${"★".repeat(1 + (hash >>> 3) % 5)}`, 54, 580);
-  g.fillText(`Cuddles  ${"★".repeat(1 + (hash >>> 9) % 5)}`, 54, 620);
-  g.fillText(`Mischief  ${"★".repeat(1 + (hash >>> 15) % 5)}`, 54, 660);
-  g.font = "700 25px ui-rounded, system-ui, sans-serif";
-  g.fillStyle = "#57506e";
-  g.fillText(`${count} squares in ${colours} colours`, 54, 712, W2 - 108);
-  g.fillStyle = ink;
-  g.font = "28px ui-rounded, system-ui, sans-serif";
-  g.fillText(parts, 54, 760, W2 - 108);
-}
-
-// Twelve moods of one pal on a sheet, ready to print and cut out.
-const STICKERS = [["Hi!", {eyes: "open"}], ["Yay!", "happy"], ["Oh no", "sad"], ["Wow!", "surprised"], ["Grr", "angry"], ["Zzz", "sleepy"],
-                  ["Hee hee", "silly"], ["Cool", "cool"], ["Love you", {eyes: "happy", mouth: "smile"}], ["Bye!", {eyes: "wink", mouth: "smile"}],
-                  ["Dance!", null], ["Cheer!", null]];
-function drawStickers() {
-  const cv = $("cardCanvas"), g = cv.getContext("2d"), rig = lifeRig, W2 = cv.width, H2 = cv.height;
-  g.fillStyle = "#ffffff"; g.fillRect(0, 0, W2, H2);
-  const cellW = W2 / 3, cellH = H2 / 4, wide = rig.wide, px = Math.max(1, Math.floor(150 / (rig.size * 1.25)));
-  STICKERS.forEach(([word, mood], i) => {
-    const x = (i % 3) * cellW, y = Math.floor(i / 3) * cellH;
-    g.strokeStyle = "#c9c4d6"; g.lineWidth = 2; g.setLineDash([8, 6]);
-    g.strokeRect(x + 6, y + 6, cellW - 12, cellH - 12);
-    g.setLineDash([]);
-    const pose = mood === null ? PixelRig.pose(word === "Dance!" ? "dance" : "cheer", .1, rig)
-      : Object.assign({}, typeof mood === "string" ? PixelRig.MOODS[mood] : mood);
-    if (rig.empty) return;
-    const out = PixelRig.render(rig, art.frames[0], PixelRig.tidy(pose));
-    const left = x + cellW / 2 - (rig.pad + rig.axis + .5) * px, top = y + cellH - 44 - (rig.pad + rig.feet + 1) * px;
-    out.forEach((n, at) => {
-      if (n < 0) return;
-      const sx = left + at % wide * px, sy = top + Math.floor(at / wide) * px;
-      if (sy < y + 8 || sx < x + 8 || sx > x + cellW - 8) return;
-      g.fillStyle = art.palette[n];
-      g.fillRect(sx, sy, px, px);
-    });
-    g.fillStyle = "#1b1530";
-    g.font = "900 24px ui-rounded, system-ui, sans-serif";
-    g.textAlign = "center";
-    g.fillText(word, x + cellW / 2, y + cellH - 16);
-  });
-}
-function showSheet(kind) {
-  $("showCard").setAttribute("aria-pressed", kind === "card");
-  $("showStickers").setAttribute("aria-pressed", kind === "stickers");
-  if (kind === "card") drawCard(); else drawStickers();
-  $("cardSheet").hidden = false;
-}
-
-// ---- Talking with a pal: it knows some words, and otherwise it says what you typed --------------
-const JOKES = ["Why was the pixel sad? It felt a bit square!", "What do you call a sleepy pal? A nap-py pal!", "Why did the cat sit on the computer? To keep an eye on the mouse!",
-               "What's a pixel's best food? Square meals!", "Knock knock! Who's there? Pal. Pal who? Pal-ease let me in!"];
-const CHAT = [
-  [/\b(i )?(love|like) (you|u)\b/, () => ({steps: [{do: "hearts"}], say: "I love you too!"})],
-  [/\b(joke|funny|laugh)\b/, () => ({say: JOKES[Math.floor(Math.random() * JOKES.length)], steps: [{do: "giggle"}]})],
-  [/\b(your name|who are you)\b/, () => ({say: art.title ? `I'm ${art.title}!` : "I don't have a name yet! Give me one in Draw."})],
-  [/\b(my name|who am i)\b/, () => ({say: `You're ${name}!`, steps: [{do: "wave"}]})],
-  [/\bhow are you\b/, () => ({say: "I feel great! Thanks for drawing me!", steps: [{do: "jump"}]})],
-  [/\b(who made|who drew)\b/, () => ({say: `${name} made me!`, steps: [{do: "cheer"}]})],
-  [/\b(dance|party|boogie)\b/, () => ({steps: [{do: "dance"}]})],
-  [/\b(jump|hop|bounce)\b/, () => ({steps: [{do: "jump"}, {do: "jump"}]})],
-  [/\b(hello|hi|hey|wave)\b/, () => ({say: `Hi ${name}!`, steps: [{do: "wave"}]})],
-  [/\b(bye|goodbye)\b/, () => ({say: "Bye bye! Come back soon!", steps: [{do: "wave"}]})],
-  [/\b(sleep|nap|bed|tired|good ?night)\b/, () => ({steps: [{do: "nap"}]})],
-  [/\b(cake|food|hungry|eat|snack|treat)\b/, () => ({steps: [{do: "eat"}], say: "Yum yum!"})],
-  [/\b(walk|come here|run)\b/, () => ({steps: [{do: "walk", to: 8}, {do: "walk", to: 2}]})],
-  [/\b(yay|hooray|cheer|well done|good)\b/, () => ({steps: [{do: "cheer"}]})],
-  [/\b(spin|twirl)\b/, () => ({steps: [{do: "spin"}]})],
-  [/\b(sad|cry)\b/, () => ({steps: [{do: "feel", mood: "sad"}], say: "Oh no!"})],
-  [/\b(cool|sunglasses)\b/, () => ({steps: [{do: "feel", mood: "cool"}]})],
-  [/\b(star|stars)\b/, () => ({steps: [{do: "stars"}]})],
-  [/\b(rain|snow)\b/, words => ({steps: [{do: /snow/.test(words) ? "snow" : "rain"}]})],
-];
-function chatSteps(text) {
-  const words = text.toLowerCase();
-  const naming = text.match(/\b(?:your name is|you are called|you're called|i will call you|i'll call you|call you)\s+(.+)/i);
-  if (naming) {
-    const title = naming[1].replace(/[.!?]+$/, "").trim().slice(0, 24);
-    art.title = title;
-    $("title").value = title;
-    changed();
-    return [{do: "say", text: `${title}! I love it!`}, {do: "cheer"}];
-  }
-  for (const [pattern, reply] of CHAT) {
-    if (!pattern.test(words)) continue;
-    const {say, steps = []} = reply(words);
-    return say ? [{do: "say", text: say}, ...steps] : steps;
-  }
-  return [{do: "say", text}];
-}
 
 // ---- A pal left alone: it fidgets, then it nods off ---------------------------------------------
 let lifeSeen = 0, lifeBusy = false, dozing = false, nextFidget = 6;
@@ -648,7 +341,7 @@ function noticed() {
   act([{do: "feel", mood: "surprised"}, {do: "jump"}, {do: "feel", mood: "calm"}]);
 }
 function fidget() {
-  if ($("lifeView").hidden || lifeBusy || playing || !lifeStage || lifeRig.empty) return;
+  if ($("lifeView").hidden || lifeBusy || !lifeStage || lifeRig.empty) return;
   const quiet = (performance.now() - lifeSeen) / 1000;
   if (dozing) { act([{do: "snooze"}]); return; }
   if (quiet > 30) {
@@ -664,85 +357,6 @@ function fidget() {
   }
 }
 setInterval(fidget, 1000);
-
-// ---- The Class Park: every shared pal, out together ---------------------------------------------
-let parkPals = [], parkFrame = 0, parkLast = 0;
-const PARK_GROUND = 188;
-
-function openPark(list) {
-  const seen = new Set();
-  parkPals = list.filter(s => {
-    const same = seen.has(s.pal.frames[0]);
-    seen.add(s.pal.frames[0]);
-    return !same;
-  }).slice(0, 20).map((s, i) => ({
-    pup: PalStage.puppet(s.pal, Math.max(1, Math.round(96 / s.pal.size)), i + 11), by: s.by, x: 60 + (i * 197) % 840,
-    way: i % 2 ? -1 : 1, move: null, moveAt: 0, until: 0, hearts: 0,
-  }));
-  $("park").hidden = !parkPals.length;
-  if (parkPals.length && !parkFrame) parkFrame = requestAnimationFrame(paintPark);
-}
-function closePark() {
-  cancelAnimationFrame(parkFrame);
-  parkFrame = 0;
-}
-function parkDo(p, move, seconds, now) {
-  p.move = move;
-  p.moveAt = now;
-  p.until = now + seconds * 1000;
-}
-// Stand a while, then stroll somewhere. Two pals who meet say hello.
-function wander(p, now, dt) {
-  if (p.move === "walk") {
-    p.x += p.way * dt * .05;
-    if (p.x < 40 || p.x > 920) p.way = -p.way;
-    const near = parkPals.find(q => q !== p && !q.move && Math.abs(q.x - p.x) < 90);
-    if (near && Math.random() < .004) {
-      parkDo(p, "wave", 1.4, now);
-      parkDo(near, "wave", 1.4, now);
-      near.way = p.x < near.x ? -1 : 1;
-      p.way = -near.way;
-    }
-  }
-  if (now < p.until) return;
-  if (p.move) { p.move = null; p.until = now + 900 + Math.random() * 3200; return; }
-  if (Math.random() < .75) { p.way = Math.random() < .5 ? -1 : 1; parkDo(p, "walk", 1.5 + Math.random() * 3, now); }
-  else parkDo(p, Math.random() < .5 ? "dance" : "happy", 1.6, now);
-}
-function paintPark(now) {
-  parkFrame = requestAnimationFrame(paintPark);
-  const dt = Math.min(50, now - (parkLast || now)), cv = $("park"), g = cv.getContext("2d");
-  parkLast = now;
-  g.imageSmoothingEnabled = false;
-  g.drawImage(PalStage.sceneArt("park"), 0, 98, 320, 70, 0, 0, 960, 210);
-  const order = parkPals.slice().sort((a, b) => a.x - b.x);
-  for (const p of order) {
-    wander(p, now, dt);
-    const rig = p.pup.rigOf(0);
-    const pose = PalStage.livePose(rig, p.pup.lifeline, now / 1000, {move: p.move, moveT: (now - p.moveAt) / 1000});
-    p.pup.draw(g, 0, pose, p.x, PARK_GROUND, {flip: p.way < 0});
-    g.font = "800 15px ui-rounded, system-ui, sans-serif";
-    g.textAlign = "center";
-    g.lineWidth = 4;
-    g.lineJoin = "round";
-    g.strokeStyle = "#ffffff";
-    g.strokeText(p.by, p.x, PARK_GROUND + 17);
-    g.fillStyle = "#1b1530";
-    g.fillText(p.by, p.x, PARK_GROUND + 17);
-    if (p.hearts > now) {
-      const up = (p.hearts - now) / 12;
-      g.drawImage(PalStage.HEART, p.x - 21, PARK_GROUND - 130 + up - 60, 42, 36);
-    }
-  }
-}
-$("park").addEventListener("click", e => {
-  const r = $("park").getBoundingClientRect(), x = (e.clientX - r.left) / r.width * 960, now = performance.now();
-  const hit = parkPals.slice().sort((a, b) => Math.abs(a.x - x) - Math.abs(b.x - x))[0];
-  if (!hit || Math.abs(hit.x - x) > 70) return;
-  parkDo(hit, "cheer", 1.3, now);
-  hit.hearts = now + 900;
-  PalStage.SFX.play("ding");
-});
 
 $("preview").addEventListener("click", () => {
   if (art.frames.length > 1) return;

@@ -1,16 +1,16 @@
 # Pixel Pals: teacher guide
 
-Students draw a character, then bring it to life with real Python. It was made
-for students who find "get the robot to the exit" pointless: the goal is to make
-your own character do something lovely, funny or playable, and show the class.
+Students draw a character, code it with real Python, then hang out together. It was
+made for students who find "get the robot to the exit" pointless: the goal is to make
+your own character do something fun, and show the class.
 
 ## The pages
 
 | Page | Who it's for |
 |---|---|
-| `/pixel` | Students: 🎨 Draw, 💓 Life, 🎭 Stage, 📖 Story, 🎟️ Theatre |
-| `/pixel/teacher` | You: who's stuck, opening missions, hiding shows. Needs the admin key |
-| `/pixel/show` | The projector: class shows on a loop, the star meter and a parade of pals |
+| `/pixel` | Students: 🎨 Draw, 💻 Code, 🎉 Hang out |
+| `/pixel/teacher` | You: who's stuck, opening missions, the Hang out. Needs the admin key |
+| `/pixel/show` | The projector: the Hang out, the party meter and the class's recent moments |
 
 Both teacher pages are linked from `/admin`.
 
@@ -21,15 +21,138 @@ Both teacher pages are linked from `/admin`.
    🔢 by numbers, or ⭐ ready to change.
 2. While they draw, the little pal in the corner comes alive. It watches the pen, and
    the row of chips under it (👀 👄 💪 🦵 🐰 🐾) lights up as each part is found.
-3. They press ✨ Bring to life. On the 💓 Life tab the pal wakes up and says hello, and
-   they try its moves, make it talk, and fix any part the computer got wrong.
-4. They press 🎭 Stage. Their newest drawing is their pal, and "My pal" at the top
-   swaps it. Until they've drawn something, they play as Pip.
-5. They work through the missions. The first star opens the next one, and the
-   other two are for going further.
-6. Free Stage opens after Jump for joy. From there they can add one show to the
-   Theatre, for the class to watch, ♥ and remix. Their pal also joins the Class Park
-   at the top of the Theatre, where shared pals wander about together.
+3. They press ✨ Bring to life. The pal wakes up and says hello, and they try its moves
+   and fix any part the computer got wrong.
+4. They press 💻 Code my pal and work through the missions. Their newest drawing is
+   their pal, and "My pal" at the top swaps it. Until they've drawn something, they play
+   as Pip.
+5. After 3 missions, the Hang out opens and stays open.
+6. The last mission is **My Move**. They code their own routine and it becomes a big
+   button in the Hang out.
+
+A big button at the top right always says what comes next.
+
+## The missions
+
+9 missions and 27 stars. The first star opens the next mission, and the other two are
+for going further.
+
+| Chapter | Missions | What it teaches |
+|---|---|---|
+| 🎭 Opening Night | Say hello, Jump for joy, Find the spotlight | Commands, and lines running in order |
+| ✨ Come Alive | Big wave, How do you feel?, Dance floor | `wave()`, `feel()`, `dance()`, `cheer()` |
+| 🔁 Again! Again! | Bounce!, Side step | `for` loops |
+| 🌟 My Move | My Move | Putting it together, their own way |
+
+**Every mission walks them through it.** The top says the job in one plain sentence. Under
+it, the guide gives one line at a time: what the line does, the exact keys as tiles, and
+the next key lit up with how to press it ("Hold Shift and press 9"). Only the right key
+goes in, and a wrong one says which key to find. Capitals don't matter, Enter moves on,
+and lines inside a loop get pushed in for them. When the typing is done, ▶ Show time!
+glows. Pressing it early says to finish typing first.
+
+- **✋ I can type it myself** turns the guide off for that mission, and brings back the
+  story, the stars, the command buttons, Help me and All words. **🖐 Show me step by
+  step** turns it back on. Each new mission starts with the guide on.
+- **My Move is different,** because it's meant to be their own: they click 3 or more green
+  buttons, with a count of how many they have. **Show me step by step** walks them
+  through a version with a sparkle trail and a big finish.
+- **If the code stops matching the steps,** the guide says so and offers **↩ Go back to
+  where it was right** (which removes what doesn't match) or **✋ Keep my code**.
+
+The guide's lines live in `coach` on each mission in `pixel.py`, and a test checks they
+always add up to the working answer, which earns all three stars.
+
+The first finish of a mission gives the big win: stars, confetti, and a 🎁 box to tap
+open with something to wear in the Hang out. **Open it later** is always there, and the
+gift is theirs either way.
+
+**My Move gets better with better code:** a `for` loop adds a sparkle trail, and 8
+actions or more adds a big finish. Running the mission again updates the move.
+
+## The Hang out
+
+Everyone's pal is in one soft little world, and what one child taps, everyone sees.
+No code is needed once they're in.
+
+- **One long world:** the places sit side by side, and the camera follows your pal. Walk
+  to the edge of the screen to reach the next place. A full party meter makes the world
+  longer. 🏞️ Place jumps just that student somewhere, not the whole class.
+- **Walking:** click the ground. Arrow keys work too.
+- **Toys (pink rings):** click the fountain, trampoline, snowman, rocket and so on. The pal
+  walks over and it goes off for everyone nearby.
+- **🖼️ Art:** a student picks one of their drawings and clicks the world to leave it
+  there for everyone, up to 5 each. They stay between classes. Clicking one on the Art
+  tab takes it back, and deleting the drawing removes it. On `/pixel/teacher` you can
+  remove one student's, or all of them.
+- **💎 Gems:** three in each place. Each student finds their own. All of them earns
+  Treasure Hunter.
+- **High-fives:** click a classmate's pal. Your pal walks over, and a first high-five
+  adds a friend for both of them.
+- **Sitting and reading:** click a glowing spot in front of a bench, towel or snowman
+  and the pal walks over and sits. 🪑 Sit and 📖 Read in the Do tab work anywhere. A pal
+  stays put until it walks away.
+- **Buddies:** up to 3 of a student's other drawings come along, smaller, and wander
+  near their pal. They join in with its dances and naps, and sit when it sits. A new
+  drawing shows up the next time the student comes back to the Hang out.
+- **✨ My Move:** the student's pal does their routine in a spotlight, and everyone else
+  gets a 👏 Clap button while it plays. It can be pressed again after a few seconds.
+- **👋 Do, 💬 Say, 🎉 Party, 🏞️ Place:** moves, words to tap, things to throw, and where
+  everyone is.
+- **🧢 Me:** pick which drawing they are (students with two or more drawings also see
+  a **🔄 Switch** button above the tabs), gifts to wear, and friends they've high-fived.
+- **🌠 Star showers:** stars fall by surprise every few minutes. Pals run under them, and
+  catches close together climb: ×2, ×3, ×4.
+- **🎉 Class party meter:** a mission's first finish adds 2, and a My Move adds 1 (at most
+  once every 45 seconds for each student). A full meter is a party for everyone, and
+  brings something new: Snowy hill, a Golden crown, Candy land, Rainbow sparkles, then
+  Outer space. After those, it's just a party.
+
+- **🪙 Coins:** coding pays the most. A mission's first finish pays 20 coins, and every
+  star pays 10, so a three-star mission is 50. Playing pays a little: a gem 3, a new
+  friend 3, a caught star 1, a fish 1 (5 the first time for each kind), a finished
+  game 5 and 5 more for winning. Coins from playing stop at 40 a day for each student,
+  and the coin bar then says missions still pay. Students who already had stars and
+  gems were paid for them.
+- **🛍️ Shop:** 15 things to wear, 12 things for a home, and 6 walls and floors, from 15
+  to 90 coins. A student clicks a thing twice to buy it. Shop things never come out of
+  a gift box.
+- **🔓 Unlocks:** 🧢 Me shows every hat, face and sparkle, including the locked ones,
+  with how to get each (🎁 gift box, 🛍️ price, 🎉 class party, or a goal). Seven
+  things unlock by themselves at a goal: Gem crown (9 gems), Space helmet (all 21
+  gems), Fish hat (5 kinds of fish), Friendship sparkles (5 high-fives), Gold shades
+  (10 game rounds), Dragon horns (15 stars) and Superstar sparkles (all 27 stars). The
+  three closest goals sit at the top of Me with a bar, and a big 🔓 UNLOCKED! banner
+  shows in the Hang out when one is reached.
+- **🏠 Home:** every student has a room of their own. In it they pick a thing and click
+  the floor to put it there, change the walls and floor, and hang up to 5 drawings with
+  🖼️ Art. A rug and a pot plant are free. Friends visit from the Home tab, and the door
+  goes back outside. A student's screen shows only the pals in the same place. The
+  projector can look into any home: **Look at** lists Outside and every home with
+  someone in it, and clicking a name in **Who's here** goes to that pal, inside or out.
+  Each name says where they are and what they're doing (💃 Dancing, 🎣 Fishing,
+  🛋️ Decorating...). 🎬 Auto takes turns with everyone, homes included, and the
+  screen goes back outside when a home empties.
+- **🎣 Fishing:** the pier at the Beach has a blue ring. The pal walks over and casts,
+  and when ❗ A bite! shows, a click anywhere on the picture reels it in. There are 8
+  things to catch, kept in the fish book in 🧢 Me.
+- **Games:** any student can start Tag, Hide & seek, Red light green light, or Copy the
+  dance, and friends choose to join. In the race, each press of Run or → is one short
+  run, and moving on red sends a pal back a bit. In the dance, the moves stay on the
+  screen with the next one lit, for 3 rounds that get longer.
+
+On `/pixel/teacher` you can close the Hang out, start a party or a star shower, and see
+who's there. It reopens if the server restarts, and nothing in the room itself is saved,
+but gifts, friends, My Moves, coins, homes, fish and the party meter are.
+
+**Words:** students tap words from a list. `say()` takes any words, so a My Move only
+shows lines that are on that list, and a line that isn't gets left out. **Let them type
+their own words** turns typing on for the room and for My Moves, and what they say shows
+on your page. A My Move's name is picked from a list.
+
+**🌿 Calm** at the top of the page cuts the flying bits, stops the wiggling, and holds
+the background still. It's remembered on each computer, and it starts on for anyone
+whose computer is set to reduce motion.
 
 ## How a pal comes alive
 
@@ -40,9 +163,9 @@ under them is the mouth. Everything stays on the drawing's own squares, so it st
 looks like pixel art when it moves.
 
 It's a good guess, not a perfect one. Arms drawn flat against the body have no gap to
-find, and a long skirt can count as legs. On the Life tab a student presses a part
-(💪 Arm, say) and clicks the right squares, which overrules the guess. **Guess again**
-clears those marks. A pal with no eyes can't blink, so the page asks for eyes.
+find, and a long skirt can count as legs. After ✨ Bring to life, a student presses a
+part (💪 Arm, say) and clicks the right squares, which overrules the guess. **Guess
+again** clears those marks. A pal with no eyes can't blink, so the page asks for eyes.
 
 **Turn into frames** puts a move into the student's frames to change by hand, and
 **Download a GIF** saves it to keep.
@@ -50,40 +173,6 @@ clears those marks. A pal with no eyes can't blink, so the page asks for eyes.
 A pal left alone is still alive: it fidgets, wanders, and falls asleep after 30 seconds
 until someone moves the pointer over it. Clicking the ground makes it walk there, and
 clicking the pal makes it giggle.
-
-## For fast finishers
-
-All of these are on the 💓 Life tab, with no code needed:
-
-- **🌟 Catch stars:** 30 seconds of running under falling stars by sliding a finger on
-  the touchpad. A student's new best score goes on the projector's feed.
-- **🧠 Copy me:** the pal does a row of moves and the student presses them back. The
-  row grows each time. It's the idea of running commands in order, in disguise.
-- **💬 Talking:** the box under the pal. It knows words like dance, jump, joke, "I love
-  you" and "what's your name", and acts on them. Anything else, it says out loud in a
-  speech bubble. This is a list of words, not AI, and it stays on that student's screen.
-- **🃏 Pal card:** a trading card of their pal, or a sheet of 12 stickers in different
-  moods, to print or download.
-- **🏞️ Place:** takes the pal to the next scene they've opened.
-
-## The missions
-
-37 missions in 8 chapters, 111 stars.
-
-| Chapter | What it teaches |
-|---|---|
-| 🎭 Opening Night | Commands, and lines running in order |
-| ✨ Come Alive | `wave()`, `look()`, `feel()`, `dance()`, `cheer()`: the pal's own parts |
-| 🔁 Again! Again! | `for` loops, lists, and why animation is a loop |
-| 🏷️ Name Tags | Variables, f-strings, `x()` |
-| 📖 Story Time | `def`, parameters, two-character stories |
-| 🎲 Surprise! | `if`, `elif`, `else`, `while`, `choice()` |
-| 🐾 Pet Pal | `on_click`, `on_feed` and friends: code that waits for you |
-| 🕹️ Game Maker | `on_key`, `randint()`, and a real little game |
-
-The help comes off slowly. Up to Name Tags a command button writes the whole line.
-From Story Time it starts the line and the student types the rest. Only the
-chapter's new words stay by the editor, and All words holds everything else.
 
 ## Things worth knowing
 
@@ -94,99 +183,30 @@ chapter's new words stay by the editor, and All words holds everything else.
 - **Tools worth showing the class:** Mirror draws both sides at once, so one eye stamp
   makes a pair. Shade makes colours darker or lighter. Swap recolours a whole pal in
   one click. Move picks up part of a drawing. More has Add outline.
-- **Poses:** `pose("happy")` shows a frame named happy if there is one. If not, the
-  pal makes that face by itself. In 🎨 Draw, press ⋯ beside the frames to name one.
-  `pose(2)` works with no name at all.
-- **Checking shows:** drawings are private until a student adds a show to the Theatre.
-  `say()` takes any words, so a new show waits on `/pixel/teacher` until you press
-  **Let it in**. Nothing about it appears in the Theatre, the Class Park or on the
-  projector until then. Untick **Check shows before the class sees them** and shows
-  go straight up, and you can still Hide one later. Words typed on the Life tab stay
-  on that student's screen.
 - **Shared laptops:** a student who lands in someone else's account presses **Not (name)?**
   in My drawings and types their own name. Typing a name again brings back that
   student's work.
-- **Pals visiting each other:** in Free Stage, `friend("Mia")` brings Mia's own pal on
-  stage, once her show is in the Theatre. All words lists who can come. If her show
-  is taken down later, shows that used her pal carry on with a stand-in.
-- **Easy pen:** it starts off, because a first click that leaves a line following the
-  finger is confusing. A student clicking along a line square by square gets offered
-  it once, with a button.
 - **Reading:** the 🔈 button on a mission reads it aloud with the laptop's own voice.
 - **Stuck students:** the teacher page marks anyone with 3 misses or more on a
-  mission, and shows their last error. Help me gives two or three hints, and the
-  last one is a working answer.
+  mission, and shows their last error. With the guide off, Help me gives two or three
+  hints, and the last one is a working answer.
 - **Opening missions:** "Open up to here" on the teacher page lets everyone reach a
-  mission, so a class can start at Pet Pal if you like.
-- **Unlocks:** stars open scenes, sounds and friends. The castle opens for everyone
-  at 150 class stars.
+  mission. Opening past Find the spotlight opens the Hang out for everyone too.
 
 **🖨️ Print a class poster** on the teacher page prints everyone's current pal with
-their name, including pals that aren't in the Theatre, so check it before pinning it up.
-
-## Playing together, live
-
-On `/pixel/teacher`, press **🎪 Open the room**. Students go to the 📖 Story tab and
-their pals appear on one shared stage, and the projector switches to it by itself. What
-one child taps, everyone sees straight away. No code is needed.
-
-- **Walking:** click anywhere and your pal walks there. Click your pal and it jumps.
-- **👋 Do:** moves and faces. **💬 Say:** words to tap. **🎉 Party:** hearts, petals,
-  flowers to throw, bells and wedding music. **🏞️ Place:** moves everyone somewhere new.
-- **🔴 Film it:** whatever happens next is recorded, for up to 90 seconds. Stopping asks
-  for a sentence, and the film becomes a page of the class book.
-
-Sounds play on the projector and on a student's own taps, so the room hears one wedding
-march, not twenty. Students tap words from a list. **Let them type their own words** turns
-typing on, and what they say shows on your page. The room isn't saved, and closing it
-sends everyone out.
-
-### A wedding, or any story like it
-
-1. Everyone makes a pal. **Bride Bunny** and **Groom Bunny** are in the gallery, and the
-   Stamp tool has a veil, a top hat, a bow tie, a bouquet and a ring.
-2. Open the room. It starts in the wedding scene.
-3. Agree who's who, then let them play it through once. Two pals by the arch, a guest
-   saying "Here comes the bride!", and someone on 🎵 Wedding music.
-4. One child presses **🔴 Film it** and everyone does it again for the camera.
-5. **▶ Play the story on the projector** shows it to the room, and everyone takes a bow.
-
-## The class story
-
-The book under **📖 Our book** is one story for the whole class. It's made for telling
-a story together, a page at a time. A page can be a film from the live room, or a short
-show made with code.
-
-1. On `/pixel/teacher`, give it a title and a first line, like "One day, a star fell
-   into the park...". You can skip this and use the one that's there.
-2. A student presses **✏️ Add a page**. They see how the story ends so far, make the
-   next moment on the Stage with their pal, then write one sentence for the book.
-   **Give me an idea** offers beginnings if they're stuck.
-3. **🙋 Put my pal in the story** lets classmates use their pal. `friend("Mia")` brings
-   Mia's pal on, and up to three friends fit on stage. `friend_say("Mia", "Hi!")` picks
-   who talks, and `everyone("dance")` gets them all going.
-4. Pages and pals wait for you. **✅ Let everyone in** takes all of them at once, or
-   read them one by one. ↑ and ↓ change the order, which matters if two students
-   write the same part of the story.
-5. **▶ Play our story** plays the whole book for a student. **▶ Play the story on the
-   projector** plays it for the room, ending with every author's pal taking a bow.
-
-Only one page per student waits at a time. **Start a new story** puts the old one away
-in the save file and begins a blank book.
+their name, so check it before pinning it up.
 
 ## A first lesson
 
 1. **5 minutes, before they arrive:** start the server, open `/pixel/show` on the
-   projector and `/pixel/teacher` on your laptop. Try a Bunny yourself and listen to the
-   sound level.
+   projector and `/pixel/teacher` on your laptop. Listen to the sound level.
 2. **5 minutes:** students join and pick a gallery pal. Unsure students do 🔢 By numbers.
 3. **15 minutes:** they change it or draw their own. Show Mirror and stamps on the
    projector. Point out the chips lighting up as parts appear.
-4. **10 minutes:** ✨ Bring to life. Let them poke it and try every move.
-5. **15 minutes:** 🎭 Stage, Opening Night and Come Alive. Fast finishers go to the
-   Life games.
-6. **5 minutes:** students add a show to the Theatre. Let some in, press 🎉 Dance party,
-   and let the projector do the rest.
+4. **5 minutes:** ✨ Bring to life. Let them poke it and try every move.
+5. **15 minutes:** 💻 Code, and the first three missions. The Hang out opens as they finish.
+6. **15 minutes:** hang out, and keep going to My Move. Press 🌠 Star shower now if the
+   room needs a lift.
 
 ## Off-screen fun
 
@@ -194,46 +214,3 @@ in the save file and begins a blank book.
   the picture changes.
 - **Bead pattern** prints the drawing as a pegboard pattern with bead counts, for
   Perler beads or cross-stitch.
-
-### Festival island (Story → Explore island)
-
-Story now opens a solo, 33 × 33 tile isometric island. The camera follows the
-student's selected pal, with shaded buildings, trees and a location overview.
-Click the ground or use arrow keys/WASD to walk. Destination buttons walk to a
-landmark; press E or the activity button when nearby.
-
-Six passport activities include a festival greeting, two-step café orders,
-wait-for-a-bite fishing, four-move dance patterns, flower growing, and finding
-three stars around the island before returning them to Lookout lodge. Completing
-an activity earns five local coins and its passport stamp. All six stamps award
-the Island Storykeeper title. Activities can be replayed. The passport, stars,
-coins and flower persist per student in this browser's local storage; these are
-separate from classroom stars. Existing Play together and Our book tabs retain
-the shared room, filming and teacher-reviewed story pages.
-
-### Enterable story rooms
-
-Use **Enter** near any island building to walk inside its themed room. Click a
-furniture station (or its sidebar button) to walk over and interact. Arrow keys
-move your pal; E uses a nearby station. **Outside**, the floor exit or Escape
-returns to the island. All six rooms have a five-stage scenario:
-
-- **Festival hall:** choose a theme, costume and guests, rehearse, and launch it.
-- **Cocoa café:** take three different orders, gather ingredients, brew, serve,
-  and wash up. Wrong recipes can be corrected without restarting the shift.
-- **Crystal boathouse:** research a fish, pick bait, cast, identify, and release.
-- **Music club:** select music, match lighting cues, dress up, rehearse a pattern,
-  and start the performance.
-- **Sunny greenhouse:** pick seeds, plant, measure water, grow, and arrange flowers.
-- **Lookout lodge:** follow map symbols, decode clues, use a telescope, assemble
-  the correct lantern, and send a signal. Outdoor stars can also be returned here.
-
-Progress saves per student on this device, including partially finished café
-shifts. Completing each scenario earns a backpack prop. **Make up your own
-scene** offers roles, preset or custom dialogue (80 characters), time/weather
-settings, and backpack props that can be carried into other rooms. The local
-story journal keeps the last eight events. These rooms are solo play; the
-existing **Play together** room remains the shared classroom space. Replay
-resets only the selected room's scenario and preserves earned props.
-
-Room scenario checks: `node test_pixel_interiors.js`.

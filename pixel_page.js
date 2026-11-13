@@ -1,14 +1,13 @@
-// Pixel Pals: the Stage and the Theatre. Students write Python, the server runs
+// Pixel Pals: the Code tab. Students write Python, the server runs
 // it and sends back a list of steps, and the stage plays them while the line
 // that made each step lights up. It all sits on top of pixel_studio.js.
 "use strict";
 
 const StageSFX = PalStage.SFX;
 let S = null;              // /pixel/state
-let mode = null;           // the open mission's key, or "free"
+let mode = null;           // the open mission's key
 let view = null;           // the open mission, from /pixel/level
-let stage = null, watchStage = null;
-let live = null;           // the show that's listening for clicks and keys
+let stage = null;
 let running = false, runTicket = 0;
 
 function get(url) { return fetch(url).then(r => r.json()); }
@@ -21,50 +20,16 @@ function codeKey(key) { return `pixelCode:${me}:${key}`; }
 
 // ---- Words for every command, shown on chips and in All words ------------------------
 const WORDS = {
-  everyone: "Everyone on stage does it: dance, wave, cheer or jump.",
   wave: "Waves its arm.", dance: "Dances with every part it has.", cheer: "Throws its arms up and jumps.",
-  look: "Moves its eyes: left, right, up, down or front.",
   feel: "Changes its face: happy, sad, surprised, angry, sleepy, silly, cool or calm.",
   say: "Your pal says it in a speech bubble.", right: "Walks right. The number is how many spots.",
   left: "Walks left. The number is how many spots.", jump: "Jumps once.", spin: "Spins round.",
-  shake: "Wobbles on the spot.", grow: "Gets bigger.", shrink: "Gets smaller.", hide: "Vanishes.",
-  appear: "Comes back after hide().", pose: "Shows a frame you drew, by its name or number.",
-  play: "Plays all your frames, like a flip book.", wait: "Waits a moment. Bigger numbers wait longer.",
+  wait: "Waits a moment. Bigger numbers wait longer.",
   hearts: "Hearts float up.", stars: "Stars float up.", confetti: "Confetti falls everywhere.",
-  rain: "It rains.", snow: "It snows.", sound: "Plays a noise.", scene: "Changes the place.",
-  friend: "Brings a friend on stage.", friend_say: "Your friend says something.",
-  friend_jump: "Your friend jumps.", bye: "Your friend leaves.", eat: "Your pet eats.",
-  nap: "Your pet has a nap.", put: "Puts a thing on a spot, from 0 to 10.", take: "Picks up the thing your pal is standing on.",
-  point: "Adds 1 to the score.", x: "Tells you which spot your pal is on, from 0 to 10.",
-  clicks: "Tells you how many times your pal has been clicked.", hungry: "True if your pet is hungry.",
-  sleepy: "True if your pet is tired.", touching: "True if your pal is standing on that thing.",
-  score: "Tells you the score.", weather: 'Tells you "sun", "rain" or "snow".',
 };
-const SAMPLE = {
-  say: 'say("Hello")', right: "right(3)", left: "left(3)", pose: 'pose("happy")', wait: "wait(2)",
-  sound: 'sound("ding")', scene: 'scene("park")', friend: 'friend("cat")', friend_say: 'friend_say("Hi!")',
-  put: 'put("star", 7)', take: 'take("star")', touching: 'touching("star")',
-};
+const SAMPLE = {say: 'say("Hello!")', right: "right(3)", left: "left(3)", wait: "wait(2)", feel: 'feel("happy")'};
 const sample = name => SAMPLE[name] || name + "()";
-const CORE = ["say", "jump", "right", "left", "wave", "dance", "feel", "look", "hearts", "scene", "friend", "wait"];
-const STORY_CORE = ["say", "feel", "right", "friend_say", "everyone", "scene"];
-const PYTHON = {
-  for: ["for loop", "for i in range(3):\n    ", "Repeats the lines pushed in under it."],
-  list: ["list", 'names = ["Ana", "Ben"]', "Keeps a few things together."],
-  variable: ["variable", 'name = "Luna"', "A name tag for something to keep."],
-  fstring: ['f"..."', 'say(f"I am {name}")', "Puts a variable inside words."],
-  def: ["def", "def dance():\n    ", "Teaches your pal a new word."],
-  if: ["if / else", 'if mood == "happy":\n    \nelse:\n    ', "Does different things depending on the answer."],
-  elif: ["elif", 'elif mood == "sad":\n    ', "One more question after an if."],
-  while: ["while", "while x() < 9:\n    ", "Keeps going until the answer changes."],
-  choice: ["choice", 'mood = choice(["happy", "sad"])', "Picks one thing from a list at random."],
-  randint: ["randint", "randint(0, 10)", "Picks a random number between two numbers."],
-  on_click: ["on_click", "def on_click():\n    ", "Runs when someone clicks your pal."],
-  on_feed: ["on_feed", "def on_feed():\n    ", "Runs when someone presses Feed."],
-  on_play: ["on_play", "def on_play():\n    ", "Runs when someone presses Play."],
-  on_sleep: ["on_sleep", "def on_sleep():\n    ", "Runs when someone presses Sleep."],
-  on_key: ["on_key", 'def on_key(key):\n    if key == "right":\n        right(1)', "Runs when someone presses a key."],
-};
+const PYTHON = {for: ["for loop", "for i in range(3):\n    ", "Repeats the lines pushed in under it."]};
 const ALL_PYTHON = Object.keys(PYTHON);
 
 // ---- Getting going --------------------------------------------------------------------
@@ -74,46 +39,79 @@ function pageEnter(data) {
   stage.setPal(currentPal());
   stage.fresh();
   $("mute").textContent = StageSFX.muted ? "🔇" : "🔊";
+  paintCalm();
+  paintTags();
   showStars();
+  paintSteps("draw");
 }
-function freeToPlay() { return mode === "free" || mode === "story"; }
+function paintCalm() {
+  $("calm").setAttribute("aria-pressed", PalStage.calm);
+  document.body.classList.toggle("calm", PalStage.calm);
+}
+let hideTags = false;
+try { hideTags = localStorage.getItem("pixelHideTags") === "1"; } catch (_) {}
+function paintTags() {
+  $("tags").setAttribute("aria-pressed", hideTags);
+  document.body.classList.toggle("no-tags", hideTags);
+}
 function currentPal() {
   return S.drawings.find(d => d.key === S.pal) || S.pip;
 }
-function showStars() { $("starCount").textContent = `★ ${S.stars} / ${S.max_stars}`; }
+function showStars() { $("starCount").textContent = `★ ${S.stars} / ${S.max_stars} · 🪙 ${S.hang.coins}`; }
 
 // Whatever show is going, it's over: nothing from it may land on the next screen.
 function dropRun() {
   runTicket++;
-  stopLive();
   if (stage) stage.stop();
   finishRun();
   setRunLine(0);
 }
 async function showView(name) {
+  if (name === "hang") await refreshState();
+  if (name === "hang" && S.hang.needs) {
+    flashToast(`🔒 Finish ${missionsWord(S.hang.needs)} to open the Hang out!`);
+    name = "stage";
+  }
   settle();
   dropRun();
-  document.querySelectorAll("[data-view]").forEach(b => b.classList.toggle("on", b.dataset.view === name));
+  document.querySelectorAll("nav [data-view]").forEach(b => b.classList.toggle("on", b.dataset.view === (name === "life" ? "draw" : name)));
   $("drawView").hidden = name !== "draw";
   $("stageView").hidden = name !== "stage";
-  $("theatreView").hidden = name !== "theatre";
   $("lifeView").hidden = name !== "life";
-  $("storyView").hidden = name !== "story";
+  $("hangView").hidden = name !== "hang";
   document.querySelectorAll(".draw-only").forEach(el => { el.hidden = name !== "draw"; });
-  document.querySelectorAll(".stage-only").forEach(el => { el.hidden = ["draw", "life", "story"].includes(name); });
+  document.querySelectorAll(".stage-only").forEach(el => { el.hidden = name !== "stage"; });
   $("palPick").hidden = name !== "stage";
   if (name === "life") openLife(); else closeLife();     // before the wait, so its buttons always work
-  if (name === "story") openRoom(); else closeStory();
+  if (name === "hang") openRoom(); else closeRoom();
   if (name !== "draw") await saveNow();
   if (name === "stage") {
     await refreshState();
     fillPalPick();
     if (!mode) await openMission(S.current);
-    else resetStage();
+    else { resetStage(); coachFocus(); }
   }
-  if (name === "theatre") { await refreshState(); await openTheatre(); }
-  if (name === "story") { await refreshState(); await openStory(); }
-  if (name !== "theatre") closePark();
+  paintSteps(name);
+}
+function missionsWord(n) { return `${n} more mission${n === 1 ? "" : "s"}`; }
+// The three steps along the top, and the one big button saying what's next.
+function paintSteps(name) {
+  $("tabHang").textContent = S.hang.needs ? "🔒 Hang out" : "🎉 Hang out";
+  const go = $("goNext"), hasMove = !!S.hang.move;
+  const next = name === "life" ? ["💻 Code my pal →", "stage"]
+    : name === "stage" && !S.hang.needs ? ["🎉 Go hang out →", "hang"]
+    : name === "hang" && !hasMove ? ["🌟 Make My Move →", "stage"]
+    : name === "hang" ? ["💻 Code more →", "stage"] : null;
+  go.hidden = !next;
+  if (next) { go.textContent = next[0]; go.dataset.view = next[1]; }
+  $("hangNote").hidden = name !== "stage" || !S.hang.needs;
+  $("hangNote").textContent = `🔒 ${missionsWord(S.hang.needs)} to the Hang out`;
+}
+function flashToast(words) {
+  $("toast").textContent = words;
+  $("toast").hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { $("toast").hidden = true; }, 4200);
 }
 async function refreshState() {
   const data = await get("/pixel/state?id=" + encodeURIComponent(me)).catch(() => null);
@@ -136,12 +134,13 @@ async function openMission(key) {
   closeSheets();
   saveCode();
   dropRun();
-  if (key === "free") return openFree();
   const data = await get(`/pixel/level?id=${encodeURIComponent(me)}&level=${encodeURIComponent(key)}`).catch(() => null);
   if (!data || data.error) return;
   mode = key;
   view = data;
   hintsShown = 0;
+  coachWay = null;
+  coachOops = "";
   $("levelName").textContent = `${data.chapter.icon} ${data.name}`;
   const n = S.chapters.flatMap(c => c.levels).findIndex(l => l.key === key) + 1;
   $("levelWhere").textContent = `Mission ${n} of ${S.max_stars / 3}`;
@@ -157,34 +156,7 @@ async function openMission(key) {
   verdict(null);
   $("caption").textContent = "Press Show time! to see your code run.";
   resetStage();
-}
-function openFree(story = null) {
-  mode = story ? "story" : "free";
-  view = null;
-  $("levelName").textContent = story ? `📖 Page ${story.pages.length + 1}` : "⭐ Free Stage";
-  $("levelWhere").textContent = story ? story.title : "No mission. Just you.";
-  $("pipSays").textContent = story
-    ? `So far: "${story.pages.length ? story.pages[story.pages.length - 1].line : story.start}" What happens next? Make it with your pal. Everyone's pal can help!`
-    : "Make anything you like! Every word you've learned works here. "
-    + `Places: ${S.kit.scenes.join(", ")}. Sounds: ${S.kit.sounds.join(", ")}. Friends: ${S.kit.friends.join(", ")}.`;
-  $("job").hidden = true;
-  $("goals").hidden = true;
-  $("hint").hidden = false;
-  $("hint").textContent = "Give me an idea";
-  setCode(story ? (story.waiting ? story.waiting.code : recall(codeKey("story")) ?? "") : recall(codeKey("free")) ?? S.free);
-  const known = S.chapters.flatMap(c => c.levels).filter(l => l.open).map(l => l.key);
-  const last = known[known.length - 1];
-  get(`/pixel/level?id=${encodeURIComponent(me)}&level=${last}`).then(data => {
-    if (freeToPlay() && data && data.commands) {
-      buildChips(story ? S.everything : data.commands, [], data.python, []);
-      if (story) castChips();
-    }
-  });
-  verdict(story ? `<p>Press Show time! to try your page. When you like it, add it to the book.</p>`
-    : `<p>When it's ready, share it with the class.</p>
-    <p class="next"><button class="btn" data-publish="1">🎟️ Add to the Theatre</button></p>`);
-  $("caption").textContent = "Press Show time! to see your code run.";
-  resetStage();
+  coachFocus();
 }
 function drawGoals(got) {
   $("goals").innerHTML = view.goals.map((g, i) =>
@@ -192,30 +164,18 @@ function drawGoals(got) {
 }
 
 // ---- Chips -----------------------------------------------------------------------------
-// Early on a chip writes the whole line. From Story Time on it starts the line
-// and the student types the rest, so the help comes off bit by bit.
+// A chip writes the whole line.
 function buildChips(commands, fresh, python, freshPython) {
-  const wholeLines = freeToPlay() || !view || view.number < 4;
   const cmds = commands.filter(c => WORDS[c]);
-  const started = c => wholeLines || sample(c).endsWith("()") ? sample(c) : c + "(";
-  // Only this chapter's words sit by the editor. The rest are in All words,
-  // so the buttons never fill the screen.
-  const near = cmds.length <= 12 ? cmds : cmds.filter(c => (view ? view.chapter_new : mode === "story" ? STORY_CORE : CORE).includes(c));
   $("chips").innerHTML =
-    near.map(c => `<button class="chip${fresh.includes(c) ? " fresh" : ""}" data-chip="${esc(started(c))}" title="${esc(WORDS[c])}">${esc(sample(c))}</button>`).join("") +
-    ALL_PYTHON.filter(k => python.includes(k) && (freshPython.includes(k) || !view || python.length <= 4)).map(k =>
+    cmds.map(c => `<button class="chip${fresh.includes(c) ? " fresh" : ""}" data-chip="${esc(sample(c))}" title="${esc(WORDS[c])}">${esc(sample(c))}</button>`).join("") +
+    ALL_PYTHON.filter(k => python.includes(k)).map(k =>
       `<button class="chip py${freshPython.includes(k) ? " fresh" : ""}" data-chip="${esc(PYTHON[k][1])}" title="${esc(PYTHON[k][2])}">${esc(PYTHON[k][0])}</button>`).join("");
   const entry = (chip, label, words) =>
     `<div><dt><button class="chip" data-chip="${esc(chip)}">${esc(label)}</button></dt><dd style="margin:0">${esc(words)}</dd></div>`;
   $("book").innerHTML =
-    cmds.map(c => entry(started(c), sample(c), WORDS[c])).join("") +
+    cmds.map(c => entry(sample(c), sample(c), WORDS[c])).join("") +
     ALL_PYTHON.filter(k => python.includes(k)).map(k => entry(PYTHON[k][1], PYTHON[k][0], PYTHON[k][2])).join("");
-  $("kitWords").innerHTML =
-    (commands.includes("scene") ? `<p><b>Places you can go:</b> ${esc(S.kit.scenes.join(", "))}</p>` : "") +
-    (commands.includes("sound") ? `<p><b>Sounds:</b> ${esc(S.kit.sounds.join(", "))}</p>` : "") +
-    (commands.includes("friend") ? `<p><b>Friends:</b> ${esc(S.kit.friends.join(", "))}</p>` : "") +
-    (commands.includes("friend") && S.class_pals.length ? `<p><b>Classmates' pals:</b> ${esc(S.class_pals.join(", "))}, like <code>friend("${esc(S.class_pals[0])}")</code></p>` : "") +
-    (commands.includes("put") ? `<p><b>Things:</b> ${esc(S.kit.props.join(", "))}</p>` : "");
 }
 function addLine(snippet) {
   const t = $("code"), pos = t.selectionStart;
@@ -264,12 +224,13 @@ function paintCode(code) {
 }
 function updateEditor() {
   const code = $("code").value;
-  $("paint").innerHTML = paintCode(code);
+  $("paint").innerHTML = paintCode(code).slice(0, -1) + coachGhost() + "\n";
   const count = Math.max(1, code.split("\n").length);
   $("lines").innerHTML = Array.from({length: count}, (_, i) =>
     i + 1 === runLine ? `<span class="run">▸${i + 1}</span>`
     : i + 1 === errorLine ? `<span class="err">▸${i + 1}</span>` : i + 1).join("\n");
   syncScroll();
+  paintCoach();
 }
 function syncScroll() {
   const t = $("code");
@@ -302,6 +263,7 @@ function saveCode() {
   if (me && mode) store(codeKey(mode), $("code").value);
 }
 function editorKeys(e) {
+  if (coachKey(e)) return;
   const t = $("code"), s = t.selectionStart, end = t.selectionEnd;
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
@@ -330,23 +292,171 @@ function editorKeys(e) {
   }
 }
 
+// ---- The step-by-step guide ------------------------------------------------------------------
+// It reads what's in the editor and works out what comes next, so there's nothing to
+// get out of step. Only the right key goes in, and a wrong one says which to look for.
+const KEY_HELP = {
+  "(": "Hold Shift and press 9", ")": "Hold Shift and press 0", '"': "Hold Shift and press the ' key, next to Enter",
+  ":": "Hold Shift and press the ; key", "!": "Hold Shift and press 1", " ": "Press the long space bar", "\n": "Press Enter", ".": "Press the . key",
+};
+const ACTIONS = /^\s*(say|jump|right|left|wave|dance|cheer|spin|hearts|stars|confetti|feel)\(/gm;
+let coachWay = null, coachOops = "", coachEarly = false;     // coachWay: "type", "build", or "own" for a student's own way
+
+function coachTarget() { return view.coach.map(c => c[0]).join("\n"); }
+function coachMode() {
+  if (!view || !mode) return null;
+  const way = coachWay || (view.build ? "build" : "type");        // every mission starts with the guide on
+  return way === "own" ? null : way;
+}
+function coachTyping() { return coachMode() === "type" && coachTarget().startsWith($("code").value); }
+function keyName(ch) { return ch === " " ? "space bar" : ch === "\n" ? "Enter" : ch; }
+function keyHelp(ch) { return KEY_HELP[ch] || `Press the ${ch.toUpperCase()} key`; }
+function coachShake() {
+  const box = $("coach");
+  box.classList.remove("shake");
+  void box.offsetWidth;
+  box.classList.add("shake");
+}
+function coachFocus() {
+  if (coachMode() !== "type" || !$("code").offsetParent) return;
+  const t = $("code");
+  t.focus();
+  t.setSelectionRange(t.value.length, t.value.length);
+}
+function coachPut(text) {
+  const t = $("code");
+  t.value = text;
+  t.setSelectionRange(text.length, text.length);
+  errorLine = 0;
+  saveCode();
+  updateEditor();
+  t.scrollTop = t.scrollHeight;
+}
+/** One key press while being walked through. True if the guide dealt with it. */
+function coachKey(e) {
+  if (!coachTyping() || e.ctrlKey || e.metaKey || e.altKey) return false;
+  const code = $("code").value, target = coachTarget();
+  coachEarly = false;
+  if (e.key === "Backspace") {
+    e.preventDefault();
+    const line = /\n *$/.exec(code);      // the pushed-in spaces go with their line
+    coachOops = "";
+    coachPut(line ? code.slice(0, line.index) : code.slice(0, -1));
+    return true;
+  }
+  if (e.key !== "Enter" && e.key.length !== 1) { if (e.key === "Tab") e.preventDefault(); return e.key === "Tab"; }
+  e.preventDefault();
+  if (code === target) { coachShake(); return true; }
+  const want = target[code.length], typed = e.key === "Enter" ? "\n" : e.key;
+  if (typed.toLowerCase() !== want.toLowerCase()) {
+    coachOops = want;
+    coachShake();
+    paintCoach();
+    return true;
+  }
+  coachOops = "";
+  let next = code + want;
+  if (want === "\n") next += /^ */.exec(target.slice(next.length))[0];   // pushed in for them
+  StageSFX.play(want === "\n" || next === target ? "ding" : "click");
+  coachPut(next);
+  return true;
+}
+function coachGhost() {
+  if (!coachTyping()) return "";
+  const code = $("code").value, target = coachTarget(), end = target.indexOf("\n", code.length);
+  return `<span class="hl-ghost">${esc(target.slice(code.length, end < 0 ? target.length : end))}</span>`;
+}
+// Show time! only goes once the typing is done, so there's one thing to do at a time.
+function coachBlocks() {
+  if (!coachTyping() || $("code").value === coachTarget()) return false;
+  coachOops = "";
+  coachEarly = true;
+  coachShake();
+  paintCoach();
+  coachFocus();
+  return true;
+}
+function goodPrefix() {
+  const code = $("code").value, target = coachTarget();
+  let n = 0;
+  while (n < code.length && code[n] === target[n]) n++;
+  return code.slice(0, n);
+}
+const coachActions = {
+  back() { coachOops = ""; coachPut(goodPrefix()); coachFocus(); },
+  own() { coachWay = "own"; updateEditor(); $("code").focus(); },
+  steps() { showSteps(); },
+};
+function showSteps() {
+  coachWay = "type";
+  coachOops = "";
+  updateEditor();
+  coachFocus();
+}
+function stepList(names, now) {
+  return `<ol class="coach-steps">${names.map((name, i) => `<li class="${i < now ? "done" : i === now ? "now" : ""}">${i < now ? "✓" : i + 1 + "."} ${name}</li>`).join("")}</ol>`;
+}
+function paintBuild(box) {
+  const count = ($("code").value.match(ACTIONS) || []).length, ready = count >= 3;
+  $("runButton").classList.toggle("nudge", ready);
+  box.innerHTML = stepList(["Click 3 green buttons", "▶ Show time!"], ready ? 1 : 0) +
+    (ready ? `<p class="coach-say">✅ You have ${count} actions. Add more if you like!</p><p class="coach-next">👇 Then press the pink <b>▶ Show time!</b> button.</p>`
+      : `<p class="coach-say">👇 Click ${3 - count} more green button${3 - count === 1 ? "" : "s"} under your code. Each one adds an action to your move.</p><p class="coach-next">You have <b>${count}</b> of 3 actions.</p>`) +
+    `<div class="coach-row"><button class="btn" data-coach="steps">🖐 Show me step by step, with a sparkle trail</button></div>`;
+}
+function paintType(box) {
+  const code = $("code").value, target = coachTarget(), lines = view.coach;
+  if (!target.startsWith(code)) {
+    box.innerHTML = `<p class="coach-say">Your code is different from the steps.</p>
+      <div class="coach-row"><button class="btn main" data-coach="back">↩ Go back to where it was right</button><button class="btn" data-coach="own">✋ Keep my code</button></div>`;
+    return;
+  }
+  const at = code.split("\n").length - 1, done = code === target;
+  const names = [...lines.map((c, i) => `Line ${i + 1}`), "▶ Show time!"];
+  if (done) {
+    $("runButton").classList.add("nudge");
+    box.innerHTML = stepList(names, lines.length) + `<p class="coach-say">🎉 You typed it all!</p><p class="coach-next">👇 Now press the pink <b>▶ Show time!</b> button.</p>`;
+    return;
+  }
+  const whole = lines[at][0], indent = /^ */.exec(whole)[0].length, line = whole.slice(indent);
+  const typed = Math.max(0, code.length - (code.lastIndexOf("\n") + 1) - indent), last = at === lines.length - 1;
+  const tiles = [...line].map((ch, i) => `<kbd class="${i < typed ? "got" : i === typed ? "next" : ""}${ch === " " ? " gap" : ""}">${ch === " " ? "␣" : esc(ch)}</kbd>`).join("") +
+    (last ? "" : `<kbd class="enter${typed === line.length ? " next" : ""}">Enter ↵</kbd>`);
+  const want = target[code.length];
+  box.innerHTML = stepList(names, at) +
+    `<p class="coach-say">${esc(lines[at][1])}</p>
+     <p class="coach-do">Type this, one key at a time:</p>
+     <div class="coach-keys">${tiles}</div>
+     <p class="coach-next">👉 Next key: <b>${esc(keyName(want))}</b> ${esc(keyHelp(want))}</p>` +
+    (coachEarly ? `<p class="coach-oops" role="status">Not yet! Finish typing first, then press Show time!</p>` : "") +
+    (coachOops ? `<p class="coach-oops" role="status">Not that key. Find the ${esc(keyName(coachOops))} key.</p>` : "") +
+    `<div class="coach-row"><button class="btn" data-coach="own">✋ I can type it myself</button></div>`;
+}
+function paintCoach() {
+  const box = $("coach"), way = coachMode();
+  document.body.classList.toggle("coaching", !!way);
+  document.body.classList.toggle("building", way === "build");
+  $("runButton").classList.remove("nudge");
+  box.hidden = !way;
+  $("coachBack").hidden = !!way || !mode;
+  $("code").placeholder = way === "type" ? "" : "Type your code here";
+  if (way === "build") paintBuild(box);
+  else if (way === "type") paintType(box);
+}
+function coachSpeech() {
+  const code = $("code").value;
+  if (coachMode() !== "type" || !coachTyping() || code === coachTarget()) return "";
+  return `${$("job").textContent} ${view.coach[code.split("\n").length - 1][1]}`;
+}
+
 // ---- Show time --------------------------------------------------------------------------
 function captionFor(s) {
   const line = s.line ? `<b>Line ${s.line}:</b> ` : "";
   const says = {
     say: () => `your pal says "${esc(s.text)}"`, walk: () => `your pal walks to spot ${s.to}`,
-    jump: () => "your pal jumps", spin: () => "your pal spins", shake: () => "your pal shakes",
-    size: () => "your pal changes size", hide: () => "your pal vanishes", appear: () => "your pal comes back",
-    pose: () => `your pal shows frame ${s.frame + 1}`, play: () => "your frames play like a flip book",
-    wait: () => "your pal waits", hearts: () => "hearts float up", stars: () => "stars float up",
-    confetti: () => "confetti falls", rain: () => "it rains", snow: () => "it snows",
-    sound: () => `the ${esc(s.name)} sound plays`, scene: () => `the scene changes to ${esc(s.name)}`,
-    friend: () => `a ${esc(s.kind)} comes on stage`, friend_say: () => `your friend says "${esc(s.text)}"`,
-    friend_jump: () => "your friend jumps", bye: () => "your friend leaves", eat: () => "your pet eats",
-    nap: () => "your pet has a nap", put: () => `a ${esc(s.prop)} lands on spot ${s.at}`,
-    take: () => "your pal picks it up", point: () => `the score goes up to ${s.score}`,
-    weather: () => `the weather is ${esc(s.kind)}`,
-    event: () => s.key ? `Pip tests your game: the ${esc(s.key)} key is pressed` : `Pip tests your pet: ${esc(s.name)}`,
+    jump: () => "your pal jumps", spin: () => "your pal spins", wave: () => "your pal waves", dance: () => "your pal dances",
+    cheer: () => "your pal cheers", feel: () => `your pal feels ${esc(s.mood)}`, wait: () => "your pal waits",
+    hearts: () => "hearts float up", stars: () => "stars float up", confetti: () => "confetti falls",
   };
   return says[s.do] ? line + says[s.do]() : "";
 }
@@ -359,11 +469,10 @@ async function playSteps(steps) {
   setRunLine(0);
 }
 async function runShow() {
-  if (running || !mode) return;
+  if (running || !mode || coachBlocks()) return;
   running = true;
   const ticket = ++runTicket;
   saveCode();
-  stopLive();
   StageSFX.wake();
   document.activeElement.blur();
   $("doRow").classList.add("playing");
@@ -372,7 +481,7 @@ async function runShow() {
   setBand(0);
   $("caption").textContent = "The curtain goes up...";
   let out = null;
-  try { out = await post("/pixel/run", {id: me, level: freeToPlay() ? "free" : mode, code: $("code").value}); } catch (_) {}
+  try { out = await post("/pixel/run", {id: me, level: mode, code: $("code").value}); } catch (_) {}
   if (ticket !== runTicket) return;
   if (!out) {
     finishRun();
@@ -396,32 +505,27 @@ async function runShow() {
     verdict(`<p>${fmt(out.error)}</p><p>Fix that line, then press Show time! again.</p>`, "bad");
     return;
   }
-  if (mode === "story") {
-    $("caption").textContent = "That's your page.";
-    verdict(`<p>Nice! Change anything you like, then add it to the book.</p>
-      <p class="next"><button class="btn" data-page-add="1">📖 Add to our story</button></p>`, "good");
-  } else if (mode === "free") {
-    if (out.rewards) showRewards(out.rewards);
-    $("caption").textContent = "That's the end of your show.";
-    verdict(`<p>Nice! Change something and run it again, or share it.</p>
-      <p class="next"><button class="btn" data-publish="1">🎟️ Add to the Theatre</button></p>`, "good");
-  } else {
-    drawGoals(out.stars.map((g, i) => g || view.best[i]));
-    view.best = out.stars.map((g, i) => g || view.best[i]);
-    if (out.stars[0]) { stage.cheer(); missionDone(out); }
-    else {
-      stage.sigh();
-      $("caption").textContent = "Not quite yet.";
-      verdict(`<p>${fmt(out.reply || "Not quite. Read the job again.")}</p>`, "bad");
-    }
-    if (out.rewards) showRewards(out.rewards);
+  drawGoals(out.stars.map((g, i) => g || view.best[i]));
+  view.best = out.stars.map((g, i) => g || view.best[i]);
+  if (out.stars[0]) { stage.cheer(); missionDone(out); }
+  else {
+    stage.sigh();
+    $("caption").textContent = "Not quite yet.";
+    verdict(`<p>${fmt(out.reply || "Not quite. Read the job again.")}</p>`, "bad");
   }
-  if (out.events.length) goLive(out.events, {code: $("code").value, level: freeToPlay() ? null : mode, seed: out.seed, events: out.rehearsed.slice()}, stage, $("liveBar"));
+  if (out.rewards.first) celebrate(out.rewards);
+  else if (out.rewards.gained) { flyStars(out.rewards.gained); showRewards(out.rewards); }
+  else showRewards(out.rewards);
+  paintSteps("stage");
 }
 function finishRun() {
   running = false;
   $("runButton").disabled = false;
   $("doRow").classList.remove("playing");
+}
+function nextButton(next) {
+  return next ? `<button class="btn main" data-mission="${esc(next.key)}">Next mission →</button>`
+    : `<button class="btn main" data-view="hang">🎉 Go hang out →</button>`;
 }
 function missionDone(out) {
   const all = out.stars.every(Boolean), order = S.chapters.flatMap(c => c.levels), at = order.findIndex(l => l.key === mode);
@@ -429,7 +533,7 @@ function missionDone(out) {
   $("caption").textContent = "The crowd loves it!";
   const more = out.stars.findIndex(g => !g);
   verdict(`<p><b>${all ? "Three stars! A perfect show!" : "You did it! The crowd is cheering."}</b>${more >= 0 ? ` For the next star: ${fmt(view.goals[more])}.` : ""}</p>
-    <p class="next">${next ? `<button class="btn main" data-mission="${esc(next.key)}">Next mission →</button>` : `<button class="btn main" data-mission="free">Go to Free Stage →</button>`}</p>`, "good");
+    <p class="next">${nextButton(next)}${mode === "m1" ? ` <button class="btn" data-rename="1">Rename my move</button>` : ""}</p>`, "good");
 }
 // The box always stays on screen, so the stage above it never jumps.
 function verdict(html, kind) {
@@ -444,14 +548,8 @@ function fitScreen() {
   $("stageHost").style.width = w + "px";
 }
 let hintsShown = 0;
-let hintCode = "", ideaAt = 0;
+let hintCode = "";
 function showHint() {
-  if (freeToPlay()) {
-    const ideas = mode === "story" ? book.ideas : S.ideas;
-    hintCode = ideas[ideaAt++ % ideas.length];
-    verdict(`<p><b>Try this one, then change it!</b></p><pre style="margin:2px 0 0;font:14px/18px var(--mono);white-space:pre-wrap">${esc(hintCode)}</pre><p class="next"><button class="btn" data-copy="1">Use this code</button></p>`);
-    return;
-  }
   if (!view) return;                  // the mission is still on its way
   const hints = view.hints, text = hints[Math.min(hintsShown, hints.length - 1)];
   hintCode = hints[hints.length - 1];
@@ -466,8 +564,8 @@ let toastTimer = 0;
 function showRewards(r) {
   const lines = [];
   if (r.gained) lines.push(`+${r.gained} ★`);
+  if (r.coins) lines.push(`+${r.coins} 🪙`);
   for (const b of r.badges || []) lines.push(`${b.icon} ${b.name}`);
-  for (const u of r.unlocked || []) lines.push(`🔓 New ${u.kind}: ${u.key}`);
   if (!lines.length) return;
   $("toast").textContent = lines.join("   ");
   $("toast").hidden = false;
@@ -475,158 +573,106 @@ function showRewards(r) {
   toastTimer = setTimeout(() => { $("toast").hidden = true; }, 4200);
 }
 
-// ---- Clicks and keys: a show that's still listening -----------------------------------------
-const EVENT_BUTTONS = {feed: "🍎 Feed", play: "⚽ Play", sleep: "🌙 Sleep"};
-function goLive(events, show, onStage, bar) {
-  live = Object.assign(show, {stage: onStage, bar, wants: events, busy: false, waiting: []});
-  const says = [];
-  if (events.includes("click")) says.push("Click your pal!");
-  if (events.includes("key")) says.push("Press the arrow keys or space!");
-  bar.innerHTML = `<span>${says.join(" ")}</span>` +
-    Object.entries(EVENT_BUTTONS).filter(([k]) => events.includes(k))
-      .map(([k, label]) => `<button class="btn" data-event="${k}">${label}</button>`).join("");
-  bar.hidden = false;
-}
-function stopLive() {
-  if (!live) return;
-  live.bar.hidden = true;
-  live = null;
-}
-function fire(event) {
-  const show = live;
-  if (!show) return;
-  if (show.busy) {                    // keep one waiting, so quick keys aren't lost
-    if (show.waiting.length < 2) show.waiting.push(event);
-    return;
+// ---- The big win ---------------------------------------------------------------------------
+// A first finish gets the whole thing: stars, confetti and a gift box to tap open.
+function flyStars(n) {
+  const to = $("starCount").getBoundingClientRect();
+  if (PalStage.calm || !to.width) { showStars(); return; }
+  for (let i = 0; i < Math.min(n, 3); i++) {
+    const el = document.createElement("div");
+    el.className = "fly-star";
+    el.textContent = "★";
+    el.style.setProperty("--dx", `${to.left + to.width / 2 - innerWidth / 2}px`);
+    el.style.setProperty("--dy", `${to.top + to.height / 2 - innerHeight / 2}px`);
+    el.style.animationDelay = `${i * 140}ms`;
+    document.body.appendChild(el);
+    setTimeout(() => { StageSFX.climb(i * 3); el.remove(); $("starCount").classList.remove("bump"); void $("starCount").offsetWidth; $("starCount").classList.add("bump"); }, 800 + i * 140);
   }
-  answer(show, event);
 }
-async function answer(show, event) {
-  show.busy = true;
-  show.events.push(event);
-  let out = null;
-  try {
-    out = await post("/pixel/react", {id: me, code: show.code, level: show.level, owner: show.owner, seed: show.seed, events: show.events});
-  } catch (_) {}
-  if (out && out.full && show === live) {
-    show.bar.innerHTML = `<span>That's a lot of clicks! Press Show time! or Play again to start over.</span>`;
-    show.wants = [];
-  } else if (out && out.steps && show === live) {
-    await show.stage.play(out.steps.filter(s => s.do !== "event"), {onStep(s) {
-      if (show.stage !== stage) return;
-      setRunLine(s.line);
-      const text = captionFor(s);
-      if (text) $("caption").innerHTML = text;
-    }});
-    if (show.stage === stage) setRunLine(0);
-    if (out.error && show.stage === stage) { setBand(out.line || 0); verdict(`<p>${fmt(out.error)}</p>`, "bad"); }
-  }
-  show.busy = false;
-  if (show === live && show.waiting.length) answer(show, show.waiting.shift());
+function confettiBurst() {
+  if (PalStage.calm) return;
+  const box = $("winBits"), colours = ["#ff5fa2", "#ffd93b", "#35d0bd", "#7ab8ff", "#c5a3ff"];
+  box.innerHTML = Array.from({length: 46}, (_, i) =>
+    `<i style="left:${Math.random() * 100}%;background:${colours[i % 5]};animation-delay:${Math.random() * .5}s;animation-duration:${1.3 + Math.random()}s"></i>`).join("");
 }
-const ARROWS = {ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down", " ": "space"};
-addEventListener("keydown", e => {
-  if (!live || !live.wants.includes("key") || e.target.matches("input, textarea, select") || !ARROWS[e.key]) return;
-  e.preventDefault();
-  if (!e.repeat) fire("key:" + ARROWS[e.key]);
-});
+function winButtons(r) {
+  const order = S.chapters.flatMap(c => c.levels), next = order[order.findIndex(l => l.key === mode) + 1];
+  const hang = !S.hang.needs;
+  if (r.hang_opened) return `<button class="btn main" data-view="hang">🎉 Go to the Hang out!</button>${next ? ` <button class="btn" data-mission="${esc(next.key)}">Next mission →</button>` : ""}`;
+  if (mode === "m1") return `<button class="btn main" data-view="hang">🎉 Go show everyone!</button>`;
+  return `${next ? `<button class="btn main" data-mission="${esc(next.key)}">Next mission →</button>` : ""}${hang ? ` <button class="btn" data-view="hang">🎉 Hang out</button>` : ""}`;
+}
+function celebrate(r) {
+  const n = view.best.filter(Boolean).length;
+  $("winTitle").textContent = mode === "m1" ? "Your own move!" : r.hang_opened ? "The Hang out is open!" : "You did it!";
+  $("winStars").innerHTML = [0, 1, 2].map(i => `<span class="${i < n ? "on" : ""}" style="animation-delay:${i * 180}ms">★</span>`).join("");
+  $("winBody").innerHTML = "";
+  $("winDo").innerHTML = "";
+  $("win").hidden = false;
+  confettiBurst();
+  StageSFX.play("fanfare");
+  if (r.gained) flyStars(r.gained);
+  if ((r.badges && r.badges.length) || r.coins) showRewards({badges: r.badges, coins: r.coins});
+  const after = () => (r.move ? showMoveNames(r) : ($("winDo").innerHTML = winButtons(r)));
+  if (!r.gift) { after(); return; }
+  $("winBody").innerHTML = `<button class="gift-box" id="giftOpen" aria-label="Open your gift"><span>🎁</span>Tap to open!</button>`;
+  $("winDo").innerHTML = `<button class="btn" id="giftLater">Open it later</button>`;
+  $("giftLater").addEventListener("click", after);
+  $("giftOpen").addEventListener("click", () => {
+    const gift = S.hang.catalog[r.gift];
+    StageSFX.play("gift");
+    confettiBurst();
+    $("winBody").innerHTML = `<div class="gift-open"><canvas id="giftPic"></canvas><b>${esc(gift.name)}!</b><small>Wear it in the Hang out: press 🧢 Me.</small></div>`;
+    wearInto($("giftPic"), r.gift, 9);
+    $("winDo").innerHTML = "";
+    if (r.move) setTimeout(after, PalStage.calm ? 0 : 1100); else after();
+  });
+}
+function moveMeaning(move) {
+  return `<ul class="move-perks">
+    <li class="${move.loop ? "on" : ""}">${move.loop ? "✅" : "⬜"} A for loop gives it a <b>sparkle trail</b></li>
+    <li class="${move.big ? "on" : ""}">${move.big ? "✅" : "⬜"} 8 actions gives it a <b>big finish</b>: you have ${move.actions}</li></ul>`;
+}
+function nameTiles() {
+  return `<div class="name-tiles">${S.hang.names.map(n => `<button class="btn" data-move-name="${esc(n)}">${esc(n)}</button>`).join("")}</div>`;
+}
+function showMoveNames(r) {
+  $("winBody").insertAdjacentHTML("beforeend", `${moveMeaning(r.move)}<p class="win-ask">Pick a name for your move:</p>${nameTiles()}`);
+  $("winDo").innerHTML = "";
+  nameThen(() => { $("winDo").innerHTML = winButtons(r); });
+}
+function askMoveName() {
+  $("winTitle").textContent = "Rename your move";
+  $("winStars").innerHTML = "";
+  $("winBody").innerHTML = nameTiles();
+  $("winDo").innerHTML = "";
+  $("win").hidden = false;
+  nameThen(() => { $("win").hidden = true; });
+}
+function nameThen(done) {
+  $("winBody").querySelectorAll("[data-move-name]").forEach(b => b.addEventListener("click", async () => {
+    const out = await post("/pixel/move/name", {id: me, name: b.dataset.moveName}).catch(() => null);
+    if (out && out.state) S = out.state;
+    StageSFX.play("ding");
+    $("winBody").querySelector(".win-ask")?.remove();
+    $("winBody").querySelector(".name-tiles").innerHTML = `<p class="named">✨ ${esc(b.dataset.moveName)} ✨</p>`;
+    done();
+  }));
+}
 
-// ---- Missions, trophies and the Theatre --------------------------------------------------------
+// ---- Missions and trophies ---------------------------------------------------------------------
 function openMissions() {
   $("missionList").innerHTML = S.chapters.map(ch => `<h3>${ch.icon} ${esc(ch.name)}</h3><div class="lvls">${
     ch.levels.map(l => {
       const n = l.stars.filter(Boolean).length;
       return `<button class="lvl${l.key === mode ? " here" : ""}" data-mission="${esc(l.key)}" ${l.open ? "" : "disabled"}>${l.open ? "" : "🔒 "}${esc(l.name)}<span class="${n ? "" : "none"}">${"★".repeat(n)}${"☆".repeat(3 - n)}</span></button>`;
-    }).join("")}</div>`).join("") +
-    `<h3>⭐ Free Stage</h3><div class="lvls"><button class="lvl${mode === "free" ? " here" : ""}" data-mission="free" ${S.free_open ? "" : "disabled"}>${S.free_open ? "" : "🔒 "}Make anything<span class="none">${S.free_open ? "Your own show" : "After Jump for joy"}</span></button></div>`;
+    }).join("")}</div>`).join("");
   $("trophies").innerHTML = S.badges.map(b =>
     `<div class="trophy${b.got ? " got" : ""}"><i>${b.icon}</i><span><b>${esc(b.name)}</b>${esc(b.how)}</span></div>`).join("");
-  $("unlockList").innerHTML = S.unlocks.map(u =>
-    `<div class="trophy${u.open ? " got" : ""}"><i>${u.open ? "🔓" : "🔒"}</i><span><b>${esc(u.key)}</b>${esc(u.kind)}: ${u.stars ? `${u.stars} stars` : `class total of ${u.class} stars`}</span></div>`).join("");
   $("missions").hidden = false;
 }
 function closeSheets() {
-  for (const id of ["missions", "bookSheet", "publish"]) $(id).hidden = true;
-}
-
-let shows = [], watching = null;
-async function openTheatre() {
-  const data = await get("/pixel/theatre?id=" + encodeURIComponent(me)).catch(() => null);
-  shows = data ? data.shows : [];
-  $("myShowNote").textContent = !S.my_show ? "Make a show in Free Stage, then add it here."
-    : S.my_show.waiting ? `"${S.my_show.title}" is waiting for your teacher to say OK.`
-    : `Your show "${S.my_show.title}" has ${S.my_show.hearts} ♥`;
-  $("showGrid").innerHTML = shows.length ? shows.map((s, i) => `
-    <div class="show-card"><button data-watch="${i}"><canvas></canvas>
-      <strong>${esc(s.title)}</strong>
-      <small>by ${esc(s.by)} · ♥ ${s.hearts}${s.events.length ? " · Play with it!" : ""}</small>
-    </button></div>`).join("") : `<div class="empty" style="grid-column:1/-1">No shows yet. Be the first!<br>In 🎭 Stage, press Missions and pick Free Stage.</div>`;
-  $("showGrid").querySelectorAll("canvas").forEach((cv, i) => {
-    const pal = shows[i].pal;
-    thumbInto(cv, A.decode(pal.frames[0]), pal.size, pal.palette);
-  });
-  openPark(shows);
-}
-async function watchShow(s) {
-  watching = s;
-  stopLive();
-  $("watch").hidden = false;
-  $("watchTitle").textContent = s.title;
-  $("watchBy").textContent = `by ${s.by}`;
-  $("watchHeart").textContent = `${s.hearted ? "♥" : "♡"} ${s.hearts}`;
-  $("watchHeart").hidden = s.mine;
-  $("watchTake").hidden = !s.mine;
-  if (!watchStage) watchStage = PalStage.create($("watchCanvas"), $("watchHost"));
-  const out = await post("/pixel/watch", {owner: s.owner}).catch(() => null);
-  if (!out || out.error && !out.steps) return;
-  watchStage.setPal(out.pal);
-  watchStage.fresh();
-  await watchStage.play(out.steps);
-  if (watching === s && out.events.length) goLive(out.events, {owner: s.owner, seed: out.seed, events: []}, watchStage, $("watchLive"));
-}
-function closeWatch() {
-  $("watch").hidden = true;
-  stopLive();
-  if (watchStage) watchStage.stop();
-  watching = null;
-}
-async function heartShow() {
-  const out = await post("/pixel/heart", {id: me, owner: watching.owner}).catch(() => null);
-  if (!out || !out.ok) return;
-  watching.hearted = out.hearted;
-  watching.hearts = out.hearts;
-  $("watchHeart").textContent = `${out.hearted ? "♥" : "♡"} ${out.hearts}`;
-  await openTheatre();
-}
-async function remix() {
-  const code = `# Remixed from ${watching.title} by ${watching.by}\n${watching.code}`;
-  closeWatch();
-  await showView("stage");
-  openFree();
-  setCode(code);
-  saveCode();
-}
-async function takeDown() {
-  await post("/pixel/unpublish", {id: me}).catch(() => {});
-  closeWatch();
-  await refreshState();
-  await openTheatre();
-}
-function askPublish() {
-  $("publishNote").textContent = "";
-  $("showTitle").value = S.my_show ? S.my_show.title : "";
-  $("publishWho").textContent = S.checking ? "Your teacher looks at it first." : "";
-  $("publish").hidden = false;
-  $("showTitle").focus();
-}
-async function publishShow() {
-  saveCode();
-  const out = await post("/pixel/publish", {id: me, code: $("code").value, title: $("showTitle").value}).catch(() => null);
-  if (!out) { $("publishNote").textContent = "The computer didn't answer. Try again."; return; }
-  if (out.error) { $("publishNote").textContent = out.error; return; }
-  S = out.state;
-  $("publish").hidden = true;
-  showRewards({badges: [...out.badges, out.waiting ? {icon: "💌", name: "Sent to your teacher!"} : {icon: "🎟️", name: "It's in the Theatre!"}]});
+  for (const id of ["missions", "bookSheet"]) $(id).hidden = true;
 }
 
 // ---- Wiring -------------------------------------------------------------------------------------
@@ -634,26 +680,17 @@ document.addEventListener("click", e => {
   const b = e.target.closest("button");
   if (!b) return;
   const d = b.dataset;
-  if (d.view) showView(d.view);
+  if (d.view) { $("win").hidden = true; showView(d.view); }
   else if (d.chip !== undefined) { StageSFX.play("click"); $("bookSheet").hidden = true; addLine(d.chip); }
-  else if (d.mission) openMission(d.mission);
-  else if (d.publish) askPublish();
-  else if (d.pageAdd) openPageSheet(false);
-  else if (d.leaf) playBook(+d.leaf);
-  else if (d.takeLeaf) takeLeaf(+d.takeLeaf);
-  else if (d.copy) {
-    const had = $("code").value.trim();
-    setCode(freeToPlay() && had ? `${had}\n${hintCode}` : hintCode);    // ideas add on, so nothing is lost
-    saveCode();
-  }
-  else if (d.event) fire(d.event);
-  else if (d.watch) watchShow(shows[+d.watch]);
+  else if (d.mission) { $("win").hidden = true; openMission(d.mission); }
+  else if (d.rename) askMoveName();
+  else if (d.copy) { setCode(hintCode); saveCode(); }
 });
 new ResizeObserver(fitScreen).observe($("stageHost").parentElement);
 $("runButton").addEventListener("click", runShow);
 $("skip").addEventListener("click", () => stage.hurry());
 // Esc, or a click on the dark part around a sheet, closes it.
-const SHEETS = {pageSheet: "pageNo", missions: "closeMissions", bookSheet: "closeBook", watch: "closeWatch", publish: "publishNo", artSheet: "closeArt", beads: "closeBeads", cardSheet: "closeCard"};
+const SHEETS = {missions: "closeMissions", bookSheet: "closeBook", artSheet: "closeArt", thingSheet: "closeThing", beads: "closeBeads", win: "winClose"};
 function closeTopSheet() {
   for (const [sheet, button] of Object.entries(SHEETS)) if (!$(sheet).hidden) $(button).click();
 }
@@ -669,22 +706,20 @@ function readAloud(text) {
   line.rate = .92;
   speechSynthesis.speak(line);
 }
-$("readOut").addEventListener("click", () => readAloud(`${$("pipSays").textContent} ${$("job").textContent}`));
+$("readOut").addEventListener("click", () => readAloud(coachWay && coachSpeech() || `${$("pipSays").textContent} ${$("job").textContent}`));
 $("hint").addEventListener("click", showHint);
 $("openBook").addEventListener("click", () => { $("bookSheet").hidden = false; });
 $("closeBook").addEventListener("click", closeSheets);
 $("openMissions").addEventListener("click", async () => { await refreshState(); openMissions(); });
 $("closeMissions").addEventListener("click", closeSheets);
 $("mute").addEventListener("click", () => { $("mute").textContent = StageSFX.toggle() ? "🔇" : "🔊"; });
-$("stageHost").addEventListener("click", () => { if (live && live.wants.includes("click")) fire("click"); });
-$("watchHost").addEventListener("click", () => { if (live && live.wants.includes("click")) fire("click"); });
-$("closeWatch").addEventListener("click", closeWatch);
-$("watchAgain").addEventListener("click", () => watchShow(watching));
-$("watchHeart").addEventListener("click", heartShow);
-$("watchRemix").addEventListener("click", remix);
-$("watchTake").addEventListener("click", takeDown);
-$("publishGo").addEventListener("click", publishShow);
-$("publishNo").addEventListener("click", () => { $("publish").hidden = true; });
+$("calm").addEventListener("click", () => { PalStage.calm = !PalStage.calm; paintCalm(); });
+$("tags").addEventListener("click", () => {
+  hideTags = !hideTags;
+  try { localStorage.setItem("pixelHideTags", hideTags ? "1" : "0"); } catch (_) {}
+  paintTags();
+});
+$("winClose").addEventListener("click", () => { $("win").hidden = true; });
 $("palSelect").addEventListener("change", async e => {
   const out = await post("/pixel/pal", {id: me, key: e.target.value}).catch(() => null);
   if (out && out.state) { S = out.state; resetStage(); }
@@ -692,5 +727,18 @@ $("palSelect").addEventListener("change", async e => {
 $("code").addEventListener("input", () => { errorLine = 0; updateEditor(); saveCode(); });
 $("code").addEventListener("scroll", syncScroll);
 $("code").addEventListener("keydown", editorKeys);
+$("code").addEventListener("paste", e => { if (coachTyping()) e.preventDefault(); });
+// A click somewhere else shouldn't stop the keys from working.
+addEventListener("keydown", e => {
+  if (document.activeElement !== document.body || $("stageView").hidden || running || !coachTyping()) return;
+  if (document.querySelector(".sheet:not([hidden]), .shelf:not([hidden])") || (e.key.length !== 1 && e.key !== "Enter" && e.key !== "Backspace")) return;
+  coachFocus();
+  coachKey(e);
+});
+$("coachBack").addEventListener("click", () => showSteps());
+$("coach").addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (b) coachActions[b.dataset.coach]();
+});
 
 boot();

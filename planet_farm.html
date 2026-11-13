@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strange Planet — Rover Farm</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>🌱</text></svg>">
+<style>
+  /* The Rover Farm: Strange Planet's violet chrome round a green yard. The
+     yard is the loud part, and the coins are the only gold on the page. */
+  :root {
+    color-scheme: dark;
+    --sky: #1b1733; --dusk: #231d3f; --panel: #2c2550; --panel-2: #352d60; --edge: #463c78;
+    --bone: #f2eadb; --haze: #a89ec8; --dim: #6f6596; --mint: #8cf2c6; --gold: #ffd36b;
+    --coral: #ff6f61; --violet: #b9a3ff; --leaf: #9be36b;
+    --ui: system-ui, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    --mono: ui-monospace, "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+    --code-size: 16px; --line: 1.5;
+  }
+  * { box-sizing: border-box; }
+  * { scrollbar-width: thin; scrollbar-color: var(--edge) transparent; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--sky); color: var(--bone); font: 16px/1.45 var(--ui); overflow: hidden; }
+  body.big { --code-size: 19px; }
+  button, textarea, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
+  code { font: 600 .92em var(--mono); background: rgba(140,242,198,.13); color: var(--mint); padding: 1px 6px; border-radius: 6px; white-space: pre-wrap; }
+
+  .quiet { border: 1px solid var(--edge); background: transparent; border-radius: 8px; padding: 6px 10px; color: var(--haze); text-decoration: none; white-space: nowrap; }
+  .quiet:hover { color: var(--bone); background: var(--panel-2); }
+  .round { width: 34px; height: 34px; padding: 0; border-radius: 50%; }
+  .go { border: 0; border-radius: 12px; background: var(--mint); color: #12302a; font-weight: 800; padding: 11px 20px; font-size: 17px; box-shadow: 0 3px 0 #4fb38c; white-space: nowrap; }
+  .go:hover { background: #a6f7d4; }
+  .go:active { transform: translateY(2px); box-shadow: 0 1px 0 #4fb38c; }
+  .go.nudge { animation: nudge 1.8s ease-in-out infinite; }
+  @keyframes nudge { 50% { box-shadow: 0 3px 0 #4fb38c, 0 0 26px rgba(140,242,198,.85); } }
+
+  .app { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .bar { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 8px 14px; background: var(--dusk); border-bottom: 1px solid var(--edge); }
+  .brand { font-weight: 850; font-size: 19px; letter-spacing: -.01em; white-space: nowrap; }
+  .title { font-size: 13px; font-weight: 700; color: var(--leaf); border: 1px solid rgba(155,227,107,.4); border-radius: 99px; padding: 2px 10px; white-space: nowrap; }
+  .spacer { flex: 1; }
+  .hot { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .hot, .bonus { font-size: 14px; color: var(--haze); white-space: nowrap; border-radius: 99px; padding: 4px 11px; background: var(--panel); border: 0; }
+  .hot b, .bonus b { color: var(--bone); }
+  .coins { font-size: 21px; font-weight: 850; color: var(--gold); white-space: nowrap; padding: 2px 12px; border-radius: 12px; background: rgba(255,211,107,.1); font-variant-numeric: tabular-nums; }
+  .coins.bump { animation: bump .35s; }
+  @keyframes bump { 40% { transform: scale(1.18); } }
+  .shop-button { position: relative; border: 0; border-radius: 12px; background: linear-gradient(120deg, #ffd36b, #9be36b); color: #1d2a12; font-weight: 800; padding: 8px 14px; white-space: nowrap; }
+  .shop-button:hover { filter: brightness(1.08); }
+  .shop-button i { position: absolute; top: -7px; right: -7px; min-width: 20px; height: 20px; border-radius: 10px; background: var(--coral); color: #fff; font: 800 12px/20px var(--ui); text-align: center; padding: 0 5px; }
+  .shop-button.can { animation: nudge-gold 1.8s ease-in-out infinite; }
+  @keyframes nudge-gold { 50% { box-shadow: 0 0 22px rgba(255,211,107,.8); } }
+
+  .main { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) min(560px, 46vw); gap: 12px; padding: 12px; }
+  .left { min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 8px; }
+  .yard { position: relative; min-height: 0; border-radius: 16px; overflow: hidden; background: #24493f; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+  .yard canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .daybar { display: flex; align-items: center; gap: 14px; padding: 7px 12px; border-radius: 12px; background: var(--dusk); min-height: 40px; }
+  .daybar b { white-space: nowrap; }
+  .battery { display: flex; align-items: center; gap: 7px; flex: 0 1 300px; min-width: 150px; }
+  .battery i { flex: 1; height: 12px; border-radius: 6px; background: var(--panel-2); overflow: hidden; }
+  .battery i b { display: block; height: 100%; width: 100%; border-radius: 6px; background: linear-gradient(90deg, #9be36b, #8cf2c6); transition: width .12s linear; }
+  .battery.low i b { background: var(--coral); }
+  .battery span { font: 700 13px var(--mono); color: var(--haze); white-space: nowrap; }
+  .today { color: var(--haze); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .right { min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(150px, 1fr) auto auto auto; gap: 8px; }
+  .job { border-radius: 14px; background: var(--panel); padding: 10px 14px; box-shadow: inset 4px 0 0 var(--gold); }
+  .job.done { animation: job-done 1.2s; }
+  @keyframes job-done { 0%, 60% { background: #2f5a45; box-shadow: inset 4px 0 0 var(--mint), 0 0 26px rgba(140,242,198,.5); } }
+  .job-head { display: flex; align-items: baseline; gap: 8px; }
+  .job-head b { font-size: 17px; }
+  .job-head small { color: var(--haze); white-space: nowrap; }
+  .job-head .pay { margin-left: auto; color: var(--gold); font-weight: 800; white-space: nowrap; }
+  .job p { margin: 4px 0 0; font-size: 15px; color: #e2d8f2; }
+  .job .row { display: flex; align-items: center; gap: 10px; margin-top: 7px; }
+  .meter { flex: 1; height: 12px; border-radius: 6px; background: var(--panel-2); overflow: hidden; }
+  .meter b { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, #ffd36b, #ffb547); transition: width .4s; }
+  .small { font-size: 13px; padding: 4px 9px; }
+
+  .work { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .work.with-sample { grid-template-columns: minmax(0, 46fr) minmax(0, 54fr); }
+  .pane { min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; border-radius: 12px; background: #17132c; box-shadow: inset 0 0 0 1px var(--edge); overflow: hidden; }
+  .pane-head { display: flex; align-items: center; gap: 8px; padding: 5px 10px; font-size: 13px; color: var(--haze); background: var(--dusk); }
+  .pane-head b { color: var(--bone); white-space: nowrap; }
+  .pane-head span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .with-sample .pane-head .sub { display: none; }
+  .pane-head .lines { margin-left: auto; font: 700 13px var(--mono); white-space: nowrap; }
+  .pane-head .lines.over { color: var(--coral); }
+  .pane-head button { margin-left: auto; border: 0; background: none; color: var(--haze); padding: 0 4px; font-size: 16px; }
+  .sample pre { margin: 0; padding: 8px 0; overflow: auto; font: var(--code-size)/var(--line) var(--mono); }
+  .sample pre span { display: block; padding: 0 10px 0 6px; white-space: pre; color: #cfc6ea; }
+  .sample pre span::before { content: "•"; display: inline-block; width: 1.2em; color: var(--dim); }
+  .sample pre span.ok { color: var(--leaf); }
+  .sample pre span.ok::before { content: "✓"; color: var(--leaf); }
+  .sample pre span.next { background: rgba(255,211,107,.12); color: var(--bone); }
+  .sample pre span.next::before { content: "▸"; color: var(--gold); }
+  .sample .foot { padding: 6px 8px; }
+  .sample .foot button { width: 100%; }
+  .code-wrap { position: relative; min-height: 0; display: grid; grid-template-columns: 2.4em minmax(0, 1fr); }
+  .gutter { margin: 0; padding: 8px 6px 8px 0; text-align: right; overflow: hidden; color: var(--dim); font: var(--code-size)/var(--line) var(--mono); user-select: none; }
+  .gutter span { display: block; }
+  .gutter span.on { color: #12302a; background: var(--mint); border-radius: 0 6px 6px 0; font-weight: 800; }
+  .gutter span.bad { color: #fff; background: var(--coral); border-radius: 0 6px 6px 0; font-weight: 800; }
+  #code { display: block; width: 100%; height: 100%; margin: 0; padding: 8px 10px 8px 8px; border: 0; outline: 0; resize: none; background: transparent; color: var(--bone); font: var(--code-size)/var(--line) var(--mono); white-space: pre; overflow: auto; tab-size: 4; caret-color: var(--mint); }
+  .line-bar { position: absolute; left: 2.4em; right: 0; height: calc(var(--code-size) * var(--line)); background: rgba(140,242,198,.14); pointer-events: none; border-radius: 4px; }
+  .line-bar.bad { background: rgba(255,111,97,.2); }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chips button { border: 0; border-radius: 8px; padding: 4px 9px; font: 600 14px var(--mono); background: rgba(140,242,198,.14); color: var(--mint); }
+  .chips button.ask { background: rgba(143,200,255,.14); color: #9fd0ff; }
+  .chips button.shape { background: rgba(185,163,255,.16); color: var(--violet); }
+  .chips button.more { background: none; color: var(--haze); font: 600 13px var(--ui); box-shadow: inset 0 0 0 1px var(--edge); }
+  .chips button:hover { filter: brightness(1.25); }
+  .chip-help { margin: 3px 0 0; min-height: 21px; max-height: 44px; font-size: 14px; line-height: 1.5; color: var(--haze); overflow: hidden; }
+  .chip-help code { white-space: nowrap; }
+  .run-row { display: flex; align-items: center; gap: 10px; }
+  .auto { display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--edge); font-weight: 700; cursor: pointer; white-space: nowrap; user-select: none; }
+  .auto input { width: 18px; height: 18px; accent-color: var(--mint); }
+  .auto.on { border-color: var(--mint); background: rgba(140,242,198,.12); }
+  .result { border-radius: 12px; background: var(--dusk); padding: 8px 12px; font-size: 15px; min-height: 44px; max-height: 132px; overflow: auto; }
+  .result.bad { box-shadow: inset 4px 0 0 var(--coral); }
+  .result.fine { box-shadow: inset 4px 0 0 var(--leaf); }
+  .result b.head { display: block; }
+  .result p { margin: 3px 0 0; color: #e2d8f2; }
+  .result .gold { color: var(--gold); font-weight: 800; }
+
+  /* Dialogs */
+  .dialog { position: fixed; inset: 0; z-index: 30; display: grid; place-items: safe center; padding: 18px; background: rgba(12,8,26,.72); overflow: auto; }
+  .card { width: min(880px, 100%); max-height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); border-radius: 18px; background: var(--panel); box-shadow: 0 24px 70px rgba(0,0,0,.55), inset 0 0 0 1px var(--edge); overflow: hidden; }
+  .card.narrow { width: min(560px, 100%); }
+  .card-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--dusk); }
+  .card-head h2 { margin: 0; font-size: 21px; }
+  .card-head .coins { margin-left: auto; }
+  .card-body { padding: 14px 16px 18px; overflow: auto; }
+  .card-body h3 { margin: 14px 0 8px; font-size: 15px; color: var(--haze); font-weight: 700; text-transform: none; }
+  .card-body h3:first-child { margin-top: 0; }
+  .goods { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+  .good { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 10px 12px; border-radius: 14px; background: var(--panel-2); }
+  .good .ico { font-size: 34px; text-align: center; line-height: 1; }
+  .good b { display: block; }
+  .good small { display: block; color: var(--haze); font-size: 13px; line-height: 1.3; }
+  .good.have { opacity: .72; }
+  .good.locked .ico { filter: grayscale(1) brightness(.55); }
+  .buy { border: 0; border-radius: 10px; padding: 7px 12px; font-weight: 800; white-space: nowrap; background: var(--gold); color: #3a2a05; box-shadow: 0 3px 0 #b98f2b; }
+  .buy:active { transform: translateY(2px); box-shadow: 0 1px 0 #b98f2b; }
+  .buy:disabled { background: var(--edge); color: var(--haze); box-shadow: none; cursor: default; }
+  .tag { font-size: 13px; color: var(--leaf); font-weight: 700; white-space: nowrap; }
+  .decor-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+  /* A yard thing's price or tick sits under its name, so the name has the room. */
+  .decor-grid .good { grid-template-columns: 46px minmax(0, 1fr); }
+  .decor-grid .good .ico { grid-row: span 2; }
+  .decor-grid .good > :last-child { grid-column: 2; justify-self: start; }
+  .friends { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .friends button { border: 1px solid var(--edge); border-radius: 99px; background: var(--panel-2); padding: 6px 14px; }
+  .friends button.on { background: var(--mint); color: #12302a; border-color: var(--mint); font-weight: 800; }
+  .visit-yard { position: relative; aspect-ratio: 4 / 3; max-height: 62vh; width: 100%; border-radius: 14px; overflow: hidden; background: #24493f; }
+  .visit-yard canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .help ol { margin: 0; padding-left: 22px; }
+  .help li { margin: 5px 0; }
+  .help table { border-collapse: collapse; margin-top: 4px; width: 100%; }
+  .help td { padding: 4px 10px 4px 0; vertical-align: top; font-size: 15px; }
+  .help td:first-child { white-space: nowrap; }
+  .help label { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .crate { text-align: center; padding: 26px 18px 30px; }
+  .crate .box { font-size: 96px; line-height: 1.1; border: 0; background: none; display: block; margin: 0 auto 8px; }
+  .crate .box.shake { animation: shake .5s infinite; }
+  @keyframes shake { 25% { transform: rotate(-7deg); } 75% { transform: rotate(7deg); } }
+  .crate .pop { animation: pop .5s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.2); } }
+  .crate h2 { margin: 0 0 6px; }
+  .crate p { margin: 0 0 16px; color: var(--haze); }
+
+  .closed { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; }
+  .closed div { max-width: 460px; }
+  .closed h1 { font-size: 34px; margin: 0 0 8px; }
+  .closed p { color: var(--haze); margin: 0 0 22px; }
+  .closed a { text-decoration: none; display: inline-block; }
+
+  .toasts { position: fixed; z-index: 40; left: 24px; bottom: 72px; display: grid; gap: 10px; width: min(340px, calc(100vw - 32px)); pointer-events: none; }
+  .toast { display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: center; padding: 10px 14px 10px 10px; border-radius: 16px; background: rgba(44,37,80,.97); box-shadow: 0 16px 40px rgba(0,0,0,.45), inset 0 0 0 1px var(--edge); animation: slidein .45s cubic-bezier(.2,1.4,.4,1); }
+  .toast.out { animation: slideout .3s forwards; }
+  .toast .ico { font-size: 30px; text-align: center; }
+  .toast b { display: block; }
+  .toast small { color: var(--haze); font-size: 13px; }
+  @keyframes slidein { from { transform: translateX(-60px); opacity: 0; } }
+  @keyframes slideout { to { transform: translateX(-60px); opacity: 0; } }
+
+  .calm *, .calm *::before { animation: none !important; transition: none !important; }
+
+  @media (max-width: 1400px) { .hot span, .back span, .bonus span { display: none; } }
+  @media (max-width: 1000px) { .title { display: none; } }
+  @media (max-width: 900px) {
+    body { overflow: auto; }
+    .app { height: auto; min-height: 100%; }
+    .main { grid-template-columns: minmax(0, 1fr); }
+    .yard { height: 56vw; min-height: 260px; }
+    .right { grid-template-rows: auto 300px auto auto auto; }
+    .bar { flex-wrap: wrap; }
+  }
+  @media (max-height: 800px) { :root { --code-size: 15px; --line: 1.4; } .job p { font-size: 14px; } .chips button { padding: 3px 8px; font-size: 13px; } }
+</style>
+</head>
+<body>
+<main class="app" id="app" hidden>
+  <header class="bar">
+    <a class="quiet back" href="/planet" title="Back to your levels on the planet">← <span>Back to the </span>planet</a>
+    <div class="brand">🌱 Rover Farm</div>
+    <span class="title" id="title" title="Your title grows with every coin your farm earns"></span>
+    <div class="spacer"></div>
+    <div class="hot" id="hot"></div>
+    <div class="bonus" id="bonus" title="Every star you earn in the levels makes your farm earn 1% more"></div>
+    <div class="coins" id="coinsBox" title="Your coins">🪙 <span id="coins">0</span></div>
+    <button class="shop-button" id="shopButton" title="Spend your coins: a bigger field, new crops and things for your yard">🛒 Shop<i id="shopPip" hidden></i></button>
+    <button class="quiet" id="visitButton" title="Look at a classmate's farm">👀 Visit</button>
+    <button class="quiet round" id="muteButton" title="Sound on or off" aria-label="Sound on or off">🔇</button>
+    <button class="quiet round" id="helpButton" title="How the farm works" aria-label="How the farm works">?</button>
+  </header>
+  <div class="main">
+    <section class="left">
+      <div class="yard"><canvas id="yard" aria-label="Your farm, seen from above: the field, your rover and your yard"></canvas></div>
+      <div class="daybar">
+        <b id="dayLabel">Day 1</b>
+        <div class="battery" id="battery" title="Each command uses one tick of battery. The day ends when it runs out."><span>🔋</span><i><b id="batteryFill"></b></i><span id="batteryText"></span></div>
+        <span class="today" id="today"></span>
+      </div>
+    </section>
+    <section class="right">
+      <div class="job" id="job"></div>
+      <div class="work" id="work">
+        <aside class="pane sample" id="sample" hidden>
+          <div class="pane-head"><b>✍️ Type this</b><button id="sampleClose" title="Hide" aria-label="Hide the code to type">✕</button></div>
+          <pre id="sampleCode"></pre>
+          <div class="foot" id="sampleFoot" hidden><button class="quiet small" id="sampleGive" title="Puts this code in your code box">✍️ Put this in my code</button></div>
+        </aside>
+        <div class="pane">
+          <div class="pane-head"><b>Your farm day</b><span class="sub">the rover does this every day</span><span class="lines" id="lines" title="How many lines your rover remembers. More memory is in the shop."></span></div>
+          <div class="code-wrap"><pre class="gutter" id="gutter" aria-hidden="true"></pre><div class="line-bar" id="lineBar" hidden></div><textarea id="code" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Your farm program"></textarea></div>
+        </div>
+      </div>
+      <div><div class="chips" id="chips"></div><p class="chip-help" id="chipHelp">Press a word to see what it does. Then type it yourself.</p></div>
+      <div class="run-row">
+        <button class="go" id="runButton" title="Run your code as one farm day (Ctrl + Enter)">▶ Run a day</button>
+        <label class="auto" id="autoLabel" title="Runs your code day after day while you watch. You can change your code while it runs."><input type="checkbox" id="auto"> 🔁 Auto</label>
+        <button class="quiet" id="speedButton" title="How fast the day plays">1×</button>
+      </div>
+      <div class="result" id="result" aria-live="polite"></div>
+    </section>
+  </div>
+</main>
+
+<div class="closed" id="closed" hidden><div>
+  <h1>🌱 The farm is closed</h1>
+  <p id="closedSay">Your teacher hasn't opened the Rover Farm right now. Your farm is safe, just as you left it.</p>
+  <a class="go" href="/planet">← Back to the planet</a>
+</div></div>
+
+<div class="dialog" id="shop" hidden role="dialog" aria-modal="true" aria-labelledby="shopTitle">
+  <div class="card">
+    <div class="card-head"><h2 id="shopTitle">🛒 Shop</h2><div class="coins">🪙 <span id="shopCoins">0</span></div><button class="quiet" id="shopClose">Done</button></div>
+    <div class="card-body" id="shopBody"></div>
+  </div>
+</div>
+
+<div class="dialog" id="visit" hidden role="dialog" aria-modal="true" aria-labelledby="visitTitle">
+  <div class="card">
+    <div class="card-head"><h2 id="visitTitle">👀 Visit a farm</h2><span class="title" id="visitSay"></span><div class="spacer"></div><button class="quiet" id="visitClose">← Back to my farm</button></div>
+    <div class="card-body">
+      <div class="friends" id="friends"></div>
+      <div class="visit-yard" id="visitYardBox" hidden><canvas id="visitYard" aria-label="A classmate's farm"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<div class="dialog" id="help" hidden role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+  <div class="card narrow">
+    <div class="card-head"><h2 id="helpTitle">How the farm works</h2><div class="spacer"></div><button class="quiet" id="helpClose">OK</button></div>
+    <div class="card-body help">
+      <ol>
+        <li>Your code is <b>one farm day</b>. Press <b>▶ Run a day</b> and your rover does it.</li>
+        <li><code>harvest()</code> picks a ripe plant and sells it for coins. <code>plant("berry")</code> plants a new one.</li>
+        <li>Plants grow at night. Run again tomorrow and pick them.</li>
+        <li>Each command uses one tick of 🔋 battery. When it runs out, the day ends. Nothing is lost.</li>
+        <li>Spend coins in the <b>🛒 Shop</b>. A bigger field needs better code: that's the game.</li>
+      </ol>
+      <h3>What the words do</h3>
+      <table id="helpWords"></table>
+      <label><input type="checkbox" id="calmBox"> Calm mode: nothing shakes, flashes or bobs</label>
+      <label><input type="checkbox" id="bigBox"> Bigger text in the code box</label>
+    </div>
+  </div>
+</div>
+
+<div class="dialog" id="crate" hidden role="dialog" aria-modal="true" aria-labelledby="crateTitle">
+  <div class="card narrow"><div class="crate">
+    <button class="box shake" id="crateBox" aria-label="Open the crate">🎁</button>
+    <h2 id="crateTitle">A crate from the space station!</h2>
+    <p id="crateSay">You filled the order. Press the crate to open it.</p>
+    <button class="go" id="crateOpen">Open it</button>
+  </div></div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<script src="/planet/render.js"></script>
+<script src="/planet/farm.js"></script>
+</body>
+</html>

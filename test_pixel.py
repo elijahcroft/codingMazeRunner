@@ -147,6 +147,12 @@ class StudioOverHttp(unittest.TestCase):
         self.assertEqual(out["rewards"]["gained"], 0)
         self.assertEqual(out["state"]["stars"], 3)
 
+    def test_a_mission_brings_its_step_by_step_guide(self):
+        me = self.join()
+        level = self.get(f"/pixel/level?id={me}&level=a1")
+        self.assertEqual(level["coach"][0][0], 'say("Hello")')
+        self.assertFalse(level["build"])
+
     def test_badges_come_once_and_reach_the_class_feed(self):
         me = self.join()
         first = self.run_mission(me, "a1")["rewards"]["badges"]
@@ -155,84 +161,29 @@ class StudioOverHttp(unittest.TestCase):
         feed = [f["text"] for f in self.get("/pixel/overview")["feed"]]
         self.assertTrue(any("Curtain Up" in text for text in feed))
 
-    def test_stars_open_scenes(self):
-        me = self.join()
-        out = self.post("/pixel/run", {"id": me, "level": "free", "code": 'scene("beach")'})
-        self.assertIn("🔒", out["error"])
-        entry = server.players[me]["pixel"]
-        entry["solved"].update({"a1": [True] * 3, "a2": [True] * 3})
-        self.assertIsNone(self.post("/pixel/run", {"id": me, "level": "free", "code": 'scene("beach")'})["error"])
-
     def test_your_own_drawing_is_your_pal(self):
         me = self.join()
         self.assertEqual(self.get(f"/pixel/state?id={me}")["pal"], "pip")
         self.post("/pixel/save", {"id": me, "drawing": drawing("mine", frames=["0" + "." * 255], names=["happy"])})
         self.assertEqual(self.get(f"/pixel/state?id={me}")["pal"], "mine")
-        code = 'pose("happy")\nsay("Hi")'
-        self.assertIsNone(self.post("/pixel/run", {"id": me, "level": "free", "code": code})["error"])
-        self.assertIn('no "walk"', self.post("/pixel/run", {"id": me, "level": "free", "code": 'pose("walk")'})["error"])
         self.post("/pixel/pal", {"id": me, "key": "pip"})
         self.assertEqual(self.get(f"/pixel/state?id={me}")["pal"], "pip")
         self.assertIn("error", self.post("/pixel/pal", {"id": me, "key": "someone-elses"}))
 
-    def test_a_click_comes_back_as_only_its_own_steps(self):
-        me = self.join()
-        code = "say(1)\ndef on_click():\n    say(clicks())"
-        run = self.post("/pixel/run", {"id": me, "level": "free", "code": code})
-        self.assertEqual(run["events"], ["click"])
-        out = self.post("/pixel/react", {"id": me, "code": code, "seed": run["seed"], "events": ["click", "click"]})
-        self.assertEqual([s["text"] for s in out["steps"] if s["do"] == "say"], ["2"])
-
-    def test_too_many_clicks_ask_to_start_again(self):
-        me = self.join()
-        events = ["click"] * (pixel.MAX_EVENTS + 1)
-        self.assertTrue(self.post("/pixel/react", {"id": me, "code": "", "events": events})["full"])
-
-    def test_the_theatre_from_start_to_finish(self):
-        mia, ben = self.join("Mia"), self.join("Ben")
-        code = 'say("Hi")\ndef on_click():\n    jump()'
-        self.assertIn("name", self.post("/pixel/publish", {"id": mia, "code": code, "title": " "})["error"])
-        self.assertIn("problem", self.post("/pixel/publish", {"id": mia, "code": "oops(", "title": "Bad"})["error"])
-        self.assertTrue(self.post("/pixel/publish", {"id": mia, "code": code, "title": "My show"})["ok"])
-        show = self.get(f"/pixel/theatre?id={ben}")["shows"][0]
-        self.assertEqual((show["title"], show["by"], show["events"]), ("My show", "Mia", ["click"]))
-        self.assertTrue(self.get(f"/pixel/theatre?id={mia}")["shows"][0]["mine"])
-        self.assertNotIn(mia, json.dumps(show))        # an id works as a login, so it stays private
-
-        watched = self.post("/pixel/watch", {"owner": show["owner"]})
-        self.assertEqual(watched["steps"][0]["text"], "Hi")
-        click = self.post("/pixel/react", {"id": ben, "owner": show["owner"], "seed": watched["seed"], "events": ["click"]})
-        self.assertIn("jump", [s["do"] for s in click["steps"]])
-
-        self.assertIn("error", self.post("/pixel/heart", {"id": mia, "owner": show["owner"]}))
-        self.assertEqual(self.post("/pixel/heart", {"id": ben, "owner": show["owner"]})["hearts"], 1)
-        self.assertEqual(self.post("/pixel/heart", {"id": ben, "owner": show["owner"]})["hearts"], 0)
-
-        self.post("/pixel/unpublish", {"id": mia})
-        self.assertEqual(self.get("/pixel/theatre")["shows"], [])
-
-    def test_the_teacher_needs_the_key_and_can_hide_and_open(self):
+    def test_the_teacher_needs_the_key_and_can_open_missions(self):
         mia = self.join()
-        self.post("/pixel/publish", {"id": mia, "code": 'say("Hi")', "title": "Mine"})
-        owner = self.get("/pixel/theatre")["shows"][0]["owner"]
+        self.get(f"/pixel/state?id={mia}")
         self.assertIn("error", self.post("/pixel/teacher", {"key": "nope", "action": "overview"}))
         key = server.ADMIN_KEY
-        self.post("/pixel/teacher", {"key": key, "action": "hide", "owner": owner})
-        self.assertEqual(self.get("/pixel/theatre")["shows"], [])
-        self.assertIn("error", self.post("/pixel/watch", {"owner": owner}))
-        self.assertIn("error", self.post("/pixel/react", {"id": mia, "owner": owner, "events": []}))
         over = self.post("/pixel/teacher", {"key": key, "action": "overview"})
-        self.assertTrue(over["shows"][0]["hidden"])
         self.assertEqual(over["students"][0]["name"], "Mia")
-        self.post("/pixel/teacher", {"key": key, "action": "show", "owner": owner})
-        self.assertEqual(len(self.get("/pixel/theatre")["shows"]), 1)
         self.post("/pixel/teacher", {"key": key, "action": "open", "level": "b1"})
         self.assertEqual(self.get(f"/pixel/level?id={mia}&level=b1")["key"], "b1")
         server.pixel_class["open"] = 0
 
     def test_the_open_overview_has_no_student_rows(self):
         self.join()
-        self.assertEqual(set(self.get("/pixel/overview")), {"class", "feed", "address", "party", "story_play", "room_open"})
+        self.assertEqual(set(self.get("/pixel/overview")), {"feed", "address", "room_open"})
 
     def test_saves_reach_the_file_and_a_burst_shares_one_write(self):
         me = self.post("/join", {"name": "Mia"})["id"]
@@ -280,6 +231,21 @@ class Missions(unittest.TestCase):
                 self.assertIsNotNone(out["error"])
                 self.assertEqual(out["stars"], [False, False, False])
 
+    def test_the_step_by_step_guide_is_the_working_answer(self):
+        for lv in pixel.LEVELS:
+            with self.subTest(lv["key"]):
+                self.assertEqual("\n".join(line for line, why in lv["coach"]), lv["reference"])
+                self.assertTrue(all(why for line, why in lv["coach"]))
+
+    def test_every_key_in_the_guide_can_be_explained(self):
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "pixel_page.js"), encoding="utf-8") as file:
+            page = file.read()
+        words = page[page.index("const KEY_HELP"):page.index("function coachTarget")]
+        for lv in pixel.LEVELS:
+            for char in {c for line, why in lv["coach"] for c in line.strip() if not c.isalnum()}:
+                with self.subTest(lv["key"], char=char):
+                    self.assertTrue(json.dumps(char) in words or f"'{char}'" in words)
+
     def test_every_mission_has_three_goals_and_at_least_two_hints(self):
         for lv in pixel.LEVELS:
             with self.subTest(level=lv["key"]):
@@ -294,28 +260,10 @@ class Missions(unittest.TestCase):
         for lv in pixel.LEVELS:
             seen |= set(lv["adds"])
             self.assertEqual(set(pixel.commands_for(lv["key"])), seen)
-        self.assertEqual(seen, set(pixel.EVERYTHING))
 
     def test_commands_open_in_order(self):
         out = run("a1", "jump()")
         self.assertIn("isn't open yet", out["error"])
-
-    def test_hard_coding_fails_the_walk_until_mission(self):
-        out = run("e4", "right(7)")
-        self.assertFalse(out["stars"][0])
-
-    def test_weather_mission_needs_all_three(self):
-        out = run("e2", 'if weather() == "rain":\n    rain()')
-        self.assertFalse(out["stars"][0])
-
-    def test_weather_seeds_cover_all_three(self):
-        seen = {pixel.perform("weather()", seed=s)["report"].forecast for s in pixel.LEVEL_BY_KEY["e2"]["seeds"]}
-        self.assertEqual(seen, {"sun", "rain", "snow"})
-
-    def test_walk_mission_starts_are_varied(self):
-        spots = {pixel.perform("", seed=s, setup=pixel._anywhere)["steps"][0]["at"] for s in range(8)}
-        self.assertGreater(len(spots), 2)
-
 
 class TheShow(unittest.TestCase):
     """What the interpreter does with a program, and what it says when it can't."""
@@ -389,12 +337,6 @@ class TheShow(unittest.TestCase):
 
     def test_too_many_moves_stop_politely(self):
         self.assertIn("very long show", self.error("for i in range(9999):\n    jump()"))
-
-    def test_locked_things_say_when_they_open(self):
-        out = pixel.perform('scene("space")', unlocked=set())
-        self.assertIn("🔒", out["error"])
-        self.assertIn("50 stars", out["error"])
-        self.assertEqual(self.steps('scene("park")', unlocked=set())[0]["name"], "park")
 
     def test_unsafe_python_is_turned_away(self):
         for code in ('import os', 'open("x")', '().__class__', 'exec("1")', '__import__("os")',
@@ -635,50 +577,10 @@ class TeacherChecksShows(unittest.TestCase):
     def teacher(self, **data):
         return self.post("/pixel/teacher", dict(data, key=server.ADMIN_KEY))
 
-    def test_a_new_show_waits_and_nobody_sees_it(self):
-        server.pixel_class.pop("check", None)
-        mia, ben = self.join("Mia"), self.join("Ben")
-        out = self.post("/pixel/publish", {"id": mia, "code": 'say("Hi")', "title": "Secret"})
-        self.assertTrue(out["waiting"])
-        self.assertEqual(self.get("/pixel/theatre")["shows"], [])
-        self.assertNotIn("Secret", json.dumps(self.get("/pixel/overview")))
-        owner = server.pixel_public(server.players[mia])
-        self.assertEqual([s["waiting"] for s in self.teacher(action="overview")["shows"]], [True])
-        self.assertIn("error", self.post("/pixel/heart", {"id": ben, "owner": owner}))
-        self.assertTrue(self.teacher(action="show", owner=owner)["ok"])
-        self.assertEqual([s["title"] for s in self.get("/pixel/theatre")["shows"]], ["Secret"])
-        self.assertIn("Secret", json.dumps(self.get("/pixel/overview")))
-
-    def test_saying_no_keeps_it_out(self):
-        server.pixel_class.pop("check", None)
-        mia = self.join("Mia")
-        self.post("/pixel/publish", {"id": mia, "code": 'say("Hi")', "title": "Nope"})
-        self.teacher(action="hide", owner=server.pixel_public(server.players[mia]))
-        self.assertEqual(self.get("/pixel/theatre")["shows"], [])
-        self.assertNotIn("Nope", json.dumps(self.get("/pixel/overview")))
-
-    def test_only_a_pal_the_teacher_let_in_can_be_a_friend(self):
-        server.pixel_class.pop("check", None)
-        mia, ben = self.join("Mia"), self.join("Ben")
-        art = dict(drawing(), key="ink123", frames=["0" + "." * 255])
-        self.post("/pixel/save", {"id": mia, "drawing": art})
-        self.post("/pixel/publish", {"id": mia, "code": 'say("Hi")', "title": "Mine"})
-        code = {"id": ben, "level": "free", "code": 'friend("mia")'}
-        self.assertIn("in the Theatre", self.post("/pixel/run", code)["error"])
-        self.teacher(action="show", owner=server.pixel_public(server.players[mia]))
-        out = self.post("/pixel/run", code)
-        self.assertIsNone(out["error"])
-        self.assertEqual(out["steps"][0]["pal"]["frames"], art["frames"])
-        self.assertEqual(out["rewards"]["badges"][0]["name"], "Double Act")
-        self.assertEqual(self.get(f"/pixel/state?id={ben}")["class_pals"], ["Mia"])
-
     def test_the_new_trophies(self):
         mia = self.join("Mia")
         self.assertEqual(self.post("/pixel/game", {"id": mia, "game": "alive"})["badges"][0]["name"], "It's Alive!")
         self.assertEqual(self.post("/pixel/game", {"id": mia, "game": "alive"})["badges"], [])
-        self.assertEqual(self.post("/pixel/game", {"id": mia, "game": "copy", "score": 3})["badges"], [])
-        self.assertEqual(self.post("/pixel/game", {"id": mia, "game": "copy", "score": 6})["badges"][0]["name"], "Copy Cat")
-        self.assertEqual(self.post("/pixel/caught", {"id": mia, "score": 25})["badges"][0]["name"], "Star Catcher")
 
     def test_the_teacher_sees_a_picture_of_each_pal_and_the_projector_doesnt(self):
         mia = self.join("Mia")
@@ -696,28 +598,6 @@ class TeacherChecksShows(unittest.TestCase):
         self.post("/pixel/save", {"id": mia, "drawing": art})
         self.assertEqual(self.get(f"/pixel/state?id={mia}")["pal"], "ink123")
 
-    def test_the_party_button_reaches_the_projector(self):
-        before = self.get("/pixel/overview").get("party", 0)
-        self.assertTrue(self.teacher(action="party")["ok"])
-        self.assertGreater(self.get("/pixel/overview")["party"], before)
-
-    def test_a_best_catch_goes_on_the_feed_once(self):
-        mia = self.join("Mia")
-        self.assertTrue(self.post("/pixel/caught", {"id": mia, "score": 12})["ok"])
-        self.post("/pixel/caught", {"id": mia, "score": 9})
-        words = json.dumps(self.get("/pixel/overview"), ensure_ascii=False)
-        self.assertIn("caught 12 stars", words)
-        self.assertNotIn("caught 9 stars", words)
-        for bad in (-1, 0, 9999, "12", True, None):
-            self.assertIn("error", self.post("/pixel/caught", {"id": mia, "score": bad}))
-
-    def test_the_switch_lets_shows_go_straight_up(self):
-        self.teacher(action="check", on=False)
-        mia = self.join("Mia")
-        self.assertFalse(self.post("/pixel/publish", {"id": mia, "code": 'say("Hi")', "title": "Fast"})["waiting"])
-        self.assertEqual(len(self.get("/pixel/theatre")["shows"]), 1)
-
-
 class TheStagePlays(unittest.TestCase):
     """The stage's steps, run in node on a pretend canvas. A browser quietly
     forgives a lot, so a step that does nothing is only found by checking."""
@@ -729,6 +609,7 @@ class TheStagePlays(unittest.TestCase):
         const canvas = () => ({width: 0, height: 0, style: {}, getContext: () => pen});
         global.document = {createElement: canvas};
         global.localStorage = {getItem: () => null, setItem: noop};
+        global.matchMedia = () => ({matches: false});
         global.window = {};
         let now = 0;
         Object.defineProperty(global, "performance", {value: {now: () => now}, configurable: true});
@@ -758,34 +639,6 @@ class TheStagePlays(unittest.TestCase):
             return [...seen].sort();""")
         self.assertEqual(out, [0, 1, 2])
 
-    def test_the_whole_film_plays_to_its_curtain_call(self):
-        out = self.js("""
-            const blank = "0" + ".".repeat(255), pal = {size: 16, palette: ["#000000"], frames: [blank], names: []};
-            const page = (by, steps) => ({by, line: "Words.", pal, steps});
-            const film = {title: "T", start: "Once.", pages: [page("Mia", [{do: "say", text: "Hi"}, {do: "scene", name: "park"}]), page("Ben", [{do: "jump"}])]};
-            const said = [];
-            const done = await PalStage.playFilm(stage, film, {line: (w, s) => said.push(s)});
-            return {done, said, scene: stage.state.scene, bows: stage.state.bow.pups.length}""")
-        self.assertTrue(out["done"])
-        self.assertEqual(out["said"][:3], ["T", "Page 1 by Mia", "Page 2 by Ben"])
-        self.assertEqual(out["scene"], "park")           # the place carries over between pages
-        self.assertEqual(out["bows"], 2)
-
-    def test_a_filmed_scene_replays_on_a_stage(self):
-        out = self.js("""
-            const blank = "0" + ".".repeat(255), pal = {size: 16, palette: ["#000000"], frames: [blank], names: []};
-            stage.setPal(pal);
-            stage.fresh();
-            const member = (seat, name) => ({seat, name, x: 50 * seat, y: .5, mood: null, pal});
-            const live = {base: {scene: "wedding", members: [member(1, "Mia")]}, events: [
-              {t: 10, kind: "join", member: member(2, "Ben")}, {t: 20, kind: "walk", seat: 1, x: 200, y: 0},
-              {t: 30, kind: "move", seat: 2, name: "dance"}, {t: 40, kind: "say", seat: 1, text: "I do!"},
-              {t: 50, kind: "fx", name: "bouquet", x: 100}, {t: 60, kind: "feel", seat: 2, name: "happy"},
-              {t: 70, kind: "scene", name: "park"}, {t: 80, kind: "leave", seat: 2}]};
-            await stage.play([{do: "live", live}]);
-            return {scene: stage.state.scene, left: stage.state.room.map(m => m.name)}""")
-        self.assertEqual(out, {"scene": "park", "left": ["Mia"]})
-
     def test_every_kind_of_step_runs(self):
         steps = [{"do": "friend", "kind": "cat"}, {"do": "friend", "kind": "bunny"}, {"do": "friend_say", "text": "Hi", "who": "cat"},
                  {"do": "friend_jump", "who": "bunny"}, {"do": "everyone", "move": "dance"}, {"do": "bye", "who": "cat"}, {"do": "bye"},
@@ -805,70 +658,14 @@ class TheStagePlays(unittest.TestCase):
             return await stage.play({json.dumps(steps)});""")
         self.assertTrue(out)
 
-    def test_a_classmate_friend_gets_its_own_picture(self):
-        out = self.js("""
-            const blank = "0" + ".".repeat(255);
-            stage.setPal({size: 16, palette: ["#000000"], frames: [blank], names: []});
-            stage.fresh();
-            await stage.play([{do: "friend", kind: "mia", pal: {size: 16, palette: ["#ff0000"], frames: [blank], marks: ""}}]);
-            return stage.state.friend""")
-        self.assertEqual(out, "mia")
-
-
-class FreeStageIdeas(unittest.TestCase):
-    def test_every_idea_runs_for_a_brand_new_student(self):
-        for idea in pixel.IDEAS:
-            with self.subTest(idea=idea):
-                self.assertIsNone(pixel.run_free(idea, pixel.PIP, set())["error"])
-
-
-class ClassmatesAsFriends(unittest.TestCase):
-    PAL = dict(pixel.PIP, key="mia", frames=pixel.PIP["frames"][:1], names=[""], marks="")
-
-    def run_it(self, code, **extra):
-        return pixel.run_free(code, pixel.PIP, pixel.LOCKED, **extra)
-
-    def test_a_classmate_comes_on_by_name(self):
-        out = self.run_it('friend("Mia")\nfriend_say("Hi!")\nbye()', cast={"mia": self.PAL})
-        self.assertIsNone(out["error"])
-        self.assertEqual(out["steps"][0]["kind"], "mia")
-        self.assertEqual(out["steps"][0]["pal"]["frames"], self.PAL["frames"])
-        self.assertTrue(pixel.used_classmate(out))
-
-    def test_someone_not_in_the_theatre_cant_come(self):
-        out = self.run_it('friend("Mia")', cast={})
-        self.assertIn("in the Theatre", out["error"])
-
-    def test_a_built_in_friend_wins_over_a_student_called_cat(self):
-        out = self.run_it('friend("cat")', cast={"cat": self.PAL})
-        self.assertNotIn("pal", out["steps"][0])
-
-    def test_a_shared_show_survives_its_friend_leaving(self):
-        out = self.run_it('friend("Mia")\nfriend_say("Hi!")', stand_in=True)
-        self.assertIsNone(out["error"])
-        self.assertEqual(out["steps"][0]["stand_in"], "bean")
-
-
 class SeveralFriends(unittest.TestCase):
     def run_it(self, code):
-        return pixel.run_free(code, pixel.PIP, pixel.LOCKED)
+        return pixel.perform(code, pixel.PIP)
 
     def test_three_friends_can_share_the_stage(self):
         out = self.run_it('friend("cat")\nfriend("cat")\nfriend_say("Hi")')
         self.assertEqual([s["do"] for s in out["steps"]], ["friend", "friend_say"])     # no twins
         self.assertEqual(out["steps"][1]["who"], "cat")
-
-    def test_a_fourth_friend_is_told_why_not(self):
-        cast = {n: pixel.PIP for n in ("a", "b", "c", "d")}
-        out = pixel.run_free('friend("a")\nfriend("b")\nfriend("c")\nfriend("d")', pixel.PIP, pixel.LOCKED, cast=cast)
-        self.assertIn("room for 3", out["error"])
-
-    def test_a_friend_can_be_named(self):
-        cast = {"mia": pixel.PIP, "ben": pixel.PIP}
-        out = pixel.run_free('friend("Mia")\nfriend("Ben")\nfriend_say("Mia", "Hi")\nfriend_jump("Mia")\nbye("Mia")\nfriend_say("Hello")',
-                             pixel.PIP, pixel.LOCKED, cast=cast)
-        self.assertIsNone(out["error"])
-        self.assertEqual([s.get("who") for s in out["steps"][2:]], ["mia", "mia", "mia", "ben"])
 
     def test_naming_someone_who_isnt_there(self):
         self.assertIn("isn't on stage", self.run_it('friend("cat")\nfriend_say("Ben", "Hi")')["error"])
@@ -878,174 +675,18 @@ class SeveralFriends(unittest.TestCase):
         self.assertIn("The moves are", self.run_it('everyone("sing")')["error"])
 
 
-class TheClassStory(unittest.TestCase):
-    setUp, tearDown, post, get = StudioOverHttp.setUp, StudioOverHttp.tearDown, StudioOverHttp.post, StudioOverHttp.get
-    ART = dict(drawing(), key="ink123", frames=["0" + "." * 255])
-
-    def fresh(self, check=True):
-        server.pixel_class.pop("story", None)
-        server.pixel_class.pop("old_stories", None)
-        server.pixel_class.pop("check", None)
-        if not check:
-            server.pixel_class["check"] = False
-
-    def join(self, name):
-        me = self.post("/join", {"name": name})["id"]
-        self.post("/pixel/save", {"id": me, "drawing": self.ART})
-        return me
-
-    def teacher(self, **data):
-        return self.post("/pixel/teacher", dict(data, key=server.ADMIN_KEY))
-
-    def add(self, me, line="Then a thing happened.", code='say("Hi")'):
-        return self.post("/pixel/story/add", {"id": me, "code": code, "line": line})
-
-    def book(self, me=""):
-        return self.get(f"/pixel/story?id={me}")
-
-    def test_a_page_waits_then_joins_the_book(self):
-        self.fresh()
-        mia, ben = self.join("Mia"), self.join("Ben")
-        out = self.add(mia, "The cat found a map.")
-        self.assertTrue(out["waiting"])
-        self.assertEqual(out["badges"][0]["name"], "Storyteller")
-        self.assertEqual(self.book(ben)["pages"], [])
-        self.assertEqual(self.get("/pixel/film")["pages"], [])
-        self.assertEqual(self.book(mia)["waiting"]["line"], "The cat found a map.")
-        self.assertNotIn("found a map", json.dumps(self.get("/pixel/overview")))
-        page = self.teacher(action="overview")["story"]["pages"][0]
-        self.teacher(action="page_ok", page=page["id"])
-        self.assertEqual([p["line"] for p in self.book(ben)["pages"]], ["The cat found a map."])
-        self.assertIn("page 1", json.dumps(self.get("/pixel/overview"), ensure_ascii=False))
-
-    def test_a_page_needs_words_and_working_code(self):
-        self.fresh()
-        mia = self.join("Mia")
-        self.assertIn("sentence", self.add(mia, "  ")["error"])
-        self.assertIn("problem", self.add(mia, code="oops(")["error"])
-        self.assertIn("Nothing happens", self.add(mia, code="n = 1")["error"])
-        self.assertIn("long page", self.add(mia, code="for i in range(70):\n    jump()")["error"])
-
-    def test_a_second_page_replaces_the_one_still_waiting(self):
-        self.fresh()
-        mia = self.join("Mia")
-        self.add(mia, "First go.")
-        self.add(mia, "Better go.")
-        pages = self.teacher(action="overview")["story"]["pages"]
-        self.assertEqual([p["line"] for p in pages], ["Better go."])
-
-    def test_a_waiting_page_keeps_its_code_for_changing(self):
-        self.fresh()
-        mia = self.join("Mia")
-        self.add(mia, "One.", 'jump()')
-        self.assertEqual(self.book(mia)["waiting"]["code"], "jump()")
-        self.assertNotIn("code", self.book(mia)["pages"])
-
-    def test_a_student_can_take_back_a_waiting_page_but_not_anothers(self):
-        self.fresh()
-        mia, ben = self.join("Mia"), self.join("Ben")
-        self.add(mia)
-        page = self.book(mia)["waiting"]["id"]
-        self.post("/pixel/story/take", {"id": ben, "page": page})
-        self.assertIsNotNone(self.book(mia)["waiting"])
-        self.post("/pixel/story/take", {"id": mia, "page": page})
-        self.assertIsNone(self.book(mia)["waiting"])
-
-    def test_the_class_writes_it_together_in_the_order_it_was_let_in(self):
-        self.fresh(check=False)
-        for name, line in (("Mia", "One."), ("Ben", "Two."), ("Ana", "Three.")):
-            self.add(self.join(name), line)
-        self.assertEqual([p["line"] for p in self.book()["pages"]], ["One.", "Two.", "Three."])
-        ids = [p["id"] for p in self.book()["pages"]]
-        self.teacher(action="page_up", page=ids[2])
-        self.assertEqual([p["line"] for p in self.book()["pages"]], ["One.", "Three.", "Two."])
-        self.teacher(action="page_no", page=ids[0])
-        self.assertEqual([p["line"] for p in self.book()["pages"]], ["Three.", "Two."])
-
-    def test_the_film_has_every_page_ready_to_play(self):
-        self.fresh(check=False)
-        self.add(self.join("Mia"), "One.", 'say("Hi")\nwave()')
-        film = self.get("/pixel/film")
-        self.assertEqual([s["do"] for s in film["pages"][0]["steps"]], ["say", "wave"])
-        self.assertEqual(film["pages"][0]["pal"]["frames"], self.ART["frames"])
-
-    def test_a_pal_joins_the_cast_with_the_teachers_ok(self):
-        self.fresh()
-        mia, ben = self.join("Mia"), self.join("Ben")
-        self.assertEqual(self.book(mia)["joined"], False)
-        self.assertTrue(self.post("/pixel/story/cast", {"id": mia})["waiting"])
-        self.assertEqual(self.book(mia)["joined"], "waiting")
-        code = {"id": ben, "level": "free", "code": 'friend("Mia")'}
-        self.assertIn("in the Theatre or the story", self.post("/pixel/run", code)["error"])
-        waiting = self.teacher(action="overview")["story"]["cast_waiting"]
-        self.assertEqual(waiting[0]["by"], "Mia")
-        self.teacher(action="cast_ok", owner=waiting[0]["owner"])
-        self.assertIsNone(self.post("/pixel/run", code)["error"])
-        self.assertEqual(self.book(ben)["cast"], ["Mia"])
-
-    def test_pip_cant_join_the_cast(self):
-        self.fresh()
-        me = self.post("/join", {"name": "Zed"})["id"]
-        self.assertIn("Draw your pal", self.post("/pixel/story/cast", {"id": me})["error"])
-
-    def test_writing_a_page_brings_your_pal_into_the_cast(self):
-        self.fresh(check=False)
-        self.add(self.join("Mia"))
-        self.assertEqual(self.book()["cast"], ["Mia"])
-
-    def test_let_everyone_in(self):
-        self.fresh()
-        mia, ben = self.join("Mia"), self.join("Ben")
-        self.add(mia)
-        self.post("/pixel/story/cast", {"id": ben})
-        self.post("/pixel/publish", {"id": ben, "code": 'say("Hi")', "title": "Show"})
-        self.teacher(action="all_in")
-        self.assertEqual(len(self.book()["pages"]), 1)
-        self.assertEqual(self.book()["cast"], ["Ben", "Mia"])
-        self.assertEqual(len(self.get("/pixel/theatre")["shows"]), 1)
-
-    def test_a_new_story_puts_the_old_one_away(self):
-        self.fresh(check=False)
-        self.add(self.join("Mia"))
-        self.teacher(action="story_words", title="The Lost Star", start="A star fell.")
-        self.assertEqual(self.book()["title"], "The Lost Star")
-        self.teacher(action="story_new")
-        self.assertEqual(self.book()["pages"], [])
-        self.assertEqual(server.pixel_class["old_stories"][0]["title"], "The Lost Star")
-
-    def test_a_page_survives_its_friend_leaving(self):
-        self.fresh(check=False)
-        mia, ben = self.join("Mia"), self.join("Ben")
-        self.post("/pixel/story/cast", {"id": mia})
-        self.add(ben, "Hello.", 'friend("Mia")\nfriend_say("Mia", "Hi")')
-        self.teacher(action="cast_no", owner=server.pixel_public(server.players[mia]))
-        steps = self.get("/pixel/film")["pages"][0]["steps"]
-        self.assertEqual(steps[0]["stand_in"], "bean")
-
-    def test_every_story_idea_works_for_a_brand_new_student(self):
-        for idea in pixel.STORY_IDEAS:
-            with self.subTest(idea=idea):
-                self.assertIsNone(pixel.run_free(idea, pixel.PIP, set())["error"])
-
-    def test_the_story_is_saved(self):
-        self.fresh(check=False)
-        self.add(self.join("Mia"), "Kept.")
-        server.save_state()
-        with open(server.STATE_FILE) as saved:
-            self.assertIn("Kept.", saved.read())
-
-
 class PlayingTogether(unittest.TestCase):
     setUp, tearDown, post, get = StudioOverHttp.setUp, StudioOverHttp.tearDown, StudioOverHttp.post, StudioOverHttp.get
 
     def open_room(self, words=False):
         server.pixel_room.update(server.room_empty(), open=True, words=words)
-        self.addCleanup(lambda: server.pixel_room.update(server.room_empty(), open=False, words=False))
+        self.addCleanup(lambda: server.pixel_room.update(server.room_empty(), open=True, words=False))
 
     def join(self, name):
         me = self.post("/join", {"name": name})["id"]
         art = dict(drawing(), key="ink123", frames=["0" + "." * 255])
         self.post("/pixel/save", {"id": me, "drawing": art})
+        server.pixel_entry(server.players[me])["solved"].update({k: [True] * 3 for k in ("a1", "a2", "a3")})
         return me
 
     def do(self, me, what, **more):
@@ -1057,12 +698,12 @@ class PlayingTogether(unittest.TestCase):
     def teacher(self, **data):
         return self.post("/pixel/teacher", dict(data, key=server.ADMIN_KEY))
 
-    def test_the_teacher_opens_the_room(self):
+    def test_the_teacher_can_close_and_open_the_room(self):
         server.pixel_room.update(server.room_empty(), open=False, words=False)
         mia = self.join("Mia")
         self.assertIn("closed", self.do(mia, "join")["error"])
         self.teacher(action="room", on=True)
-        self.addCleanup(lambda: server.pixel_room.update(server.room_empty(), open=False, words=False))
+        self.addCleanup(lambda: server.pixel_room.update(server.room_empty(), open=True, words=False))
         self.assertTrue(self.do(mia, "join")["ok"])
         self.assertTrue(self.get("/pixel/overview")["room_open"])
 
@@ -1083,8 +724,6 @@ class PlayingTogether(unittest.TestCase):
         self.do(mia, "join")
         self.do(mia, "move", name="dance")
         self.assertNotIn(mia, json.dumps(self.view()))
-        self.do(mia, "film_start")
-        self.assertNotIn(mia, json.dumps(self.view()))
 
     def test_words_come_from_the_list_unless_typing_is_on(self):
         self.open_room()
@@ -1099,10 +738,10 @@ class PlayingTogether(unittest.TestCase):
         self.open_room()
         mia = self.join("Mia")
         self.do(mia, "join")
-        for what, more in (("move", {"name": "fly"}), ("fx", {"name": "bomb"}), ("scene", {"name": "castle"}), ("walk", {"x": "a", "y": 0}), ("nope", {})):
+        for what, more in (("move", {"name": "fly"}), ("fx", {"name": "bomb"}), ("go", {"name": "castle"}), ("toy", {"name": "bomb", "x": 50, "y": 0}), ("find", {"key": "nope"}), ("scene", {"name": "park"}), ("walk", {"x": "a", "y": 0}), ("nope", {})):
             with self.subTest(what=what):
                 self.assertIn("error", self.do(mia, what, **more))
-        self.assertTrue(self.do(mia, "scene", name="wedding")["ok"])
+        self.assertTrue(self.do(mia, "go", name="wedding")["ok"])
 
     def test_someone_who_goes_away_leaves_the_room(self):
         self.open_room()
@@ -1123,32 +762,445 @@ class PlayingTogether(unittest.TestCase):
         self.assertLess(time.time() - start, 1.5)
         self.assertEqual(news["events"][0]["kind"], "move")
 
-    def test_a_film_becomes_a_page_of_the_book(self):
-        self.open_room()
-        server.pixel_class.pop("story", None)
-        server.pixel_class["check"] = False
-        mia, ben = self.join("Mia"), self.join("Ben")
+class TheHangOut(unittest.TestCase):
+    setUp, tearDown, post, get = StudioOverHttp.setUp, StudioOverHttp.tearDown, StudioOverHttp.post, StudioOverHttp.get
+    do, view, teacher = PlayingTogether.do, PlayingTogether.view, PlayingTogether.teacher
+    FIRST = 'say("Hello")\nsay("I am so happy to be here")'
+    MOVE = 'say("Hooray!")\nsay("rude words")\nspin()\nfor i in range(3):\n    jump()\n    hearts()\ndance()\ncheer()'
+
+    def setup_room(self):
+        server.pixel_room.update(server.room_empty(), open=True, words=False)
+        server.pixel_class.pop("hang", None)
+        server.pixel_class.pop("placed", None)
+        self.addCleanup(lambda: (server.pixel_room.update(server.room_empty(), open=True, words=False), server.pixel_class.pop("hang", None), server.pixel_class.pop("placed", None)))
+
+    def student(self, name, solved=("a1", "a2", "a3")):
+        me = self.post("/join", {"name": name})["id"]
+        self.post("/pixel/save", {"id": me, "drawing": dict(drawing(), key="ink123", frames=["0" + "." * 255])})
+        entry = server.pixel_entry(server.players[me])
+        entry["solved"].update({k: [True] * 3 for k in solved})
+        return me
+
+    def mission(self, me, key, code):
+        return self.post("/pixel/run", {"id": me, "level": key, "code": code})
+
+    def with_move(self, name, code=None):
+        me = self.student(name, tuple(pixel.LEVEL_ORDER[:-1]))
+        out = self.mission(me, "m1", code or self.MOVE)
+        self.assertTrue(out["stars"][0], out)
+        self.do(me, "join")
+        return me
+
+    def news(self, kind):
+        return [e for e in server.pixel_room["events"] if e["kind"] == kind]
+
+    def test_it_opens_after_the_third_mission(self):
+        self.setup_room()
+        me = self.student("Mia", ())
+        self.assertEqual(self.get(f"/pixel/state?id={me}")["hang"]["needs"], 3)
+        self.assertEqual(self.do(me, "join")["error"], "locked")
+        self.mission(me, "a1", self.FIRST)
+        self.mission(me, "a2", "jump()\njump()")
+        out = self.mission(me, "a3", "right(5)")
+        self.assertTrue(out["rewards"]["hang_opened"])
+        self.assertEqual(out["state"]["hang"]["needs"], 0)
+        self.assertTrue(self.do(me, "join")["ok"])
+
+    def test_a_first_finish_gives_a_gift_once_and_fills_the_meter(self):
+        self.setup_room()
+        me = self.student("Mia", ())
+        out = self.mission(me, "a1", self.FIRST)
+        self.assertIn(out["rewards"]["gift"], pixel.BOX_GIFTS)
+        self.assertEqual(out["state"]["hang"]["gifts"], [out["rewards"]["gift"]])
+        self.assertEqual(server.hang_meter()["points"], pixel.MISSION_POINTS)
+        again = self.mission(me, "a1", self.FIRST)
+        self.assertFalse(again["rewards"]["first"])
+        self.assertNotIn("gift", again["rewards"])
+        self.assertEqual(server.hang_meter()["points"], pixel.MISSION_POINTS)
+
+    def test_every_mission_can_give_a_different_gift(self):
+        self.assertGreaterEqual(len(pixel.BOX_GIFTS), len(pixel.LEVELS))
+
+    def test_the_finale_makes_a_my_move_with_its_perks(self):
+        self.setup_room()
+        me = self.student("Mia", tuple(pixel.LEVEL_ORDER[:-1]))
+        small = self.mission(me, "m1", "jump()\nspin()\ndance()")
+        self.assertEqual(small["rewards"]["move"], {"title": "My Move", "loop": False, "big": False, "actions": 3})
+        big = self.mission(me, "m1", self.MOVE)
+        self.assertEqual((big["rewards"]["move"]["loop"], big["rewards"]["move"]["big"]), (True, True))
+        self.assertIn("error", self.post("/pixel/move/name", {"id": me, "name": "anything I type"}))
+        named = self.post("/pixel/move/name", {"id": me, "name": "Moon Hop"})
+        self.assertEqual(named["state"]["hang"]["move"]["title"], "Moon Hop")
+        self.assertEqual(self.mission(me, "m1", self.MOVE)["rewards"]["move"]["title"], "Moon Hop")
+
+    def test_a_failed_finale_changes_nothing(self):
+        self.setup_room()
+        me = self.student("Mia", tuple(pixel.LEVEL_ORDER[:-1]))
+        self.assertNotIn("move", self.mission(me, "m1", "jump()")["rewards"])
+        self.assertIsNone(server.pixel_entry(server.players[me])["move"])
+
+    def test_everyone_sees_a_my_move(self):
+        self.setup_room()
+        mia, ben = self.with_move("Mia"), self.student("Ben")
+        self.do(ben, "join")
+        seq = self.view(ben)["seq"]
+        self.assertTrue(self.do(mia, "mymove")["ok"])
+        event = self.view(ben, seq)["events"][0]
+        self.assertEqual((event["kind"], event["by"], event["loop"], event["big"]), ("mymove", "Mia", True, True))
+        self.assertEqual([s["do"] for s in event["steps"]][:2], ["say", "spin"])
+        self.assertNotIn(mia, json.dumps(event))
+
+    def test_a_my_move_only_says_listed_words_unless_typing_is_on(self):
+        self.setup_room()
+        mia = self.with_move("Mia")
+        self.do(mia, "mymove")
+        said = [s["text"] for s in self.news("mymove")[-1]["steps"] if s["do"] == "say"]
+        self.assertEqual(said, ["Hooray!"])
+        server.pixel_room["here"][mia]["move_until"] = 0
+        self.teacher(action="room_words", on=True)
+        self.do(mia, "mymove")
+        said = [s["text"] for s in self.news("mymove")[-1]["steps"] if s["do"] == "say"]
+        self.assertEqual(said, ["Hooray!", "rude words"])
+        self.assertIn("rude words", self.teacher(action="overview")["room"]["said"])
+
+    def test_a_pal_sits_and_reads_until_it_walks_away(self):
+        self.setup_room()
+        mia = self.student("Mia")
+        self.do(mia, "join")
+        self.assertTrue(self.do(mia, "rest", name="sit", x=104, y=.05)["ok"])
+        event = self.news("rest")[-1]
+        self.assertEqual((event["name"], event["x"], event["y"]), ("sit", 104, .05))
+        self.assertTrue(self.do(mia, "rest", name="read")["ok"])
+        self.assertEqual(self.news("rest")[-1]["x"], 104)
+        self.assertEqual(self.view()["members"][0]["rest"], "read")     # someone arriving later sees it
+        self.do(mia, "walk", x=200, y=.5)
+        self.assertIsNone(self.view()["members"][0]["rest"])
+
+    def test_other_drawings_come_along_as_buddies(self):
+        self.setup_room()
+        mia = self.student("Mia")
+        ink = "0" + "." * 255
+        for key in ("one", "two"):
+            self.post("/pixel/save", {"id": mia, "drawing": drawing(key=key, frames=[ink])})
+        self.post("/pixel/save", {"id": mia, "drawing": drawing(key="blank")})
+        self.do(mia, "join")
+        self.assertEqual(self.view()["members"][0]["buddies"], [])     # off to start, so hide and seek works
+        self.assertTrue(self.do(mia, "buddies", on=True)["on"])
+        self.assertEqual(len(self.view()["members"][0]["buddies"]), 2)     # not the pal, not the blank page
+
+    def test_a_student_can_switch_which_drawing_they_are(self):
+        self.setup_room()
+        mia = self.student("Mia")
+        ink = "1" + "." * 255
+        self.post("/pixel/save", {"id": mia, "drawing": drawing(key="two", frames=[ink])})
+        self.do(mia, "join")
+        self.do(mia, "buddies", on=True)
+        self.assertEqual(self.do(mia, "pal", key="two"), {"ok": True, "pal": "two"})
+        row = self.view()["members"][0]
+        self.assertEqual(row["pal"]["frames"], [ink])
+        self.assertEqual([b["frames"] for b in row["buddies"]], [["0" + "." * 255]])     # the old pal comes along
+        event = self.news("pal")[-1]
+        self.assertEqual((event["seat"], event["pal"]["frames"]), (row["seat"], [ink]))
+        self.assertEqual(self.get(f"/pixel/state?id={mia}")["pal"], "two")
+
+    def test_only_your_own_finished_drawings_can_be_your_pal(self):
+        self.setup_room()
+        mia, ben = self.student("Mia"), self.student("Ben")
+        self.post("/pixel/save", {"id": ben, "drawing": drawing(key="bens")})
+        self.post("/pixel/save", {"id": mia, "drawing": drawing(key="blank")})
+        self.do(mia, "join")
+        for key in ("bens", "blank", None):
+            self.assertIn("error", self.do(mia, "pal", key=key))
+        self.assertEqual(self.get(f"/pixel/state?id={mia}")["pal"], "ink123")
+
+    def test_a_student_can_hide_their_name_from_the_class(self):
+        self.setup_room()
+        mia = self.student("Mia")
+        self.do(mia, "join")
+        self.assertTrue(self.do(mia, "hidename", on=True)["on"])
+        self.assertEqual(self.news("name")[-1]["name"], "Secret pal")
+        self.assertTrue(self.news("name")[-1]["hid"])                                  # the stage drops the tag completely
+        self.assertTrue(self.view()["members"][0]["hid"])
+        self.assertEqual(self.view()["members"][0]["name"], "Secret pal")
+        self.assertEqual(self.view()["people"][0]["name"], "Secret pal")
+        self.assertEqual(self.teacher(action="overview")["room"]["here"], ["Mia"])     # the teacher still knows
+        self.assertTrue(self.get(f"/pixel/state?id={mia}")["hang"]["hide_name"])
+        self.assertFalse(self.do(mia, "hidename", on=False)["on"])
+        self.assertEqual(self.news("name")[-1]["name"], "Mia")
+        self.assertFalse(self.news("name")[-1]["hid"])
+        self.assertEqual(self.view()["members"][0]["name"], "Mia")
+
+    def test_a_pal_can_turn_into_a_prop_for_prop_hunt(self):
+        self.setup_room()
+        mia = self.student("Mia")
+        self.do(mia, "join")
+        self.assertFalse(self.view()["members"][0]["prop"])
+        self.assertTrue(self.do(mia, "prop", on=True)["on"])
+        self.assertTrue(self.view()["members"][0]["prop"])
+        self.assertTrue(self.news("prop")[-1]["on"])
+        self.assertFalse(self.do(mia, "prop", on=False)["on"])
+
+    def test_only_a_few_buddies_come_along(self):
+        self.setup_room()
+        mia = self.student("Mia")
+        for i in range(6):
+            self.post("/pixel/save", {"id": mia, "drawing": drawing(key=f"pic{i}", frames=["0" + "." * 255])})
+        self.do(mia, "join")
+        self.do(mia, "buddies", on=True)
+        self.assertEqual(len(self.view()["members"][0]["buddies"]), pixel.ROOM_BUDDIES)
+
+    def test_the_world_is_as_long_as_the_places_that_are_open(self):
+        self.setup_room()
+        mia = self.student("Mia")
+        self.do(mia, "join")
+        self.do(mia, "walk", x=5000, y=.5)
+        self.assertEqual(self.news("walk")[-1]["x"], 4 * pixel.PLACE_W - 8)
+        with server.lock:
+            server.hang_fill(pixel.party_goal(0))
+        self.do(mia, "walk", x=5000, y=.5)
+        self.assertEqual(self.news("walk")[-1]["x"], 5 * pixel.PLACE_W - 8)
+
+    def test_going_somewhere_takes_only_you(self):
+        self.setup_room()
+        mia, ben = self.student("Mia"), self.student("Ben")
         self.do(mia, "join")
         self.do(ben, "join")
-        self.do(mia, "film_start")
-        self.assertIn("error", self.do(ben, "film_start"))
-        self.do(ben, "say", text="I do!")
-        self.do(mia, "fx", name="hearts")
-        self.do(ben, "film_stop")                                  # only the one filming can stop it
-        self.assertIsNotNone(server.pixel_room["film"])
-        self.do(mia, "film_stop")
-        self.assertIn("sentence", self.post("/pixel/story/live", {"id": mia, "line": " "})["error"])
-        self.assertTrue(self.post("/pixel/story/live", {"id": mia, "line": "They got married!"})["ok"])
-        self.assertIn("error", self.post("/pixel/story/live", {"id": mia, "line": "Again"}))
-        film = self.get("/pixel/film")
-        step = film["pages"][0]["steps"][0]
-        self.assertEqual(step["do"], "live")
-        self.assertEqual([e["kind"] for e in step["live"]["events"]], ["say", "fx"])
-        self.assertEqual(sorted(m["name"] for m in step["live"]["base"]["members"]), ["Ben", "Mia"])
-        self.assertNotIn(mia, json.dumps(film))
+        spots = lambda: {m["name"]: m["x"] for m in self.view()["members"]}
+        ben_was = spots()["Ben"]
+        self.do(mia, "go", name="beach")
+        self.assertEqual(spots(), {"Mia": 2 * pixel.PLACE_W + 160, "Ben": ben_was})
 
-    def test_the_wedding_is_open_to_everyone(self):
-        self.assertIsNone(pixel.run_free('scene("wedding")', pixel.PIP, set())["error"])
+    def place(self, me, key="ink123", x=100):
+        with server.lock:
+            server.pixel_room["here"][me]["placed"] = 0
+        return self.do(me, "place", key=key, x=x, y=.5)
+
+    def test_a_placed_drawing_is_there_for_everyone(self):
+        self.setup_room()
+        mia, ben = self.student("Mia"), self.student("Ben")
+        self.do(mia, "join")
+        self.do(ben, "join")
+        self.assertTrue(self.place(mia)["ok"])
+        self.assertNotIn(mia, json.dumps(self.news("place")[-1]))
+        self.assertTrue(self.view(mia)["placed"][0]["mine"])
+        self.assertFalse(self.view(ben)["placed"][0]["mine"])
+        self.assertNotIn(mia, json.dumps(self.view(ben)["placed"]))
+
+    def test_only_your_own_real_drawings_can_be_placed(self):
+        self.setup_room()
+        mia = self.student("Mia")
+        self.do(mia, "join")
+        self.post("/pixel/save", {"id": mia, "drawing": drawing(key="blank")})
+        self.assertEqual(self.place(mia, "blank")["error"], "bad")
+        self.assertEqual(self.place(mia, "someone-elses")["error"], "bad")
+
+    def test_a_new_drawing_replaces_your_oldest_at_the_limit(self):
+        self.setup_room()
+        mia = self.student("Mia")
+        self.do(mia, "join")
+        for x in range(10, 10 + pixel.PLACED_EACH + 1):
+            self.place(mia, x=x)
+        self.assertEqual([p["x"] for p in self.view(mia)["placed"]], list(range(11, 11 + pixel.PLACED_EACH)))
+
+    def test_only_the_owner_can_take_one_back(self):
+        self.setup_room()
+        mia, ben = self.student("Mia"), self.student("Ben")
+        self.do(mia, "join")
+        self.do(ben, "join")
+        self.place(mia)
+        placed = self.view(mia)["placed"][0]["id"]
+        self.do(ben, "unplace", piece=placed)
+        self.assertEqual(len(self.view()["placed"]), 1)
+        self.do(mia, "unplace", piece=placed)
+        self.assertEqual(self.view()["placed"], [])
+
+    def test_deleting_a_drawing_takes_it_out_of_the_world(self):
+        self.setup_room()
+        mia = self.student("Mia")
+        self.do(mia, "join")
+        self.place(mia)
+        self.post("/pixel/delete", {"id": mia, "key": "ink123"})
+        self.assertEqual(self.view()["placed"], [])
+
+    def test_the_teacher_can_remove_placed_drawings(self):
+        self.setup_room()
+        mia, ben = self.student("Mia"), self.student("Ben")
+        self.do(mia, "join")
+        self.do(ben, "join")
+        self.place(mia)
+        self.place(ben)
+        self.assertEqual(self.teacher(action="overview")["placed"], {"Mia": 1, "Ben": 1})
+        self.teacher(action="placed_clear", name="Mia")
+        self.assertEqual(self.teacher(action="overview")["placed"], {"Ben": 1})
+        self.teacher(action="placed_clear")
+        self.assertEqual(self.view()["placed"], [])
+
+    def test_a_toy_has_to_wait_a_moment(self):
+        self.setup_room()
+        mia = self.student("Mia")
+        self.do(mia, "join")
+        self.assertTrue(self.do(mia, "toy", name="splash", x=160, y=.05)["ok"])
+        self.assertEqual(self.do(mia, "toy", name="splash", x=160, y=.05)["error"], "wait")
+
+    def test_a_gem_counts_once_and_only_in_an_open_place(self):
+        self.setup_room()
+        mia = self.student("Mia")
+        self.do(mia, "join")
+        self.assertEqual(self.do(mia, "find", key="park0")["found"], 1)
+        self.assertEqual(self.do(mia, "find", key="park0")["found"], 1)
+        self.assertEqual(self.do(mia, "find", key="snowy0")["error"], "bad")
+        self.assertEqual(self.get(f"/pixel/state?id={mia}")["hang"]["found"], ["park0"])
+
+    def test_every_gem_earns_the_badge(self):
+        self.setup_room()
+        mia = self.student("Mia")
+        self.do(mia, "join")
+        with server.lock:
+            server.pixel_entry(server.players[mia])["found"] = list(pixel.HANG_FINDS[1:])
+        self.assertEqual(self.do(mia, "find", key="park0")["badges"][0]["name"], "Treasure Hunter")
+
+    def test_a_pal_cannot_rest_in_a_made_up_way(self):
+        self.setup_room()
+        mia = self.student("Mia")
+        self.do(mia, "join")
+        self.assertEqual(self.do(mia, "rest", name="fly")["error"], "bad")
+        self.assertEqual(self.do(mia, "rest", name="sit", x="far", y=0)["error"], "bad")
+
+    def test_a_my_move_has_to_wait_its_turn(self):
+        self.setup_room()
+        mia = self.with_move("Mia")
+        self.assertTrue(self.do(mia, "mymove")["ok"])
+        self.assertEqual(self.do(mia, "mymove")["error"], "wait")
+
+    def test_no_my_move_yet(self):
+        self.setup_room()
+        ben = self.student("Ben")
+        self.do(ben, "join")
+        self.assertIn("error", self.do(ben, "mymove"))
+
+    def test_a_my_move_walks_but_stays_in_the_room(self):
+        steps = pixel.compile_move([{"do": "walk", "to": 10, "by": 8}, {"do": "walk", "to": 0, "by": 10}])
+        played, x, _ = pixel.stage_move(steps, 300, False)
+        self.assertEqual(([s["x"] for s in played], x), ([312, 52], 52))
+
+    def test_a_long_program_is_cut_short(self):
+        self.assertEqual(len(pixel.compile_move([{"do": "jump"}] * 200)), pixel.MOVE_MAX)
+
+    def test_claps_are_only_for_a_move_that_is_playing(self):
+        self.setup_room()
+        mia, ben = self.with_move("Mia"), self.student("Ben")
+        self.do(ben, "join")
+        seat = server.pixel_room["here"][mia]["seat"]
+        self.assertIn("error", self.do(ben, "clap", seat=seat))
+        self.do(mia, "mymove")
+        self.assertIn("error", self.do(mia, "clap", seat=seat))
+        self.assertTrue(self.do(ben, "clap", seat=seat)["ok"])
+        self.assertTrue(self.do(ben, "clap", seat=seat)["ok"])          # too quick to count
+        self.assertEqual([e["claps"] for e in self.news("clap")], [1])
+
+    def test_a_high_five_makes_a_friend_both_ways_only_once(self):
+        self.setup_room()
+        mia, ben = self.student("Mia"), self.student("Ben")
+        self.do(mia, "join")
+        self.do(ben, "join")
+        here = server.pixel_room["here"]
+        self.assertIn("error", self.do(mia, "five", seat=here[mia]["seat"]))
+        self.assertEqual(self.do(mia, "five", seat=here[ben]["seat"])["friends"], ["Ben"])
+        self.assertEqual(self.get(f"/pixel/state?id={ben}")["hang"]["friends"], ["Mia"])
+        self.assertEqual(self.news("five")[-1]["fresh"], [here[mia]["seat"], here[ben]["seat"]])
+        here[mia]["fived"] = 0
+        self.do(mia, "five", seat=here[ben]["seat"])
+        self.assertEqual(self.news("five")[-1]["fresh"], [])
+        self.assertEqual(self.get(f"/pixel/state?id={mia}")["hang"]["friends"], ["Ben"])
+
+    def test_the_first_pal_to_a_star_gets_it_and_combos_climb(self):
+        self.setup_room()
+        mia, ben = self.student("Mia"), self.student("Ben")
+        self.do(mia, "join")
+        self.do(ben, "join")
+        self.teacher(action="shower")
+        count = len(server.pixel_room["shower"]["stars"])
+        self.assertEqual(count, 10)
+        self.assertTrue(self.do(mia, "catch", star=0)["ok"])
+        self.assertEqual(self.do(ben, "catch", star=0)["error"], "gone")
+        self.do(mia, "catch", star=1)
+        self.assertEqual([e["combo"] for e in self.news("catch")], [1, 2])
+        for star in (2, 3):
+            self.assertEqual(self.do(mia, "catch", star=star)["badges"], [])
+        self.assertEqual(self.do(mia, "catch", star=4)["badges"][0]["name"], "Star Catcher")
+
+    def test_a_shower_starts_by_itself_and_ends(self):
+        self.setup_room()
+        mia = self.student("Mia")
+        self.do(mia, "join")
+        self.assertIsNone(server.pixel_room["shower"])
+        server.pixel_room["next_shower"] = 0
+        self.assertTrue(self.view(mia)["members"] is not None)
+        self.assertIsNotNone(server.pixel_room["shower"])
+        self.assertTrue(self.view(mia)["shower"])                        # someone arriving late sees it too
+        server.pixel_room["shower"]["ends"] = 0
+        self.view(mia)
+        self.assertIsNone(server.pixel_room["shower"])
+        self.assertEqual(self.news("shower_end")[-1]["kind"], "shower_end")
+
+    def test_you_can_only_wear_what_you_own(self):
+        self.setup_room()
+        me = self.post("/join", {"name": "Mia"})["id"]
+        server.pixel_entry(server.players[me])["solved"].update({k: [True] * 3 for k in ("a1", "a2", "a3")})
+        server.pixel_entry(server.players[me])["gifts"].append("tophat")
+        self.do(me, "join")
+        self.assertIn("error", self.do(me, "wear", slot="hat", item="party"))
+        self.assertIn("error", self.do(me, "wear", slot="face", item="tophat"))
+        self.assertIn("error", self.do(me, "wear", slot="nose", item="tophat"))
+        self.assertTrue(self.do(me, "wear", slot="hat", item="tophat")["ok"])
+        self.assertEqual(self.view(me)["members"][0]["wear"], {"hat": "tophat"})
+        self.assertTrue(self.do(me, "wear", slot="hat", item=None)["ok"])
+        self.assertEqual(self.view(me)["members"][0]["wear"], {})
+
+    def test_a_full_meter_is_a_party_with_a_new_place_for_everyone(self):
+        self.setup_room()
+        me = self.student("Mia")
+        self.do(me, "join")
+        self.assertIn("error", self.do(me, "go", name="snowy"))
+        with server.lock:
+            server.hang_fill(pixel.party_goal(0) + 1)
+        party = self.news("party")[-1]
+        self.assertEqual(party["reward"]["key"], "snowy")
+        self.assertEqual(server.hang_meter(), {"points": 1, "level": 1})
+        self.assertIn("snowy", self.view(me)["places"])
+        self.assertTrue(self.do(me, "go", name="snowy")["ok"])
+
+    def test_a_class_gift_comes_to_everyone(self):
+        self.setup_room()
+        me = self.student("Mia")
+        with server.lock:
+            server.hang_fill(pixel.party_goal(0))
+            server.hang_fill(pixel.party_goal(1))
+        self.assertIn("crown", self.get(f"/pixel/state?id={me}")["hang"]["gifts"])
+
+    def test_a_my_move_fills_the_meter_only_once_in_a_while(self):
+        self.setup_room()
+        mia = self.with_move("Mia")
+        before = server.hang_meter()["points"]
+        self.do(mia, "mymove")
+        server.pixel_room["here"][mia]["move_until"] = 0
+        self.do(mia, "mymove")
+        self.assertEqual(server.hang_meter()["points"], before + pixel.MOVE_POINTS)
+
+    def test_the_teacher_can_throw_a_party(self):
+        self.setup_room()
+        self.assertTrue(self.teacher(action="party")["ok"])
+        self.assertIsNone(self.news("party")[-1]["reward"])
+
+    def test_old_saves_with_shows_and_cut_missions_still_load(self):
+        self.setup_room()
+        me = self.student("Mia")
+        entry = server.pixel_entry(server.players[me])
+        entry["solved"]["g4"] = [True] * 3
+        entry["show"] = {"title": "Old"}
+        state = self.get(f"/pixel/state?id={me}")
+        self.assertEqual(state["stars"], 9)
+        self.assertEqual(state["max_stars"], 27)
 
 
 class TheMarks(unittest.TestCase):
@@ -1196,7 +1248,7 @@ class AliveOnStage(unittest.TestCase):
         self.assertEqual(steps[0]["do"], "pose")
 
     def test_every_page_script_is_served(self):
-        for path in ("/pixel/rig.js", "/pixel/gallery.js", "/pixel/life.js", "/pixel/island.js", "/pixel/interiors.js"):
+        for path in ("/pixel/rig.js", "/pixel/gallery.js", "/pixel/life.js", "/pixel/hangout.js"):
             self.assertIn(path, server.PAGES)
 
 

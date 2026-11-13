@@ -3,206 +3,210 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pixel Pals Theatre</title>
+<title>Pixel Pals Hang out</title>
 <style>
-  :root { color-scheme: dark; --ink: #1b1530; --sun: #ffd23f; --pop: #ff5fa2; }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   html, body { height: 100%; }
-  body { margin: 0; overflow: hidden; background: #140f26; color: #fff; font: 800 18px/1.3 ui-rounded, "Nunito", system-ui, "Segoe UI", Roboto, sans-serif; }
-  .page { height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: minmax(0, 1fr) 120px; gap: 14px; padding: 14px; }
-  .screen-wrap { min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-  .now { display: flex; align-items: baseline; gap: 12px; }
-  .now b { font-size: 30px; font-weight: 900; color: var(--sun); }
-  .room { flex: 1; min-height: 0; display: flex; justify-content: center; align-items: flex-start; }
-  .screen { position: relative; aspect-ratio: 16 / 9; border: 3px solid #fff; background: #000; }
-  .screen canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
-  .tag { position: absolute; transform: translateX(-50%); padding: 0 6px; background: rgba(255, 255, 255, .88); color: #1b1530; border-radius: 6px; font-size: clamp(12px, 1.3vw, 18px); font-weight: 800; pointer-events: none; white-space: nowrap; }
-  .bubble { position: absolute; transform: translate(-50%, -100%); max-width: 46%; padding: 6px 12px; background: #fff; color: var(--ink); border: 3px solid var(--ink); border-radius: 10px; font-size: clamp(16px, 2vw, 30px); line-height: 1.2; text-align: center; overflow-wrap: anywhere; }
-  .bubble.friend { background: #fff6cf; }
+  body { margin: 0; overflow: hidden; background: linear-gradient(#e9f4ee, #f6f1e2); color: #2c5352; font: 800 18px/1.3 ui-rounded, "Nunito", system-ui, "Segoe UI", Roboto, sans-serif; }
+  .page { height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) 290px; grid-template-rows: auto minmax(0, 1fr); gap: 14px; padding: 14px; }
+  .meter-row { grid-column: 1 / -1; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 8px 18px; background: #fffdf6; border-radius: 18px; font-size: 22px; }
+  .track { height: 20px; background: #e8efe4; border-radius: 10px; overflow: hidden; }
+  .track i { display: block; height: 100%; width: 0; border-radius: 10px; background: linear-gradient(90deg, #ff9fb5, #ffd27a, #8fd0c8); transition: width .5s ease; }
+  #next { font-size: 18px; color: #7a6a40; }
+  .room { min-height: 0; min-width: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px; }
+  .world { flex: none; width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+  .cam { display: flex; gap: 6px; align-items: center; }
+  .cam button, #people button { font: inherit; color: inherit; border: 0; border-radius: 12px; background: #fffdf6; padding: 8px 12px; cursor: pointer; }
+  .cam button[aria-pressed="true"], #people button[aria-pressed="true"] { background: #ffd27a; }
+  #map { position: relative; height: 66px; display: flex; border-radius: 14px; overflow: hidden; cursor: pointer; background: #fffdf6; }
+  #map .place { flex: 1; padding: 3px 8px; font-size: 13px; color: #5f7c75; border-left: 2px solid #e8efe4; }
+  #map .view { position: absolute; top: 0; bottom: 0; background: #ffd27a55; border: 2px solid #f5b83d; border-radius: 10px; pointer-events: none; }
+  #map .who { position: absolute; bottom: 5px; transform: translateX(-50%); padding: 0 6px; background: #2c5352; color: #fffdf6; border-radius: 8px; font-size: 13px; white-space: nowrap; }
+  #camWord { font-size: 15px; color: #5f7c75; white-space: nowrap; }
+  #people { display: flex; flex-direction: column; gap: 4px; max-height: 44vh; overflow: auto; }
+  #people button { display: grid; text-align: left; background: #eef4e8; padding: 4px 10px; font-size: 16px; line-height: 1.15; }
+  #people small { font-size: 13px; font-weight: 700; color: #5f7c75; }
+  #places { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+  #places button { font: inherit; font-size: 14px; color: inherit; border: 0; border-radius: 12px; background: #eef4e8; padding: 4px 10px; cursor: pointer; }
+  #places button[aria-pressed="true"] { background: #ffd27a; }
+  #placeTag { position: absolute; left: 14px; top: 12px; padding: 4px 14px; background: #fffdf6ee; border-radius: 14px; font-size: clamp(16px, 1.8vw, 26px); pointer-events: none; }
+  .screen { position: relative; aspect-ratio: 16 / 9; border-radius: 26px; overflow: hidden; background: #bfe3dc; box-shadow: 0 8px 28px #2c535233; }
+  .screen canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+  #stage { image-rendering: pixelated; cursor: grab; touch-action: none; }
+  .tag { position: absolute; transform: translateX(-50%); padding: 0 8px; background: #fffdf6e8; color: #2c5352; border-radius: 9px; font-size: clamp(12px, 1.3vw, 18px); pointer-events: none; white-space: nowrap; }
+  .bubble { position: absolute; transform: translate(-50%, -100%); max-width: 46%; padding: 6px 14px; background: #fff; color: #2c5352; border-radius: 16px; box-shadow: 0 3px 12px #2c535240; font-size: clamp(16px, 2vw, 30px); line-height: 1.2; text-align: center; overflow-wrap: anywhere; }
+  .float { position: absolute; transform: translate(-50%, 0); font-size: clamp(20px, 2.4vw, 34px); font-weight: 900; color: #fff; text-shadow: 0 1px 0 #2c5352, 0 0 4px #2c5352; pointer-events: none; animation: up 1.4s ease-out forwards; }
+  .float.combo { color: #ffd93b; font-size: clamp(30px, 4vw, 54px); }
+  @keyframes up { to { transform: translate(-50%, -80px); opacity: 0; } }
+  #banner { position: absolute; left: 50%; top: 5%; transform: translateX(-50%); max-width: 90%; padding: 8px 24px; background: #fffdf6f2; border-radius: 20px; font-size: clamp(20px, 2.4vw, 36px); white-space: nowrap; }
+  #banner.big { top: 24%; padding: 18px 44px; text-align: center; font-size: clamp(36px, 5vw, 76px); font-weight: 900; color: #d9477e; }
+  #banner small { display: block; font-size: .42em; color: #2c5352; }
+  #closed { position: absolute; inset: 0; display: grid; place-items: center; background: #fffdf6e0; font-size: 34px; }
   .side { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
-  .card { background: #241b40; border: 2px solid #4a3e72; border-radius: 10px; padding: 10px 12px; }
-  .label { margin: 0 0 4px; font-size: 14px; color: #c5b8ea; }
-  .address { font-size: 19px; color: var(--sun); overflow-wrap: anywhere; }
-  .meter { height: 16px; margin-top: 6px; background: #120c24; border: 2px solid #fff; border-radius: 8px; overflow: hidden; }
-  .meter i { display: block; height: 100%; background: var(--sun); }
+  .card { background: #fffdf6; border-radius: 18px; padding: 12px 14px; }
+  .label { margin: 0 0 4px; font-size: 14px; color: #5f7c75; }
+  .address { font-size: 19px; color: #d9477e; overflow-wrap: anywhere; }
   #feed { margin: 0; padding: 0; list-style: none; font-size: 15px; font-weight: 700; overflow: hidden; flex: 1; }
   #feed li { margin-bottom: 5px; }
-  #narrate { position: absolute; left: 4%; right: 4%; top: 3%; margin: 0; padding: 6px 16px; background: #fffdf4; color: #1b1530; border: 3px solid #1b1530; border-radius: 10px; font-size: clamp(18px, 2.4vw, 32px); font-weight: 800; line-height: 1.2; text-align: center; }
-  #parade { grid-column: 1 / -1; width: 100%; height: 100%; display: block; image-rendering: pixelated; background: #49ad5f; border: 2px solid #4a3e72; border-radius: 10px; }
 </style>
 </head>
 <body>
 <div class="page">
-  <section class="screen-wrap">
-    <div class="now"><b id="showName">Pixel Pals</b><span id="showBy"></span></div>
-    <div class="room"><div class="screen" id="host"><canvas id="stage" aria-label="The class show"></canvas><p id="narrate" hidden></p></div></div>
-  </section>
+  <div class="meter-row"><span>🎉 Class party</span><div class="track"><i id="bar"></i></div><span id="words"></span><span id="next"></span></div>
+  <section class="room"><div class="screen" id="host"><canvas id="back" aria-hidden="true"></canvas><canvas id="stage" aria-label="Everyone's pals, hanging out"></canvas>
+    <div id="placeTag" hidden></div><div id="banner" hidden></div><div id="closed" hidden>The Hang out is closed for now.</div></div>
+    <div class="world">
+      <div class="cam"><button id="camLeft" aria-label="Move the camera left">◀</button><button id="camRight" aria-label="Move the camera right">▶</button><button id="camAuto">🎬 Auto</button></div>
+      <div id="map" aria-label="Map of the world. Click to move the camera."></div>
+      <span id="camWord"></span>
+    </div></section>
   <aside class="side">
     <div class="card"><p class="label">Join in at</p><div class="address" id="address"></div></div>
-    <div class="card"><p class="label">Class stars</p><div id="stars">★ 0</div><div class="meter"><i id="meter" style="width:0"></i></div></div>
+    <div class="card"><p class="label">Look at</p><div id="places"></div><p class="label">Who's here (click to follow)</p><div id="people"></div></div>
     <div class="card" style="flex:1;min-height:0;display:flex;flex-direction:column"><p class="label">Just now</p><ul id="feed"></ul></div>
   </aside>
-  <canvas id="parade" aria-label="Every pal in the class walking by"></canvas>
 </div>
 <script src="/pixel/art.js"></script>
 <script src="/pixel/rig.js"></script>
 <script src="/pixel/stage.js"></script>
+<script src="/pixel/hangout.js"></script>
 <script>
 "use strict";
 const $ = id => document.getElementById(id);
+const esc = value => String(value).replace(/[&<>"']/g, ch => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[ch]));
 const stage = PalStage.create($("stage"), $("host"));
-let overview = null, shows = [], turn = 0;
-
-// Pip keeps the stage warm until the class has shows of its own.
-const PIP_PAL = {size: 16, speed: 4, palette: ["#1b1530", "#ff8fc7"], names: [], frames: [Array.from(
+const PIP = {size: 16, speed: 4, palette: ["#1b1530", "#ff8fc7"], names: [], frames: [Array.from(
   PixelArt.fromRows(PixelArt.STARTERS.Bean), n => n < 0 ? "." : n === PixelArt.INK ? "0" : "1").join("")]};
-const PIP_SHOW = [
-  {do: "say", text: "Welcome to the Theatre!"}, {do: "jump"}, {do: "walk", to: 6, by: 4},
-  {do: "say", text: "Draw a pal. Write some code."}, {do: "spin"}, {do: "hearts"},
-  {do: "say", text: "Your show could be next!"}, {do: "walk", to: 2, by: 4},
-];
 
 function fit() {
   const room = document.querySelector(".room").getBoundingClientRect();
-  $("host").style.width = Math.floor(Math.min(room.width, room.height * 16 / 9)) + "px";
+  $("host").style.width = Math.floor(Math.min(room.width, (room.height - 80) * 16 / 9)) + "px";
 }
 new ResizeObserver(fit).observe(document.querySelector(".room"));
 
-const wait = ms => new Promise(r => setTimeout(r, ms));
-// The teacher's Play the story button: the whole book, start to finish.
-let storySeen = null, storyWanted = false;
-const narrator = {
-  line(words, small) {
-    $("narrate").hidden = false;
-    $("narrate").textContent = words;
-    $("showBy").textContent = small || "";
-  },
+let bannerTimer = 0;
+function banner(html, ms, big) {
+  $("banner").innerHTML = html;
+  $("banner").className = big ? "big" : "";
+  $("banner").hidden = false;
+  clearTimeout(bannerTimer);
+  bannerTimer = setTimeout(() => { $("banner").hidden = true; }, ms);
+}
+stage.setPal(PIP);
+stage.fresh();
+stage.state.visible = false;
+stage.state.soft = true;
+stage.state.scene = "park";
+stage.roomHooks({everySound: true});
+
+// ---- The camera: Auto goes to whoever's up to something, or you can drive -------------------
+const PLACE_W = PalStage.W, PLACE_WORD = {home: "🏠 Home", park: "🌳 Park", wedding: "💒 Wedding", beach: "🏖️ Beach", night: "🌙 Night", snowy: "⛄ Snowy hill", candy: "🍭 Candy land", space: "🚀 Space"};
+const cam = {mode: "auto", seat: null, x: 0, moveOn: 0, loc: 0};
+let people = [], homeName = "", watcher = null;
+// Which place the screen shows: 0 is outside, any other number is someone's home.
+function lookAt(loc) {
+  if (loc === cam.loc) return;
+  cam.loc = loc;
+  if (!loc) cam.x = 0;
+  if (watcher) watcher.now();
+}
+const crew = () => stage.state.room || [];
+const worldWide = () => (stage.state.places || ["park"]).length * PLACE_W;
+const keepIn = x => Math.max(0, Math.min(worldWide() - PLACE_W, x));
+stage.state.camera = () => {
+  const who = cam.mode !== "free" && crew().find(m => m.seat === cam.seat);
+  return who ? who.x - PLACE_W / 2 : cam.x;
 };
-async function playClassStory() {
-  storyWanted = false;
-  const film = await fetch("/pixel/film").then(r => r.json()).catch(() => null);
-  if (!film || !film.pages.length) return;
-  $("showName").textContent = `📖 ${film.title}`;
-  await PalStage.playFilm(stage, film, narrator);
-  $("narrate").hidden = true;
+function drive(x) { cam.mode = "free"; cam.x = keepIn(x); paintWorld(); }
+function followSeat(seat) {
+  const m = people.find(m => m.seat === seat);
+  cam.mode = "follow"; cam.seat = seat;
+  if (m) lookAt(m.loc);
+  paintWorld();
 }
-// While the room is open, this screen shows it, and it's the one that plays the sounds.
-let roomLive = false;
-async function watchRoom() {
-  $("showName").textContent = "🎪 Playing together";
-  $("showBy").textContent = "";
-  stage.setPal(PIP_PAL);
-  stage.fresh();
-  const stop = PalStage.follow(stage, {everySound: true});
-  while (roomLive && !storyWanted) await wait(500);
-  stop();
-  stage.fresh();
+function goAuto() { cam.mode = "auto"; cam.moveOn = 0; paintWorld(); }
+// Auto takes turns with everyone, inside the homes too.
+function autoLook(now) {
+  if (cam.mode !== "auto" || now < cam.moveOn || !people.length) return;
+  const at = people.findIndex(m => m.seat === cam.seat), next = people[(at + 1) % people.length];
+  cam.seat = next.seat;
+  lookAt(next.loc);
+  cam.moveOn = now + 8000;
 }
-async function nextShow() {
-  if (storyWanted) { await playClassStory(); return wait(1000); }
-  if (roomLive) return watchRoom();
-  const pick = shows.length ? shows[turn++ % shows.length] : null;
-  if (!pick) {
-    $("showName").textContent = "Coming up: your show!";
-    $("showBy").textContent = "";
-    stage.setPal(PIP_PAL);
-    stage.fresh();
-    await stage.play(PIP_SHOW);
-    return wait(1500);
+const SHOW_THESE = ["mymove", "toy", "five", "found", "go", "rest", "move", "fx"];
+function autoNotice(e) {
+  const now = performance.now();
+  if (cam.mode !== "auto" || !SHOW_THESE.includes(e.kind) || now < cam.moveOn - 5000) return;     // at least 3 seconds on each person
+  cam.seat = e.seat;
+  cam.moveOn = now + 8000;
+}
+function paintWorld() {
+  const places = stage.state.places || ["park"], wide = worldWide(), left = stage.state.camX || 0, list = crew();
+  $("map").innerHTML = places.map(p => `<div class="place">${p === "home" ? `🏠 ${esc(homeName)}'s home` : PLACE_WORD[p]}</div>`).join("") +
+    `<div class="view" style="left:${left / wide * 100}%;width:${PLACE_W / wide * 100}%"></div>` +
+    list.map(m => `<span class="who" style="left:${Math.max(2, Math.min(98, m.x / wide * 100))}%">${esc(m.name)}</span>`).join("");
+  $("people").innerHTML = people.map(m => `<button data-seat="${m.seat}" aria-pressed="${cam.mode === "follow" && cam.seat === m.seat}"><span>${esc(m.name)}</span>
+    <small>${m.loc ? esc(m.where) : PLACE_WORD[m.where] || ""}${m.doing ? " · " + esc(m.doing) : ""}</small></button>`).join("") || "Nobody yet";
+  const homes = [...new Map(people.filter(m => m.loc).map(m => [m.loc, m.home])).entries()];
+  $("places").innerHTML = `<button data-loc="0" aria-pressed="${!cam.loc}">🌳 Outside (${people.filter(m => !m.loc).length})</button>` +
+    homes.map(([loc, name]) => `<button data-loc="${loc}" aria-pressed="${cam.loc === loc}">🏠 ${esc(name)} (${people.filter(m => m.loc === loc).length})</button>`).join("");
+  $("placeTag").hidden = !cam.loc;
+  $("placeTag").textContent = cam.loc ? `🏠 ${homeName}'s home` : "";
+  $("camAuto").setAttribute("aria-pressed", cam.mode === "auto");
+  const who = list.find(m => m.seat === cam.seat);
+  $("camWord").textContent = cam.mode === "free" ? "You're driving" : who ? `Watching ${who.name}` : "";
+}
+setInterval(() => { autoLook(performance.now()); paintWorld(); }, 250);
+$("camLeft").addEventListener("click", () => drive((stage.state.camX || 0) - PLACE_W / 2));
+$("camRight").addEventListener("click", () => drive((stage.state.camX || 0) + PLACE_W / 2));
+$("camAuto").addEventListener("click", goAuto);
+$("map").addEventListener("pointerdown", e => {
+  const r = $("map").getBoundingClientRect();
+  drive((e.clientX - r.left) / r.width * worldWide() - PLACE_W / 2);
+});
+$("people").addEventListener("pointerdown", e => { const b = e.target.closest("[data-seat]"); if (b) followSeat(+b.dataset.seat); });
+$("places").addEventListener("pointerdown", e => {
+  const b = e.target.closest("[data-loc]");
+  if (!b) return;
+  lookAt(+b.dataset.loc);
+  cam.mode = "free"; cam.x = 0;
+  paintWorld();
+});
+let dragFrom = null;
+$("stage").addEventListener("pointerdown", e => { dragFrom = {px: e.clientX, x: stage.state.camX || 0}; $("stage").setPointerCapture(e.pointerId); });
+$("stage").addEventListener("pointermove", e => {
+  if (dragFrom) drive(dragFrom.x - (e.clientX - dragFrom.px) / $("stage").getBoundingClientRect().width * PLACE_W);
+});
+$("stage").addEventListener("pointerup", () => { dragFrom = null; });
+addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft" || e.key === "ArrowRight") drive((stage.state.camX || 0) + (e.key === "ArrowLeft" ? -80 : 80));
+});
+PalHang.start($("back"), () => stage.state);
+watcher = PalStage.follow(stage, {everySound: true, loc: () => cam.loc, onState(data) {
+  people = data.people || [];
+  homeName = data.home ? data.home.name : "";
+  if (cam.loc && !people.some(m => m.loc === cam.loc)) lookAt(0);     // everyone left that home
+  $("closed").hidden = data.open;
+  $("bar").style.width = Math.min(100, data.meter.points / data.meter.goal * 100) + "%";
+  $("words").textContent = `${data.meter.points} of ${data.meter.goal}`;
+  $("next").textContent = data.meter.next ? `Next: ${data.meter.next}` : "Next: a party!";
+  for (const e of data.events) {
+    autoNotice(e);
+    if (e.kind === "mymove") banner(`✨ <b>${esc(e.by)}</b>: ${esc(e.title)}`, e.ms + 700);
+    else if (e.kind === "party") banner(`🎉 CLASS PARTY! 🎉${e.reward ? `<small>New for everyone: ${esc(e.reward.name)}</small>` : ""}`, 6000, true);
+    else if (e.kind === "shower") banner("🌠 Star shower!", 3500);
   }
-  $("showName").textContent = pick.title;
-  $("showBy").textContent = `by ${pick.by}  ♥ ${pick.hearts}`;
-  const response = await fetch("/pixel/watch", {method: "POST", headers: {"Content-Type": "application/json"},
-                                                body: JSON.stringify({owner: pick.owner})}).catch(() => null);
-  const out = response ? await response.json().catch(() => null) : null;
-  if (!out || !out.steps) return wait(1500);
-  stage.setPal(out.pal);
-  stage.fresh();
-  await Promise.race([stage.play(out.steps), wait(60000)]);
-  stage.cheer();
-  return wait(2800);
-}
-async function theatreLoop() {
-  for (;;) await nextShow();
-}
+}});
 
 async function refresh() {
-  const [over, theatre] = await Promise.all([
-    fetch("/pixel/overview").then(r => r.json()).catch(() => null),
-    fetch("/pixel/theatre").then(r => r.json()).catch(() => null),
-  ]);
-  if (theatre) shows = theatre.shows;
+  const over = await fetch("/pixel/overview").then(r => r.json()).catch(() => null);
   if (!over) return;
-  overview = over;
   $("address").textContent = over.address;
-  const goal = over.class.goals[0];
-  $("stars").textContent = goal ? `★ ${over.class.stars} of ${goal.class}` : `★ ${over.class.stars}`;
-  $("meter").style.width = goal ? Math.min(100, over.class.stars / goal.class * 100) + "%" : "100%";
-  $("feed").innerHTML = over.feed.slice().reverse().map(f => {
-    const li = document.createElement("li");
-    li.textContent = f.text;
-    return li.outerHTML;
-  }).join("");
-  // Only pals that are in the Theatre walk here: drawings are private until
-  // a student shares them, and the teacher's Hide takes them out too.
-  const book = await fetch("/pixel/story").then(r => r.json()).catch(() => null);
-  const seen = new Set();
-  buildParade([...shows.map(s => s.pal), ...(book ? book.pages.map(p => p.pal) : [])].filter(pal => {
-    const same = seen.has(pal.frames[0]);
-    seen.add(pal.frames[0]);
-    return !same;
-  }));
-  if (partySeen !== null && over.party > partySeen) startParty();
-  partySeen = over.party;
-  if (over.room_open !== roomLive) { roomLive = over.room_open; stage.stop(); }
-  if (storySeen !== null && over.story_play > storySeen) { storyWanted = true; stage.stop(); }
-  storySeen = over.story_play;
+  $("feed").innerHTML = over.feed.slice().reverse().map(f => `<li>${esc(f.text)}</li>`).join("");
 }
-
-// ---- The parade: every pal in the class, walking along the bottom ---------------
-let walkers = [];
-function buildParade(pals) {
-  const list = pals.length ? pals : [PIP_PAL];
-  if (walkers.length === list.length) return;
-  walkers = list.map((pal, i) => ({x: i * 96, pup: PalStage.puppet(pal, Math.max(1, Math.floor(80 / pal.size)), i + 3)}));
-}
-// The teacher's Dance party: everyone stops where they are and dances.
-const PARTY_SECONDS = 14;
-let partySeen = null, partyUntil = 0, drift = 0, lastParade = 0, bits = [];
-function startParty() {
-  partyUntil = performance.now() + PARTY_SECONDS * 1000;
-  PalStage.SFX.play("yay");
-}
-function parade(now) {
-  requestAnimationFrame(parade);
-  const cv = $("parade"), rect = cv.getBoundingClientRect(), g = cv.getContext("2d");
-  if (!rect.width) return;
-  if (cv.width !== Math.round(rect.width)) { cv.width = Math.round(rect.width); cv.height = Math.round(rect.height); }
-  g.imageSmoothingEnabled = false;
-  g.drawImage(PalStage.sceneArt("park"), 0, 104, 320, 66, 0, 0, cv.width, cv.height);
-  const room = Math.max(cv.width + 96, walkers.length * 96), t = now / 1000, party = now < partyUntil;
-  if (!party) drift += now - (lastParade || now);
-  lastParade = now;
-  walkers.forEach((w, i) => {
-    const x = ((w.x + drift / 26) % room) - 48;
-    const pose = PalStage.livePose(w.pup.rigOf(0), w.pup.lifeline, t + i, {move: party ? "dance" : "walk", moveT: t + i * .13});
-    w.pup.draw(g, 0, pose, x, cv.height - 10);
-  });
-  if (party && bits.length < 90) {
-    bits.push({x: Math.random() * cv.width, y: -8, vy: 1 + Math.random() * 2, hue: Math.floor(Math.random() * 5)});
-  }
-  bits = bits.filter(b => b.y < cv.height);
-  for (const b of bits) {
-    b.y += b.vy;
-    g.fillStyle = ["#ff5fa2", "#ffd93b", "#35d0bd", "#7ab8ff", "#c5a3ff"][b.hue];
-    g.fillRect(Math.round(b.x), Math.round(b.y), 6, 6);
-  }
-}
-
 setInterval(refresh, 4000);
-requestAnimationFrame(parade);
-refresh().finally(theatreLoop);      // know what's on before the curtain goes up
+refresh();
 </script>
 </body>
 </html>
