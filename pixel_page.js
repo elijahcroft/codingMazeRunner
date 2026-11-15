@@ -102,12 +102,17 @@ async function showView(name) {
   }
   paintSteps(name);
 }
+// A student who has drawn but never coded gets a way into the Code tab from Draw.
+function drewSomething() {
+  return shelfList.some(d => /[^.]/.test(d.frames[0])) || (!!art && /[^.]/.test(A.encode(art.frames[0])));
+}
 function missionsWord(n) { return `${n} more mission${n === 1 ? "" : "s"}`; }
 // The three steps along the top, and the one big button saying what's next.
 function paintSteps(name) {
   $("tabHang").textContent = S.hang.needs ? "🔒 Hang out" : "🎉 Hang out";
   const go = $("goNext"), hasMove = !!S.hang.move;
   const next = name === "life" ? ["💻 Code my pal →", "stage"]
+    : name === "draw" && !S.stars && drewSomething() ? ["💻 Now code my pal →", "stage"]
     : name === "stage" && !S.hang.needs ? ["🎉 Go hang out →", "hang"]
     : name === "hang" && !hasMove ? ["🌟 Make My Move →", "stage"]
     : name === "hang" ? ["💻 Code more →", "stage"] : null;
@@ -148,6 +153,11 @@ async function openMission(key) {
   mode = key;
   view = data;
   hintsShown = 0;
+  guessAsked = false;
+  guessWaiting = false;
+  guessPick = null;
+  remixOn = false;
+  remixHint = false;
   coachWay = null;
   coachOops = "";
   $("levelName").textContent = `${data.chapter.icon} ${data.name}`;
@@ -160,6 +170,7 @@ async function openMission(key) {
   $("hint").hidden = false;
   $("hint").textContent = "Help me";
   drawGoals(data.best);
+  paintYourTurn();
   setCode(recall(codeKey(key)) ?? data.code ?? "");
   buildChips(data.commands, data.new, data.python, data.fresh_python);
   verdict(null);
@@ -170,6 +181,50 @@ async function openMission(key) {
 function drawGoals(got) {
   $("goals").innerHTML = view.goals.map((g, i) =>
     `<li class="${got[i] ? "got" : ""}"><i>${got[i] ? "★" : "☆"}</i><span>${fmt(g)}</span></li>`).join("");
+}
+
+// ---- Guess first: before the guide's code runs the first time, what will it do? ---------------
+let guessAsked = false, guessPick = null, guessWaiting = false;
+function wantsGuess() {
+  return !!view.guess && !guessAsked && !view.best[0] && !remixOn && $("code").value === coachTarget();
+}
+function askGuess() {
+  guessAsked = true;
+  guessWaiting = true;
+  paintCoach();
+  const g = view.guess;
+  $("caption").textContent = "Guess first, then watch!";
+  verdict(`<p><b>🔮 Guess first!</b> ${fmt(g.ask)}</p><p class="next">${g.choices.map((c, i) =>
+    `<button class="btn main" data-guess="${i}">${esc(c)}</button>`).join(" ")} <button class="btn" data-guess="skip">Just show me</button></p>`);
+}
+function guessLine(g) {
+  return g.right ? `<p class="guess-said">🔮 You guessed right! +${view.guess.coins} 🪙</p>`
+    : `<p class="guess-said">🔮 Good guess! It was really: <b>${esc(g.answer)}</b>. Look at the code to see why.</p>`;
+}
+
+// ---- Your turn: after a mission, one change to make with the guide off ----------------------
+let remixOn = false, remixHint = false;
+function paintYourTurn() {
+  const box = $("yourTurn"), t = view.remix;
+  box.hidden = !view.best[0] || t.done;
+  box.classList.toggle("on", remixOn);
+  if (box.hidden) return;
+  box.innerHTML = remixOn
+    ? `<p>🎨 Your turn: ${fmt(t.ask)}</p><p class="turn-hint">No guide this time. Change the code yourself, then press <b>▶ Show time!</b></p>` +
+      (remixHint ? `<p class="turn-hint">💡 ${fmt(t.hint)}</p>` : `<button class="btn" data-remix-hint="1">💡 Where do I change it?</button>`)
+    : `<p>🎨 Your turn: ${fmt(t.ask)}</p><button class="btn main" data-remix="1">Try it! +${t.coins} 🪙</button>`;
+}
+function startRemix() {
+  remixOn = true;
+  coachWay = "own";
+  if (!$("code").value.trim()) setCode(view.code || view.coach.map(c => c[0]).join("\n"));
+  paintYourTurn();
+  updateEditor();
+  verdict(`<p>🎨 <b>Your turn!</b> ${fmt(view.remix.ask)}</p><p>Change the code on the left yourself. You can do it!</p>`);
+  $("code").focus();
+}
+function remixButton() {
+  return view.remix.done || remixOn ? "" : ` <button class="btn" data-remix="1">🎨 Your turn +${view.remix.coins} 🪙</button>`;
 }
 
 // ---- Chips -----------------------------------------------------------------------------
@@ -399,6 +454,8 @@ const coachActions = {
   steps() { showSteps(); },
 };
 function showSteps() {
+  remixOn = false;
+  paintYourTurn();
   coachWay = "type";
   coachOops = "";
   updateEditor();
@@ -426,7 +483,9 @@ function paintType(box) {
   const names = [...lines.map((c, i) => `Line ${i + 1}`), "▶ Show time!"];
   if (done) {
     $("runButton").classList.add("nudge");
-    box.innerHTML = stepList(names, lines.length) + `<p class="coach-say">🎉 You typed it all!</p><p class="coach-next">👇 Now press the pink <b>▶ Show time!</b> button.</p>`;
+    box.innerHTML = stepList(names, lines.length) + (guessWaiting
+      ? `<p class="coach-say">🔮 Before you watch: guess what will happen!</p><p class="coach-next">👉 Pick your guess under the stage, on the right.</p>`
+      : `<p class="coach-say">🎉 You typed it all!</p><p class="coach-next">👇 Now press the pink <b>▶ Show time!</b> button.</p>`);
     return;
   }
   const whole = lines[at][0], indent = /^ */.exec(whole)[0].length, line = whole.slice(indent);
@@ -481,6 +540,8 @@ async function playSteps(steps) {
 }
 async function runShow() {
   if (running || !mode || coachBlocks()) return;
+  if (wantsGuess()) { askGuess(); return; }
+  if (guessWaiting) { guessWaiting = false; paintCoach(); }
   running = true;
   const ticket = ++runTicket;
   saveCode();
@@ -492,7 +553,7 @@ async function runShow() {
   setBand(0);
   $("caption").textContent = "The curtain goes up...";
   let out = null;
-  try { out = await post("/pixel/run", {id: me, level: mode, code: $("code").value}); } catch (_) {}
+  try { out = await post("/pixel/run", {id: me, level: mode, code: $("code").value, guess: guessPick}); } catch (_) {}
   if (ticket !== runTicket) return;
   if (!out) {
     finishRun();
@@ -518,12 +579,16 @@ async function runShow() {
   }
   drawGoals(out.stars.map((g, i) => g || view.best[i]));
   view.best = out.stars.map((g, i) => g || view.best[i]);
-  if (out.stars[0]) { stage.cheer(); missionDone(out); }
+  if (out.rewards.remixed) { stage.cheer(); remixDone(out); }
+  else if (out.stars[0]) { stage.cheer(); missionDone(out); }
   else {
     stage.sigh();
     $("caption").textContent = "Not quite yet.";
     verdict(`<p>${fmt(out.reply || "Not quite. Read the job again.")}</p>`, "bad");
   }
+  paintYourTurn();
+  if (out.rewards.guess) $("verdict").insertAdjacentHTML("afterbegin", guessLine(out.rewards.guess));
+  guessPick = null;
   if (out.rewards.first) celebrate(out.rewards);
   else if (out.rewards.gained) { flyStars(out.rewards.gained); showRewards(out.rewards); }
   else showRewards(out.rewards);
@@ -538,13 +603,28 @@ function nextButton(next) {
   return next ? `<button class="btn main" data-mission="${esc(next.key)}">Next mission →</button>`
     : `<button class="btn main" data-view="hang">🎉 Go hang out →</button>`;
 }
+function remixDone(out) {
+  view.remix.done = true;
+  remixOn = false;
+  confettiBurst();
+  StageSFX.play("fanfare");
+  const order = S.chapters.flatMap(c => c.levels), next = order[order.findIndex(l => l.key === mode) + 1];
+  $("caption").textContent = "You changed the code yourself!";
+  verdict(`<p><b>🎨 Your turn: done! You changed the code yourself. That's real coding!</b></p>
+    <p class="next">${nextButton(next)}</p>`, "good");
+}
 function missionDone(out) {
+  if (remixOn) {
+    $("caption").textContent = "The show works!";
+    verdict(`<p>The show works! But Your turn wants: <b>${fmt(view.remix.ask)}</b></p><p>Change the code a bit more, then press Show time! again.</p>`, "bad");
+    return;
+  }
   const all = out.stars.every(Boolean), order = S.chapters.flatMap(c => c.levels), at = order.findIndex(l => l.key === mode);
   const next = order[at + 1];
   $("caption").textContent = "The crowd loves it!";
   const more = out.stars.findIndex(g => !g);
   verdict(`<p><b>${all ? "Three stars! A perfect show!" : "You did it! The crowd is cheering."}</b>${more >= 0 ? ` For the next star: ${fmt(view.goals[more])}.` : ""}</p>
-    <p class="next">${nextButton(next)}${mode === "m1" ? ` <button class="btn" data-rename="1">Rename my move</button>` : ""}</p>`, "good");
+    <p class="next">${nextButton(next)}${remixButton()}${mode === "m1" ? ` <button class="btn" data-rename="1">Rename my move</button>` : ""}</p>`, "good");
 }
 // The box always stays on screen, so the stage above it never jumps.
 function verdict(html, kind) {
@@ -611,13 +691,13 @@ function winButtons(r) {
   const hang = !S.hang.needs;
   if (r.hang_opened) return `<button class="btn main" data-view="hang">🎉 Go to the Hang out!</button>${next ? ` <button class="btn" data-mission="${esc(next.key)}">Next mission →</button>` : ""}`;
   if (mode === "m1") return `<button class="btn main" data-view="hang">🎉 Go show everyone!</button>${next ? ` <button class="btn" data-mission="${esc(next.key)}">Next mission →</button>` : ""}`;
-  return `${next ? `<button class="btn main" data-mission="${esc(next.key)}">Next mission →</button>` : ""}${hang ? ` <button class="btn" data-view="hang">🎉 Hang out</button>` : ""}`;
+  return `${next ? `<button class="btn main" data-mission="${esc(next.key)}">Next mission →</button>` : ""}${remixButton()}${hang ? ` <button class="btn" data-view="hang">🎉 Hang out</button>` : ""}`;
 }
 function celebrate(r) {
   const n = view.best.filter(Boolean).length;
   $("winTitle").textContent = mode === "m1" ? "Your own move!" : r.hang_opened ? "The Hang out is open!" : "You did it!";
   $("winStars").innerHTML = [0, 1, 2].map(i => `<span class="${i < n ? "on" : ""}" style="animation-delay:${i * 180}ms">★</span>`).join("");
-  $("winBody").innerHTML = "";
+  $("winBody").innerHTML = r.guess ? guessLine(r.guess) : "";
   $("winDo").innerHTML = "";
   $("win").hidden = false;
   confettiBurst();
@@ -626,7 +706,7 @@ function celebrate(r) {
   if ((r.badges && r.badges.length) || r.coins) showRewards({badges: r.badges, coins: r.coins});
   const after = () => (r.move ? showMoveNames(r) : ($("winDo").innerHTML = winButtons(r)));
   if (!r.gift) { after(); return; }
-  $("winBody").innerHTML = `<button class="gift-box" id="giftOpen" aria-label="Open your gift"><span>🎁</span>Tap to open!</button>`;
+  $("winBody").innerHTML = (r.guess ? guessLine(r.guess) : "") + `<button class="gift-box" id="giftOpen" aria-label="Open your gift"><span>🎁</span>Tap to open!</button>`;
   $("winDo").innerHTML = `<button class="btn" id="giftLater">Open it later</button>`;
   $("giftLater").addEventListener("click", after);
   $("giftOpen").addEventListener("click", () => {
@@ -676,7 +756,7 @@ function openMissions() {
   $("missionList").innerHTML = S.chapters.map(ch => `<h3>${ch.icon} ${esc(ch.name)}</h3><div class="lvls">${
     ch.levels.map(l => {
       const n = l.stars.filter(Boolean).length;
-      return `<button class="lvl${l.key === mode ? " here" : ""}" data-mission="${esc(l.key)}" ${l.open ? "" : "disabled"}>${l.open ? "" : "🔒 "}${esc(l.name)}<span class="${n ? "" : "none"}">${"★".repeat(n)}${"☆".repeat(3 - n)}</span></button>`;
+      return `<button class="lvl${l.key === mode ? " here" : ""}" data-mission="${esc(l.key)}" ${l.open ? "" : "disabled"}>${l.open ? "" : "🔒 "}${esc(l.name)}${l.remixed ? " 🎨" : ""}<span class="${n ? "" : "none"}">${"★".repeat(n)}${"☆".repeat(3 - n)}</span></button>`;
     }).join("")}</div>`).join("");
   $("trophies").innerHTML = S.badges.map(b =>
     `<div class="trophy${b.got ? " got" : ""}"><i>${b.icon}</i><span><b>${esc(b.name)}</b>${esc(b.how)}</span></div>`).join("");
@@ -696,6 +776,9 @@ document.addEventListener("click", e => {
   else if (d.mission) { $("win").hidden = true; openMission(d.mission); }
   else if (d.rename) askMoveName();
   else if (d.copy) { setCode(hintCode); saveCode(); }
+  else if (d.guess) { guessPick = d.guess === "skip" ? null : Number(d.guess); runShow(); }
+  else if (d.remix) { $("win").hidden = true; startRemix(); }
+  else if (d.remixHint) { remixHint = true; paintYourTurn(); }
 });
 new ResizeObserver(fitScreen).observe($("stageHost").parentElement);
 $("runButton").addEventListener("click", runShow);

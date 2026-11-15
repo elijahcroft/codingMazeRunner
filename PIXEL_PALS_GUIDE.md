@@ -75,6 +75,36 @@ The first finish of a mission gives the big win: stars, confetti, and a 🎁 box
 open with something to wear in the Hang out. **Open it later** is always there, and the
 gift is theirs either way.
 
+**🔮 Guess first: reading code before running it.** The first time a student presses
+Show time! on code typed with the guide, the stage waits and asks one question about what
+the code will do: "How many times will confetti fall?" (Once / 4 times / 8 times), "What
+number will your pal say first?" (0 / 1 / 5). The guide box says to pick a guess under the
+stage. Then the show runs, so they watch to find out. A right guess pays 5 🪙. A wrong one
+costs nothing and says "Good guess! It was really: ...". Only the first guess on each mission
+counts, and **Just show me** (or pressing Show time! again) skips it. My Move has no guess,
+because its code is theirs. The questions are `GUESSES` in `pixel.py`, and a test runs each
+mission's code to check that the right answer is what really happens.
+
+**🎨 Your turn: changing the code themselves.** The guide means students copy code, which
+is the right start but not the whole thing. Once a mission is finished, a purple card asks
+for one small change, with the guide off: "Make your pal jump 10 times. Keep it 2 lines!",
+"Count all the way to 10", "Jump on 5 instead of 3". **Try it!** keeps their code in the
+editor, and **💡 Where do I change it?** says which line or number to change, not the answer.
+It counts when the mission still works and the change is there: 15 🪙 once per mission,
+a 🎨 Remixer trophy the first time, and 🎨 next to the mission in Missions. If the show works
+but the change isn't there yet, it says what Your turn still wants. The guide's own code
+never counts. They live in `REMIXES` in `pixel.py`, and `test_pixel_turn.py` checks every one.
+
+In the Hang out, a purple **💻 Next mission** button names the next mission and its prize
+(up to 50 🪙, and a 🎁 box while there are boxes left) and opens it in one click. With every
+mission done, it points to a Your turn not done yet, and once those are done too, it goes away.
+
+The Hang out's 👋 Do and 🎉 Party buttons show their Python under the name (`wave()`,
+`feel("happy")`, `hearts()`), so playing keeps reminding them what the code looks like.
+A student who has drawn something but hasn't finished a mission gets a **💻 Now code my
+pal →** button at the top of Draw. On the teacher page, **🎨 Your turns** counts the missions
+where each student changed the code themselves.
+
 **My Move gets better with better code:** a `for` loop adds a sparkle trail, and 8
 actions or more adds a big finish. Running the mission again updates the move.
 
@@ -144,14 +174,32 @@ No code is needed once they're in.
 - **🎣 Fishing:** the pier at the Beach has a blue ring. The pal walks over and casts,
   and when ❗ A bite! shows, a click anywhere on the picture reels it in. There are 8
   things to catch, kept in the fish book in 🧢 Me.
-- **Games:** any student can start Tag, Hide & seek, Red light green light, or Copy the
-  dance, and friends choose to join. In the race, each press of Run or → is one short
+- **Games:** any student can start a 💻 Code race, Tag, Hide & seek, Red light green light,
+  or Copy the dance, and friends choose to join. In the race, each press of Run or → is one short
   run, and moving on red sends a pal back a bit. In the dance, the moves stay on the
   screen with the next one lit, for 3 rounds that get longer.
 
-On `/pixel/teacher` you can close the Hang out, start a party or a star shower, and see
-who's there. It reopens if the server restarts, and nothing in the room itself is saved,
-but gifts, friends, My Moves, coins, homes, fish and the party meter are.
+**💻 Code race: coding together.** Everyone in the race gets the same small job, shown
+in the bar above the world with pictures of the moves ("Jump 2 times. 🦘 🦘"). They build
+the code by tapping green commands (typing works too). 🔁 for picks the 3 so they can type
+a new number, and **⇤ Out of loop** sends the next command back out of the loop. ▶ Run
+my code checks it. A miss says what the pal did against what the job wants ("Your pal
+did 🦘. The job is 🦘 🦘."), or gives the bug and its line. A solve makes that pal do the
+code in a spotlight for everyone, with a 👏 Clap button for the others, and pays 3 coding
+coins. Solving is 1 point and solving first is 2. There are 3 jobs, each harder: commands
+in order, then a loop, then more than one thing in a loop. Between jobs, everyone sees the
+fastest code, or one way to do it if time ran out. 💡 Help gives a tip, and the whole
+answer after 30 seconds. Friends can join part way through, and players can clap and use
+💬 Say while they race. The jobs are `RACE_JOBS` in `pixel.py`. A solver's code is only
+shown to the class if its words are on the tap list or are the job's own words, and it
+has no comments, unless typing is on.
+
+On `/pixel/teacher` you can close the Hang out, start a party, a star shower or a
+**💻 Code race for everyone** (everyone outside in the Hang out is put in it, and the race
+starts 15 seconds later; anyone can leave), and see who's there. The Hang out reopens if
+the server restarts, and nothing in the room itself is saved, but gifts, friends, My Moves,
+coins, homes, fish and the party meter are. During a Code race, the projector shows the
+job, who has solved it, and the fastest code between jobs.
 
 **Words:** students tap words from a list. `say()` takes any words, so a My Move only
 shows lines that are on that list, and a line that isn't gets left out. **Let them type
@@ -215,6 +263,8 @@ their name, so check it before pinning it up.
 5. **15 minutes:** 💻 Code, and the first three missions. The Hang out opens as they finish.
 6. **15 minutes:** hang out, and keep going to My Move. Press 🌠 Star shower now if the
    room needs a lift.
+7. **5 minutes, to finish:** press 💻 Code race for everyone and read the fastest code
+   together on the projector between jobs.
 
 ## Off-screen fun
 

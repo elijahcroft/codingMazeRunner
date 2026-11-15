@@ -1187,8 +1187,79 @@ LEVELS = [
      "hints": ["range(1, 6) counts 1, 2, 3, 4, 5.", "for i in range(1, 6):\n    say(i)\n    if i == 3:\n        jump()"],
      "reference": "for i in range(1, 6):\n    say(i)\n    if i == 3:\n        jump()"},
 ]
+
+# "Your turn": after a mission, one change for the student to make with the guide off.
+# (what it asks, check, a hint that says where to change). The guide's own code never passes.
+REMIXES = {
+    "a1": ("Make your pal say 3 things.", lambda r: r.n("say") >= 3,
+           'Add one more  say("...")  line at the bottom, with your own words.'),
+    "a2": ("Make your pal jump 3 times.", lambda r: r.n("jump") >= 3,
+           "Add one more  jump()  line."),
+    "a3": ("After the spotlight, walk on to spot 10, the edge. Then come back to spot 2.",
+           lambda r: 10 in _visited(r) and r.x == 2,
+           "From spot 7 to spot 10 is 3 steps: add  right(3)  under the say line. Then change the number in  left(5)  so your pal gets back to spot 2."),
+    "h1": ("Wave 3 times, then jump.", lambda r: r.n("wave") >= 3 and r.first("wave", "wave", "wave", "jump"),
+           "Add one more  wave()  line, then  jump()  at the bottom."),
+    "h3": ("Use a feeling you haven't used yet: angry, sleepy, silly, cool or calm.",
+           lambda r: any(c == "feel" and a and a[0] in ("angry", "sleepy", "silly", "cool", "calm") for c, a in r.log),
+           'Change the middle feeling, like  feel("silly")'),
+    "h4": ("Dance two times before you cheer.", lambda r: r.first("dance", "dance", "cheer"),
+           "Add one more  dance()  line under the first one."),
+    "b1": ("Make your pal jump 10 times. Keep it 2 lines!", lambda r: r.n("jump") >= 10 and r.fors >= 1 and r.code_lines <= 2,
+           "Change only one thing: the number in  range(5)"),
+    "b2": ("Put a jump inside the loop too, so your pal jumps 4 times.",
+           lambda r: r.n("jump") >= 4 and r.fors >= 1 and r.n("confetti") == 1,
+           "Add  jump()  pushed in under the for line, next to  right(1)  and  left(1)"),
+    "m1": ("Make your pal say something in its move.", lambda r: r.n("say") >= 1 and _actions(r) >= 3,
+           'Add a  say("...")  line anywhere in your move.'),
+    "t1": ("Grow two times, then shrink two times.", lambda r: r.n("grow") >= 2 and r.n("shrink") >= 2,
+           "Add one more  grow()  and one more  shrink()"),
+    "t2": ("Make your pal look up, then down.", lambda r: _in_order(r, ("look", ("up",)), ("look", ("down",))),
+           'Try  look("up")  and then  look("down")'),
+    "l1": ("Count all the way to 10.", lambda r: all(str(n) in r.said for n in range(1, 11)),
+           "Change only one thing: the number in  range(5)"),
+    "l2": ("Add a 4th name to the list. Try your own name!", lambda r: len(set(r.said)) >= 4 and r.lists >= 1,
+           'Put a comma after "Cy" and add a name in  " marks, inside the [ ]'),
+    "v1": ("Give your pal a new name: change Luna to any name you like.",
+           lambda r: r.said_var() >= 2 and not any("luna" in s.lower() for s in r.said),
+           'Change only the first line, like  name = "Sparkle"'),
+    "v2": ("Change one line so your pal jumps 7 times.",
+           lambda r: r.n("jump") == 7 and r.range_name and r.fstrings >= 1,
+           "Change only the first line:  jumps = 7"),
+    "w1": ("Use your move 3 times.", lambda r: sum(r.own_calls.values()) >= 3,
+           "Add one more  boogie()  line at the bottom, not pushed in."),
+    "w2": ("Jump on 5 instead of 3.", lambda r: r.n("jump") == 1 and _after_number(r, "5"),
+           "Change only one thing: the 3 in  if i == 3:"),
+}
+# "Guess first": before the first run of the guide's code, one question about what it will do.
+# (question, choices, the right choice). test_pixel_turn.py checks each answer against a real run.
+# My Move has none: its code is the student's own.
+GUESSES = {
+    "a1": ("How many speech bubbles will you see?", ["1", "2", "3"], 1),
+    "a2": ("What happens between the two jumps?", ["Your pal talks", "Nothing", "Your pal spins"], 0),
+    "a3": ("Where will your pal be at the end?", ["On the spotlight, spot 7", "Back on spot 2", "Off the stage"], 1),
+    "h1": ("How many times will your pal wave?", ["1", "2", "3"], 1),
+    "h3": ("Which face will your pal have at the end?", ["Sad", "Surprised", "Happy"], 2),
+    "h4": ("What comes last?", ["Dancing", "Cheering", "Hearts"], 2),
+    "b1": ("There is one jump() inside the loop. How many jumps will you see?", ["1", "5", "2"], 1),
+    "b2": ("How many times will confetti fall?", ["Once", "4 times", "8 times"], 0),
+    "t1": ("Will your pal be big or small at the end?", ["Big", "Small, like at the start"], 1),
+    "t2": ("Where will the eyes look at the end?", ["Left", "Right", "At us"], 2),
+    "l1": ("What number will your pal say first?", ["0", "1", "5"], 1),
+    "l2": ("What will your pal say first?", ["Hi Ana", "Hi name", "Hi Cy"], 0),
+    "v1": ("What will the first speech bubble say?", ["I am name", "I am Luna", "Luna"], 1),
+    "v2": ("What will your pal say at the end?", ["{jumps} jumps!", "4 jumps!", "jumps jumps!"], 1),
+    "w1": ("boogie has 2 jumps in it. How many jumps in the whole show?", ["2", "3", "4"], 2),
+    "w2": ("How many times will your pal jump?", ["Once", "3 times", "5 times"], 0),
+}
+for _lv in LEVELS:
+    _lv["remix"] = REMIXES[_lv["key"]]
+    _lv["guess"] = GUESSES.get(_lv["key"])
+
 LEVEL_ORDER = [lv["key"] for lv in LEVELS]
 LEVEL_BY_KEY = {lv["key"]: lv for lv in LEVELS}
+REMIX_COINS = 15           # once per mission, for doing its Your turn
+GUESS_COINS = 5            # for a right first guess on a mission
 
 
 def _in_order(r, first, then):
@@ -1198,10 +1269,15 @@ def _in_order(r, first, then):
 
 def _after_three(r):
     """True if the first jump comes right after saying 3."""
+    return _after_number(r, "3")
+
+
+def _after_number(r, number):
+    """True if the first jump comes right after saying this number."""
     was = None
     for name, args in r.log:
         if name == "jump":
-            return was == "3"
+            return was == number
         if name == "say" and args:
             was = str(args[0])
     return False
@@ -1339,6 +1415,76 @@ FISH_WAIT = (2, 5)         # seconds until a bite
 FISH_BITE = 2.5            # seconds to reel it in
 DANCE_MOVES = ("wave", "jump", "spin", "cheer")
 
+# ---- Code race: a Hang out game where everyone codes the same little job ----------
+# Round 1 takes a job from the first list (commands in order), round 2 from the
+# second (a loop), round 3 from the third (more than one thing in a loop). A job is
+# what the pal must do, in order, and how many loops it must use. `said` is what its
+# say() lines must be, and those words may show in the room even with typing off.
+RACE_COMMANDS = ("say", "jump", "wave", "spin", "dance", "cheer", "hearts", "stars", "confetti")
+RACE_ICONS = {"say": "💬", "jump": "🦘", "wave": "👋", "spin": "🌀", "dance": "💃", "cheer": "🎉",
+              "hearts": "💕", "stars": "⭐", "confetti": "🎊"}
+RACE_JOBS = (
+    ({"job": "Jump 2 times.", "want": ["jump"] * 2, "answer": "jump()\njump()"},
+     {"job": "Wave, then spin.", "want": ["wave", "spin"], "answer": "wave()\nspin()"},
+     {"job": 'Say "Hello!", then jump.', "want": ["say", "jump"], "said": ["Hello!"], "answer": 'say("Hello!")\njump()'},
+     {"job": "Cheer, then make hearts.", "want": ["cheer", "hearts"], "answer": "cheer()\nhearts()"},
+     {"job": "Spin 3 times.", "want": ["spin"] * 3, "answer": "spin()\nspin()\nspin()"}),
+    ({"job": "Jump 5 times. Use a loop!", "want": ["jump"] * 5, "loops": 1, "answer": "for i in range(5):\n    jump()"},
+     {"job": "Spin 4 times with a loop. Then cheer!", "want": ["spin"] * 4 + ["cheer"], "loops": 1,
+      "answer": "for i in range(4):\n    spin()\ncheer()"},
+     {"job": "Wave 3 times. Use a loop!", "want": ["wave"] * 3, "loops": 1, "answer": "for i in range(3):\n    wave()"},
+     {"job": "Jump 10 times! Use a loop.", "want": ["jump"] * 10, "loops": 1, "answer": "for i in range(10):\n    jump()"},
+     {"job": "Make stars 4 times with a loop. Then jump!", "want": ["stars"] * 4 + ["jump"], "loops": 1,
+      "answer": "for i in range(4):\n    stars()\njump()"}),
+    ({"job": "Jump, then spin. Do that 3 times with a loop!", "want": ["jump", "spin"] * 3, "loops": 1,
+      "answer": "for i in range(3):\n    jump()\n    spin()"},
+     {"job": "Count 1, 2, 3 with say(). Use a loop!", "want": ["say"] * 3, "said": ["1", "2", "3"], "loops": 1,
+      "chips": ["say(i + 1)"], "answer": "for i in range(3):\n    say(i + 1)"},
+     {"job": "Wave 2 times, then jump 2 times. Use 2 loops!", "want": ["wave"] * 2 + ["jump"] * 2, "loops": 2,
+      "answer": "for i in range(2):\n    wave()\nfor i in range(2):\n    jump()"},
+     {"job": "Make hearts, then cheer. Do that 3 times with a loop!", "want": ["hearts", "cheer"] * 3, "loops": 1,
+      "answer": "for i in range(3):\n    hearts()\n    cheer()"},
+     {"job": 'Say "Hooray!", then jump. Do that 3 times with a loop!', "want": ["say", "jump"] * 3, "said": ["Hooray!"] * 3,
+      "loops": 1, "answer": 'for i in range(3):\n    say("Hooray!")\n    jump()'}),
+)
+RACE_ROUNDS = len(RACE_JOBS)
+
+
+def _plain(text):
+    return re.sub(r"[^a-z0-9]", "", str(text).lower())
+
+
+def race_icons(names):
+    shown = " ".join(RACE_ICONS.get(n, "❓") for n in names[:12])
+    return shown + (" ..." if len(names) > 12 else "")
+
+
+def race_check(job, code):
+    """Runs a student's code for a Code race job. Returns whether it does the job,
+    a message for the student, the error's line, and the steps for the Hang out."""
+    out = perform(code, PIP, commands=RACE_COMMANDS)
+    r, error = out["report"], out["error"]
+    did = [name for name, _ in r.log]
+    if error:
+        closed = re.search(r"(\w+)\(\) isn't open yet.*", error)
+        if closed:
+            error = error[:closed.start()] + ("The Code race uses " + ", ".join(f"{c}()" for c in RACE_COMMANDS) + ".")
+        return {"ok": False, "message": "🐞 " + error, "line": out["line"]}
+    want = job["want"]
+    if not did:
+        message = "Your pal didn't do anything yet. Tap a green command to add it."
+    elif did != want:
+        message = f"Your pal did {race_icons(did)}. The job is {race_icons(want)}."
+    elif job.get("said") and [_plain(s) for s in r.said] != [_plain(s) for s in job["said"]]:
+        message = ("Your pal said " + ", ".join(f'"{s}"' for s in r.said) + ". The job wants "
+                   + ", ".join(f'"{s}"' for s in job["said"]) + ".")
+    elif r.fors + r.whiles < job.get("loops", 0):
+        message = ("That's the right moves! Now use a loop: tap 🔁 for." if job["loops"] == 1
+                   else f"That's the right moves! Now use {job['loops']} loops, one for each move.")
+    else:
+        return {"ok": True, "message": "⭐ You solved it! Watch your pal.", "steps": compile_move(out["steps"])}
+    return {"ok": False, "message": message, "line": None}
+
 
 def party_goal(level):
     return min(10 + 5 * level, 30)
@@ -1421,6 +1567,8 @@ def run_level(lv, code, pal, seed=0):
     if not main["error"] and good is False:
         bad = next(r for r in runs if r["error"])
         out["error"], out["line"] = bad["error"], bad["line"]
+    remix = lv.get("remix")
+    out["remix"] = bool(good and remix and remix[1](report))
     return dict(out, stars=stars, reply=reply, seed=seeds[0] + seed,
                 rehearsed=list(lv.get("rehearse", ())))
 

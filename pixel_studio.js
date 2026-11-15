@@ -106,6 +106,7 @@ async function saveNow() {
     if (answer.badges && answer.badges.length) showRewards({badges: answer.badges});
     if (dirty) saveTimer = setTimeout(saveNow, 2000);
     else savedSays("Saved ✓");
+    if (!$("drawView").hidden && typeof paintSteps === "function") paintSteps("draw");
     return true;
   }
   if (answer && answer.error === "join") { store("mazeId", ""); location.reload(); return false; }

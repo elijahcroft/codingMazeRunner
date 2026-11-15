@@ -15,6 +15,13 @@ const ROOM_PANES = {
   party: [["💕", "Hearts", "fx", "hearts"], ["🌸", "Petals", "fx", "petals"], ["🎊", "Confetti", "fx", "confetti"], ["⭐", "Stars", "fx", "stars"],
           ["💐", "Flowers", "fx", "bouquet"], ["🔔", "Bells", "fx", "bells"], ["🎵", "Wedding music", "fx", "march"], ["🎂", "Cake", "fx", "cake"]],
 };
+// The Python for a Hang out button, so playing shows the code that does the same thing.
+function tapCode(what, name) {
+  if (what === "move" && name !== "nap") return name + "()";
+  if (what === "feel") return `feel("${name}")`;
+  if (what === "fx" && ["hearts", "stars", "confetti"].includes(name)) return name + "()";
+  return "";
+}
 const PLACE_NAMES = {park: ["🌳", "Park"], wedding: ["💒", "Wedding"], beach: ["🏖️", "Beach"], night: ["🌙", "Night"],
                      snowy: ["⛄", "Snowy hill"], candy: ["🍭", "Candy land"], space: ["🚀", "Space"]};
 const SLOT_NAMES = {hat: "Hats", face: "Faces", sparkle: "Sparkles"};
@@ -40,7 +47,10 @@ function buildRoomButtons() {
   box.classList.remove("games-pane");
   box.classList.toggle("words", roomPane === "say");
   box.classList.toggle("me-pane", ["me", "art", "shop", "home"].includes(roomPane));
-  const big = ([icon, word, what, name]) => `<button data-tap="${what}" data-name="${name}"><span>${icon}</span>${esc(word)}</button>`;
+  const big = ([icon, word, what, name]) => {
+    const code = tapCode(what, name);
+    return `<button data-tap="${what}" data-name="${name}"><span>${icon}</span>${esc(word)}${code ? `<code class="tap-code">${esc(code).replace("(", "(<wbr>")}</code>` : ""}</button>`;
+  };
   if (roomPane === "games") {
     buildGamePane(box);
   } else if (roomPane === "say") {
@@ -314,6 +324,30 @@ function paintMoveButton() {
   b.disabled = left > 0;
   b.innerHTML = `<b>✨ ${esc(move.title)}</b><small>${left > 0 ? "Getting ready..." : "Press it and everyone sees!"}${move.loop ? " · sparkle trail" : ""}${move.big ? " · big finish" : ""}</small>`;
 }
+// The next thing to code, with its prize, so the Hang out leads back to the Code tab.
+function nextCoding() {
+  const order = S.chapters.flatMap(c => c.levels);
+  const next = order.find(l => l.open && !l.stars[0]);
+  if (next) return {key: next.key, turn: false, name: next.name};
+  const turn = order.find(l => l.stars[0] && !l.remixed);
+  return turn ? {key: turn.key, turn: true, name: turn.name} : null;
+}
+function paintNextMission() {
+  const b = $("nextMission"), next = nextCoding();
+  b.hidden = !next;
+  if (!next) return;
+  const giftLeft = Object.entries(S.hang.catalog).some(([k, g]) => !g.class && !g.price && !g.goal && !S.hang.gifts.includes(k));
+  b.innerHTML = next.turn
+    ? `<b>🎨 Your turn: ${esc(next.name)}</b><small>Change the code your own way · +15 🪙</small>`
+    : `<b>💻 Next mission: ${esc(next.name)}</b><small>Win up to 50 🪙${giftLeft ? " and a 🎁 gift box" : ""}</small>`;
+}
+async function goCode() {
+  const next = nextCoding();
+  if (!next) return;
+  await showView("stage");
+  await openMission(next.key);
+  if (next.turn) startRemix();
+}
 async function pressMyMove() {
   if (!S.hang.move) { await showView("stage"); openMission("m1"); return; }
   if (performance.now() < moveReadyAt) return;
@@ -438,6 +472,7 @@ function openRoom() {
   stopBack = PalHang.start($("hangBack"), () => roomStage.state);
   buildRoomButtons();
   paintMoveButton();
+  paintNextMission();
   paintPalStrip();
   fitRoomScreen();
   stopRoom = PalStage.follow(roomStage, {id: me, onState: roomState});
@@ -539,6 +574,7 @@ $("palProp").addEventListener("click", async () => {
 });
 $("palSwitch").addEventListener("click", () => { roomPane = "me"; artArmed = null; buildRoomButtons(); $("roomButtons").scrollTop = 0; });
 $("myMove").addEventListener("click", pressMyMove);
+$("nextMission").addEventListener("click", goCode);
 $("clapGo").addEventListener("click", () => { if (clapFor !== null) tap("clap", {seat: clapFor}); });
 $("roomCanvas").addEventListener("click", async e => {
   const r = $("roomCanvas").getBoundingClientRect(), mine = myMember();

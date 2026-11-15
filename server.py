@@ -5624,8 +5624,10 @@ PIXEL_BADGES = {
     "play_tag": ("🏃", "Tag Pal", "Finish a round of tag"),
     "play_race": ("🚦", "Red Light Racer", "Finish a red light, green light race"),
     "play_dance": ("🪩", "Dance Copycat", "Finish a round of copy the dance"),
+    "play_code": ("💻", "Code Racer", "Finish a Code race"),
     "angler": ("🎣", "Gone Fishing", "Catch every kind of thing in the sea"),
     "all": ("🏆", "Star of the Show", "Get all the stars in the game"),
+    "remix": ("🎨", "Remixer", "Do a Your turn: change a mission's code your own way"),
 }
 
 
@@ -5648,7 +5650,7 @@ def pixel_entry(p):
     for key, value in (("drawings", []), ("pal", ""), ("solved", {}), ("code", {}),
                        ("badges", []), ("runs", {}), ("misses", {}), ("last_error", ""), ("active", 0),
                        ("gifts", []), ("wear", {}), ("friends", []), ("move", None), ("found", []),
-                       ("stuff", []), ("fish", {}), ("things", {})):
+                       ("stuff", []), ("fish", {}), ("things", {}), ("remixed", []), ("guessed", [])):
         entry.setdefault(key, value)
     if "coins" not in entry:        # coins came later: pay for the stars and gems already earned
         firsts = sum(1 for key, stars in entry["solved"].items() if key in pixel.LEVEL_BY_KEY and stars[0])
@@ -5787,6 +5789,7 @@ def pixel_state(p):
             "chapters": [dict(ch, levels=[
                 {"key": lv["key"], "name": lv["name"],
                  "stars": entry["solved"].get(lv["key"], [False] * 3),
+                 "remixed": lv["key"] in entry["remixed"],
                  "open": pixel.LEVEL_ORDER.index(lv["key"]) <= frontier}
                 for lv in pixel.LEVELS if lv["chapter"] == i]) for i, ch in enumerate(pixel.CHAPTERS)],
             "current": pixel.LEVEL_ORDER[frontier],
@@ -5815,10 +5818,14 @@ def pixel_level(entry, key):
             "chapter_new": [c for x in pixel.LEVELS if x["chapter"] == lv["chapter"] for c in x["adds"]],
             "python": sorted({w for x in pixel.LEVELS[:pixel.LEVEL_ORDER.index(key) + 1] for w in x["python"]}),
             "fresh_python": lv["python"], "number": lv["chapter"],
-            "code": entry["code"].get(key, ""), "coach": lv["coach"], "build": lv.get("build", False)}
+            "code": entry["code"].get(key, ""), "coach": lv["coach"], "build": lv.get("build", False),
+            "remix": {"ask": lv["remix"][0], "hint": lv["remix"][2], "done": key in entry["remixed"],
+                      "coins": pixel.REMIX_COINS},
+            "guess": None if not lv["guess"] or key in entry["guessed"] else
+                     {"ask": lv["guess"][0], "choices": lv["guess"][1], "coins": pixel.GUESS_COINS}}
 
 
-def pixel_record(p, key, code, out):
+def pixel_record(p, key, code, out, guess=None):
     """Keep a mission run: the best stars, any badges, and on a first finish
     a gift, some of the class's party meter, and maybe the Hang out."""
     entry = pixel_entry(p)
@@ -5858,8 +5865,21 @@ def pixel_record(p, key, code, out):
         rewards["move"] = pixel_move_public(entry)
     if pixel_stars(entry) == 3 * len(pixel.LEVELS):
         pixel_badge(p, "all", earned)
+    remixed = out["stars"][0] and out.get("remix") and key not in entry["remixed"]
+    if remixed:
+        entry["remixed"].append(key)
+        rewards["remixed"] = True
+        pixel_badge(p, "remix", earned)
+        pixel_feed_add(f"🎨 {p['name']} did Your turn on {pixel.LEVEL_BY_KEY[key]['name']}")
+    lv = pixel.LEVEL_BY_KEY[key]
+    right = False
+    if lv["guess"] and type(guess) is int and key not in entry["guessed"]:     # only the first guess counts
+        entry["guessed"].append(key)
+        right = guess == lv["guess"][2]
+        rewards["guess"] = {"right": right, "answer": lv["guess"][1][lv["guess"][2]]}
     gained = pixel_stars(entry) - before
-    coins = pixel_pay(p, pixel.COINS_STAR * gained + (pixel.COINS_FIRST if first else 0), play=False)
+    coins = pixel_pay(p, pixel.COINS_STAR * gained + (pixel.COINS_FIRST if first else 0)
+                      + (pixel.REMIX_COINS if remixed else 0) + (pixel.GUESS_COINS if right else 0), play=False)
     return dict(rewards, gained=gained, badges=earned, coins=coins)
 
 
@@ -5981,7 +6001,7 @@ GAME_HIDE_SECONDS = 20
 GAME_ROUND_SECONDS = 90
 GAME_SPEED = 85
 GAME_WIDTH = 640                 # Park + Wedding garden, available to every class
-GAME_KINDS = ("hide", "tag", "race", "dance")
+GAME_KINDS = ("hide", "tag", "race", "dance", "code")
 RACE_START, RACE_END = 30, 600
 RACE_SECONDS = 90
 RACE_STEP = 34                   # how far one click or key press runs, so stopping is just not pressing
@@ -5991,6 +6011,12 @@ RACE_BACK = 70                   # how far back a pal goes for moving on red
 DANCE_ROUNDS = 3
 DANCE_READY = 3                  # seconds to look at the dance before it starts
 DANCE_FREEZE = 1                 # seconds a wrong move costs
+CODE_SECONDS = (75, 100, 120)    # seconds for each Code race round, longer as the jobs grow
+CODE_PAUSE = 8                   # seconds between rounds, showing the fastest code
+CODE_RUN_GAP = .8                # seconds between one student's runs
+CODE_MAX = 1000                  # characters of code in one run
+CODE_SOLVE_COINS = 3             # for each job solved, paid as coding coins
+CODE_ANSWER_AFTER = 30           # seconds into a round before 💡 Help shows a whole answer
 # Hiding places belong to the place they stand in: park things in the Park (x under 320),
 # wedding things in the Wedding garden. "at" finishes the sentence "You're hidden ...".
 GAME_COVER = [
@@ -6058,6 +6084,8 @@ def game_begin(now):
             spot.update(x=160, y=.55)
         if kind == "race":          # everyone on the start line, each in a lane
             spot.update(x=RACE_START, y=round((i + .5) / len(game["joined"]), 2))
+        if kind == "code":          # everyone in a row in the Park, so a solver is easy to watch
+            spot.update(x=round(30 + i * 260 / max(1, len(game["joined"]) - 1)), y=.3 + .5 * (i % 2))
         game["motion"][seat] = {"x": spot["x"], "y": spot["y"], "tx": spot["x"], "ty": spot["y"], "at": now}
     if kind == "race":
         game.update(light="green", light_until=now + random.uniform(*RACE_GREEN), done=[])
@@ -6065,6 +6093,9 @@ def game_begin(now):
     elif kind == "dance":
         game.update(round=0, score={}, frozen={})
         dance_round(game, now)
+    elif kind == "code":
+        game.update(round=0, score={}, ran={})
+        code_round(game, now)
     else:
         room_event("game", message="The seeker is counting!" if kind == "hide" else "Tag! Run!")
 
@@ -6093,6 +6124,83 @@ def dance_tick(game, seats, now):
     names = " and ".join(seats[s][1]["name"] for s in winners)
     game_finish(f"🪩 Top dancer{'s' if len(winners) > 1 else ''}: {names}!" if winners else "Good dancing, everyone!",
                 reward=True, winners=winners)
+
+
+def code_round(game, now):
+    """A new job for everyone, from the next list, so each round asks a bit more."""
+    jobs = pixel.RACE_JOBS[game["round"]]
+    job = random.choice(jobs)
+    game.update(job=job, solved=[], codes={}, pause_until=0, reveal=None, round_at=now,
+                until=now + CODE_SECONDS[game["round"]])
+    room_event("game", message=f"💻 Round {game['round'] + 1} of {pixel.RACE_ROUNDS}: {job['job']}")
+
+
+def code_clean(code, job):
+    """Whether a solver's code can be shown to everyone: every word in it is from
+    the tap list or the job, unless the teacher lets students type their own."""
+    if pixel_room["words"]:
+        return True
+    allowed = pixel.ROOM_SAYS | set(job.get("said", ()))
+    words = re.findall(r'"([^"]*)"', code) + re.findall(r"'([^']*)'", code)
+    return "#" not in code and all(w in allowed for w in words)
+
+
+def code_tick(game, seats, now):
+    if game["pause_until"]:
+        if now >= game["pause_until"]:
+            game["round"] += 1
+            if game["round"] < pixel.RACE_ROUNDS:
+                code_round(game, now)
+                return
+            best = max(game["score"].values(), default=0)
+            winners = [s for s in game["joined"] if best and game["score"].get(s) == best]
+            names = " and ".join(seats[s][1]["name"] for s in winners)
+            game_finish(f"💻 Top coder{'s' if len(winners) > 1 else ''}: {names}!" if winners else "Good coding, everyone!",
+                        reward=True, winners=winners)
+        return
+    if now < game["until"] and not all(s in game["solved"] for s in game["joined"]):
+        return
+    job, first = game["job"], game["solved"][0] if game["solved"] else None
+    if first is not None and code_clean(game["codes"][first], job):
+        game["reveal"] = {"by": seats[first][1]["name"] if first in seats else "A friend", "code": game["codes"][first]}
+    else:
+        game["reveal"] = {"by": "", "code": job["answer"]}
+    game.update(pause_until=now + CODE_PAUSE, until=now + CODE_PAUSE)
+    room_event("game", message=f"⚡ {game['reveal']['by']} was fastest! Look at the code." if game["reveal"]["by"]
+               else "Time! Here's one way to code it.")
+
+
+def code_run(p, spot, game, data, now):
+    seat = spot["seat"]
+    if game["pause_until"]:
+        return {"error": "Wait for the next job!"}
+    if seat in game["solved"]:
+        return {"ok": True, "solved": True, "message": "⭐ You solved this one! Clap for your friends."}
+    if now - game["ran"].get(seat, 0) < CODE_RUN_GAP:
+        return {"error": "One moment..."}
+    game["ran"][seat] = now
+    code = data.get("code")
+    if not isinstance(code, str) or len(code) > CODE_MAX:
+        return {"error": "That code is too long for the race."}
+    out = pixel.race_check(game["job"], code)
+    if not out["ok"]:
+        return {"ok": True, "solved": False, "message": out["message"], "line": out["line"]}
+    fastest = not game["solved"]
+    game["solved"].append(seat)
+    game["codes"][seat] = code
+    game["score"][seat] = game["score"].get(seat, 0) + 1 + fastest
+    allowed = pixel.ROOM_SAYS | set(game["job"].get("said", ()))
+    steps = [s for s in out["steps"] if s["do"] != "say" or pixel_room["words"] or s["text"] in allowed]
+    steps, spot["x"], ms = pixel.stage_move(steps, spot["x"], True, room_width(spot) - 8)
+    spot.update(rest=None, claps=0, move_until=now + ms / 1000 + .7)     # friends can clap while it plays
+    room_event("mymove", seat=seat, by=spot["name"], title="⚡ Solved it first!" if fastest else "⭐ Solved it!",
+               steps=steps, loop=False, big=fastest, ms=ms)
+    room_event("game", message=f"⚡ {spot['name']} solved it first!" if fastest else f"⭐ {spot['name']} solved it!")
+    coins = pixel_pay(p, CODE_SOLVE_COINS, play=False)
+    pixel_save_soon()
+    code_tick(game, game_seats(), now)
+    return {"ok": True, "solved": True, "fastest": fastest, "coins": coins,
+            "message": f"{'⚡ First! ' if fastest else ''}⭐ You solved it! +{coins} 🪙 Watch your pal."}
 
 
 def race_tick(game, seats, now):
@@ -6162,6 +6270,9 @@ def game_tick(now):
     if game["kind"] == "dance":
         dance_tick(game, seats, now)
         return
+    if game["kind"] == "code":
+        code_tick(game, seats, now)
+        return
     if game["phase"] == "hiding":
         if now >= game["until"]:
             game.update(phase="playing", until=now + GAME_ROUND_SECONDS)
@@ -6212,11 +6323,14 @@ def game_action(p, spot, data):
         room_event("game", message=spot["name"] + " invited everyone to play!")
     elif not game:
         return {"error": "This round has ended."}
-    elif action == "join" and game["phase"] == "lobby":
+    elif action == "join" and (game["phase"] == "lobby" or (game["kind"] == "code" and game["phase"] == "playing")):
         if spot["loc"]:
             return {"error": "Step outside to join the game!"}
         if seat not in game["joined"]:
             game["joined"].append(seat)
+            if game["phase"] == "playing":      # a Code race can be joined late: stand at the end of the row
+                spot.update(x=290 if len(game["joined"]) % 2 else 270, y=.55, rest=None)
+                game["motion"][seat] = {"x": spot["x"], "y": spot["y"], "tx": spot["x"], "ty": spot["y"], "at": now}
             room_event("game", message=spot["name"] + " joined the game!")
     elif action == "leave":
         if seat in game["joined"]:
@@ -6245,6 +6359,8 @@ def game_action(p, spot, data):
         if at + 1 == len(game["seq"]):
             room_event("game", message=f"⭐ {spot['name']} did the whole dance!")
         game_tick(now)
+    elif action == "run" and game["kind"] == "code" and game["phase"] == "playing":
+        return code_run(p, spot, game, data, now)
     elif action in ("hide", "search"):
         cover = next((c for c in GAME_COVER if c["key"] == data.get("cover")), None)
         hiding = action == "hide"
@@ -6278,6 +6394,8 @@ def game_walk(spot, data):
         return {"error": "Keep counting!" if seat == game["it"] else "Stay in your hiding place until the round ends."}
     if game["kind"] == "dance":
         return {"error": "Stay on the dance floor! Tap the moves instead."}
+    if game["kind"] == "code":
+        return {"error": "Stay in your place! Code your pal instead."}
     if game["kind"] == "race" and seat in game["done"]:
         return {"error": "You made it! Cheer for your friends."}
     x, y = data.get("x"), data.get("y")
@@ -6302,6 +6420,13 @@ def game_view(you):
                light=game.get("light"), done=game.get("done", []), finish=RACE_END,
                seq=game.get("seq"), step=game.get("progress", {}).get(you, 0), round=game.get("round", 0),
                score=game.get("score", {}).get(you, 0), ready=game.get("show_until", 0))
+    if game["kind"] == "code" and game.get("job"):
+        job = game["job"]
+        out.update(job={"job": job["job"], "icons": pixel.race_icons(job["want"]), "chips": job.get("chips", []),
+                        "loops": job.get("loops", 0), "hint": job["answer"]},
+                   solved=game["solved"], pause=game["pause_until"], reveal=game["reveal"], rounds=pixel.RACE_ROUNDS,
+                   round_at=game["round_at"], answer_after=CODE_ANSWER_AFTER,
+                   mine=game["codes"].get(you, ""))
     return out
 
 
@@ -6359,7 +6484,7 @@ def room_person(spot):
         where = places[max(0, min(len(places) - 1, int(spot["x"] // pixel.PLACE_W)))]
     game, did = pixel_room.get("game"), spot.get("did")
     if game and spot["seat"] in game.get("joined", []):
-        doing = "🎮 In a game"
+        doing = "🎮 In a game" if game["kind"] != "code" else "⭐ Solved it" if spot["seat"] in game.get("solved", []) else "💻 Coding"
     elif spot.get("bite"):
         doing = "🎣 Fishing"
     elif did and time.time() - did[1] < DOING_FOR:
@@ -6401,7 +6526,7 @@ def room_view(p, after, watch=0):
     # other child's browser (including the class projector). No stale trails leak.
     if room.get("game"):
         out["game_members"] = [game_room_row(s, out["you"]) for s in here]
-        active = set(room["game"]["joined"])
+        active = set(room["game"]["joined"]) if room["game"]["kind"] != "code" else set()     # nothing is hidden in a Code race
         out["events"] = [e for e in out["events"] if e.get("seat") not in active and e.get("other") not in active or e["kind"] in ("leave", "move")]
     elif not whole:
         out["game_members"] = [game_room_row(s, out["you"]) for s in here]
@@ -6802,7 +6927,7 @@ def room_do(p, data):
     if game and game["phase"] in ("hiding", "playing") and seat in game["joined"]:
         if what == "walk":
             return game_walk(spot, data)
-        if what != "leave":
+        if what != "leave" and not (game["kind"] == "code" and what in ("clap", "say")):     # coders can cheer each other on
             return {"error": "Finish or leave this round to use hangout activities."}
     if what == "five" and game and game["phase"] in ("hiding", "playing") and data.get("seat") in game["joined"]:
         return {"error": "Your friend is playing a game right now."}
@@ -6949,6 +7074,7 @@ def pixel_overview():
                      "chapter": pixel.CHAPTERS[lv["chapter"]]["name"], "stars": pixel_stars(entry),
                      "drawings": len(entry["drawings"]), "misses": entry["misses"].get(key, 0),
                      "runs_here": entry["runs"].get(key, 0), "last_error": entry["last_error"],
+                     "turns": len(entry["remixed"]),
                      "badges": len(entry["badges"]), "hang": not pixel_hang_needs(entry), "let_in": bool(entry.get("hang_let_in")), "move": bool(entry["move"]),
                      "active": entry["active"], "picture": pixel_picture(entry)})
     rows.sort(key=lambda r: (r["at"], -r["misses"], r["name"].lower()))
@@ -6989,6 +7115,19 @@ def pixel_teacher(data):
         if pixel_room["open"] and not pixel_room["shower"]:
             room_start_shower()
         return {"ok": True}
+    if action == "code_race":          # everyone outside in the Hang out is in, and anyone can leave
+        if not pixel_room["open"]:
+            return {"error": "Open the Hang out first."}
+        if pixel_room["game"]:
+            return {"error": "A game is on right now. Try again when it ends."}
+        seats = [s["seat"] for s in pixel_room["here"].values() if not s["loc"]]
+        if len(seats) < 2:
+            return {"error": "At least 2 students need to be in the Hang out, outside their homes."}
+        pixel_room["game_serial"] += 1
+        pixel_room["game"] = {"id": pixel_room["game_serial"], "kind": "code", "phase": "lobby", "host": seats[0],
+                              "joined": seats, "until": time.time() + GAME_JOIN_SECONDS, "rewards": {}}
+        room_event("game", message=f"💻 Code race for everyone! It starts in {GAME_JOIN_SECONDS} seconds.")
+        return {"ok": True, "count": len(seats)}
     if action == "open":
         key = data.get("level")
         pixel_class["open"] = pixel.LEVEL_ORDER.index(key) if key in pixel.LEVEL_ORDER else 0
@@ -7100,7 +7239,7 @@ def pixel_post(path, data):
         lv = pixel.LEVEL_BY_KEY[key]
         out = pixel.run_level(lv, code, pal)
         with lock:
-            rewards = pixel_record(p, key, code[:pixel.MAX_CODE], out)
+            rewards = pixel_record(p, key, code[:pixel.MAX_CODE], out, data.get("guess"))
             pixel_save_soon()
             return dict(out, rewards=rewards, state=pixel_state(p))
     return {"error": "not found"}

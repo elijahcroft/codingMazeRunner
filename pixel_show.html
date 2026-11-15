@@ -49,6 +49,12 @@
   .address { font-size: 19px; color: #d9477e; overflow-wrap: anywhere; }
   #feed { margin: 0; padding: 0; list-style: none; font-size: 15px; font-weight: 700; overflow: hidden; flex: 1; }
   #feed li { margin-bottom: 5px; }
+  #raceCard { background: #f3ecff; color: #3b1f6b; }
+  #raceCard[hidden] { display: none; }
+  #raceJob { font-size: 22px; font-weight: 900; line-height: 1.2; }
+  #raceCode { margin: 6px 0 0; padding: 8px 10px; border-radius: 12px; background: #27303f; color: #e9f1e2; font: 700 18px/1.4 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; }
+  #raceCode[hidden] { display: none; }
+  #raceWho { margin-top: 6px; font-size: 16px; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -63,6 +69,7 @@
     </div></section>
   <aside class="side">
     <div class="card"><p class="label">Join in at</p><div class="address" id="address"></div></div>
+    <div class="card" id="raceCard" hidden><p class="label" id="raceLabel">💻 Code race</p><div id="raceJob"></div><pre id="raceCode" hidden></pre><div id="raceWho"></div></div>
     <div class="card"><p class="label">Look at</p><div id="places"></div><p class="label">Who's here (click to follow)</p><div id="people"></div></div>
     <div class="card" style="flex:1;min-height:0;display:flex;flex-direction:column"><p class="label">Just now</p><ul id="feed"></ul></div>
   </aside>
@@ -191,6 +198,7 @@ watcher = PalStage.follow(stage, {everySound: true, loc: () => cam.loc, onState(
   $("bar").style.width = Math.min(100, data.meter.points / data.meter.goal * 100) + "%";
   $("words").textContent = `${data.meter.points} of ${data.meter.goal}`;
   $("next").textContent = data.meter.next ? `Next: ${data.meter.next}` : "Next: a party!";
+  paintRace(data.game);
   for (const e of data.events) {
     autoNotice(e);
     if (e.kind === "mymove") banner(`✨ <b>${esc(e.by)}</b>: ${esc(e.title)}`, e.ms + 700);
@@ -198,6 +206,21 @@ watcher = PalStage.follow(stage, {everySound: true, loc: () => cam.loc, onState(
     else if (e.kind === "shower") banner("🌠 Star shower!", 3500);
   }
 }});
+
+// A Code race: the job, then the fastest code between rounds, so the class can read it together.
+function paintRace(g) {
+  $("raceCard").hidden = !g || g.kind !== "code";
+  if ($("raceCard").hidden) return;
+  const name = seat => (people.find(m => m.seat === seat) || {}).name || "A friend";
+  const reveal = g.phase === "playing" && g.pause && g.reveal;
+  $("raceLabel").textContent = g.phase === "playing" ? `💻 Code race · Job ${g.round + 1} of ${g.rounds}` : "💻 Code race";
+  $("raceJob").textContent = g.phase === "lobby" ? `Starting soon! ${g.joined.length} joined. Join in Games.`
+    : g.phase === "results" ? g.message
+    : reveal ? (reveal.by ? `⚡ ${reveal.by} was fastest!` : "Here's one way:") : `${g.job.job} ${g.job.icons}`;
+  $("raceCode").hidden = !reveal;
+  $("raceCode").textContent = reveal ? reveal.code : "";
+  $("raceWho").textContent = g.phase === "playing" ? `Solved: ${g.solved.map(name).join(", ") || "nobody yet"} (${g.solved.length} of ${g.joined.length})` : "";
+}
 
 async function refresh() {
   const over = await fetch("/pixel/overview").then(r => r.json()).catch(() => null);

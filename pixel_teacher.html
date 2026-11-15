@@ -71,7 +71,7 @@
   <h2>Who's where</h2>
   <div class="card scroll">
     <table>
-      <thead><tr><th>Name</th><th>Mission</th><th>Tries here</th><th>Stars</th><th>Drawings</th><th>Trophies</th><th>Hang out</th><th>Last problem</th></tr></thead>
+      <thead><tr><th>Name</th><th>Mission</th><th>Tries here</th><th>Stars</th><th title="Missions where they changed the code themselves">🎨 Your turns</th><th>Drawings</th><th>Trophies</th><th>Hang out</th><th>Last problem</th></tr></thead>
       <tbody id="rows"></tbody>
     </table>
     <p id="none" style="margin:8px 0 0;color:var(--soft)" hidden>Nobody has opened Pixel Pals yet.</p>
@@ -92,6 +92,7 @@
       <button class="btn" id="roomOpen"></button>
       <button class="btn" id="party">🎉 Party now</button>
       <button class="btn" id="shower">🌠 Star shower now</button>
+      <button class="btn" id="codeRace">💻 Code race for everyone</button>
       <label style="display:flex;gap:6px;align-items:center;font-weight:700"><input type="checkbox" id="roomTyping"> Let them type their own words</label>
     </div>
     <p id="roomHere" style="margin:8px 0 0;font-size:14px"></p>
@@ -143,7 +144,7 @@ async function refresh() {
       <td><canvas class="pal" data-picture="${esc(JSON.stringify(s.picture || null))}"></canvas>${esc(s.name)}</td>
       <td>${esc(s.level_name)}<br><small style="color:var(--soft)">${esc(s.chapter)}</small></td>
       <td>${s.misses >= 3 ? `<b style="color:var(--warn)">${s.misses} misses</b>` : s.runs_here}</td>
-      <td>${s.stars}</td><td>${s.drawings}</td><td>${s.badges}</td><td>${s.hang ? (s.move ? "Yes, with My Move" : "Yes") : ""}${s.let_in ? ` <button class="btn" data-let-in="${esc(s.name)}" data-on="">Lock again</button>`
+      <td>${s.stars}</td><td>${s.turns}</td><td>${s.drawings}</td><td>${s.badges}</td><td>${s.hang ? (s.move ? "Yes, with My Move" : "Yes") : ""}${s.let_in ? ` <button class="btn" data-let-in="${esc(s.name)}" data-on="">Lock again</button>`
         : s.hang ? "" : `<button class="btn" data-let-in="${esc(s.name)}" data-on="1">🔓 Let in</button>`}</td>
       <td class="err">${esc(s.last_error)}</td>
     </tr>`).join("");
@@ -182,6 +183,11 @@ $("gate").addEventListener("submit", e => { e.preventDefault(); key = $("key").v
 $("openGo").addEventListener("click", async () => { await call({action: "open", level: $("openTo").value}); refresh(); });
 $("party").addEventListener("click", () => call({action: "party"}));
 $("shower").addEventListener("click", () => call({action: "shower"}));
+$("codeRace").addEventListener("click", async () => {
+  const out = await call({action: "code_race"}).catch(() => null);
+  $("codeRace").textContent = !out ? "💻 Couldn't reach the server" : out.error ? "💻 " + out.error : `💻 Code race starting for ${out.count}!`;
+  setTimeout(() => { $("codeRace").textContent = "💻 Code race for everyone"; }, 4000);
+});
 let roomIsOpen = false;
 $("roomOpen").addEventListener("click", async () => { await call({action: "room", on: !roomIsOpen}); refresh(); });
 $("roomPlaced").addEventListener("click", async e => {

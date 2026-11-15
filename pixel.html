@@ -445,6 +445,10 @@
   #myMove:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 #d9779a; }
   #myMove:disabled { background: #e7e4d8; color: #6d6a58; box-shadow: none; cursor: default; }
   #myMove.none-yet:not(:disabled) { background: linear-gradient(135deg, #bfe7dc, #d7c9f4); color: #2c4a52; box-shadow: 0 4px 0 #a3bcc4; }
+  #nextMission { flex: none; display: grid; gap: 0; padding: 4px 10px; border: 3px solid #7a3fe4; border-radius: 16px; background: #f3ecff; color: #3b1f6b; cursor: pointer; font: inherit; text-align: left; }
+  #nextMission b { font-size: 15px; font-weight: 900; }
+  #nextMission small { font-size: 12px; font-weight: 800; }
+  #nextMission:hover { filter: brightness(1.04); }
   #coinBar { flex: none; display: flex; align-items: baseline; gap: 6px; padding: 6px 12px; background: #fff3c4; border-radius: 14px; font-size: 16px; font-weight: 800; color: #5a4208; }
   #coinBar b { font-size: 22px; font-weight: 900; }
   #coinBar small { margin-left: auto; font-size: 12px; font-weight: 700; text-align: right; color: #7a6a40; }
@@ -485,6 +489,22 @@
   .games-pane button small { font-size: 12px; font-weight: 600; line-height: 1.4; }
   .games-pane .me-note { grid-column: 1 / -1; }
   .games-pane button:disabled { opacity: .5; cursor: default; }
+  .room-buttons .race-start { grid-auto-flow: row; gap: 2px; background: linear-gradient(135deg, #e6dcff, #d9f2df); box-shadow: 0 3px 0 #b9a6e8; color: #3b1f6b; }
+  .room-buttons .race-start b { font-size: 18px; }
+  .hang-view.racing #myMove, .hang-view.racing #nextMission, .hang-view.racing #palStrip { display: none; }
+  .race-row { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .room-buttons .race-row button { min-height: 38px; padding: 5px 3px; font-size: 13px; }
+  .race-score small { font-weight: 700; }
+  #raceCode { grid-column: 1 / -1; min-height: 86px; resize: vertical; padding: 8px; border: 2px solid #c9b8ee; border-radius: 12px; background: #fffdf6; color: #27484a; font: 700 16px/1.4 var(--mono); tab-size: 4; white-space: pre; }
+  #raceCode:focus { outline: 3px solid #8f6bff; outline-offset: 1px; }
+  .race-chips { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 5px; }
+  .room-buttons .race-chips button { min-height: 0; padding: 6px 8px; border-radius: 10px; background: #d9f2df; box-shadow: 0 2px 0 #a9d6b4; color: #1f5133; font: 700 14px/1.1 var(--mono); }
+  .room-buttons .race-chips button.loop { background: #ffe9b8; box-shadow: 0 2px 0 #e0c27a; color: #5a4208; }
+  .room-buttons .race-run { min-height: 44px; background: linear-gradient(135deg, #8f6bff, #c48bff); box-shadow: 0 3px 0 #6a4fb0; color: #fff; font-size: 18px; }
+  .room-buttons .race-run:hover:not(:disabled) { background: linear-gradient(135deg, #7f5bef, #b47bef); }
+  .race-msg { grid-column: 1 / -1; margin: 0; min-height: 1.3em; font-size: 15px; font-weight: 800; color: #8a2f4f; overflow-wrap: anywhere; }
+  .race-msg.good { color: #2d6a3a; }
+  .race-reveal { grid-column: 1 / -1; margin: 0; padding: 8px 10px; border-radius: 12px; background: #27303f; color: #e9f1e2; font: 700 14px/1.4 var(--mono); white-space: pre-wrap; }
   #seekerCurtain { position: absolute; inset: 0; z-index: 20; background: #e9f1e2; color: #27484a; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 16px; border-radius: inherit; }
   #seekerCurtain[hidden] { display: none; }
   #seekerCurtain strong { font-size: clamp(32px, 6vw, 80px); line-height: 1; }
@@ -494,6 +514,7 @@
   .room-buttons { flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: auto; gap: 7px; align-content: start; padding: 2px 3px 5px 0; }
   .room-buttons button { display: grid; justify-items: center; align-content: center; gap: 2px; min-height: 62px; min-width: 0; padding: 7px 3px; border: 0; border-radius: 14px; background: #f3f5ea; box-shadow: 0 3px 0 #dbe2cf; color: #2c5352; font-weight: 800; font-size: 14px; line-height: 1.15; overflow-wrap: anywhere; cursor: pointer; }
   .room-buttons button span { font-size: 24px; line-height: 1.1; }
+  .room-buttons .tap-code { font: 700 11px/1.1 var(--mono); color: #6a4fb0; background: none; padding: 0; white-space: normal; overflow-wrap: normal; }
   .room-buttons button:hover:not(:disabled) { background: #e5efdc; }
   .room-buttons button:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #dbe2cf; }
   .room-buttons button[aria-pressed="true"], .room-buttons button[aria-pressed="true"]:hover:not(:disabled) { background: #ffd27a; box-shadow: 0 3px 0 #e0a93f; }
@@ -544,6 +565,13 @@
   body.calm .gift-box, body.calm #clapGo, body.calm #hangBanner, body.calm .win-card, body.calm .gift-open, body.calm .win-stars .on, body.calm #starCount.bump { animation: none; }
 
   /* ---- The step-by-step guide on the Code tab ---- */
+  .guess-said { font-weight: 800; color: #4b2a8f; }
+  #winBody .guess-said { margin: 0 0 8px; font-size: 18px; text-align: center; }
+  #yourTurn { margin: 6px 0 0; padding: 6px 9px; background: #f3ecff; border: 3px solid #7a3fe4; border-radius: 10px; font-size: 15px; font-weight: 800; }
+  #yourTurn p { margin: 0; }
+  #yourTurn p + p, #yourTurn .btn { margin-top: 5px; }
+  #yourTurn .turn-hint { font-weight: 600; }
+  #yourTurn.on { font-size: 17px; }
   .coach { flex: none; padding: 9px 11px; background: #fffbe8; border: 3px solid var(--sun); border-radius: 12px; }
   .coach-steps { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 6px; padding: 0; list-style: none; font-size: 13px; font-weight: 800; }
   .coach-steps li { padding: 1px 8px; border-radius: 99px; background: #eee9dc; color: #6d6a58; }
@@ -767,6 +795,7 @@
         <p id="pipSays"></p>
         <p id="job"></p>
         <ul id="goals"></ul>
+        <div id="yourTurn" role="status" hidden></div>
       </div>
       <div class="coach" id="coach" hidden></div>
       <div class="editor">
@@ -796,7 +825,7 @@
   <div id="hangView" class="hang-view" hidden>
     <section class="hang-main">
       <div class="hang-meter"><span>🎉 Class party</span><div class="track"><i id="meterBar"></i></div><span id="meterWords"></span><span id="meterNext"></span></div>
-      <button id="gameStatus" class="game-status"><strong id="gameTitle">Play with friends</strong><span id="gameDetail">Start tag or hide &amp; seek →</span></button>
+      <button id="gameStatus" class="game-status"><strong id="gameTitle">Play with friends</strong><span id="gameDetail">💻 Code race, tag, hide &amp; seek, a race or a dance →</span></button>
       <div class="screen-wrap"><div class="screen hang-screen" id="roomHost"><canvas id="hangBack" aria-hidden="true"></canvas><canvas id="roomCanvas" aria-label="Everyone's pals together"></canvas>
         <div id="hangBanner" role="status" hidden></div>
         <div id="seekerCurtain" hidden><b>You’re the seeker!</b><strong id="seekerCount">20</strong><span>Count while your friends hide…</span></div>
@@ -806,6 +835,7 @@
     </section>
     <section class="hang-side">
       <div id="coinBar">🪙 <b id="coinCount">0</b> coins<small id="coinNote"></small></div>
+      <button id="nextMission" hidden></button>
       <button id="myMove"></button>
       <button id="clapGo" hidden></button>
       <div id="palStrip" hidden><canvas id="palStripPic"></canvas><span>You are <b id="palStripName"></b></span><button id="palSwitch">🔄 Switch</button><button id="palFollow" aria-pressed="true"></button><button id="palProp" aria-pressed="false">🪑 Prop: off</button></div>
