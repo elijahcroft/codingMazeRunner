@@ -158,6 +158,8 @@ async function openMission(key) {
   guessPick = null;
   remixOn = false;
   remixHint = false;
+  fixOn = false;
+  fixHint = false;
   coachWay = null;
   coachOops = "";
   $("levelName").textContent = `${data.chapter.icon} ${data.name}`;
@@ -186,7 +188,7 @@ function drawGoals(got) {
 // ---- Guess first: before the guide's code runs the first time, what will it do? ---------------
 let guessAsked = false, guessPick = null, guessWaiting = false;
 function wantsGuess() {
-  return !!view.guess && !guessAsked && !view.best[0] && !remixOn && $("code").value === coachTarget();
+  return !!view.guess && !guessAsked && !view.best[0] && !remixOn && !fixOn && $("code").value === coachTarget();
 }
 function askGuess() {
   guessAsked = true;
@@ -204,17 +206,22 @@ function guessLine(g) {
 
 // ---- Your turn: after a mission, one change to make with the guide off ----------------------
 let remixOn = false, remixHint = false;
+// The same box shows Fix it once Your turn is done, or while a Fix it is on.
 function paintYourTurn() {
-  const box = $("yourTurn"), t = view.remix;
-  box.hidden = !view.best[0] || t.done;
-  box.classList.toggle("on", remixOn);
+  const box = $("yourTurn"), t = view.remix, f = view.fix;
+  const showFix = fixOn || (!remixOn && t.done && !!f && !f.done);
+  box.hidden = !view.best[0] || (t.done && !showFix);
+  box.classList.toggle("on", remixOn || fixOn);
+  box.classList.toggle("fix", showFix);
   if (box.hidden) return;
+  if (showFix) { box.innerHTML = fixCard(); return; }
   box.innerHTML = remixOn
     ? `<p>🎨 Your turn: ${fmt(t.ask)}</p><p class="turn-hint">No guide this time. Change the code yourself, then press <b>▶ Show time!</b></p>` +
       (remixHint ? `<p class="turn-hint">💡 ${fmt(t.hint)}</p>` : `<button class="btn" data-remix-hint="1">💡 Where do I change it?</button>`)
     : `<p>🎨 Your turn: ${fmt(t.ask)}</p><button class="btn main" data-remix="1">Try it! +${t.coins} 🪙</button>`;
 }
 function startRemix() {
+  fixOn = false;
   remixOn = true;
   coachWay = "own";
   if (!$("code").value.trim()) setCode(view.code || view.coach.map(c => c[0]).join("\n"));
@@ -225,6 +232,45 @@ function startRemix() {
 }
 function remixButton() {
   return view.remix.done || remixOn ? "" : ` <button class="btn" data-remix="1">🎨 Your turn +${view.remix.coins} 🪙</button>`;
+}
+// One extra button after a mission: Your turn first, then Fix it.
+function extraButton() {
+  return remixOn || fixOn ? "" : remixButton() || fixButton();
+}
+
+// ---- Fix it: Pip's code for the mission, with one bug to find and fix ----------------------------
+let fixOn = false, fixHint = false;
+function fixCard() {
+  const f = view.fix;
+  if (!fixOn) return `<p>🐞 Fix it: ${fmt(f.ask)}</p><button class="btn main" data-fix="1">Fix Pip's code +${f.coins} 🪙</button>`;
+  return `<p>🐞 Fix it: ${fmt(f.ask)}</p><p class="turn-hint">Find the bug in the code and fix it, then press <b>▶ Show time!</b></p>` +
+    (fixHint ? `<p class="turn-hint">💡 ${fmt(f.hint)}</p>` : `<button class="btn" data-fix-hint="1">💡 Where's the bug?</button>`) +
+    ` <button class="btn" data-fix-reset="1">↩ Pip's code again</button>`;
+}
+function fixButton() {
+  const f = view.fix;
+  return !f || f.done || fixOn || !view.best[0] ? "" : ` <button class="btn" data-fix="1">🐞 Fix it +${f.coins} 🪙</button>`;
+}
+function startFix() {
+  remixOn = false;
+  fixOn = true;
+  fixHint = false;
+  coachWay = "own";
+  setCode(view.fix.code);
+  paintYourTurn();
+  updateEditor();
+  verdict(`<p>🐞 <b>Fix it!</b> ${fmt(view.fix.ask)}</p><p>Press <b>▶ Show time!</b> to see what goes wrong. Then find the bug in the code and fix it.</p>`);
+  $("code").focus();
+}
+function fixDone() {
+  view.fix.done = true;
+  fixOn = false;
+  confettiBurst();
+  StageSFX.play("fanfare");
+  const order = S.chapters.flatMap(c => c.levels), next = order[order.findIndex(l => l.key === mode) + 1];
+  $("caption").textContent = "Bug fixed!";
+  verdict(`<p><b>🐞 Bug fixed! You found it and fixed it. Real coders do that every day!</b></p>
+    <p class="next">${nextButton(next)}</p>`, "good");
 }
 
 // ---- Chips -----------------------------------------------------------------------------
@@ -455,6 +501,7 @@ const coachActions = {
 };
 function showSteps() {
   remixOn = false;
+  fixOn = false;
   paintYourTurn();
   coachWay = "type";
   coachOops = "";
@@ -553,7 +600,7 @@ async function runShow() {
   setBand(0);
   $("caption").textContent = "The curtain goes up...";
   let out = null;
-  try { out = await post("/pixel/run", {id: me, level: mode, code: $("code").value, guess: guessPick}); } catch (_) {}
+  try { out = await post("/pixel/run", {id: me, level: mode, code: $("code").value, guess: guessPick, fixing: fixOn}); } catch (_) {}
   if (ticket !== runTicket) return;
   if (!out) {
     finishRun();
@@ -579,7 +626,13 @@ async function runShow() {
   }
   drawGoals(out.stars.map((g, i) => g || view.best[i]));
   view.best = out.stars.map((g, i) => g || view.best[i]);
-  if (out.rewards.remixed) { stage.cheer(); remixDone(out); }
+  if (out.rewards.fixed) { stage.cheer(); fixDone(); }
+  else if (out.rewards.remixed) { stage.cheer(); remixDone(out); }
+  else if (fixOn) {
+    stage.sigh();
+    $("caption").textContent = "The bug is still there.";
+    verdict(`<p>The show ran, but the bug is still there: <b>${fmt(view.fix.ask)}</b></p><p>Look at the code again, fix it, then press Show time!</p>`, "bad");
+  }
   else if (out.stars[0]) { stage.cheer(); missionDone(out); }
   else {
     stage.sigh();
@@ -611,7 +664,7 @@ function remixDone(out) {
   const order = S.chapters.flatMap(c => c.levels), next = order[order.findIndex(l => l.key === mode) + 1];
   $("caption").textContent = "You changed the code yourself!";
   verdict(`<p><b>🎨 Your turn: done! You changed the code yourself. That's real coding!</b></p>
-    <p class="next">${nextButton(next)}</p>`, "good");
+    <p class="next">${nextButton(next)}${fixButton()}</p>`, "good");
 }
 function missionDone(out) {
   if (remixOn) {
@@ -624,7 +677,7 @@ function missionDone(out) {
   $("caption").textContent = "The crowd loves it!";
   const more = out.stars.findIndex(g => !g);
   verdict(`<p><b>${all ? "Three stars! A perfect show!" : "You did it! The crowd is cheering."}</b>${more >= 0 ? ` For the next star: ${fmt(view.goals[more])}.` : ""}</p>
-    <p class="next">${nextButton(next)}${remixButton()}${mode === "m1" ? ` <button class="btn" data-rename="1">Rename my move</button>` : ""}</p>`, "good");
+    <p class="next">${nextButton(next)}${extraButton()}${mode === "m1" ? ` <button class="btn" data-rename="1">Rename my move</button>` : ""}</p>`, "good");
 }
 // The box always stays on screen, so the stage above it never jumps.
 function verdict(html, kind) {
@@ -756,7 +809,7 @@ function openMissions() {
   $("missionList").innerHTML = S.chapters.map(ch => `<h3>${ch.icon} ${esc(ch.name)}</h3><div class="lvls">${
     ch.levels.map(l => {
       const n = l.stars.filter(Boolean).length;
-      return `<button class="lvl${l.key === mode ? " here" : ""}" data-mission="${esc(l.key)}" ${l.open ? "" : "disabled"}>${l.open ? "" : "🔒 "}${esc(l.name)}${l.remixed ? " 🎨" : ""}<span class="${n ? "" : "none"}">${"★".repeat(n)}${"☆".repeat(3 - n)}</span></button>`;
+      return `<button class="lvl${l.key === mode ? " here" : ""}" data-mission="${esc(l.key)}" ${l.open ? "" : "disabled"}>${l.open ? "" : "🔒 "}${esc(l.name)}${l.remixed ? " 🎨" : ""}${l.fixed ? " 🐞" : ""}<span class="${n ? "" : "none"}">${"★".repeat(n)}${"☆".repeat(3 - n)}</span></button>`;
     }).join("")}</div>`).join("");
   $("trophies").innerHTML = S.badges.map(b =>
     `<div class="trophy${b.got ? " got" : ""}"><i>${b.icon}</i><span><b>${esc(b.name)}</b>${esc(b.how)}</span></div>`).join("");
@@ -779,6 +832,9 @@ document.addEventListener("click", e => {
   else if (d.guess) { guessPick = d.guess === "skip" ? null : Number(d.guess); runShow(); }
   else if (d.remix) { $("win").hidden = true; startRemix(); }
   else if (d.remixHint) { remixHint = true; paintYourTurn(); }
+  else if (d.fix) { $("win").hidden = true; startFix(); }
+  else if (d.fixHint) { fixHint = true; paintYourTurn(); }
+  else if (d.fixReset) { setCode(view.fix.code); $("code").focus(); }
 });
 new ResizeObserver(fitScreen).observe($("stageHost").parentElement);
 $("runButton").addEventListener("click", runShow);

@@ -95,9 +95,26 @@ a 🎨 Remixer trophy the first time, and 🎨 next to the mission in Missions. 
 but the change isn't there yet, it says what Your turn still wants. The guide's own code
 never counts. They live in `REMIXES` in `pixel.py`, and `test_pixel_turn.py` checks every one.
 
+**🐞 Fix it: finding a bug.** Once a mission's Your turn is done, the same box turns orange
+and offers **Fix Pip's code**: Pip's code for that mission with one bug in it, like
+"Pip wanted 5 jumps, but the pal jumps only once!" Half the bugs stop the show with a
+message (a missing  "  , `wav()`, `Dance()`, `if i = 3:`), and half run but do the wrong
+thing (`range(1)`, confetti pushed into the loop, `["Ana" "Ben", "Cy"]` saying "Hi AnaBen").
+**💡 Where's the bug?** says which line or idea to look at, and **↩ Pip's code again** puts
+the bug back. A fix pays 15 🪙 once, the 🐞 Bug Squasher trophy the first time, and 🐞 next
+to the mission in Missions. It only counts once the mission itself is finished. My Move has
+none. They live in `FIXES` in `pixel.py`, and `test_pixel_fix.py` checks that every bug really
+breaks the show and that the guide's code fixes it.
+
+**Error messages talk about the line itself:** `feel(happy)` says to write `feel("happy")`,
+`right(five)` asks for a number, `name = Luna` says `name = "Luna"`, `Name` when the variable
+is `name` says capitals matter, `say("I am " name)` says to add a `+`, and using a `def` above
+where it's made says to move it up.
+
 In the Hang out, a purple **💻 Next mission** button names the next mission and its prize
 (up to 50 🪙, and a 🎁 box while there are boxes left) and opens it in one click. With every
-mission done, it points to a Your turn not done yet, and once those are done too, it goes away.
+mission done, it points to a Your turn not done yet, then a Fix it, and once those are done too,
+it goes away.
 
 The Hang out's 👋 Do and 🎉 Party buttons show their Python under the name (`wave()`,
 `feel("happy")`, `hearts()`), so playing keeps reminding them what the code looks like.

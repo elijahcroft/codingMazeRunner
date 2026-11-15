@@ -5628,6 +5628,7 @@ PIXEL_BADGES = {
     "angler": ("🎣", "Gone Fishing", "Catch every kind of thing in the sea"),
     "all": ("🏆", "Star of the Show", "Get all the stars in the game"),
     "remix": ("🎨", "Remixer", "Do a Your turn: change a mission's code your own way"),
+    "fix": ("🐞", "Bug Squasher", "Do a Fix it: find and fix the bug in Pip's code"),
 }
 
 
@@ -5650,7 +5651,7 @@ def pixel_entry(p):
     for key, value in (("drawings", []), ("pal", ""), ("solved", {}), ("code", {}),
                        ("badges", []), ("runs", {}), ("misses", {}), ("last_error", ""), ("active", 0),
                        ("gifts", []), ("wear", {}), ("friends", []), ("move", None), ("found", []),
-                       ("stuff", []), ("fish", {}), ("things", {}), ("remixed", []), ("guessed", [])):
+                       ("stuff", []), ("fish", {}), ("things", {}), ("remixed", []), ("guessed", []), ("fixed", [])):
         entry.setdefault(key, value)
     if "coins" not in entry:        # coins came later: pay for the stars and gems already earned
         firsts = sum(1 for key, stars in entry["solved"].items() if key in pixel.LEVEL_BY_KEY and stars[0])
@@ -5790,6 +5791,7 @@ def pixel_state(p):
                 {"key": lv["key"], "name": lv["name"],
                  "stars": entry["solved"].get(lv["key"], [False] * 3),
                  "remixed": lv["key"] in entry["remixed"],
+                 "fixed": lv["key"] in entry["fixed"] if lv["fix"] else None,
                  "open": pixel.LEVEL_ORDER.index(lv["key"]) <= frontier}
                 for lv in pixel.LEVELS if lv["chapter"] == i]) for i, ch in enumerate(pixel.CHAPTERS)],
             "current": pixel.LEVEL_ORDER[frontier],
@@ -5821,11 +5823,14 @@ def pixel_level(entry, key):
             "code": entry["code"].get(key, ""), "coach": lv["coach"], "build": lv.get("build", False),
             "remix": {"ask": lv["remix"][0], "hint": lv["remix"][2], "done": key in entry["remixed"],
                       "coins": pixel.REMIX_COINS},
+            "fix": None if not lv["fix"] else
+                   {"ask": lv["fix"][0], "code": lv["fix"][1], "hint": lv["fix"][3], "done": key in entry["fixed"],
+                    "coins": pixel.FIX_COINS},
             "guess": None if not lv["guess"] or key in entry["guessed"] else
                      {"ask": lv["guess"][0], "choices": lv["guess"][1], "coins": pixel.GUESS_COINS}}
 
 
-def pixel_record(p, key, code, out, guess=None):
+def pixel_record(p, key, code, out, guess=None, fixing=False):
     """Keep a mission run: the best stars, any badges, and on a first finish
     a gift, some of the class's party meter, and maybe the Hang out."""
     entry = pixel_entry(p)
@@ -5872,6 +5877,13 @@ def pixel_record(p, key, code, out, guess=None):
         pixel_badge(p, "remix", earned)
         pixel_feed_add(f"🎨 {p['name']} did Your turn on {pixel.LEVEL_BY_KEY[key]['name']}")
     lv = pixel.LEVEL_BY_KEY[key]
+    # A Fix it counts only after the mission is finished, and only when the page says it's one.
+    fixed = bool(fixing is True and old[0] and out.get("fix") and key not in entry["fixed"])
+    if fixed:
+        entry["fixed"].append(key)
+        rewards["fixed"] = True
+        pixel_badge(p, "fix", earned)
+        pixel_feed_add(f"🐞 {p['name']} fixed the bug in {lv['name']}")
     right = False
     if lv["guess"] and type(guess) is int and key not in entry["guessed"]:     # only the first guess counts
         entry["guessed"].append(key)
@@ -5879,7 +5891,8 @@ def pixel_record(p, key, code, out, guess=None):
         rewards["guess"] = {"right": right, "answer": lv["guess"][1][lv["guess"][2]]}
     gained = pixel_stars(entry) - before
     coins = pixel_pay(p, pixel.COINS_STAR * gained + (pixel.COINS_FIRST if first else 0)
-                      + (pixel.REMIX_COINS if remixed else 0) + (pixel.GUESS_COINS if right else 0), play=False)
+                      + (pixel.REMIX_COINS if remixed else 0) + (pixel.GUESS_COINS if right else 0)
+                      + (pixel.FIX_COINS if fixed else 0), play=False)
     return dict(rewards, gained=gained, badges=earned, coins=coins)
 
 
@@ -7075,6 +7088,7 @@ def pixel_overview():
                      "drawings": len(entry["drawings"]), "misses": entry["misses"].get(key, 0),
                      "runs_here": entry["runs"].get(key, 0), "last_error": entry["last_error"],
                      "turns": len(entry["remixed"]),
+                     "fixes": len(entry["fixed"]),
                      "badges": len(entry["badges"]), "hang": not pixel_hang_needs(entry), "let_in": bool(entry.get("hang_let_in")), "move": bool(entry["move"]),
                      "active": entry["active"], "picture": pixel_picture(entry)})
     rows.sort(key=lambda r: (r["at"], -r["misses"], r["name"].lower()))
@@ -7239,7 +7253,7 @@ def pixel_post(path, data):
         lv = pixel.LEVEL_BY_KEY[key]
         out = pixel.run_level(lv, code, pal)
         with lock:
-            rewards = pixel_record(p, key, code[:pixel.MAX_CODE], out, data.get("guess"))
+            rewards = pixel_record(p, key, code[:pixel.MAX_CODE], out, data.get("guess"), data.get("fixing"))
             pixel_save_soon()
             return dict(out, rewards=rewards, state=pixel_state(p))
     return {"error": "not found"}

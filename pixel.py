@@ -1285,14 +1285,62 @@ GUESSES = {
     "w1": ("boogie has 2 jumps in it. How many jumps in the whole show?", ["2", "3", "4"], 2),
     "w2": ("How many times will your pal jump?", ["Once", "3 times", "5 times"], 0),
 }
+# "Fix it": after a mission, Pip's code for it with one bug in it, to find and fix.
+# (what went wrong, the code with the bug, check that it's fixed, a hint that says where to look).
+# Half stop the show with a message, half run but do the wrong thing. test_pixel_fix.py
+# checks every bug really breaks its check and the guide's code passes it.
+# My Move has none: its code is the student's own.
+FIXES = {
+    "a1": ("Pip's show won't even start!", 'say("Hello)\nsay("I am so happy to be here")',
+           lambda r: r.n("say") >= 2, 'Look at line 1. Words need a  "  at both ends.'),
+    "a2": ("Pip wanted jump, talk, jump. The show stops before the last jump!", 'jump()\nsay("Wheee!")\njump',
+           lambda r: r.first("jump", "say", "jump"), "Line 3 is missing something every command needs."),
+    "a3": ("Pip's pal walks right past the spotlight!", 'right(6)\nsay("Here I am!")\nleft(6)',
+           lambda r: 7 in _visited(r) and r.first("right", "say") and r.x == 2,
+           "The pal starts on spot 2 and the light is on spot 7. Count the steps, then fix both numbers."),
+    "h1": ("Pip's pal says hello, then the show stops!", 'say("Hello!")\nwav()\nwave()',
+           lambda r: r.n("wave") >= 2 and r.first("say", "wave"), "Look closely at the spelling on line 2."),
+    "h3": ("Pip's pal can't find its first feeling!", 'feel(sad)\nwait(1)\nfeel("surprised")\nwait(1)\nfeel("happy")',
+           lambda r: _in_order(r, ("feel", ("sad",)), ("feel", ("happy",))), 'Feelings are words. Words need  "  marks at both ends.'),
+    "h4": ("Pip's pal won't dance!", "Dance()\ncheer()\nhearts()",
+           lambda r: r.first("dance", "cheer", "hearts"), "Python cares about capital letters. Commands start with a small letter."),
+    "b1": ("Pip wanted 5 jumps, but the pal jumps only once!", "for i in range(1):\n    jump()",
+           lambda r: r.n("jump") >= 5 and r.fors >= 1, "The number in  range( )  is how many times the loop goes round."),
+    "b2": ("Pip wanted confetti once, at the end. It falls 4 times!", "for i in range(4):\n    right(1)\n    left(1)\n    confetti()",
+           lambda r: r.n("right") >= 4 and r.n("confetti") == 1 and r.log[-1][0] == "confetti",
+           "Lines pushed in are inside the loop. Should confetti be inside?"),
+    "t1": ("Pip's pal should end up small again, but it stays big!", 'grow()\nshake()\ngrow()\nsay("Ta-da!")',
+           lambda r: r.first("grow", "shake", "shrink", "say"), "Which line should make the pal small again?"),
+    "t2": ("Pip's pal looks left, and then the show stops!", 'look("left")\nwait(1)\nlook("rigth")\nwait(1)\nlook("front")\nsay("Oh, hello!")',
+           lambda r: _in_order(r, ("look", ("left",)), ("look", ("right",))) and ("look", ("front",)) in r.log,
+           "Look closely at the spelling on line 3."),
+    "l1": ("Pip's pal should count 1 to 5, but it starts at 0!", "for i in range(5):\n    say(i)\n    jump()",
+           lambda r: all(str(n) in r.said for n in range(1, 6)) and "0" not in r.said,
+           "i starts at 0. What can you add to i so it starts at 1?"),
+    "l2": ('Pip\'s pal says "Hi AnaBen"! Ana and Ben got stuck together.', 'for name in ["Ana" "Ben", "Cy"]:\n    say("Hi " + name)\n    jump()',
+           lambda r: len(set(r.said)) >= 3 and not any("AnaBen" in s for s in r.said),
+           "Look at the list. Something goes between every name."),
+    "v1": ("Pip's pal forgot its own name!", 'name = "Luna"\nsay("I am " + Name)\nsay(name.upper() + " IS HERE")',
+           lambda r: r.said_var() >= 2, "Capital letters matter in names. Is it  name  or  Name  ?"),
+    "v2": ('Pip changed jumps to 7. The pal says "7 jumps!" but only jumps 4 times!',
+           'jumps = 7\nfor i in range(4):\n    jump()\ngrow()\nsay(f"{jumps} jumps!")',
+           lambda r: r.range_name and any(s.split()[0] == str(r.n("jump")) for s in r.said if s.split()), "range(4) always goes round 4 times. Put the variable's name in the brackets instead."),
+    "w1": ("Pip made a move called boogie, but the show stops when it's time to use it!",
+           "def boogie():\n    jump()\n    spin()\n    jump()\nboogie\nboogie",
+           lambda r: sum(r.own_calls.values()) >= 2, "To use a command, it needs  ( )  after its name."),
+    "w2": ("Pip's count stops at 1!", "for i in range(1, 6):\n    say(i)\n    if i = 3:\n        jump()",
+           lambda r: r.n("jump") == 1 and _after_three(r), "To ask if two things are the same, Python uses  ==  , two equals signs."),
+}
 for _lv in LEVELS:
     _lv["remix"] = REMIXES[_lv["key"]]
     _lv["guess"] = GUESSES.get(_lv["key"])
+    _lv["fix"] = FIXES.get(_lv["key"])
 
 LEVEL_ORDER = [lv["key"] for lv in LEVELS]
 LEVEL_BY_KEY = {lv["key"]: lv for lv in LEVELS}
 REMIX_COINS = 15           # once per mission, for doing its Your turn
 GUESS_COINS = 5            # for a right first guess on a mission
+FIX_COINS = 15             # once per mission, for fixing Pip's bug
 
 
 def _in_order(r, first, then):
@@ -1602,6 +1650,8 @@ def run_level(lv, code, pal, seed=0):
         out["error"], out["line"] = bad["error"], bad["line"]
     remix = lv.get("remix")
     out["remix"] = bool(good and remix and remix[1](report))
+    fix = lv.get("fix")
+    out["fix"] = bool(good and fix and fix[2](report))
     return dict(out, stars=stars, reply=reply, seed=seeds[0] + seed,
                 rehearsed=list(lv.get("rehearse", ())))
 

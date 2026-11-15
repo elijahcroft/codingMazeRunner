@@ -330,14 +330,18 @@ function nextCoding() {
   const next = order.find(l => l.open && !l.stars[0]);
   if (next) return {key: next.key, turn: false, name: next.name};
   const turn = order.find(l => l.stars[0] && !l.remixed);
-  return turn ? {key: turn.key, turn: true, name: turn.name} : null;
+  if (turn) return {key: turn.key, turn: true, name: turn.name};
+  const fix = order.find(l => l.stars[0] && l.fixed === false);
+  return fix ? {key: fix.key, fix: true, name: fix.name} : null;
 }
 function paintNextMission() {
   const b = $("nextMission"), next = nextCoding();
   b.hidden = !next;
   if (!next) return;
   const giftLeft = Object.entries(S.hang.catalog).some(([k, g]) => !g.class && !g.price && !g.goal && !S.hang.gifts.includes(k));
-  b.innerHTML = next.turn
+  b.innerHTML = next.fix
+    ? `<b>🐞 Fix it: ${esc(next.name)}</b><small>Find the bug in Pip's code · +15 🪙</small>`
+    : next.turn
     ? `<b>🎨 Your turn: ${esc(next.name)}</b><small>Change the code your own way · +15 🪙</small>`
     : `<b>💻 Next mission: ${esc(next.name)}</b><small>Win up to 50 🪙${giftLeft ? " and a 🎁 gift box" : ""}</small>`;
 }
@@ -347,6 +351,7 @@ async function goCode() {
   await showView("stage");
   await openMission(next.key);
   if (next.turn) startRemix();
+  else if (next.fix) startFix();
 }
 async function pressMyMove() {
   if (!S.hang.move) { await showView("stage"); openMission("m1"); return; }
