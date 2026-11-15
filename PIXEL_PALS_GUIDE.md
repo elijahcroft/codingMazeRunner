@@ -128,7 +128,7 @@ The Hang out's 👋 Do and 🎉 Party buttons show their Python under the name (
 `feel("happy")`, `hearts()`), so playing keeps reminding them what the code looks like.
 A student who has drawn something but hasn't finished a mission gets a **💻 Now code my
 pal →** button at the top of Draw. On the teacher page, **🎨 Your turns** counts the missions
-where each student changed the code themselves.
+where each student changed the code themselves, with 🐞 and the number of bugs they fixed.
 
 **My Move gets better with better code:** a `for` loop adds a sparkle trail, and 8
 actions or more adds a big finish. Running the mission again updates the move.
@@ -184,7 +184,7 @@ No code is needed once they're in.
   with how to get each (🎁 gift box, 🛍️ price, 🎉 class party, or a goal). Seven
   things unlock by themselves at a goal: Gem crown (9 gems), Space helmet (all 21
   gems), Fish hat (5 kinds of fish), Friendship sparkles (5 high-fives), Gold shades
-  (10 game rounds), Dragon horns (15 stars) and Superstar sparkles (all 27 stars). The
+  (10 game rounds), Dragon horns (15 stars) and Superstar sparkles (27 stars). The
   three closest goals sit at the top of Me with a bar, and a big 🔓 UNLOCKED! banner
   shows in the Hang out when one is reached.
 - **🏠 Home:** every student has a room of their own. In it they pick a thing and click
