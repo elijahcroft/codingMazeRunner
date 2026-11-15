@@ -431,6 +431,8 @@ def plain_syntax(code, e):
         return 'Words go inside brackets and quotes. Write  say("Hello")'
     if re.match(r"say\([^\"']*\"?[^\"']*$", line) and line.count('"') == 1:
         return 'Words need a  "  at both ends. Add the missing one. Hold Shift and press the  "  key.'
+    if re.search(r"""["'][^"']*["']\s+[A-Za-z_]\w*\s*\)|[A-Za-z_]\w*\s+["']""", line) and "(" in line:
+        return 'To join words and a name, put a  +  between them, like  say("I am " + name)'
     if re.match(r"(repeat|loop)\b", line) or (re.match(r"for\b", line) and " in " not in line):
         return "To repeat lines, write it like this:  for i in range(3):"
     hint = re.sub(r"^Syntax error on line \S+: ", "", syntax_message(e, "def my_move():")).rstrip(".")
@@ -492,6 +494,9 @@ class Director(Brain):
         self.named |= {n.name for n in ast.walk(self.tree) if isinstance(n, ast.FunctionDef)}
         self.named |= {a.arg for n in ast.walk(self.tree) if isinstance(n, ast.FunctionDef)
                        for a in n.args.args}
+        # Where each name sits, so a mistake with it can be told in its own words.
+        self.parent = {id(child): n for n in ast.walk(self.tree) for child in ast.iter_child_nodes(n)}
+        self.at_name = None
         for fn in ast.walk(self.tree):
             if isinstance(fn, ast.FunctionDef) and fn.name.startswith("on_") \
                     and fn.name[3:] not in EVENTS:
@@ -540,15 +545,38 @@ class Director(Brain):
             return super().lookup(name, frame)
         except BotError as err:
             text = str(err)
+            up = self.parent.get(id(self.at_name)) if self.at_name is not None and self.at_name.id == name else None
+            if name not in self.named and isinstance(up, ast.Call) and isinstance(up.func, ast.Name) \
+                    and up.func.id != "say" and '"' in USAGE.get(up.func.id, ""):
+                raise BotError(f'Words need quotes round them, like  {up.func.id}("{name}")')
             if "command" in text or "global" in text or "before giving" in text:
                 raise
             if name in self.named and "Did you mean" in text:
                 raise
             if name not in self.named:
-                raise BotError(f'Words need quotes round them, like  say("{name}")  '
-                               f'If {name} is meant to be a variable, set it first, like  {name} = 3')
+                raise BotError(self.unknown_word(name))
             raise BotError(f"I don't know '{name}' yet. Set it on a line above this one, "
                            f"like  {name} = 3")
+
+    def unknown_word(self, name):
+        """A bare word that isn't a variable: say what the line probably meant."""
+        same = [n for n in self.named if n.lower() == name.lower()]
+        if same:
+            return f"Capital letters matter in names. You made  {same[0]}  , so write  {same[0]}  here, not  {name}"
+        node = self.at_name if self.at_name is not None and self.at_name.id == name else None
+        up = self.parent.get(id(node))
+        if isinstance(up, ast.Call) and isinstance(up.func, ast.Name) and up.func.id in USAGE \
+                and up.func.id != "say":
+            command = up.func.id
+            if command in ("right", "left", "wait"):
+                return f"{command}() needs a number in its brackets, like  {USAGE[command]}"
+            return f'Words need quotes round them, like  {command}("{name}")'
+        if isinstance(up, ast.Assign) and up.value is node and len(up.targets) == 1 \
+                and isinstance(up.targets[0], ast.Name):
+            return (f'Words need quotes round them, like  {up.targets[0].id} = "{name}"  '
+                    f'For a number, leave the quotes off, like  {up.targets[0].id} = 3')
+        return (f'Words need quotes round them, like  say("{name}")  '
+                f'If {name} is meant to be a variable, set it first, like  {name} = 3')
 
     def assign(self, name, value, frame):
         if name in self.sensors:
@@ -589,6 +617,8 @@ class Director(Brain):
         return items
 
     def eval(self, node, frame):
+        if isinstance(node, ast.Name):
+            self.at_name = node
         if isinstance(node, ast.List):
             self.tick()
             return self.fits([self.eval(e, frame) for e in node.elts])
@@ -724,6 +754,9 @@ class Director(Brain):
         near = difflib.get_close_matches(name.lower(), known, 1, 0.65)
         if near:
             raise BotError(f"I don't know '{name}'. Did you mean  {USAGE.get(near[0], near[0] + '()')}  ?")
+        if name in self.named:
+            raise BotError(f"Your new command {name} is made further down. Python reads from the top, "
+                           f"so move the  def {name}():  lines up above the line that uses it.")
         raise BotError(f"I don't know the command '{name}'. Check the spelling, or make it "
                        f"yourself with  def {name}():")
 
