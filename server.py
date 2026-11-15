@@ -7251,7 +7251,7 @@ def pixel_post(path, data):
         if not allowed:
             return {"error": "🔒 That mission isn't open yet."}
         lv = pixel.LEVEL_BY_KEY[key]
-        out = pixel.run_level(lv, code, pal)
+        out = pixel.run_level(lv, code, pal, surprise=random.randrange(1000, 10 ** 6))
         with lock:
             rewards = pixel_record(p, key, code[:pixel.MAX_CODE], out, data.get("guess"), data.get("fixing"))
             pixel_save_soon()

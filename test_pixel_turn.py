@@ -25,6 +25,9 @@ CHANGED = {
     "v2": 'jumps = 7\nfor i in range(jumps):\n    jump()\ngrow()\nsay(f"{jumps} jumps!")',
     "w1": "def boogie():\n    jump()\n    spin()\n    jump()\nboogie()\nboogie()\nboogie()",
     "w2": "for i in range(1, 6):\n    say(i)\n    if i == 5:\n        jump()",
+    "r1": 'mood = choice(["happy", "silly", "cool", "sleepy"])\nfeel(mood)\nsay("I feel " + mood)',
+    "r2": "roll = randint(1, 6)\nsay(roll)\nif roll == 6:\n    cheer()\nif roll == 1:\n    jump()",
+    "r3": 'jumps = randint(5, 10)\nfor i in range(jumps):\n    jump()\nsay(f"{jumps} lucky jumps!")',
 }
 
 
@@ -54,6 +57,9 @@ TRUTH = {
     "v2": lambda st: _said(st)[-1],
     "w1": lambda st: str(_n(st, "jump")),
     "w2": lambda st: "Once" if _n(st, "jump") == 1 else "?",
+    "r1": lambda st: "Sad" if [s["mood"] for s in st if s["do"] == "feel"][0] in ("happy", "silly", "cool") else "?",
+    "r2": lambda st: "6" if 1 <= int(_said(st)[0]) <= 6 else "?",
+    "r3": lambda st: "2" if _n(st, "jump") >= 2 else "?",
 }
 
 

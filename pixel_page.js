@@ -38,6 +38,7 @@ const PYTHON = {
   fstring: ["f-string", 'say(f"{name}!")', "Puts a variable inside the words, in { } brackets."],
   def: ["def", "def my_move():\n    ", "Makes a new command. The lines pushed in under it are what it does."],
   if: ["if", "if i == 3:\n    ", "Only runs the lines pushed in under it when the answer is yes."],
+  random: ["surprise", 'mood = choice(["happy", "silly"])', "choice() picks one thing from a list by surprise. randint(1, 6) picks a number from 1 to 6."],
 };
 const ALL_PYTHON = Object.keys(PYTHON);
 

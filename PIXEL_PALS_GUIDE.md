@@ -28,13 +28,13 @@ Both teacher pages are linked from `/admin`.
    as Pip.
 5. After 3 missions, the Hang out opens and stays open.
 6. Mission 9 is **My Move**. They code their own routine and it becomes a big
-   button in the Hang out. Eight more missions come after it, for students who finish.
+   button in the Hang out. Eleven more missions come after it, for students who finish.
 
 A big button at the top right always says what comes next.
 
 ## The missions
 
-17 missions and 51 stars. The first star opens the next mission, and the other two are
+20 missions and 60 stars. The first star opens the next mission, and the other two are
 for going further.
 
 | Chapter | Missions | What it teaches |
@@ -47,10 +47,18 @@ for going further.
 | 🔢 Count on Me | Count with me, Hello, everyone | The loop's `i`, and looping over a list |
 | 🏷️ Name Tags | Name tag, How many? | Variables, `.upper()`, f-strings |
 | 🧠 Smart Pal | Make a move, Number three | `def`, and `if` inside a loop |
+| 🎲 Surprise! | Surprise mood, Roll the dice, Lucky jumps | `choice()` and `randint()`: code that does something different each time |
 
-The last eight come after My Move on purpose, so a student who has already made their
+The last eleven come after My Move on purpose, so a student who has already made their
 move doesn't have it locked behind new missions. They start easy (one new command each)
 and get harder.
+
+**🎲 Surprise! is different every time.** Each Show time! picks a new mood, dice roll or
+number of jumps, so pressing it again is part of the fun. The stars are checked on many
+runs behind the scenes (12, or 30 for the dice), so they mean the code works every time,
+not just that it got lucky once: cheering on a 6 only counts if it never cheers on anything
+else. The Guess first questions ask what *can* happen ("What's the biggest number your pal
+can say?"), since what *will* happen is a surprise.
 
 **Every mission walks them through it.** The top says the job in one plain sentence. Under
 it, the guide gives one line at a time: what the line does, the exact keys as tiles, and

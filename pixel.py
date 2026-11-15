@@ -867,6 +867,8 @@ class Report:
             isinstance(n, ast.For) and isinstance(n.iter, ast.Call)
             and any(isinstance(a, ast.Name) for a in n.iter.args) for n in nodes)
         self.upper = sum(1 for n in nodes if isinstance(n, ast.Attribute) and n.attr in ("upper", "lower"))
+        self.randoms = sum(1 for n in nodes if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+                           and n.func.id in ("choice", "randint"))
         self.lines = len(tree.body) if tree else 0
         self.code_lines = sum(1 for line in code.split("\n")
                               if line.strip() and not line.strip().startswith("#"))
@@ -948,6 +950,7 @@ CHAPTERS = [
     {"key": "l", "name": "Count on Me", "icon": "🔢"},
     {"key": "v", "name": "Name Tags", "icon": "🏷️"},
     {"key": "w", "name": "Smart Pal", "icon": "🧠"},
+    {"key": "r", "name": "Surprise!", "icon": "🎲"},
 ]
 
 # `adds` opens commands, and `python` opens the shapes of Python on the chips.
@@ -1219,6 +1222,54 @@ LEVELS = [
                ("You use if in a loop", lambda r: r.ifs >= 1 and r.fors >= 1, None)],
      "hints": ["range(1, 6) counts 1, 2, 3, 4, 5.", "for i in range(1, 6):\n    say(i)\n    if i == 3:\n        jump()"],
      "reference": "for i in range(1, 6):\n    say(i)\n    if i == 3:\n        jump()"},
+
+    # Surprise! Each run can be different. The stars are checked on many runs (`seeds`),
+    # so they mean the code works every time, and the student watches one more, picked at random.
+    {"key": "r1", "chapter": 8, "name": "Surprise mood", "adds": [], "python": ["random"], "seeds": range(12),
+     "pip": "Surprise! choice() picks one thing from a list, and you never know which. Press Show time! again and you might get a different one.",
+     "job": "Let choice() pick your pal's mood, then say which one it got.",
+     "coach": [
+               ('mood = choice(["happy", "silly", "cool"])', 'choice() picks one thing from the list, by surprise. Now mood is one of them.'),
+               ('feel(mood)', 'Your pal makes the face that was picked.'),
+               ('say("I feel " + mood)', 'Your pal says which one it got. Press Show time! again for a new surprise!'),
+     ],
+     "goals": [("choice() picks your pal's mood", lambda r: r.randoms >= 1 and r.n("feel") >= 1, 'Try  mood = choice(["happy", "silly", "cool"])  and then  feel(mood)'),
+               ("Your pal says the mood it got", lambda r: all(any(o.log[i][1][0] in s for s in o.said for i in range(len(o.log)) if o.log[i][0] == "feel") for o in r.others), 'Add  say("I feel " + mood)'),
+               ("It can pick 3 different moods", lambda r: len(_moods(r)) >= 3, None)],
+     "hints": ['choice() needs a list in [ ] brackets:  choice(["happy", "silly", "cool"])',
+               'mood = choice(["happy", "silly", "cool"])\nfeel(mood)\nsay("I feel " + mood)'],
+     "reference": 'mood = choice(["happy", "silly", "cool"])\nfeel(mood)\nsay("I feel " + mood)'},
+
+    {"key": "r2", "chapter": 8, "name": "Roll the dice", "adds": [], "python": ["random", "if"], "seeds": range(30),
+     "pip": "randint(1, 6) picks a whole number from 1 to 6, like rolling a dice. Then an if can ask what you rolled!",
+     "job": "Roll a dice, say the number, and cheer only on a 6.",
+     "coach": [
+               ('roll = randint(1, 6)', 'randint(1, 6) picks a number from 1 to 6, like a dice. roll keeps it.'),
+               ('say(roll)', 'Your pal says the number it rolled.'),
+               ('if roll == 6:', 'if asks a question: did we roll a 6?'),
+               ('    cheer()', 'This line is pushed in under the if, so your pal only cheers on a 6.'),
+     ],
+     "goals": [("Your pal says a dice number from randint()", lambda r: r.randoms >= 1 and all(o.said and o.said[0] in "123456" for o in r.others), "Try  roll = randint(1, 6)  and then  say(roll)"),
+               ("It cheers on a 6, and only on a 6", lambda r: r.randoms >= 1 and all((o.n("cheer") > 0) == (o.said[:1] == ["6"]) for o in r.others), "Try  if roll == 6:  with  cheer()  pushed in under it."),
+               ("You use if", lambda r: r.ifs >= 1, None)],
+     "hints": ["randint(1, 6) gives 1, 2, 3, 4, 5 or 6.", "roll = randint(1, 6)\nsay(roll)\nif roll == 6:\n    cheer()"],
+     "reference": "roll = randint(1, 6)\nsay(roll)\nif roll == 6:\n    cheer()"},
+
+    {"key": "r3", "chapter": 8, "name": "Lucky jumps", "adds": [], "python": ["random", "for", "variable", "fstring"], "seeds": range(12),
+     "pip": "A surprise number can go in a loop too! Then nobody knows how many jumps are coming, not even you.",
+     "job": "Jump a surprise number of times, from 2 to 5, then say how many.",
+     "coach": [
+               ('jumps = randint(2, 5)', 'A surprise number from 2 to 5, kept in a variable called jumps.'),
+               ('for i in range(jumps):', 'The loop goes round jumps times.'),
+               ('    jump()', 'This line is inside the loop. Jump!'),
+               ('say(f"{jumps} lucky jumps!")', 'This line is NOT pushed in, so it runs once, after the loop. I moved it back for you.'),
+     ],
+     "goals": [("A surprise number of jumps", lambda r: r.randoms >= 1 and r.range_name and r.n("jump") >= 1, "Try  jumps = randint(2, 5)  and then  for i in range(jumps):"),
+               ("Your pal says how many, once, at the end", lambda r: all(o.said and o.n("say") == 1 and o.log[-1][0] == "say" and o.said[-1].split()[0] == str(o.n("jump")) for o in r.others),
+                'After the loop, not pushed in:  say(f"{jumps} lucky jumps!")'),
+               ("Different runs jump a different number of times", lambda r: len({o.n("jump") for o in r.others}) >= 2, None)],
+     "hints": ["jumps = randint(2, 5)\nfor i in range(jumps):\n    jump()", 'jumps = randint(2, 5)\nfor i in range(jumps):\n    jump()\nsay(f"{jumps} lucky jumps!")'],
+     "reference": 'jumps = randint(2, 5)\nfor i in range(jumps):\n    jump()\nsay(f"{jumps} lucky jumps!")'},
 ]
 
 # "Your turn": after a mission, one change for the student to make with the guide off.
@@ -1263,6 +1314,13 @@ REMIXES = {
            "Add one more  boogie()  line at the bottom, not pushed in."),
     "w2": ("Jump on 5 instead of 3.", lambda r: r.n("jump") == 1 and _after_number(r, "5"),
            "Change only one thing: the 3 in  if i == 3:"),
+    "r1": ('Add a 4th mood to the list, like  "sleepy"  .', lambda r: len(_moods(r)) >= 4,
+           'Put a comma after "cool" and add another feeling in  " marks, inside the [ ]'),
+    "r2": ("Make your pal jump when it rolls a 1, and still cheer on a 6.",
+           lambda r: r.randoms >= 1 and any(o.n("jump") for o in r.others) and all((o.n("jump") > 0) == (o.said[:1] == ["1"]) and (o.n("cheer") > 0) == (o.said[:1] == ["6"]) for o in r.others),
+           "Add another if at the bottom, not pushed in:  if roll == 1:  with  jump()  pushed in under it."),
+    "r3": ("Make it a surprise from 5 to 10 jumps.", lambda r: all(5 <= o.n("jump") <= 10 for o in r.others) and len({o.n("jump") for o in r.others}) >= 2,
+           "Change only the two numbers in  randint(2, 5)"),
 }
 # "Guess first": before the first run of the guide's code, one question about what it will do.
 # (question, choices, the right choice). test_pixel_turn.py checks each answer against a real run.
@@ -1284,6 +1342,9 @@ GUESSES = {
     "v2": ("What will your pal say at the end?", ["{jumps} jumps!", "4 jumps!", "jumps jumps!"], 1),
     "w1": ("boogie has 2 jumps in it. How many jumps in the whole show?", ["2", "3", "4"], 2),
     "w2": ("How many times will your pal jump?", ["Once", "3 times", "5 times"], 0),
+    "r1": ("Which face can your pal NOT make with this code?", ["Happy", "Silly", "Sad"], 2),
+    "r2": ("What's the biggest number your pal can say?", ["5", "6", "7"], 1),
+    "r3": ("What's the fewest jumps your pal can do?", ["0", "2", "5"], 1),
 }
 # "Fix it": after a mission, Pip's code for it with one bug in it, to find and fix.
 # (what went wrong, the code with the bug, check that it's fixed, a hint that says where to look).
@@ -1328,6 +1389,13 @@ FIXES = {
     "w1": ("Pip made a move called boogie, but the show stops when it's time to use it!",
            "def boogie():\n    jump()\n    spin()\n    jump()\nboogie\nboogie",
            lambda r: sum(r.own_calls.values()) >= 2, "To use a command, it needs  ( )  after its name."),
+    "r1": ("Pip's surprise won't even start!", 'mood = choice("happy", "silly", "cool")\nfeel(mood)\nsay("I feel " + mood)',
+           lambda r: r.randoms >= 1 and len(_moods(r)) >= 2, "choice() needs a list, and a list goes in  [ ]  brackets."),
+    "r2": ("Pip's pal cheers when it rolls a 1, not a 6!", "roll = randint(1, 6)\nsay(roll)\nif roll == 1:\n    cheer()",
+           lambda r: r.randoms >= 1 and any(o.n("cheer") for o in r.others)
+           and all((o.n("cheer") > 0) == (o.said[:1] == ["6"]) for o in r.others), "Look at the number in the if line."),
+    "r3": ("Pip's pal says how many after every single jump!", 'jumps = randint(2, 5)\nfor i in range(jumps):\n    jump()\n    say(f"{jumps} lucky jumps!")',
+           lambda r: all(o.n("say") == 1 and o.log[-1][0] == "say" for o in r.others), "Lines pushed in are inside the loop. Should the say line be inside?"),
     "w2": ("Pip's count stops at 1!", "for i in range(1, 6):\n    say(i)\n    if i = 3:\n        jump()",
            lambda r: r.n("jump") == 1 and _after_three(r), "To ask if two things are the same, Python uses  ==  , two equals signs."),
 }
@@ -1362,6 +1430,11 @@ def _after_number(r, number):
         if name == "say" and args:
             was = str(args[0])
     return False
+
+
+def _moods(r):
+    """Every feeling a run picked, over all the runs."""
+    return {args[0] for o in r.others for name, args in o.log if name == "feel" and args}
 
 
 def _visited(r):
@@ -1627,11 +1700,14 @@ def commands_for(key):
     return EVERYTHING
 
 
-def run_level(lv, code, pal, seed=0):
+def run_level(lv, code, pal, seed=0, surprise=None):
     """Run a mission. Random missions run on many seeds, so the stars mean the
-    program works every time. The first run is the one the student watches."""
+    program works every time. The first run is the one the student watches:
+    with `surprise`, a random mission's watched run gets that seed of its own."""
     commands = commands_for(lv["key"])
     seeds = list(lv.get("seeds", [0]))
+    if surprise is not None and "seeds" in lv:
+        seeds = [surprise - seed] + seeds
     runs = [perform(code, pal, lv.get("rehearse", ()), s + seed, commands, lv.get("setup"))
             for s in seeds]
     main = runs[0]
