@@ -88,6 +88,12 @@ class MistakesSayWhatToType(unittest.TestCase):
         out = pixel.run_level(pixel.LEVEL_BY_KEY["w2"], 'for i in range(1, 6):\n    say(i)\n    if i == "3":\n        jump()', pixel.PIP)
         self.assertIn("Take the quotes off:  == 3", out["reply"])
 
+    def test_while_mistakes(self):
+        self.assertIn("can't walk any further", error("while x() <= 10:\n    right(1)"))
+        self.assertIn("has to change each time round", error("n = 5\nwhile n > 0:\n    say(n)"))
+        self.assertIn("n = n - 1", error("n = 5\nwhile n > 0:\n    say(n)\n    n - 1"))
+        self.assertIn("n = n - 1", error("n = 5\nwhile n > 0:\n    say(n)\n    n--"))
+
     def test_working_code_has_no_error(self):
         for lv in pixel.LEVELS:
             self.assertEqual(error(lv["reference"]), "", lv["key"])

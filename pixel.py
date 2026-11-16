@@ -434,6 +434,10 @@ def plain_syntax(code, e):
         return 'Words need a  "  at both ends. Add the missing one. Hold Shift and press the  "  key.'
     if re.search(r"""["'][^"']*["']\s+[A-Za-z_]\w*\s*\)|[A-Za-z_]\w*\s+["']""", line) and "(" in line:
         return 'To join words and a name, put a  +  between them, like  say("I am " + name)'
+    twice = re.fullmatch(r"([A-Za-z_]\w*)\s*(--|\+\+)", line)
+    if twice:
+        sign = "-" if twice[2] == "--" else "+"
+        return f"Python doesn't have  {twice[2]}  . Write  {twice[1]} = {twice[1]} {sign} 1"
     if line.count("[") > line.count("]"):
         return "This line opens a list with  [  but never closes it. Add a  ]  after the last thing in the list"
     flipped = re.fullmatch(r"""(".*"|'.*'|\d+)\s*=\s*([A-Za-z_]\w*)""", line)
@@ -846,6 +850,8 @@ class Director(Brain):
             v = node.value
             if isinstance(v, ast.Name) and (v.id in self.sensors or v.id in self.funcs):
                 raise BotError(f"To use {v.id}, add brackets:  {v.id}()")
+            if isinstance(v, ast.BinOp) and isinstance(v.left, ast.Name) and isinstance(v.op, (ast.Add, ast.Sub)):
+                raise BotError(f"To change {v.left.id}, keep the answer in it:  {v.left.id} = {ast.unparse(v)}")
             if isinstance(v, ast.Compare) and isinstance(v.left, ast.Name) and len(v.ops) == 1 \
                     and isinstance(v.ops[0], ast.Eq):
                 right = v.comparators[0]
@@ -949,8 +955,10 @@ def perform(code, pal=PIP, events=(), seed=0, commands=EVERYTHING, setup=None):
     except BotError as e:
         error, line = str(e), e.line
         if "That's a very long show" in error and director and any(isinstance(n, ast.While) for n in ast.walk(director.tree)):
-            error = re.sub(r"That's a very long show!.*", "Your while loop never stopped! Something pushed in under the  while  "
-                           "has to change each time round, so its question ends up no.", error)
+            why = ("Your pal got to the edge and can't walk any further, so the loop's question stays yes. "
+                   "Check which way it walks, and the number and the  <  or  >  in the while line." if "x()" in code and show.x in (0, SPOTS - 1)
+                   else "Something pushed in under the  while  has to change each time round, so its question ends up no.")
+            error = re.sub(r"That's a very long show!.*", "Your while loop never stopped! " + why, error)
     except RecursionError:
         error = "Your program called itself too many times."
     return {"steps": show.steps, "after": show.steps[show.mark:], "error": error, "line": line,
