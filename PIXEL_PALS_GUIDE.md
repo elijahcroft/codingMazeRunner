@@ -145,7 +145,8 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   arriving, or jumping somewhere, lands on a free spot with room around it, so a whole
   class arriving at once fills the Park and then spills into the next place instead of
   landing in one heap.
-- **Walking:** click the ground. Arrow keys work too.
+- **Walking:** click the ground. Arrow keys work too. 🏞️ Place also lists everyone outside under
+  **👫 Go to a friend**, which puts your pal right next to them.
 - **Toys (pink rings):** click the fountain, trampoline, snowman, rocket and so on. The pal
   walks over and it goes off for everyone nearby.
 - **🖼️ Art:** a student picks one of their drawings and clicks the world to leave it

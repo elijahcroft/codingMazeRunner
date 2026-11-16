@@ -7115,6 +7115,17 @@ def room_do(p, data):
         room_event("say", seat=seat, text=text)
     elif what == "fx" and data.get("name") in pixel.ROOM_FX:
         room_event("fx", seat=seat, name=data["name"], x=spot["x"])
+    elif what == "go" and data.get("seat") is not None:          # 👫 next to a friend who's outside
+        friend = next((s for s in room["here"].values() if s["seat"] == data["seat"] and s is not spot), None)
+        if not friend or friend["loc"]:
+            return {"error": "Your friend isn't outside right now."}
+        x, y = room_free_spot(max(0, round(friend["x"]) - 90), min(hang_width(), round(friend["x"]) + 90), spot)
+        if spot["loc"]:
+            room_go(spot, 0, x, y)
+            return {"ok": True}
+        spot["x"], spot["y"], spot["rest"] = x, y, None
+        spot.pop("bite", None)
+        room_event("go", seat=seat, x=spot["x"], y=spot["y"])
     elif what == "go" and data.get("name") in hang_places():
         left = hang_places().index(data["name"]) * pixel.PLACE_W
         x, y = room_free_spot(left, left + pixel.PLACE_W, spot)

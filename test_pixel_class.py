@@ -230,6 +230,20 @@ class TeacherAndGames(unittest.TestCase):
         said = [e["message"] for e in server.pixel_room["events"] if e["kind"] == "game"][-1]
         self.assertEqual(said, "🎮 Mia started Copy the dance! Tap the yellow bar above to join.")
 
+    def test_go_to_a_friend_lands_next_to_them_and_not_on_them(self):
+        mia, ben, alex = self.kids
+        friend = server.pixel_room["here"][alex["id"]]
+        friend["x"] = 700
+        self.assertEqual(server.room_do(mia, {"what": "go", "seat": friend["seat"]}), {"ok": True})
+        me = server.pixel_room["here"][mia["id"]]
+        self.assertLessEqual(abs(me["x"] - 700), 90)
+        self.assertGreaterEqual(server.game_distance(me, friend), 30)
+        server.room_do(ben, {"what": "home"})                                      # from a home, out next to them
+        self.assertEqual(server.room_do(ben, {"what": "go", "seat": friend["seat"]}), {"ok": True})
+        self.assertEqual(server.pixel_room["here"][ben["id"]]["loc"], 0)
+        server.room_do(alex, {"what": "home"})
+        self.assertIn("isn't outside", server.room_do(mia, {"what": "go", "seat": friend["seat"]})["error"])
+
     def test_ending_when_no_game_is_on_does_nothing(self):
         self.assertEqual(server.pixel_teacher({"action": "end_game"}), {"ok": True})
         self.assertIsNone(server.pixel_room["game"])

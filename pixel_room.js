@@ -69,8 +69,10 @@ function buildRoomButtons() {
     box.innerHTML = Object.entries(S.room_words).map(([group, words]) =>
       `<h4>${esc(group)}</h4>` + words.map(w => `<button data-tap="say" data-name="${esc(w)}">${esc(w)}</button>`).join("")).join("");
   } else if (roomPane === "place") {
+    const friends = ((roomInfo && roomInfo.people) || []).filter(m => !m.loc && m.seat !== roomInfo.you);
     box.innerHTML = ((roomInfo && roomInfo.world) || ["park"]).map(n => big([...PLACE_NAMES[n], "go", n])).join("") +
-      `<button data-home="mine"><span>🏠</span>My home</button>`;
+      `<button data-home="mine"><span>🏠</span>My home</button>` +
+      (friends.length ? `<h4>👫 Go to a friend</h4>` + friends.map(m => `<button data-friend="${m.seat}"><span>🏃</span>${esc(m.name)}</button>`).join("") : "");
   } else if (roomPane === "shop") {
     buildShopPane(box);
   } else if (roomPane === "home") {
@@ -440,7 +442,7 @@ function roomState(data) {
     roomJoining = true;
     tap("join").finally(() => { roomJoining = false; });
   }
-  const places = data.places.join();
+  const places = data.places.join() + "|" + data.people.filter(m => !m.loc).map(m => m.seat + m.name).join();     // places, and who's outside to go to
   if (places !== placesSeen) { placesSeen = places; if (roomPane === "place") buildRoomButtons(); }
   for (const e of data.events) roomEvent(e, data.you);
 }
@@ -583,6 +585,7 @@ $("roomButtons").addEventListener("click", e => {
   const pick = name => { const el = e.target.closest(`[data-${name}]`); return el && !el.disabled ? el.dataset[name] : null; };
   if (pick("buy")) { buy(pick("buy")); return; }
   if (pick("home")) { goHome(pick("home")); return; }
+  if (pick("friend")) { PalStage.SFX.wake(); tap("go", {seat: +pick("friend")}).then(out => { if (out && out.error) tipFor(out.error); }); return; }
   if (pick("room")) { goRoom(+pick("room")); return; }
   if (pick("furn")) { furnArmed = furnArmed === pick("furn") ? null : pick("furn"); buildRoomButtons(); return; }
   if (pick("away")) { tap("unfurnish", {key: pick("away")}); furnArmed = null; buildRoomButtons(); return; }
