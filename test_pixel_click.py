@@ -34,7 +34,7 @@ class ClickMistakes(unittest.TestCase):
         return pixel.run_level(pixel.LEVEL_BY_KEY["k1"], code, pixel.PIP)
 
     def test_a_nearly_right_name_is_named(self):
-        for name in ("onclick", "On_click", "on_clicked"):
+        for name in ("onclick", "On_click", "clicked"):   # on_clicked already stops with "Did you mean"
             with self.subTest(name=name):
                 self.assertIn("def on_click():", self.run_k1(f"def {name}():\n    jump()")["reply"])
                 self.assertIn(name, self.run_k1(f"def {name}():\n    jump()")["reply"])
