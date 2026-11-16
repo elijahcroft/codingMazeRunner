@@ -976,6 +976,7 @@ CHAPTERS = [
     {"key": "v", "name": "Name Tags", "icon": "🏷️"},
     {"key": "w", "name": "Smart Pal", "icon": "🧠"},
     {"key": "r", "name": "Surprise!", "icon": "🎲"},
+    {"key": "k", "name": "Click Me!", "icon": "🖱️"},
 ]
 
 # `adds` opens commands, and `python` opens the shapes of Python on the chips.
@@ -1295,6 +1296,48 @@ LEVELS = [
                ("Different runs jump a different number of times", lambda r: len({o.n("jump") for o in r.others}) >= 2, None)],
      "hints": ["jumps = randint(2, 5)\nfor i in range(jumps):\n    jump()", 'jumps = randint(2, 5)\nfor i in range(jumps):\n    jump()\nsay(f"{jumps} lucky jumps!")'],
      "reference": 'jumps = randint(2, 5)\nfor i in range(jumps):\n    jump()\nsay(f"{jumps} lucky jumps!")'},
+
+    # Click Me!: events. Lines under def on_click(): wait for a click. Pip clicks to test the
+    # stars (the "rehearse" clicks), and after the show the student can click their pal too.
+    {"key": "k1", "chapter": 9, "name": "Poke me!", "adds": [], "python": ["click"],
+     "rehearse": ("click", "click", "click"),
+     "pip": "Your pal can wait for a click! Lines pushed in under  def on_click():  don't run straight away. "
+            "They run every time someone clicks your pal. I'll click it 3 times to test it, then you try!",
+     "job": "Make your pal jump and say something every time it's clicked.",
+     "coach": [
+               ('def on_click():', "This line means: every time someone clicks your pal, run the lines under me."),
+               ('    jump()', "This line is pushed in, so it waits for a click. Then your pal jumps."),
+               ('    say("Hee hee!")', "And it giggles! After the show, click your pal on the stage yourself."),
+     ],
+     "goals": [("Your pal does something when it's clicked", lambda r: _click_moves(r, 0) >= 1,
+                lambda r: "Nothing happens when I click your pal. Put  def on_click():  on its own line, and push in the lines under it."
+                          if "click" not in r.events else "I clicked, but your pal didn't do anything. Push some lines in under  def on_click():"),
+               ("It says something on every click", lambda r: len(r.reacts) >= 3 and all(r.did(i, "say") for i in range(3)), None),
+               ("It does 2 things or more on every click", lambda r: len(r.reacts) >= 3 and all(_click_moves(r, i) >= 2 for i in range(3)), None)],
+     "hints": ["Put  def on_click():  on a line of its own. The lines under it, pushed in, run on every click.",
+               'def on_click():\n    jump()\n    say("Hee hee!")'],
+     "reference": 'def on_click():\n    jump()\n    say("Hee hee!")'},
+
+    {"key": "k2", "chapter": 9, "name": "Count the pokes", "adds": ["clicks"], "python": ["else"],
+     "rehearse": ("click", "click", "click", "click"),
+     "pip": "clicks() is how many times your pal has been clicked so far. And here's  else:  . "
+            "The lines under  else:  run when the  if  isn't true. I'll click 4 times to test it.",
+     "job": "Say how many clicks. Cheer on the 3rd click, and jump on every other one.",
+     "coach": [
+               ('def on_click():', "Every click runs the lines under here."),
+               ('    say(clicks())', "Your pal says how many clicks so far: 1, then 2, then 3..."),
+               ('    if clicks() == 3:', "Is this the 3rd click?"),
+               ('        cheer()', "Yes? Then cheer!"),
+               ('    else:', "else means: if not. It lines up with the if. I moved it back for you."),
+               ('        jump()', "On every other click, your pal jumps."),
+     ],
+     "goals": [("Your pal cheers on the 3rd click, and only then", lambda r: len(r.reacts) >= 4 and [r.did(i, "cheer") for i in range(4)] == [False, False, True, False],
+                "I clicked 4 times. Your pal should cheer on click 3, and not on the others. Try  if clicks() == 3:"),
+               ("It jumps on the other clicks, with else", lambda r: r.elses >= 1 and len(r.reacts) >= 4 and all(r.did(i, "jump") for i in (0, 1, 3)), None),
+               ("It says how many clicks, every time", lambda r: len(r.reacts) >= 4 and all(_click_said(r, i, i + 1) for i in range(4)), None)],
+     "hints": ["clicks() is a number. Ask  if clicks() == 3:  then put  else:  under it, lined up with the if.",
+               'def on_click():\n    say(clicks())\n    if clicks() == 3:\n        cheer()\n    else:\n        jump()'],
+     "reference": 'def on_click():\n    say(clicks())\n    if clicks() == 3:\n        cheer()\n    else:\n        jump()'},
 ]
 
 # "Your turn": after a mission, one change for the student to make with the guide off.
@@ -1346,6 +1389,10 @@ REMIXES = {
            "Add another if at the bottom, not pushed in:  if roll == 1:  with  jump()  pushed in under it."),
     "r3": ("Make it a surprise from 5 to 10 jumps.", lambda r: all(5 <= o.n("jump") <= 10 for o in r.others) and len({o.n("jump") for o in r.others}) >= 2,
            "Change only the two numbers in  randint(2, 5)"),
+    "k1": ("Make your pal do 3 things on every click.", lambda r: len(r.reacts) >= 3 and all(_click_moves(r, i) >= 3 for i in range(3)),
+           "Add one more line under  def on_click():  , pushed in like the others. Try  spin()"),
+    "k2": ("Make your pal spin on the 3rd click, as well as cheer.", lambda r: len(r.reacts) >= 4 and [r.did(i, "spin") for i in range(4)] == [False, False, True, False],
+           "Add  spin()  under  cheer()  , pushed in just as far."),
 }
 # "Guess first": before the first run of the guide's code, one question about what it will do.
 # (question, choices, the right choice). test_pixel_turn.py checks each answer against a real run.
@@ -1370,6 +1417,8 @@ GUESSES = {
     "r1": ("Which face can your pal NOT make with this code?", ["Happy", "Silly", "Sad"], 2),
     "r2": ("What's the biggest number your pal can say?", ["5", "6", "7"], 1),
     "r3": ("What's the fewest jumps your pal can do?", ["0", "2", "5"], 1),
+    "k1": ("Pip clicks your pal 3 times. How many times will it jump?", ["Never", "Once", "3 times"], 2),
+    "k2": ("What does your pal do on the 2nd click?", ["Cheers", "Jumps", "Nothing"], 1),
 }
 # "Fix it": after a mission, Pip's code for it with one bug in it, to find and fix.
 # (what went wrong, the code with the bug, check that it's fixed, a hint that says where to look).
@@ -1423,6 +1472,11 @@ FIXES = {
            lambda r: all(o.n("say") == 1 and o.log[-1][0] == "say" for o in r.others), "Lines pushed in are inside the loop. Should the say line be inside?"),
     "w2": ("Pip's count stops at 1!", "for i in range(1, 6):\n    say(i)\n    if i = 3:\n        jump()",
            lambda r: r.n("jump") == 1 and _after_three(r), "To ask if two things are the same, Python uses  ==  , two equals signs."),
+    "k1": ("Pip's pal giggles once at the very start, and never when it's clicked!", 'def on_click():\n    jump()\nsay("Hee hee!")',
+           lambda r: len(r.reacts) >= 3 and all(r.did(i, "jump") and r.did(i, "say") for i in range(3)),
+           "Only lines pushed in under  def on_click():  wait for a click. Is the say line pushed in?"),
+    "k2": ("Pip's show won't even start! Something is wrong near the end.", 'def on_click():\n    say(clicks())\n    if clicks() == 3:\n        cheer()\n    else:\n    jump()',
+           lambda r: len(r.reacts) >= 4 and all(r.did(i, "jump") for i in (0, 1, 3)), "Look at the last line. What's under  else:  has to be pushed in."),
 }
 for _lv in LEVELS:
     _lv["remix"] = REMIXES[_lv["key"]]
@@ -1487,6 +1541,15 @@ def _moods(r):
     return {args[0] for o in r.others for name, args in o.log if name == "feel" and args}
 
 
+def _click_moves(r, i):
+    """How many things the pal did after click number i (0 is the first)."""
+    return sum(1 for name, _ in r.reacts[i] if name in MOVE_ACTIONS) if i < len(r.reacts) else 0
+
+
+def _click_said(r, i, words):
+    return i < len(r.reacts) and any(name == "say" and args and str(args[0]) == str(words) for name, args in r.reacts[i])
+
+
 def _visited(r):
     spot, seen = START, {START}
     for name, args in r.log:
@@ -1540,6 +1603,7 @@ GIFTS = {
     "roundglasses": {"name": "Round glasses", "slot": "face"}, "clownnose": {"name": "Clown nose", "slot": "face"},
     "blush": {"name": "Rosy cheeks", "slot": "face"},
     "candyspark": {"name": "Candy sparkles", "slot": "sparkle"}, "firespark": {"name": "Fire sparkles", "slot": "sparkle"},
+    "propeller": {"name": "Propeller cap", "slot": "hat"}, "bubblespark": {"name": "Bubble sparkles", "slot": "sparkle"},
     # These unlock by themselves when a goal is reached: [what is counted, how many].
     "gemcrown": {"name": "Gem crown", "slot": "hat", "goal": ["gems", 9]},
     "fishhat": {"name": "Fish hat", "slot": "hat", "goal": ["fish", 5]},
@@ -1793,6 +1857,17 @@ THING_GAP = .6             # seconds between one student's clicks on things
 THING_MS = {"jump": 620, "spin": 560, "shake": 500, "hearts": 600, "stars": 600, "confetti": 600,
             "sound": 250, "size": 300, "hide": 300, "appear": 300, "pose": 350}
 THING_START = 'def on_click():\n    jump()\n    sound("boing")\n    say("Hello!")\n'
+
+
+def poke(code, pal, clicks, commands, seed=0):
+    """A student clicks their pal after a show. The program runs again with every click
+    so far, so clicks() counts up, and only what this click makes comes back."""
+    clicks = (max(1, clicks) - 1) % MAX_EVENTS + 1
+    out = perform(code, pal, ["click"] * clicks, seed, commands)
+    if not out["error"] and "click" not in out["events"]:
+        return {"steps": [], "error": None, "line": None, "listening": False}
+    return {"steps": [] if out["error"] else [s for s in out["after"] if s["do"] != "event"],
+            "error": out["error"], "line": out["line"], "listening": True}
 
 
 def run_thing(code, drawing, clicks, seed=0):

@@ -7268,6 +7268,15 @@ def pixel_post(path, data):
         if not drawing or not isinstance(clicks, int) or isinstance(clicks, bool):
             return {"error": "bad"}
         return pixel.run_thing(code, drawing, clicks, seed=clicks)
+    if path == "/pixel/poke":                 # a click on your pal after a show: nothing is kept or paid
+        key, clicks = str(data.get("level", "")), data.get("clicks")
+        if not isinstance(clicks, int) or isinstance(clicks, bool):
+            return {"error": "bad"}
+        with lock:
+            if not pixel_is_open(entry, key):
+                return {"error": "🔒 That mission isn't open yet."}
+            commands = pixel.free_commands(pixel.LEVEL_ORDER[pixel_frontier(entry)]) if key == "free" else pixel.commands_for(key)
+        return pixel.poke(code, pal, clicks, commands, seed=int(data.get("seed") or 0) % 10 ** 6)
     if path == "/pixel/run":
         key = str(data.get("level", ""))
         with lock:

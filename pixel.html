@@ -325,6 +325,8 @@
   .playing #skip { display: inline-block; }
 
   .screen { position: relative; flex: none; border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); background: #000; cursor: pointer; aspect-ratio: 16 / 9; }
+  .screen.pokeable, .pokeable { cursor: pointer; outline: 3px dashed var(--sun); outline-offset: 3px; }
+  body.calm .pokeable { outline-style: solid; }
   .screen canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
   .screen-wrap { flex: 1 1 0; min-height: 0; min-width: 0; display: flex; justify-content: center; align-items: center; overflow: hidden; padding: 0 5px 5px 0; }
   .bubble { position: absolute; transform: translate(-50%, -100%); max-width: 46%; padding: 4px 9px; background: #fff; color: var(--ink); border: 2px solid var(--ink); border-radius: 8px; font-size: clamp(13px, 1.7vw, 18px); font-weight: 800; line-height: 1.2; text-align: center; pointer-events: none; overflow-wrap: anywhere; }

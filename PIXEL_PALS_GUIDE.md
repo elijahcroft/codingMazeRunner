@@ -28,7 +28,7 @@ Both teacher pages are linked from `/admin`.
    as Pip.
 5. After 3 missions, the Hang out opens and stays open.
 6. Mission 9 is **My Move**. They code their own routine and it becomes a big
-   button in the Hang out. Eleven more missions come after it, for students who finish.
+   button in the Hang out. Thirteen more missions come after it, for students who finish.
 
 A big button at the top right always says what comes next. On Code, that's **💻 Next mission**
 once the open mission is done; it only says Go hang out when every mission is finished, so
@@ -36,7 +36,7 @@ it never pulls a student out of a mission halfway. The 🎉 Hang out tab is alwa
 
 ## The missions
 
-20 missions and 60 stars. The first star opens the next mission, and the other two are
+22 missions and 66 stars. The first star opens the next mission, and the other two are
 for going further.
 
 | Chapter | Missions | What it teaches |
@@ -50,8 +50,9 @@ for going further.
 | 🏷️ Name Tags | Name tag, How many? | Variables, `.upper()`, f-strings |
 | 🧠 Smart Pal | Make a move, Number three | `def`, and `if` inside a loop |
 | 🎲 Surprise! | Surprise mood, Roll the dice, Lucky jumps | `choice()` and `randint()`: code that does something different each time |
+| 🖱️ Click Me! | Poke me!, Count the pokes | Events (`def on_click():`), `clicks()` and `else` |
 
-The last eleven come after My Move on purpose, so a student who has already made their
+The last thirteen come after My Move on purpose, so a student who has already made their
 move doesn't have it locked behind new missions. They start easy (one new command each)
 and get harder.
 
@@ -61,6 +62,15 @@ runs behind the scenes (12, or 30 for the dice), so they mean the code works eve
 not just that it got lucky once: cheering on a 6 only counts if it never cheers on anything
 else. The Guess first questions ask what *can* happen ("What's the biggest number your pal
 can say?"), since what *will* happen is a surprise.
+
+**🖱️ Click Me! makes the pal wait for a click.** The lines under `def on_click():` don't run
+straight away. Pip tests the code by clicking 3 or 4 times during the show (a 👆 shows each
+click), and the stars are checked on those clicks. After the show, the stage gets a dashed
+yellow edge and says **👆 Now click your pal**: each click on the stage runs the code again,
+and the line that's running lights up, so they can see which lines a click runs. Count the
+pokes is the first `else`: say the count, cheer on the 3rd click and jump on the others.
+Clicks after the show aren't saved or paid; they're for trying it. A `def on_click():` on the
+Free stage works the same way.
 
 **Every mission walks them through it.** The top says the job in one plain sentence. Under
 it, the guide gives one line at a time: what the line does, the exact keys as tiles, and

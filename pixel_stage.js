@@ -131,6 +131,7 @@ const PalStage = (() => {
     roundglasses: {rows: [".kkk...kkk.", "kwwwkkkwwwk", "kwwwk.kwwwk", ".kkk...kkk."], ink: {k: "#4a2c1d", w: "#d6f4ff"}},
     clownnose: {rows: [".rr.", "rwrr", "rrrr", ".rr."], ink: {r: "#e8294f", w: "#ffffff"}},
     blush: {rows: ["pp.......pp", "pp.......pp"], ink: {p: "#e8406f"}},
+    propeller: {rows: ["rrrr.k.bbbb", "....kkk....", "..kkyyykk..", ".kyyryyyyk.", "kyyyyyyyyyk", "kkkkkkkkkkk"], ink: {k: "#1b1530", r: "#e8294f", b: "#2f6fe4", y: "#ffd93b"}},
     // unlocked by reaching a goal
     gemcrown: {rows: ["k...k...k", "kb.kpk.gk", "kyykyykyk", "kyyyyyyyk", "kbyryygyk", "kkkkkkkkk"], ink: {k: "#8a5a00", y: "#ffd93b", r: "#e8294f", b: "#7ab8ff", g: "#35d0bd", p: "#ff5fa2"}},
     fishhat: {rows: ["...oooo...o", ".oooooooooo", "owkoooyooo.", ".oooooooooo", "...oooo...o"], ink: {o: "#ff9a3c", w: "#ffffff", k: "#1b1530", y: "#ffd93b"}},
@@ -142,7 +143,7 @@ const PalStage = (() => {
   const SPARKLE_INK = {goldspark: ["#ffd93b", "#fff2a6"], heartspark: ["#ff5fa2", "#ffc9e3"], rainbow: ["#ff5fa2", "#ffd93b", "#35d0bd", "#7ab8ff", "#c5a3ff"],
                        icespark: ["#7ab8ff", "#d6f4ff", "#ffffff"], leafspark: ["#35d0bd", "#8ee06b", "#eaffd6"],
                        galaxyspark: ["#7a3fe4", "#c5a3ff", "#2f6fe4", "#ffffff"], candyspark: ["#ff8fc7", "#ffffff", "#7ab8ff"],
-                       firespark: ["#ff9a3c", "#ffd93b", "#e8294f"], friendspark: ["#ff5fa2", "#ffd93b", "#8ee06b", "#7ab8ff"],
+                       firespark: ["#ff9a3c", "#ffd93b", "#e8294f"], bubblespark: ["#d6f4ff", "#7ab8ff", "#ffffff"], friendspark: ["#ff5fa2", "#ffd93b", "#8ee06b", "#7ab8ff"],
                        superspark: ["#ffd93b", "#ffffff", "#ff9a3c", "#ffd93b"]};
   const FRIEND_INK = {cat: "#ffc266", bunny: "#c5a3ff", kid: "#7ab8ff", bean: "#8ee06b"};
   const FRIEND_ART = {cat: "Cat", bunny: "Bunny", kid: "Kid", bean: "Bean"};

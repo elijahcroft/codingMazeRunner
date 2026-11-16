@@ -28,6 +28,7 @@ const WORDS = {
   hearts: "Hearts float up.", stars: "Stars float up.", confetti: "Confetti falls everywhere.",
   grow: "Gets bigger.", shrink: "Gets smaller again.", shake: "Wobbles like a jelly.",
   look: "Moves its eyes: left, right, up, down or front.",
+  clicks: "How many times your pal has been clicked so far: 1, then 2, then 3...",
   scene: "Changes the place: stage, wedding, park, beach, night, snowy, candy, space or castle.",
   sound: "Plays a sound: ding, boing, pop, tada, meow, drum, whoosh or yay.",
   rain: "Rain falls.", snow: "Snow falls.",
@@ -44,6 +45,8 @@ const PYTHON = {
   fstring: ["f-string", 'say(f"{name}!")', "Puts a variable inside the words, in { } brackets."],
   def: ["def", "def my_move():\n    ", "Makes a new command. The lines pushed in under it are what it does."],
   if: ["if", "if i == 3:\n    ", "Only runs the lines pushed in under it when the answer is yes."],
+  click: ["on click", "def on_click():\n    ", "Makes your pal wait for a click. The lines pushed in under it run every time it's clicked."],
+  else: ["else", "else:\n    ", "Goes under an if, lined up with it. Its lines run when the if's answer is no."],
   random: ["surprise", 'mood = choice(["happy", "silly"])', "choice() picks one thing from a list by surprise. randint(1, 6) picks a number from 1 to 6."],
 };
 const ALL_PYTHON = Object.keys(PYTHON);
@@ -78,6 +81,7 @@ function showStars() { $("starCount").textContent = `★ ${S.stars} / ${S.max_st
 // Whatever show is going, it's over: nothing from it may land on the next screen.
 function dropRun() {
   runTicket++;
+  stopPokes();
   if (stage) stage.stop();
   finishRun();
   setRunLine(0);
@@ -424,7 +428,7 @@ const KEY_HELP = {
   "(": "Hold Shift and press 9", ")": "Hold Shift and press 0", '"': "Hold Shift and press the ' key, next to Enter",
   ":": "Hold Shift and press the ; key", "!": "Hold Shift and press 1", " ": "Press the long space bar", "\n": "Press Enter", ".": "Press the . key",
   "+": "Hold Shift and press the = key, next to Backspace", "=": "Press the = key, next to Backspace", ",": "Press the , key, next to M",
-  "-": "Press the - key, next to 0", "[": "Press the [ key, next to P", "]": "Press the ] key, next to [", "{": "Hold Shift and press the [ key", "}": "Hold Shift and press the ] key",
+  "-": "Press the - key, next to 0", "_": "Hold Shift and press the - key, next to 0", "[": "Press the [ key, next to P", "]": "Press the ] key, next to [", "{": "Hold Shift and press the [ key", "}": "Hold Shift and press the ] key",
 };
 const ACTIONS = /^\s*(say|jump|right|left|wave|dance|cheer|spin|hearts|stars|confetti|feel)\(/gm;
 let coachWay = null, coachOops = "", coachEarly = false;     // coachWay: "type", "build", or "own" for a student's own way
@@ -591,6 +595,7 @@ function captionFor(s) {
     jump: () => "your pal jumps", spin: () => "your pal spins", wave: () => "your pal waves", dance: () => "your pal dances",
     cheer: () => "your pal cheers", feel: () => `your pal feels ${esc(s.mood)}`, wait: () => "your pal waits",
     hearts: () => "hearts float up", stars: () => "stars float up", confetti: () => "confetti falls",
+    event: () => "👆 Pip clicks your pal to test it",
   };
   return says[s.do] ? line + says[s.do]() : "";
 }
@@ -607,6 +612,7 @@ async function runShow() {
   if (wantsGuess()) { askGuess(); return; }
   if (guessWaiting) { guessWaiting = false; paintCoach(); }
   running = true;
+  stopPokes();
   const ticket = ++runTicket;
   saveCode();
   StageSFX.wake();
@@ -648,6 +654,7 @@ async function runShow() {
     $("caption").textContent = "What a show!";
     verdict(`<p><b>🎬 What a show!</b> Change anything you like, then press Show time! again. Your code is saved.</p>`, "good");
     paintSteps("stage");
+    listenForPokes(out);
     return;
   }
   drawGoals(out.stars.map((g, i) => g || view.best[i]));
@@ -674,6 +681,41 @@ async function runShow() {
   else if (out.rewards.gained) { flyStars(out.rewards.gained); showRewards(out.rewards); }
   else showRewards(out.rewards);
   paintSteps("stage");
+  listenForPokes(out);
+}
+// ---- Click Me!: after a show whose code has def on_click():, a click on the pal runs it ------------
+// Each click runs the program again with every click so far (so clicks() counts up), and the
+// stage plays only what this click does, lighting up each line as it runs.
+let poke = null;
+function listenForPokes(out) {
+  poke = !out.error && (out.events || []).includes("click") ? {code: $("code").value, level: mode, clicks: 0, ticket: 0} : null;
+  $("stageHost").classList.toggle("pokeable", !!poke);
+  if (poke) $("caption").innerHTML = "👆 Now <b>click your pal</b> on the stage!";
+}
+function stopPokes() {
+  poke = null;
+  $("stageHost").classList.remove("pokeable");
+}
+async function pokePal() {
+  if (!poke || running) return;
+  if ($("code").value !== poke.code || mode !== poke.level) {
+    stopPokes();
+    $("caption").textContent = "Your code changed. Press Show time! to try it.";
+    return;
+  }
+  const mine = poke, ticket = ++mine.ticket;
+  mine.clicks++;
+  StageSFX.play("click");
+  const out = await post("/pixel/poke", {id: me, level: mine.level, code: mine.code, clicks: mine.clicks}).catch(() => null);
+  if (poke !== mine || ticket !== mine.ticket) return;          // a newer click, or a new show, took over
+  if (!out || out.error) {
+    stopPokes();
+    if (out && out.error) { setBand(out.line || 0); verdict(`<p>${fmt(out.error)}</p><p>Fix that line, then press Show time! again.</p>`, "bad"); }
+    return;
+  }
+  $("caption").innerHTML = `👆 Click ${mine.clicks}!`;
+  await stage.play(out.steps, {onStep(s) { if (poke === mine && ticket === mine.ticket) setRunLine(s.line); }});
+  if (poke === mine && ticket === mine.ticket) setRunLine(0);
 }
 // Three misses in a row with the guide off: offer the guide back, right where they're looking.
 let missStreak = 0;
@@ -891,6 +933,7 @@ document.addEventListener("click", e => {
 });
 new ResizeObserver(fitScreen).observe($("stageHost").parentElement);
 $("runButton").addEventListener("click", runShow);
+$("stageHost").addEventListener("click", pokePal);
 $("skip").addEventListener("click", () => stage.hurry());
 // Esc, or a click on the dark part around a sheet, closes it.
 const SHEETS = {missions: "closeMissions", bookSheet: "closeBook", artSheet: "closeArt", thingSheet: "closeThing", beads: "closeBeads", win: "winClose"};
