@@ -225,6 +225,11 @@ class TeacherAndGames(unittest.TestCase):
             self.assertNotIn("gem", self.jobs(mia)["keys"])
             self.assertEqual(len(self.jobs(mia)["keys"]), 3)
 
+    def test_starting_a_game_tells_everyone_which_game_and_how_to_join(self):
+        server.room_do(self.kids[0], {"what": "game", "action": "create", "kind": "dance"})
+        said = [e["message"] for e in server.pixel_room["events"] if e["kind"] == "game"][-1]
+        self.assertEqual(said, "🎮 Mia started Copy the dance! Tap the yellow bar above to join.")
+
     def test_ending_when_no_game_is_on_does_nothing(self):
         self.assertEqual(server.pixel_teacher({"action": "end_game"}), {"ok": True})
         self.assertIsNone(server.pixel_room["game"])
