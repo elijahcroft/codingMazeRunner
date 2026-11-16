@@ -159,7 +159,9 @@ it offers the 🎬 Free stage.
 The Hang out's 👋 Do and 🎉 Party buttons show their Python under the name (`wave()`,
 `feel("happy")`, `hearts()`), so playing keeps reminding them what the code looks like.
 A student who has drawn something but hasn't finished a mission gets a **💻 Now code my
-pal →** button at the top of Draw. On the teacher page, **🎨 Your turns** counts the missions
+pal →** button at the top of Draw. Once they have a star, Draw shows **💻 Keep coding →** instead,
+which goes straight to their next mission, so a student back the next lesson (who always lands
+on Draw) has a way back. On the teacher page, **🎨 Your turns** counts the missions
 where each student changed the code themselves, with 🐞 and the number of bugs they fixed.
 
 **My Move gets better with better code:** a `for` loop adds a sparkle trail, and 8

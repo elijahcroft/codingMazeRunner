@@ -128,6 +128,7 @@ function paintSteps(name) {
   const todo = S.chapters.flatMap(c => c.levels).find(l => l.open && !l.stars[0]);
   const next = name === "life" ? ["💻 Code my pal →", "stage"]
     : name === "draw" && !S.stars && drewSomething() ? ["💻 Now code my pal →", "stage"]
+    : name === "draw" && S.stars && todo ? ["💻 Keep coding →", "stage"]          // back next lesson: the way to their mission
     : name === "stage" && todo && view && view.best[0] && todo.key !== mode ? ["💻 Next mission →", null, todo.key]
     : name === "stage" && !todo && !S.hang.needs ? ["🎉 Go hang out →", "hang"]
     : name === "hang" && !hasMove ? ["🌟 Make My Move →", "stage"]
