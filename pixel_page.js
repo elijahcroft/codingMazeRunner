@@ -657,6 +657,7 @@ async function runShow() {
     stage.cheer();
     $("caption").textContent = "What a show!";
     verdict(`<p><b>🎬 What a show!</b> Change anything you like, then press Show time! again. Your code is saved.</p>`, "good");
+    showRewards(out.rewards || {});
     paintSteps("stage");
     listenForPokes(out);
     return;

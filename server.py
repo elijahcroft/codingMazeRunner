@@ -5629,6 +5629,7 @@ PIXEL_BADGES = {
     "all": ("🏆", "Star of the Show", "Get all the stars in the game"),
     "remix": ("🎨", "Remixer", "Do a Your turn: change a mission's code your own way"),
     "fix": ("🐞", "Bug Squasher", "Do a Fix it: find and fix the bug in Pip's code"),
+    "show": ("🎬", "Show Maker", "Make a show of your own on the Free stage, 5 steps or more"),
 }
 
 
@@ -7299,13 +7300,16 @@ def pixel_post(path, data):
                 entry["free_code"] = code[:pixel.MAX_CODE]
                 entry["free_runs"] += 1
                 entry["active"] = int(time.time())
+                earned = []
+                if not out["error"] and len(out["steps"]) >= FREE_FEED_STEPS:
+                    pixel_badge(p, "show", earned)
                 # A real show tells the class, now and then, on the projector's list of moments.
                 if not out["error"] and len(out["steps"]) >= FREE_FEED_STEPS \
                         and time.time() - entry.get("free_fed", 0) >= FREE_FEED_GAP:
                     entry["free_fed"] = int(time.time())
                     pixel_feed_add(f"🎬 {p['name']} made a show on the Free stage")
                 pixel_save_soon()
-                return dict(out, rewards={}, state=pixel_state(p))
+                return dict(out, rewards={"badges": earned} if earned else {}, state=pixel_state(p))
         lv = pixel.LEVEL_BY_KEY[key]
         out = pixel.run_level(lv, code, pal, surprise=random.randrange(1000, 10 ** 6))
         with lock:
