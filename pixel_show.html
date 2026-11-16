@@ -155,6 +155,11 @@ function autoLook(now) {
 const SHOW_THESE = ["mymove", "toy", "five", "found", "go", "rest", "move", "fx"];
 function autoNotice(e) {
   const now = performance.now();
+  if (cam.mode === "auto" && e.kind === "danceparty") {      // a dance party is worth a look straight away
+    cam.seat = e.seats[0];
+    cam.moveOn = now + 8000;
+    return;
+  }
   if (cam.mode !== "auto" || !SHOW_THESE.includes(e.kind) || now < cam.moveOn - 5000) return;     // at least 3 seconds on each person
   cam.seat = e.seat;
   cam.moveOn = now + 8000;
