@@ -159,7 +159,7 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
 - **Sitting and reading:** click a glowing spot in front of a bench, towel or snowman
   and the pal walks over and sits. 🪑 Sit and 📖 Read in the Do tab work anywhere. A pal
   stays put until it walks away.
-- **Buddies:** up to 3 of a student's other drawings come along, smaller, and wander
+- **Buddies:** with **👯 Buddies: on** (next to "You are..."), up to 3 of a student's other drawings come along, smaller, and wander
   near their pal. They join in with its dances and naps, and sit when it sits. A new
   drawing shows up the next time the student comes back to the Hang out.
 - **✨ My Move:** the student's pal does their routine in a spotlight, and everyone else

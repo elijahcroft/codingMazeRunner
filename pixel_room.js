@@ -254,7 +254,8 @@ function paintPalStrip() {
   $("palStripName").textContent = d.title || "My drawing";
   const on = S.hang.buddies === true;
   $("palFollow").setAttribute("aria-pressed", on);
-  $("palFollow").textContent = on ? "👯 My drawings follow me: on" : "👯 My drawings follow me: off";
+  $("palFollow").textContent = on ? "👯 Buddies: on" : "👯 Buddies: off";
+  $("palFollow").title = "Your other drawings come along with your pal";
 }
 async function choosePal(key) {
   if (key === S.pal) return;
