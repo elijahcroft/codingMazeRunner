@@ -126,6 +126,7 @@ class TurnOverHttp(unittest.TestCase):
 
     def test_the_teacher_sees_how_many_turns(self):
         me = self.post("/join", {"name": "Mia"})["id"]
+        self.post("/pixel/run", {"id": me, "level": "a1", "code": pixel.LEVEL_BY_KEY["a1"]["reference"]})
         self.post("/pixel/run", {"id": me, "level": "a1", "code": CHANGED["a1"]})
         row = next(r for r in server.pixel_overview()["students"] if r["name"] == "Mia")
         self.assertEqual(row["turns"], 1)
@@ -147,6 +148,19 @@ class TurnOverHttp(unittest.TestCase):
         out = self.post("/pixel/run", {"id": me, "level": "a1", "code": pixel.LEVEL_BY_KEY["a1"]["reference"], "guess": 2})
         self.assertEqual(out["rewards"]["guess"], {"right": False, "answer": "2"})
         self.assertEqual(out["rewards"]["coins"], pixel.COINS_FIRST + 3 * pixel.COINS_STAR)
+
+    def test_a_first_finish_is_the_mission_win_not_a_turn(self):
+        # My Move is the student's own code, and most moves already say something.
+        me = self.post("/join", {"name": "Mia"})["id"]
+        move = 'say("Hi")\njump()\nspin()\ncheer()'
+        for key in pixel.LEVEL_ORDER[:pixel.LEVEL_ORDER.index("m1")]:
+            self.post("/pixel/run", {"id": me, "level": key, "code": pixel.LEVEL_BY_KEY[key]["reference"]})
+        first = self.post("/pixel/run", {"id": me, "level": "m1", "code": move})
+        self.assertTrue(first["rewards"]["first"])
+        self.assertNotIn("remixed", first["rewards"])
+        self.assertFalse(self.get(f"/pixel/level?id={me}&level=m1")["remix"]["done"])
+        again = self.post("/pixel/run", {"id": me, "level": "m1", "code": move})
+        self.assertTrue(again["rewards"]["remixed"])
 
     def test_a_turn_that_breaks_the_mission_does_not_count(self):
         me = self.post("/join", {"name": "Mia"})["id"]

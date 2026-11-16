@@ -60,7 +60,7 @@
 
   /* ---- The app --------------------------------------------------------------- */
   .app { height: 100vh; min-height: 500px; min-width: 980px; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
-  @media (max-width: 1340px) { .brand { display: none; } .bar { gap: 5px; padding: 8px 9px; } .bar .btn { padding: 6px 7px; font-size: 15px; } .tabs button { padding: 4px 5px; font-size: 15px; } #title { padding: 6px 7px; font-size: 15px; } #saved { display: none; } }
+  @media (max-width: 1440px) { .brand { display: none; } .bar { gap: 5px; padding: 8px 9px; } .bar .btn { padding: 6px 7px; font-size: 15px; } .tabs button { padding: 4px 5px; font-size: 15px; } #title { padding: 6px 7px; font-size: 15px; } #saved { display: none; } }
   .view { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; }
   .bar { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--paper); border-bottom: 2px solid var(--ink); }
   .tabs { display: flex; gap: 4px; padding: 3px; background: var(--plum-soft); border: 2px solid var(--ink); border-radius: 10px; }
@@ -237,7 +237,7 @@
     .reel-note span { display: none; }
     .moves button { padding: 0; }
     .moves button span { font-size: 16px; }
-    #verdict { height: 66px; }
+    #verdict { min-height: 66px; max-height: 112px; }
     #boneNote { min-height: 0; font-size: 14px; margin-bottom: 4px; }
     #boneBoard { max-height: 192px; }
     .bone-keys button { padding: 0 5px; font-size: 13px; }
@@ -333,7 +333,7 @@
   .bubble.friend::after { background: #fff6cf; }
   #caption { margin: 0; flex: none; min-height: 30px; padding: 4px 10px; background: var(--ink); color: #fff; border-radius: 8px; font-size: 14px; font-weight: 700; }
   #caption b { color: var(--sun); }
-  #verdict { flex: none; height: 92px; overflow: auto; padding: 6px 10px; font-size: 15px; }
+  #verdict { flex: none; min-height: 92px; max-height: 150px; overflow: auto; padding: 6px 10px; font-size: 15px; }
   #verdict.bad { background: #ffe9ed; }
   #verdict.good { background: #e5fbf0; }
   #verdict p { margin: 0; }
@@ -527,7 +527,8 @@
   .me-note { grid-column: 1 / -1; margin: 0; font-size: 14px; font-weight: 700; color: #4d6f68; }
   #roomClosed { background: #fffdf6e0; color: #2c5352; }
   .next-step { background: #2d6a68 !important; color: #fffdf6 !important; }
-  #hangNote { font-size: 14px; font-weight: 800; color: var(--ink-soft); white-space: nowrap; }
+  #hangNote { font-size: 14px; font-weight: 800; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 60px; }
+  .bar > #hangNote { flex-shrink: 1; }
   #calm[aria-pressed="true"] { background: #c9ecd9; }
   #tags[aria-pressed="true"] { background: #c9ecd9; }
   body.no-tags .tag { visibility: hidden; }

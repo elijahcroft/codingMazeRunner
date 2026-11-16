@@ -5870,7 +5870,8 @@ def pixel_record(p, key, code, out, guess=None, fixing=False):
         rewards["move"] = pixel_move_public(entry)
     if pixel_stars(entry) == 3 * len(pixel.LEVELS):
         pixel_badge(p, "all", earned)
-    remixed = out["stars"][0] and out.get("remix") and key not in entry["remixed"]
+    # Your turn counts only on a mission finished before, so a first finish is always the mission's own win.
+    remixed = out["stars"][0] and old[0] and out.get("remix") and key not in entry["remixed"]
     if remixed:
         entry["remixed"].append(key)
         rewards["remixed"] = True

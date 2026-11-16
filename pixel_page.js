@@ -112,13 +112,19 @@ function missionsWord(n) { return `${n} more mission${n === 1 ? "" : "s"}`; }
 function paintSteps(name) {
   $("tabHang").textContent = S.hang.needs ? "🔒 Hang out" : "🎉 Hang out";
   const go = $("goNext"), hasMove = !!S.hang.move;
+  // On Code it points at more code: nothing while a mission is unfinished, the next mission after
+  // a win, and the Hang out only once every mission is done. The Hang out tab is always there too.
+  const todo = S.chapters.flatMap(c => c.levels).find(l => l.open && !l.stars[0]);
   const next = name === "life" ? ["💻 Code my pal →", "stage"]
     : name === "draw" && !S.stars && drewSomething() ? ["💻 Now code my pal →", "stage"]
-    : name === "stage" && !S.hang.needs ? ["🎉 Go hang out →", "hang"]
+    : name === "stage" && todo && view && view.best[0] && todo.key !== mode ? ["💻 Next mission →", null, todo.key]
+    : name === "stage" && !todo && !S.hang.needs ? ["🎉 Go hang out →", "hang"]
     : name === "hang" && !hasMove ? ["🌟 Make My Move →", "stage"]
     : name === "hang" ? ["💻 Code more →", "stage"] : null;
   go.hidden = !next;
-  if (next) { go.textContent = next[0]; go.dataset.view = next[1]; }
+  delete go.dataset.view;
+  delete go.dataset.mission;
+  if (next) { go.textContent = next[0]; if (next[1]) go.dataset.view = next[1]; else go.dataset.mission = next[2]; }
   $("hangNote").hidden = name !== "stage" || !S.hang.needs;
   $("hangNote").textContent = `🔒 ${missionsWord(S.hang.needs)} to the Hang out`;
 }
@@ -180,6 +186,7 @@ async function openMission(key) {
   $("caption").textContent = "Press Show time! to see your code run.";
   resetStage();
   coachFocus();
+  if (!$("stageView").hidden) paintSteps("stage");
 }
 function drawGoals(got) {
   $("goals").innerHTML = view.goals.map((g, i) =>
@@ -202,7 +209,7 @@ function askGuess() {
 }
 function guessLine(g) {
   return g.right ? `<p class="guess-said">🔮 You guessed right! +${view.guess.coins} 🪙</p>`
-    : `<p class="guess-said">🔮 Good guess! It was really: <b>${esc(g.answer)}</b>. Look at the code to see why.</p>`;
+    : `<p class="guess-said">🔮 Good guess! It was really: <b>${esc(g.answer)}</b>${/[.!?]$/.test(g.answer) ? "" : "."} Look at the code to see why.</p>`;
 }
 
 // ---- Your turn: after a mission, one change to make with the guide off ----------------------
@@ -530,9 +537,11 @@ function paintType(box) {
   const at = code.split("\n").length - 1, done = code === target;
   const names = [...lines.map((c, i) => `Line ${i + 1}`), "▶ Show time!"];
   if (done) {
-    $("runButton").classList.add("nudge");
-    box.innerHTML = stepList(names, lines.length) + (guessWaiting
+    const won = !!view.best[0] && !guessWaiting;
+    if (!won) $("runButton").classList.add("nudge");
+    box.innerHTML = stepList(names, won ? lines.length + 1 : lines.length) + (guessWaiting
       ? `<p class="coach-say">🔮 Before you watch: guess what will happen!</p><p class="coach-next">👉 Pick your guess under the stage, on the right.</p>`
+      : won ? `<p class="coach-say">✅ Mission done! Your code works.</p><p class="coach-next">👉 Pick what's next under the stage, on the right.</p>`
       : `<p class="coach-say">🎉 You typed it all!</p><p class="coach-next">👇 Now press the pink <b>▶ Show time!</b> button.</p>`);
     return;
   }
@@ -641,6 +650,7 @@ async function runShow() {
     verdict(`<p>${fmt(out.reply || "Not quite. Read the job again.")}</p>`, "bad");
   }
   paintYourTurn();
+  paintCoach();
   if (out.rewards.guess) $("verdict").insertAdjacentHTML("afterbegin", guessLine(out.rewards.guess));
   guessPick = null;
   if (out.rewards.first) celebrate(out.rewards);
@@ -677,7 +687,7 @@ function missionDone(out) {
   const next = order[at + 1];
   $("caption").textContent = "The crowd loves it!";
   const more = out.stars.findIndex(g => !g);
-  verdict(`<p><b>${all ? "Three stars! A perfect show!" : "You did it! The crowd is cheering."}</b>${more >= 0 ? ` For the next star: ${fmt(view.goals[more])}.` : ""}</p>
+  verdict(`<p><b>${all ? "Three stars! A perfect show!" : "You did it! The crowd is cheering."}</b>${more >= 0 ? ` For the next star: ${fmt(view.goals[more])}${/[.!?]$/.test(view.goals[more]) ? "" : "."}` : ""}</p>
     <p class="next">${nextButton(next)}${extraButton()}${mode === "m1" ? ` <button class="btn" data-rename="1">Rename my move</button>` : ""}</p>`, "good");
 }
 // The box always stays on screen, so the stage above it never jumps.
