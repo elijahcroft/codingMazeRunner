@@ -686,17 +686,24 @@ async function runShow() {
 // ---- Click Me!: after a show whose code has def on_click():, a click on the pal runs it ------------
 // Each click runs the program again with every click so far (so clicks() counts up), and the
 // stage plays only what this click does, lighting up each line as it runs.
+// def on_key(key): works the same way with the arrow keys and space, when the editor isn't in use.
 let poke = null;
+const POKE_KEYS = {ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down", " ": "space"};
 function listenForPokes(out) {
-  poke = !out.error && (out.events || []).includes("click") ? {code: $("code").value, level: mode, clicks: 0, ticket: 0} : null;
-  $("stageHost").classList.toggle("pokeable", !!poke);
-  if (poke) $("caption").innerHTML = "👆 Now <b>click your pal</b> on the stage!";
+  const hears = out.error ? [] : (out.events || []).filter(e => e === "click" || e === "key");
+  poke = hears.length ? {code: $("code").value, level: mode, events: [], ticket: 0, hears} : null;
+  $("stageHost").classList.toggle("pokeable", !!poke && hears.includes("click"));
+  if (!poke) return;
+  if (hears.includes("key")) document.activeElement.blur();      // so the keys go to the pal, not the code
+  $("caption").innerHTML = [hears.includes("click") && "👆 Now <b>click your pal</b> on the stage!",
+                            hears.includes("key") && "⌨️ Press the <b>arrow keys</b> or <b>space</b>!"].filter(Boolean).join(" ");
 }
 function stopPokes() {
   poke = null;
   $("stageHost").classList.remove("pokeable");
 }
-async function pokePal() {
+function pokePal() { if (poke && poke.hears.includes("click")) sendPoke("click"); }
+async function sendPoke(event) {
   if (!poke || running) return;
   if ($("code").value !== poke.code || mode !== poke.level) {
     stopPokes();
@@ -704,16 +711,16 @@ async function pokePal() {
     return;
   }
   const mine = poke, ticket = ++mine.ticket;
-  mine.clicks++;
-  StageSFX.play("click");
-  const out = await post("/pixel/poke", {id: me, level: mine.level, code: mine.code, clicks: mine.clicks}).catch(() => null);
+  mine.events.push(event);
+  if (event === "click") StageSFX.play("click");
+  const out = await post("/pixel/poke", {id: me, level: mine.level, code: mine.code, events: mine.events}).catch(() => null);
   if (poke !== mine || ticket !== mine.ticket) return;          // a newer click, or a new show, took over
   if (!out || out.error) {
     stopPokes();
     if (out && out.error) { setBand(out.line || 0); verdict(`<p>${fmt(out.error)}</p><p>Fix that line, then press Show time! again.</p>`, "bad"); }
     return;
   }
-  $("caption").innerHTML = `👆 Click ${mine.clicks}!`;
+  $("caption").innerHTML = event === "click" ? `👆 Click ${mine.events.filter(e => e === "click").length}!` : `⌨️ ${event.slice(4)}`;
   await stage.play(out.steps, {onStep(s) { if (poke === mine && ticket === mine.ticket) setRunLine(s.line); }});
   if (poke === mine && ticket === mine.ticket) setRunLine(0);
 }
@@ -979,6 +986,12 @@ $("code").addEventListener("keydown", editorKeys);
 $("code").addEventListener("paste", e => { if (coachTyping()) e.preventDefault(); });
 // A click somewhere else shouldn't stop the keys from working.
 addEventListener("keydown", e => {
+  if (poke && poke.hears.includes("key") && POKE_KEYS[e.key] && document.activeElement === document.body && !$("stageView").hidden
+      && !document.querySelector(".sheet:not([hidden]), .shelf:not([hidden])") && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault();
+    sendPoke("key:" + POKE_KEYS[e.key]);
+    return;
+  }
   if (document.activeElement !== document.body || $("stageView").hidden || running || !mode) return;
   if (document.querySelector(".sheet:not([hidden]), .shelf:not([hidden])") || (e.key.length !== 1 && e.key !== "Enter" && e.key !== "Backspace")) return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;

@@ -70,7 +70,9 @@ yellow edge and says **👆 Now click your pal**: each click on the stage runs t
 and the line that's running lights up, so they can see which lines a click runs. Count the
 pokes is the first `else`: say the count, cheer on the 3rd click and jump on the others.
 Clicks after the show aren't saved or paid; they're for trying it. A `def on_click():` on the
-Free stage works the same way.
+Free stage works the same way, and so does `def on_key(key):` there: after the show, the arrow
+keys and space go to the pal (once the student clicks outside the code), so they can make a pal
+they steer: a tiny game of their own. **💡 Give me an idea** has one, "Walk with the arrow keys".
 
 **Every mission walks them through it.** The top says the job in one plain sentence. Under
 it, the guide gives one line at a time: what the line does, the exact keys as tiles, and
@@ -131,7 +133,7 @@ Missions (the My Move win card has a button for it too). There are no stars, no 
 rules: every command the student has learned works, plus ten **stage toys** no mission
 teaches: `scene("beach")`, `sound("tada")`, `rain()`, `snow()`, `friend("cat")`,
 `friend_say("Hi!")`, `friend_jump()`, `bye()`, `hide()` and `appear()`. All words says what
-each one does. **💡 Give me an idea** (where Help me usually is) offers six small shows to start
+each one does. **💡 Give me an idea** (where Help me usually is) offers seven small shows to start
 from, one at a time: a day at the beach, a friend comes to play, a magic trick and so on.
 **Use this idea** puts it under their own code, never over it. A show of 5 steps or more puts "🎬 Mia made a show on the Free stage" on the projector's list
 of moments, at most once every 5 minutes for each student. Their show's code is kept, and nothing is paid for it, so it's there for

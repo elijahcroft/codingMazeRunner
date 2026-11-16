@@ -1501,6 +1501,7 @@ FREE_IDEAS = [
     ("A magic trick", 'say("Watch this!")\nsound("drum")\nhide()\nwait(1)\nappear()\nsound("tada")\nconfetti()'),
     ("Snow day", 'scene("snowy")\nsnow()\nsay("Brrr! It\'s cold!")\nfeel("surprised")\nfor i in range(2):\n    spin()\ndance()'),
     ("Off to space", 'scene("space")\nsay("3, 2, 1...")\nfor i in range(3):\n    jump()\nstars()\nsay("I\'m in space!")'),
+    ("Walk with the arrow keys", 'say("Press the arrow keys!")\ndef on_key(key):\n    if key == "left":\n        left(1)\n    if key == "right":\n        right(1)\n    if key == "space":\n        jump()'),
     ("A rainy day", 'scene("park")\nrain()\nfeel("sad")\nsay("Oh no, rain!")\nwait(1)\nfeel("happy")\nsay("I love puddles!")\ndance()'),
 ]
 
@@ -1867,12 +1868,18 @@ THING_MS = {"jump": 620, "spin": 560, "shake": 500, "hearts": 600, "stars": 600,
 THING_START = 'def on_click():\n    jump()\n    sound("boing")\n    say("Hello!")\n'
 
 
-def poke(code, pal, clicks, commands, seed=0):
-    """A student clicks their pal after a show. The program runs again with every click
-    so far, so clicks() counts up, and only what this click makes comes back."""
-    clicks = (max(1, clicks) - 1) % MAX_EVENTS + 1
-    out = perform(code, pal, ["click"] * clicks, seed, commands)
-    if not out["error"] and "click" not in out["events"]:
+POKES = ("click",) + tuple(f"key:{k}" for k in KEYS)
+
+
+def poke(code, pal, events, commands, seed=0):
+    """A student clicks their pal, or presses an arrow key or space, after a show. The
+    program runs again with every click and key so far, so clicks() counts up and
+    variables carry on, and only what the newest one makes comes back."""
+    events = [e for e in events if e in POKES][-MAX_EVENTS:]
+    if not events:
+        return {"steps": [], "error": None, "line": None, "listening": False}
+    out = perform(code, pal, events, seed, commands)
+    if not out["error"] and events[-1].partition(":")[0] not in out["events"]:
         return {"steps": [], "error": None, "line": None, "listening": False}
     return {"steps": [] if out["error"] else [s for s in out["after"] if s["do"] != "event"],
             "error": out["error"], "line": out["line"], "listening": True}
