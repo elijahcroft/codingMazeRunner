@@ -696,7 +696,7 @@ let poke = null;
 const POKE_KEYS = {ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down", " ": "space"};
 function listenForPokes(out) {
   const hears = out.error ? [] : (out.events || []).filter(e => e === "click" || e === "key");
-  poke = hears.length ? {code: $("code").value, level: mode, events: [], ticket: 0, hears, seed: out.seed || 0} : null;     // the show's own surprises
+  poke = hears.length ? {code: $("code").value, level: mode, events: [], queue: [], ticket: 0, hears, seed: out.seed || 0} : null;     // the show's own surprises
   $("stageHost").classList.toggle("pokeable", !!poke && hears.includes("click"));
   if (!poke) return;
   if (hears.includes("key")) document.activeElement.blur();      // so the keys go to the pal, not the code
@@ -715,11 +715,16 @@ async function sendPoke(event) {
     $("caption").textContent = "Your code changed. Press Show time! to try it.";
     return;
   }
-  const mine = poke, ticket = ++mine.ticket;
+  const mine = poke;
+  if (mine.busy) { if (mine.queue.length < 8) mine.queue.push(event); return; }      // one at a time to the server; quick presses wait in line
+  const ticket = ++mine.ticket;
+  mine.busy = true;
   mine.events.push(event);
   if (event === "click") StageSFX.play("click");
   const out = await post("/pixel/poke", {id: me, level: mine.level, code: mine.code, events: mine.events, seed: mine.seed}).catch(() => null);
-  if (poke !== mine || ticket !== mine.ticket) return;          // a newer click, or a new show, took over
+  mine.busy = false;
+  if (poke !== mine || ticket !== mine.ticket) return;          // a new show took over
+  if (mine.queue.length) sendPoke(mine.queue.shift());
   if (!out || out.error) {
     stopPokes();
     if (out && out.error) { setBand(out.line || 0); verdict(`<p>${fmt(out.error)}</p><p>Fix that line, then press Show time! again.</p>`, "bad"); }
@@ -1004,7 +1009,7 @@ addEventListener("keydown", e => {
   if (poke && poke.hears.includes("key") && POKE_KEYS[e.key] && document.activeElement === document.body && !$("stageView").hidden
       && !document.querySelector(".sheet:not([hidden]), .shelf:not([hidden])") && !e.ctrlKey && !e.metaKey && !e.altKey) {
     e.preventDefault();
-    sendPoke("key:" + POKE_KEYS[e.key]);
+    if (!e.repeat) sendPoke("key:" + POKE_KEYS[e.key]);       // holding a key down doesn't flood the server
     return;
   }
   if (document.activeElement !== document.body || $("stageView").hidden || running || !mode) return;
