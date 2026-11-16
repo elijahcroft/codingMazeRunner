@@ -29,6 +29,21 @@ class Pokes(unittest.TestCase):
         self.assertEqual([s["do"] for s in out["steps"]], ["jump"])
 
 
+class ClickMistakes(unittest.TestCase):
+    def run_k1(self, code):
+        return pixel.run_level(pixel.LEVEL_BY_KEY["k1"], code, pixel.PIP)
+
+    def test_a_nearly_right_name_is_named(self):
+        for name in ("onclick", "On_click", "on_clicked"):
+            with self.subTest(name=name):
+                self.assertIn("def on_click():", self.run_k1(f"def {name}():\n    jump()")["reply"])
+                self.assertIn(name, self.run_k1(f"def {name}():\n    jump()")["reply"])
+
+    def test_a_missing_def_says_to_add_it(self):
+        self.assertIn("def on_click():", self.run_k1("on_click():\n    jump()")["error"])
+        self.assertIn("start the line with  def", self.run_k1("on_click():\n    jump()")["error"])
+
+
 class PokesOverHttp(unittest.TestCase):
     setUp, tearDown, post, get = StudioOverHttp.setUp, StudioOverHttp.tearDown, StudioOverHttp.post, StudioOverHttp.get
 

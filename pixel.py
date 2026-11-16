@@ -437,6 +437,8 @@ def plain_syntax(code, e):
     flipped = re.fullmatch(r"""(".*"|'.*'|\d+)\s*=\s*([A-Za-z_]\w*)""", line)
     if flipped:
         return f"The name goes first, then the  =  then what to keep in it. Write  {flipped[2]} = {flipped[1]}"
+    if re.fullmatch(r"[A-Za-z_]\w*\(\s*\w*\s*\):", line) and not re.match(r"(if|elif|while|for)\b", line):
+        return f"To make a new command, start the line with  def  , like  def {line}"
     if re.match(r"for\s+in\b", line):
         return "A for loop needs a name to count with. Write it like this:  " + re.sub(r"^for\s+in\b", "for i in", line)
     if line.endswith(":") and not any(l.strip() for l in lines[n:]):
@@ -1310,7 +1312,7 @@ LEVELS = [
                ('    say("Hee hee!")', "And it giggles! After the show, click your pal on the stage yourself."),
      ],
      "goals": [("Your pal does something when it's clicked", lambda r: _click_moves(r, 0) >= 1,
-                lambda r: "Nothing happens when I click your pal. Put  def on_click():  on its own line, and push in the lines under it."
+                lambda r: _click_name_slip(r) or "Nothing happens when I click your pal. Put  def on_click():  on its own line, and push in the lines under it."
                           if "click" not in r.events else "I clicked, but your pal didn't do anything. Push some lines in under  def on_click():"),
                ("It says something on every click", lambda r: len(r.reacts) >= 3 and all(r.did(i, "say") for i in range(3)), None),
                ("It does 2 things or more on every click", lambda r: len(r.reacts) >= 3 and all(_click_moves(r, i) >= 2 for i in range(3)), None)],
@@ -1544,6 +1546,12 @@ def _moods(r):
 def _click_moves(r, i):
     """How many things the pal did after click number i (0 is the first)."""
     return sum(1 for name, _ in r.reacts[i] if name in MOVE_ACTIONS) if i < len(r.reacts) else 0
+
+
+def _click_name_slip(r):
+    """A def that's nearly on_click (onclick, On_click, on_clicked) gets named."""
+    near = [d for d in r.defs if d.lower().replace("_", "") in ("onclick", "onclicked", "onclicks", "clicked", "click")]
+    return f"Nothing happens when I click your pal. Did you mean  def on_click():  instead of  def {near[0]}():  ? It has to be spelled just like that." if near else None
 
 
 def _click_said(r, i, words):
