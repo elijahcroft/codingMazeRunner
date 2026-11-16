@@ -81,6 +81,11 @@ class TeacherAndGames(unittest.TestCase):
         # The first few still start together in the Park, where the class begins.
         self.assertTrue(all(s["x"] < pixel.PLACE_W for s in here[:5]))
 
+    def test_a_small_group_gets_more_room_because_their_pals_are_drawn_bigger(self):
+        here = self.spots()
+        gaps = [min(server.game_distance(a, b) for b in here if b is not a) for a in here]
+        self.assertGreaterEqual(min(gaps), 48)
+
     def test_jumping_to_a_place_finds_a_free_spot_there(self):
         for kid in self.kids[:2]:
             self.assertEqual(server.room_do(kid, {"what": "go", "name": "beach"}), {"ok": True})
@@ -89,6 +94,93 @@ class TeacherAndGames(unittest.TestCase):
         for s in (a, b):
             self.assertTrue(left <= s["x"] < left + pixel.PLACE_W)
         self.assertGreaterEqual(server.game_distance(a, b), 30)
+
+    def jobs(self, kid, keys=None):
+        jobs = server.day_jobs(server.pixel_entry(kid))
+        if keys:
+            jobs["keys"] = keys
+        return jobs
+
+    def seat_of(self, kid):
+        return server.pixel_room["here"][kid["id"]]["seat"]
+
+    def test_todays_jobs_are_the_same_for_the_class_and_new_each_day(self):
+        mia, ben = self.kids[:2]
+        today = self.jobs(mia)["keys"]
+        self.assertEqual(len(set(today)), 3)
+        self.assertEqual(self.jobs(ben)["keys"], today)
+        self.assertTrue(set(today) <= set(server.DAY_JOBS))
+        days = {tuple(today)}
+        for day in range(1, 6):
+            self.clock = 1000. + day * 86400
+            days.add(tuple(self.jobs(mia)["keys"]))
+        self.assertGreater(len(days), 1)
+        self.assertEqual(self.jobs(mia)["have"], {})        # a new day starts from nothing
+
+    def test_a_job_pays_when_done_and_all_three_open_a_gift_box(self):
+        mia = self.kids[0]
+        entry = server.pixel_entry(mia)
+        self.jobs(mia, ["catch", "clap", "visit"])
+        coins, gifts, meter = entry["coins"], len(entry["gifts"]), server.hang_meter()["points"]
+        server.day_job(mia, "catch")
+        server.day_job(mia, "catch")
+        self.assertEqual(entry["coins"], coins)                          # 2 of 3 stars: not yet
+        server.day_job(mia, "catch")
+        self.assertEqual(entry["coins"], coins + server.DAY_JOB_COINS)
+        server.day_job(mia, "catch")                                      # a 4th star changes nothing
+        self.assertEqual(self.jobs(mia)["have"]["catch"], 3)
+        server.day_job(mia, "gem")                                        # not one of today's jobs
+        self.assertNotIn("gem", self.jobs(mia)["have"])
+        server.day_job(mia, "clap")
+        self.assertFalse(self.jobs(mia)["paid"])
+        server.day_job(mia, "visit")
+        jobs = self.jobs(mia)
+        self.assertTrue(jobs["paid"])
+        self.assertEqual(len(entry["gifts"]), gifts + 1)
+        self.assertEqual(entry["gifts"][-1], jobs["gift"])
+        self.assertIn(jobs["gift"], pixel.BOX_GIFTS)
+        self.assertEqual(server.hang_meter()["points"], meter + 2)
+        view = server.room_view(mia, -1)["jobs"]
+        self.assertEqual([j["have"] == j["need"] for j in view["list"]], [True] * 3)
+        self.assertTrue(view["done"])
+
+    def test_with_every_box_gift_owned_all_three_pay_coins_instead(self):
+        mia = self.kids[0]
+        entry = server.pixel_entry(mia)
+        entry["gifts"] = list(pixel.BOX_GIFTS)
+        self.jobs(mia, ["clap", "visit", "code"])
+        coins = entry["coins"]
+        for key in ("clap", "visit", "code"):
+            server.day_job(mia, key)
+        self.assertEqual(entry["coins"], coins + 3 * server.DAY_JOB_COINS + server.DAY_JOBS_ALL_COINS)
+
+    def test_high_fives_count_different_friends(self):
+        mia, ben, alex = self.kids
+        self.jobs(mia, ["five", "clap", "visit"])
+        self.assertTrue(server.room_do(mia, {"what": "five", "seat": self.seat_of(ben)})["ok"])
+        self.clock += 2     # past the high-five gap, well before anyone counts as away
+        server.room_do(mia, {"what": "five", "seat": self.seat_of(ben)})
+        self.assertEqual(self.jobs(mia)["have"]["five"], 1)               # Ben again doesn't count
+        self.clock += 2     # past the high-five gap, well before anyone counts as away
+        server.room_do(mia, {"what": "five", "seat": self.seat_of(alex)})
+        self.assertEqual(self.jobs(mia)["have"]["five"], 2)
+
+    def test_visiting_counts_a_friends_home_not_your_own(self):
+        mia, ben = self.kids[:2]
+        self.jobs(mia, ["visit", "clap", "code"])
+        server.room_do(mia, {"what": "home"})
+        self.assertNotIn("visit", self.jobs(mia)["have"])
+        server.room_do(mia, {"what": "home", "out": True})
+        server.room_do(mia, {"what": "home", "seat": self.seat_of(ben)})
+        self.assertEqual(self.jobs(mia)["have"]["visit"], 1)
+
+    def test_no_gem_job_once_every_gem_is_found(self):
+        mia = self.kids[0]
+        server.pixel_entry(mia)["found"] = list(pixel.HANG_FINDS)
+        for day in range(10):
+            self.clock = 1000. + day * 86400
+            self.assertNotIn("gem", self.jobs(mia)["keys"])
+            self.assertEqual(len(self.jobs(mia)["keys"]), 3)
 
     def test_ending_when_no_game_is_on_does_nothing(self):
         self.assertEqual(server.pixel_teacher({"action": "end_game"}), {"ok": True})

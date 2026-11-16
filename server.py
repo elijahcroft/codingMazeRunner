@@ -6078,6 +6078,7 @@ def game_finish(message, reward=False, winners=()):
                     gift = random.choice(left)
                     entry["gifts"].append(gift)
             coins = pixel_pay(p, pixel.COINS_ROUND + (pixel.COINS_WIN if seat in winners else 0))
+            day_job(p, "game")
             game["rewards"][seat] = {"badges": earned, "gift": gift, "points": 2, "coins": coins, "won": seat in winners}
         hang_fill(2 * len(game["rewards"]))
         pixel_save_soon()
@@ -6210,6 +6211,7 @@ def code_run(p, spot, game, data, now):
                steps=steps, loop=False, big=fastest, ms=ms)
     room_event("game", message=f"⚡ {spot['name']} solved it first!" if fastest else f"⭐ {spot['name']} solved it!")
     coins = pixel_pay(p, CODE_SOLVE_COINS, play=False)
+    day_job(p, "code")
     pixel_save_soon()
     code_tick(game, game_seats(), now)
     return {"ok": True, "solved": True, "fastest": fastest, "coins": coins,
@@ -6486,6 +6488,62 @@ DOING = {"wave": "👋 Waving", "dance": "💃 Dancing", "jump": "🦘 Jumping",
          "catch": "🌠 Catching stars", "home": "🚪 Moving house to house"}
 DOING_FOR = 20             # seconds a tap still counts as what they're doing
 
+# 🎯 Today's jobs: three small things to do in the Hang out, the same for the whole class each day,
+# so friends can help each other. key: (icon, words, how many). Each one pays a few play coins, and
+# all three open a gift box (or pay coins once every box gift is theirs) and fill the party meter a bit.
+DAY_JOBS = {"five": ("🙌", "High-five 2 friends", 2), "catch": ("🌠", "Catch 3 falling stars", 3),
+            "gem": ("💎", "Find a gem", 1), "fish": ("🎣", "Catch something at the pier", 1),
+            "game": ("🎮", "Finish a game with friends", 1), "code": ("💻", "Solve a Code race job", 1),
+            "clap": ("👏", "Clap for a friend's move", 1), "visit": ("🚪", "Visit a friend's home", 1)}
+DAY_JOBS_EACH = 3
+DAY_JOB_COINS = 5
+DAY_JOBS_ALL_COINS = 15
+
+
+def day_jobs(entry):
+    """This student's jobs today: the class's jobs for the day, skipping a gem when there's none left to find."""
+    today = time.strftime("%Y-%m-%d", time.localtime(time.time()))
+    jobs = entry.get("day_jobs")
+    if not jobs or jobs.get("day") != today:
+        order = random.Random("jobs " + today).sample(sorted(DAY_JOBS), len(DAY_JOBS))
+        gems = any(k[:-1] in hang_places() and k not in entry["found"] for k in pixel.HANG_FINDS)
+        keys = [k for k in order if k != "gem" or gems][:DAY_JOBS_EACH]
+        jobs = entry["day_jobs"] = {"day": today, "keys": keys, "have": {}, "with": [], "paid": False}
+    return jobs
+
+
+def day_job(p, key, who=None):
+    """Something that counts for one of today's jobs. `who` makes a job count different friends."""
+    if not p:
+        return
+    entry = pixel_entry(p)
+    jobs = day_jobs(entry)
+    need = DAY_JOBS[key][2]
+    if key not in jobs["keys"] or jobs["have"].get(key, 0) >= need or (who and who in jobs["with"]):
+        return
+    if who:
+        jobs["with"].append(who)
+    jobs["have"][key] = jobs["have"].get(key, 0) + 1
+    if jobs["have"][key] == need:
+        pixel_pay(p, DAY_JOB_COINS)
+        if not jobs["paid"] and all(jobs["have"].get(k, 0) >= DAY_JOBS[k][2] for k in jobs["keys"]):
+            jobs["paid"] = True
+            left = [g for g in pixel.BOX_GIFTS if g not in pixel_owned(entry)]
+            if left:
+                jobs["gift"] = random.choice(left)
+                entry["gifts"].append(jobs["gift"])
+            else:
+                jobs["coins"] = pixel_pay(p, DAY_JOBS_ALL_COINS, play=False)
+            hang_fill(2)
+    pixel_save_soon()
+
+
+def day_jobs_view(entry):
+    jobs = day_jobs(entry)
+    return {"list": [{"key": k, "icon": DAY_JOBS[k][0], "words": DAY_JOBS[k][1], "have": jobs["have"].get(k, 0), "need": DAY_JOBS[k][2]}
+                     for k in jobs["keys"]],
+            "done": jobs["paid"], "gift": jobs.get("gift"), "coins": jobs.get("coins", 0)}
+
 
 def room_person(spot):
     """Where a child is and what they're doing, for the people list."""
@@ -6528,7 +6586,7 @@ def room_view(p, after, watch=0):
     if p:
         entry = pixel_entry(p)
         out.update(coins=entry["coins"], play_left=pixel.PLAY_COINS_DAY - pixel_play_today(entry),
-                   owned=pixel_owned(entry), progress=pixel_progress(entry))
+                   owned=pixel_owned(entry), progress=pixel_progress(entry), jobs=day_jobs_view(entry))
     if whole:
         out.update(members=[game_room_row(s, out["you"]) for s in here], events=[],
                    placed=[room_placed_row(r, p) for r in (room_at(owner, loc)["art"] if owner else pixel_class.get("placed", []))],
@@ -6603,6 +6661,8 @@ def room_home(p, spot, data):
         if not host:
             return {"error": "That friend isn't here right now."}
     room_go(spot, home_of(pixel_entry(host))["id"], 60 + spot["seat"] * 37 % 90, .5)       # just inside the door
+    if host is not p:
+        day_job(p, "visit")
     pixel_save_soon()
     return {"ok": True}
 
@@ -6675,6 +6735,7 @@ def room_fish(p, spot, data):
     if len(entry["fish"]) == len(pixel.FISH):
         pixel_badge(p, "angler", earned)
     room_event("fished", seat=spot["seat"], icon=pixel.FISH[kind][0])
+    day_job(p, "fish")
     pixel_save_soon()
     return {"ok": True, "fish": kind, "new": new, "coins": coins, "badges": earned}
 
@@ -6725,6 +6786,7 @@ def room_high_five(p, spot, other_seat):
         if len(pixel_entry(me)["friends"]) >= FIVES_FOR_BADGE:
             pixel_badge(me, "fives", earned if me is p else None)
     room_event("five", seat=spot["seat"], other=other["seat"], x=spot["x"], y=spot["y"], fresh=fresh)
+    day_job(p, "five", who=other["real"])
     pixel_save_soon()
     return {"ok": True, "badges": earned, "friends": pixel_entry(p)["friends"]}
 
@@ -6740,6 +6802,7 @@ def room_catch(p, spot, star):
     room_event("catch", seat=spot["seat"], star=star, combo=spot["combo"])
     earned = []
     pixel_pay(p, pixel.COINS_CATCH)
+    day_job(p, "catch")
     if spot["combo"] >= COMBO_FOR_BADGE:
         pixel_badge(p, "catcher", earned)
         pixel_save_soon()
@@ -6755,6 +6818,7 @@ def room_find(p, spot, key):
     if key not in entry["found"]:
         entry["found"].append(key)
         pixel_pay(p, pixel.COINS_GEM)
+        day_job(p, "gem")
         room_event("found", seat=spot["seat"])
         if len(entry["found"]) == len(pixel.HANG_FINDS):
             pixel_badge(p, "treasure", earned)
@@ -6911,11 +6975,13 @@ def room_free_spot(lo, hi, me=None):
     of pals. Spots go left to right, back row and front row in turn; the first one clear of every
     pal outside wins, or the least crowded if none is."""
     others = [s for s in pixel_room["here"].values() if not s["loc"] and s is not me]
+    step = 48 if len(others) < 11 else 30          # pals are drawn smaller once more than 11 are about
+    clear = math.hypot(step, 21) - 2               # a neighbour one spot along, in the other row
     best, roomiest = (lo + 24, .5), -1
-    for i, x in enumerate(range(lo + 24, hi - 16, 30)):
+    for i, x in enumerate(range(lo + 24, hi - 16, step)):
         y = .3 if i % 2 else .8
         near = min((game_distance({"x": x, "y": y}, s) for s in others), default=1e9)
-        if near >= 34:
+        if near >= clear:
             return x, y
         if near > roomiest:
             best, roomiest = (x, y), near
@@ -7040,6 +7106,7 @@ def room_do(p, data):
             spot["clapped"] = now
             target["claps"] = target.get("claps", 0) + 1
             room_event("clap", seat=target["seat"], claps=target["claps"])
+            day_job(p, "clap")
     elif what == "five":
         return room_high_five(p, spot, data.get("seat"))
     elif what == "catch":

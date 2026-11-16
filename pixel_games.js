@@ -25,7 +25,7 @@ function buildGamePane(box) {
   const g = currentGame(), you = roomInfo?.you;
   box.classList.add("games-pane");
   if (!g) {
-    box.innerHTML = `<p class="me-note">Invite the other kids! Anyone can start a game. Friends choose whether to join.</p>
+    box.innerHTML = jobsHtml() + `<p class="me-note">Invite the other kids! Anyone can start a game. Friends choose whether to join.</p>
       <button class="wide race-start" data-game="create" data-kind="code"><b>💻 Code race</b><small>Everyone codes the same job · solve it and your pal does it for everyone</small></button>
       <button data-game="create" data-kind="hide"><b>Hide & seek</b><small>Random seeker · 20 seconds to hide</small></button>
       <button data-game="create" data-kind="tag"><b>Tag</b><small>Chase your friends · pass “it”</small></button>
@@ -115,7 +115,7 @@ function paintGameClock() {
   const g = currentGame(), title = $("gameTitle"), detail = $("gameDetail");
   if (!g) {
     title.textContent = "Play with friends";
-    detail.textContent = "💻 Code race, tag, hide & seek, a race or a dance →";
+    detail.textContent = jobsWord() + "💻 Code race, tag, hide & seek, a race or a dance →";
     return;
   }
   const seconds = Math.max(0, Math.ceil(g.until - gameNow()));

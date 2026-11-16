@@ -140,7 +140,10 @@ No code is needed once they're in.
 
 - **One long world:** the places sit side by side, and the camera follows your pal. Walk
   to the edge of the screen to reach the next place. A full party meter makes the world
-  longer. 🏞️ Place jumps just that student somewhere, not the whole class.
+  longer. 🏞️ Place jumps just that student somewhere, not the whole class. A student
+  arriving, or jumping somewhere, lands on a free spot with room around it, so a whole
+  class arriving at once fills the Park and then spills into the next place instead of
+  landing in one heap.
 - **Walking:** click the ground. Arrow keys work too.
 - **Toys (pink rings):** click the fountain, trampoline, snowman, rocket and so on. The pal
   walks over and it goes off for everyone nearby.
@@ -202,7 +205,17 @@ No code is needed once they're in.
 - **Games:** any student can start a 💻 Code race, Tag, Hide & seek, Red light green light,
   or Copy the dance, and friends choose to join. In the race, each press of Run or → is one short
   run, and moving on red sends a pal back a bit. In the dance, the moves stay on the
-  screen with the next one lit, for 3 rounds that get longer.
+  screen with the next one lit, for 3 rounds that get longer. When a round starts, the
+  side panel opens Games, and the line under the world says what to do in that game
+  ("You're IT! Click near a friend to tag them.").
+- **🎯 Today's jobs:** three small things to do, at the top of Games, the same for the
+  whole class each day so friends can help each other: high-five 2 friends, catch 3
+  falling stars, find a gem, catch something at the pier, finish a game with friends,
+  solve a Code race job, clap for a friend's move, or visit a friend's home. A gem job is
+  swapped for another once a student has found every gem. Each job pays 5 play coins,
+  and all three open a 🎁 gift box (15 coins once every box gift is theirs) and add 2 to
+  the class party meter. The bar above the world counts them ("🎯 1 of 3 jobs"). The jobs
+  are `DAY_JOBS` in `server.py`.
 
 **💻 Code race: coding together.** Everyone in the race gets the same small job, shown
 in the bar above the world with pictures of the moves ("Jump 2 times. 🦘 🦘"). They build
@@ -221,10 +234,15 @@ has no comments, unless typing is on.
 
 On `/pixel/teacher` you can close the Hang out, start a party, a star shower or a
 **💻 Code race for everyone** (everyone outside in the Hang out is put in it, and the race
-starts 15 seconds later; anyone can leave), and see who's there. The Hang out reopens if
+starts 15 seconds later; anyone can leave), and see who's there. When a student has a game
+going, the page says which one and how long is left, and **⏹ End this game** stops it with
+no prizes, so a Code race for everyone can start. The Hang out column says where each
+student is and what they're doing (🌳 Park, 💃 Dancing, 🎮 In a game). The Hang out reopens if
 the server restarts, and nothing in the room itself is saved, but gifts, friends, My Moves,
-coins, homes, fish and the party meter are. During a Code race, the projector shows the
-job, who has solved it, and the fastest code between jobs.
+coins, homes, fish and the party meter are. During any game, the projector has a card for
+it (who's IT, the light, the dance, who's been found), and 🎬 Auto follows whoever is IT or
+seeking. During a Code race, it shows the job, who has solved it, and the fastest code
+between jobs.
 
 **Words:** students tap words from a list. `say()` takes any words, so a My Move only
 shows lines that are on that list, and a line that isn't gets left out. **Let them type

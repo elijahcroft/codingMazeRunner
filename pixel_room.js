@@ -427,6 +427,7 @@ function roomState(data) {
   $("roomType").hidden = !open || !data.words;
   paintMeter(data.meter);
   paintCoins(data);
+  paintJobs(data.jobs);
   const home = JSON.stringify(data.home), people = JSON.stringify(data.people);
   if (home !== homeSeen || people !== peopleSeen) {
     if (!data.home !== (homeSeen === "null" || !homeSeen)) { furnArmed = artArmed = null; fishing = null; $("roomTip").textContent = roomTipNow(); }
@@ -441,6 +442,36 @@ function roomState(data) {
   if (places !== placesSeen) { placesSeen = places; if (roomPane === "place") buildRoomButtons(); }
   for (const e of data.events) roomEvent(e, data.you);
 }
+// ---- 🎯 Today's jobs: three small things to do, the same for the whole class each day ---------------
+let jobsSeen = null;
+const jobDone = j => j.have >= j.need;
+function paintJobs(jobs) {
+  if (!jobs) return;
+  const was = jobsSeen;
+  jobsSeen = jobs;
+  if (JSON.stringify(was) === JSON.stringify(jobs)) return;
+  if (roomPane === "games" && !currentGame()) buildRoomButtons();
+  if (!was) return;                       // what was done before this screen opened isn't news
+  const fresh = jobs.list.filter(j => jobDone(j) && !was.list.some(w => w.key === j.key && jobDone(w)));
+  if (!fresh.length) return;
+  if (jobs.done && !was.done) {
+    const gift = jobs.gift && S.hang.catalog[jobs.gift];
+    banner(`🎯 All 3 jobs done! 🎯<small>${gift ? `🎁 A new gift: ${esc(gift.name)}. Put it on in 🧢 Me!` : `+${jobs.coins} 🪙`}</small>`, 6000, true);
+    PalStage.SFX.play("fanfare");
+    if (roomPane === "me") buildRoomButtons();
+  } else {
+    banner(`🎯 Job done: ${esc(fresh[0].words)}!<small>${jobs.list.filter(jobDone).length} of ${jobs.list.length} jobs today</small>`, 3500);
+    PalStage.SFX.play("ding");
+  }
+}
+function jobsHtml() {
+  if (!jobsSeen) return "";
+  const done = jobsSeen.list.filter(jobDone).length;
+  return `<div class="jobs"><h4>🎯 Today's jobs <small>${jobsSeen.done ? "All done! See you next time." : `${done} of ${jobsSeen.list.length} · do all ${jobsSeen.list.length} for a 🎁`}</small></h4>` +
+    jobsSeen.list.map(j => `<p class="job${jobDone(j) ? " done" : ""}"><span>${jobDone(j) ? "✅" : j.icon}</span>${esc(j.words)}${j.need > 1 ? ` <b>${Math.min(j.have, j.need)}/${j.need}</b>` : ""}</p>`).join("") + `</div>`;
+}
+const jobsWord = () => (jobsSeen && !jobsSeen.done ? `🎯 ${jobsSeen.list.filter(jobDone).length} of ${jobsSeen.list.length} jobs · ` : "");
+
 let tipTimer = 0;
 function tipFor(text, ms = 3500) {
   $("roomTip").textContent = text;
