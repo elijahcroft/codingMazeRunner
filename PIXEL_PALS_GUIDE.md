@@ -298,6 +298,8 @@ clicking the pal makes it giggle.
   in My drawings and types their own name. Typing a name again brings back that
   student's work.
 - **Reading:** the 🔈 button on a mission reads it aloud with the laptop's own voice.
+- **🐢 Slow**, at the end of the bar under the stage, plays shows at half speed, so a student
+  can follow the lit-up line as each one runs. It's remembered on each computer.
 - **Stuck students:** the teacher page marks anyone with 3 misses or more on a
   mission, and shows their last error. With the guide off, Help me gives two or three
   hints, and the last one is a working answer.

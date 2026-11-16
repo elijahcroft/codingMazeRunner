@@ -55,6 +55,7 @@ const ALL_PYTHON = Object.keys(PYTHON);
 function pageEnter(data) {
   S = data;
   stage = PalStage.create($("stageCanvas"), $("stageHost"));
+  stage.slow($("slow").getAttribute("aria-pressed") === "true");
   stage.setPal(currentPal());
   stage.fresh();
   $("mute").textContent = StageSFX.muted ? "🔇" : "🔊";
@@ -942,6 +943,14 @@ new ResizeObserver(fitScreen).observe($("stageHost").parentElement);
 $("runButton").addEventListener("click", runShow);
 $("stageHost").addEventListener("click", pokePal);
 $("skip").addEventListener("click", () => stage.hurry());
+// 🐢 Slow: shows at half speed, to follow the lit-up line. Remembered on each computer.
+function paintSlow(on) {
+  $("slow").setAttribute("aria-pressed", on);
+  if (stage) stage.slow(on);
+  try { localStorage.setItem("pixelSlow", on ? "1" : "0"); } catch (_) {}
+}
+$("slow").addEventListener("click", () => paintSlow($("slow").getAttribute("aria-pressed") !== "true"));
+try { paintSlow(localStorage.getItem("pixelSlow") === "1"); } catch (_) {}
 // Esc, or a click on the dark part around a sheet, closes it.
 const SHEETS = {missions: "closeMissions", bookSheet: "closeBook", artSheet: "closeArt", thingSheet: "closeThing", beads: "closeBeads", win: "winClose"};
 function closeTopSheet() {

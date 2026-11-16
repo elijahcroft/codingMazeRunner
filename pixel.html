@@ -335,6 +335,10 @@
   .bubble.friend::after { background: #fff6cf; }
   #caption { margin: 0; flex: none; min-height: 30px; padding: 4px 10px; background: var(--ink); color: #fff; border-radius: 8px; font-size: 14px; font-weight: 700; }
   #caption b { color: var(--sun); }
+  .caption-row { display: flex; gap: 6px; flex: none; align-items: stretch; }
+  .caption-row #caption { flex: 1; min-width: 0; }
+  #slow { flex: none; padding: 2px 10px; font-size: 14px; }
+  #slow[aria-pressed="true"] { background: var(--sun); }
   #verdict { flex: none; min-height: 92px; max-height: 150px; overflow: auto; padding: 6px 10px; font-size: 15px; }
   #verdict.bad { background: #ffe9ed; }
   #verdict.good { background: #e5fbf0; }
@@ -822,7 +826,7 @@
     </section>
     <section class="side">
       <div class="screen-wrap"><div class="screen" id="stageHost"><canvas id="stageCanvas" aria-label="The stage"></canvas></div></div>
-      <p id="caption">Press Show time! to see your code run.</p>
+      <div class="caption-row"><p id="caption">Press Show time! to see your code run.</p><button class="btn" id="slow" aria-pressed="false" title="Shows play at half speed, so you can follow each line">🐢 Slow</button></div>
       <div class="panel" id="verdict"></div>
     </section>
   </div>

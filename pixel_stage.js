@@ -418,7 +418,7 @@ const PalStage = (() => {
     g.imageSmoothingEnabled = false;
     let names = [], palW = 64, palVoice = 420, pup = null, palScale = 4, friendPups = {}, started = performance.now();
     let crowd = 0;
-    let state, sparks = [], bubbles = {}, run = 0, rate = 1, loop = 0, livePal = null;
+    let state, sparks = [], bubbles = {}, run = 0, rate = 1, loop = 0, livePal = null, pace = 1;     // pace: .5 when the page asks for slow shows
 
     function fresh() {
       return {scene: "stage", x: spotX(2), spot: 2, y: 0, frame: 0, flip: false, squeeze: 1, tilt: 0,
@@ -1105,7 +1105,7 @@ const PalStage = (() => {
       let said = -1;
       await tween(ms, t, u => {
         const n = Math.floor(u * ms / 95);
-        if (n !== said) { said = n; if (rate === 1) SFX.play("blip"); }
+        if (n !== said) { said = n; if (rate <= 1) SFX.play("blip"); }
       });
     }
     async function moving(name, ms, t) {
@@ -1370,7 +1370,7 @@ const PalStage = (() => {
       /** Play steps in order. Resolves true if they all ran, false if stopped. */
       async play(steps, options = {}) {
         const token = ++run;
-        rate = 1;
+        rate = pace;
         // Whatever was going on stops here, wherever it had got to.
         Object.assign(state, {move: null, y: 0, tilt: 0, squeeze: 1, shakeX: 0, talk: false});
         for (const m of state.crew) Object.assign(m, {move: null, talk: false, y: 0});
@@ -1405,6 +1405,8 @@ const PalStage = (() => {
       },
       get state() { return state; },
       hurry() { rate = 6; },
+      /** Shows at half speed (true) or the usual speed, from the next one on. */
+      slow(on) { pace = on ? .5 : 1; },
       stop() { run++; clearBubbles(); },
       cheer() { crowd = 2400; SFX.play("yay"); pictureRain(HEART, 10); },
       sigh() { SFX.play("nope"); },
