@@ -256,6 +256,35 @@ class TeacherAndGames(unittest.TestCase):
         server.room_do(alex, {"what": "home"})
         self.assertIn("isn't outside", server.room_do(mia, {"what": "go", "seat": friend["seat"]})["error"])
 
+    def parties(self):
+        return [e for e in server.pixel_room["events"] if e["kind"] == "danceparty"]
+
+    def test_three_pals_dancing_at_once_is_a_dance_party(self):
+        mia, ben, alex = self.kids
+        meter = server.hang_meter()["points"]
+        for kid in (mia, ben):
+            server.room_do(kid, {"what": "move", "name": "dance"})
+        self.assertEqual(self.parties(), [])                                # two isn't a party
+        self.clock += 2
+        server.room_do(alex, {"what": "move", "name": "dance"})
+        self.assertEqual(len(self.parties()), 1)
+        self.assertEqual(len(self.parties()[0]["seats"]), 3)
+        self.assertEqual(server.hang_meter()["points"], meter + 1)
+        self.clock += 2
+        for kid in self.kids:
+            server.room_do(kid, {"what": "move", "name": "dance"})
+        self.assertEqual(len(self.parties()), 1)                            # once a minute at most
+
+    def test_dancing_too_far_apart_in_time_or_place_is_no_party(self):
+        mia, ben, alex = self.kids
+        server.room_do(mia, {"what": "move", "name": "dance"})
+        self.clock += server.DANCE_PARTY_SECONDS + 1
+        server.room_do(ben, {"what": "move", "name": "dance"})
+        server.room_do(alex, {"what": "home"})
+        server.room_do(alex, {"what": "move", "name": "dance"})            # in a home, not with them
+        server.room_do(mia, {"what": "move", "name": "jump"})               # not a dance
+        self.assertEqual(self.parties(), [])
+
     def test_ending_when_no_game_is_on_does_nothing(self):
         self.assertEqual(server.pixel_teacher({"action": "end_game"}), {"ok": True})
         self.assertIsNone(server.pixel_room["game"])

@@ -231,6 +231,7 @@ watcher = PalStage.follow(stage, {everySound: true, loc: () => cam.loc, onState(
     if (e.kind === "mymove") banner(`✨ <b>${esc(e.by)}</b>: ${esc(e.title)}`, e.ms + 700);
     else if (e.kind === "party") banner(`🎉 CLASS PARTY! 🎉${e.reward ? `<small>New for everyone: ${esc(e.reward.name)}</small>` : ""}`, 6000, true);
     else if (e.kind === "shower") banner("🌠 Star shower!", 3500);
+    else if (e.kind === "danceparty") { stage.roomApply({kind: "fx", name: "confetti", x: e.x}, true); banner(`🪩 Dance party! ${e.seats.length} pals dancing together!`, 4000, true); }
   }
 }});
 

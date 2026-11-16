@@ -7023,6 +7023,22 @@ def room_wear(p, spot, slot, item):
     return {"ok": True}
 
 
+# 🪩 A dance party: 3 pals in one place pressing Dance within a few seconds of each other. Everyone
+# there gets confetti and a banner, and the class party meter goes up by 1, at most once a minute.
+DANCE_PARTY_PALS, DANCE_PARTY_SECONDS, DANCE_PARTY_GAP = 3, 4, 60
+
+
+def dance_party_check(spot):
+    room, now = pixel_room, time.time()
+    dancing = room.setdefault("dancing", {})
+    dancing[spot["seat"]] = (now, spot["loc"])
+    together = sorted(s for s, (at, loc) in dancing.items() if now - at <= DANCE_PARTY_SECONDS and loc == spot["loc"])
+    if len(together) >= DANCE_PARTY_PALS and now - room.get("dance_party_at", 0) >= DANCE_PARTY_GAP:
+        room["dance_party_at"] = now
+        room_event("danceparty", loc=spot["loc"], seats=together, x=spot["x"])
+        hang_fill(1)
+
+
 def room_free_spot(lo, hi, me=None):
     """Somewhere between lo and hi with room around it, so a class arriving together isn't one heap
     of pals. Spots go left to right, back row and front row in turn; the first one clear of every
@@ -7109,6 +7125,8 @@ def room_do(p, data):
         room_event("rest", seat=seat, name=data["name"], x=spot["x"], y=spot["y"])
     elif what == "move" and data.get("name") in pixel.ROOM_MOVES:
         room_event("move", seat=seat, name=data["name"])
+        if data["name"] == "dance":
+            dance_party_check(spot)
     elif what == "feel" and data.get("name") in pixel.FEELINGS:
         spot["mood"] = data["name"]
         room_event("feel", seat=seat, name=data["name"])

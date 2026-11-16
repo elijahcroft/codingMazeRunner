@@ -165,6 +165,9 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   drawing shows up the next time the student comes back to the Hang out.
 - **✨ My Move:** the student's pal does their routine in a spotlight, and everyone else
   gets a 👏 Clap button while it plays. It can be pressed again after a few seconds.
+- **🪩 Dance party:** when 3 pals in one place press 💃 Dance within 4 seconds of each other,
+  everyone there gets confetti and a banner, and the class party meter goes up by 1 (at most once
+  a minute). Nothing on screen says so, so it's a nice one to let the class discover.
 - **👋 Do, 💬 Say, 🎉 Party, 🏞️ Place:** moves, words to tap, things to throw, and where
   everyone is. 💬 Say puts the wedding words first in the Wedding garden,
   and last everywhere else.
