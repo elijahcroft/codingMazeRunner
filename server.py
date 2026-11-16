@@ -7275,6 +7275,21 @@ def pixel_overview():
             "meter": hang_view(), "stars": pixel_class_stars(), "placed": room_placed_counts()}
 
 
+def class_photo():
+    """Lines everyone outside up in the Park: up to three rows, back to front, in name order."""
+    here = sorted((s for s in pixel_room["here"].values() if not s["loc"]), key=lambda s: s["name"].lower())
+    if not here:
+        return
+    per_row = max(4, math.ceil(len(here) / 3))
+    for i, spot in enumerate(here):
+        row, col = divmod(i, per_row)
+        in_row = min(per_row, len(here) - row * per_row)
+        spot.update(x=round(160 + (col - (in_row - 1) / 2) * min(34, 280 / max(1, per_row - 1))), y=(.15, .5, .85)[row], rest=None)
+        spot.pop("bite", None)
+        room_event("go", seat=spot["seat"], x=spot["x"], y=spot["y"])
+    room_event("photo", loc=0, count=len(here))
+
+
 def game_brief():
     """The game on now, in a few words for the teacher."""
     game = pixel_room.get("game")
@@ -7323,6 +7338,13 @@ def pixel_teacher(data):
                               "joined": seats, "until": time.time() + GAME_JOIN_SECONDS, "rewards": {}}
         room_event("game", message=f"💻 Code race for everyone! It starts in {GAME_JOIN_SECONDS} seconds.")
         return {"ok": True, "count": len(seats)}
+    if action == "photo":              # 📸 everyone outside lines up in the Park, in rows, for a picture
+        if not pixel_room["open"]:
+            return {"error": "Open the Hang out first."}
+        if pixel_room["game"] and pixel_room["game"]["phase"] != "results":
+            return {"error": "A game is on right now. Press ⏹ End this game first."}
+        class_photo()
+        return {"ok": True}
     if action == "end_game":           # no prizes: nobody finished the round
         game_finish("The teacher ended this game.")
         return {"ok": True}

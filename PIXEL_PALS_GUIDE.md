@@ -253,7 +253,9 @@ On `/pixel/teacher` you can close the Hang out, start a party, a star shower or 
 **💻 Code race for everyone** (everyone outside in the Hang out is put in it, and the race
 starts 15 seconds later; anyone can leave), and see who's there. When a student has a game
 going, the page says which one and how long is left, and **⏹ End this game** stops it with
-no prizes, so a Code race for everyone can start. The Hang out column says where each
+no prizes, so a Code race for everyone can start. **📸 Class photo** lines up everyone outside
+in the Park in rows, in name order, and the projector looks there and says "Say cheese!" so you
+can take a picture. Press 🎬 Auto on the projector afterwards. The Hang out column says where each
 student is and what they're doing (🌳 Park, 💃 Dancing, 🎮 In a game), and how many of
 today's jobs they've done (🎯 2 of 3). The Hang out reopens if
 the server restarts, and nothing in the room itself is saved, but gifts, friends, My Moves,

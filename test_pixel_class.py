@@ -291,6 +291,23 @@ class TeacherAndGames(unittest.TestCase):
         server.room_do(mia, {"what": "move", "name": "jump"})               # not a dance
         self.assertEqual(self.parties(), [])
 
+    def test_a_class_photo_lines_everyone_outside_up_in_the_park(self):
+        for i in range(22):
+            self.kid(f"Kid{i:02}")
+        server.room_do(self.kids[2], {"what": "home"})                     # Alex is at home: left alone
+        alex_loc = server.pixel_room["here"][self.kids[2]["id"]]["loc"]
+        self.assertEqual(server.pixel_teacher({"action": "photo"}), {"ok": True})
+        out = self.spots()
+        self.assertEqual(len(out), 24)
+        self.assertTrue(all(0 < s["x"] < pixel.PLACE_W for s in out))
+        self.assertEqual(len({(s["x"], s["y"]) for s in out}), 24)        # nobody on top of anybody
+        self.assertEqual(server.pixel_room["here"][self.kids[2]["id"]]["loc"], alex_loc)
+        self.assertEqual([e["count"] for e in server.pixel_room["events"] if e["kind"] == "photo"], [24])
+
+    def test_no_class_photo_in_the_middle_of_a_game(self):
+        self.game("tag")
+        self.assertIn("End this game", server.pixel_teacher({"action": "photo"})["error"])
+
     def test_ending_when_no_game_is_on_does_nothing(self):
         self.assertEqual(server.pixel_teacher({"action": "end_game"}), {"ok": True})
         self.assertIsNone(server.pixel_room["game"])

@@ -415,6 +415,9 @@ function roomEvent(e, you) {
     banner(`🎉 CLASS PARTY! 🎉${e.reward ? `<small>New for everyone: ${esc(e.reward.name)}</small>` : ""}`, 6000, true);
     if (e.reward && e.reward.kind === "gift" && !S.hang.gifts.includes(e.reward.key)) S.hang.gifts.push(e.reward.key);
     if (roomPane === "me") buildRoomButtons();
+  } else if (e.kind === "photo") {             // the teacher's class photo: everyone lined up in the Park
+    banner(`📸 Class photo! Say cheese!<small>Look at the big screen</small>`, 5000, true);
+    PalStage.SFX.play("ding");
   } else if (e.kind === "danceparty") {        // 3 pals danced at once
     roomStage.roomApply({kind: "fx", name: "confetti", x: e.x}, false);
     banner(`🪩 Dance party! 🪩<small>${e.seats.length} pals dancing together · +1 for the class party</small>`, 4000, true);

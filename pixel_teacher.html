@@ -94,6 +94,7 @@
       <button class="btn" id="shower">🌠 Star shower now</button>
       <button class="btn" id="codeRace">💻 Code race for everyone</button>
       <button class="btn" id="endGame" hidden>⏹ End this game</button>
+      <button class="btn" id="photo">📸 Class photo</button>
       <label style="display:flex;gap:6px;align-items:center;font-weight:700"><input type="checkbox" id="roomTyping"> Let them type their own words</label>
     </div>
     <p id="roomGame" style="margin:8px 0 0;font-size:14px;font-weight:800" hidden></p>
@@ -206,6 +207,11 @@ $("codeRace").addEventListener("click", async () => {
   refresh();
 });
 $("endGame").addEventListener("click", async () => { await call({action: "end_game"}); refresh(); });
+$("photo").addEventListener("click", async () => {
+  const out = await call({action: "photo"}).catch(() => null);
+  $("photo").textContent = !out ? "📸 Couldn't reach the server" : out.error ? "📸 " + out.error : "📸 Say cheese! Look at the projector";
+  setTimeout(() => { $("photo").textContent = "📸 Class photo"; }, 4000);
+});
 let roomIsOpen = false;
 $("roomOpen").addEventListener("click", async () => { await call({action: "room", on: !roomIsOpen}); refresh(); });
 $("roomPlaced").addEventListener("click", async e => {
