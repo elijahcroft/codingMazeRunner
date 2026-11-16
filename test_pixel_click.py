@@ -93,7 +93,7 @@ class PokesOverHttp(unittest.TestCase):
         me = self.post("/join", {"name": "Mia"})["id"]
         for key in pixel.LEVEL_ORDER[:pixel.LEVEL_ORDER.index(pixel.FREE_AFTER) + 1]:
             self.post("/pixel/run", {"id": me, "level": key, "code": pixel.LEVEL_BY_KEY[key]["reference"]})
-        out = self.post("/pixel/poke", {"id": me, "level": "free", "code": 'def on_click():\n    scene("space")\n    jump()', "clicks": 1})
+        out = self.post("/pixel/poke", {"id": me, "level": "free", "code": 'def on_click():\n    scene("beach")\n    jump()', "clicks": 1})
         self.assertEqual([s["do"] for s in out["steps"]], ["scene", "jump"])
 
 

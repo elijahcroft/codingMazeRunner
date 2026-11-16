@@ -142,7 +142,9 @@ Missions (the My Move win card has a button for it too). There are no stars, no 
 rules: every command the student has learned works, plus ten **stage toys** no mission
 teaches: `scene("beach")`, `sound("tada")`, `rain()`, `snow()`, `friend("cat")`,
 `friend_say("Hi!")`, `friend_jump()`, `bye()`, `hide()` and `appear()`. All words says what
-each one does. **💡 Give me an idea** (where Help me usually is) offers seven small shows to
+each one does. Some places open with stars from missions: the stage, park, beach and night
+are open from the start, then the wedding at 20 ★, snowy at 30, candy at 40, space at 50 and
+the castle at 60. Asking for a locked one says how many stars it needs and which are open. **💡 Give me an idea** (where Help me usually is) offers seven small shows to
 start from, one at a time: a day at the beach, a friend comes to play, a magic trick and so on.
 **Use this idea** puts it under their own code, never over it. The first show of 5 steps or
 more earns the 🎬 Show Maker trophy, and a show that long puts "🎬 Mia made a show on the Free

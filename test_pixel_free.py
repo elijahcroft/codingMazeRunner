@@ -20,8 +20,17 @@ class FreeStage(unittest.TestCase):
     def test_every_idea_runs_right_after_my_move(self):
         for title, code in pixel.FREE_IDEAS:
             with self.subTest(idea=title):
-                out = pixel.public(pixel.perform(code, commands=pixel.free_commands("t1")))
+                out = pixel.public(pixel.perform(code, commands=pixel.free_commands("t1"), setup=pixel.free_setup(27)))
                 self.assertIsNone(out.get("error"))
+
+    def test_places_open_with_stars(self):
+        def place(where, stars):
+            return pixel.public(pixel.perform(f'scene("{where}")', commands=pixel.free_commands("t1"), setup=pixel.free_setup(stars)))["error"]
+        self.assertIsNone(place("beach", 0))
+        self.assertIn("space opens at 50", place("space", 27))
+        self.assertIn("you have 27", place("space", 27))
+        self.assertIsNone(place("space", 50))
+        self.assertIsNone(pixel.public(pixel.perform('scene("castle")'))["error"])     # only the Free stage counts stars
 
     def test_it_has_what_they_learned_and_the_toys_only(self):
         early = pixel.free_commands("m1")

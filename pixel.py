@@ -189,6 +189,7 @@ class Show:
         self.posed = set()           # faces and moves shown with pose(), not frames
         self.log = []                # (command, arguments) in order, for judging
         self.fired = []              # where in the log each click starts
+        self.stars = None            # on the Free stage: the student's stars, which open more places
 
     def step(self, do, **arg):
         if len(self.steps) - self.mark >= MAX_STEPS:
@@ -342,6 +343,10 @@ class Show:
     def c_scene(self, name, *args):
         if len(args) != 1 or args[0] not in SCENES:
             raise BotError(f'Pick a place, like  scene("park"). The places are: {word_list(SCENES)}.')
+        need = SCENE_STARS.get(args[0], 0)
+        if self.stars is not None and self.stars < need:
+            raise BotError(f"🔒 {args[0]} opens at {need} ★, and you have {self.stars}. Missions give stars! "
+                           f"Open now: {word_list([p for p in SCENES if SCENE_STARS.get(p, 0) <= self.stars])}.")
         self.scene = args[0]
         self.step("scene", name=args[0])
 
@@ -1556,6 +1561,14 @@ for _lv in LEVELS:
 # 🎬 Free stage: after My Move, a stage with no stars and no rules, where a student makes any
 # show they like with every command they've learned, plus stage toys no mission teaches.
 FREE_AFTER = "m1"
+SCENE_STARS = {"wedding": 20, "snowy": 30, "candy": 40, "space": 50, "castle": 60}     # places that open with stars
+
+
+def free_setup(stars):
+    """The Free stage knows how many stars a student has, so scene() can open places with them."""
+    def setup(show):
+        show.stars = stars
+    return setup
 STAGE_TOYS = ("scene", "sound", "rain", "snow", "friend", "friend_say", "friend_jump", "bye", "hide", "appear")
 FREE = {"key": "free", "name": "Free stage", "chapter": None,
         "pip": "The stage is all yours! No stars and no rules: make any show you'd like to watch. "
@@ -1567,8 +1580,8 @@ FREE_IDEAS = [
     ("A day at the beach", 'scene("beach")\nsay("Time to swim!")\nfor i in range(3):\n    jump()\nsound("yay")\nfeel("happy")'),
     ("A friend comes to play", 'friend("cat")\nfriend_say("Can I play?")\nsay("Yes! Let\'s dance!")\ndance()\nfriend_jump()\nhearts()'),
     ("A magic trick", 'say("Watch this!")\nsound("drum")\nhide()\nwait(1)\nappear()\nsound("tada")\nconfetti()'),
-    ("Snow day", 'scene("snowy")\nsnow()\nsay("Brrr! It\'s cold!")\nfeel("surprised")\nfor i in range(2):\n    spin()\ndance()'),
-    ("Off to space", 'scene("space")\nsay("3, 2, 1...")\nfor i in range(3):\n    jump()\nstars()\nsay("I\'m in space!")'),
+    ("Snow day", 'scene("park")\nsnow()\nsay("Brrr! It\'s cold!")\nfeel("surprised")\nfor i in range(2):\n    spin()\ndance()'),
+    ("A starry night", 'scene("night")\nsay("Look at the stars!")\nfor i in range(3):\n    jump()\nstars()\nfeel("happy")'),
     ("Walk with the arrow keys", 'say("Press the arrow keys!")\ndef on_key(key):\n    if key == "left":\n        left(1)\n    if key == "right":\n        right(1)\n    if key == "space":\n        jump()'),
     ("A rainy day", 'scene("park")\nrain()\nfeel("sad")\nsay("Oh no, rain!")\nwait(1)\nfeel("happy")\nsay("I love puddles!")\ndance()'),
 ]
@@ -1955,14 +1968,14 @@ THING_START = 'def on_click():\n    jump()\n    sound("boing")\n    say("Hello!"
 POKES = ("click",) + tuple(f"key:{k}" for k in KEYS)
 
 
-def poke(code, pal, events, commands, seed=0):
+def poke(code, pal, events, commands, seed=0, setup=None):
     """A student clicks their pal, or presses an arrow key or space, after a show. The
     program runs again with every click and key so far, so clicks() counts up and
     variables carry on, and only what the newest one makes comes back."""
     events = [e for e in events if e in POKES][-MAX_EVENTS:]
     if not events:
         return {"steps": [], "error": None, "line": None, "listening": False}
-    out = perform(code, pal, events, seed, commands)
+    out = perform(code, pal, events, seed, commands, setup)
     if not out["error"] and events[-1].partition(":")[0] not in out["events"]:
         return {"steps": [], "error": None, "line": None, "listening": False}
     return {"steps": [] if out["error"] else [s for s in out["after"] if s["do"] != "event"],

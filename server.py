@@ -7283,9 +7283,10 @@ def pixel_post(path, data):
             if not pixel_is_open(entry, key):
                 return {"error": "🔒 That mission isn't open yet."}
             commands = pixel.free_commands(pixel.LEVEL_ORDER[pixel_frontier(entry)]) if key == "free" else pixel.commands_for(key)
+            setup = pixel.free_setup(pixel_stars(entry)) if key == "free" else pixel.LEVEL_BY_KEY[key].get("setup")
         seed = data.get("seed")
         seed = seed % 10 ** 7 if isinstance(seed, int) and not isinstance(seed, bool) else 0
-        return pixel.poke(code, pal, events, commands, seed=seed)
+        return pixel.poke(code, pal, events, commands, seed=seed, setup=setup)
     if path == "/pixel/run":
         key = str(data.get("level", ""))
         with lock:
@@ -7294,7 +7295,8 @@ def pixel_post(path, data):
             return {"error": "🔒 That mission isn't open yet."}
         if key == "free":     # no stars and nothing to win: just keep the code
             with lock:
-                lv = dict(pixel.FREE, commands=pixel.free_commands(pixel.LEVEL_ORDER[pixel_frontier(entry)]))
+                lv = dict(pixel.FREE, commands=pixel.free_commands(pixel.LEVEL_ORDER[pixel_frontier(entry)]),
+                          setup=pixel.free_setup(pixel_stars(entry)))
             out = pixel.run_level(lv, code, pal, seed=random.randrange(10 ** 6))
             with lock:
                 entry["free_code"] = code[:pixel.MAX_CODE]
