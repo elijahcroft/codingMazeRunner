@@ -66,7 +66,10 @@ function buildRoomButtons() {
   if (roomPane === "games") {
     buildGamePane(box);
   } else if (roomPane === "say") {
-    box.innerHTML = Object.entries(S.room_words).map(([group, words]) =>
+    // Wedding words come first at the Wedding, and last everywhere else.
+    const me = myMember(), here = me && !atHome() && roomStage.state.places ? roomStage.state.places[Math.floor(me.x / PalStage.W)] : "";
+    const groups = Object.entries(S.room_words).sort(([a], [b]) => (here !== "wedding") * ((a === "Wedding") - (b === "Wedding")));
+    box.innerHTML = groups.map(([group, words]) =>
       `<h4>${esc(group)}</h4>` + words.map(w => `<button data-tap="say" data-name="${esc(w)}">${esc(w)}</button>`).join("")).join("");
   } else if (roomPane === "place") {
     const friends = ((roomInfo && roomInfo.people) || []).filter(m => !m.loc && m.seat !== roomInfo.you);

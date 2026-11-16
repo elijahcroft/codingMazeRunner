@@ -166,7 +166,8 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
 - **✨ My Move:** the student's pal does their routine in a spotlight, and everyone else
   gets a 👏 Clap button while it plays. It can be pressed again after a few seconds.
 - **👋 Do, 💬 Say, 🎉 Party, 🏞️ Place:** moves, words to tap, things to throw, and where
-  everyone is.
+  everyone is. 💬 Say puts the wedding words first in the Wedding garden,
+  and last everywhere else.
 - **🪑 Be a prop:** next to "You are...", this turns the pal into a still picture with no
   face and no name tag, for a made-up game of finding each other. **🙂 Be me again** turns it back.
 - **🧢 Me:** pick which drawing they are (students with two or more drawings also see
