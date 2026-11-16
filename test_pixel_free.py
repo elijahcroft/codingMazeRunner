@@ -17,6 +17,12 @@ class FreeStage(unittest.TestCase):
         for toy in ("scene", "friend", "rain", "snow", "hide", "appear"):
             self.assertTrue(any(toy in d for d in done), toy)
 
+    def test_every_idea_runs_right_after_my_move(self):
+        for title, code in pixel.FREE_IDEAS:
+            with self.subTest(idea=title):
+                out = pixel.public(pixel.perform(code, commands=pixel.free_commands("t1")))
+                self.assertIsNone(out.get("error"))
+
     def test_it_has_what_they_learned_and_the_toys_only(self):
         early = pixel.free_commands("m1")
         self.assertIn("jump", early)

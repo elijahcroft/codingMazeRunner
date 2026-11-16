@@ -5748,6 +5748,7 @@ def pixel_free_level(entry):
             "commands": pixel.free_commands(upto), "new": list(pixel.STAGE_TOYS), "chapter_new": list(pixel.STAGE_TOYS),
             "python": sorted({w for x in pixel.LEVELS[:pixel.LEVEL_ORDER.index(upto) + 1] for w in x["python"]}),
             "fresh_python": [], "number": None, "code": entry["free_code"], "coach": [], "build": False,
+            "ideas": pixel.FREE_IDEAS,
             "remix": {"ask": "", "hint": "", "done": True, "coins": 0}, "fix": None, "guess": None}
 
 

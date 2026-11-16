@@ -1438,6 +1438,16 @@ FREE = {"key": "free", "name": "Free stage", "chapter": None,
                "Try the new stage toys, like  scene(\"beach\")  and  friend(\"cat\")  . All words says what each one does.",
         "job": "Make any show you like.", "goals": [], "hints": [], "coach": [], "adds": list(STAGE_TOYS)}
 
+# 💡 Give me an idea: small shows to start from, made only of what a student has at My Move.
+FREE_IDEAS = [
+    ("A day at the beach", 'scene("beach")\nsay("Time to swim!")\nfor i in range(3):\n    jump()\nsound("yay")\nfeel("happy")'),
+    ("A friend comes to play", 'friend("cat")\nfriend_say("Can I play?")\nsay("Yes! Let\'s dance!")\ndance()\nfriend_jump()\nhearts()'),
+    ("A magic trick", 'say("Watch this!")\nsound("drum")\nhide()\nwait(1)\nappear()\nsound("tada")\nconfetti()'),
+    ("Snow day", 'scene("snowy")\nsnow()\nsay("Brrr! It\'s cold!")\nfeel("surprised")\nfor i in range(2):\n    spin()\ndance()'),
+    ("Off to space", 'scene("space")\nsay("3, 2, 1...")\nfor i in range(3):\n    jump()\nstars()\nsay("I\'m in space!")'),
+    ("A rainy day", 'scene("park")\nrain()\nfeel("sad")\nsay("Oh no, rain!")\nwait(1)\nfeel("happy")\nsay("I love puddles!")\ndance()'),
+]
+
 
 def free_commands(upto):
     """What works on the Free stage: every command learned up to this mission, and the stage toys."""

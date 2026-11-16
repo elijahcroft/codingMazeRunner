@@ -183,8 +183,8 @@ async function openMission(key) {
   $("job").innerHTML = fmt(data.job);
   $("job").hidden = false;
   $("goals").hidden = !!data.free;
-  $("hint").hidden = !!data.free;
-  $("hint").textContent = "Help me";
+  $("hint").hidden = false;
+  $("hint").textContent = data.free ? "💡 Give me an idea" : "Help me";
   drawGoals(data.best);
   paintYourTurn();
   setCode(recall(codeKey(key)) ?? data.code ?? "");
@@ -733,6 +733,13 @@ let hintsShown = 0;
 let hintCode = "";
 function showHint() {
   if (!view) return;                  // the mission is still on its way
+  if (view.free) {                    // the Free stage gives ideas, one after another
+    const [title, code] = view.ideas[hintsShown++ % view.ideas.length];
+    hintCode = code;
+    verdict(`<p><b>💡 ${esc(title)}</b> <button class="btn main" data-copy="1">Use this idea</button> Then change it to make it yours!</p>
+      <pre style="margin:2px 0 0;font:14px/18px var(--mono);white-space:pre-wrap">${esc(code)}</pre>`);
+    return;
+  }
   const hints = view.hints, text = hints[Math.min(hintsShown, hints.length - 1)];
   hintCode = hints[hints.length - 1];
   const isCode = hintsShown >= hints.length - 1;
@@ -868,7 +875,11 @@ document.addEventListener("click", e => {
   else if (d.chip !== undefined) { StageSFX.play("click"); $("bookSheet").hidden = true; addLine(d.chip); }
   else if (d.mission) { $("win").hidden = true; openMission(d.mission); }
   else if (d.rename) askMoveName();
-  else if (d.copy) { setCode(hintCode); saveCode(); }
+  else if (d.copy) {
+    const mine = $("code").value.trimEnd();       // on the Free stage an idea goes under their own show, never over it
+    setCode(view.free && mine ? `${mine}\n${hintCode}` : hintCode);
+    saveCode();
+  }
   else if (d.guess) { guessPick = d.guess === "skip" ? null : Number(d.guess); runShow(); }
   else if (d.remix) { $("win").hidden = true; startRemix(); }
   else if (d.remixHint) { remixHint = true; paintYourTurn(); }
