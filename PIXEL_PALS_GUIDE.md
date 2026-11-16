@@ -206,7 +206,8 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   and when ❗ A bite! shows, a click anywhere on the picture reels it in. There are 8
   things to catch, kept in the fish book in 🧢 Me.
 - **Games:** any student can start a 💻 Code race, Tag, Hide & seek, Red light green light,
-  or Copy the dance, and friends choose to join. In the race, each press of Run or → is one short
+  or Copy the dance, and friends choose to join. While a game waits for players, the bar above
+  the world turns yellow for everyone not in it ("👉 Tap here to join!"), and one tap joins. In the race, each press of Run or → is one short
   run, and moving on red sends a pal back a bit. In the dance, the moves stay on the
   screen with the next one lit, for 3 rounds that get longer. When a round starts, the
   side panel opens Games and hides My Move and Next mission until it ends, so the game's

@@ -6017,6 +6017,7 @@ GAME_ROUND_SECONDS = 90
 GAME_SPEED = 85
 GAME_WIDTH = 640                 # Park + Wedding garden, available to every class
 GAME_KINDS = ("hide", "tag", "race", "dance", "code")
+GAME_TITLES = {"hide": "Hide & seek", "tag": "Tag", "race": "Red light, green light", "dance": "Copy the dance", "code": "a Code race"}
 RACE_START, RACE_END = 30, 600
 RACE_SECONDS = 90
 RACE_STEP = 34                   # how far one click or key press runs, so stopping is just not pressing
@@ -6361,7 +6362,7 @@ def game_action(p, spot, data):
         pixel_room["game_serial"] += 1
         pixel_room["game"] = {"id": pixel_room["game_serial"], "kind": kind, "phase": "lobby", "host": seat,
                               "joined": [seat], "until": now + GAME_JOIN_SECONDS, "rewards": {}}
-        room_event("game", message=spot["name"] + " invited everyone to play!")
+        room_event("game", message=f"🎮 {spot['name']} started {GAME_TITLES[kind]}! Tap the yellow bar above to join.")
     elif not game:
         return {"error": "This round has ended."}
     elif action == "join" and (game["phase"] == "lobby" or (game["kind"] == "code" and game["phase"] == "playing")):

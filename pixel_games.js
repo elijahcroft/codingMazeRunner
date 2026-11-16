@@ -115,6 +115,7 @@ function paintGameClock() {
   if (!roomInfo || $("hangView").hidden) return;
   const g = currentGame(), title = $("gameTitle"), detail = $("gameDetail");
   if (!g) {
+    $("gameStatus").classList.remove("invite");
     title.textContent = "Play with friends";
     detail.textContent = jobsWord() + "💻 Code race, tag, hide & seek, a race or a dance →";
     return;
@@ -123,7 +124,8 @@ function paintGameClock() {
   const job = g.kind === "code" && g.phase === "playing" && !g.pause && g.job;
   title.textContent = job ? `💻 ${job.job}` : gameName(g);
   const joined = g.joined.includes(roomInfo.you);
-  detail.textContent = g.phase === "lobby" ? `${g.joined.length} joined · starts in ${seconds}s · ${joined ? "You're in!" : "Join in Games"}`
+  $("gameStatus").classList.toggle("invite", g.phase === "lobby" && !joined);
+  detail.textContent = g.phase === "lobby" ? `${g.joined.length} joined · starts in ${seconds}s · ${joined ? "You're in!" : "👉 Tap here to join!"}`
     : g.phase === "results" ? `Round over · next game in ${seconds}s`
     : g.kind === "race" ? `${seconds}s left · ${g.light === "red" ? "🔴 Red light: freeze!" : "🟢 Green light: run!"} · ${g.done.length} at the flag`
     : g.kind === "dance" ? `Round ${g.round + 1} of 3 · ${seconds}s left · ${g.step} of ${g.seq.length} moves`
@@ -158,7 +160,12 @@ function gameTick(mine) {
     if (out?.ok && action === "hide") tipFor(`You're hidden ${cover.at}!`);
   });
 }
-$("gameStatus").addEventListener("click", () => { roomPane = "games"; artArmed = null; buildRoomButtons(); });
+// The bar above the world: one tap joins a game that's waiting for players, and opens Games.
+$("gameStatus").addEventListener("click", () => {
+  const g = currentGame();
+  if (g && g.phase === "lobby" && !g.joined.includes(roomInfo.you)) gameDo("join");
+  roomPane = "games"; artArmed = null; buildRoomButtons();
+});
 $("roomButtons").addEventListener("click", e => {
   const action = e.target.closest("[data-game]"), cover = e.target.closest("[data-cover]");
   const step = e.target.closest("[data-step]"), run = e.target.closest("[data-run]"), mine = myMember();
