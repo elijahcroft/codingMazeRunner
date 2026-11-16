@@ -140,13 +140,27 @@ const PalStage = (() => {
     goldshades: {rows: ["yyyyy.yyyyy", "ykkkyyykkky", "ykwky.ykwky", ".yyy...yyy."], ink: {y: "#ffd93b", k: "#1b1530", w: "#9a96a8"}},
     dragon: {rows: ["g.........g", "gg.......gg", ".gg.....gg.", ".ggg...ggg.", "..gg...gg.."], ink: {g: "#9a7ae4"}},
     astro: {rows: ["...wwwww...", "..wbbbbbw..", ".wbbcbbbbw.", ".wbbbbbbbw.", "wwwwwwwwwww", "wrwwwwwwwrw"], ink: {w: "#f5f2ff", b: "#2f3a72", c: "#ffffff", r: "#e8294f"}},
+    captain: {rows: ["..nnnnnnn..", ".nnnnynnnnn", "nnnnyyynnnn", "wwwwwwwwwww", "kkkkkkkkkkk", ".kkkkkk...."], ink: {n: "#2f3a72", y: "#ffd93b", w: "#ffffff", k: "#1b1530"}},
+    // ✨ fancy, from the shop
+    sunhat: {rows: ["...yyyyy...", "..yyyyyyy..", "..rrrrrwr..", "yyyyyyyyyyy", ".yyyyyyyyy."], ink: {y: "#f2d27a", r: "#ff5fa2", w: "#ffffff"}},
+    princess: {rows: ["....w......", "....pw.....", "...ppp.....", "...pwp.....", "..ppppp....", "..pwpppw...", ".ppppppp.w.", ".ppwpppppww", "pppppppp.ww", "yyyyyyyyy.w"], ink: {p: "#ff8fc7", w: "#fff2fb", y: "#ffd93b"}},
+    starmask: {rows: [".pypppppyp.", "pp..ppp..pp", "pp..pyp..pp", ".ppp...ppp."], ink: {p: "#c5a3ff", y: "#ffd93b"}},
+    diamondtiara: {rows: ["....b....", "...bwb...", "w..bbb..w", "ww.cwc.ww", "ccccccccc"], ink: {b: "#9fe6ff", w: "#ffffff", c: "#c9d4e8"}},
+    royalcrown: {rows: ["y....w....y", "yy..yyy..yy", "yyy.yry.yyy", "yyyyyyyyyyy", "ybyygyyryby", "ddddddddddd"], ink: {y: "#ffd93b", d: "#c98a2e", r: "#e8294f", b: "#7ab8ff", g: "#35d0bd", w: "#ffffff"}},
+    // ❄️ winter
+    bobble: {rows: [".....w.....", "....www....", "...bbbbb...", "..bwbwbwb..", ".bbbbbbbbb.", "wwwwwwwwwww"], ink: {b: "#2f6fe4", w: "#ffffff"}},
+    earmuffs: {rows: ["...kkkkk...", "..k.....k..", ".k.......k.", "pp.......pp", "ppp.....ppp", "ppp.....ppp", ".p.......p."], ink: {k: "#9a96a8", p: "#ff8fc7"}},
+    santa: {rows: ["....rrr....", "...rrrrrr..", "..rrrrrrrww", ".rrrrrrr.ww", "wwwwwwwwwww", "wwwwwwwwwww"], ink: {r: "#e8294f", w: "#ffffff"}},
+    antlers: {rows: ["b.b.....b.b", ".bb.....bb.", "..b.....b..", "..bb...bb.."], ink: {b: "#a0673a"}},
   };
   // Sparkles are a few colours that fly off a pal while it moves.
   const SPARKLE_INK = {goldspark: ["#ffd93b", "#fff2a6"], heartspark: ["#ff5fa2", "#ffc9e3"], rainbow: ["#ff5fa2", "#ffd93b", "#35d0bd", "#7ab8ff", "#c5a3ff"],
                        icespark: ["#7ab8ff", "#d6f4ff", "#ffffff"], leafspark: ["#35d0bd", "#8ee06b", "#eaffd6"],
                        galaxyspark: ["#7a3fe4", "#c5a3ff", "#2f6fe4", "#ffffff"], candyspark: ["#ff8fc7", "#ffffff", "#7ab8ff"],
                        firespark: ["#ff9a3c", "#ffd93b", "#e8294f"], bubblespark: ["#d6f4ff", "#7ab8ff", "#ffffff"], friendspark: ["#ff5fa2", "#ffd93b", "#8ee06b", "#7ab8ff"],
-                       superspark: ["#ffd93b", "#ffffff", "#ff9a3c", "#ffd93b"]};
+                       superspark: ["#ffd93b", "#ffffff", "#ff9a3c", "#ffd93b"],
+                       chestspark: ["#ffd93b", "#c98a2e", "#fff2a6"], musicspark: ["#c2258c", "#7a3fe4", "#ffffff"],
+                       butterflyspark: ["#ff9fb5", "#ffd27a", "#c7b4f0", "#8ee06b"], snowspark: ["#ffffff", "#d6f4ff", "#9fd8ee"]};
   const FRIEND_INK = {cat: "#ffc266", bunny: "#c5a3ff", kid: "#7ab8ff", bean: "#8ee06b"};
   const FRIEND_ART = {cat: "Cat", bunny: "Bunny", kid: "Kid", bean: "Bean"};
 
@@ -561,7 +575,7 @@ const PalStage = (() => {
     const memberPuppet = (pal, seat) => puppet(pal, Math.max(1, Math.round((crowded ? 32 : 46) / pal.size)), seat + 1);
     function makeMember(m, you) {
       return {seat: m.seat, name: m.name, x: m.x, y: m.y, tx: m.x, ty: m.y, flip: false, mood: m.mood, move: null, moveFrom: 0, until: 0,
-              talkUntil: 0, me: m.seat === you, rest: m.rest || null, restNext: null, wear: m.wear || {}, size: m.pal.size, queue: null, spotUntil: 0, trail: false, sparked: 0,
+              talkUntil: 0, me: m.seat === you, rest: m.rest || null, restNext: null, wear: m.wear || {}, wearArt: m.wear_art || {}, size: m.pal.size, queue: null, spotUntil: 0, trail: false, sparked: 0,
               pal: m.pal, pup: memberPuppet(m.pal, m.seat), concealed: !!m.concealed, tucked: !!m.tucked, playing: !!m.playing, role: m.role || "", prop: !!m.prop, hid: !!m.hid};
     }
     function roomStart(data, you) {
@@ -717,9 +731,11 @@ const PalStage = (() => {
       if (rig.empty) return;
       const px = m.pup.scale, zoom = Math.max(1, Math.round(px * m.size / 16)), way = m.flip ? -1 : 1;
       const place = (key, cx, y, under) => {
-        const img = WEAR_SPRITES[key];
+        const own = !WEAR_SPRITES[key] && (m.wearArt || {})[key === m.wear.hat ? "hat" : "face"];
+        const img = own ? ownWearSprite(own) : WEAR_SPRITES[key];
         if (!img) return;
-        const w = img.width * zoom, h = img.height * zoom;
+        // A drawn one is shrunk to the scale of the shop's things: 16 squares across is as wide as a 16 square pal.
+        const fit = own ? 16 / own.size : 1, w = Math.max(1, Math.round(img.width * zoom * fit)), h = Math.max(1, Math.round(img.height * zoom * fit));
         g.drawImage(img, Math.round(m.x + way * (cx - rig.axis - .5) * px - w / 2), Math.round(base + (y - rig.feet - 1) * px - (under ? h : h / 2)), w, h);
       };
       const eyes = rig.eyes;
@@ -890,6 +906,17 @@ const PalStage = (() => {
       sparks: {ink: ["#ffa95c", "#ffe39a"], sound: "whoosh", word: "Whoosh!"}, fireflies: {ink: ["#fff2a0", "#fff8c8"], sound: "ding", word: "Glowy!"},
       stars: {ink: ["#ffd93b", "#ffffff", "#c5a3ff"], sound: "ding", word: "Wow, stars!"}, snow: {ink: ["#ffffff", "#d6ecfa"], sound: "whoosh", word: "Brrr!", fall: true},
       candy: {ink: ["#ff8fa8", "#ffd27a", "#8fd0c8"], sound: "yay", word: "Sweet!", fall: true}, rocket: {ink: ["#ffa95c", "#ffe39a", "#ffffff"], sound: "fanfare", word: "Blast off!"},
+      // The things in a home (pixel.py FURNITURE "toy").
+      pop: {ink: ["#ff8fa8", "#7ab8ff", "#ffd27a"], sound: "pop", word: "Pop!"}, glow: {ink: ["#ffe39a", "#fff6c8"], sound: "click", word: "Click!"},
+      hug: {ink: ["#ff8fc7", "#ffc9e3"], sound: "ding", word: "Big hug!"}, snack: {ink: ["#ff8fa8", "#ffd27a", "#8fd0c8"], sound: "eat", word: "Yum yum!"},
+      quack: {ink: ["#ffd93b", "#ffffff"], sound: "blip", word: "Quack!", jump: true}, book: {ink: ["#7ab8ff", "#ff8fa8", "#ffd27a"], sound: "whoosh", word: "Once upon a time..."},
+      cook: {ink: ["#ffa95c", "#ffe39a", "#ffffff"], sound: "pop", word: "Cooking!"}, dressup: {ink: ["#ff8fc7", "#b9a4e8", "#ffd27a"], sound: "tada", word: "New look!"},
+      zzz: {ink: ["#c5a3ff", "#ffffff"], sound: "ding", word: "Zzz...", move: "nap"}, tv: {ink: ["#7fc8dc", "#ffd93b", "#ff8fa8"], sound: "blip", word: "Cartoons!"},
+      wheee: {ink: ["#8fd0c8", "#ffffff"], sound: "whoosh", word: "Wheee!", jump: true}, treasure: {ink: ["#ffe14a", "#ffd93b", "#ffffff"], sound: "fanfare", word: "Treasure!", fall: true},
+      blub: {ink: ["#8ed6e0", "#d9f4f7"], sound: "blip", word: "Blub blub!"}, drums: {ink: ["#ff5f7a", "#ffd93b"], sound: "drum", word: "Ba-dum tss!", move: "dance"},
+      notes: {ink: ["#27324f", "#b9a4e8", "#ffd27a"], sound: "bells", word: "La la la!", move: "dance"}, party: {ink: ["#ff8fa8", "#8fd0c8", "#ffd27a", "#c5a3ff"], sound: "party", word: "Party time!", fall: true, move: "dance"},
+      arcade: {ink: ["#ff5f7a", "#ffd93b", "#8fd0c8"], sound: "blip", word: "High score!"}, beep: {ink: ["#7fc8dc", "#c9c9e8"], sound: "blip", word: "Beep boop!", jump: true},
+      cheer: {ink: ["#ffd93b", "#ffe14a", "#ffffff"], sound: "fanfare", word: "I'm a star!"}, magic: {ink: ["#ff8fc7", "#c5a3ff", "#7ab8ff", "#ffffff"], sound: "tada", word: "Magic!", fall: true},
     };
     // A toy goes off for everyone, once the pal has walked over to it.
     function playToy(m, name, now) {
@@ -898,7 +925,7 @@ const PalStage = (() => {
       else pop(m.x, base - 28, fx.ink, 30);
       if (name === "rocket") sparks.push({x: m.x - 12, y: base - 60, vy: -2.6, img: PROPS.rocket, life: 2400});
       floatUp(fx.word, m.x, base - 74);
-      setMove(m, fx.jump ? "jump" : "cheer", now);
+      setMove(m, fx.jump ? "jump" : fx.move || "cheer", now);
       m.bigHop = !!fx.jump;
       if (m.toySound) SFX.play(fx.sound);
     }
@@ -982,6 +1009,7 @@ const PalStage = (() => {
         if (m.tag && !m.me) m.tag.style.display = m.hid ? "none" : "";
       } else if (e.kind === "wear" && m) {
         m.wear = e.wear;
+        m.wearArt = e.wear_art || {};
         if (sound) SFX.play("pop");
       } else if (e.kind === "mymove" && m) {
         m.moodBefore = m.mood;
@@ -1438,8 +1466,20 @@ const PalStage = (() => {
     const at = ["....a....", "...aba...", "c..aba..d", ".aabbbaa.", "abbbbbbba", ".aabbbaa.", "e..aba..c", "...aba...", "....a...."];
     WEAR_SPRITES[key] = rowsSprite(at.map(r => r.replace(/[cde]/g, ch => (dots[ch] ? ch : "."))), dots);
   }
-  /** A small picture of something to wear. */
-  function wearPicture(key) { return WEAR_SPRITES[key] || null; }
+  /** A small picture of something to wear. `own` is the picture of one a student drew. */
+  function wearPicture(key, own) { return WEAR_SPRITES[key] || (own ? ownWearSprite(own) : null); }
+  // ✏️ A student's own drawing, worn: {size, palette, rows}, one sprite each, kept.
+  const OWN_WEAR = new Map();
+  function ownWearSprite(art) {
+    const key = JSON.stringify(art);
+    if (!OWN_WEAR.has(key)) {
+      const ink = {};
+      art.palette.forEach((c, i) => { ink["0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"[i]] = c; });
+      if (OWN_WEAR.size > 200) OWN_WEAR.clear();
+      OWN_WEAR.set(key, rowsSprite(art.rows, ink));
+    }
+    return OWN_WEAR.get(key);
+  }
   const PROPS = {};
   for (const [key, {rows, ink}] of Object.entries(PROP_ART)) PROPS[key] = rowsSprite(rows, ink, 2);
   PROPS.rocket = rowsSprite(["...rr...", "..rwwr..", "..wwww..", "..wbbw..", "..wbbw..", "..wwww..", ".rwwwwr.", "rrwwwwrr", "r.oyyo.r", "...oo..."],

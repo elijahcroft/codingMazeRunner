@@ -66,6 +66,8 @@
   .battery.low i b { background: var(--coral); }
   .battery span { font: 700 13px var(--mono); color: var(--haze); white-space: nowrap; }
   .today { color: var(--haze); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .record { margin-left: auto; min-width: 0; font-size: 14px; color: var(--haze); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .record b { color: var(--gold); }
 
   .right { min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(150px, 1fr) auto auto auto; gap: 8px; }
   .job { border-radius: 14px; background: var(--panel); padding: 10px 14px; box-shadow: inset 4px 0 0 var(--gold); }
@@ -190,7 +192,7 @@
 
   .calm *, .calm *::before { animation: none !important; transition: none !important; }
 
-  @media (max-width: 1400px) { .hot span, .back span, .bonus span { display: none; } }
+  @media (max-width: 1400px) { .hot span, .back span, .bonus span, .record span { display: none; } }
   @media (max-width: 1000px) { .title { display: none; } }
   @media (max-width: 900px) {
     body { overflow: auto; }
@@ -225,6 +227,7 @@
         <b id="dayLabel">Day 1</b>
         <div class="battery" id="battery" title="Each command uses one tick of battery. The day ends when it runs out."><span>🔋</span><i><b id="batteryFill"></b></i><span id="batteryText"></span></div>
         <span class="today" id="today"></span>
+        <span class="record" id="record" hidden title="The most coins anyone in your class has made in one farm day"></span>
       </div>
     </section>
     <section class="right">
@@ -284,6 +287,8 @@
         <li>Plants grow at night. Run again tomorrow and pick them.</li>
         <li>Each command uses one tick of 🔋 battery. When it runs out, the day ends. Nothing is lost.</li>
         <li>Spend coins in the <b>🛒 Shop</b>. A bigger field needs better code: that's the game.</li>
+        <li><b>✨ Perfect day:</b> if no tick is wasted (no bumps, nothing picked too early, nothing planted twice), the day pays 50% more.</li>
+        <li><b>🌠 Meteors</b> sometimes land at night. Your rover can't drive through 🪨 rock. <code>drill("east")</code> breaks it, and rocks pay well. Some have a 💎 inside!</li>
       </ol>
       <h3>What the words do</h3>
       <table id="helpWords"></table>

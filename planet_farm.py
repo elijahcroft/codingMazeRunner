@@ -50,6 +50,21 @@ GOLD_ODDS = 12     # one plant in this many grows golden
 GOLD_PAYS = 5      # and pays this many times over
 HOT_PAYS = 2       # today's wanted crop pays double
 
+# ---- Meteors and perfect days: what better code earns -------------------------------
+# After the meteor job, space rocks sometimes land in the field at night. A
+# rock stops the rover (a loop that drives into one is stuck behind it),
+# look() says "rock", and drill("east") cracks it for more than any crop pays.
+ROCK = "rock"
+METEOR_ODDS = 3      # a meteor lands on about one night in this many
+SHOWER_ODDS = 8      # and one meteor night in this many brings three
+GEM_ODDS = 5         # one rock in this many has a space gem inside
+ROCK_PAYS = 3        # a rock pays this many times the best crop the farm has
+GEM_PAYS = 5         # and a gem in it, this many times more
+# A day with no tick wasted (no bump, nothing picked too early, nothing
+# planted twice, no drill at nothing) earns this many percent more.
+PERFECT_PAYS = 50
+PERFECT_PICKS = 3    # once it picks at least this many
+
 # ---- What coins buy ------------------------------------------------------------
 # Each list is the levels in order: the first is what a new farm starts with.
 FIELDS = [   # (squares wide, squares tall, coins)
@@ -121,7 +136,12 @@ def _planted(farm):
 
 
 def _nothing_ripe(farm):
-    return not any(cell and cell[1] >= CROPS[cell[0]]["days"] for row in farm["field"] for cell in row)
+    return not any(cell and cell[0] in CROPS and cell[1] >= CROPS[cell[0]]["days"]
+                   for row in farm["field"] for cell in row)
+
+
+def _day(day, key):
+    return (day or {}).get(key, 0)
 
 
 JOBS = [
@@ -190,17 +210,35 @@ JOBS = [
      "code": 'while look("east") != "fence":\n    harvest()\n    plant("berry")\n    east()\n'
              'harvest()\nplant("berry")\n',
      "pay": 40, "done": lambda farm, day: _picked(day) >= 2 and "while" in (day or {}).get("ideas", ())},
+    {"key": "meteor", "title": "A meteor!",
+     "say": "A meteor crashed into your field! 🪨 Your rover can't drive through rock, so a loop "
+            "that drives east gets stuck. Look first, then drill it. A rock pays more than any crop, "
+            "and some have a 💎 inside. Drill the rock:",
+     "code": 'while look("east") != "fence":\n    if look("east") == "rock":\n        drill("east")\n'
+             '    harvest()\n    plant("berry")\n    east()\nharvest()\nplant("berry")\n',
+     "pay": 40, "done": lambda farm, day: _day(day, "drilled") >= 1},
+    {"key": "perfect", "title": "A perfect day",
+     "say": "A tick that does nothing is wasted: a bump, picking too early, planting where "
+            "something grows. A day with no wasted ticks is ✨ Perfect, and pays 50% more! "
+            "Ask before you act. Pick 3 or more with no wasted ticks:",
+     "code": 'def care():\n    if ripe():\n        harvest()\n    if empty():\n        plant("berry")\n'
+             'while look("east") != "fence":\n    care()\n    if look("east") == "rock":\n'
+             '        drill("east")\n    east()\ncare()\n',
+     "pay": 60, "done": lambda farm, day: bool(_day(day, "perfect"))},
 ]
+METEOR_JOB = next(i for i, job in enumerate(JOBS) if job["key"] == "meteor")
 
 # ---- Words -----------------------------------------------------------------------
 
-LOOK_WORDS = {"fence", "empty", "growing", "ripe"}
-FARM_COMMANDS = ("harvest", "plant", "dig")
+LOOK_WORDS = {"fence", "empty", "growing", "ripe", ROCK}
+FARM_COMMANDS = ("harvest", "plant", "dig", "drill")
 FARM_SENSORS = ("ripe", "empty", "crop", "x", "y", "width", "height", "battery", "coins", "day")
-FARM_WORDS = ('north(), south(), east(), west(), harvest(), plant("berry"), dig() and wait()')
+FARM_WORDS = ('north(), south(), east(), west(), harvest(), plant("berry"), drill("east"), '
+              'dig() and wait()')
 PLANT_HOW = 'plant() needs a crop in quotes, like  plant("berry")'
 PICK = "To pick the plant under the rover, write  harvest()"
 SOW = 'To put a plant in the ground, write  plant("berry")'
+BREAK = 'To break a rock, write  drill("east")  with the way the rock is'
 GUESSES = {
     "pick": PICK, "pickup": PICK, "pick_up": PICK, "collect": PICK, "grab": PICK, "get": PICK,
     "take": PICK, "harvests": PICK, "havest": PICK,
@@ -209,6 +247,7 @@ GUESSES = {
     "water": "These plants don't need water. They grow overnight.",
     "remove": "To clear a square, write  dig()", "clear": "To clear a square, write  dig()",
     "is_ripe": "Here it's  ripe()", "is_empty": "Here it's  empty()",
+    "smash": BREAK, "crack": BREAK, "mine": BREAK, "blast": BREAK, "hit": BREAK, "drills": BREAK,
 }
 
 
@@ -232,6 +271,7 @@ class Field:
         self.picked = {}       # crop -> how many
         self.golden = 0
         self.early = self.nothing = self.full = self.bumps = self.planted = 0
+        self.rocked = self.missed = self.drilled = self.gems = 0
 
     # What the Rover calls on its world.
     def note(self, line):
@@ -242,7 +282,11 @@ class Field:
         return self.cells[y - 1][x - 1]
 
     def is_ripe(self, cell):
-        return bool(cell) and cell[1] >= CROPS[cell[0]]["days"]
+        return bool(cell) and cell[0] in CROPS and cell[1] >= CROPS[cell[0]]["days"]
+
+    def wasted(self):
+        """Ticks that did nothing."""
+        return self.early + self.nothing + self.full + self.bumps + self.missed
 
     def frame(self, do, **more):
         self.frames.append(dict(more, x=self.x, y=self.y, line=self.line, do=do))
@@ -256,14 +300,43 @@ class Field:
         if name == "wait":
             self.frame("wait")
             return
+        if name == "drill":
+            self.drill(way)
+            return
         dr, dc = DIRS[COMPASS[name]]
         x, y = self.x + dc, self.y + dr
         if not (1 <= x <= self.w and 1 <= y <= self.h):
             self.bumps += 1
             self.frame("bump", way=name)
             return
+        if self.is_rock(x, y):
+            self.bumps += 1
+            self.rocked += 1
+            self.frame("bump", way=name, rock=True)
+            return
         self.x, self.y = x, y
         self.frame("move")
+
+    def is_rock(self, x, y):
+        return 1 <= x <= self.w and 1 <= y <= self.h and bool(self.cell(x, y)) \
+            and self.cell(x, y)[0] == ROCK
+
+    def drill(self, way):
+        """drill(way): the rock on the next square that way cracks, and sells."""
+        dr, dc = DIRS[COMPASS[way]]
+        x, y = self.x + dc, self.y + dr
+        if not self.is_rock(x, y):
+            self.missed += 1
+            self.frame("nodrill", way=way)
+            return
+        gem = bool(self.cell(x, y)[2])
+        pay = rock_pay(self.owned) * (GEM_PAYS if gem else 1)
+        self.cells[y - 1][x - 1] = None
+        self.drilled += 1
+        self.gems += gem
+        self.income += pay
+        self.coins += pay
+        self.frame("drill", way=way, at=[x, y], pay=pay, gem=gem)
 
     def look(self, way):
         dr, dc = DIRS[COMPASS[way]]
@@ -271,7 +344,7 @@ class Field:
         if not (1 <= x <= self.w and 1 <= y <= self.h):
             return "fence"
         cell = self.cell(x, y)
-        return "empty" if not cell else "ripe" if self.is_ripe(cell) else "growing"
+        return "empty" if not cell else ROCK if cell[0] == ROCK else "ripe" if self.is_ripe(cell) else "growing"
 
     def sense(self, name):
         cell = self.cell(self.x, self.y)
@@ -342,7 +415,7 @@ class Farmer(Rover):
                 for s in sides:
                     if isinstance(s, ast.Constant) and isinstance(s.value, str) and s.value not in LOOK_WORDS:
                         raise BotError(f'look() never gives back "{s.value}" on the farm. It says '
-                                       f'"fence", "empty", "growing" or "ripe".')
+                                       f'"fence", "empty", "growing", "ripe" or "rock".')
         return super().eval(node, frame)
 
     def lookup(self, name, frame):
@@ -441,7 +514,7 @@ def grow(farm):
     blocked = set()
     for y, row in enumerate(field):
         for x, cell in enumerate(row):
-            if cell and CROPS[cell[0]].get("alone"):
+            if cell and cell[0] in CROPS and CROPS[cell[0]].get("alone"):
                 for dy, dx in DIRS:
                     yy, xx = y + dy, x + dx
                     if 0 <= yy < len(field) and 0 <= xx < len(row) and field[yy][xx] \
@@ -449,13 +522,47 @@ def grow(farm):
                         blocked.add((x, y))
     for y, row in enumerate(field):
         for x, cell in enumerate(row):
-            if not cell:
+            if not cell or cell[0] not in CROPS:
                 continue
             if (x, y) in blocked and cell[1] < CROPS[cell[0]]["days"]:
                 shaded += 1
             else:
                 cell[1] = min(cell[1] + 1, CROPS[cell[0]]["days"])
     return shaded
+
+
+def rock_pay(crops):
+    return ROCK_PAYS * max(CROPS[c]["pay"] for c in crops)
+
+
+def meteors(farm):
+    """Space rocks landing in the night, once the farm has learnt to drill
+    them. Never on the rover's square or a golden plant, and never so many
+    that a field ignoring them fills up. Returns where they landed."""
+    if farm["job"] <= METEOR_JOB or farm["field_level"] < 1:
+        return []
+    roll = zlib.crc32(f"{farm['seed']}:meteor:{farm['day']}".encode())
+    if roll % METEOR_ODDS:
+        return []
+    field = farm["field"]
+    w, h = len(field[0]), len(field)
+    room = max(1, w * h // 5) - sum(1 for row in field for cell in row if cell and cell[0] == ROCK)
+    spots = [(x, y) for y in range(h) for x in range(w)
+             if (x, y) != (0, 0) and not (field[y][x] and (field[y][x][0] == ROCK or field[y][x][2]))]
+    many = 3 if roll // METEOR_ODDS % SHOWER_ODDS == 0 else 1
+    landed = []
+    for k in range(min(many, room, len(spots))):
+        pick = zlib.crc32(f"{farm['seed']}:rock:{farm['day']}:{k}".encode())
+        x, y = spots.pop(pick % len(spots))
+        field[y][x] = [ROCK, 0, int(pick // 7 % GEM_ODDS == 0)]
+        landed.append([x + 1, y + 1])
+    return landed
+
+
+def lesson_rock(farm):
+    """The meteor job's own rock, east of where the rover starts, with a gem in it."""
+    if farm["job"] == METEOR_JOB and not any(cell and cell[0] == ROCK for row in farm["field"] for cell in row):
+        farm["field"][0][1] = [ROCK, 0, 1]
 
 
 def next_order(farm):
@@ -530,15 +637,23 @@ def tips(field, error, memory_full, learning=False):
     out = []
     if error or memory_full:
         return out
-    if field.end == "flat":
+    if field.rocked:
+        n = field.rocked
+        out.append(f"🪨 A rock blocked your rover {n} time{'s' if n > 1 else ''}. Look first, then "
+                   f'drill it:  if look("east") == "rock":  then  drill("east")')
+    if field.missed and len(out) < 2:
+        n = field.missed
+        out.append(f"⛏ drill() found no rock {n} time{'s' if n > 1 else ''}. Ask first:  "
+                   f'if look("east") == "rock":')
+    if field.end == "flat" and len(out) < 2:
         out.append(f"🔋 The battery ran out on line {field.line}. Everything picked today still counts. "
                    f"A bigger battery is in the 🛒 Shop.")
-    if field.early:
+    if field.early and len(out) < 2:
         n = field.early
         out.append(f"🌱 {n} plant{'s weren' if n > 1 else ' wasn'}'t ripe yet, and trying to pick "
                    f"{'them' if n > 1 else 'it'} used {n} tick{'s' if n > 1 else ''} of battery. "
                    f"Ask first:  if ripe():")
-    if field.full:
+    if field.full and len(out) < 2:
         n = field.full
         out.append(f"🌱 {n} square{'s' if n > 1 else ''} already had a plant, so plant() did nothing "
                    f"there. Ask first:  if empty():")
@@ -549,8 +664,8 @@ def tips(field, error, memory_full, learning=False):
                    "further east: drive there first with  east()" if learning else
                    f"There was nothing to pick on {n} square{'s' if n > 1 else ''}. "
                    f'Plant there for tomorrow:  plant("berry")')
-    if field.bumps >= 4 and len(out) < 2:
-        out.append(f"The rover bumped the fence {field.bumps} times. The field is {field.w} wide "
+    if field.bumps - field.rocked >= 4 and len(out) < 2:
+        out.append(f"The rover bumped the fence {field.bumps - field.rocked} times. The field is {field.w} wide "
                    f"and {field.h} tall.")
     if not field.frames and not out:
         out.append("The rover didn't do anything today. Give it a command, like  harvest()")
@@ -560,6 +675,7 @@ def tips(field, error, memory_full, learning=False):
 def run_day(farm, code, stars=0, today="2000-01-01"):
     """Run a program as one farm day, and bank what it earns. Changes farm."""
     code = str(code)[:MAX_CODE + 1]
+    lesson_rock(farm)
     hot = hot_crop(today)
     field = Field(farm, hot)
     memory = MEMORIES[farm["memory_level"]][0]
@@ -591,7 +707,8 @@ def run_day(farm, code, stars=0, today="2000-01-01"):
            "income": 0, "bonus": 0, "picked": {}, "golden": 0, "hot": hot,
            "say": tips(field, error, full, farm["job"] < 2 and not _nothing_ripe(farm)),
            "jobs": [], "order": None, "counted": False,
-           "ideas": used, "best": False, "shaded": 0}
+           "ideas": used, "best": False, "shaded": 0, "meteors": [],
+           "drilled": 0, "gems": 0, "perfect": 0, "wasted": field.wasted()}
     farm["code"] = code[:MAX_CODE]
     if farmer:
         farm["ideas"] = sorted(set(farm["ideas"]) | set(used))
@@ -602,17 +719,21 @@ def run_day(farm, code, stars=0, today="2000-01-01"):
             farm["job_tries"] += 1
         return out
     bonus = field.income * stars // 100
+    perfect = not error and not field.wasted() and _picked({"picked": field.picked}) >= PERFECT_PICKS
+    extra = field.income * PERFECT_PAYS // 100 if perfect else 0
     farm["field"] = field.cells
-    farm["coins"] += field.income + bonus
-    farm["earned"] += field.income + bonus
+    farm["coins"] += field.income + bonus + extra
+    farm["earned"] += field.income + bonus + extra
     farm["day"] += 1
     farm["golden"] += field.golden
     for crop, n in field.picked.items():
         farm["picked"][crop] = farm["picked"].get(crop, 0) + n
+    total = field.income + bonus + extra
     out.update(counted=True, income=field.income, bonus=bonus, picked=field.picked,
-               golden=field.golden, best=field.income + bonus > farm["best"] and farm["day"] > 1)
-    farm["best"] = max(farm["best"], field.income + bonus)
-    day = {"picked": field.picked, "ideas": used,
+               golden=field.golden, best=total > farm["best"] and farm["day"] > 1,
+               drilled=field.drilled, gems=field.gems, perfect=extra)
+    farm["best"] = max(farm["best"], total)
+    day = {"picked": field.picked, "ideas": used, "drilled": field.drilled, "perfect": perfect,
            "moved": sum(1 for f in field.frames if f["do"] == "move")}
     before = farm["job"]
     out["jobs"] = check_jobs(farm, day)
@@ -621,6 +742,7 @@ def run_day(farm, code, stars=0, today="2000-01-01"):
     if before >= len(JOBS):
         out["order"] = check_order(farm, field.picked)
     out["shaded"] = grow(farm)
+    out["meteors"] = meteors(farm)
     if out["shaded"] and len(out["say"]) < 2:
         n = out["shaded"]
         out["say"].append(f"🌻 {n} sun bloom{'s' if n > 1 else ''} didn't grow: one of its own kind is "
@@ -708,6 +830,7 @@ def yard(farm):
 
 def view(farm, stars=0, today="2000-01-01"):
     """Everything the student's page shows."""
+    lesson_rock(farm)
     job = JOBS[farm["job"]] if farm["job"] < len(JOBS) else None
     order = farm["order"]
     hot = hot_crop(today)

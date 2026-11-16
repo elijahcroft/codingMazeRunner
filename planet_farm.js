@@ -99,6 +99,10 @@ const SFX = (() => {
     error: () => tone(160, .25, {type: "sawtooth", vol: .18, slide: -60}),
     night: () => tone(240, .5, {vol: .16, slide: -90}),
     crate: () => chord([523, 659, 784, 1047, 1319], .08, {type: "triangle", vol: .5}),
+    crack: () => { tone(140, .14, {type: "square", vol: .3, slide: -70}); tone(900, .06, {type: "square", vol: .12, at: .03}); },
+    boom: () => tone(90, .45, {type: "sawtooth", vol: .3, slide: -50}),
+    streak: n => chord([660, 880, 1100].map(f => f * Math.pow(1.06, Math.min(n / 5, 8))), .05, {type: "triangle", vol: .4}),
+    perfect: () => chord([523, 659, 784, 1047, 1319, 1568], .07, {type: "triangle", vol: .5}),
   };
   return {
     play(name, arg) { if (!muted && context() && sounds[name]) sounds[name](arg); },
@@ -127,6 +131,8 @@ let play = null;          // the day being played back
 let night = null;         // the night passing after it
 let busy = false, idleDays = 0, lastInput = performance.now();
 let floaters = [], bubble = null, pops = {}, wiggles = {};
+let falls = [];           // meteors on their way down: {x, y, t0}, landing at t0 + FALL_MS
+const FALL_MS = 700;
 let coinsShown = 0, coinsGoal = 0;
 let errorLine = null, activeLine = null, sampleHidden = null;
 const SPEEDS = [1, 2, 4];
@@ -223,6 +229,14 @@ function drawYard(cv, view, now, mine) {
   for (let y = 1; y <= view.h; y++) for (let x = 1; x <= view.w; x++) {
     const cell = view.field[y - 1] && view.field[y - 1][x - 1];
     if (!cell) continue;
+    if (cell[0] === "rock") {
+      // A meteor still falling hasn't made its rock yet.
+      if (mine && falls.some(f => f.x === x && f.y === y && now < f.t0 + FALL_MS)) continue;
+      const cx = sx(L, x), cy = sy(L, y);
+      ctx.fillStyle = "rgba(20,10,6,.45)"; ctx.beginPath(); ctx.ellipse(cx, cy + c * .14, c * .4, c * .22, 0, 0, 7); ctx.fill();
+      emoji(ctx, "🪨", cx, cy, c * .66);
+      continue;
+    }
     const [crop, age, gold] = cell, days = view.days[crop] || 1, ripe = age >= days;
     const cx = sx(L, x), cy = sy(L, y), born = pops[`${x},${y}`];
     const grow = born && !CALM ? Math.min(1, (now - born) / 260) : 1;
@@ -290,6 +304,16 @@ function drawYard(cv, view, now, mine) {
       ctx.fillStyle = `rgba(12,9,38,${a * .62})`; ctx.fillRect(0, 0, L.W, L.H);
       ctx.globalAlpha = a; emoji(ctx, u < .5 ? "🌙" : "☀️", L.W / 2, L.H * .14, Math.min(L.W, L.H) * .12); ctx.globalAlpha = 1;
     }
+    for (const f of falls) {
+      const u = (now - f.t0) / FALL_MS, tx = sx(L, f.x), ty = sy(L, f.y);
+      if (u < 0) continue;
+      if (u < 1) {   // from high up and to the east, down onto its square
+        const e = u * u;
+        emoji(ctx, "☄️", tx + (1 - e) * c * 3, ty - (1 - e) * c * 4, c * .9);
+      } else if (u < 1.5) {
+        ctx.globalAlpha = 1 - (u - 1) * 2; emoji(ctx, "💥", tx, ty, c * (.8 + (u - 1) * .8)); ctx.globalAlpha = 1;
+      }
+    }
   }
   return {L, hits};
 }
@@ -307,16 +331,22 @@ function speech(ctx, text, x, y, c, W) {
 const WAYS = {east: 0, south: Math.PI / 2, west: Math.PI, north: -Math.PI / 2};
 const VEC = {east: [1, 0], south: [0, 1], west: [-1, 0], north: [0, -1]};
 function stepMs(n) { return Math.max(34, Math.min(250, 2800 / Math.max(n, 1))) / speed; }
-function float(text, color, big) {
+function float(text, color, big, at) {
   if (play && play.skip) return;
-  floaters.push({x: rover.x, y: rover.y, text, color, big, t0: performance.now(), life: big ? 1100 : 800});
+  floaters.push({x: at ? at[0] : rover.x, y: at ? at[1] : rover.y, text, color, big, t0: performance.now(), life: big ? 1100 : 800});
+}
+// A tick that did nothing ends the 🔥 streak of picks.
+function wasted(text, color, sound) {
+  float(text, color);
+  if (!play.skip) SFX.play(sound);
+  play.streak = 0;
 }
 function playDay(out) {
   return new Promise(done => {
     scene.field = clone(out.start);
     Object.assign(rover, {x: 1, y: 1, px: 1, py: 1, angle: 0});
     play = {out, i: 0, t0: performance.now(), step: stepMs(out.frames.length), from: {x: 1, y: 1},
-            begun: false, picks: 0, skip: false, done};
+            begun: false, picks: 0, streak: 0, skip: false, done};
     $("runButton").textContent = "⏩ Skip to the end";
   });
 }
@@ -328,12 +358,12 @@ function stepPlay(now) {
       play.begun = true; play.from = {x: rover.x, y: rover.y};
       showLine(f.line);
       if (f.do === "move") rover.angle = f.x > rover.x ? 0 : f.x < rover.x ? Math.PI : f.y > rover.y ? Math.PI / 2 : -Math.PI / 2;
-      if (f.do === "bump") rover.angle = WAYS[f.way];
+      if (f.do === "bump" || f.do === "drill" || f.do === "nodrill") rover.angle = WAYS[f.way];
     }
     const u = play.skip ? 1 : (now - play.t0) / play.step;
     if (u < 1) {
       if (f.do === "move") { const e = ease(u); rover.px = play.from.x + (f.x - play.from.x) * e; rover.py = play.from.y + (f.y - play.from.y) * e; }
-      if (f.do === "bump" && !CALM) { const k = Math.sin(u * Math.PI) * .2; rover.px = f.x + VEC[f.way][0] * k; rover.py = f.y + VEC[f.way][1] * k; }
+      if ((f.do === "bump" || f.do === "drill") && !CALM) { const k = Math.sin(u * Math.PI) * .2; rover.px = f.x + VEC[f.way][0] * k; rover.py = f.y + VEC[f.way][1] * k; }
       return;
     }
     applyFrame(f);
@@ -350,19 +380,30 @@ function applyFrame(f) {
   Object.assign(rover, {x: f.x, y: f.y, px: f.x, py: f.y});
   const row = scene.field[f.y - 1], quiet = play.skip;
   if (f.do === "pick") {
-    row[f.x - 1] = null; play.picks++;
+    row[f.x - 1] = null; play.picks++; play.streak++;
     coinsGoal += f.pay;
     float(`+${f.pay}`, "#ffd36b", f.gold);
     if (!quiet) SFX.play(f.gold ? "gold" : "pick", play.picks);
+    if (play.streak % 5 === 0) {
+      const n = play.streak;
+      setTimeout(() => float(`🔥 ${n} in a row!`, "#ff9d4d", true), 300);
+      if (!quiet) SFX.play("streak", play.streak);
+    }
+  } else if (f.do === "drill") {
+    scene.field[f.at[1] - 1][f.at[0] - 1] = null;
+    coinsGoal += f.pay;
+    float(f.gem ? `💎 +${f.pay}` : `💥 +${f.pay}`, "#ffd36b", true, f.at);
+    if (!quiet) { SFX.play("crack"); if (f.gem) SFX.play("gold"); }
+  } else if (f.do === "nodrill") { wasted("no rock there", "#ffb547", "nope");
   } else if (f.do === "plant") {
     row[f.x - 1] = [f.crop, 0, f.gold ? 1 : 0]; pops[`${f.x},${f.y}`] = performance.now();
     if (!quiet) SFX.play("plant");
   } else if (f.do === "dig") {
     row[f.x - 1] = null; float("dug up", "#cfc6ea");
-  } else if (f.do === "early") { float("not ripe yet", "#ffb547"); if (!quiet) SFX.play("nope"); }
-  else if (f.do === "nothing") { float("nothing here", "#cfc6ea"); if (!quiet) SFX.play("nope"); }
-  else if (f.do === "full") { float("already planted", "#ffb547"); if (!quiet) SFX.play("nope"); }
-  else if (f.do === "bump") { float("fence!", "#ff9d8f"); if (!quiet) SFX.play("bump"); }
+  } else if (f.do === "early") wasted("not ripe yet", "#ffb547", "nope");
+  else if (f.do === "nothing") wasted("nothing here", "#cfc6ea", "nope");
+  else if (f.do === "full") wasted("already planted", "#ffb547", "nope");
+  else if (f.do === "bump") wasted(f.rock ? "🪨 rock!" : "fence!", "#ff9d8f", "bump");
   else if (f.do === "wait") float("💤", "#cfc6ea");
   showBattery(play.out.battery - play.i - 1, play.out.battery);
 }
@@ -395,7 +436,8 @@ function loop(now) {
     $("coins").textContent = $("shopCoins").textContent = coinText(coinsShown);
   }
   // Nothing moving: twenty pictures a second is plenty for a class laptop.
-  const moving = play || night || floaters.length || bubble;
+  falls = falls.filter(f => now < f.t0 + FALL_MS * 1.5);
+  const moving = play || night || floaters.length || bubble || falls.length;
   if (!moving && ++lazy % 3) return;
   if (!$("visit").hidden) { if (visiting) drawYard($("visitYard"), visiting, now, false); return; }
   yardView = drawYard($("yard"), scene, now, true);
@@ -489,21 +531,22 @@ const WORDS = [
   ["empty()", "True when nothing is planted under the rover. Use it like  if empty():", 9, "ask"],
   ["if", "if ripe():  does the lines under it only when that's true.", 9, "shape"],
   ["def", "def care():  names the lines under it. After that,  care()  runs them.", 11, "shape"],
-  ['look("east")', 'Says what\'s on the next square: "ripe", "growing", "empty" or "fence".', 12, "ask"],
+  ['look("east")', 'Says what\'s on the next square: "ripe", "growing", "empty", "rock" or "fence".', 12, "ask"],
   ["while", 'while look("east") != "fence":  repeats the lines under it while that\'s true.', 12, "shape"],
-  ["dig()", "Clears the square under the rover, so you can plant something else.", 13, "do"],
-  ["wait()", "Stays still for one tick.", 13, "do"],
-  ["crop()", 'The name of the plant under the rover, like "berry". An empty square is "none".', 13, "ask"],
-  ["x()", "How far east the rover is. The first square is 1.", 13, "ask"],
-  ["y()", "How far south the rover is. The top row is 1.", 13, "ask"],
-  ["width()", "How many squares wide your field is. Try  for i in range(width()):", 13, "ask"],
-  ["height()", "How many rows your field has.", 13, "ask"],
-  ["battery()", "Ticks of battery left today.", 13, "ask"],
-  ["coins()", "How many coins you have.", 13, "ask"],
-  ["day()", "Which day it is on your farm.", 13, "ask"],
+  ['drill("east")', 'Breaks the rock on the next square east and sells it. Use it like  if look("east") == "rock":', 13, "do"],
+  ["dig()", "Clears the square under the rover, so you can plant something else.", 15, "do"],
+  ["wait()", "Stays still for one tick.", 15, "do"],
+  ["crop()", 'The name of the plant under the rover, like "berry". An empty square is "none".', 15, "ask"],
+  ["x()", "How far east the rover is. The first square is 1.", 15, "ask"],
+  ["y()", "How far south the rover is. The top row is 1.", 15, "ask"],
+  ["width()", "How many squares wide your field is. Try  for i in range(width()):", 15, "ask"],
+  ["height()", "How many rows your field has.", 15, "ask"],
+  ["battery()", "Ticks of battery left today.", 15, "ask"],
+  ["coins()", "How many coins you have.", 15, "ask"],
+  ["day()", "Which day it is on your farm.", 15, "ask"],
 ];
 // The words that come after the last job fold away, so the code box keeps its room.
-const EXTRA_FROM = 13;
+const EXTRA_FROM = 15;
 let moreWords = false;
 function renderChips() {
   const at = farm.job ? farm.job.n - 1 : 99;
@@ -578,6 +621,9 @@ function renderTop() {
     : "Today the space station pays double for this crop. Its seeds are in the shop.";
   $("bonus").innerHTML = `⭐ <span>Star bonus </span><b>+${farm.stars}%</b>`;
   $("dayLabel").textContent = `Day ${farm.day + 1}`;
+  const rec = farm.record;
+  $("record").hidden = !rec;
+  if (rec) $("record").innerHTML = `🏆 <span>Class record </span><b>🪙 ${coinText(rec.coins)}</b> ${esc(rec.name)}`;
   showBattery(farm.battery, farm.battery);
   const goods = [...farm.shop.upgrades, ...farm.shop.crops, ...farm.shop.decor].filter(g => g.can).length;
   $("shopPip").hidden = !goods; $("shopPip").textContent = goods;
@@ -643,22 +689,45 @@ async function runDay() {
   $("runButton").textContent = "▶ Run a day";
   showLine(null);
   const quick = !out.frames.length;
-  await nightfall(() => { take(out.farm); Object.assign(rover, {x: 1, y: 1, px: 1, py: 1, angle: 0}); pops = {}; }, quick);
+  const landed = [];
+  await nightfall(() => {
+    const was = scene.field;
+    take(out.farm); Object.assign(rover, {x: 1, y: 1, px: 1, py: 1, angle: 0}); pops = {};
+    // A rock that wasn't there at the end of the day came down in the night.
+    out.farm.field.forEach((row, y) => row.forEach((cell, x) => {
+      if (cell && cell[0] === "rock" && !(was[y] && was[y][x] && was[y][x][0] === "rock")) landed.push({x: x + 1, y: y + 1});
+    }));
+    if (!CALM) landed.forEach((f, i) => {
+      falls.push({...f, t0: performance.now() + i * 220});
+      setTimeout(() => SFX.play("boom"), i * 220 + FALL_MS);
+    });
+  }, quick);
   // What the day came to.
-  const got = Object.entries(out.picked).map(([crop, n]) => `${before.icons[crop]}×${n}`).join("  ");
+  const got = Object.entries(out.picked).map(([crop, n]) => `${before.icons[crop]}×${n}`)
+    .concat(out.drilled ? [`🪨×${out.drilled}`] : []).join("  ");
   const lines = [];
+  const picks = Object.values(out.picked).reduce((a, b) => a + b, 0);
+  if (out.perfect) lines.push(`<span class="gold">✨ Perfect day! Not one tick wasted: 🪙 +${coinText(out.perfect)}</span>`);
+  else if (picks >= 3 && out.wasted && out.wasted <= 3 && !out.error)
+    lines.push(`⚡ So close! ${out.wasted} tick${out.wasted > 1 ? "s" : ""} wasted. With none it's a ✨ Perfect day, and pays 50% more.`);
+  if (out.gems) lines.push(`<span class="gold">💎 A space gem was inside a rock!</span>`);
   if (out.golden) lines.push(`<span class="gold">✨ ${out.golden} golden! Each one pays 5 times over.</span>`);
   if (out.best) lines.push(`<span class="gold">🏆 Your best day yet!</span>`);
   if (out.error) { errorLine = out.line || null; updateEditor(); lines.push(`🛠 ${codeSpans(out.error)}`); }
   for (const line of out.say) lines.push(codeSpans(line));
-  const total = out.income + out.bonus;
+  const total = out.income + out.bonus + out.perfect;
+  const extras = [out.bonus && `⭐ ${coinText(out.bonus)} star bonus`, out.perfect && `✨ ${coinText(out.perfect)} perfect`].filter(Boolean);
   const head = total ? `☀️ Day ${before.day + 1}: <span class="gold">🪙 +${coinText(total)}</span>` +
-    (out.bonus ? ` <small>(${coinText(out.income)} and ⭐ ${coinText(out.bonus)} star bonus)</small>` : "") + (got ? `   ${got}` : "")
+    (extras.length ? ` <small>(${coinText(out.income)} and ${extras.join(" and ")})</small>` : "") + (got ? `   ${got}` : "")
     : `☀️ Day ${before.day + 1}: nothing picked today.`;
   say(out.error ? "bad" : total ? "fine" : "", head, lines);
   $("today").textContent = total ? `Yesterday: 🪙 +${coinText(total)}  ·  best day 🪙 ${coinText(out.farm.best)}` : "";
   if (total) { SFX.play("coins"); $("coinsBox").classList.remove("bump"); void $("coinsBox").offsetWidth; $("coinsBox").classList.add("bump"); }
   if (out.error) { SFX.play("error"); stopAuto(); }
+  if (out.perfect) setTimeout(() => SFX.play("perfect"), 250);
+  if (out.record) { SFX.play("job"); toast("🏆", "New class record!", `🪙 ${coinText(out.farm.best)} in one day. Nobody in the class has done better.`); }
+  if (landed.length) toast("🌠", landed.length > 1 ? `${landed.length} meteors landed!` : "A meteor landed!",
+    'Rocks block your rover.  drill("east")  breaks one for coins.');
   for (const job of out.jobs) {
     SFX.play("job");
     toast("✅", `Job done: ${job.title}`, `+${job.pay} coins`);

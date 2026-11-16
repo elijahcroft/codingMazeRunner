@@ -7,6 +7,7 @@ import threading
 import time
 import unittest
 from urllib.request import Request, urlopen
+from unittest.mock import patch
 
 import pixel
 import server
@@ -969,6 +970,9 @@ class TheHangOut(unittest.TestCase):
 
     def test_the_world_is_as_long_as_the_places_that_are_open(self):
         self.setup_room()
+        winter = patch.object(server, "winter", return_value=False)     # the ❄️ Snow Village adds one more place
+        winter.start()
+        self.addCleanup(winter.stop)
         mia = self.student("Mia")
         self.do(mia, "join")
         self.do(mia, "walk", x=5000, y=.5)

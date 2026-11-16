@@ -116,7 +116,7 @@ class Coins(Fun):
         self.assertNotIn("gemcrown", self.view(self.ben)["owned"])
 
     def test_every_goal_can_be_reached(self):
-        most = {"gems": len(pixel.HANG_FINDS), "fish": len(pixel.FISH), "stars": 3 * len(pixel.LEVELS), "friends": 30, "rounds": 999}
+        most = {"gems": len(pixel.HANG_FINDS), "fish": len(pixel.FISH), "stars": 3 * len(pixel.LEVELS), "friends": 30, "rounds": 999, "chests": 999, "presents": 999, "snowballs": 999}
         for key in pixel.GOAL_GIFTS:
             what, n = pixel.GIFTS[key]["goal"]
             self.assertLessEqual(n, most[what], key)
@@ -190,14 +190,15 @@ class Homes(Fun):
         self.assertIn("error", self.do(self.ben, "furnish", key="rug", x=100, y=.5))
         self.entry(self.mia)["stuff"] += ["sofa", "w_pink"]
         self.do(self.mia, "furnish", key="sofa", x=200, y=.2)
-        self.do(self.mia, "furnish", key="rug", x=150, y=.7)                             # putting it down again moves it
+        rug = self.view(self.ben)["home"]["items"][0]["id"]
+        self.do(self.mia, "furnish", piece=rug, x=150, y=.7)                             # one that's out moves by its number
         self.assertTrue(self.do(self.mia, "look", key="w_pink")["ok"])
         self.assertIn("error", self.do(self.mia, "look", key="w_blue"))
         home = self.view(self.ben)["home"]
-        self.assertEqual(home["wall"], "w_pink")
-        self.assertEqual(home["items"], [{"key": "sofa", "x": 200, "y": .2}, {"key": "rug", "x": 150, "y": .7}])
-        self.do(self.mia, "unfurnish", key="sofa")
-        self.assertEqual([i["key"] for i in self.view(self.ben)["home"]["items"]], ["rug"])
+        self.assertEqual(home["rooms"][0]["wall"], "w_pink")
+        self.assertEqual([(i["key"], i["x"], i["y"]) for i in home["items"]], [("sofa", 200, .2), ("rug", 150, .7)])
+        self.do(self.mia, "unfurnish", piece=rug)
+        self.assertEqual([i["key"] for i in self.view(self.ben)["home"]["items"]], ["sofa"])
 
     def test_drawings_hang_at_home_apart_from_the_world(self):
         drawing = dict(pixel.PIP, key="d1", title="Cat")
@@ -235,53 +236,53 @@ class Rooms(Fun):
         self.buy_room(self.mia, "r_bed")
         self.assertIn("error", self.do(self.mia, "buy", key="r_bed"))           # once only
         self.do(self.mia, "home")
-        home = self.view(self.mia)["home"]
-        self.assertEqual([r["name"] for r in home["rooms"]], [pixel.HOME_FIRST, "Attic", "Bedroom"])
-        self.assertEqual(home["at"], 0)
+        view = self.view(self.mia)
+        self.assertEqual([r["name"] for r in view["home"]["rooms"]], [pixel.HOME_FIRST, "Attic", "Bedroom"])
+        self.assertEqual(view["places"], ["home"] * 3)
+        self.assertTrue(any("built a bedroom" in f["text"] for f in server.pixel_feed))
 
-    def test_doors_go_along_the_row_and_only_to_rooms_in_that_home(self):
+    def test_the_rooms_stand_in_a_row_and_pals_walk_between_them(self):
         self.buy_room(self.mia)
         self.do(self.mia, "home")
-        first, bed = [r["loc"] for r in self.view(self.mia)["home"]["rooms"]]
-        self.assertTrue(self.do(self.mia, "home", to=bed)["ok"])
-        self.assertEqual(self.view(self.mia)["home"]["at"], 1)
-        self.do(self.ben, "home")
-        self.assertIn("error", self.do(self.ben, "home", to=bed))                # not his home
         self.do(self.ben, "home", seat=self.spot(self.mia)["seat"])
-        self.assertTrue(self.do(self.ben, "home", to=bed)["ok"])                 # a visitor can look round
-        self.assertEqual({m["name"] for m in self.view(self.ben, -1)["members"]}, {"Mia", "Ben"})
-        self.do(self.mia, "home", to=first)
-        self.assertGreater(self.spot(self.mia)["x"], pixel.PLACE_W / 2)          # came back in by the right-hand door
-        self.assertEqual({m["name"] for m in self.view(self.mia, -1)["members"]}, {"Mia"})
+        self.do(self.mia, "walk", x=500, y=.5)
+        self.assertEqual(self.spot(self.mia)["x"], 500)                          # in the bedroom
+        self.do(self.mia, "walk", x=900, y=.5)
+        self.assertLessEqual(self.spot(self.mia)["x"], 2 * pixel.PLACE_W)        # the end of the home
+        self.assertEqual({m["name"] for m in self.view(self.ben, -1)["members"]}, {"Mia", "Ben"})     # one place, both rooms
+        self.do(self.ben, "home")
+        self.do(self.ben, "walk", x=500, y=.5)
+        self.assertLessEqual(self.spot(self.ben)["x"], pixel.PLACE_W)            # his home has one room
 
     def test_each_room_has_its_own_look_things_and_drawings(self):
         self.buy_room(self.mia)
         self.entry(self.mia)["stuff"] += ["sofa", "w_pink"]
         self.entry(self.mia)["drawings"].append(dict(pixel.PIP, key="d1", title="Cat"))
         self.do(self.mia, "home")
-        first, bed = [r["loc"] for r in self.view(self.mia)["home"]["rooms"]]
         self.do(self.mia, "furnish", key="sofa", x=100, y=.5)
-        self.do(self.mia, "home", to=bed)
-        self.do(self.mia, "look", key="w_pink")
-        self.do(self.mia, "furnish", key="sofa", x=200, y=.5)                    # owned once: it moves rooms
-        self.assertTrue(self.do(self.mia, "place", key="d1", x=100, y=.5)["ok"])
-        here = self.view(self.mia, -1)
-        self.assertEqual((here["home"]["wall"], [i["key"] for i in here["home"]["items"]], len(here["placed"])), ("w_pink", ["sofa"], 1))
-        self.do(self.mia, "home", to=first)
-        there = self.view(self.mia, -1)
-        self.assertEqual((there["home"]["wall"], there["home"]["items"], there["placed"]), ("w_cream", [], []))
-        self.do(self.mia, "home", to=bed)
-        self.do(self.mia, "unplace", piece=self.view(self.mia, -1)["placed"][0]["id"])
+        sofa = self.view(self.mia)["home"]["items"][0]["id"]
+        self.do(self.mia, "walk", x=pixel.PLACE_W + 100, y=.5)
+        self.do(self.mia, "look", key="w_pink")                                  # the room her pal is in
+        self.do(self.mia, "furnish", piece=sofa, x=pixel.PLACE_W - 2, y=.5)        # stays inside the living room
+        self.assertTrue(self.do(self.mia, "place", key="d1", x=pixel.PLACE_W + 50, y=.5)["ok"])
+        view = self.view(self.mia, -1)
+        self.assertEqual([r["wall"] for r in view["home"]["rooms"]], ["w_cream", "w_pink"])
+        self.assertEqual(view["home"]["items"][0]["x"], pixel.PLACE_W - 16)
+        self.assertEqual(view["placed"][0]["x"], pixel.PLACE_W + 50)
+        rooms = server.home_rooms(server.home_of(self.entry(self.mia)))
+        self.assertEqual((rooms[1]["art"][0]["x"], len(rooms[0]["art"])), (50, 0))         # kept from the room's own left
+        self.do(self.mia, "unplace", piece=view["placed"][0]["id"])
         self.assertEqual(self.view(self.mia, -1)["placed"], [])
 
-    def test_the_class_screen_knows_whose_room_it_is(self):
+    def test_the_class_screen_knows_whose_home_it_is(self):
         self.buy_room(self.mia)
         self.do(self.mia, "home")
-        bed = self.view(self.mia)["home"]["rooms"][1]["loc"]
-        self.do(self.mia, "home", to=bed)
+        self.do(self.mia, "walk", x=500, y=.5)
         people = {m["name"]: m for m in self.view(None)["people"]}
         self.assertEqual(people["Mia"]["where"], "🏠 Their home")
-        self.assertEqual(self.view(None, -1, bed)["home"]["at"], 1)
+        loc = people["Mia"]["loc"]
+        view = self.view(None, -1, loc)
+        self.assertEqual((len(view["home"]["rooms"]), [m["name"] for m in view["members"]]), (2, ["Mia"]))
 
 
 class Fishing(Fun):

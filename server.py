@@ -3070,6 +3070,7 @@ GARAGE = [
     {"slot": "paint", "key": "hotrod", "name": "Hot Rod", "stars": 46},
     {"slot": "paint", "key": "sharkbite", "name": "Shark Bite", "stars": 58},
     {"slot": "paint", "key": "armor", "name": "Diamond Armor", "stars": 100},
+    {"slot": "paint", "key": "aiden", "name": "Aiden", "stars": 0},
     # What the rover drives on.
     {"slot": "wheels", "key": "std", "name": "Rover wheels", "stars": 0},
     {"slot": "wheels", "key": "monster", "name": "Monster tyres", "stars": 4},
@@ -3172,6 +3173,8 @@ FARM_BADGES = {
     "farm_auto": ("🚜", "Automator", "Pick 6 crops in one farm day with a loop"),
     "farm_gold": ("✨", "Golden Touch", "Pick a golden crop on the Rover Farm"),
     "farm_rich": ("💰", "Money Bags", "Earn 1,000 coins on the Rover Farm"),
+    "farm_rock": ("🪨", "Rock Breaker", "Drill a meteor rock on the Rover Farm"),
+    "farm_perfect": ("💯", "Perfect Day", "Farm a day on the Rover Farm with no tick wasted"),
 }
 PLANET_BADGES.update(FARM_BADGES)
 HALLOWEEN_GARAGE = [
@@ -4439,6 +4442,13 @@ def farm_gear(p):
     return {"look": entry["look"], "rover_name": entry.get("rover_name", "")}
 
 
+def farm_record():
+    """The class's best farm day: coins, and whose."""
+    best = max(((((q.get("planet") or {}).get("farm") or {}).get("best", 0), q["name"])
+                for q in players.values()), default=(0, ""))
+    return {"coins": best[0], "name": best[1]} if best[0] else None
+
+
 def farm_state(p):
     """A student's farm page: their farm, their rover, and whose farms to visit."""
     if not planet_class_settings["farm"]:
@@ -4449,7 +4459,8 @@ def farm_state(p):
                class_farms=sorted(({"who": farm_handle(q), "name": q["name"]}
                                    for q in players.values()
                                    if q is not p and (q.get("planet") or {}).get("farm", {}).get("day")),
-                                  key=lambda row: row["name"].lower()))
+                                  key=lambda row: row["name"].lower()),
+               record=farm_record())
     return out
 
 
@@ -4465,6 +4476,10 @@ def farm_badges(p, out):
         earned.append("farm_gold")
     if farm["earned"] >= 1000:
         earned.append("farm_rich")
+    if out["drilled"]:
+        earned.append("farm_rock")
+    if out["perfect"]:
+        earned.append("farm_perfect")
     new = []
     for key in earned:
         if key not in entry["badges"]:
@@ -4483,8 +4498,13 @@ def farm_run(p, data):
     if now - (farm.get("last") or 0) < FARM_GAP:
         return {"wait": True}
     farm["last"] = entry["active"] = now
+    record = farm_record() or {"coins": 0, "name": ""}
     out = planet_farm.run_day(farm, code_in(data), star_count(entry), time.strftime("%Y-%m-%d"))
     out["badges"] = farm_badges(p, out)
+    # A new class record. The class screen hears when it changes hands.
+    out["record"] = bool(record["coins"]) and farm["best"] > record["coins"]
+    if out["record"] and record["name"] != p["name"]:
+        feed(f"🏆 {p['name']} set a farm record: 🪙 {farm['best']:,} in one day")
     if out["order"] and out["order"].get("crate") and out["order"]["crate"].get("key"):
         feed(f"🎁 {p['name']} found a {out['order']['crate']['name'].lower()} in a farm crate")
     out["farm"] = farm_state(p)
@@ -5625,6 +5645,7 @@ PIXEL_BADGES = {
     "play_race": ("🚦", "Red Light Racer", "Finish a red light, green light race"),
     "play_dance": ("🪩", "Dance Copycat", "Finish a round of copy the dance"),
     "play_code": ("💻", "Code Racer", "Finish a Code race"),
+    "play_draw": ("🎨", "Picture Guesser", "Finish a game of Draw & guess"),
     "angler": ("🎣", "Gone Fishing", "Catch every kind of thing in the sea"),
     "all": ("🏆", "Star of the Show", "Get all the stars in the game"),
     "remix": ("🎨", "Remixer", "Do a Your turn: change a mission's code your own way"),
@@ -5652,7 +5673,8 @@ def pixel_entry(p):
     for key, value in (("drawings", []), ("pal", ""), ("solved", {}), ("code", {}),
                        ("badges", []), ("runs", {}), ("misses", {}), ("last_error", ""), ("active", 0),
                        ("gifts", []), ("wear", {}), ("friends", []), ("move", None), ("found", []),
-                       ("stuff", []), ("fish", {}), ("things", {}), ("remixed", []), ("guessed", []), ("fixed", []), ("free_code", ""), ("free_runs", 0), ("free_shows", [])):
+                       ("stuff", []), ("fish", {}), ("things", {}), ("remixed", []), ("guessed", []), ("fixed", []), ("free_code", ""), ("free_runs", 0), ("free_shows", []),
+                       ("chests", {}), ("chest_count", 0), ("mywear", []), ("presents", {}), ("present_count", 0), ("snowballs", 0)):
         entry.setdefault(key, value)
     if "coins" not in entry:        # coins came later: pay for the stars and gems already earned
         firsts = sum(1 for key, stars in entry["solved"].items() if key in pixel.LEVEL_BY_KEY and stars[0])
@@ -5677,7 +5699,12 @@ def pixel_pay(p, coins, play=True):
 def pixel_has(entry, key):
     """Whether a student has this piece of furniture, wall or floor."""
     item = pixel.FURNITURE.get(key) or pixel.HOME_WALLS.get(key) or pixel.HOME_FLOORS.get(key)
-    return bool(item) and (not item["price"] or key in entry["stuff"])
+    return bool(item) and (pixel.home_free(item) or key in entry["stuff"])
+
+
+def pixel_copies(entry, key):
+    """How many of this piece of furniture a student has. Free things come one each."""
+    return entry["stuff"].count(key) or int(pixel_has(entry, key))
 
 
 def home_of(entry):
@@ -5685,12 +5712,25 @@ def home_of(entry):
     if "id" not in home:            # a number is what travels, because a player id works as a login
         pixel_class["homes"] = pixel_class.get("homes", 0) + 1
         home["id"] = pixel_class["homes"]
-    for key, value in (("wall", "w_cream"), ("floor", "f_wood"), ("items", []), ("art", []), ("rooms", [])):
+    for key, value in (("wall", "w_cream"), ("floor", "f_wood"), ("items", []), ("art", []), ("rooms", []),
+                       ("hearts", []), ("level", 0), ("item_seq", 0)):
         home.setdefault(key, value)
     for key in entry["stuff"]:          # a room bought in the shop is built the first time it's needed
         if key in pixel.HOME_ROOMS and not any(r["key"] == key for r in home["rooms"]):
             pixel_class["homes"] = pixel_class.get("homes", 0) + 1
             home["rooms"].append({"key": key, "id": pixel_class["homes"], "wall": "w_cream", "floor": "f_wood", "items": [], "art": []})
+    for room in home["rooms"]:
+        kind = pixel.HOME_ROOMS[room["key"]]
+        if not room.get("styled"):      # rooms are built with their own look (and rooms from before that get it now)
+            room["styled"] = True
+            if (room["wall"], room["floor"]) == ("w_cream", "f_wood"):
+                room["wall"], room["floor"] = kind["wall"], kind["floor"]
+            entry["stuff"] += [k for k in (kind["wall"], kind["floor"]) if not pixel_has(entry, k)]
+    for room in home_rooms(home):       # each piece out has its own number, as there can be more than one of a thing
+        for item in room["items"]:
+            if "id" not in item:
+                home["item_seq"] += 1
+                item["id"] = home["item_seq"]
     return home
 
 
@@ -5699,9 +5739,38 @@ def home_rooms(home):
     return [home] + home.get("rooms", [])
 
 
-def room_at(owner, loc):
-    """The room in this student's home with this number, or None."""
-    return next((r for r in home_rooms(home_of(pixel_entry(owner))) if r["id"] == loc), None)
+def room_kind(room):
+    return room.get("key", "living")
+
+
+def home_points(entry):
+    """What a home's level goes by: the things out in it (a drawing with code counts
+    twice), the rooms built, and hearts from visitors."""
+    home = home_of(entry)
+    rooms = home_rooms(home)
+    things = sum(len(r["items"]) + sum(1 + bool(entry["things"].get(a["key"])) for a in r["art"]) for r in rooms)
+    return things + pixel.ROOM_POINTS * (len(rooms) - 1) + min(len(home["hearts"]), pixel.HEART_POINTS_MAX)
+
+
+def home_grow(p):
+    """Moves a home up a level when it has the points, and hands over the prizes.
+    Levels are kept once reached. Returns the new level's name, if there is one."""
+    entry = pixel_entry(p)
+    home = home_of(entry)
+    level = pixel.home_level(home_points(entry))
+    if level <= home["level"]:
+        return None
+    home["level"] = level
+    entry["stuff"] += [key for key in pixel.home_prizes(level) if key not in entry["stuff"]]
+    name = pixel.HOME_LEVELS[level][0]
+    pixel_feed_add(f"🏡 {hang_name(p)}'s home is a {name} now!")
+    room_event("home", loc=home["id"])
+    return name
+
+
+def home_room_at(home, x):
+    """Which room of a home a spot along it is in: the rooms stand in a row, one screen each."""
+    return max(0, min(len(home_rooms(home)) - 1, int(x // pixel.PLACE_W)))
 
 
 def home_owner(number):
@@ -5796,7 +5865,8 @@ def pixel_move_public(entry):
 def pixel_progress(entry):
     """The counts that goal gifts are waiting on."""
     return {"gems": len(entry["found"]), "fish": len(entry["fish"]), "friends": len(entry["friends"]),
-            "stars": pixel_stars(entry), "rounds": sum(entry.get("play_rounds", {}).values())}
+            "stars": pixel_stars(entry), "rounds": sum(entry.get("play_rounds", {}).values()), "chests": entry["chest_count"],
+            "presents": entry["present_count"], "snowballs": entry["snowballs"]}
 
 
 def pixel_owned(entry):
@@ -5828,12 +5898,15 @@ def pixel_state(p):
             "class_stars": pixel_class_stars(), "room_words": pixel.ROOM_WORDS,
             "hang": {"needs": pixel_hang_needs(entry), "gifts": pixel_owned(entry), "catalog": pixel.GIFTS,
                      "wear": entry["wear"], "friends": entry["friends"], "progress": pixel_progress(entry), "buddies": bool(entry.get("buddies_on")), "hide_name": bool(entry.get("hide_name")), "move": pixel_move_public(entry),
-                     "found": entry["found"], "gems": len(pixel.HANG_FINDS), "place_max": pixel.PLACED_EACH,
+                     "found": entry["found"], "gems": len(pixel.HANG_FINDS), "place_max": pixel.PLACED_EACH, "chests": chests_view(entry),
                      "names": pixel.MOVE_NAMES, "coins": entry["coins"], "shop": pixel.SHOP, "stuff": entry["stuff"],
                      "furniture": pixel.FURNITURE, "walls": pixel.HOME_WALLS, "floors": pixel.HOME_FLOORS,
+                     "rooms": pixel.HOME_ROOMS, "levels": pixel.HOME_LEVELS, "item_max": pixel.HOME_ITEMS,
                      "fish": entry["fish"], "fish_book": pixel.FISH, "art_max": pixel.HOME_ART,
                      "things": entry["things"], "thing_usage": {c: "pose(2)" if c == "pose" else pixel.USAGE[c] for c in pixel.THING_COMMANDS if c in pixel.USAGE},
-                     "thing_start": pixel.THING_START}}
+                     "thing_start": pixel.THING_START,
+                     "mywear": entry["mywear"], "my_wear_price": pixel.MY_WEAR_PRICE, "my_wear_max": pixel.MY_WEAR_MAX,
+                     "fancy": pixel.FANCY_PRICE, "winter": winter_view(entry)}}
 
 
 def pixel_level(entry, key):
@@ -5970,7 +6043,14 @@ def hang_name(p):
 
 
 def room_row(spot):
-    return {k: spot[k] for k in ("seat", "name", "x", "y", "mood", "rest", "pal", "buddies", "wear", "prop")} | {"hid": bool(spot.get("hid"))}
+    return ({k: spot[k] for k in ("seat", "name", "x", "y", "mood", "rest", "pal", "buddies", "wear", "prop")}
+            | {"hid": bool(spot.get("hid")), "wear_art": spot.get("wear_art", {})})
+
+
+def wear_art(entry):
+    """The pictures of the drawings a student is wearing, by slot, so every screen can draw them."""
+    mine = {w["key"]: w["art"] for w in entry["mywear"]}
+    return {slot: mine[key] for slot, key in entry["wear"].items() if key in mine}
 
 
 EVERYWHERE = object()
@@ -6000,7 +6080,13 @@ def hang_earned():
 
 
 def hang_places():
-    return list(pixel.HANG_PLACES) + [r["key"] for r in hang_earned() if r["kind"] == "place"]
+    return list(pixel.HANG_PLACES) + [r["key"] for r in hang_earned() if r["kind"] == "place"] + ([pixel.VILLAGE] if winter() else [])
+
+
+def winter():
+    """❄️ Whether the Snow Village is open today."""
+    now = time.localtime(time.time())
+    return pixel.winter_on(now.tm_mon, now.tm_mday)
 
 
 def hang_width():
@@ -6046,8 +6132,10 @@ GAME_HIDE_SECONDS = 20
 GAME_ROUND_SECONDS = 90
 GAME_SPEED = 85
 GAME_WIDTH = 640                 # Park + Wedding garden, available to every class
-GAME_KINDS = ("hide", "tag", "race", "dance", "code")
-GAME_TITLES = {"hide": "Hide & seek", "tag": "Tag", "race": "Red light, green light", "dance": "Copy the dance", "code": "a Code race"}
+GAME_KINDS = ("hide", "tag", "race", "dance", "code", "draw")
+GAME_TITLES = {"hide": "Hide & seek", "tag": "Tag", "race": "Red light, green light", "dance": "Copy the dance", "code": "a Code race",
+               "draw": "Draw & guess"}
+STILL_GAMES = ("code", "draw")   # everyone stands in a row in the Park, and nothing is hidden
 RACE_START, RACE_END = 30, 600
 RACE_SECONDS = 90
 RACE_STEP = 34                   # how far one click or key press runs, so stopping is just not pressing
@@ -6064,6 +6152,11 @@ CODE_MAX = 1000                  # characters of code in one run
 CODE_SOLVE_COINS = 3             # for each job solved, paid as coding coins
 CODE_BONUS_COINS = 1             # for the bonus after solving: the whole job 2 times
 CODE_ANSWER_AFTER = 30           # seconds into a round before 💡 Help shows a whole answer
+DRAW_SECONDS = 60                # for each picture
+DRAW_TURNS = 5                   # pictures in one game at most, so a big class's game doesn't go on and on
+DRAW_PAUSE = 5                   # seconds showing what it was, before the next picture
+DRAW_WRONG_WAIT = 3              # seconds before guessing again after a wrong guess
+DRAW_POINTS = (3, 2)             # the first right guess, the second, and 1 for everyone after
 # Hiding places belong to the place they stand in: park things in the Park (x under 320),
 # wedding things in the Wedding garden. "at" finishes the sentence "You're hidden ...".
 GAME_COVER = [
@@ -6132,7 +6225,7 @@ def game_begin(now):
             spot.update(x=160, y=.55)
         if kind == "race":          # everyone on the start line, each in a lane
             spot.update(x=RACE_START, y=round((i + .5) / len(game["joined"]), 2))
-        if kind == "code":          # everyone in a row in the Park, so a solver is easy to watch
+        if kind in STILL_GAMES:     # everyone in a row in the Park, so a solver (or the drawer) is easy to watch
             spot.update(x=round(30 + i * 260 / max(1, len(game["joined"]) - 1)), y=.3 + .5 * (i % 2))
         game["motion"][seat] = {"x": spot["x"], "y": spot["y"], "tx": spot["x"], "ty": spot["y"], "at": now}
     if kind == "race":
@@ -6144,6 +6237,12 @@ def game_begin(now):
     elif kind == "code":
         game.update(round=0, score={}, ran={})
         code_round(game, now)
+    elif kind == "draw":
+        # Whoever drew longest ago (or never) draws first, so a big class takes turns across games.
+        drew = pixel_room.setdefault("drew", {})
+        order = sorted(game["joined"], key=lambda s: drew.get(seats[s][0], 0))[:DRAW_TURNS]
+        game.update(round=0, score={}, order=order, used=[])
+        draw_turn(game, now)
     else:
         room_event("game", message="The seeker is counting!" if kind == "hide" else "Tag! Run!")
 
@@ -6172,6 +6271,91 @@ def dance_tick(game, seats, now):
     names = " and ".join(seats[s][1]["name"] for s in winners)
     game_finish(f"🪩 Top dancer{'s' if len(winners) > 1 else ''}: {names}!" if winners else "Good dancing, everyone!",
                 reward=True, winners=winners)
+
+
+def draw_turn(game, now):
+    """The next pal draws a new secret word. The others pick it from a few pictures."""
+    seat = game["order"][game["round"]]
+    word = random.choice([w for w in pixel.GUESS_WORDS if w[0] not in game["used"]])
+    game["used"].append(word[0])
+    others = random.sample([w for w in pixel.GUESS_WORDS if w[0] != word[0]], pixel.DRAW_CHOICES - 1)
+    choices = [w[0] for w in random.sample([word] + others, pixel.DRAW_CHOICES)]
+    pair = game_seats().get(seat)
+    if pair:
+        pixel_room.setdefault("drew", {})[pair[0]] = now
+    game.update(drawer=seat, word=word[0], choices=choices, board="." * pixel.DRAW_GRID ** 2, guessed=[], wrong={},
+                pause_until=0, until=now + DRAW_SECONDS, round_at=now)
+    name = pair[1]["name"] if pair else "A friend"
+    room_event("game", message=f"🎨 Picture {game['round'] + 1} of {len(game['order'])}: {name} is drawing! Guess on the right.")
+
+
+def draw_tick(game, seats, now):
+    if game["pause_until"]:
+        if now < game["pause_until"]:
+            return
+        game["round"] += 1
+        while game["round"] < len(game["order"]) and game["order"][game["round"]] not in game["joined"]:
+            game["round"] += 1          # that drawer left
+        if game["round"] < len(game["order"]):
+            draw_turn(game, now)
+            return
+        best = max(game["score"].values(), default=0)
+        winners = [s for s in game["joined"] if best and game["score"].get(s) == best]
+        names = " and ".join(seats[s][1]["name"] for s in winners)
+        game_finish(f"🎨 Top score: {names}!" if winners else "Lovely drawing, everyone!",
+                    reward=True, winners=winners)
+        return
+    guessers = [s for s in game["joined"] if s != game["drawer"]]
+    if now < game["until"] and game["drawer"] in game["joined"] and not all(s in game["guessed"] for s in guessers):
+        return
+    word = pixel.GUESS_BY_KEY[game["word"]]
+    game.update(pause_until=now + DRAW_PAUSE, until=now + DRAW_PAUSE)
+    room_event("game", message=f"It was {word[1]} {word[2]}! " + (f"{len(game['guessed'])} guessed it." if game["guessed"] else "Nobody guessed it this time."))
+
+
+def draw_paint(game, seat, data):
+    """The drawer colours one square, or rubs it out, or wipes the whole picture."""
+    if seat != game["drawer"] or game["pause_until"]:
+        return {"error": "It's not your turn to draw. Guess what it is!"}
+    if data.get("wipe"):
+        game["board"] = "." * pixel.DRAW_GRID ** 2
+    else:
+        cell, colour = data.get("cell"), data.get("colour")
+        if not isinstance(cell, int) or isinstance(cell, bool) or not 0 <= cell < pixel.DRAW_GRID ** 2:
+            return {"error": "bad"}
+        if colour is None:
+            ink = "."
+        elif isinstance(colour, int) and not isinstance(colour, bool) and 0 <= colour < len(pixel.DRAW_COLOURS):
+            ink = pixel.LETTERS[colour]
+        else:
+            return {"error": "bad"}
+        game["board"] = game["board"][:cell] + ink + game["board"][cell + 1:]
+    room_event("game", message="")      # wakes every screen, so the picture grows as it's drawn
+    return {"ok": True}
+
+
+def draw_guess(p, spot, game, word, now):
+    seat = spot["seat"]
+    if seat == game["drawer"]:
+        return {"error": "You're drawing! Your friends are guessing."}
+    if game["pause_until"] or seat in game["guessed"]:
+        return {"ok": True, "right": seat in game["guessed"], "message": "Wait for the next picture!"}
+    if word not in game["choices"]:
+        return {"error": "bad"}
+    if now < game["wrong"].get(seat, 0):
+        return {"error": "Have another look first..."}
+    if word != game["word"]:
+        game["wrong"][seat] = now + DRAW_WRONG_WAIT
+        return {"ok": True, "right": False, "message": "Not that one! Look again..."}
+    rank = len(game["guessed"])
+    points = DRAW_POINTS[rank] if rank < len(DRAW_POINTS) else 1
+    game["guessed"].append(seat)
+    game["score"][seat] = game["score"].get(seat, 0) + points
+    game["score"][game["drawer"]] = game["score"].get(game["drawer"], 0) + 1      # a drawing friends can guess earns a point too
+    room_event("game", message=f"⭐ {spot['name']} guessed it{' first' if not rank else ''}!")
+    room_event("move", seat=seat, name="cheer")
+    draw_tick(game, game_seats(), now)
+    return {"ok": True, "right": True, "points": points, "message": f"⭐ Yes! +{points} points!"}
 
 
 def code_round(game, now):
@@ -6229,9 +6413,9 @@ def race_bonus(job):
     return bonus
 
 
-def code_spotlight(spot, game, steps, now, title, big):
+def code_spotlight(spot, job, steps, now, title, big):
     """A solver's pal does their code for everyone, and friends can clap."""
-    allowed = pixel.ROOM_SAYS | set(game["job"].get("said", ()))
+    allowed = pixel.ROOM_SAYS | set(job.get("said", ()))
     steps = [s for s in steps if s["do"] != "say" or pixel_room["words"] or s["text"] in allowed]
     steps, spot["x"], ms = pixel.stage_move(steps, spot["x"], True, room_width(spot) - 8)
     spot.update(rest=None, claps=0, move_until=now + ms / 1000 + .7)     # friends can clap while it plays
@@ -6255,7 +6439,7 @@ def code_run(p, spot, game, data, now):
         if not out["ok"]:
             return {"ok": True, "solved": True, "bonus": False, "message": out["message"].replace("The job is", "The bonus is"), "line": out["line"]}
         game.setdefault("bonus", []).append(seat)
-        code_spotlight(spot, game, out["steps"], now, "🌟 Bonus!", False)
+        code_spotlight(spot, game["job"], out["steps"], now, "🌟 Bonus!", False)
         coins = pixel_pay(p, CODE_BONUS_COINS, play=False)
         pixel_save_soon()
         return {"ok": True, "solved": True, "bonus": True, "coins": coins,
@@ -6267,7 +6451,7 @@ def code_run(p, spot, game, data, now):
     game["solved"].append(seat)
     game["codes"][seat] = code
     game["score"][seat] = game["score"].get(seat, 0) + 1 + fastest
-    code_spotlight(spot, game, out["steps"], now, "⚡ Solved it first!" if fastest else "⭐ Solved it!", fastest)
+    code_spotlight(spot, game["job"], out["steps"], now, "⚡ Solved it first!" if fastest else "⭐ Solved it!", fastest)
     room_event("game", message=f"⚡ {spot['name']} solved it first!" if fastest else f"⭐ {spot['name']} solved it!")
     coins = pixel_pay(p, CODE_SOLVE_COINS, play=False)
     day_job(p, "code")
@@ -6347,6 +6531,9 @@ def game_tick(now):
     if game["kind"] == "code":
         code_tick(game, seats, now)
         return
+    if game["kind"] == "draw":
+        draw_tick(game, seats, now)
+        return
     if game["phase"] == "hiding":
         if now >= game["until"]:
             game.update(phase="playing", until=now + GAME_ROUND_SECONDS)
@@ -6397,7 +6584,7 @@ def game_action(p, spot, data):
         room_event("game", message=f"🎮 {spot['name']} started {GAME_TITLES[kind]}! Tap the yellow bar above to join.")
     elif not game:
         return {"error": "This round has ended."}
-    elif action == "join" and (game["phase"] == "lobby" or (game["kind"] == "code" and game["phase"] == "playing")):
+    elif action == "join" and (game["phase"] == "lobby" or (game["kind"] in STILL_GAMES and game["phase"] == "playing")):
         if spot["loc"]:
             return {"error": "Step outside to join the game!"}
         if seat not in game["joined"]:
@@ -6435,6 +6622,10 @@ def game_action(p, spot, data):
         game_tick(now)
     elif action == "run" and game["kind"] == "code" and game["phase"] == "playing":
         return code_run(p, spot, game, data, now)
+    elif action == "paint" and game["kind"] == "draw" and game["phase"] == "playing":
+        return draw_paint(game, seat, data)
+    elif action == "guess" and game["kind"] == "draw" and game["phase"] == "playing":
+        return draw_guess(p, spot, game, data.get("word"), now)
     elif action in ("hide", "search"):
         cover = next((c for c in GAME_COVER if c["key"] == data.get("cover")), None)
         hiding = action == "hide"
@@ -6470,6 +6661,8 @@ def game_walk(spot, data):
         return {"error": "Stay on the dance floor! Tap the moves instead."}
     if game["kind"] == "code":
         return {"error": "Stay in your place! Code your pal instead."}
+    if game["kind"] == "draw":
+        return {"error": "Stay here! Draw or guess on the right."}
     if game["kind"] == "race" and seat in game["done"]:
         return {"error": "You made it! Cheer for your friends."}
     x, y = data.get("x"), data.get("y")
@@ -6502,6 +6695,12 @@ def game_view(you):
                    pause=game["pause_until"], reveal=game["reveal"], rounds=pixel.RACE_ROUNDS,
                    round_at=game["round_at"], answer_after=CODE_ANSWER_AFTER,
                    mine=game["codes"].get(you, ""))
+    if game["kind"] == "draw" and game.get("word"):
+        shown = you == game["drawer"] or game["pause_until"]       # the word is a secret until the picture is over
+        out.update(drawer=game["drawer"], board=game["board"], grid=pixel.DRAW_GRID, colours=pixel.DRAW_COLOURS,
+                   choices=[pixel.GUESS_BY_KEY[k] for k in game["choices"]], word=pixel.GUESS_BY_KEY[game["word"]] if shown else None,
+                   guessed=game["guessed"], wrong=game["wrong"].get(you, 0), pause=game["pause_until"],
+                   turns=len(game["order"]), round_at=game["round_at"], scores=game["score"])
     return out
 
 
@@ -6545,7 +6744,7 @@ DOING = {"wave": "👋 Waving", "dance": "💃 Dancing", "jump": "🦘 Jumping",
          "say": "💬 Talking", "fx": "✨ Making a party", "toy": "🎈 Playing", "fish": "🎣 Fishing", "mymove": "🌟 Doing their My Move",
          "buy": "🛍️ Shopping", "furnish": "🛋️ Decorating", "unfurnish": "🛋️ Decorating", "look": "🎨 Painting the walls",
          "place": "🖼️ Showing a drawing", "find": "💎 Found a gem!", "five": "🙌 High-fiving", "walk": "🚶 Exploring", "go": "🚶 Exploring",
-         "catch": "🌠 Catching stars", "home": "🚪 Moving house to house"}
+         "catch": "🌠 Catching stars", "home": "🚪 Moving house to house", "chest": "🧰 Coding a chest open"}
 DOING_FOR = 20             # seconds a tap still counts as what they're doing
 
 # 🎯 Today's jobs: three small things to do in the Hang out, the same for the whole class each day,
@@ -6561,8 +6760,9 @@ DAY_JOBS = {"five": ("🙌", "High-five 2 friends", 2, "Click a friend's pal."),
             "clap": ("👏", "Clap for a friend's move", 1, "When a friend does their ✨ My Move, press 👏 Clap."),
             "visit": ("🚪", "Visit a friend's home", 1, "Open 🏠 Home and pick a friend."),
             "star": ("⭐", "Earn a star in a coding mission", 1, ""),
-            "party": ("🪩", "Dance at the same time as 2 friends", 1, "Ask 2 friends to press 💃 Dance with you.")}
-CODING_JOBS = ("star", "code")      # every day has one of these, so the Hang out leads back to coding
+            "party": ("🪩", "Dance at the same time as 2 friends", 1, "Ask 2 friends to press 💃 Dance with you."),
+            "chest": ("🧰", "Code a chest open", 1, "Walk to a 🧰 chest in the world and code it open.")}
+CODING_JOBS = ("star", "code", "chest")      # every day has one of these, so the Hang out leads back to coding
 DAY_JOBS_EACH = 3
 DAY_JOB_COINS = 5
 DAY_JOBS_ALL_COINS = 15
@@ -6640,7 +6840,8 @@ def room_person(spot):
         where = places[max(0, min(len(places) - 1, int(spot["x"] // pixel.PLACE_W)))]
     game, did = pixel_room.get("game"), spot.get("did")
     if game and spot["seat"] in game.get("joined", []):
-        doing = "🎮 In a game" if game["kind"] != "code" else "⭐ Solved it" if spot["seat"] in game.get("solved", []) else "💻 Coding"
+        doing = ("🎨 Drawing" if game.get("drawer") == spot["seat"] else "🤔 Guessing") if game["kind"] == "draw" \
+            else "🎮 In a game" if game["kind"] != "code" else "⭐ Solved it" if spot["seat"] in game.get("solved", []) else "💻 Coding"
     elif spot.get("bite"):
         doing = "🎣 Fishing"
     elif did and time.time() - did[1] < DOING_FOR:
@@ -6661,15 +6862,22 @@ def room_view(p, after, watch=0):
     first = room["events"][0]["n"] if room["events"] else room["seq"] + 1
     whole = after < 0 or after + 1 < first or after > room["seq"] or bool(spot and spot.pop("fresh", False))
     # Each screen is sent only the place its pal is in: the world outside, or one home.
-    loc = spot["loc"] if spot else (watch if watch and home_owner(watch) else 0)     # the class screen can look into a home
+    watched = home_owner(watch) if watch else None
+    loc = spot["loc"] if spot else home_of(pixel_entry(watched))["id"] if watched else 0     # the class screen can look into a home
     here = [s for s in room["here"].values() if s["loc"] == loc]
     owner = home_owner(loc) if loc else None
+    rooms = home_rooms(home_of(pixel_entry(owner))) if owner else []
     out = {"open": room["open"], "words": room["words"], "seq": room["seq"], "you": spot["seat"] if spot else None,
-           "meter": hang_view(), "places": ["home"] if loc else hang_places(), "game": game_view(spot["seat"] if spot else None),
-           "cover": [] if loc else GAME_COVER, "home": home_view(owner, p, loc) if owner else None, "world": hang_places(),
+           "meter": hang_view(), "places": ["home"] * len(rooms) if owner else hang_places(), "game": game_view(spot["seat"] if spot else None),
+           "cover": [] if loc else GAME_COVER, "home": home_view(owner, p) if owner else None, "world": hang_places(),
            "people": [room_person(s) for s in room["here"].values()], "loc": loc,
            "class_jobs": [DAY_JOBS[k][:2] for k in day_pick(day_order()[1])]}
-    if not p:          # the class screen: how many have done all of today's jobs
+    if winter() and not loc:
+        out["snowman"] = snowman_view()
+    if not p:          # the class screen: how many have done all of today's jobs, and opened each chest
+        counts = chest_counts()
+        out["chests"] = [{"place": place, "x": x, "deep": deep, "open": False, "count": counts[place],
+                          "job": pixel.chest_job(place, day_order()[0])["job"]} for place, (x, deep) in pixel.CHEST_SPOTS.items()]
         today = day_order()[0]
         out["jobs_done"] = sum(1 for q in players.values() if q.get("pixel") and (q["pixel"].get("day_jobs") or {}).get("day") == today
                                and q["pixel"]["day_jobs"].get("paid"))
@@ -6679,15 +6887,19 @@ def room_view(p, after, watch=0):
                    owned=pixel_owned(entry), progress=pixel_progress(entry), jobs=day_jobs_view(entry))
     if whole:
         out.update(members=[game_room_row(s, out["you"]) for s in here], events=[],
-                   placed=[room_placed_row(r, p) for r in (room_at(owner, loc)["art"] if owner else pixel_class.get("placed", []))],
-                   shower=room["shower"]["stars"] if room["shower"] and not loc else None)
+                   placed=[room_placed_row(r, p, n * pixel.PLACE_W) for n, each in enumerate(rooms) for r in each["art"]]
+                   if owner else [room_placed_row(r, p) for r in pixel_class.get("placed", [])],
+                   shower=room["shower"]["stars"] if room["shower"] and not loc else None,
+                   tree=tree_rows() if winter() and not loc else [])
+        if p and winter():
+            out["ornament"] = next((r["key"] for r in pixel_class.get("tree", []) if r["owner"] == p["id"]), None)
     else:
         out["events"] = [e for e in room["events"] if e["n"] > after and e["loc"] in (None, loc)]
     # Snapshots restore newly revealed pals and keep concealed positions off every
     # other child's browser (including the class projector). No stale trails leak.
     if room.get("game"):
         out["game_members"] = [game_room_row(s, out["you"]) for s in here]
-        active = set(room["game"]["joined"]) if room["game"]["kind"] != "code" else set()     # nothing is hidden in a Code race
+        active = set(room["game"]["joined"]) if room["game"]["kind"] not in STILL_GAMES else set()     # nothing is hidden in a Code race
         out["events"] = [e for e in out["events"] if e.get("seat") not in active and e.get("other") not in active or e["kind"] in ("leave", "move")]
     elif not whole:
         out["game_members"] = [game_room_row(s, out["you"]) for s in here]
@@ -6700,21 +6912,45 @@ def pixel_play_today(entry):
 
 
 def room_width(spot):
-    """How wide the place this pal is in is: a home is one screen."""
-    return pixel.PLACE_W if spot["loc"] else hang_width()
+    """How wide the place this pal is in is: a home is one screen for each room."""
+    owner = home_owner(spot["loc"]) if spot["loc"] else None
+    return pixel.PLACE_W * len(home_rooms(home_of(pixel_entry(owner)))) if owner else pixel.PLACE_W if spot["loc"] else hang_width()
 
 
 # ---- Homes: a room of your own, which friends can visit ---------------------------------
-def home_view(owner, p, loc):
-    rooms = home_rooms(home_of(pixel_entry(owner)))
-    at = next(i for i, r in enumerate(rooms) if r["id"] == loc)
-    room = rooms[at]
-    return {"name": hang_name(owner), "mine": owner is p, "wall": room["wall"], "floor": room["floor"], "items": room["items"],
-            "at": at, "rooms": [{"loc": r["id"], "name": room_name(r)} for r in rooms]}
+def home_view(owner, p):
+    """A whole home: its rooms side by side, and everything in them with its x along the row."""
+    entry = pixel_entry(owner)
+    home = home_of(entry)
+    rooms, points = home_rooms(home), home_points(entry)
+    level = pixel.home_level(points)
+    after = pixel.HOME_LEVELS[level + 1] if level + 1 < len(pixel.HOME_LEVELS) else None
+    return {"name": hang_name(owner), "mine": owner is p,
+            "rooms": [{"kind": room_kind(r), "name": room_name(r), "wall": r["wall"], "floor": r["floor"]} for r in rooms],
+            "items": [dict(i, x=i["x"] + n * pixel.PLACE_W) for n, r in enumerate(rooms) for i in r["items"]],
+            "more": len(home["rooms"]) < len(pixel.HOME_ROOMS), "points": points, "level": level, "next": after and after[1],
+            "hearts": len(home["hearts"]), "hearted": bool(p) and p["id"] in home["hearts"]}
 
 
 def room_name(room):
     return pixel.HOME_ROOMS[room["key"]]["name"] if "key" in room else pixel.HOME_FIRST
+
+
+def room_heart(p, spot):
+    """A visitor gives the home they're in a heart: once each, and the owner gets coins."""
+    owner = home_owner(spot["loc"]) if spot["loc"] else None
+    if not owner or owner is p:
+        return {"error": "Give a heart to a friend's home when you visit it."}
+    home = home_of(pixel_entry(owner))
+    if p["id"] in home["hearts"]:
+        return {"error": "You gave this home a heart already."}
+    home["hearts"].append(p["id"])
+    pixel_pay(owner, pixel.COINS_HEART, play=False)
+    room_event("fx", loc=spot["loc"], seat=spot["seat"], name="hearts", x=spot["x"])
+    room_event("home", loc=home["id"])
+    home_grow(owner)
+    pixel_save_soon()
+    return {"ok": True}
 
 
 def room_go(spot, loc, x, y):
@@ -6737,14 +6973,6 @@ def room_home(p, spot, data):
     if data.get("out"):
         room_go(spot, 0, spot.get("outside", 160), .5)
         return {"ok": True}
-    if "to" in data:                # through a door to the next room, or back
-        host = home_owner(spot["loc"]) if spot["loc"] else None
-        ids = [r["id"] for r in home_rooms(home_of(pixel_entry(host)))] if host else []
-        if data["to"] not in ids:
-            return {"error": "bad"}
-        back = ids.index(data["to"]) < ids.index(spot["loc"])
-        room_go(spot, data["to"], pixel.PLACE_W - 70 if back else 70, .5)      # just inside the door they came through
-        return {"ok": True}
     host = p
     if data.get("seat") is not None:
         host = next((players.get(pid) for pid, s in pixel_room["here"].items() if s["seat"] == data["seat"]), None)
@@ -6753,51 +6981,78 @@ def room_home(p, spot, data):
     room_go(spot, home_of(pixel_entry(host))["id"], 60 + spot["seat"] * 37 % 90, .5)       # just inside the door
     if host is not p:
         day_job(p, "visit")
+    grew = home_grow(p) if host is p else None      # a home furnished before levels catches up here
     pixel_save_soon()
-    return {"ok": True}
+    return {"ok": True, "grew": grew} if grew else {"ok": True}
 
 
 def room_furnish(p, spot, data):
-    """Changes this student's own home. They have to be standing in it."""
+    """Changes this student's own home. They have to be standing in it. A new piece
+    goes out by its key, while one that's out already moves (or goes away) by its number."""
     entry = pixel_entry(p)
-    room, key, what = room_at(p, spot["loc"]), data.get("key"), data.get("what")
-    if not room:
+    home = home_of(entry)
+    if spot["loc"] != home["id"]:
         return {"error": "Go to your own home to change it."}
+    rooms, what, piece = home_rooms(home), data.get("what"), data.get("piece")
     if what == "look":
+        key, n = data.get("key"), data.get("room")
         if not pixel_has(entry, key) or key in pixel.FURNITURE:
             return {"error": "bad"}
-        room["wall" if key in pixel.HOME_WALLS else "floor"] = key
+        if not isinstance(n, int) or isinstance(n, bool) or not 0 <= n < len(rooms):
+            n = home_room_at(home, spot["x"])       # the room the pal is in
+        rooms[n]["wall" if key in pixel.HOME_WALLS else "floor"] = key
     elif what == "unfurnish":
-        room["items"] = [i for i in room["items"] if i["key"] != key]
+        for room in rooms:
+            room["items"] = [i for i in room["items"] if i["id"] != piece]
     else:
-        x, y = room_number(data.get("x"), 16, pixel.PLACE_W - 16), room_number(data.get("y"), 0, 1)
-        if key not in pixel.FURNITURE or not pixel_has(entry, key) or x is None or y is None:
+        x, y = room_number(data.get("x"), 16, pixel.PLACE_W * len(rooms) - 16), room_number(data.get("y"), 0, 1)
+        if x is None or y is None:
             return {"error": "bad"}
-        for other in home_rooms(home_of(entry)):        # each piece is owned once, so it leaves the room it was in
-            if other is not room and any(i["key"] == key for i in other["items"]):
-                other["items"] = [i for i in other["items"] if i["key"] != key]
-                room_event("home", loc=other["id"])
-        room["items"] = [i for i in room["items"] if i["key"] != key] + [{"key": key, "x": round(x), "y": round(y, 2)}]
-    room_event("home", loc=room["id"])
+        n = home_room_at(home, x)
+        x = max(16, min(pixel.PLACE_W - 16, x - n * pixel.PLACE_W))      # a thing stays inside one room
+        if piece is not None:
+            item = next((i for r in rooms for i in r["items"] if i["id"] == piece), None)
+            if not item:
+                return {"error": "bad"}
+        else:
+            key = data.get("key")
+            if key not in pixel.FURNITURE or not pixel_has(entry, key):
+                return {"error": "bad"}
+            if sum(i["key"] == key for r in rooms for i in r["items"]) >= pixel_copies(entry, key):
+                name = pixel.FURNITURE[key]["name"]
+                return {"error": f"{name}: all of yours are out! Buy another in the 🛍️ Shop, or use ✋ Move my things."}
+            home["item_seq"] += 1
+            item = {"id": home["item_seq"], "key": key}
+        if sum(i is not item for i in rooms[n]["items"]) >= pixel.HOME_ITEMS:
+            return {"error": f"This room is full! {pixel.HOME_ITEMS} things is the most. Put it in another room."}
+        for room in rooms:
+            room["items"] = [i for i in room["items"] if i is not item]
+        item.update(x=round(x), y=round(y, 2))
+        rooms[n]["items"].append(item)
+    room_event("home", loc=home["id"])
+    grew = home_grow(p)
     pixel_save_soon()
-    return {"ok": True}
+    return {"ok": True, "grew": grew} if grew else {"ok": True}
 
 
 def room_buy(p, key):
+    """Buys something in the shop. Furniture can be bought again and again: the rest just once."""
     entry, item = pixel_entry(p), pixel.SHOP.get(key)
-    if not item or key in entry["gifts"] or key in entry["stuff"]:
+    if not item or key in entry["gifts"] or item["kind"] != "furniture" and key in entry["stuff"]:
         return {"error": "bad"}
     if entry["coins"] < item["price"]:
         return {"error": f"You need {item['price'] - entry['coins']} more coins. A coding mission pays the most!"}
     entry["coins"] -= item["price"]
     entry["gifts" if item["kind"] == "wear" else "stuff"].append(key)
+    grew = None
     if item["kind"] == "room":
-        home_of(entry)              # builds it now, so it has its number
-        if spot := pixel_room["here"].get(p["id"]):
-            if room_at(p, spot["loc"]):
-                room_event("home", loc=spot["loc"])      # the door to it shows up
+        home = home_of(entry)       # builds it now, so it has its number and its own look
+        pixel_feed_add(f"🔨 {hang_name(p)} built a {item['name'].lower()} onto their home!")
+        room_event("home", loc=home["id"])      # the home gets longer
+        grew = home_grow(p)
     pixel_save_soon()
-    return {"ok": True, "coins": entry["coins"], "gifts": pixel_owned(entry), "stuff": entry["stuff"]}
+    out = {"ok": True, "coins": entry["coins"], "gifts": pixel_owned(entry), "stuff": entry["stuff"]}
+    return dict(out, grew=grew) if grew else out
 
 
 def room_fish(p, spot, data):
@@ -6916,11 +7171,193 @@ def room_find(p, spot, key):
     return {"ok": True, "found": len(entry["found"]), "badges": earned}
 
 
-def room_placed_row(row, p=None):
-    """A placed drawing as students see it. The owner's id stays on the server."""
+PLACE_WORDS = {"park": "Park", "wedding": "Wedding", "beach": "Beach", "night": "Night", "snowy": "Snowy hill", "candy": "Candy land", "space": "Outer space",
+               "village": "Snow Village"}
+
+
+def chests_today(entry):
+    """Which chests this student has opened today. Every chest locks again the next day."""
+    today = time.strftime("%Y-%m-%d", time.localtime(time.time()))
+    if entry["chests"].get("day") != today:
+        entry["chests"] = {"day": today, "open": []}
+    return entry["chests"]
+
+
+def chests_view(entry):
+    mine = chests_today(entry)
+    view = []
+    for place, (x, deep) in pixel.CHEST_SPOTS.items():
+        job = pixel.chest_job(place, mine["day"])
+        view.append({"place": place, "x": x, "deep": deep, "open": place in mine["open"], "job": job["job"],
+                     "icons": pixel.race_icons(job["want"]), "chips": job.get("chips", []), "loops": job.get("loops", 0),
+                     "hint": job["answer"]})
+    return view
+
+
+def chest_counts():
+    """How many students have opened each chest today, for the projector and the teacher."""
+    today = time.strftime("%Y-%m-%d", time.localtime(time.time()))
+    counts = dict.fromkeys(pixel.CHEST_SPOTS, 0)
+    for q in players.values():
+        mine = (q.get("pixel") or {}).get("chests") or {}
+        if mine.get("day") == today:
+            for place in mine["open"]:
+                counts[place] += 1
+    return counts
+
+
+def room_chest(p, spot, data):
+    """🧰 Code opens a chest: today's puzzle for that place. The pal does the code for everyone."""
+    place, code, now = data.get("place"), data.get("code"), time.time()
+    game = pixel_room.get("game")
+    if place not in pixel.CHEST_SPOTS or place not in hang_places() or spot["loc"]:
+        return {"error": "bad"}
+    if game and spot["seat"] in game.get("joined", ()) and game["phase"] in ("hiding", "playing"):
+        return {"error": "Finish the game first!"}
+    if not isinstance(code, str) or len(code) > CODE_MAX:
+        return {"error": "That code is too long for a chest."}
+    if now - spot.get("chest_ran", 0) < CODE_RUN_GAP:
+        return {"error": "One moment..."}
+    spot["chest_ran"] = now
+    entry = pixel_entry(p)
+    mine = chests_today(entry)
+    if place in mine["open"]:
+        return {"ok": True, "open": True, "message": "This chest is open! It locks again tomorrow with a new puzzle."}
+    job = pixel.chest_job(place, mine["day"])
+    out = pixel.race_check(job, code)
+    if not out["ok"]:
+        return {"ok": True, "open": False, "message": out["message"].replace("The job is", "The chest wants"), "line": out["line"]}
+    first = not chest_counts()[place]
+    mine["open"].append(place)
+    entry["chest_count"] += 1
+    coins = pixel_pay(p, pixel.CHEST_COINS, play=False)
+    day_job(p, "chest")
+    code_spotlight(spot, job, out["steps"], now, "🧰 Opened a chest!", False)
+    if len(mine["open"]) == len([place for place in hang_places() if place in pixel.CHEST_SPOTS]):
+        pixel_feed_add(f"🧰 {hang_name(p)} opened every chest today!")
+    elif first:
+        pixel_feed_add(f"🧰 {hang_name(p)} was first to code open the {PLACE_WORDS[place]} chest today!")
+    pixel_save_soon()
+    return {"ok": True, "open": True, "coins": coins, "today": len(mine["open"]), "count": entry["chest_count"],
+            "message": f"🧰 It's open! +{coins} 🪙 Watch your pal."}
+
+
+# ---- ❄️ The Snow Village: a class tree, a snowman rolled together, and presents to find --------
+def presents_today(entry):
+    """Which of today's presents this student has found. They're new every day."""
+    today = time.strftime("%Y-%m-%d", time.localtime(time.time()))
+    if entry["presents"].get("day") != today:
+        entry["presents"] = {"day": today, "found": []}
+    return entry["presents"]
+
+
+def winter_view(entry):
+    if not winter():
+        return {"on": False}
+    mine = presents_today(entry)
+    return {"on": True, "count": entry["present_count"], "snowballs": entry["snowballs"],
+            "presents": [dict(spot, found=i in mine["found"]) for i, spot in enumerate(pixel.presents_on(mine["day"]))]}
+
+
+def snowman():
+    today = time.strftime("%Y-%m-%d", time.localtime(time.time()))
+    man = pixel_class.setdefault("snowman", {})
+    if man.get("day") != today:
+        man.update(day=today, balls=0, built=0)
+    return man
+
+
+def snowman_view():
+    man = snowman()
+    return {"balls": man["balls"], "need": pixel.SNOWMAN_BALLS, "built": man["built"]}
+
+
+def tree_rows():
+    """The class tree's ornaments as everyone sees them. Who hung each one stays on the server."""
+    return [{"by": r["by"], "pal": r["pal"]} for r in pixel_class.get("tree", [])]
+
+
+def tree_unhang(test):
+    tree = pixel_class.get("tree", [])
+    if any(test(r) for r in tree):
+        pixel_class["tree"] = [r for r in tree if not test(r)]
+        room_event("tree", loc=0, tree=tree_rows())
+        pixel_save_soon()
+
+
+def village_left():
+    return hang_places().index(pixel.VILLAGE) * pixel.PLACE_W if winter() else None
+
+
+def room_present(p, spot, i):
+    """🎁 A pal stood on one of today's presents."""
+    entry, left = pixel_entry(p), village_left()
+    if left is None or spot["loc"] or not isinstance(i, int) or isinstance(i, bool) or not 0 <= i < len(pixel.PRESENT_PLACES):
+        return {"error": "bad"}
+    mine = presents_today(entry)
+    present = pixel.presents_on(mine["day"])[i]
+    if present["place"] not in hang_places():
+        return {"error": "bad"}
+    x = hang_places().index(present["place"]) * pixel.PLACE_W + present["x"]
+    if abs(spot["x"] - x) > 40:
+        return {"error": "Walk to the present first!"}
+    if i in mine["found"]:
+        return {"ok": True, "found": len(mine["found"])}
+    mine["found"].append(i)
+    entry["present_count"] += 1
+    coins = pixel_pay(p, pixel.COINS_PRESENT)
+    room_event("fx", loc=0, seat=spot["seat"], name="stars", x=spot["x"])
+    if len(mine["found"]) == len(pixel.PRESENT_PLACES):
+        pixel_feed_add(f"🎁 {hang_name(p)} found all of today's presents!")
+    pixel_save_soon()
+    return {"ok": True, "found": len(mine["found"]), "of": len(pixel.PRESENT_PLACES), "count": entry["present_count"], "coins": coins}
+
+
+def room_snowball(p, spot):
+    """⛄ One snowball rolled onto the class snowman. Enough of them finish it, for everyone."""
+    left, now = village_left(), time.time()
+    if left is None or spot["loc"] or abs(spot["x"] - left - pixel.SNOWMAN_X) > pixel.SNOWMAN_REACH:
+        return {"error": "Walk to the snowman in the Snow Village first!"}
+    if now - spot.get("snowballed", 0) < pixel.SNOWBALL_GAP:
+        return {"error": "wait"}
+    spot["snowballed"] = now
+    entry, man = pixel_entry(p), snowman()
+    entry["snowballs"] += 1
+    man["balls"] += 1
+    done = man["balls"] >= pixel.SNOWMAN_BALLS
+    if done:
+        man["balls"] = 0
+        man["built"] += 1
+        if man["built"] <= pixel.SNOWMAN_POINTS_DAY:
+            hang_fill(pixel.SNOWMAN_POINTS)
+        pixel_feed_add(f"⛄ The class built a snowman! That's {man['built']} today.")
+    room_event("snowman", loc=0, seat=spot["seat"], done=done, x=left + pixel.SNOWMAN_X, **snowman_view())
+    pixel_save_soon()
+    return {"ok": True, "done": done, "snowballs": entry["snowballs"]}
+
+
+def room_ornament(p, spot, data):
+    """🎄 Hangs a copy of one of a student's drawings on the class tree, in place of the one they hung before."""
+    entry = pixel_entry(p)
+    drawing = next((d for d in entry["drawings"] if d["key"] == data.get("key") and set(d["frames"][0]) != {"."}), None)
+    if not winter() or not drawing:
+        return {"error": "bad"}
+    tree = [r for r in pixel_class.get("tree", []) if r["owner"] != p["id"]][-(pixel.TREE_MAX - 1):]
+    tree.append({"owner": p["id"], "by": hang_name(p), "key": drawing["key"], "pal": room_compact(drawing)})
+    pixel_class["tree"] = tree
+    room_event("tree", loc=0, tree=tree_rows())
+    if spot:
+        room_event("fx", loc=0, seat=spot["seat"], name="stars", x=spot["x"])
+    pixel_save_soon()
+    return {"ok": True, "count": len(tree)}
+
+
+def room_placed_row(row, p=None, left=0):
+    """A placed drawing as students see it. The owner's id stays on the server. `left`
+    is where its room starts, for a drawing at home."""
     owner = players.get(row["owner"])
     coded = bool(owner and pixel_entry(owner)["things"].get(row["key"]))
-    return dict({k: row[k] for k in ("id", "x", "y", "by", "pal")}, mine=bool(p and row["owner"] == p["id"]),
+    return dict({k: row[k] for k in ("id", "y", "by", "pal")}, x=row["x"] + left, mine=bool(p and row["owner"] == p["id"]),
                 coded=coded, look=row.get("look"))
 
 
@@ -6932,10 +7369,11 @@ def thing_compact(drawing):
 
 # ---- Things students draw and code ----------------------------------------------------
 def thing_rows(p):
-    """Every copy of this student's drawings out in the world or at home, with where it is."""
-    rooms = home_rooms(home_of(pixel_entry(p)))
-    return ([(0, r) for r in pixel_class.get("placed", []) if r["owner"] == p["id"]]
-            + [(room["id"], r) for room in rooms for r in room["art"]])
+    """Every copy of this student's drawings out in the world or at home, with where it
+    is and where its room starts."""
+    home = home_of(pixel_entry(p))
+    return ([(0, r, 0) for r in pixel_class.get("placed", []) if r["owner"] == p["id"]]
+            + [(home["id"], r, n * pixel.PLACE_W) for n, room in enumerate(home_rooms(home)) for r in room["art"]])
 
 
 def thing_save(p, data):
@@ -6947,11 +7385,12 @@ def thing_save(p, data):
         entry["things"][key] = code
     else:
         entry["things"].pop(key, None)
-    for loc, row in thing_rows(p):
+    for loc, row, left in thing_rows(p):
         if row["key"] == key:
             row.pop("look", None)          # a new program starts from the drawing as it was drawn
             row["clicks"] = 0
-            room_event("recode", loc=loc, item=room_placed_row(row))
+            room_event("recode", loc=loc, item=room_placed_row(row, left=left))
+    home_grow(p)                            # a drawing with code counts more
     pixel_save_soon()
     return {"ok": True}
 
@@ -6960,7 +7399,7 @@ def thing_poke(p, spot, data):
     """Someone clicked a coded thing. Its program runs and everyone in that place sees it."""
     now = time.time()
     host = home_owner(spot["loc"]) if spot["loc"] else None
-    rows = room_at(host, spot["loc"])["art"] if host else [] if spot["loc"] else pixel_class.get("placed", [])
+    rows = [r for room in home_rooms(home_of(pixel_entry(host))) for r in room["art"]] if host else [] if spot["loc"] else pixel_class.get("placed", [])
     row = next((r for r in rows if r["id"] == data.get("piece")), None)
     owner = row and players.get(row["owner"])
     code = owner and pixel_entry(owner)["things"].get(row["key"])
@@ -6991,11 +7430,12 @@ def room_unplace(test):
 
 def home_unplace(p, test):
     """Takes down drawings this student hung up at home, in any room."""
-    for room in home_rooms(home_of(pixel_entry(p))):
+    home = home_of(pixel_entry(p))
+    for room in home_rooms(home):
         gone = [r["id"] for r in room["art"] if test(r)]
         if gone:
             room["art"] = [r for r in room["art"] if r["id"] not in gone]
-            room_event("unplace", loc=room["id"], ids=gone)
+            room_event("unplace", loc=home["id"], ids=gone)
             pixel_save_soon()
 
 
@@ -7010,16 +7450,19 @@ def room_place(p, spot, data):
         return {"error": "wait"}
     spot["placed"] = now
     if spot["loc"]:
-        room = room_at(p, spot["loc"])
-        if not room:
+        home = home_of(entry)
+        if spot["loc"] != home["id"]:
             return {"error": "You can put drawings up in your own home, or outside."}
+        n = home_room_at(home, x)
+        room, left = home_rooms(home)[n], n * pixel.PLACE_W
         if len(room["art"]) >= pixel.HOME_ART:
             home_unplace(p, lambda r: r["id"] == room["art"][0]["id"])
-        every = [r["id"] for each in home_rooms(home_of(entry)) for r in each["art"]]       # numbered across the whole home
+        every = [r["id"] for each in home_rooms(home) for r in each["art"]]       # numbered across the whole home
         row = {"id": 1 + max(every, default=0), "owner": p["id"], "key": drawing["key"], "by": p["name"],
-               "x": round(x), "y": round(y, 2), "pal": thing_compact(drawing)}
+               "x": round(max(8, min(pixel.PLACE_W - 8, x - left))), "y": round(y, 2), "pal": thing_compact(drawing)}
         room["art"].append(row)
-        room_event("place", seat=spot["seat"], item=room_placed_row(row))
+        room_event("place", seat=spot["seat"], item=room_placed_row(row, left=left))
+        home_grow(p)
         pixel_save_soon()
         return {"ok": True}
     mine = [r["id"] for r in pixel_class.get("placed", []) if r["owner"] == p["id"]]
@@ -7039,25 +7482,70 @@ def room_place(p, spot, data):
 
 
 def room_placed_counts():
+    """Drawings each student has out where everyone sees them: in the world, and on the ❄️ class tree."""
     counts = {}
     for row in pixel_class.get("placed", []):
         counts[row["by"]] = counts.get(row["by"], 0) + 1
+    for row in pixel_class.get("tree", []):
+        name = players.get(row["owner"], {}).get("name", row["by"])
+        counts[name] = counts.get(name, 0) + 1
     return counts
 
 
 def room_wear(p, spot, slot, item):
     entry = pixel_entry(p)
     gift = pixel.GIFTS.get(item)
-    if slot not in pixel.WEAR_SLOTS or (item is not None and not (gift and gift["slot"] == slot and item in pixel_owned(entry))):
+    own = next((w for w in entry["mywear"] if w["key"] == item), None)
+    if slot not in pixel.WEAR_SLOTS or (item is not None and not (gift and gift["slot"] == slot and item in pixel_owned(entry))
+                                        and not (own and own["slot"] == slot)):
         return {"error": "bad"}
     if item is None:
         entry["wear"].pop(slot, None)
     else:
         entry["wear"][slot] = item
-    spot["wear"] = dict(entry["wear"])
-    room_event("wear", seat=spot["seat"], wear=spot["wear"])
+    wear_show(spot, entry)
     pixel_save_soon()
     return {"ok": True}
+
+
+def wear_show(spot, entry):
+    """Everyone sees what a student has on now."""
+    if spot:
+        spot["wear"], spot["wear_art"] = dict(entry["wear"]), wear_art(entry)
+        room_event("wear", seat=spot["seat"], wear=spot["wear"], wear_art=spot["wear_art"])
+
+
+def room_sew(p, spot, data):
+    """✏️ Turns a copy of one of a student's drawings into a hat or a face thing, and puts it on."""
+    entry = pixel_entry(p)
+    slot = data.get("slot")
+    drawing = next((d for d in entry["drawings"] if d["key"] == data.get("key")), None)
+    art = drawing and pixel.wear_cut(drawing)
+    if slot not in pixel.MY_WEAR_SLOTS or not art:
+        return {"error": "Pick a drawing first."}
+    if len(entry["mywear"]) >= pixel.MY_WEAR_MAX:
+        return {"error": f"You have {pixel.MY_WEAR_MAX} already! Throw one away first."}
+    if entry["coins"] < pixel.MY_WEAR_PRICE:
+        return {"error": f"You need {pixel.MY_WEAR_PRICE - entry['coins']} more coins. A coding mission pays the most!"}
+    entry["coins"] -= pixel.MY_WEAR_PRICE
+    entry["mywear_n"] = entry.get("mywear_n", 0) + 1
+    item = {"key": f"my:{entry['mywear_n']}", "slot": slot, "name": drawing["title"] or "My drawing", "art": art}
+    entry["mywear"].append(item)
+    entry["wear"][slot] = item["key"]
+    wear_show(spot, entry)
+    pixel_save_soon()
+    return {"ok": True, "item": item, "coins": entry["coins"], "mywear": entry["mywear"], "wear": entry["wear"]}
+
+
+def room_unsew(p, spot, key):
+    entry = pixel_entry(p)
+    if not any(w["key"] == key for w in entry["mywear"]):
+        return {"error": "bad"}
+    entry["mywear"] = [w for w in entry["mywear"] if w["key"] != key]
+    entry["wear"] = {slot: k for slot, k in entry["wear"].items() if k != key}
+    wear_show(spot, entry)
+    pixel_save_soon()
+    return {"ok": True, "mywear": entry["mywear"], "wear": entry["wear"]}
 
 
 # 🪩 A dance party: 3 pals in one place pressing Dance within a few seconds of each other. Everyone
@@ -7117,7 +7605,7 @@ def room_do(p, data):
             spot = room["here"][p["id"]] = {
                 "seat": room["seats"], "name": hang_name(p), "real": p["name"], "x": x, "y": y,
                 "mood": None, "rest": None, "seen": time.time(), "pal": room_compact(pixel_pal(entry)), "buddies": room_buddies(entry), "wear": dict(entry["wear"]),
-                "loc": 0, "prop": False, "hid": bool(entry.get("hide_name"))}
+                "wear_art": wear_art(entry), "loc": 0, "prop": False, "hid": bool(entry.get("hide_name"))}
             room_event("join", loc=0, member=room_row(spot))
         return {"ok": True, "you": spot["seat"]}
     if not spot:
@@ -7133,7 +7621,7 @@ def room_do(p, data):
     if game and game["phase"] in ("hiding", "playing") and seat in game["joined"]:
         if what == "walk":
             return game_walk(spot, data)
-        if what != "leave" and not (game["kind"] == "code" and what in ("clap", "say")):     # coders can cheer each other on
+        if what != "leave" and not (game["kind"] in STILL_GAMES and what in ("clap", "say")):     # players can cheer each other on
             return {"error": "You're in a game! Play it, or press Leave game in Games to do this."}
     if what == "five" and game and game["phase"] in ("hiding", "playing") and data.get("seat") in game["joined"]:
         return {"error": "Your friend is playing a game right now."}
@@ -7147,6 +7635,8 @@ def room_do(p, data):
         return room_furnish(p, spot, data)
     elif what == "buy":
         return room_buy(p, data.get("key"))
+    elif what == "heart":
+        return room_heart(p, spot)
     elif what == "fish":
         return room_fish(p, spot, data)
     elif what == "walk":
@@ -7198,8 +7688,8 @@ def room_do(p, data):
         spot["x"], spot["y"], spot["rest"] = x, y, None
         spot.pop("bite", None)
         room_event("go", seat=seat, x=spot["x"], y=spot["y"])
-    elif what == "toy" and data.get("name") in pixel.HANG_TOYS and not spot["loc"]:
-        x, y, now = room_number(data.get("x"), 8, hang_width() - 8), room_number(data.get("y"), 0, 1), time.time()
+    elif what == "toy" and data.get("name") in (pixel.HOME_TOYS if spot["loc"] else pixel.HANG_TOYS):     # at home, the furniture
+        x, y, now = room_number(data.get("x"), 8, room_width(spot) - 8), room_number(data.get("y"), 0, 1), time.time()
         if x is None or y is None:
             return {"error": "bad"}
         if now - spot.get("toyed", 0) < pixel.TOY_GAP:
@@ -7210,12 +7700,20 @@ def room_do(p, data):
         return room_place(p, spot, data)
     elif what == "unplace":
         if spot["loc"]:
-            if room_at(p, spot["loc"]):
+            if spot["loc"] == home_of(pixel_entry(p))["id"]:
                 home_unplace(p, lambda r: r["id"] == data.get("piece"))
         else:
             room_unplace(lambda r: r["id"] == data.get("piece") and r["owner"] == p["id"])
     elif what == "find":
         return room_find(p, spot, data.get("key"))
+    elif what == "chest":
+        return room_chest(p, spot, data)
+    elif what == "present":
+        return room_present(p, spot, data.get("i"))
+    elif what == "snowball":
+        return room_snowball(p, spot)
+    elif what == "ornament":
+        return room_ornament(p, spot, data)
     elif what == "poke":
         return thing_poke(p, spot, data)
     elif what == "mymove":
@@ -7236,6 +7734,10 @@ def room_do(p, data):
         return room_catch(p, spot, data.get("star"))
     elif what == "wear":
         return room_wear(p, spot, data.get("slot"), data.get("item"))
+    elif what == "sew":
+        return room_sew(p, spot, data)
+    elif what == "unsew":
+        return room_unsew(p, spot, data.get("item"))
     elif what == "buddies":
         entry = pixel_entry(p)
         entry["buddies_on"] = bool(data.get("on"))
@@ -7299,6 +7801,7 @@ def pixel_overview():
                      "fixes": len(entry["fixed"]),
                      "badges": len(entry["badges"]), "hang": not pixel_hang_needs(entry), "let_in": bool(entry.get("hang_let_in")), "move": bool(entry["move"]),
                      "jobs": sum(j["have"] >= j["need"] for j in day_jobs_view(entry)["list"]),
+                     "chests": len(chests_today(entry)["open"]),
                      "active": entry["active"], "picture": pixel_picture(entry)})
     rows.sort(key=lambda r: (r["at"], -r["misses"], r["name"].lower()))
     said = []
@@ -7308,6 +7811,8 @@ def pixel_overview():
             "open": pixel_class.get("open", 0), "feed": pixel_feed[-12:],
             "room": {"open": pixel_room["open"], "words": pixel_room["words"], "here": [s["real"] for s in pixel_room["here"].values()],
                      "said": said[-8:], "game": game_brief(), "jobs": [" ".join(DAY_JOBS[k][:2]) for k in day_pick(day_order()[1])],
+                     "chests": [[PLACE_WORDS[place], pixel.chest_job(place, day_order()[0])["job"], n] for place, n in chest_counts().items()
+                                if place in hang_places()],
                      "people": {s["real"]: room_person(s) for s in pixel_room["here"].values()}},
             "meter": hang_view(), "stars": pixel_class_stars(), "placed": room_placed_counts()}
 
@@ -7344,6 +7849,7 @@ def pixel_teacher(data):
     if action == "placed_clear":
         who = data.get("name")
         room_unplace(lambda r: who is None or r["by"] == who)
+        tree_unhang(lambda r: who is None or players.get(r["owner"], {}).get("name") == who)
         return {"ok": True}
     if action == "let_in":             # the teacher opens the Hang out for one student early
         kids = [q for q in players.values() if q.get("pixel") and q["name"] == data.get("name")]

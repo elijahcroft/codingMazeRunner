@@ -1714,7 +1714,37 @@ GIFTS = {
     "dragon": {"name": "Dragon horns", "slot": "hat", "goal": ["stars", 15]},
     "astro": {"name": "Space helmet", "slot": "hat", "goal": ["gems", 21]},
     "superspark": {"name": "Superstar sparkles", "slot": "sparkle", "goal": ["stars", 27]},
+    "chestspark": {"name": "Treasure sparkles", "slot": "sparkle", "goal": ["chests", 5]},
+    "captain": {"name": "Captain hat", "slot": "hat", "goal": ["chests", 20]},
+    # ✨ Fancy: the big things to save up for. 100 coins or more puts them on the shop's Fancy shelf.
+    "sunhat": {"name": "Sun hat", "slot": "hat", "price": 100}, "musicspark": {"name": "Music sparkles", "slot": "sparkle", "price": 120},
+    "princess": {"name": "Princess hat", "slot": "hat", "price": 120}, "starmask": {"name": "Sparkly mask", "slot": "face", "price": 110},
+    "butterflyspark": {"name": "Butterfly sparkles", "slot": "sparkle", "price": 130},
+    "diamondtiara": {"name": "Diamond tiara", "slot": "hat", "price": 150}, "royalcrown": {"name": "Royal crown", "slot": "hat", "price": 200},
+    # ❄️ Winter: two in the shop, and three goals in the Snow Village.
+    "bobble": {"name": "Bobble hat", "slot": "hat", "price": 45}, "earmuffs": {"name": "Fluffy earmuffs", "slot": "hat", "price": 50},
+    "santa": {"name": "Santa hat", "slot": "hat", "goal": ["presents", 5]},
+    "antlers": {"name": "Reindeer antlers", "slot": "hat", "goal": ["snowballs", 25]},
+    "snowspark": {"name": "Snowflake sparkles", "slot": "sparkle", "goal": ["presents", 15]},
 }
+FANCY_PRICE = 100          # wearables this dear go on the shop's ✨ Fancy shelf
+
+# ✏️ Wear your own drawing: a copy of one of your drawings, worn as a hat or on the face.
+# It's a copy, so changing or deleting the drawing later leaves it as it was.
+MY_WEAR_PRICE = 40
+MY_WEAR_MAX = 6
+MY_WEAR_SLOTS = ("hat", "face")
+
+
+def wear_cut(drawing):
+    """The first frame of a drawing, cut down to the squares that are drawn."""
+    size, frame = drawing["size"], drawing["frames"][0]
+    rows = [frame[i * size:(i + 1) * size] for i in range(size)]
+    ys = [y for y, row in enumerate(rows) if set(row) != {"."}]
+    if not ys:
+        return None
+    xs = [x for x in range(size) if any(row[x] != "." for row in rows)]
+    return {"size": size, "palette": drawing["palette"], "rows": [row[xs[0]:xs[-1] + 1] for row in rows[ys[0]:ys[-1] + 1]]}
 BOX_GIFTS = tuple(key for key, gift in GIFTS.items() if not gift.get("class") and not gift.get("price") and not gift.get("goal"))
 GOAL_GIFTS = tuple(key for key, gift in GIFTS.items() if gift.get("goal"))
 WEAR_SLOTS = ("hat", "face", "sparkle")
@@ -1752,30 +1782,89 @@ COINS_FISH = 1
 COINS_NEW_FISH = 4         # more, the first time for each kind
 PLAY_COINS_DAY = 40
 
-# Things for a home. A price of 0 is there from the start.
+# Things for a home. A price of 0 is there from the start, unless it's a "prize" (the
+# home level that wins it). A thing with a price can be bought again and again, and each
+# copy goes out on its own. "toy" is what happens when someone clicks it (pixel_stage.js
+# TOY_FX).
 FURNITURE = {
     "rug": {"name": "Round rug", "price": 0}, "plant": {"name": "Pot plant", "price": 0},
-    "balloons": {"name": "Balloons", "price": 15}, "lamp": {"name": "Lamp", "price": 20}, "teddy": {"name": "Teddy", "price": 20},
-    "table": {"name": "Table", "price": 25}, "beanbag": {"name": "Bean bag", "price": 25}, "toybox": {"name": "Toy box", "price": 30},
-    "shelf": {"name": "Bookshelf", "price": 35}, "bed": {"name": "Bed", "price": 40}, "sofa": {"name": "Sofa", "price": 40},
-    "tv": {"name": "TV", "price": 45}, "tank": {"name": "Fish tank", "price": 50}, "disco": {"name": "Disco ball", "price": 60},
+    "balloons": {"name": "Balloons", "price": 15, "toy": "pop"}, "cupcakes": {"name": "Cupcakes", "price": 15, "toy": "snack"},
+    "duck": {"name": "Rubber duck", "price": 15, "toy": "quack"}, "lamp": {"name": "Lamp", "price": 20, "toy": "glow"},
+    "teddy": {"name": "Teddy", "price": 20, "toy": "hug"}, "flowers": {"name": "Flower bed", "price": 20, "toy": "petals"},
+    "table": {"name": "Table", "price": 25, "toy": "snack"}, "beanbag": {"name": "Bean bag", "price": 25, "toy": "bounce"},
+    "toybox": {"name": "Toy box", "price": 30, "toy": "bounce"}, "tree": {"name": "Little tree", "price": 30, "toy": "apples"},
+    "shelf": {"name": "Bookshelf", "price": 35, "toy": "book"}, "fridge": {"name": "Fridge", "price": 35, "toy": "snack"},
+    "stove": {"name": "Stove", "price": 35, "toy": "cook"}, "wardrobe": {"name": "Wardrobe", "price": 35, "toy": "dressup"},
+    "bed": {"name": "Bed", "price": 40, "toy": "zzz"}, "sofa": {"name": "Sofa", "price": 40, "toy": "bounce"},
+    "tv": {"name": "TV", "price": 45, "toy": "tv"}, "swing": {"name": "Swing", "price": 45, "toy": "wheee"},
+    "chest": {"name": "Treasure chest", "price": 45, "toy": "treasure"}, "tank": {"name": "Fish tank", "price": 50, "toy": "blub"},
+    "drums": {"name": "Drum kit", "price": 50, "toy": "drums"}, "telescope": {"name": "Telescope", "price": 50, "toy": "stars"},
+    "trampoline": {"name": "Trampoline", "price": 50, "toy": "bounce"}, "bunkbed": {"name": "Bunk bed", "price": 55, "toy": "zzz"},
+    "piano": {"name": "Piano", "price": 55, "toy": "notes"}, "disco": {"name": "Disco ball", "price": 60, "toy": "party"},
+    "fountain": {"name": "Fountain", "price": 60, "toy": "splash"}, "slide": {"name": "Slide", "price": 65, "toy": "wheee"},
+    "arcade": {"name": "Arcade game", "price": 70, "toy": "arcade"}, "rocketbed": {"name": "Rocket bed", "price": 75, "toy": "zzz"},
+    "robot": {"name": "Robot buddy", "price": 80, "toy": "beep"}, "dragonegg": {"name": "Dragon egg", "price": 100, "toy": "magic"},
+    "trophy": {"name": "Gold trophy", "price": 0, "prize": 1, "toy": "cheer"},
+    "rainbowarch": {"name": "Rainbow", "price": 0, "prize": 3, "toy": "stars"},
+    "throne": {"name": "Golden throne", "price": 0, "prize": 4, "toy": "cheer"},
+    "unicornpal": {"name": "Unicorn", "price": 0, "prize": 6, "toy": "magic"},
 }
+# A "room" wall or floor comes with that room and can't be bought on its own.
 HOME_WALLS = {"w_cream": {"name": "Cream walls", "price": 0}, "w_pink": {"name": "Pink walls", "price": 30},
-              "w_blue": {"name": "Blue walls", "price": 30}, "w_night": {"name": "Starry walls", "price": 40}}
+              "w_blue": {"name": "Blue walls", "price": 30}, "w_mint": {"name": "Mint walls", "price": 30},
+              "w_sky": {"name": "Sky walls", "price": 35}, "w_sea": {"name": "Sea walls", "price": 35},
+              "w_candy": {"name": "Candy stripes", "price": 40}, "w_night": {"name": "Starry walls", "price": 40},
+              "w_attic": {"name": "Wood walls", "price": 0, "room": "r_attic"},
+              "w_castle": {"name": "Castle walls", "price": 0, "room": "r_secret"}}
 HOME_FLOORS = {"f_wood": {"name": "Wood floor", "price": 0}, "f_check": {"name": "Checked floor", "price": 30},
-               "f_grass": {"name": "Grass floor", "price": 30}, "f_cloud": {"name": "Cloud floor", "price": 40}}
-# More rooms, bought in the shop. Each has its own walls, floor and things. They join on
-# in the order they're bought: the door on the right of a room goes to the next one.
-HOME_ROOMS = {"r_bed": {"name": "Bedroom", "price": 50}, "r_play": {"name": "Playroom", "price": 70},
-              "r_attic": {"name": "Attic", "price": 90}}
+               "f_grass": {"name": "Grass floor", "price": 30}, "f_carpet": {"name": "Purple carpet", "price": 30},
+               "f_tile": {"name": "Blue tiles", "price": 30}, "f_sand": {"name": "Sand floor", "price": 35},
+               "f_cloud": {"name": "Cloud floor", "price": 40}, "f_rainbow": {"name": "Rainbow floor", "price": 0, "prize": 2},
+               "f_gold": {"name": "Gold floor", "price": 0, "prize": 5}}
+# More rooms, bought in the shop. They join on in a row in the order they're bought, and
+# a pal walks from one to the next through an open doorway. Each kind comes with its own
+# walls and floor (the owner gets those to use anywhere) and something built in.
+HOME_ROOMS = {"r_bed": {"name": "Bedroom", "icon": "🛏️", "price": 50, "wall": "w_blue", "floor": "f_carpet"},
+              "r_kitchen": {"name": "Kitchen", "icon": "🍳", "price": 60, "wall": "w_mint", "floor": "f_check"},
+              "r_play": {"name": "Playroom", "icon": "🧸", "price": 70, "wall": "w_candy", "floor": "f_carpet"},
+              "r_garden": {"name": "Garden", "icon": "🌻", "price": 80, "wall": "w_sky", "floor": "f_grass"},
+              "r_attic": {"name": "Attic", "icon": "🕯️", "price": 90, "wall": "w_attic", "floor": "f_wood"},
+              "r_games": {"name": "Game room", "icon": "🕹️", "price": 110, "wall": "w_night", "floor": "f_carpet"},
+              "r_pool": {"name": "Pool room", "icon": "🏊", "price": 140, "wall": "w_sea", "floor": "f_tile"},
+              "r_secret": {"name": "Secret room", "icon": "🗝️", "price": 180, "wall": "w_castle", "floor": "f_sand"}}
 HOME_FIRST = "Living room"
+# A home grows up as it fills: a point for each thing out (two for a drawing with code),
+# ROOM_POINTS for each room built, and one for each heart from a visitor. Each level
+# after the first wins a prize that can't be bought.
+HOME_LEVELS = (("Tiny hut", 0), ("Cozy cottage", 4), ("Happy house", 9), ("Big house", 15),
+               ("Super house", 22), ("Mansion", 30), ("Dream castle", 40))
+ROOM_POINTS = 3
+HEART_POINTS_MAX = 10      # hearts count up to this many points
+COINS_HEART = 2            # the owner's, when a visitor gives their home a heart
 # Everything with a price, and which shelf of the shop it's on.
 SHOP = dict({key: dict(gift, kind="wear") for key, gift in GIFTS.items() if gift.get("price")},
             **{key: dict(item, kind="furniture") for key, item in FURNITURE.items() if item["price"]},
             **{key: dict(item, kind="wall") for key, item in HOME_WALLS.items() if item["price"]},
             **{key: dict(item, kind="floor") for key, item in HOME_FLOORS.items() if item["price"]},
             **{key: dict(item, kind="room") for key, item in HOME_ROOMS.items()})
-HOME_ART = 5               # drawings a student can hang up at home
+HOME_TOYS = frozenset(item["toy"] for item in FURNITURE.values() if "toy" in item)
+HOME_ART = 5               # drawings a student can hang up in each room
+HOME_ITEMS = 12            # pieces of furniture in each room
+
+
+def home_free(item):
+    """Whether everyone has this thing for a home from the start."""
+    return not item["price"] and not item.get("prize") and not item.get("room")
+
+
+def home_level(points):
+    """Which of HOME_LEVELS a home with this many points is."""
+    return max(i for i, (_, need) in enumerate(HOME_LEVELS) if points >= need)
+
+
+def home_prizes(level):
+    """The keys of everything a home at this level has won."""
+    return [key for key, item in {**FURNITURE, **HOME_WALLS, **HOME_FLOORS}.items() if 0 < item.get("prize", 0) <= level]
 
 # Fishing at the beach: (picture, name, how often out of 100).
 FISH = {"minnow": ("🐟", "Little fish", 34), "stripy": ("🐠", "Stripy fish", 22), "shell": ("🐚", "Shell", 12), "boot": ("🥾", "Old boot", 10),
@@ -1856,8 +1945,83 @@ def race_check(job, code):
     return {"ok": False, "message": message, "line": None}
 
 
+# ---- Code chests: one in each place of the Hang out, and code opens it ---------------
+# A chest's puzzle is a Code race job. It changes every day, the same for the whole class
+# so friends can help each other, and gets harder further along the world. Each student
+# opens each chest once a day.
+CHEST_SPOTS = {"park": (240, .6), "wedding": (90, .55), "beach": (282, .45), "night": (92, .5),
+               "snowy": (240, .75), "candy": (252, .55), "space": (62, .45)}     # x in the place, and how deep
+CHEST_TIER = {"park": 0, "wedding": 1, "beach": 1, "night": 2, "snowy": 2, "candy": 3, "space": 3}
+CHEST_JOBS = RACE_JOBS + ((
+    {"job": "Count 1 to 5 with say(). Use a loop!", "want": ["say"] * 5, "said": ["1", "2", "3", "4", "5"], "loops": 1,
+     "chips": ["say(i + 1)"], "answer": "for i in range(5):\n    say(i + 1)"},
+    {"job": "Count down 3, 2, 1 with a loop. Then cheer!", "want": ["say"] * 3 + ["cheer"], "said": ["3", "2", "1"], "loops": 1,
+     "chips": ["say(3 - i)"], "answer": "for i in range(3):\n    say(3 - i)\ncheer()"},
+    {"job": "Jump, spin and wave. Do that 3 times with a loop!", "want": ["jump", "spin", "wave"] * 3, "loops": 1,
+     "answer": "for i in range(3):\n    jump()\n    spin()\n    wave()"},
+    {"job": "Spin 2 times, then make hearts 3 times. Use 2 loops!", "want": ["spin"] * 2 + ["hearts"] * 3, "loops": 2,
+     "answer": "for i in range(2):\n    spin()\nfor i in range(3):\n    hearts()"}),)
+CHEST_COINS = 10           # coding coins, so no daily limit
+
+
+def chest_job(place, day):
+    """Today's puzzle for the chest in this place."""
+    return random.Random(f"chest {day} {place}").choice(CHEST_JOBS[CHEST_TIER[place]])
+
+
 def party_goal(level):
     return min(10 + 5 * level, 30)
+
+
+# ---- 🎨 Draw & guess: one pal draws a secret word on a little grid, the others tap the picture ----
+# The guesses are pictures with words, so nobody has to type or spell.
+GUESS_WORDS = (("cat", "🐱", "Cat"), ("dog", "🐶", "Dog"), ("fish", "🐟", "Fish"), ("star", "⭐", "Star"), ("heart", "❤️", "Heart"),
+               ("house", "🏠", "House"), ("tree", "🌳", "Tree"), ("flower", "🌸", "Flower"), ("apple", "🍎", "Apple"),
+               ("rainbow", "🌈", "Rainbow"), ("sun", "☀️", "Sun"), ("moon", "🌙", "Moon"), ("ghost", "👻", "Ghost"),
+               ("snowman", "⛄", "Snowman"), ("cake", "🎂", "Cake"), ("car", "🚗", "Car"), ("boat", "⛵", "Boat"),
+               ("bunny", "🐰", "Bunny"), ("icecream", "🍦", "Ice cream"), ("balloon", "🎈", "Balloon"), ("pizza", "🍕", "Pizza"),
+               ("crown", "👑", "Crown"), ("butterfly", "🦋", "Butterfly"), ("mushroom", "🍄", "Mushroom"), ("frog", "🐸", "Frog"),
+               ("present", "🎁", "Present"), ("snake", "🐍", "Snake"), ("banana", "🍌", "Banana"), ("gem", "💎", "Gem"),
+               ("robot", "🤖", "Robot"), ("rocket", "🚀", "Rocket"), ("umbrella", "☂️", "Umbrella"))
+GUESS_BY_KEY = {w[0]: w for w in GUESS_WORDS}
+DRAW_GRID = 12             # squares across and down
+DRAW_COLOURS = ("#1b1530", "#e8294f", "#ff9a3c", "#ffd93b", "#35b55a", "#2f6fe4", "#a05ce8", "#ff8fc7", "#8a5a33", "#ffffff")
+DRAW_CHOICES = 6           # pictures to pick from, the right one among them
+
+
+# ---- ❄️ Winter: the Snow Village ------------------------------------------------------
+# From WINTER_FROM to WINTER_TO each year the world gets one more place at its far end. It's
+# never in HANG_WORLD, so gems, chests and goals that need every place don't wait on it.
+# In it: a class tree to hang a drawing on, a snowman the class rolls together, and every day
+# five presents to find, one in each of PRESENT_PLACES, the same spots for everyone.
+WINTER_FROM, WINTER_TO = (11, 16), (12, 31)     # (month, day), both days included
+VILLAGE = "village"
+TREE_X = 92                # where the class tree stands in the village
+TREE_MAX = 40              # ornaments: one for each student, the oldest going first
+SNOWMAN_X, SNOWMAN_DEEP = 238, .2
+SNOWMAN_BALLS = 30         # snowballs the class rolls to finish a snowman
+SNOWMAN_REACH = 46         # how close a pal has to be to roll one
+SNOWBALL_GAP = 1           # seconds between one student's snowballs
+SNOWMAN_POINTS = 2         # a finished snowman fills the party meter this much
+SNOWMAN_POINTS_DAY = 3     # for the first few snowmen each day
+PRESENT_PLACES = HANG_PLACES + (VILLAGE,)
+COINS_PRESENT = 2
+
+
+def winter_on(month, day):
+    return WINTER_FROM <= (month, day) <= WINTER_TO
+
+
+def presents_on(day):
+    """Today's presents: one in each place, somewhere new every day."""
+    rng = random.Random(f"presents {day}")
+    spots = []
+    for place in PRESENT_PLACES:
+        x = rng.randint(24, 296)
+        while place == VILLAGE and (abs(x - TREE_X) < 40 or abs(x - SNOWMAN_X) < 34):     # not under the tree or the snowman
+            x = rng.randint(24, 296)
+        spots.append({"place": place, "x": x, "deep": round(rng.uniform(.3, .95), 2)})
+    return spots
 
 
 MOVE_NAMES = ("Moon Hop", "Super Spin", "Wiggle Blast", "Star Dance", "Happy Stomp", "Noodle Arms", "Sparkle Slide", "Turbo Twirl",

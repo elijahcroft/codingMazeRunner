@@ -1107,8 +1107,10 @@ lot, and both are progress.
 | A field that grows from 3 by 1 to 8 by 7 | loops inside loops, `width()` and `height()`, or `while look("east") != "fence":` |
 | Crops that take 2 to 6 days | `if ripe():` and `if empty():` |
 | 🌻 Sun blooms, which only grow with no sun bloom beside them | a chess board: `if (x() + y()) % 2 == 0:` |
+| 🌠 Meteors: rocks land in the field at night and stop the rover | `if look("east") == "rock":` then `drill("east")` |
+| ✨ Perfect days: no wasted tick pays 50% more | asking before acting, and no `east()` into the fence at the end of a loop |
 
-**The first 13 jobs teach it,** one idea each, on a gold card above the code. A job that
+**The first 15 jobs teach it,** one idea each, on a gold card above the code. A job that
 needs code shows it beside the code box under **✍️ Type this**, and each line gets a ✓ as
 the student types it. After two days that don't finish the job, **✍️ Put this in my code**
 appears. Buying jobs are always affordable by then (a test checks).
@@ -1122,6 +1124,29 @@ appears. Buying jobs are always affordable by then (a test checks).
 | 9, 10 | buy carrots, pick only ripe ones | `if ripe():` and `if empty():` |
 | 11, 12 | buy memory, make a trick | `def care():` |
 | 13 | a loop that looks | `while look("east") != "fence":` |
+| 14 | a meteor lands east of the rover: drill it (this one has a 💎) | `if look("east") == "rock":` and `drill("east")` |
+| 15 | a perfect day: 3 or more picked with no tick wasted | `def care():` with `if ripe():` and `if empty():` |
+
+A student who had already finished the first 13 jobs picks up at job 14 the next time they open
+their farm. Their 📦 order waits, kept as it was, until job 15 is done.
+
+**🌠 Meteors.** After job 14, on about one night in three, a space rock lands on a random
+square of the field (never the rover's start or a golden plant; one night in eight of those
+it's a shower of three). A rock blocks the rover: a plain `for` loop that drives into one
+bumps against it for the rest of the row. That's the point: a loop that counts needs an `if`
+that looks. `look()` says `"rock"`, and `drill("east")` (the same word as on the planet)
+cracks it and sells it for 3 times the farm's best crop. One rock in five has a 💎 gem
+inside and pays 5 times that. A field never holds more than a fifth of its squares in rock,
+and the first field (3 by 1) gets none.
+
+**✨ Perfect days.** A day that picks 3 or more and wastes no tick (no bump at a fence or a
+rock, nothing picked too early, nothing planted twice, no drill at nothing) pays 50% more.
+A day that misses by 1 to 3 ticks says "So close!". The loops the early jobs show end with
+an `east()` into the fence, so the first thing a student finds is that their own loop
+wastes a tick. The page also shows a 🔥 count for picks in a row.
+
+**🏆 Class record.** The bottom of the farm shows the class's best farm day and whose it
+is. Beating it brings a toast, and when the record changes hands the class screen says so.
 
 After the jobs, the card shows **📦 orders** from the space station ("12 × 🍓 Glowberry"),
 one after another, for ever. Every third order brings a **🎁 crate** with something for the
@@ -1146,9 +1171,10 @@ makes their farm earn 1% more (**⭐ Star bonus**, at the top of the farm). 40 s
 **Showing off:** **👀 Visit** lists classmates' farms. A visit shows their field, their
 yard and their rover in its garage look. It never shows their code or their coins. Clicking
 a thing in a yard makes it say something. A title grows with the coins a farm has ever
-earned: Sprout, Farm Hand, Farmer, Rancher, Tycoon, Farm Legend. Four badges are earned on
+earned: Sprout, Farm Hand, Farmer, Rancher, Tycoon, Farm Legend. Six badges are earned on
 the farm and show in the garage with the rest: 🌱 Green Wheels, 🚜 Automator (6 picked in a
-day with a loop), ✨ Golden Touch and 💰 Money Bags.
+day with a loop), ✨ Golden Touch, 💰 Money Bags, 🪨 Rock Breaker (drill a meteor) and 💯
+Perfect Day.
 
 **Keeping an eye on it:** under the switch, your page lists every farm: its day, the size
 of its field, its best day, which job it's on, how many lines its program is and **which

@@ -1073,6 +1073,11 @@ Object.assign(PAINTS, {
       ctx.stroke();
     }
   }},
+  aiden: {base: "#2fa84f", swatch: "repeating-linear-gradient(180deg, #2fa84f 0 5px, #ffffff 5px 10px)", draw(ctx, s) {
+    // Green and white stripes running nose to tail.
+    ctx.fillStyle = "#ffffff";
+    for (let k = 1; k < 6; k += 2) ctx.fillRect(-.32 * s, (-.22 + k * .44 / 6) * s, .62 * s, .44 / 6 * s);
+  }},
   banana: {base: "#ffe14d", swatch: "linear-gradient(90deg, #4a2f14 0 7%, #ffe14d 7% 93%, #4a2f14 93%)", fill(ctx, s) {
     // Rounder in the middle, like a real banana.
     const grad = ctx.createLinearGradient(0, -.22 * s, 0, .22 * s);

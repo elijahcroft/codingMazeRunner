@@ -670,6 +670,27 @@ const PalHang = (() => {
       snowballs(g, 268, 140);
       for (let i = 0; i < 12; i++) twinkle(g, (i * 89 + 40) % W, 118 + (i * 37) % 58, 1.5, "#ffffff");
     },
+    // ❄️ The Snow Village, open in winter: a starry evening, cottages with their lights on, and the class
+    // tree. The ornaments, the snowman and the presents change, so they're painted on top as they happen.
+    village(g) {
+      sky(g, "#545aa8", "#f7cbdc");
+      for (let i = 0; i < 16; i++) twinkle(g, (i * 71 + 23) % W, 6 + (i * 37) % 52, i % 3 ? .8 : 1.3, "#fff6d8");
+      glow(g, 262, 24, 16, "#fff6d855");
+      oval(g, 262, 24, 8, 8, "#fff6d8"); oval(g, 259, 22, 2, 1.6, "#f3e6bf"); oval(g, 265, 27, 1.4, 1.2, "#f3e6bf");
+      mountain(g, 60, 100, 70, 46, "#8d8fd0", "#f2f0ff");
+      mountain(g, 250, 100, 80, 52, "#9b9ad6", "#f2f0ff");
+      hills(g, 98, "#d9def4", [[40, 60, 150], [230, 60, 320]]);
+      ground(g, 104, "#f8fbfe", "#dbe3f4");
+      patches(g, "#e6ebf7", 112);
+      cottage(g, 172, 106, "#e8b5a0", "#f7f9ff");
+      cottage(g, 214, 104, "#b9c7e8", "#f7f9ff");
+      cottage(g, 300, 106, "#c9e3c2", "#f7f9ff");
+      lamp(g, 142, 124, true); lamp(g, 314, 124, true);
+      // the class tree, with lights. The star on top lights up when it has lots of ornaments.
+      pine(g, VILLAGE_TREE_X, 124, 2.1, "#2f7a62", "#f5fbff", "#25604f");
+      [[-14, 70, "#ff5fa2"], [12, 82, "#ffd93b"], [-22, 96, "#7ab8ff"], [24, 104, "#ff5fa2"], [-4, 58, "#7ab8ff"], [6, 92, "#ff9a3c"], [-26, 116, "#ffd93b"], [30, 118, "#7ab8ff"]]
+        .forEach(([dx, y, c]) => { glow(g, VILLAGE_TREE_X + dx, y, 3, c + "66"); oval(g, VILLAGE_TREE_X + dx, y, .9, .9, c); });
+    },
     candy(g) {
       sky(g, "#ffcfe6", "#fff0d8");
       // a rainbow from cloud to cloud
@@ -847,6 +868,7 @@ const PalHang = (() => {
     snowy: [[104, .05], [220, .05]],
     candy: [[126, .05], [196, .05]],
     space: [[118, .55], [278, .75]],
+    village: [],
     home: [],
   };
   // Things to play with: [x, depth, how tall the clickable part is, what it does].
@@ -858,15 +880,22 @@ const PalHang = (() => {
     snowy: [[160, .05, 60, "snow"], [28, .05, 60, "snow"], [268, .3, 30, "bounce"]],
     candy: [[160, .05, 40, "bounce"], [34, .05, 70, "candy"], [286, .05, 70, "candy"]],
     space: [[40, .05, 70, "rocket"], [204, .2, 30, "bounce"], [160, .9, 40, "stars"]],
+    village: [],
     home: [],
   };
   // The gems: [x, depth]. There are three in each place, the same as HANG_FINDS.
   const GEMS = {
     park: [[70, .75], [168, .95], [304, .5]], wedding: [[22, .6], [160, .9], [300, .8]], beach: [[130, .9], [230, .55], [20, .8]],
     night: [[50, .7], [150, .9], [300, .6]], snowy: [[60, .85], [190, .6], [305, .9]], candy: [[90, .7], [240, .9], [20, .5]],
-    space: [[80, .8], [240, .5], [310, .9]], home: [],
+    space: [[80, .8], [240, .5], [310, .9]], village: [], home: [],
   };
-  const PLACE_LABEL = {home: "Home", park: "Park", wedding: "Wedding", beach: "Beach", night: "Night", snowy: "Snowy hill", candy: "Candy land", space: "Outer space"};
+  // ❄️ The same spots as TREE_X, SNOWMAN_X and SNOWMAN_DEEP in pixel.py.
+  const VILLAGE_TREE_X = 92, SNOWMAN_X = 238, SNOWMAN_DEEP = .2, SNOWMAN_REACH = 46;
+  // Where ornaments hang on the class tree, as many as TREE_MAX, filled in an order that spreads them out.
+  const ORNAMENT_SLOTS = [[52, [-5, 5]], [64, [-10, 0, 10]], [76, [-15, -5, 5, 15]], [88, [-20, -10, 0, 10, 20]],
+                          [100, [-20, -12, -4, 4, 12, 20]], [112, [-28, -20, -12, -4, 4, 12, 20, 28]]].flatMap(([y, xs]) => xs.map(dx => [dx, y]));
+  const ORNAMENT_ORDER = ORNAMENT_SLOTS.map((_, i) => i * 11 % ORNAMENT_SLOTS.length);
+  const PLACE_LABEL = {home: "Home", park: "Park", wedding: "Wedding", beach: "Beach", night: "Night", snowy: "Snowy hill", candy: "Candy land", space: "Outer space", village: "Snow Village"};
   const seatFeet = deep => PalStage.GROUND_TOP + deep * PalStage.GROUND_DEEP;
   const placeAt = (places, x) => { const i = Math.floor(x / W); return places[i] ? {scene: places[i], left: i * W} : null; };
   /** The seat at a spot in the world (the furniture counts as well as the ground in front of it). */
@@ -888,11 +917,34 @@ const PalHang = (() => {
     const i = GEMS[at.scene].findIndex(([gx, gd], n) => !found.has(at.scene + n) && Math.abs(x - at.left - gx) < 18 && Math.abs(deep - gd) < .16);
     return i < 0 ? null : at.scene + i;
   }
+  /** ❄️ The index of one of today's 🎁 presents this pal is standing on and hasn't found. */
+  function presentAt(places, x, deep, presents) {
+    const at = placeAt(places, x);
+    return at ? (presents || []).findIndex(p => p.place === at.scene && !p.found && Math.abs(x - at.left - p.x) < 16 && Math.abs(deep - p.deep) < .16) : -1;
+  }
+  /** "tree" or "snowman", for a click or a pal near one of them in the Snow Village. */
+  function villageAt(places, x, y) {
+    const at = placeAt(places, x);
+    if (!at || at.scene !== "village") return null;
+    const dx = x - at.left;
+    if (Math.abs(dx - SNOWMAN_X) < 26 && y > 96 && y < seatFeet(SNOWMAN_DEEP) + 12) return {what: "snowman", x: at.left + SNOWMAN_X, y: SNOWMAN_DEEP};
+    if (Math.abs(dx - VILLAGE_TREE_X) < 34 && y > 30 && y < seatFeet(.15) + 6) return {what: "tree", x: at.left + VILLAGE_TREE_X, y: .1};
+    return null;
+  }
+  /** The 🧰 chest this pal is standing at and hasn't opened today. The chests come from the server. */
+  function chestAt(places, x, deep, chests) {
+    const at = placeAt(places, x);
+    return (at && (chests || []).find(c => c.place === at.scene && !c.open && Math.abs(x - at.left - c.x) < 20 && Math.abs(deep - c.deep) < .2)) || null;
+  }
   // ---- Homes ---------------------------------------------------------------------------
-  // A home is one screen: a wall with a door and a window, a floor, and whatever its
-  // owner has put in it. Everything is painted behind the pals.
-  const WALLS = {w_cream: ["#fdf1d8", "#f5e3bf"], w_pink: ["#ffdce8", "#f9c6d8"], w_blue: ["#d3e9f8", "#b9d8f0"], w_night: ["#2f3a72", "#252f62"]};
-  const FLOORS = {f_wood: "#d9a86c", f_check: "#fffdf6", f_grass: "#a4d48d", f_cloud: "#dcecf8"};
+  // A home is a row of rooms, one screen each, with open doorways between them. Each room
+  // has a wall, a floor, what its kind has built in, and whatever its owner has put in it.
+  // Everything is painted behind the pals.
+  const WALLS = {w_cream: ["#fdf1d8", "#f5e3bf"], w_pink: ["#ffdce8", "#f9c6d8"], w_blue: ["#d3e9f8", "#b9d8f0"], w_night: ["#2f3a72", "#252f62"],
+                 w_mint: ["#d8f3e6", "#c4ead8"], w_sky: ["#a9dcf2", "#a9dcf2"], w_sea: ["#7fc8e8", "#6cbbe0"], w_candy: ["#fff4f8", "#ffb3cc"],
+                 w_attic: ["#c99a6b", "#bb8c5e"], w_castle: ["#b9b4c8", "#a7a1b9"]};
+  const FLOORS = {f_wood: "#d9a86c", f_check: "#fffdf6", f_grass: "#a4d48d", f_cloud: "#dcecf8", f_carpet: "#b9a4e8", f_tile: "#bfe6f2",
+                  f_sand: "#f1dca5", f_rainbow: "#ff9fb5", f_gold: "#f5cf5a"};
   const FLOOR_TOP = 112, FISH_X = 140;
   const FURNITURE_ART = {
     rug(g, x, y) { oval(g, x, y, 30, 9, "#ff9fb5"); oval(g, x, y, 24, 6.6, "#ffd9e3"); oval(g, x, y, 14, 3.6, "#ff9fb5"); },
@@ -970,36 +1022,311 @@ const PalHang = (() => {
       oval(g, x, y - 84, 8.5, 8.5, "#c9c9e8");
       for (let i = 0; i < 9; i++) box(g, x - 7 + i % 3 * 5, y - 90 + Math.floor(i / 3) * 4.6, 3, 3, 0, ["#ffffff", "#ff9fb5", "#8fd0c8", "#ffd27a"][i % 4]);
     },
+    cupcakes(g, x, y) {
+      box(g, x - 12, y - 4, 24, 4, 1, "#fffdf6"); line(g, [[x, y - 4], [x, y]], "#c9c9e8", 1.4);
+      [[-7, "#ff8fa8"], [0, "#8fd0c8"], [7, "#ffd27a"]].forEach(([dx, c], i) => {
+        shape(g, [[x + dx - 4, y - 12 - i % 2 * 2], [x + dx + 4, y - 12 - i % 2 * 2], [x + dx + 3, y - 5], [x + dx - 3, y - 5]], "#e8a070");
+        oval(g, x + dx, y - 14 - i % 2 * 2, 4.6, 3.4, c); oval(g, x + dx, y - 18 - i % 2 * 2, 1.4, 1.4, "#e8553f");
+      });
+    },
+    flowers(g, x, y) {
+      box(g, x - 18, y - 7, 36, 7, 2, "#a9744a"); box(g, x - 17, y - 9, 34, 4, 2, "#7a5434");
+      [-13, -6, 1, 8, 14].forEach((dx, i) => {
+        line(g, [[x + dx, y - 8], [x + dx, y - 18 - i % 2 * 4]], "#3f8f63", 1.2);
+        oval(g, x + dx, y - 19 - i % 2 * 4, 3.2, 3.2, ["#ff8fa8", "#ffd27a", "#b9a4e8", "#ff9fb5", "#7ab8ff"][i]); oval(g, x + dx, y - 19 - i % 2 * 4, 1.2, 1.2, "#fff2c0");
+      });
+    },
+    duck(g, x, y) {
+      oval(g, x, y - 1, 9, 2, "#2c535222"); oval(g, x, y - 6, 8, 5.5, "#ffd93b"); oval(g, x + 4, y - 13, 4.6, 4.4, "#ffd93b");
+      shape(g, [[x + 8, y - 13], [x + 13, y - 12], [x + 8, y - 11]], "#ffa95c"); oval(g, x + 5, y - 14.5, .9, .9, "#27324f"); oval(g, x - 3, y - 7, 3.4, 2.2, "#ffe77a");
+    },
+    tree(g, x, y) {
+      shape(g, [[x - 9, y - 9], [x + 9, y - 9], [x + 7, y], [x - 7, y]], "#d98a5c"); box(g, x - 10, y - 11, 20, 3, 1, "#e8a070");
+      line(g, [[x, y - 10], [x, y - 26]], "#8a5f3c", 3);
+      [[0, -38, 12], [-9, -30, 9], [9, -30, 9]].forEach(([dx, dy, r], i) => oval(g, x + dx, y + dy, r, r * .9, i ? "#569f70" : "#62b083"));
+      [[-6, -34], [5, -40], [8, -28], [-3, -27]].forEach(([dx, dy]) => oval(g, x + dx, y + dy, 1.8, 1.8, "#e8553f"));
+    },
+    fridge(g, x, y) {
+      box(g, x - 13, y - 50, 26, 50, 3, "#f5f2ff"); line(g, [[x - 13, y - 32], [x + 13, y - 32]], "#c9c9e8", 1.2);
+      box(g, x + 7, y - 46, 2.4, 10, 1, "#a9a9c8"); box(g, x + 7, y - 28, 2.4, 14, 1, "#a9a9c8");
+      oval(g, x - 6, y - 42, 2.4, 2.4, "#ff8fa8"); box(g, x - 9, y - 24, 7, 8, 1, "#ffe39a");
+    },
+    stove(g, x, y) {
+      box(g, x - 15, y - 26, 30, 26, 2, "#fffdf6"); box(g, x - 11, y - 18, 22, 13, 2, "#27324f"); box(g, x - 9, y - 16, 18, 9, 1, "#ffa95c55");
+      box(g, x - 15, y - 28, 30, 3, 1, "#c9c9e8"); [-8, 8].forEach(dx => oval(g, x + dx, y - 22, 3.4, 1.2, "#8a8a9a"));
+      box(g, x + 1, y - 37, 13, 8, 2, "#ff8fa8"); line(g, [[x + 14, y - 34], [x + 19, y - 35]], "#27324f", 1.4);
+    },
+    wardrobe(g, x, y) {
+      box(g, x - 17, y - 54, 34, 54, 2, "#b57d44"); box(g, x - 15, y - 51, 14, 45, 1, "#c98f52"); box(g, x + 1, y - 51, 14, 45, 1, "#c98f52");
+      oval(g, x - 3, y - 28, 1.4, 1.4, "#ffd93b"); oval(g, x + 3, y - 28, 1.4, 1.4, "#ffd93b");
+      box(g, x - 17, y - 57, 34, 4, 1, "#8a5f3c"); shape(g, [[x - 9, y - 61], [x - 2, y - 57], [x - 16, y - 57]], "#ff8fa8");
+    },
+    swing(g, x, y) {
+      [-16, 16].forEach(dx => line(g, [[x + dx, y], [x + dx * .8, y - 52]], "#a9744a", 2.6));
+      line(g, [[x - 14, y - 52], [x + 14, y - 52]], "#8a5f3c", 3);
+      [-7, 7].forEach(dx => line(g, [[x + dx, y - 51], [x + dx, y - 14]], "#8a8a9a", .9));
+      box(g, x - 10, y - 15, 20, 3.6, 1, "#ff8fa8");
+    },
+    chest(g, x, y) {
+      oval(g, x, y, 16, 2.4, "#2c535222");
+      box(g, x - 15, y - 16, 30, 16, 2, "#a9744a"); box(g, x - 16, y - 24, 32, 9, 4, "#8a5f3c");
+      [-9, 9].forEach(dx => box(g, x + dx - 1.5, y - 24, 3, 24, 0, "#ffd27a")); box(g, x - 3, y - 15, 6, 6, 1, "#ffd93b");
+      [[-6, -26], [0, -27], [6, -26], [-3, -28]].forEach(([dx, dy]) => oval(g, x + dx, y + dy, 2.4, 1.6, "#ffe14a"));
+    },
+    drums(g, x, y) {
+      oval(g, x, y - 2, 18, 3, "#2c535222");
+      oval(g, x, y - 12, 11, 11, "#ff5f7a"); oval(g, x, y - 12, 8, 8, "#fffdf6");
+      [[-15, -20], [15, -22]].forEach(([dx, dy]) => { line(g, [[x + dx, y], [x + dx, y + dy + 2]], "#8a8a9a", 1); box(g, x + dx - 6, y + dy, 12, 6, 2, "#7ab8ff"); oval(g, x + dx, y + dy, 6, 1.6, "#fffdf6"); });
+      line(g, [[x + 21, y], [x + 21, y - 34]], "#8a8a9a", 1); oval(g, x + 21, y - 34, 8, 1.8, "#ffd93b");
+    },
+    telescope(g, x, y) {
+      [-8, 0, 8].forEach(dx => line(g, [[x, y - 18], [x + dx, y]], "#8a5f3c", 1.6));
+      g.save(); g.translate(x, y - 20); g.rotate(-.5);
+      box(g, -12, -4, 26, 8, 3, "#7ab8ff"); box(g, 12, -5, 5, 10, 2, "#5a9be8"); box(g, -15, -3, 4, 6, 1, "#27324f");
+      g.restore();
+    },
+    trampoline(g, x, y) {
+      [-17, -6, 6, 17].forEach(dx => line(g, [[x + dx, y], [x + dx, y - 8]], "#8a8a9a", 1.4));
+      oval(g, x, y - 9, 21, 4.6, "#5a9be8"); oval(g, x, y - 9, 17, 3.4, "#27324f");
+    },
+    bunkbed(g, x, y) {
+      [-27, 25].forEach(dx => box(g, x + dx, y - 56, 4, 56, 1, "#8a5f3c"));
+      [[-2, "#ff8fa8"], [-30, "#7ab8ff"]].forEach(([dy, c]) => {
+        box(g, x - 24, y + dy - 10, 49, 8, 2, "#a9744a"); box(g, x - 23, y + dy - 16, 47, 7, 3, "#fffdf6");
+        box(g, x - 21, y + dy - 18, 12, 5, 2, "#ffd9e3"); box(g, x - 6, y + dy - 17, 30, 9, 3, c);
+      });
+      [-44, -38].forEach(dy => line(g, [[x + 18, y + dy], [x + 25, y + dy]], "#8a5f3c", 1.2));
+    },
+    piano(g, x, y) {
+      oval(g, x, y, 22, 2.6, "#2c535222");
+      box(g, x - 22, y - 36, 44, 34, 2, "#27324f"); box(g, x - 20, y - 22, 40, 6, 1, "#fffdf6");
+      for (let i = 0; i < 9; i++) box(g, x - 17 + i * 4.4, y - 22, 2, 3.6, 0, i % 3 === 2 ? "#fffdf6" : "#1b1530");
+      [-17, 17].forEach(dx => box(g, x + dx - 2, y - 4, 4, 4, 0, "#1b1530"));
+      oval(g, x - 8, y - 30, 2, 2.4, "#ffd27a"); line(g, [[x - 6.5, y - 30], [x - 6.5, y - 35]], "#ffd27a", 1);
+    },
+    fountain(g, x, y) {
+      oval(g, x, y - 5, 22, 6, "#c9c9e8"); oval(g, x, y - 6, 18, 4, "#8ed6e0");
+      box(g, x - 3, y - 24, 6, 18, 1, "#c9c9e8"); oval(g, x, y - 24, 9, 3, "#c9c9e8"); oval(g, x, y - 25, 7, 2, "#8ed6e0");
+      line(g, [[x, y - 26], [x - 3, y - 36], [x - 9, y - 30]], "#bfeaf2", 1.4); line(g, [[x, y - 26], [x + 3, y - 36], [x + 9, y - 30]], "#bfeaf2", 1.4);
+    },
+    arcade(g, x, y) {
+      box(g, x - 13, y - 52, 26, 52, 2, "#b9a4e8"); box(g, x - 13, y - 52, 26, 8, 2, "#ff5f7a");
+      box(g, x - 10, y - 42, 20, 16, 1, "#27324f"); oval(g, x - 3, y - 35, 2, 2, "#ffd93b"); box(g, x + 2, y - 38, 4, 4, 0, "#8fd0c8");
+      box(g, x - 13, y - 24, 26, 6, 1, "#9d86d8"); line(g, [[x - 5, y - 22], [x - 5, y - 27]], "#27324f", 1); oval(g, x - 5, y - 28, 1.8, 1.8, "#ff5f7a");
+      oval(g, x + 4, y - 22, 1.6, 1.6, "#7ab8ff"); oval(g, x + 8, y - 22, 1.6, 1.6, "#ffd93b");
+    },
+    robot(g, x, y) {
+      oval(g, x, y, 11, 2.2, "#2c535222");
+      [-5, 5].forEach(dx => box(g, x + dx - 2.4, y - 9, 5, 9, 1, "#8a8a9a"));
+      box(g, x - 10, y - 26, 20, 18, 3, "#c9c9e8"); box(g, x - 5, y - 21, 10, 7, 1, "#7fc8dc");
+      box(g, x - 8, y - 40, 16, 13, 3, "#d6d6ee"); oval(g, x - 3.6, y - 34, 2, 2, "#27324f"); oval(g, x + 3.6, y - 34, 2, 2, "#27324f");
+      line(g, [[x, y - 40], [x, y - 45]], "#8a8a9a", 1); oval(g, x, y - 46, 2, 2, "#ff5f7a");
+      [-13, 13].forEach(dx => line(g, [[x + dx * .8, y - 22], [x + dx, y - 14]], "#8a8a9a", 2));
+    },
+    trophy(g, x, y) {
+      box(g, x - 9, y - 6, 18, 6, 1, "#8a5f3c"); box(g, x - 3, y - 14, 6, 9, 1, "#f5b83d");
+      shape(g, [[x - 11, y - 34], [x + 11, y - 34], [x + 7, y - 18], [x - 7, y - 18]], "#ffd93b");
+      line(g, [[x - 11, y - 31], [x - 15, y - 26], [x - 8, y - 22]], "#f5b83d", 1.6); line(g, [[x + 11, y - 31], [x + 15, y - 26], [x + 8, y - 22]], "#f5b83d", 1.6);
+      oval(g, x - 4, y - 28, 1.6, 3, "#fff6c8");
+    },
+    rainbowarch(g, x, y) {
+      ["#ff5f7a", "#ffa95c", "#ffd93b", "#62b083", "#7ab8ff", "#b9a4e8"].forEach((c, i) => {
+        g.strokeStyle = c; g.lineWidth = 3; g.beginPath(); g.arc(x, y - 4, 30 - i * 3, Math.PI, 0); g.stroke();
+      });
+      cloud(g, x - 28, y - 4, .5); cloud(g, x + 28, y - 4, .5);
+    },
+    throne(g, x, y) {
+      oval(g, x, y, 15, 2.4, "#2c535222");
+      box(g, x - 13, y - 46, 26, 34, 4, "#ffd93b"); box(g, x - 9, y - 42, 18, 28, 3, "#e8553f");
+      [-10, 0, 10].forEach(dx => shape(g, [[x + dx - 4, y - 46], [x + dx, y - 54], [x + dx + 4, y - 46]], "#ffd93b"));
+      box(g, x - 15, y - 16, 30, 8, 2, "#e8553f"); box(g, x - 15, y - 9, 4, 9, 1, "#f5b83d"); box(g, x + 11, y - 9, 4, 9, 1, "#f5b83d");
+      oval(g, x, y - 30, 2.4, 2.4, "#7ab8ff");
+    },
+    unicornpal(g, x, y) {
+      oval(g, x, y, 17, 2.4, "#2c535222");
+      [-10, -4, 5, 11].forEach(dx => box(g, x + dx - 1.6, y - 13, 3.2, 13, 1, "#fffdf6"));
+      oval(g, x, y - 17, 15, 8, "#fffdf6"); oval(g, x + 14, y - 28, 6, 8, "#fffdf6"); oval(g, x + 18, y - 25, 4, 3, "#fffdf6");
+      shape(g, [[x + 13, y - 35], [x + 17, y - 35], [x + 16, y - 46]], "#ffd93b");
+      [["#ff8fa8", -2], ["#b9a4e8", 1], ["#7ab8ff", 4]].forEach(([c, d]) => oval(g, x + 9 - d, y - 30 + d * 1.6, 2.6, 4.2, c));
+      [["#ff8fa8", 0], ["#b9a4e8", 3], ["#7ab8ff", 6]].forEach(([c, d]) => line(g, [[x - 14, y - 20], [x - 19 - d * .3, y - 10 + d]], c, 2));
+      oval(g, x + 16, y - 29, .9, .9, "#27324f");
+    },
+    slide(g, x, y) {
+      [-20, -12].forEach(dx => line(g, [[x + dx, y], [x + dx, y - 42]], "#7ab8ff", 2));
+      for (let i = 1; i < 5; i++) line(g, [[x - 20, y - i * 9], [x - 12, y - i * 9]], "#7ab8ff", 1.4);
+      box(g, x - 22, y - 45, 14, 4, 1, "#5a9be8");
+      shape(g, [[x - 10, y - 45], [x - 3, y - 45], [x + 22, y - 5], [x + 24, y], [x + 14, y]], "#ffd27a");
+      line(g, [[x - 8, y - 44], [x + 18, y - 3]], "#ffa95c", 1.4);
+    },
+    rocketbed(g, x, y) {
+      oval(g, x, y, 28, 3, "#2c535222");
+      shape(g, [[x - 24, y - 12], [x - 36, y - 9], [x - 24, y - 6]], "#ffa95c"); shape(g, [[x - 24, y - 11], [x - 31, y - 9], [x - 24, y - 7]], "#ffe39a");
+      box(g, x - 24, y - 18, 46, 16, 7, "#e8e8f6");
+      shape(g, [[x + 20, y - 18], [x + 34, y - 10], [x + 20, y - 2]], "#ff5f7a");
+      shape(g, [[x - 22, y - 18], [x - 28, y - 25], [x - 14, y - 18]], "#ff5f7a"); shape(g, [[x - 22, y - 2], [x - 28, y + 1], [x - 14, y - 2]], "#ff5f7a");
+      oval(g, x + 12, y - 10, 3.6, 3.6, "#7fc8dc");
+      box(g, x - 20, y - 23, 26, 7, 3, "#b9a4e8"); box(g, x - 22, y - 22, 9, 5, 2, "#fffdf6");
+    },
+    dragonegg(g, x, y) {
+      glow(g, x, y - 16, 22, "#c5a3ff55");
+      oval(g, x, y - 2, 15, 3.4, "#a9744a");
+      oval(g, x, y - 16, 10, 14, "#62b083");
+      [[-4, -20], [3, -12], [-2, -8], [5, -22], [-5, -12]].forEach(([dx, dy]) => oval(g, x + dx, y + dy, 2.2, 1.6, "#3f8f63"));
+      line(g, [[x - 3, y - 27], [x, y - 24], [x - 2, y - 21], [x + 1, y - 18]], "#fff6c8", 1);
+      line(g, [[x - 15, y - 3], [x + 14, y]], "#8a5f3c", 1.6); line(g, [[x - 13, y], [x + 15, y - 4]], "#7a5434", 1.4);
+    },
   };
-  function homeRoom(g, home) {
-    const [wall, stripe] = WALLS[home.wall] || WALLS.w_cream;
-    g.fillStyle = wall; g.fillRect(0, 0, W, FLOOR_TOP);
-    for (let x = 16; x < W; x += 32) box(g, x, 0, 16, FLOOR_TOP, 0, stripe);
-    if (home.wall === "w_night") for (let i = 0; i < 30; i++) oval(g, starX(i), starY(i, 100), .7 + i % 3 * .3, .7 + i % 3 * .3, "#fff4cf");
-    g.fillStyle = FLOORS[home.floor] || FLOORS.f_wood; g.fillRect(0, FLOOR_TOP, W, H - FLOOR_TOP);
-    if (home.floor === "f_check") { for (let r = 0; r < 5; r++) for (let c = 0; c < 20; c++) if ((r + c) % 2) box(g, c * 16, FLOOR_TOP + r * 14, 16, 14, 0, "#ffc9dc"); }
-    else if (home.floor === "f_grass") { patches(g, "#b6df9f", FLOOR_TOP + 6); flowers(g, FLOOR_TOP + 10, ["#ff9fb5", "#fff0a8", "#c7b4f0"], 10); }
-    else if (home.floor === "f_cloud") { for (let i = 0; i < 12; i++) cloud(g, (i * 67 + 21) % W, FLOOR_TOP + 10 + (i * 23) % 56, .8, "#ffffff"); }
-    else for (let r = 0; r < 5; r++) { line(g, [[0, FLOOR_TOP + r * 14], [W, FLOOR_TOP + r * 14]], "#c2915a", .8); for (let c = 0; c < 6; c++) line(g, [[c * 60 + r % 2 * 30, FLOOR_TOP + r * 14], [c * 60 + r % 2 * 30, FLOOR_TOP + r * 14 + 14]], "#c2915a", .8); }
-    box(g, 0, FLOOR_TOP - 4, W, 5, 0, "#fffdf6");
-    // the window
-    box(g, 196, 26, 60, 46, 3, "#fffdf6"); box(g, 200, 30, 52, 38, 2, home.wall === "w_night" ? "#1f2a5c" : "#a9dcec");
-    if (home.wall === "w_night") { oval(g, 238, 42, 6, 6, "#fff4cf"); oval(g, 241, 40, 5.4, 5.4, "#1f2a5c"); } else cloud(g, 226, 50, .62);
-    line(g, [[226, 30], [226, 68]], "#fffdf6", 2); line(g, [[200, 49], [252, 49]], "#fffdf6", 2);
-    // the door back outside
-    box(g, 12, 40, 40, 70, 3, "#8a5f3c"); box(g, 16, 44, 32, 66, 2, "#c08a56");
-    box(g, 20, 49, 24, 22, 2, "#d6a473"); box(g, 20, 76, 24, 28, 2, "#d6a473"); oval(g, 43, 80, 2, 2, "#ffd93b");
-    // and the door on to the next room, if there is one
-    if (home.rooms && home.at < home.rooms.length - 1) {
-      box(g, W - 52, 40, 40, 70, 3, "#6f8fbf"); box(g, W - 48, 44, 32, 66, 2, "#9fbbe0");
-      box(g, W - 44, 49, 24, 22, 2, "#b9cfee"); box(g, W - 44, 76, 24, 28, 2, "#b9cfee"); oval(g, W - 43, 80, 2, 2, "#ffd93b");
+  function homeWall(g, wall) {
+    const [colour, stripe] = WALLS[wall] || WALLS.w_cream;
+    g.fillStyle = colour; g.fillRect(0, 0, W, FLOOR_TOP);
+    if (wall === "w_sky") {
+      const fill = g.createLinearGradient(0, 0, 0, FLOOR_TOP);
+      fill.addColorStop(0, "#8fd0ee"); fill.addColorStop(1, "#e6f6ee");
+      g.fillStyle = fill; g.fillRect(0, 0, W, FLOOR_TOP);
+      cloud(g, 60, 30, .7); cloud(g, 150, 52, .5);
+    } else if (wall === "w_sea") {
+      for (let y = 14; y < FLOOR_TOP; y += 18) line(g, Array.from({length: 21}, (_, i) => [i * 16, y + (i % 2 ? 3 : -3)]), "#9fd8f0", 1.2);
+      for (let i = 0; i < 14; i++) oval(g, starX(i), starY(i, 100), 1.6 + i % 3, 1.6 + i % 3, "#d6f4f8aa");
+    } else if (wall === "w_castle") {
+      for (let r = 0; r * 12 < FLOOR_TOP; r++) for (let c = -1; c < 11; c++) box(g, c * 32 + r % 2 * 16 + 1, r * 12 + 1, 30, 10, 2, (r * 3 + c) % 4 ? stripe : "#c6c1d4");
+    } else if (wall === "w_attic") {
+      for (let x = 0; x < W; x += 20) { box(g, x, 0, 19, FLOOR_TOP, 0, x % 40 ? colour : stripe); oval(g, x + 10, 20, .9, .9, "#7a5434"); oval(g, x + 10, 90, .9, .9, "#7a5434"); }
+    } else {
+      for (let x = 16; x < W; x += 32) box(g, x, 0, 16, FLOOR_TOP, 0, stripe);
+      if (wall === "w_night") for (let i = 0; i < 30; i++) oval(g, starX(i), starY(i, 100), .7 + i % 3 * .3, .7 + i % 3 * .3, "#fff4cf");
+      if (wall === "w_candy") for (let i = 0; i < 18; i++) oval(g, starX(i), starY(i, 100), 1.4, 1.4, ["#8fd0c8", "#ffd27a", "#b9a4e8"][i % 3]);
     }
-    for (const item of (home.items || []).slice().sort((a, b) => a.y - b.y)) {
+  }
+  function homeFloor(g, floor) {
+    const plank = colour => { for (let r = 0; r < 5; r++) { line(g, [[0, FLOOR_TOP + r * 14], [W, FLOOR_TOP + r * 14]], colour, .8); for (let c = 0; c < 6; c++) line(g, [[c * 60 + r % 2 * 30, FLOOR_TOP + r * 14], [c * 60 + r % 2 * 30, FLOOR_TOP + r * 14 + 14]], colour, .8); } };
+    g.fillStyle = FLOORS[floor] || FLOORS.f_wood; g.fillRect(0, FLOOR_TOP, W, H - FLOOR_TOP);
+    if (floor === "f_check") { for (let r = 0; r < 5; r++) for (let c = 0; c < 20; c++) if ((r + c) % 2) box(g, c * 16, FLOOR_TOP + r * 14, 16, 14, 0, "#ffc9dc"); }
+    else if (floor === "f_grass") { patches(g, "#b6df9f", FLOOR_TOP + 6); flowers(g, FLOOR_TOP + 10, ["#ff9fb5", "#fff0a8", "#c7b4f0"], 10); }
+    else if (floor === "f_cloud") { for (let i = 0; i < 12; i++) cloud(g, (i * 67 + 21) % W, FLOOR_TOP + 10 + (i * 23) % 56, .8, "#ffffff"); }
+    else if (floor === "f_carpet") { for (let r = 0; r < 6; r++) for (let c = 0; c < 16; c++) oval(g, c * 20 + r % 2 * 10 + 5, FLOOR_TOP + 6 + r * 11, 1.6, 1.2, "#cdbcf2"); }
+    else if (floor === "f_tile") { for (let r = 0; r < 6; r++) line(g, [[0, FLOOR_TOP + r * 12], [W, FLOOR_TOP + r * 12]], "#fffdf6", 1); for (let c = 0; c < 20; c++) line(g, [[c * 16, FLOOR_TOP], [c * 16, H]], "#fffdf6", 1); }
+    else if (floor === "f_sand") { for (let i = 0; i < 60; i++) oval(g, starX(i), FLOOR_TOP + 4 + starY(i, 62), .8, .8, i % 2 ? "#e2c27e" : "#fff4d4"); }
+    else if (floor === "f_rainbow") { ["#ff9fb5", "#ffc59a", "#ffe9a0", "#b6e3a8", "#a9d4f5", "#cdbcf2"].forEach((c, i) => box(g, 0, FLOOR_TOP + i * 12, W, 12, 0, c)); }
+    else if (floor === "f_gold") { plank("#d9a93a"); for (let i = 0; i < 16; i++) twinkle(g, starX(i), FLOOR_TOP + 6 + starY(i, 58), 1.6, "#fff6c8"); }
+    else plank("#c2915a");
+    box(g, 0, FLOOR_TOP - 4, W, 5, 0, "#fffdf6");
+  }
+  function homeWindow(g, wall) {
+    const dark = ["w_night", "w_castle"].includes(wall);
+    box(g, 196, 26, 60, 46, 3, "#fffdf6"); box(g, 200, 30, 52, 38, 2, dark ? "#1f2a5c" : "#a9dcec");
+    if (dark) { oval(g, 238, 42, 6, 6, "#fff4cf"); oval(g, 241, 40, 5.4, 5.4, "#1f2a5c"); } else cloud(g, 226, 50, .62);
+    line(g, [[226, 30], [226, 68]], "#fffdf6", 2); line(g, [[200, 49], [252, 49]], "#fffdf6", 2);
+  }
+  const flags = (g, y) => { for (let i = 0; i < 16; i++) { line(g, [[i * 20, y + i % 2 * 3], [i * 20 + 20, y + (i + 1) % 2 * 3]], "#27324f", .8); shape(g, [[i * 20 + 5, y + 2], [i * 20 + 15, y + 2], [i * 20 + 10, y + 11]], ["#ff5f7a", "#ffd93b", "#8fd0c8", "#b9a4e8"][i % 4]); } };
+  // What each kind of room has built in (pixel.py HOME_ROOMS), painted on its back wall or its floor.
+  const ROOM_ART = {
+    living(g, room) {
+      homeWindow(g, room.wall);
+      box(g, 92, 34, 40, 30, 2, "#c08a56"); box(g, 95, 37, 34, 24, 1, "#a9dcec");
+      shape(g, [[95, 61], [107, 45], [116, 54], [121, 48], [129, 61]], "#62b083"); oval(g, 122, 43, 3, 3, "#ffe14a");
+      line(g, [[160, 0], [160, 14]], "#27324f", 1); shape(g, [[150, 22], [170, 22], [164, 14], [156, 14]], "#ffd27a");
+    },
+    r_bed(g, room) {
+      homeWindow(g, room.wall);
+      [[188, 1], [264, -1]].forEach(([x, way]) => shape(g, [[x, 22], [x + way * 14, 22], [x + way * 9, 76], [x - way * 2, 78]], "#ff9fb5"));
+      box(g, 184, 20, 84, 4, 2, "#a9744a");
+      box(g, 92, 30, 34, 28, 2, "#a9744a"); box(g, 95, 33, 28, 22, 1, "#27324f");
+      oval(g, 104, 42, 4, 4, "#fff4cf"); oval(g, 106, 40, 3.6, 3.6, "#27324f"); twinkle(g, 115, 46, 2, "#fff4cf");
+      [[40, 20], [140, 12], [290, 16]].forEach(([x, y]) => twinkle(g, x, y, 3, "#ffffffcc"));
+    },
+    r_kitchen(g, room) {
+      homeWindow(g, room.wall);
+      box(g, 66, 22, 108, 26, 2, "#fffdf6"); [0, 1, 2, 3].forEach(i => { box(g, 69 + i * 26.5, 25, 24, 20, 1, "#ffd9e3"); box(g, 79 + i * 26.5, 33, 4, 2, 1, "#a9744a"); });
+      box(g, 66, 80, 108, 32, 1, "#fffdf6"); box(g, 64, 76, 112, 5, 1, "#c9c9e8");
+      [0, 1, 2, 3].forEach(i => { box(g, 69 + i * 26.5, 84, 24, 24, 1, "#ffd9e3"); oval(g, 81 + i * 26.5, 88, 1.4, 1.4, "#a9744a"); });
+      box(g, 104, 74, 26, 4, 1, "#a9dcec"); line(g, [[117, 74], [117, 66], [123, 66]], "#a9a9c8", 1.6);
+      [[188, "#ff8fa8"], [276, "#ffd27a"]].forEach(([x, c]) => { line(g, [[x, 22], [x, 30]], "#8a8a9a", .8); oval(g, x, 36, 6, 6, c); line(g, [[x, 42], [x, 50]], "#8a5f3c", 1.6); });
+    },
+    r_play(g, room) {
+      homeWindow(g, room.wall);
+      flags(g, 6);
+      box(g, 80, 30, 76, 46, 2, "#a9744a"); box(g, 83, 33, 70, 40, 1, "#3f6b58");
+      line(g, [[92, 62], [100, 50], [108, 62]], "#fffdf6", 1.2); box(g, 94, 62, 12, 8, 0, "#fffdf6aa");
+      oval(g, 130, 46, 5, 5, "#ffe39a"); line(g, [[118, 66], [124, 60], [130, 66], [136, 60], [142, 66]], "#ff9fb5", 1.2);
+      [[40, 70, "#ffd93b"], [60, 40, "#ff8fa8"], [176, 56, "#8fd0c8"], [290, 40, "#b9a4e8"]].forEach(([x, y, c]) => twinkle(g, x, y, 5, c));
+    },
+    r_garden(g) {
+      g.fillStyle = "#ffe14a"; g.beginPath(); g.arc(266, 26, 12, 0, 7); g.fill();
+      for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; line(g, [[266 + Math.cos(a) * 16, 26 + Math.sin(a) * 16], [266 + Math.cos(a) * 21, 26 + Math.sin(a) * 21]], "#ffe14a", 1.6); }
+      line(g, [[0, 92], [W, 92]], "#fffdf6", 2); line(g, [[0, 102], [W, 102]], "#fffdf6", 2);
+      for (let x = 6; x < W; x += 14) shape(g, [[x - 4, 108], [x - 4, 86], [x, 82], [x + 4, 86], [x + 4, 108]], "#fffdf6");
+      [70, 160, 250].forEach((x, i) => { oval(g, x, 102, 16, 10, i % 2 ? "#569f70" : "#62b083"); oval(g, x - 5, 98, 2, 2, "#ff8fa8"); oval(g, x + 6, 100, 2, 2, "#ffd27a"); });
+      [[120, 40], [128, 36]].forEach(([x, y]) => { oval(g, x - 2, y, 2.4, 1.6, "#ff8fc7"); oval(g, x + 2, y, 2.4, 1.6, "#ff8fc7"); });     // butterflies
+    },
+    r_attic(g) {
+      shape(g, [[0, 0], [54, 0], [0, 34]], "#8a5f3c"); shape(g, [[W, 0], [W - 54, 0], [W, 34]], "#8a5f3c");
+      line(g, [[0, 34], [54, 0]], "#6d4a2c", 3); line(g, [[W, 34], [W - 54, 0]], "#6d4a2c", 3);
+      box(g, 0, 6, W, 5, 0, "#7a5434");
+      oval(g, 160, 50, 18, 18, "#fffdf6"); oval(g, 160, 50, 15, 15, "#1f2a5c");
+      [[154, 44], [166, 52], [158, 58]].forEach(([x, y]) => oval(g, x, y, .9, .9, "#fff4cf"));
+      line(g, [[145, 50], [175, 50]], "#fffdf6", 1.6); line(g, [[160, 35], [160, 65]], "#fffdf6", 1.6);
+      line(g, [[100, 11], [100, 30]], "#27324f", 1); glow(g, 100, 34, 18, "#ffe7a088"); oval(g, 100, 34, 4, 5, "#fff6c8");
+      [[56, 11], [70, 11], [62, 24]].forEach(p => line(g, [[56, 11], p], "#fffdf6aa", .6));     // a cobweb
+      line(g, [[62, 15], [66, 11]], "#fffdf6aa", .6); line(g, [[59, 17], [64, 18]], "#fffdf6aa", .6);
+    },
+    r_games(g) {
+      flags(g, 8);
+      glow(g, 160, 50, 36, "#c5a3ff55");
+      box(g, 132, 34, 56, 32, 6, "#b9a4e8"); box(g, 135, 37, 50, 26, 5, "#2f3a72");
+      line(g, [[150, 56], [150, 44]], "#8fd0c8", 2); oval(g, 150, 43, 3.4, 3.4, "#ff5f7a");
+      [[168, 46, "#ffd93b"], [176, 52, "#8fd0c8"], [168, 54, "#ff8fa8"]].forEach(([x, y, c]) => oval(g, x, y, 2.6, 2.6, c));
+      [[64, "#ff8fa8"], [234, "#7ab8ff"]].forEach(([x, c]) => { box(g, x, 30, 30, 40, 1, c); twinkle(g, x + 15, 46, 6, "#fff4cf"); box(g, x + 5, 60, 20, 4, 1, "#fffdf6"); });
+    },
+    r_pool(g, room) {
+      homeWindow(g, room.wall);
+      oval(g, 70, 54, 12, 12, "#ff5f7a"); oval(g, 70, 54, 6.4, 6.4, WALLS[room.wall] ? WALLS[room.wall][0] : "#fdf1d8");
+      [0, 1, 2, 3].forEach(i => box(g, 70 + Math.cos(i * 1.57 + .78) * 9 - 2, 54 + Math.sin(i * 1.57 + .78) * 9 - 2, 4, 4, 1, "#fffdf6"));
+      box(g, 78, FLOOR_TOP + 14, 164, 40, 8, "#fffdf6"); box(g, 82, FLOOR_TOP + 18, 156, 32, 6, "#5cc4e6");
+      for (let i = 0; i < 6; i++) line(g, [[96 + i * 24, FLOOR_TOP + 26 + i % 2 * 12], [108 + i * 24, FLOOR_TOP + 26 + i % 2 * 12]], "#bfeaf2", 1.4);
+      [226, 232].forEach(x => line(g, [[x, FLOOR_TOP + 8], [x, FLOOR_TOP + 26]], "#c9c9e8", 1.4));
+      [12, 18].forEach(dy => line(g, [[226, FLOOR_TOP + dy], [232, FLOOR_TOP + dy]], "#c9c9e8", 1.2));
+    },
+    r_secret(g) {
+      [70, 250].forEach(x => { glow(g, x, 40, 24, "#ffb35c66"); box(g, x - 2, 42, 4, 16, 1, "#8a5f3c"); shape(g, [[x - 5, 42], [x + 5, 42], [x, 28]], "#ffa95c"); shape(g, [[x - 2.4, 42], [x + 2.4, 42], [x, 34]], "#ffe39a"); });
+      glow(g, 160, 82, 34, "#c5a3ff55");
+      [[146, 108, 8, 22, "#b9a4e8"], [160, 108, 10, 30, "#c5a3ff"], [174, 108, 8, 20, "#8fd0c8"]].forEach(([x, y, w, h, c]) => shape(g, [[x - w / 2, y], [x - w / 2, y - h + 6], [x, y - h], [x + w / 2, y - h + 6], [x + w / 2, y]], c));
+      [[120, 106], [126, 104], [200, 106], [194, 103], [206, 104]].forEach(([x, y]) => oval(g, x, y, 3, 2, "#ffe14a"));
+    },
+  };
+  // Half of an open doorway at the left (way 1) or right (way -1) edge of a room. The two
+  // halves meet at the join, so a pal walks straight through.
+  function doorway(g, x, way) {
+    const left = way > 0 ? x : x - 20;
+    box(g, left, 36, 20, FLOOR_TOP - 34, 0, "#fffdf6");
+    box(g, way > 0 ? x : x - 16, 40, 16, FLOOR_TOP - 38, 0, "#1b153033");
+    box(g, way > 0 ? x : x - 16, FLOOR_TOP - 2, 16, 3, 0, "#c2915a");
+  }
+  /** The things standing in room `n` of a home, each with its x from that room's left. */
+  const roomItems = (home, n) => (home.items || []).filter(item => Math.floor(item.x / W) === n).map(item => Object.assign({}, item, {x: item.x - n * W}));
+  function homeRoom(g, home, n) {
+    const rooms = home.rooms && home.rooms.length ? home.rooms : [{kind: "living", wall: "w_cream", floor: "f_wood"}], room = rooms[n] || rooms[0];
+    homeWall(g, room.wall);
+    homeFloor(g, room.floor);
+    (ROOM_ART[room.kind] || ROOM_ART.living)(g, room);
+    if (n === 0) {     // the door back outside
+      box(g, 12, 40, 40, 70, 3, "#8a5f3c"); box(g, 16, 44, 32, 66, 2, "#c08a56");
+      box(g, 20, 49, 24, 22, 2, "#d6a473"); box(g, 20, 76, 24, 28, 2, "#d6a473"); oval(g, 43, 80, 2, 2, "#ffd93b");
+    }
+    if (n > 0) doorway(g, 0, 1);
+    if (n < rooms.length - 1) doorway(g, W, -1);
+    for (const item of roomItems(home, n).sort((a, b) => a.y - b.y)) {
       if (!FURNITURE_ART[item.key]) continue;
       g.save(); g.translate(item.x, seatFeet(item.y)); g.scale(1.4, 1.4);     // sized to sit beside a pal
       FURNITURE_ART[item.key](g, 0, 0);
       g.restore();
     }
+  }
+  /** The piece of furniture at a spot in a home, frontmost first. */
+  function furnitureAt(home, x, y) {
+    return ((home && home.items) || []).filter(item => FURNITURE_ART[item.key]).sort((a, b) => b.y - a.y).find(item => {
+      const pic = furniturePicture(item.key), wide = pic.width * 1.4 / 2 + 4, tall = pic.height * 1.4;
+      return Math.abs(x - item.x) < wide && y > seatFeet(item.y) - tall && y < seatFeet(item.y) + 9;
+    }) || null;
   }
   const pictures = {};
   /** A little picture of a piece of furniture, for a button. */
@@ -1019,9 +1346,8 @@ const PalHang = (() => {
     return out;
   }
   const lookColour = key => (WALLS[key] || [FLOORS[key]])[0];
-  /** Which door a click in a home is on: "back" (the door on the left), "next" (on the right), or none. */
-  const doorAt = (x, y, home) => y > 38 && y < FLOOR_TOP + 4 && (x > 10 && x < 54 ? "back"
-    : x > W - 54 && x < W - 10 && home.rooms && home.at < home.rooms.length - 1 ? "next" : null);
+  /** Whether a click in a home is on the door back outside, in the first room. */
+  const doorAt = (x, y) => y > 38 && y < FLOOR_TOP + 4 && x > 10 && x < 54;
   /** The pier at the Beach, if this spot in the world is on it. */
   function fishAt(places, x, y) {
     const at = placeAt(places, x);
@@ -1145,6 +1471,115 @@ const PalHang = (() => {
     shape(g, [[x - 2, y - 7], [x + 2, y - 7], [x, y - 3]], "#e6f3ff");
     if (shine > .7) twinkle(g, x + 5, y - 8, 2.4, "#ffffff");
   }
+  // A treasure chest: shut with a gold lock, or open with the lid up and coins shining.
+  function chest(g, x, y, open, shine = 0) {
+    g.save();
+    g.translate(x, y); g.scale(1.3, 1.3); g.translate(-x, -y);
+    if (!open) oval(g, x, y, 15, 4.5, `rgba(255, 217, 59, ${.25 + shine * .3})`);
+    oval(g, x, y + 1, 11, 2.4, "#1b15302e");
+    if (open) {
+      box(g, x - 9.5, y - 21, 19, 8, 2.5, "#7a4318");
+      box(g, x - 8, y - 19.5, 16, 5, 1.5, "#4a2410");
+      oval(g, x, y - 11, 7.5, 2.6, "#ffd93b");
+      oval(g, x - 2.5, y - 12, 2, 1.3, "#fff2a6");
+    }
+    box(g, x - 9, y - 11, 18, 11, 1.5, "#8a4f22");
+    box(g, x - 9, y - 11, 18, 2, 0, "#6b3a16");
+    box(g, x - 6.5, y - 11, 2, 11, 0, "#e0a92e");
+    box(g, x + 4.5, y - 11, 2, 11, 0, "#e0a92e");
+    if (!open) {
+      box(g, x - 9.5, y - 17, 19, 7, 3, "#a8642c");
+      box(g, x - 6.5, y - 17, 2, 7, 0, "#e0a92e");
+      box(g, x + 4.5, y - 17, 2, 7, 0, "#e0a92e");
+      box(g, x - 2.2, y - 12.5, 4.4, 5, 1, "#ffd93b");
+      box(g, x - .6, y - 10.5, 1.2, 1.8, 0, "#6b3a16");
+      if (shine > .7) twinkle(g, x + 8, y - 17, 2.4, "#ffffff");
+    } else twinkle(g, x + 4, y - 16, 2.4 + shine, "#fff8cf");
+    g.restore();
+  }
+  // 🎨 Draw & guess: the picture on a big easel in the middle of the Park, for everyone to watch it grow.
+  function easel(g, x, game) {
+    const n = game.grid, cell = 4, side = n * cell, left = Math.round(x - side / 2), top = 30;
+    line(g, [[x - 18, top + side], [x - 26, 128]], "#8a5a33", 3);
+    line(g, [[x + 18, top + side], [x + 26, 128]], "#8a5a33", 3);
+    line(g, [[x, top + side], [x, 120]], "#6b4426", 2.4);
+    box(g, left - 4, top - 4, side + 8, side + 8, 2, "#8a5a33");
+    box(g, left - 2, top - 2, side + 4, side + 4, 1, "#1b1530");
+    box(g, left, top, side, side, 0, "#fffdf6");
+    for (let i = 0; i < n * n; i++) {
+      const ink = game.board[i];
+      if (ink !== ".") box(g, left + i % n * cell, top + Math.floor(i / n) * cell, cell, cell, 0, game.colours["0123456789".indexOf(ink)]);
+    }
+    box(g, left - 6, top + side + 3, side + 12, 3, 1, "#a8723f");
+  }
+  // ❄️ A present to find: a box with a ribbon, a different colour in each place.
+  const PRESENT_INK = [["#e8294f", "#ffd93b"], ["#2f6fe4", "#ffffff"], ["#35b55a", "#e8294f"], ["#a05ce8", "#ffd93b"], ["#ff8fc7", "#ffffff"]];
+  function present(g, x, y, i, shine = 0) {
+    const [c, r] = PRESENT_INK[i % PRESENT_INK.length];
+    oval(g, x, y + 1, 7, 1.8, "#1b15302e");
+    box(g, x - 5, y - 8, 10, 8, 1, c);
+    box(g, x - 6, y - 10, 12, 3, 1, c);
+    box(g, x - 1, y - 10, 2, 10, 0, r);
+    oval(g, x - 2.2, y - 11.4, 2, 1.4, r); oval(g, x + 2.2, y - 11.4, 2, 1.4, r);
+    if (shine > .7) twinkle(g, x + 6, y - 11, 2.2, "#ffffff");
+  }
+  // ⛄ The class snowman, bigger with every snowball: the bottom, then the middle, then the head.
+  function snowmanBuilt(g, x, feet, s) {
+    oval(g, x, feet + 1, 13 * s, 3 * s, "#9ab4c84a");
+    oval(g, x, feet - 9 * s, 10 * s, 9.4 * s, "#d3e2ef"); oval(g, x - .6, feet - 9.6 * s, 9.2 * s, 8.6 * s, "#fffefb");
+    oval(g, x, feet - 23 * s, 7.4 * s, 7 * s, "#d3e2ef"); oval(g, x - .5, feet - 23.5 * s, 6.8 * s, 6.4 * s, "#fffefb");
+    oval(g, x, feet - 34 * s, 5.6 * s, 5.2 * s, "#d3e2ef"); oval(g, x - .4, feet - 34.4 * s, 5 * s, 4.8 * s, "#fffefb");
+    box(g, x - 6 * s, feet - 29 * s, 12 * s, 2.4 * s, 1, "#e8294f"); box(g, x + 2 * s, feet - 29 * s, 3 * s, 7 * s, 1, "#e8294f");
+    box(g, x - 6 * s, feet - 40 * s, 12 * s, 1.6 * s, .5, "#3e4a6a"); box(g, x - 4 * s, feet - 46 * s, 8 * s, 6.4 * s, .5, "#3e4a6a");
+    oval(g, x - 2 * s, feet - 35 * s, .8 * s, .8 * s, "#27324f"); oval(g, x + 2 * s, feet - 35 * s, .8 * s, .8 * s, "#27324f");
+    shape(g, [[x, feet - 34 * s], [x + 6 * s, feet - 33 * s], [x, feet - 32.4 * s]], "#f2a15c");
+    [16, 21].forEach(up => oval(g, x, feet - up * s, .9 * s, .9 * s, "#3e4a6a"));
+  }
+  function snowmanGrowing(g, x, feet, balls, need) {
+    const f = balls / need;
+    oval(g, x, feet + 1, 15, 3.2, "#9ab4c84a");
+    oval(g, x + 9, feet - 1, 5, 2.4, "#eef4fb");      // the pile of snow it's rolled from
+    if (!balls) { oval(g, x, feet - 2, 8, 3.4, "#fffefb"); return; }
+    const r1 = 3 + 7 * Math.min(1, f * 3);
+    oval(g, x, feet - r1, r1 + .8, r1, "#d3e2ef"); oval(g, x - .6, feet - r1 - .5, r1, r1 - .5, "#fffefb");
+    if (f <= 1 / 3) return;
+    const r2 = 2.4 + 5 * Math.min(1, (f - 1 / 3) * 3), y2 = feet - 2 * r1 - r2 + 2.4;
+    oval(g, x, y2, r2 + .6, r2, "#d3e2ef"); oval(g, x - .5, y2 - .4, r2, r2 - .4, "#fffefb");
+    if (f <= 2 / 3) return;
+    const r3 = 2 + 3.6 * Math.min(1, (f - 2 / 3) * 3), y3 = y2 - r2 - r3 + 2;
+    oval(g, x, y3, r3 + .5, r3, "#d3e2ef"); oval(g, x - .4, y3 - .3, r3, r3 - .3, "#fffefb");
+    if (f >= .85) { oval(g, x - 1.6, y3 - .6, .7, .7, "#27324f"); oval(g, x + 1.6, y3 - .6, .7, .7, "#27324f"); shape(g, [[x, y3 + .2], [x + 4, y3 + .8], [x, y3 + 1.4]], "#f2a15c"); }
+  }
+  // 🎄 The ornaments: each one a classmate's drawing, small, on a little gold hook.
+  const ORNAMENTS = new Map();
+  function ornamentSprite(pal) {
+    const key = JSON.stringify(pal);
+    if (!ORNAMENTS.has(key)) {
+      if (ORNAMENTS.size > 120) ORNAMENTS.clear();
+      ORNAMENTS.set(key, trimmed(PalStage.puppet(pal, 1).picture(0, {})));
+    }
+    return ORNAMENTS.get(key);
+  }
+  function villageLive(g, state, now) {
+    const tree = (state.tree || []).slice(-ORNAMENT_SLOTS.length);
+    const star = tree.length >= 10, t = now / 1000;
+    tree.forEach((o, n) => {
+      const [dx, y] = ORNAMENT_SLOTS[ORNAMENT_ORDER[n]], x = VILLAGE_TREE_X + dx;
+      let img = null;
+      try { img = ornamentSprite(o.pal); } catch (_) { return; }
+      const fit = 11 / Math.max(img.width, img.height), w = img.width * fit, h = img.height * fit;
+      line(g, [[x, y - h / 2 - 2], [x, y - h / 2]], "#e0a92e", .6);
+      g.drawImage(img, x - w / 2, y - h / 2 + (PalStage.calm ? 0 : Math.sin(t * 1.4 + n) * .5), w, h);
+    });
+    const glowing = star && !PalStage.calm ? .7 + Math.sin(t * 3) * .3 : star ? 1 : 0;
+    if (star) glow(g, VILLAGE_TREE_X, 30, 9, `rgba(255, 217, 59, ${.4 * glowing})`);
+    shape(g, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => [VILLAGE_TREE_X + Math.sin(i * Math.PI / 5) * (i % 2 ? 2.2 : 5.4), 31 - Math.cos(i * Math.PI / 5) * (i % 2 ? 2.2 : 5.4)]),
+          star ? "#ffd93b" : "#d9d4c6");
+    const man = state.snowman || {balls: 0, need: 30, built: 0};
+    [190, 254, 206, 270, 222, 286].slice(0, Math.min(6, man.built)).forEach(x => snowmanBuilt(g, x, 118, .42));
+    if (state.snowmanDone && now - state.snowmanDone < 4000) snowmanBuilt(g, SNOWMAN_X, seatFeet(SNOWMAN_DEEP), .62);
+    else snowmanGrowing(g, SNOWMAN_X, seatFeet(SNOWMAN_DEEP), man.balls, man.need);
+  }
   // Mist where one place turns into the next.
   function seam(g, x) {
     const fill = g.createLinearGradient(x - 34, 0, x + 34, 0);
@@ -1178,6 +1613,12 @@ const PalHang = (() => {
     spots.forEach(([x, y], i) => butterfly(g, x + Math.sin(t * .5 + i * 2) * 22, y + Math.sin(t * .9 + i) * 7, Math.abs(Math.sin(t * 9 + i)), colours[i % colours.length]));
   }
   function drift(g, scene, t) {
+    if (scene === "village") {
+      for (let i = 0; i < 26; i++) {
+        const fall = (t * (9 + i % 5 * 2) + i * 47) % 200 - 10;
+        oval(g, (i * 53 + Math.sin(t * .8 + i) * 8) % W, fall, .9, .9, "#ffffff");
+      }
+    }
     if (scene === "park" || scene === "wedding" || scene === "beach" || scene === "snowy") {
       [[.012, 28, 1.1], [.008, 48, .8], [.016, 18, .7]].forEach(([speed, y, s], i) => {
         cloud(g, ((t * 1000 * speed + i * 137) % 400) - 40, y, s, scene === "wedding" ? "#fff7f2" : "#fffdf6", scene === "wedding" ? "#f6d6e2" : "#d5e6f0");
@@ -1286,12 +1727,13 @@ const PalHang = (() => {
     fine.width = W * FINE; fine.height = H * FINE;
     const lo = small.getContext("2d"), ink = fine.getContext("2d");
     let frame = 0, last = 0, stopped = false;
-    let homeKey = "", homeArt = null;
-    function artFor(scene, home) {
-      if (scene === "home") {
-        const key = JSON.stringify(home || {});
-        if (key !== homeKey) { homeKey = key; homeArt = crisp(W, H, ink => homeRoom(ink, home || {})); }
-        return homeArt;
+    const homeArt = {};
+    function artFor(scene, home, n) {
+      if (scene === "home") {     // each room is painted again only when something in it changes
+        home = home || {};
+        const key = JSON.stringify([(home.rooms || [])[n], (home.rooms || []).length, roomItems(home, n)]);
+        if (!homeArt[n] || homeArt[n].key !== key) homeArt[n] = {key, art: crisp(W, H, ink => homeRoom(ink, home, n))};
+        return homeArt[n].art;
       }
       if (!kept[scene]) kept[scene] = bands(crisp(W, H, ink => {
         (PLACES[scene] || PLACES.park)(ink);
@@ -1306,6 +1748,7 @@ const PalHang = (() => {
         for (const [x, deep] of SEATS[scene]) ring(x, deep, "#fff6c866", "#f5b83d");
         for (const [x, deep] of TOYS[scene]) ring(x, deep, "#ffe0ec66", "#ff5fa2");
         if (scene === "beach") ring(FISH_X, 0, "#d6f4f866", "#2f7fd0");
+        if (scene === "village") { ring(SNOWMAN_X, SNOWMAN_DEEP, "#d6f4f866", "#2f7fd0"); ring(VILLAGE_TREE_X, .1, "#fff6c866", "#f5b83d"); }
       }));
       return kept[scene];
     }
@@ -1322,11 +1765,12 @@ const PalHang = (() => {
       const playing = state.game && ["hiding", "playing"].includes(state.game.phase), hiding = playing && state.game.kind === "hide";
       const covers = (state.cover || []).filter(c => c.x - cam > -40 && c.x - cam < W + 40).sort((a, b) => a.y - b.y);
       const inside = places[0] === "home", race = playing && state.game.kind === "race" ? state.game : null;
-      const locked = !inside && places.length < Object.keys(PLACES).length && Math.abs(places.length * W - cam - W) < 40;
+      const locked = !inside && places.filter(p => p !== "village").length < Object.keys(PLACES).length - 1 && !places.includes("village")
+        && Math.abs(places.length * W - cam - W) < 40;
       const edge = playing && cam > 320 - W && 640 - cam >= 0 && 640 - cam <= W ? 640 - cam : null;
       // 1. The places themselves, already in pixels.
       lo.clearRect(0, 0, W, H);
-      for (const i of showing) lo.drawImage(artFor(places[i], state.home), i * W - cam, 0);
+      for (const i of showing) lo.drawImage(artFor(places[i], state.home, i), i * W - cam, 0);
       // 2. What moves or changes, painted fine and then turned into pixels.
       ink.setTransform(1, 0, 0, 1, 0, 0);
       ink.clearRect(0, 0, fine.width, fine.height);
@@ -1341,15 +1785,21 @@ const PalHang = (() => {
           oval(ink, x, seatFeet(deep) + 1, 5, 1.4, "#1b15302e");
           gem(ink, x, seatFeet(deep) - 6 + (PalStage.calm ? 0 : Math.sin(now / 300 + n) * 1.5), PalStage.calm ? 0 : Math.abs(Math.sin(now / 700 + n * 2)));
         });
+        for (const c of state.chests || []) if (c.place === places[i]) chest(ink, c.x, seatFeet(c.deep), c.open, PalStage.calm ? 0 : Math.abs(Math.sin(now / 600 + c.x)));
+        if (places[i] === "village") villageLive(ink, state, now);
+        (state.presents || []).forEach((p, n) => {
+          if (p.place === places[i] && !p.found) present(ink, p.x, seatFeet(p.deep) + (PalStage.calm ? 0 : Math.sin(now / 400 + n) * .8), n, PalStage.calm ? 0 : Math.abs(Math.sin(now / 650 + n * 3)));
+        });
         ink.restore();
       }
-      for (let i = 1; i < places.length; i++) if (Math.abs(i * W - cam - W / 2) < W / 2 + 40) seam(ink, i * W - cam);
+      if (!inside) for (let i = 1; i < places.length; i++) if (Math.abs(i * W - cam - W / 2) < W / 2 + 40) seam(ink, i * W - cam);
       if (locked) seam(ink, places.length * W - cam);
       const clock = performance.now();
       for (const m of state.room || []) if (m.spotUntil > clock) spotlight(ink, m.x - cam, PalStage.groundOf(m));
       for (const c of covers) coverGround(ink, c, cam, hiding);
       if (edge !== null) line(ink, [[edge - 2, 110], [edge - 2, H]], "#b76e43", 3);
       if (race) for (let i = 0; i < 12; i++) box(ink, race.finish - cam + i % 2 * 4, PalStage.GROUND_TOP - 8 + i * 5, 4, 5, 0, i % 4 < 2 ? "#1b1530" : "#fffdf6");
+      if (playing && state.game.kind === "draw" && state.game.board) easel(ink, 160 - cam, state.game);
       lo.drawImage(fine, 0, 0, W, H);
       // 3. The hiding places, standing on top of all that.
       for (const c of covers) cutCover(lo, c, cam);
@@ -1359,18 +1809,32 @@ const PalHang = (() => {
       g.clearRect(0, 0, w, h);
       g.drawImage(small, 0, 0, w, h);
       g.scale(w / W, h / H);
-      for (let i = 1; i < places.length; i++) if (Math.abs(i * W - cam - W / 2) < W / 2 + 40) sign(g, i * W - cam, `${PLACE_LABEL[places[i - 1]]} ← → ${PLACE_LABEL[places[i]]}`);
+      const rooms = inside && state.home && state.home.rooms, label = i => (rooms ? rooms[i].name : PLACE_LABEL[places[i]]);
+      for (let i = 1; i < places.length; i++) if (Math.abs(i * W - cam - W / 2) < W / 2 + 40) sign(g, i * W - cam, `${label(i - 1)} ← → ${label(i)}`, rooms ? 22 : 88);
+      if (rooms && state.home.mine && state.home.more && Math.abs(places.length * W - cam - W) < 40) sign(g, places.length * W - cam - 70, "🔨 Build more rooms in the 🛍️ Shop!", 22);
       if (locked) sign(g, places.length * W - cam - 52, "🔒 Fill the party meter!");
+      const v = places.indexOf("village");
+      const onScreen = x => x > 30 && x < W - 30;          // a sign only over something you can see
+      if (v >= 0 && !inside) {
+        const man = state.snowman || {balls: 0, need: 30}, sx = v * W - cam + SNOWMAN_X, tx = v * W - cam + VILLAGE_TREE_X;
+        if (onScreen(sx)) sign(g, sx, `⛄ ${man.balls} of ${man.need}: click to roll!`, 90, 6);
+        if (onScreen(tx)) sign(g, tx, `🎄 Class tree: ${(state.tree || []).length}`, 6, 6);
+      }
       if (edge !== null && !race) sign(g, edge - 48, "Play area ends here", 104);     // under the sign for the next place
       if (race) {
         sign(g, W / 2, race.light === "red" ? "🔴 RED LIGHT: FREEZE!" : "🟢 GREEN LIGHT: RUN!", 8, 11);
         if (race.finish - cam > 0 && race.finish - cam < W) sign(g, race.finish - cam, "🏁 Finish", 104);
       }
       if (hiding) for (const c of covers) sign(g, Math.round(c.x) - cam, c.name, Math.min(coverFeet(c) + 7, H - 13), 6);     // the name stays on the screen
+      // On the class screen, each chest says what it asks for and how many have opened it today.
+      if (!playing) for (const c of state.chests || []) {
+        const i = places.indexOf(c.place), x = i * W + c.x - cam;
+        if (i >= 0 && "count" in c && x > 0 && x < W) sign(g, x, `🧰 ${c.job}${c.count ? ` ✅ ${c.count}` : ""}`, seatFeet(c.deep) - 66, 6);     // above a pal standing at it
+      }
     }
     frame = requestAnimationFrame(paint);
     return () => { stopped = true; cancelAnimationFrame(frame); };
   }
 
-  return {start, seatAt, toyAt, gemAt, coverAt, cutCover, coverHigh, furniturePicture, lookColour, doorAt, fishAt, PLACES: Object.keys(PLACES)};
+  return {start, seatAt, toyAt, gemAt, chestAt, presentAt, villageAt, coverAt, cutCover, coverHigh, furniturePicture, furnitureAt, lookColour, doorAt, fishAt, PLACES: Object.keys(PLACES)};
 })();

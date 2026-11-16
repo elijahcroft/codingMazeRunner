@@ -6,6 +6,8 @@
 let roomStage = null, stopRoom = null, stopBack = null, roomInfo = null, roomJoining = false, roomPane = "do";
 let artArmed = null, moveReadyAt = 0, clapFor = null, clapTimer = 0, bannerTimer = 0, placesSeen = "";
 let furnArmed = null, buyArmed = null, fishing = null, homeSeen = "", peopleSeen = "", coinsSeen = null;
+// At home: ✋ moving things (a click picks one up, instead of playing with it), and which room is on screen.
+let moving = false, roomInView = 0;
 const atHome = () => !!(roomInfo && roomInfo.home), myHome = () => atHome() && roomInfo.home.mine;
 
 const ROOM_PANES = {
@@ -23,10 +25,11 @@ function tapCode(what, name) {
   return "";
 }
 const PLACE_NAMES = {park: ["🌳", "Park"], wedding: ["💒", "Wedding"], beach: ["🏖️", "Beach"], night: ["🌙", "Night"],
-                     snowy: ["⛄", "Snowy hill"], candy: ["🍭", "Candy land"], space: ["🚀", "Space"]};
+                     snowy: ["⛄", "Snowy hill"], candy: ["🍭", "Candy land"], space: ["🚀", "Space"],
+                     village: ["❄️", "Snow Village"]};
 const SLOT_NAMES = {hat: "Hats", face: "Faces", sparkle: "Sparkles"};
-const ROOM_TIP = "Walk to the edge to explore! Gold ring: sit. Pink ring: play. Blue ring: fish. Find the 💎 gems!";
-const HOME_TIP = "Click the floor to walk. Click a door to go through it.";
+const ROOM_TIP = "Walk to the edge to explore! Gold ring: sit. Pink ring: play. Blue ring: fish. Find 💎 gems and 🧰 chests!";
+const HOME_TIP = "Click the floor to walk. Walk through a doorway to the next room! Click a thing to play with it. The brown door goes outside.";
 // While you're in a round, the tip under the world says what to do in that game.
 function gameTip(g) {
   const you = roomInfo.you, it = g.it === you;
@@ -35,11 +38,15 @@ function gameTip(g) {
   if (g.kind === "hide") return it ? "Click a hiding place to walk there and look." : "Stay still! The seeker is looking.";
   if (g.kind === "race") return "Green light: press Run or → again and again. Red light: stop!";
   if (g.kind === "dance") return "Tap the lit-up move on the right, in order.";
+  if (g.kind === "draw") return g.pause ? "Look! The next picture is coming." : g.drawer === you ? "You're drawing! Click squares on the right. No letters!"
+    : (g.guessed || []).includes(you) ? "You got it! Watch the picture grow." : "What is it? Tap the picture on the right!";
   if (g.kind === "code") return (g.bonus || []).includes(you) ? "Bonus done! Clap for your friends while they finish."
     : (g.solved || []).includes(you) ? "You solved it! Try the 🌟 Bonus on the right, or clap for your friends." : "Build your code on the right, then press ▶ Run my code.";
   return ROOM_TIP;
 }
-const roomTipNow = () => (atHome() ? HOME_TIP : inRound() ? gameTip(currentGame()) : ROOM_TIP);
+// At a 🧰 chest, the tip under the world keeps the puzzle in view, even when a small laptop scrolls the code box.
+const chestTip = () => { const c = roomPane === "chest" && chestNow(); return c && !c.open ? `🧰 ${c.job} ${c.icons}` : ""; };
+const roomTipNow = () => (atHome() ? HOME_TIP : inRound() ? gameTip(currentGame()) : chestTip() || ROOM_TIP);
 
 function fitRoomScreen() {
   const host = $("roomHost"), wrap = host.parentElement, main = wrap.parentElement;
@@ -58,6 +65,7 @@ function buildRoomButtons() {
   const box = $("roomButtons");
   box.classList.remove("games-pane");
   box.classList.toggle("words", roomPane === "say");
+  $("hangView").classList.toggle("chesting", roomPane === "chest");
   box.classList.toggle("me-pane", ["me", "art", "shop", "home"].includes(roomPane));
   const big = ([icon, word, what, name]) => {
     const code = tapCode(what, name);
@@ -65,6 +73,10 @@ function buildRoomButtons() {
   };
   if (roomPane === "games") {
     buildGamePane(box);
+  } else if (roomPane === "chest") {
+    buildChestPane(box);
+  } else if (roomPane === "tree") {
+    buildTreePane(box);
   } else if (roomPane === "say") {
     // Wedding words come first at the Wedding, and last everywhere else.
     const me = myMember(), here = me && !atHome() && roomStage.state.places ? roomStage.state.places[Math.floor(me.x / PalStage.W)] : "";
@@ -114,14 +126,20 @@ function paintCoins(data) {
 function buildShopPane(box) {
   const {shop, coins, gifts, stuff} = S.hang;
   const picture = (key, item) => item.kind === "wear" ? `<canvas data-pic="${key}"></canvas>`
-    : item.kind === "furniture" ? `<canvas data-furnpic="${key}"></canvas>` : item.kind === "room" ? `<span>🚪</span>`
+    : item.kind === "furniture" ? `<canvas data-furnpic="${key}"></canvas>` : item.kind === "room" ? `<span>${item.icon}</span>`
     : `<i class="swatch" style="background:${PalHang.lookColour(key)}"></i>`;
-  const shelf = (title, kinds) => `<h4>${title}</h4>` + Object.entries(shop).filter(([, item]) => kinds.includes(item.kind)).map(([key, item]) => {
-    const mine = gifts.includes(key) || stuff.includes(key);
-    return `<button data-buy="${key}" ${mine ? "disabled" : ""} class="${!mine && coins < item.price ? "dear" : ""}" aria-pressed="${buyArmed === key}">${picture(key, item)}${esc(item.name)}<small>${mine ? "✔ Yours" : buyArmed === key ? "Click again to buy!" : "🪙 " + item.price}</small></button>`;
+  const fancy = item => item.kind === "wear" && item.price >= S.hang.fancy;
+  const shelf = (title, kinds, dear = false, note = "") => `<h4>${title}</h4>${note}` + Object.entries(shop).filter(([, item]) => kinds.includes(item.kind) && fancy(item) === dear).map(([key, item]) => {
+    // Furniture can be bought again and again. Everything else is bought once.
+    const many = item.kind === "furniture", have = stuff.filter(k => k === key).length, mine = !many && (gifts.includes(key) || stuff.includes(key));
+    const word = mine ? (item.kind === "room" ? "✔ Built" : "✔ Yours") : buyArmed === key ? "Click again to buy!" : `🪙 ${item.price}${have ? ` · you have ${have}` : ""}`;
+    return `<button data-buy="${key}" ${mine ? "disabled" : ""} class="${!mine && coins < item.price ? "dear" : ""}" aria-pressed="${buyArmed === key}">${picture(key, item)}${esc(item.name)}<small>${word}</small></button>`;
   }).join("");
   box.innerHTML = `<p class="me-note">You have 🪙 <b>${coins}</b>. Coding missions pay the most coins! Playing pays a few each day.</p>` +
-    shelf("🧢 To wear", ["wear"]) + shelf("🛋️ For your home", ["furniture"]) + shelf("🎨 Walls and floors", ["wall", "floor"]) + shelf("🚪 More rooms", ["room"]);
+    shelf("✨ Fancy: save up for these!", ["wear"], true) + shelf("🧢 To wear", ["wear"]) +
+    `<button class="wide" data-pane="me"><span>✏️</span>Wear your own drawing: 🪙 ${S.hang.my_wear_price}<small>Make it in 🧢 Me</small></button>` +
+    shelf("🔨 Build a room onto your home", ["room"]) +
+    shelf("🛋️ For your home", ["furniture"], false, `<p class="me-note">You can buy these more than once!</p>`) + shelf("🎨 Walls and floors", ["wall", "floor"]);
   paintPanePictures(box);
 }
 function paintPanePictures(box) {
@@ -142,55 +160,85 @@ async function buy(key) {
   Object.assign(S.hang, {coins: out.coins, gifts: out.gifts, stuff: out.stuff});
   coinsSeen = out.coins;
   PalStage.SFX.play("gift");
-  tipFor(`You bought ${item.kind === "room" ? "a new " + item.name.toLowerCase() : item.name}! ${item.kind === "wear" ? "Put it on in 🧢 Me."
-    : item.kind === "room" ? "Go to 🏠 Home and click the blue door to go in." : "Use it in 🏠 Home."}`);
+  tipFor(item.kind === "room" ? `You built a ${item.name.toLowerCase()}! Go to 🏠 Home and walk through the doorway to see it.`
+    : `🛍️ Got it: ${item.name}! ${item.kind === "wear" ? "Put it on in 🧢 Me." : "Put it out in 🏠 Home."}`, 5000);
+  homeGrew(out.grew);
   paintCoins();
   buildRoomButtons();
 }
 
 // ---- A home of your own -----------------------------------------------------------------------
+// It's a row of rooms to walk through, and it grows by levels as it fills up (pixel.py
+// HOME_LEVELS). Each level wins a prize.
+const homeFree = item => !item.price && !item.prize && !item.room;
+function homeLevelCard(home) {
+  const levels = S.hang.levels, now = levels[home.level], after = levels[home.level + 1];
+  const part = after ? Math.max(0, Math.min(100, Math.round((home.points - now[1]) / (after[1] - now[1]) * 100))) : 100;
+  return `<p class="me-note home-level"><b>🏡 ${esc(home.mine ? "Your home" : home.name + "'s home")}: ${esc(now[0])}</b>
+    <span>⭐ ${home.points} points · ❤️ ${home.hearts} heart${home.hearts === 1 ? "" : "s"}</span>
+    <i class="goal-bar"><i style="width:${part}%"></i></i>
+    <small>${after ? `${after[1] - home.points} more point${after[1] - home.points === 1 ? "" : "s"} to <b>${esc(after[0])}</b>` : "The best home there is! 👑"}</small></p>`;
+}
+function homeGrew(name) {
+  if (!name) return;
+  banner(`🏡 YOUR HOME GREW! 🏡<small>It's a ${esc(name)} now! Look in 🏠 Home for your prize.</small>`, 6000, true);
+  PalStage.SFX.play("fanfare");
+}
+const roomNow = () => Math.min(roomInView, roomInfo.home.rooms.length - 1);
 function buildHomePane(box) {
-  const {furniture, walls, floors, stuff} = S.hang, home = roomInfo && roomInfo.home;
+  const {furniture, walls, floors, stuff, levels} = S.hang, home = roomInfo && roomInfo.home;
   const others = ((roomInfo && roomInfo.people) || []).filter(m => m.seat !== roomInfo.you);
-  const rooms = home && home.rooms.length > 1 ? `<h4>🚪 Rooms</h4>` + home.rooms.map((r, i) =>
-    `<button data-room="${r.loc}" aria-pressed="${i === home.at}"><span>🚪</span>${esc(r.name)}</button>`).join("") : "";
+  const rooms = home ? `<h4>🚪 ${home.mine ? "Your rooms" : "Rooms"}</h4>` + home.rooms.map((r, i) =>
+    `<button data-goroom="${i}" aria-pressed="${i === roomNow()}"><span>${(S.hang.rooms[r.kind] || {icon: "🛋️"}).icon}</span>${esc(r.name)}</button>`).join("") +
+    (home.mine && home.more ? `<button data-pane="shop"><span>🔨</span>Build a room<small>in the 🛍️ Shop</small></button>` : "") : "";
   const visit = others.length ? `<h4>🚪 Visit a friend's home</h4>` + others.map(m => `<button data-home="${m.seat}"><span>🏡</span>${esc(m.name)}</button>`).join("") : "";
   if (!home || !home.mine) {
-    box.innerHTML = `<p class="me-note">${home ? `You're visiting ${esc(home.name)}'s home. This is the ${esc(home.rooms[home.at].name.toLowerCase())}.` : "Everyone has a home. Fill yours with things from the 🛍️ Shop!"}</p>
-      <button class="wide" data-home="mine"><span>🏠</span>Go to my home</button>${home ? `<button class="wide" data-home="out"><span>🚪</span>Go back outside</button>` : ""}` + rooms + visit;
+    const heart = home ? `<button class="wide" data-heart="1" ${home.hearted ? "disabled" : ""}><span>❤️</span>${home.hearted ? "You gave this home a heart" : "Give this home a heart"}</button>` : "";
+    box.innerHTML = (home ? homeLevelCard(home) : "") + `<p class="me-note">${home ? `You're visiting ${esc(home.name)}'s home. Walk through the doorways and click their things to play!`
+      : "Everyone has a home. Fill yours with things from the 🛍️ Shop, build more rooms, and make it grow into a castle!"}</p>` + heart +
+      `<button class="wide" data-home="mine"><span>🏠</span>Go to my home</button>${home ? `<button class="wide" data-home="out"><span>🚪</span>Go back outside</button>` : ""}` +
+      (home ? rooms : "") + visit;
     return;
   }
-  const have = key => !S.hang[key in furniture ? "furniture" : key in walls ? "walls" : "floors"][key].price || stuff.includes(key);
-  const out = new Set(home.items.map(i => i.key));
-  const note = furnArmed ? `👉 Click the floor to put the ${furniture[furnArmed].name.toLowerCase()} there!` : "Pick a thing, then click the floor to put it there. Pick it again to move it.";
-  box.innerHTML = `<p class="me-note">You're in your ${esc(home.rooms[home.at].name.toLowerCase())}.${home.rooms.length > 1 ? "" : " Get more rooms in the 🛍️ Shop!"}</p>` + rooms + `<h4>🛠️ Make your own furniture</h4>
+  const kindOf = key => (key in furniture ? furniture : key in walls ? walls : floors)[key];
+  const have = key => homeFree(kindOf(key)) || stuff.includes(key);
+  const copies = key => stuff.filter(k => k === key).length || 1, outOf = key => home.items.filter(i => i.key === key).length;
+  const n = roomNow(), room = home.rooms[n], armed = furnArmed && furniture[furnArmed.key];
+  const note = armed ? `👉 Click the floor to put it there: ${armed.name}!`
+    : moving ? "✋ Click one of your things in the picture to pick it up." : "Pick a thing, then click the floor to put it there.";
+  const prizes = Object.entries({...furniture, ...walls, ...floors}).filter(([key, item]) => item.prize && !stuff.includes(key));
+  box.innerHTML = homeLevelCard(home) +
+    `<p class="me-note">Get points: ⭐ 1 for each thing you put out, ⭐ 2 for a drawing with code, ⭐ 3 for each room you build, ⭐ 1 for each ❤️ from a friend.</p>` +
+    `<p class="me-note"><b>${esc(room.name)}</b> · ${note}</p>` +
+    `<button class="wide" data-moving="1" aria-pressed="${moving}"><span>✋</span>${moving ? "Done moving" : "Move my things"}</button>` +
+    (furnArmed && furnArmed.piece ? `<button class="wide" data-away="${furnArmed.piece}"><span>📦</span>Put it away</button>` : "") +
+    `<h4>🛋️ Your things</h4>` + Object.keys(furniture).filter(have).map(key =>
+      `<button data-furn="${key}" aria-pressed="${!!furnArmed && !furnArmed.piece && furnArmed.key === key}"><canvas data-furnpic="${key}"></canvas>${esc(furniture[key].name)}<small>${outOf(key)} of ${copies(key)} out</small></button>`).join("") +
+    `<p class="me-note">Want more? You can buy things more than once in the 🛍️ Shop.</p>` + rooms +
+    `<h4>🎨 Walls and floors for the ${esc(room.name.toLowerCase())}</h4>` + [...Object.keys(walls), ...Object.keys(floors)].filter(have).map(key =>
+      `<button data-look="${key}" aria-pressed="${room.wall === key || room.floor === key}"><i class="swatch" style="background:${PalHang.lookColour(key)}"></i>${esc(kindOf(key).name)}</button>`).join("") +
+    (prizes.length ? `<h4>🏆 Prizes still to win</h4>` + prizes.map(([key, item]) =>
+      `<button class="locked" data-prize="${key}">${key in furniture ? `<canvas data-furnpic="${key}"></canvas>` : `<i class="swatch" style="background:${PalHang.lookColour(key)}"></i>`}${esc(item.name)}<small>🔒 ${esc(levels[item.prize][0])}</small></button>`).join("") : "") +
+    `<h4>🛠️ Make your own furniture</h4>
      <p class="me-note">Draw a chair, a lamp, a magic bed... anything! Put it in your home from 🖼️ Art, then give it code.</p>
      <button class="wide" data-drawthing="1"><span>✏️</span>Draw new furniture</button>
      <button class="wide" data-pane="art"><span>🖼️</span>Put a drawing in my home</button>` + thingTiles() +
-    `<h4>🛋️ Your things</h4><p class="me-note">${note}</p>` +
-    (furnArmed && out.has(furnArmed) ? `<button class="wide" data-away="${furnArmed}"><span>📦</span>Put it away</button>` : "") +
-    Object.keys(furniture).filter(have).map(key =>
-      `<button data-furn="${key}" aria-pressed="${furnArmed === key}"><canvas data-furnpic="${key}"></canvas>${esc(furniture[key].name)}<small>${out.has(key) ? "✔ Out" : ""}</small></button>`).join("") +
-    `<h4>🎨 Walls and floors</h4>` + [...Object.keys(walls), ...Object.keys(floors)].filter(have).map(key =>
-      `<button data-look="${key}" aria-pressed="${home.wall === key || home.floor === key}"><i class="swatch" style="background:${PalHang.lookColour(key)}"></i>${esc((walls[key] || floors[key]).name)}</button>`).join("") +
-    `<p class="me-note">Get more things in the 🛍️ Shop.</p>
-     <button class="wide" data-home="out"><span>🚪</span>Go back outside</button>` + visit;
+    `<button class="wide" data-home="out"><span>🚪</span>Go back outside</button>` + visit;
   paintPanePictures(box);
   box.querySelectorAll("[data-artpic]").forEach(cv => drawingInto(cv, shelfList.find(p => p.key === cv.dataset.artpic)));
 }
 async function goHome(where) {
-  fishing = null; furnArmed = artArmed = null;
+  fishing = null; furnArmed = artArmed = null; moving = false;
   PalStage.SFX.wake();
   const out = await tap("home", where === "out" ? {out: true} : where === "mine" ? {} : {seat: +where});
   if (out && out.error) tipFor(out.error);
-  else if (out && out.ok && where !== "out") { roomPane = "home"; buildRoomButtons(); }
+  else if (out && out.ok && where !== "out") { roomPane = "home"; buildRoomButtons(); homeGrew(out.grew); }
 }
-
-async function goRoom(loc) {
-  fishing = null; furnArmed = artArmed = null;
-  PalStage.SFX.wake();
-  const out = await tap("home", {to: loc});
-  if (out && out.error) tipFor(out.error);
+async function furnish(data) {
+  PalStage.SFX.play("pop");
+  const out = await tap("furnish", data);
+  if (out && out.error && out.error.length > 8) tipFor(out.error, 5000);
+  homeGrew(out && out.grew);
 }
 
 // ---- Fishing off the pier -----------------------------------------------------------------------
@@ -231,8 +279,8 @@ async function reelIn() {
 // Leaving your other drawings out in the world, for everyone to find.
 function buildArtPane(box) {
   const pics = finishedDrawings();
-  const out = ((roomStage && roomStage.state.placed) || []).filter(p => p.mine).length;
-  const max = atHome() ? S.hang.art_max : S.hang.place_max, where = atHome() ? "wall or floor" : "world";
+  const out = ((roomStage && roomStage.state.placed) || []).filter(p => p.mine && (!atHome() || Math.floor(p.x / PalStage.W) === roomNow())).length;
+  const max = atHome() ? S.hang.art_max : S.hang.place_max, where = atHome() ? "wall or floor of this room" : "world";
   const note = atHome() && !myHome() ? "You can hang drawings up in your own home, or outside."
     : !pics.length ? "Draw something first, then come back and put it up!"
     : artArmed ? `👉 Now click the ${where} where you want it!`
@@ -273,7 +321,9 @@ async function choosePal(key) {
 }
 // What a goal counts, as words for a child.
 const GOAL_WORDS = {gems: ["💎", n => `Find ${n} gems`], fish: ["🎣", n => `Catch ${n} kinds of fish`], friends: ["🙌", n => `High-five ${n} friends`],
-                    rounds: ["🎮", n => `Play ${n} game rounds`], stars: ["⭐", n => `Earn ${n} mission stars`]};
+                    rounds: ["🎮", n => `Play ${n} game rounds`], stars: ["⭐", n => `Earn ${n} mission stars`],
+                    chests: ["🧰", n => `Code ${n} chests open`], presents: ["🎁", n => `Find ${n} presents in winter`],
+                    snowballs: ["⛄", n => `Roll ${n} snowballs onto the class snowman`]};
 const goalLeft = key => { const [what, n] = S.hang.catalog[key].goal; return [Math.min(n, (S.hang.progress || {})[what] || 0), n, what]; };
 // How a locked thing is got, short enough for a button.
 function howToGet(key) {
@@ -310,13 +360,63 @@ function buildMePane(box) {
     `<button data-pal="${esc(d.key)}" aria-pressed="${S.pal === d.key}"><canvas data-palpic="${esc(d.key)}"></canvas>${esc(d.title || "My drawing")}</button>`).join("") : "";
   const book = S.hang.fish_book, fish = S.hang.fish;
   const hide = `<button class="wide" data-hidename aria-pressed="${!!S.hang.hide_name}"><span>🙈</span>${S.hang.hide_name ? "Your name tag is invisible to others. Click to show it." : "Make my name tag disappear"}</button>`;
-  box.innerHTML = hide + who + goals + (gifts.length ? "" : `<p class="me-note">Finish a mission or all 3 of today's 🎯 jobs to get a gift box! Click a 🔒 thing to see how to get it.</p>`) + slots +
+  box.innerHTML = hide + who + ownWearHtml(pics) + goals + (gifts.length ? "" : `<p class="me-note">Finish a mission or all 3 of today's 🎯 jobs to get a gift box! Click a 🔒 thing to see how to get it.</p>`) + slots +
     `<h4>🙌 Friends you've high-fived: ${friends.length}</h4><p class="me-note">${friends.length ? friends.map(esc).join(", ") : "Click a friend's pal to high-five them."}</p>` +
     `<h4>🎣 Fish book: ${Object.keys(fish).length} of ${Object.keys(book).length}</h4><p class="me-note fish-book">${Object.keys(book).map(k =>
       fish[k] ? `<span title="${esc(book[k][1])}">${book[k][0]}<small>×${fish[k]}</small></span>` : "❔").join(" ")}</p>` +
     (Object.keys(fish).length ? "" : `<p class="me-note">Click the pier at the Beach (the blue ring) to go fishing.</p>`);
   box.querySelectorAll("[data-pic]").forEach(cv => wearInto(cv, cv.dataset.pic, 3));
   box.querySelectorAll("[data-palpic]").forEach(cv => drawingInto(cv, pics.find(p => p.key === cv.dataset.palpic)));
+  box.querySelectorAll("[data-sewpic]").forEach(cv => drawingInto(cv, pics.find(p => p.key === cv.dataset.sewpic)));
+  box.querySelectorAll("[data-ownpic]").forEach(cv => {
+    const own = (S.hang.mywear || []).find(w => w.key === cv.dataset.ownpic), img = own && PalStage.wearPicture("", own.art);
+    if (!img) return;
+    const zoom = Math.max(1, Math.floor(30 / Math.max(img.width, img.height)));
+    cv.width = img.width * zoom; cv.height = img.height * zoom;
+    const g = cv.getContext("2d");
+    g.imageSmoothingEnabled = false;
+    g.drawImage(img, 0, 0, cv.width, cv.height);
+  });
+}
+// ✏️ Wear your own drawing: pick a drawing, then hat or face. It's a copy, so it stays the same.
+let sewPick = null, sewBin = false;
+function ownWearHtml(pics) {
+  const own = S.hang.mywear || [], price = S.hang.my_wear_price, wear = S.hang.wear, full = own.length >= S.hang.my_wear_max;
+  let html = `<h4>✏️ Wear your own drawing <small>🪙 ${price} each</small></h4>`;
+  html += own.map(w => sewBin
+    ? `<button data-unsew="${esc(w.key)}"><canvas data-ownpic="${esc(w.key)}"></canvas>${esc(w.name)}<small>🗑 Click to throw away</small></button>`
+    : `<button data-wear="${esc(w.key)}" data-slot="${w.slot}" aria-pressed="${wear[w.slot] === w.key}"><canvas data-ownpic="${esc(w.key)}"></canvas>${esc(w.name)}<small>${w.slot === "hat" ? "🎩 Hat" : "👓 Face"}</small></button>`).join("");
+  if (own.length) html += `<button data-sewbin="1" aria-pressed="${sewBin}"><span>🗑</span>${sewBin ? "Done" : "Throw one away"}</button>`;
+  if (!pics.length) return html + `<p class="me-note">Draw a hat or some glasses in ✏️ Draw. Then come back and wear it!</p>`;
+  if (full) return html + `<p class="me-note">You have ${own.length}, the most you can have. Throw one away to make a new one.</p>`;
+  if (!sewPick) return html + `<button class="wide" data-sew="start"><span>🧵</span>Make a new one</button>`;
+  if (sewPick === "pick") return html + `<p class="me-note">👉 Which drawing do you want to wear?</p>` +
+    pics.map(d => `<button data-sewkey="${esc(d.key)}"><canvas data-sewpic="${esc(d.key)}"></canvas>${esc(d.title || "My drawing")}</button>`).join("") +
+    `<button data-sew="cancel"><span>✖</span>Not now</button>`;
+  const short = price - S.hang.coins;
+  return html + `<p class="me-note">👉 Where does it go? ${short > 0 ? `You need ${short} more 🪙 coins. A coding mission pays the most!` : `It costs 🪙 ${price}.`}</p>
+    <button data-sewslot="hat" ${short > 0 ? "disabled" : ""}><span>🎩</span>On my head</button>
+    <button data-sewslot="face" ${short > 0 ? "disabled" : ""}><span>👓</span>On my face</button>
+    <button data-sew="cancel"><span>✖</span>Not now</button>`;
+}
+async function sew(slot) {
+  const key = sewPick;
+  sewPick = null;
+  const out = await tap("sew", {key, slot});
+  if (!out || !out.ok) { tipFor((out && out.error) || "Couldn't reach the Hang out. Please try again."); buildRoomButtons(); return; }
+  Object.assign(S.hang, {coins: out.coins, mywear: out.mywear, wear: out.wear});
+  coinsSeen = out.coins;
+  PalStage.SFX.play("gift");
+  tipFor(`✏️ You're wearing ${out.item.name}! Everyone can see it.`, 5000);
+  paintCoins();
+  buildRoomButtons();
+}
+async function unsew(key) {
+  const out = await tap("unsew", {item: key});
+  if (!out || !out.ok) return;
+  Object.assign(S.hang, {mywear: out.mywear, wear: out.wear});
+  if (!out.mywear.length) sewBin = false;
+  buildRoomButtons();
 }
 // A picture of a gift. Sparkles have none, so they get their own little star.
 function wearInto(cv, key, zoom) {
@@ -427,6 +527,18 @@ function roomEvent(e, you) {
     PalStage.SFX.play("yay");
   } else if (e.kind === "shower") {
     banner("🌠 Star shower! Run and catch them!", 3500);
+  } else if (e.kind === "tree") {
+    roomStage.state.tree = e.tree;
+    if (roomPane === "tree") buildRoomButtons();
+  } else if (e.kind === "snowman") {
+    roomStage.state.snowman = {balls: e.balls, need: e.need, built: e.built};
+    if (roomPane === "games" && !currentGame()) buildRoomButtons();
+    if (e.done) {
+      roomStage.state.snowmanDone = performance.now();
+      roomStage.roomApply({kind: "fx", name: "confetti", x: e.x}, false);
+      banner(`⛄ The class built a snowman! ⛄<small>That's ${e.built} today · +2 for the class party</small>`, 5000, true);
+      PalStage.SFX.play("yay");
+    }
   } else if (e.kind === "five" && (e.fresh || []).includes(you)) {
     const other = roomStage.state.room.find(m => m.seat === (e.seat === you ? e.other : e.seat));
     if (other && !S.hang.friends.includes(other.name)) S.hang.friends.push(other.name);
@@ -445,9 +557,14 @@ function roomState(data) {
   paintMeter(data.meter);
   paintCoins(data);
   paintJobs(data.jobs);
+  if (roomStage) {
+    roomStage.state.snowman = data.snowman || null;
+    if (data.tree) roomStage.state.tree = data.tree;
+    if ("ornament" in data) myOrnament = data.ornament;
+  }
   const home = JSON.stringify(data.home), people = JSON.stringify(data.people);
   if (home !== homeSeen || people !== peopleSeen) {
-    if (!data.home !== (homeSeen === "null" || !homeSeen)) { furnArmed = artArmed = null; fishing = null; $("roomTip").textContent = roomTipNow(); }
+    if (!data.home !== (homeSeen === "null" || !homeSeen)) { furnArmed = artArmed = null; fishing = null; moving = false; $("roomTip").textContent = roomTipNow(); }
     homeSeen = home; peopleSeen = people;
     if (["home", "art"].includes(roomPane)) buildRoomButtons();
   }
@@ -486,7 +603,8 @@ function jobsHtml() {
   const done = jobsSeen.list.filter(jobDone).length;
   return `<div class="jobs"><h4>🎯 Today's jobs <small>${jobsSeen.done ? "All done! See you next time." : `${done} of ${jobsSeen.list.length} · do all ${jobsSeen.list.length} for a 🎁`}</small></h4>` +
     jobsSeen.list.map(j => `<p class="job${jobDone(j) ? " done" : ""}"><span>${jobDone(j) ? "✅" : j.icon}</span>${esc(j.words)}${j.need > 1 ? ` <b>${Math.min(j.have, j.need)}/${j.need}</b>` : ""}` +
-      `${j.key === "star" && !jobDone(j) ? `<button class="job-go" data-go-code="1">💻 Go code</button>` : ""}</p>` +
+      `${j.key === "star" && !jobDone(j) ? `<button class="job-go" data-go-code="1">💻 Go code</button>` : ""}` +
+      `${j.key === "chest" && !jobDone(j) ? `<button class="job-go" data-go-chest="1">🧰 Take me</button>` : ""}</p>` +
       (j.how && !jobDone(j) ? `<p class="job-how">${esc(j.how)}</p>` : "")).join("") + `</div>`;
 }
 const jobsWord = () => (jobsSeen && !jobsSeen.done ? `🎯 ${jobsSeen.list.filter(jobDone).length} of ${jobsSeen.list.length} jobs · ` : "");
@@ -507,6 +625,8 @@ function tipKeepUp() {
 // The page takes the colour of the place in the middle of the screen.
 function tintPage() {
   const st = roomStage.state, place = (st.places || ["park"])[Math.floor((st.camX + PalStage.W / 2) / PalStage.W)];
+  const inView = Math.max(0, Math.floor((st.camX + PalStage.W / 2) / PalStage.W));
+  if (inView !== roomInView) { roomInView = inView; if (atHome() && ["home", "art"].includes(roomPane)) buildRoomButtons(); }
   if (place && $("hangView").dataset.place !== place) $("hangView").dataset.place = place;
 }
 function lookForGem(mine) {
@@ -514,6 +634,9 @@ function lookForGem(mine) {
   gameTick(mine);
   fishTick(mine);
   if (inRound()) return;
+  roomStage.state.chests = S.hang.chests;
+  lookForChest(mine);
+  lookForWinter(mine);
   const st = roomStage.state, key = PalHang.gemAt(st.places || ["park"], mine.x, mine.y, st.found);
   if (!key) return;
   st.found.add(key);
@@ -593,21 +716,40 @@ function palAt(x, y) {
 new ResizeObserver(fitRoomScreen).observe($("roomHost").closest(".hang-main"));
 $("roomTabs").addEventListener("click", e => {
   const b = e.target.closest("[data-pane]");
-  if (b) { roomPane = b.dataset.pane; artArmed = furnArmed = buyArmed = null; buildRoomButtons(); }
+  if (b) { roomPane = b.dataset.pane; artArmed = furnArmed = buyArmed = null; moving = false; buildRoomButtons(); }
 });
 $("roomButtons").addEventListener("click", e => {
   const pick = name => { const el = e.target.closest(`[data-${name}]`); return el && !el.disabled ? el.dataset[name] : null; };
   if (pick("buy")) { buy(pick("buy")); return; }
   if (pick("home")) { goHome(pick("home")); return; }
   if (pick("friend")) { PalStage.SFX.wake(); tap("go", {seat: +pick("friend")}).then(out => { if (out && out.error) tipFor(out.error); }); return; }
-  if (pick("room")) { goRoom(+pick("room")); return; }
-  if (pick("furn")) { furnArmed = furnArmed === pick("furn") ? null : pick("furn"); buildRoomButtons(); return; }
-  if (pick("away")) { tap("unfurnish", {key: pick("away")}); furnArmed = null; buildRoomButtons(); return; }
-  if (pick("look")) { PalStage.SFX.wake(); tap("look", {key: pick("look")}); return; }
+  if (pick("goroom")) { walkTo(+pick("goroom") * PalStage.W + PalStage.W / 2, .5); return; }
+  if (pick("furn")) { furnArmed = furnArmed && !furnArmed.piece && furnArmed.key === pick("furn") ? null : {key: pick("furn")}; moving = false; buildRoomButtons(); return; }
+  if (pick("moving")) { moving = !moving; furnArmed = null; buildRoomButtons(); return; }
+  if (pick("away")) { tap("unfurnish", {piece: +pick("away")}); furnArmed = null; buildRoomButtons(); return; }
+  if (pick("look")) { PalStage.SFX.wake(); tap("look", {key: pick("look"), room: roomNow()}); return; }
+  if (pick("prize")) {
+    const item = S.hang.furniture[pick("prize")] || S.hang.walls[pick("prize")] || S.hang.floors[pick("prize")];
+    tipFor(`Make your home a ${S.hang.levels[item.prize][0]} to win the ${item.name.toLowerCase()}!`, 5000);
+    return;
+  }
+  if (pick("heart")) {
+    tap("heart").then(out => {
+      if (out && out.error) { tipFor(out.error); return; }
+      PalStage.SFX.play("ding");
+      tipFor(`❤️ You gave ${roomInfo.home.name}'s home a heart! That gives them coins and points.`, 5000);
+    });
+    return;
+  }
   if (pick("code")) { openThing(pick("code")); return; }
-  if (pick("pane")) { roomPane = pick("pane"); artArmed = furnArmed = buyArmed = null; buildRoomButtons(); return; }
+  if (pick("pane")) { roomPane = pick("pane"); artArmed = furnArmed = buyArmed = null; moving = false; buildRoomButtons(); return; }
   if (pick("drawthing")) { drawFurniture(); return; }
   if (e.target.closest("[data-hidename]")) { hideMyName(); return; }
+  if (pick("sew")) { sewPick = pick("sew") === "start" ? "pick" : null; buildRoomButtons(); return; }
+  if (pick("sewkey")) { sewPick = pick("sewkey"); buildRoomButtons(); return; }
+  if (pick("sewslot")) { sew(pick("sewslot")); return; }
+  if (pick("sewbin")) { sewBin = !sewBin; buildRoomButtons(); return; }
+  if (pick("unsew")) { unsew(pick("unsew")); return; }
   const pal = e.target.closest("[data-pal]");
   if (pal) { choosePal(pal.dataset.pal); return; }
   const art = e.target.closest("[data-art]");
@@ -660,7 +802,7 @@ $("palSwitch").addEventListener("click", () => { roomPane = "me"; artArmed = nul
 $("myMove").addEventListener("click", pressMyMove);
 $("nextMission").addEventListener("click", goCode);
 $("clapGo").addEventListener("click", () => { if (clapFor !== null) tap("clap", {seat: clapFor}); });
-$("roomButtons").addEventListener("click", e => { if (e.target.closest("[data-go-code]")) goCode(); });     // the ⭐ job's way to the missions
+$("roomButtons").addEventListener("click", e => { if (e.target.closest("[data-go-code]")) goCode(); if (e.target.closest("[data-go-chest]")) goToChest(); });     // the ⭐ job's way to the missions
 $("roomCanvas").addEventListener("click", async e => {
   const r = $("roomCanvas").getBoundingClientRect(), mine = myMember();
   const x = roomStage.state.camX + (e.clientX - r.left) / r.width * PalStage.W, y = (e.clientY - r.top) / r.height * PalStage.H;
@@ -686,20 +828,23 @@ $("roomCanvas").addEventListener("click", async e => {
     return;
   }
   if (furnArmed && myHome()) {
-    const key = furnArmed;
+    const {key, piece} = furnArmed;
     furnArmed = null;
-    PalStage.SFX.play("pop");
-    tap("furnish", {key, x: Math.round(Math.max(16, Math.min(PalStage.W - 16, x))), y: depth});
+    buildRoomButtons();
+    furnish(Object.assign(piece ? {piece} : {key}, {x: Math.round(Math.max(16, Math.min(worldEnd() - 8, x))), y: depth}));
     return;
   }
-  const door = atHome() && PalHang.doorAt(x, y, roomInfo.home);
-  if (door) {
-    const {rooms, at} = roomInfo.home;
-    if (door === "next") goRoom(rooms[at + 1].loc);
-    else if (at > 0) goRoom(rooms[at - 1].loc);
-    else goHome("out");
-    return;
+  if (moving && myHome()) {     // ✋ picks a thing up, to put it down somewhere else
+    const thing = PalHang.furnitureAt(roomInfo.home, x, y);
+    if (thing) {
+      furnArmed = {key: thing.key, piece: thing.id};
+      PalStage.SFX.play("click");
+      tipFor(`Got it: ${S.hang.furniture[thing.key].name}! Click the floor to put it down. For another room, press that room in 🚪 Your rooms first.`, 6000);
+      buildRoomButtons();
+      return;
+    }
   }
+  if (atHome() && PalHang.doorAt(x, y)) { goHome("out"); return; }
   const pier = !atHome() && PalHang.fishAt(roomStage.state.places, x, y);
   const front = pier && palAt(x, y);
   if (pier && (!front || front.me)) {
@@ -710,12 +855,16 @@ $("roomCanvas").addEventListener("click", async e => {
   }
   const thing = roomPane !== "art" && thingAt(x, y);
   if (thing) { pokeThing(thing); return; }
+  const snowy = !atHome() && PalHang.villageAt(roomStage.state.places, x, y);
+  if (snowy && !palAt(x, y)) { clickVillage(snowy, mine); return; }
   if (roomPane === "art") {
     const own = roomStage.state.placed.find(p => p.mine && Math.abs(x - p.x) < 22 && y > PalStage.groundOf(p) - 44 && y < PalStage.groundOf(p) + 6);
     if (own) { tap("unplace", {piece: own.id}); return; }
   }
   const hit = palAt(x, y);
-  const places = roomStage.state.places, seat = PalHang.seatAt(places, x, y), toy = PalHang.toyAt(places, x, y);
+  const places = roomStage.state.places, seat = PalHang.seatAt(places, x, y);
+  const piece = atHome() && PalHang.furnitureAt(roomInfo.home, x, y), pieceToy = piece && (S.hang.furniture[piece.key] || {}).toy;
+  const toy = PalHang.toyAt(places, x, y) || (pieceToy ? {x: piece.x, y: piece.y, fx: pieceToy} : null);     // at home, the things are toys
   if (hit && hit.me && !seat && !toy) { tap("move", {name: "jump"}); return; }
   if (hit && !hit.me) {
     const out = await tap("five", {seat: hit.seat});
@@ -869,3 +1018,91 @@ async function drawFurniture() {
   await openShelf();
   $("furnStart").scrollIntoView({block: "start"});
 }
+
+// ---- ❄️ The Snow Village: presents to find, a snowman to roll together, and the class tree --------------
+let myOrnament = null, treeNear = false, snowWalk = false, villageHello = false;
+const winterOn = () => !!(S.hang.winter && S.hang.winter.on);
+function lookForWinter(mine) {
+  if (!winterOn()) { roomStage.state.presents = null; return; }
+  const st = roomStage.state, places = st.places || ["park"];
+  st.presents = S.hang.winter.presents;
+  const i = PalHang.presentAt(places, mine.x, mine.y, st.presents);
+  if (i >= 0) {
+    st.presents[i].found = true;
+    tap("present", {i}).then(out => {
+      if (!out || !out.ok || out.coins === undefined) return;      // found already
+      S.hang.winter.count = out.count;
+      PalStage.SFX.play("gift");
+      banner(`🎁 You found a present!<small>${out.found} of ${out.of} today${out.coins ? ` · +${out.coins} 🪙` : ""}</small>`, 3500);
+      if (S.hang.progress) S.hang.progress.presents = out.count;
+    });
+  }
+  const v = places.indexOf("village"), near = v >= 0 && Math.abs(mine.x - v * PalStage.W - 92) < 30 && mine.y < .45;
+  if (near && !treeNear) {
+    roomPane = "tree"; artArmed = furnArmed = buyArmed = null;
+    buildRoomButtons();
+    PalStage.SFX.play("ding");
+  }
+  treeNear = near;
+  if (snowWalk && v >= 0 && Math.abs(mine.x - v * PalStage.W - 238) < 40 && Math.abs(mine.x - mine.tx) < 3) { snowWalk = false; rollSnowball(); }
+  if (!villageHello && v >= 0) {           // once a winter on each computer: where the Snow Village is
+    villageHello = true;
+    const key = "pixelVillageHello:" + me + ":" + new Date().getFullYear();
+    try { if (!localStorage.getItem(key)) { localStorage.setItem(key, "1"); setTimeout(() => banner("❄️ The Snow Village is open!<small>Find it in 🏞️ Place. Hang a drawing on the class tree!</small>", 6000, true), 8000); } } catch (_) {}
+  }
+}
+function clickVillage(spot, mine) {
+  if (spot.what === "tree") {
+    walkTo(spot.x + (mine.x < spot.x ? -24 : 24), spot.y);
+    roomPane = "tree"; buildRoomButtons();
+    return;
+  }
+  if (Math.abs(mine.x - spot.x) < 40) { rollSnowball(); return; }
+  snowWalk = true;
+  walkTo(spot.x + (mine.x < spot.x ? -22 : 22), spot.y);
+  tipFor("⛄ Walking to the snowman...");
+}
+async function rollSnowball() {
+  PalStage.SFX.wake();
+  const out = await tap("snowball");
+  if (!out || out.error === "wait") return;
+  if (out.error) { tipFor(out.error); return; }
+  PalStage.SFX.play("pop");
+  if (S.hang.progress) S.hang.progress.snowballs = out.snowballs;
+  if (!out.done) tipFor("⛄ You rolled a snowball! Click the snowman again to roll another.");
+}
+// At the top of Games while the Snow Village is open: what there is to do in it today.
+function winterCard() {
+  if (!winterOn()) return "";
+  const found = S.hang.winter.presents.filter(p => p.found).length, man = (roomStage && roomStage.state.snowman) || {balls: 0, need: 30};
+  return `<div class="jobs winter"><h4>❄️ Snow Village <small>open until 31 December</small></h4>
+    <p class="job${found === S.hang.winter.presents.length ? " done" : ""}"><span>🎁</span>Presents found today <b>${found}/${S.hang.winter.presents.length}</b></p>
+    <p class="job"><span>⛄</span>Class snowman <b>${man.balls}/${man.need}</b></p>
+    <p class="job"><span>🎄</span>Hang a drawing on the class tree${myOrnament ? " ✅" : ""}<button class="job-go" data-go-village="1">❄️ Take me</button></p></div>`;
+}
+function buildTreePane(box) {
+  const pics = finishedDrawings(), tree = (roomStage && roomStage.state.tree) || [];
+  box.classList.add("me-pane");
+  if (!winterOn()) { box.innerHTML = `<p class="me-note">The Snow Village is closed until next winter.</p>`; return; }
+  box.innerHTML = `<h4>🎄 The class tree <small>· ${tree.length} drawing${tree.length === 1 ? "" : "s"} on it</small></h4>
+    <p class="me-note">${myOrnament ? "Your drawing is on the tree! Pick another to swap it." : "Hang one of your drawings on the tree, for everyone to see!"}${tree.length < 10 ? ` The star on top lights up at 10.` : " ⭐ The star is lit!"}</p>` +
+    (pics.length ? pics.map(d => `<button data-ornament="${esc(d.key)}" aria-pressed="${myOrnament === d.key}"><canvas data-treepic="${esc(d.key)}"></canvas>${esc(d.title || "My drawing")}</button>`).join("")
+      : `<p class="me-note">Draw something first in ✏️ Draw. Then come back!</p>`) +
+    `<p class="me-note">⛄ Click the snowman to roll a snowball. Everyone rolls the same one!<br>🎁 Find today's presents: one in each place.</p>`;
+  box.querySelectorAll("[data-treepic]").forEach(cv => drawingInto(cv, pics.find(p => p.key === cv.dataset.treepic)));
+}
+$("roomButtons").addEventListener("click", async e => {
+  const b = e.target.closest("[data-ornament]");
+  if (b) {
+    PalStage.SFX.wake();
+    const out = await tap("ornament", {key: b.dataset.ornament});
+    if (!out || !out.ok) { tipFor("Couldn't hang it. Please try again."); return; }
+    myOrnament = b.dataset.ornament;
+    PalStage.SFX.play("gift");
+    tipFor("🎄 Your drawing is on the class tree!", 4000);
+    buildRoomButtons();
+  } else if (e.target.closest("[data-go-village]")) {
+    PalStage.SFX.wake();
+    tap("go", {name: "village"}).then(out => { if (out && out.error) tipFor(out.error); });
+  }
+});

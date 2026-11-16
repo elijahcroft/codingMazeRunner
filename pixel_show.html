@@ -75,7 +75,7 @@
     <div class="card"><p class="label">Join in at</p><div class="address" id="address"></div></div>
     <div class="card" id="raceCard" hidden><p class="label" id="raceLabel">💻 Code race</p><div id="raceJob"></div><pre id="raceCode" hidden></pre><div id="raceWho"></div></div>
     <div class="card"><p class="label">Look at</p><div id="places"></div><p class="label">Who's here (click to follow)</p><div id="people"></div></div>
-    <div class="card" id="jobsCard" hidden><p class="label">🎯 Today's jobs (all 3 open a 🎁)<b id="jobsDone"></b></p><div id="jobs"></div></div>
+    <div class="card" id="jobsCard" hidden><p class="label">🎯 Today's jobs (all 3 open a 🎁)<b id="jobsDone"></b></p><div id="jobs"></div><p class="label" id="chestLine" hidden></p><p class="label" id="snowLine" hidden></p></div>
     <div class="card" style="flex:1;min-height:0;display:flex;flex-direction:column"><p class="label">Just now</p><ul id="feed"></ul></div>
   </aside>
 </div>
@@ -113,9 +113,9 @@ stage.state.scene = "park";
 stage.roomHooks({everySound: true});
 
 // ---- The camera: Auto goes to whoever's up to something, or you can drive -------------------
-const PLACE_W = PalStage.W, PLACE_WORD = {home: "🏠 Home", park: "🌳 Park", wedding: "💒 Wedding", beach: "🏖️ Beach", night: "🌙 Night", snowy: "⛄ Snowy hill", candy: "🍭 Candy land", space: "🚀 Space"};
+const PLACE_W = PalStage.W, PLACE_WORD = {home: "🏠 Home", park: "🌳 Park", wedding: "💒 Wedding", beach: "🏖️ Beach", night: "🌙 Night", snowy: "⛄ Snowy hill", candy: "🍭 Candy land", space: "🚀 Space", village: "❄️ Snow Village"};
 const cam = {mode: "auto", seat: null, x: 0, moveOn: 0, loc: 0};
-let people = [], homeName = "", watcher = null, game = null;
+let people = [], homeName = "", homeRooms = [], watcher = null, game = null;
 // Which place the screen shows: 0 is outside, any other number is someone's home.
 function lookAt(loc) {
   if (loc === cam.loc) return;
@@ -143,6 +143,11 @@ function autoLook(now) {
   if (cam.mode !== "auto" || !people.length) return;
   if (game && game.phase === "playing" && (game.kind === "tag" || game.kind === "hide") && people.some(m => m.seat === game.it)) {
     cam.seat = game.it;     // a chase is best watched from the chaser
+    lookAt(0);
+    return;
+  }
+  if (game && game.phase === "playing" && game.kind === "draw" && people.some(m => m.seat === game.drawer)) {
+    cam.seat = game.drawer;     // 🎨 the easel is in the Park, next to whoever is drawing
     lookAt(0);
     return;
   }
@@ -176,7 +181,7 @@ function mapNames(list, wide) {
 }
 function paintWorld() {
   const places = stage.state.places || ["park"], wide = worldWide(), left = stage.state.camX || 0, list = crew();
-  $("map").innerHTML = places.map(p => `<div class="place">${p === "home" ? `🏠 ${esc(homeName)}'s home` : PLACE_WORD[p]}</div>`).join("") +
+  $("map").innerHTML = places.map((p, i) => `<div class="place">${p === "home" ? `🏠 ${esc(homeRooms[i] || homeName)}` : PLACE_WORD[p]}</div>`).join("") +
     `<div class="view" style="left:${left / wide * 100}%;width:${PLACE_W / wide * 100}%"></div>` +
     mapNames(list, wide);
   $("people").classList.toggle("many", people.length > 10);
@@ -220,6 +225,7 @@ PalHang.start($("back"), () => stage.state);
 watcher = PalStage.follow(stage, {everySound: true, loc: () => cam.loc, onState(data) {
   people = data.people || [];
   homeName = data.home ? data.home.name : "";
+  homeRooms = data.home ? data.home.rooms.map(r => r.name) : [];
   if (cam.loc && !people.some(m => m.loc === cam.loc)) lookAt(0);     // everyone left that home
   $("closed").hidden = data.open;
   $("bar").style.width = Math.min(100, data.meter.points / data.meter.goal * 100) + "%";
@@ -230,12 +236,28 @@ watcher = PalStage.follow(stage, {everySound: true, loc: () => cam.loc, onState(
   const jobs = (data.class_jobs || []).map(([icon, words]) => `<span>${icon} ${esc(words)}</span>`).join("");
   $("jobsCard").hidden = !jobs || !data.open;
   $("jobsDone").textContent = data.jobs_done ? ` · ✅ ${data.jobs_done} done` : "";
+  // 🧰 Code chests: drawn in the world with what each asks for, and how many opened each today.
+  stage.state.chests = (data.chests || []).filter(c => (data.world || []).includes(c.place));
+  const opened = stage.state.chests.reduce((n, c) => n + c.count, 0);
+  $("chestLine").hidden = !opened;
+  $("chestLine").textContent = `🧰 Chests coded open today: ${opened}`;
+  // ❄️ The Snow Village: the class tree and the snowman everyone rolls together.
+  stage.state.snowman = data.snowman || null;
+  if (data.tree) stage.state.tree = data.tree;
+  $("snowLine").hidden = !data.snowman;
+  if (data.snowman) $("snowLine").textContent = `❄️ Snowman ${data.snowman.balls} of ${data.snowman.need} · ⛄ built today: ${data.snowman.built} · 🎄 on the tree: ${(stage.state.tree || []).length}`;
   if ($("jobs").innerHTML !== jobs) $("jobs").innerHTML = jobs;
   for (const e of data.events) {
     autoNotice(e);
     if (e.kind === "mymove") banner(`✨ <b>${esc(e.by)}</b>: ${esc(e.title)}`, e.ms + 700);
     else if (e.kind === "party") banner(`🎉 CLASS PARTY! 🎉${e.reward ? `<small>New for everyone: ${esc(e.reward.name)}</small>` : ""}`, 6000, true);
     else if (e.kind === "shower") banner("🌠 Star shower!", 3500);
+    else if (e.kind === "tree") stage.state.tree = e.tree;
+    else if (e.kind === "snowman" && e.done) {
+      stage.state.snowmanDone = performance.now();
+      stage.roomApply({kind: "fx", name: "confetti", x: e.x}, true);
+      banner(`⛄ The class built a snowman! That's ${e.built} today!`, 5000, true);
+    }
     else if (e.kind === "photo") {
       cam.mode = "free"; cam.x = 0; lookAt(0);
       banner(`📸 Class photo! Say cheese! (${e.count})`, 6000, true);
@@ -271,7 +293,7 @@ $("savePhoto").addEventListener("click", () => {
   a.click();
 });
 // The game on now. A Code race shows the job, then the fastest code between rounds, so the class can read it together.
-const GAME_WORD = {hide: "🙈 Hide & seek", tag: "🏃 Tag", race: "🚦 Red light, green light", dance: "💃 Copy the dance", code: "💻 Code race"};
+const GAME_WORD = {hide: "🙈 Hide & seek", tag: "🏃 Tag", race: "🚦 Red light, green light", dance: "💃 Copy the dance", code: "💻 Code race", draw: "🎨 Draw & guess"};
 const DANCE_ICON = {wave: "👋", jump: "🦘", spin: "🌀", cheer: "🎉"};
 function paintGame(g) {
   $("raceCard").hidden = !g;
@@ -285,11 +307,13 @@ function paintGame(g) {
       : g.kind === "tag" ? `${name(g.it)} is IT!`
       : g.kind === "hide" ? (g.phase === "hiding" ? `${name(g.it)} is counting. Hide!` : `${name(g.it)} is looking!`)
       : g.kind === "race" ? (g.light === "red" ? "🔴 Red light: freeze!" : "🟢 Green light: run!")
+      : g.kind === "draw" ? (g.pause && g.word ? `It was ${g.word[1]} ${g.word[2]}!` : `${name(g.drawer)} is drawing! Is it... ${(g.choices || []).map(c => c[1]).join(" ")}`)
       : `Round ${g.round + 1} of 3: ${(g.seq || []).map(m => DANCE_ICON[m] || m).join(" ")}`;
     $("raceCode").hidden = true;
     $("raceWho").textContent = g.phase !== "playing" && g.phase !== "hiding" ? ""
       : g.kind === "hide" && g.phase === "playing" ? `Found: ${names(g.found)} (${g.found.length} of ${g.joined.length - 1})`
       : g.kind === "race" ? `At the flag: ${names(g.done)}`
+      : g.kind === "draw" ? `Guessed it: ${names(g.guessed || [])} (${(g.guessed || []).length} of ${g.joined.length - 1})`
       : `Playing: ${g.joined.length}`;
     return;
   }

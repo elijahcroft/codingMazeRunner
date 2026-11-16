@@ -423,6 +423,7 @@
   .hang-view[data-place="snowy"] { --place: #dbebf8; --place-ink: #3d6a94; }
   .hang-view[data-place="candy"] { --place: #ffd9ea; --place-ink: #c23d86; }
   .hang-view[data-place="space"] { --place: #d2c8f0; --place-ink: #5a3fa0; }
+  .hang-view[data-place="village"] { --place: #e2def6; --place-ink: #4b4a8f; }
   .hang-view[data-place="home"] { --place: #f6e3c8; --place-ink: #a8642c; }
   body.calm .hang-view { transition: none; }
   .hang-main { display: flex; flex-direction: column; justify-content: center; gap: 10px; min-height: 0; min-width: 0; }
@@ -476,6 +477,9 @@
   .room-buttons button.goal span { display: grid; gap: 2px; min-width: 0; font-size: 15px; line-height: 1.2; }     /* not the big icon size */
   .goal-bar { display: block; height: 8px; border-radius: 4px; background: #e7dcae; overflow: hidden; }
   .goal-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #ff8fb3, #ffc46b); }
+  .home-level { display: grid; gap: 4px; padding: 8px 10px; border-radius: 14px; background: #fff3c4; color: #5a4a10; }
+  .home-level b { font-size: 16px; color: #4a3a10; }
+  .home-level small { font-size: 13px; }
   .room-buttons button:disabled { cursor: default; background: #e9f3e2; box-shadow: none; }
   .room-buttons .swatch { display: block; width: 34px; height: 26px; border-radius: 7px; box-shadow: inset 0 0 0 2px #2c535233; }
   .room-buttons .wide { grid-column: 1 / -1; min-height: 46px; grid-auto-flow: column; justify-content: center; gap: 8px; font-size: 16px; }
@@ -485,6 +489,8 @@
   .jobs { grid-column: 1 / -1; display: grid; gap: 3px; padding: 6px 8px 8px; background: #fff3c4; border-radius: 14px; }
   .jobs h4 { margin: 0 0 2px; font-size: 15px; }
   .jobs h4 small { display: block; font-size: 12px; color: #6a5a20; }
+  .jobs.winter { background: #e2e8fb; }     /* ❄️ the Snow Village card */
+  .jobs.winter h4 small, .jobs.winter .job { color: #2f3a72; }
   .job { display: flex; gap: 6px; align-items: baseline; margin: 0; font-size: 14px; font-weight: 800; color: #4a3a10; }
   .job.done { color: #2d6a3a; }
   .job b { margin-left: auto; }
@@ -518,6 +524,21 @@
   .room-buttons .race-start b { font-size: 18px; }
   .hang-view.racing #myMove, .hang-view.racing #nextMission, .hang-view.racing #palStrip { display: none; }
   .hang-view.playing #myMove, .hang-view.playing #nextMission, .hang-view.playing #palStrip { display: none; }     /* in any round: room for its buttons */
+  .hang-view.chesting #myMove, .hang-view.chesting #nextMission, .hang-view.chesting #palStrip { display: none; }     /* and at a 🧰 chest */
+  .room-buttons .draw-start { grid-auto-flow: row; gap: 2px; background: linear-gradient(135deg, #ffe0ec, #fff3c4); box-shadow: 0 3px 0 #e8b6c8; color: #6b1f45; }
+  .room-buttons .draw-start b { font-size: 18px; }
+  .room-buttons .draw-board { grid-column: 1 / -1; justify-self: center; width: min(100%, 216px); height: auto; aspect-ratio: 1; border: 3px solid #1b1530; border-radius: 8px;
+                image-rendering: pixelated; touch-action: none; background: #fffdf6; }
+  .draw-board.mine { cursor: crosshair; }
+  @media (max-height: 720px) { .room-buttons .draw-board { width: min(100%, 160px); } }     /* a small laptop: the colours stay in view */
+  .draw-inks { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
+  .room-buttons .draw-inks button { min-height: 0; width: 30px; height: 30px; padding: 0; border-radius: 50%; border: 2px solid #1b1530; box-shadow: none; font-size: 15px; }
+  .room-buttons .draw-inks button[aria-pressed="true"] { outline: 3px solid #376dba; outline-offset: 2px; }
+  .guess-grid { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .room-buttons .guess-grid button { min-height: 0; padding: 6px 2px; grid-auto-flow: row; gap: 0; font-size: 13px; }
+  .room-buttons .guess-grid button span { font-size: 26px; line-height: 1.1; }
+  .guess-grid.wait button { opacity: .45; }
+  .room-buttons .guess-grid button.nope { background: #ffd6dc; }
   .race-row { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
   .room-buttons .race-row button { min-height: 38px; padding: 5px 3px; font-size: 13px; }
   .race-score small { font-weight: 700; }

@@ -200,14 +200,14 @@ class TeacherAndGames(unittest.TestCase):
             self.assertTrue(set(keys) & set(server.CODING_JOBS), keys)
             self.assertEqual([j[1] for j in server.room_view(None, -1)["class_jobs"]], [server.DAY_JOBS[k][1] for k in keys])
 
-    def test_with_every_star_the_coding_job_is_the_code_race(self):
+    def test_with_every_star_the_coding_job_is_the_code_race_or_a_chest(self):
         mia = self.kids[0]
         server.pixel_entry(mia)["solved"].update({k: [True] * 3 for k in pixel.LEVEL_ORDER})
         for day in range(30):
             self.clock = 1000. + day * 86400
             keys = self.jobs(mia)["keys"]
             self.assertNotIn("star", keys)
-            self.assertIn("code", keys)
+            self.assertTrue({"code", "chest"} & set(keys), keys)
 
     def test_earning_a_mission_star_counts(self):
         mia = self.kids[0]

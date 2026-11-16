@@ -5,7 +5,7 @@ let gameClock = {server: 0, local: 0};
 const gameNow = () => gameClock.server + (performance.now() - gameClock.local) / 1000;
 const currentGame = () => roomInfo && roomInfo.game;
 const inRound = () => { const g = currentGame(); return g && g.joined.includes(roomInfo.you) && ["hiding", "playing"].includes(g.phase); };
-const GAME_NAMES = {hide: "Hide & seek", tag: "Tag", race: "Red light, green light", dance: "Copy the dance", code: "💻 Code race"};
+const GAME_NAMES = {hide: "Hide & seek", tag: "Tag", race: "Red light, green light", dance: "Copy the dance", code: "💻 Code race", draw: "🎨 Draw & guess"};
 const gameName = g => GAME_NAMES[g.kind];
 const DANCE_ICONS = {wave: ["👋", "Wave"], jump: ["🦘", "Jump"], spin: ["🌀", "Spin"], cheer: ["🎉", "Cheer"]};
 let danceReady = false;
@@ -25,8 +25,9 @@ function buildGamePane(box) {
   const g = currentGame(), you = roomInfo?.you;
   box.classList.add("games-pane");
   if (!g) {
-    box.innerHTML = jobsHtml() + `<p class="me-note">Invite the other kids! Anyone can start a game. Friends choose whether to join.</p>
+    box.innerHTML = jobsHtml() + winterCard() + `<p class="me-note">Invite the other kids! Anyone can start a game. Friends choose whether to join.</p>
       <button class="wide race-start" data-game="create" data-kind="code"><b>💻 Code race</b><small>Everyone codes the same job · solve it and your pal does it for everyone</small></button>
+      <button class="wide draw-start" data-game="create" data-kind="draw"><b>🎨 Draw & guess</b><small>Take turns drawing a secret thing · friends tap the picture they think it is</small></button>
       <button data-game="create" data-kind="hide"><b>Hide & seek</b><small>Random seeker · 20 seconds to hide</small></button>
       <button data-game="create" data-kind="tag"><b>Tag</b><small>Chase your friends · pass “it”</small></button>
       <button data-game="create" data-kind="race"><b>Red light, green light</b><small>Race to the flag · freeze on red</small></button>
@@ -46,10 +47,14 @@ function buildGamePane(box) {
     body += `<p class="me-note">Another game can start in a moment.</p>`;
   } else if (!joined && g.kind === "code") {
     body += `<p class="me-note">Your friends are coding! Join in now: everyone gets the same job.</p><button class="wide race-run" data-game="join">💻 Join the Code race</button>`;
+  } else if (!joined && g.kind === "draw") {
+    body += `<p class="me-note">Your friends are drawing and guessing! Join in now and guess the next picture.</p><button class="wide race-run" data-game="join">🎨 Join Draw & guess</button>`;
   } else if (!joined) {
     body += `<p class="me-note">A game is on. You can join the next one, or keep playing here.</p>`;
   } else if (g.kind === "code") {
     body = racePane(g, you);
+  } else if (g.kind === "draw") {
+    body = drawPane(g, you);
   } else if (g.kind === "race") {
     const done = g.done.includes(you);
     body += `<p class="me-note">${done ? "🏁 You made it! Cheer for your friends." : g.light === "red" ? "🔴 <b>RED LIGHT!</b> Don't move!" : "🟢 <b>GREEN LIGHT!</b> Run to the flag!"}</p>`;
@@ -78,6 +83,7 @@ function buildGamePane(box) {
   const typing = document.activeElement?.id === "raceCode" && [$("raceCode").selectionStart, $("raceCode").selectionEnd];
   box.innerHTML = body;
   if (typing && $("raceCode")) { $("raceCode").focus(); $("raceCode").setSelectionRange(...typing); }
+  paintDrawBoard();
 }
 function paintGameState(data) {
   const g = data.game, status = $("gameStatus"), open = data.open;
@@ -85,14 +91,15 @@ function paintGameState(data) {
   status.hidden = !open;
   const key = JSON.stringify([g?.id, g?.phase, g?.joined, g?.it, g?.found, g?.hiding, g?.tags, g?.message, g?.reward, data.you,
                               g?.light, g?.done, g?.seq, g?.step, g?.round,
-                              g?.solved, g?.bonus, g?.pause, g?.reveal, g?.score, g?.job?.job]);
+                              g?.solved, g?.bonus, g?.pause, g?.reveal, g?.score, g?.job?.job,
+                              g?.drawer, g?.guessed, g?.word, g?.choices]);
   if (key !== gamePaintKey) {
     gamePaintKey = key;
     if (roomPane === "games") buildRoomButtons();
     gamePendingCover = null;
   }
   // A Code race needs room for the code, and every pal in view: the camera stays on the Park.
-  const racing = g?.kind === "code" && g.phase === "playing" && g.joined.includes(data.you);
+  const racing = ["code", "draw"].includes(g?.kind) && g.phase === "playing" && g.joined.includes(data.you);
   $("hangView").classList.toggle("racing", !!racing);
   $("hangView").classList.toggle("playing", !!inRound());
   if (roomStage) roomStage.state.camera = racing ? () => 0 : null;
@@ -109,6 +116,7 @@ function paintGameState(data) {
   const counting = g?.kind === "hide" && g.phase === "hiding" && g.it === data.you;
   $("seekerCurtain").hidden = !counting;
   $("myMove").disabled = !!inRound();
+  paintDrawBoard();
   paintGameClock();
 }
 function paintGameClock() {
@@ -117,7 +125,7 @@ function paintGameClock() {
   if (!g) {
     $("gameStatus").classList.remove("invite");
     title.textContent = "Play with friends";
-    detail.textContent = jobsWord() + "💻 Code race, tag, hide & seek, a race or a dance →";
+    detail.textContent = jobsWord() + "💻 Code race, 🎨 draw & guess, tag, hide & seek, a race or a dance →";
     return;
   }
   const seconds = Math.max(0, Math.ceil(g.until - gameNow()));
@@ -130,6 +138,7 @@ function paintGameClock() {
     : g.kind === "race" ? `${seconds}s left · ${g.light === "red" ? "🔴 Red light: freeze!" : "🟢 Green light: run!"} · ${g.done.length} at the flag`
     : g.kind === "dance" ? `Round ${g.round + 1} of 3 · ${seconds}s left · ${g.step} of ${g.seq.length} moves`
     : g.kind === "code" ? (g.pause ? `Next job in ${seconds}s` : `${g.job.icons} · Job ${g.round + 1} of ${g.rounds} · ${seconds}s · ${g.solved.length} of ${g.joined.length} solved`)
+    : g.kind === "draw" ? (g.pause ? `Next picture in ${seconds}s` : `${g.drawer === roomInfo.you ? "You're drawing!" : gamePerson(g.drawer) + " is drawing"} · Picture ${g.round + 1} of ${g.turns} · ${seconds}s · ${g.guessed.length} guessed`)
     : g.phase === "hiding" ? `${seconds}s to hide · ${g.it === roomInfo.you ? "You're counting!" : gamePerson(g.it) + " is counting"}`
     : `${seconds}s left · ${gamePerson(g.it)} ${g.kind === "tag" ? "is IT" : "is seeking"}${g.kind === "hide" ? " · " + g.found.length + "/" + (g.joined.length - 1) + " found" : g.grace > gameNow() ? " · Head start!" : ""}`;
   $("seekerCount").textContent = seconds;
@@ -175,6 +184,9 @@ $("roomButtons").addEventListener("click", e => {
   else if (cover) chooseGameCover(cover.dataset.cover);
   else if (e.target.closest("[data-put]")) raceAdd(e.target.closest("[data-put]").dataset.put);
   else if (e.target.closest("[data-race]")) raceButton(e.target.closest("[data-race]").dataset.race);
+  else if (e.target.closest("[data-ink]")) { drawInk = +e.target.closest("[data-ink]").dataset.ink; buildRoomButtons(); }
+  else if (e.target.closest("[data-drawwipe]")) { drawPending.clear(); tap("game", {action: "paint", wipe: true}); }
+  else if (e.target.closest("[data-guess]")) drawGuess(e.target.closest("[data-guess]"));
 });
 
 // ---- Code race: everyone codes the same little job ------------------------------------------
@@ -213,15 +225,17 @@ function raceEditor(job, help) {
       ${help ? `<button data-race="help">💡 ${raceHelp ? "More help" : "Help"}</button>` : ""}</div>
     <p class="race-msg${raceGood ? " good" : ""}" id="raceMsg" role="status">${esc(raceMsg)}</p>`;
 }
+function raceTip(job) {
+  return job.loops === 2 ? "Use two 🔁 for lines. Tap ⇤ Out of loop before the second one, so it isn't inside the first."
+    : job.loops ? "Tap 🔁 for and type how many times. The moves pushed in under it happen again and again. For a move that happens once, after the loop, tap ⇤ Out of loop first."
+    : `One line for each move, top to bottom: ${job.icons}`;
+}
 function raceHelpText(g) {
   if (!raceHelp) return "";
-  const loops = g.job.loops, answerIn = Math.ceil(g.round_at + g.answer_after - gameNow());
-  const tip = loops === 2 ? "Use two 🔁 for lines. Tap ⇤ Out of loop before the second one, so it isn't inside the first."
-    : loops ? "Tap 🔁 for and type how many times. The moves pushed in under it happen again and again. For a move that happens once, after the loop, tap ⇤ Out of loop first."
-    : `One line for each move, top to bottom: ${g.job.icons}`;
+  const answerIn = Math.ceil(g.round_at + g.answer_after - gameNow());
   const answer = raceHelp > 1 && answerIn <= 0 ? `<pre class="race-reveal">${esc(g.job.hint)}</pre>`
     : raceHelp > 1 ? `<p class="me-note">The whole answer shows in ${answerIn}s. Try first!</p>` : "";
-  return `<p class="me-note">💡 ${tip}</p>${answer}`;
+  return `<p class="me-note">💡 ${raceTip(g.job)}</p>${answer}`;
 }
 function raceLines() {
   const text = $("raceCode").value.replace(/\s+$/, "");
@@ -265,6 +279,7 @@ async function raceButton(what) {
   const code = $("raceCode").value;
   if (!code.trim()) { raceSay("Tap a green command first!", false); return; }
   raceSay("Running...", false);
+  if (roomPane === "chest") return chestRun(code);
   const out = await tap("game", {action: "run", code});
   if (!out) raceSay("Couldn't reach the game. Please try again.", false);
   else if (out.error) raceSay(out.error, false);
@@ -290,3 +305,143 @@ $("roomButtons").addEventListener("keydown", e => {
   } else return;
   raceCode = box.value;
 });
+
+// ---- 🧰 Code chests: one in each place, and today's puzzle opens it ------------------------------
+// Walking up to a chest opens its pane, with the same code box as the Code race. The chests further
+// along the world are harder, and they all lock again tomorrow with new puzzles.
+const CHEST_ANSWER_AFTER = 30;      // seconds of trying before More help shows the whole answer
+let chestPlace = null, chestNear = null, chestSince = 0, chestJust = "";
+const chestNow = () => (S.hang.chests || []).find(c => c.place === chestPlace);
+function lookForChest(mine) {
+  const c = PalHang.chestAt(roomStage.state.places || ["park"], mine.x, mine.y, S.hang.chests);
+  if (!c) { chestNear = null; return; }
+  if (c.place === chestNear) return;
+  chestNear = chestPlace = c.place;
+  roomPane = "chest"; artArmed = furnArmed = buyArmed = null;
+  buildRoomButtons();
+  PalStage.SFX.play("ding");
+  tipFor("🧰 A code chest! Code it open on the right.", 5000);
+}
+// 🧰 Take me: the 🎯 chest job walks your pal to the nearest chest still shut.
+function goToChest() {
+  const mine = myMember(), places = roomStage.state.places || [];
+  if (!mine || atHome()) { tipFor("Go out the door first! The chests are outside."); return; }
+  const shut = (S.hang.chests || []).filter(c => !c.open && places.includes(c.place))
+    .map(c => ({c, x: places.indexOf(c.place) * PalStage.W + c.x})).sort((a, b) => Math.abs(a.x - mine.x) - Math.abs(b.x - mine.x));
+  if (!shut.length) { tipFor("You opened every chest today! New puzzles tomorrow."); return; }
+  walkTo(shut[0].x, shut[0].c.deep);
+  tipFor(`🧰 Walking to the ${PLACE_NAMES[shut[0].c.place][1]} chest...`);
+}
+function buildChestPane(box) {
+  const c = chestNow(), world = (roomInfo && roomInfo.world) || ["park"];
+  box.classList.add("games-pane");
+  if (!c) { box.innerHTML = ""; return; }
+  const key = `chest:${c.place}:${c.job}`;
+  if (raceFor !== key) { raceFor = key; raceCode = ""; raceMsg = ""; raceGood = false; raceHelp = 0; raceOut = 0; chestSince = performance.now(); chestJust = ""; }
+  const opened = S.hang.chests.filter(x => x.open && world.includes(x.place)).length;
+  let body = `<h4>🧰 The ${esc(PLACE_NAMES[c.place][1])} chest <small>· ${opened} of ${world.length} open today · +10 🪙 each</small></h4>`;
+  if (c.open) body += `<p class="race-msg good">${esc(chestJust || "✅ You opened it!")}</p><p class="me-note">It locks again tomorrow with a new puzzle.</p>`;
+  else {
+    let help = "";
+    if (raceHelp) {
+      const wait = Math.ceil(CHEST_ANSWER_AFTER - (performance.now() - chestSince) / 1000);
+      help = `<p class="me-note">💡 ${raceTip(c)}</p>` + (raceHelp < 2 ? "" : wait <= 0 ? `<pre class="race-reveal">${esc(c.hint)}</pre>`
+        : `<p class="me-note">The whole answer shows in ${wait}s. Try first, then press More help again!</p>`);
+    }
+    body += `<p class="race-bonus">🔒 ${esc(c.job)} ${esc(c.icons)}</p>` + raceEditor(c, true) + help;
+  }
+  box.innerHTML = body;
+  if (raceHelp && !c.open) box.lastElementChild.scrollIntoView({block: "nearest"});      // the help, under the code box
+}
+async function chestRun(code) {
+  const c = chestNow();
+  if (!c) return;
+  const out = await tap("chest", {place: c.place, code});
+  if (!out) raceSay("Couldn't reach the Hang out. Please try again.", false);
+  else if (out.error) raceSay(out.error, false);
+  else if (!out.open) { raceSay(out.message, false); PalStage.SFX.play("boing"); }
+  else {
+    c.open = true;
+    chestJust = out.message;
+    PalStage.SFX.play("fanfare");
+    buildRoomButtons();
+    refreshState().then(() => { if (roomPane === "chest") buildRoomButtons(); });
+  }
+  if ($("raceMsg")) $("raceMsg").scrollIntoView({block: "nearest"});      // a small laptop's panel can hide it
+}
+
+// ---- 🎨 Draw & guess: one friend draws a secret thing, the others tap the picture --------------
+// The drawer clicks squares to colour them (or drags). Everyone sees the picture grow, here and
+// on an easel in the Park. Guesses are pictures with words, so nobody has to type or spell.
+let drawInk = 0, drawLast = -1;
+const drawPending = new Map();         // squares the drawer coloured that the server hasn't sent back yet
+function drawPane(g, you) {
+  const drawing = g.drawer === you, word = g.word, got = g.guessed.includes(you);
+  let body = `<h4>🎨 Draw & guess <small>· picture ${g.round + 1} of ${g.turns}</small></h4>`;
+  if (g.pause) body += `<p class="race-msg good">It was ${word[1]} ${esc(word[2])}!</p>`;
+  else if (drawing) body += `<p class="race-bonus">🤫 Draw this: <b>${word[1]} ${esc(word[2])}</b></p>`;
+  else body += `<p class="me-note">${esc(gamePerson(g.drawer))} is drawing. What is it? Tap the picture!</p>`;
+  // Guessers watch the big easel in the Park (the camera stays there), so their panel has room for every picture.
+  if (drawing) body += `<canvas id="drawBoard" class="draw-board${g.pause ? "" : " mine"}" width="${g.grid * 16}" height="${g.grid * 16}" aria-label="Your drawing"></canvas>`;
+  else if (!g.pause && !got) body += `<p class="me-note">👀 Watch the easel in the Park!</p>`;
+  if (drawing && !g.pause) {
+    body += `<div class="draw-inks">${g.colours.map((c, i) => `<button data-ink="${i}" aria-pressed="${drawInk === i}" style="background:${c}" title="Colour ${i + 1}"></button>`).join("")}
+      <button data-ink="-1" aria-pressed="${drawInk === -1}" title="Rub out">🧽</button></div>
+      <p class="me-note">Click squares to colour them. No letters! Your friends guess from pictures.</p>
+      <button class="wide" data-drawwipe="1"><span>🗑</span>Start my picture again</button>`;
+  } else if (!g.pause && got) body += `<p class="race-msg good">⭐ You got it! Wait for your friends.</p>`;
+  else if (!g.pause) body += `<div class="guess-grid">${g.choices.map(([key, icon, name]) =>
+    `<button data-guess="${key}"><span>${icon}</span>${esc(name)}</button>`).join("")}</div>`;
+  const names = g.guessed.map(s => esc(gamePerson(s))).join(", ");
+  body += `<p class="me-note race-score">Guessed it: ${names || "nobody yet"} · Your points: ${g.scores[you] || 0}<br>
+    <small>First right guess: 3 points. Second: 2. Then 1. The drawer gets 1 for each friend who guesses.</small></p>`;
+  return body;
+}
+function paintDrawBoard() {
+  const cv = $("drawBoard"), g = currentGame();
+  if (!cv || !g || g.kind !== "draw" || !g.board) return;
+  const now = performance.now();
+  for (const [cell, {ink, at}] of drawPending) if (g.board[cell] === ink || now - at > 2500) drawPending.delete(cell);
+  const c = cv.getContext("2d"), size = cv.width / g.grid;
+  c.fillStyle = "#fffdf6"; c.fillRect(0, 0, cv.width, cv.height);
+  for (let i = 0; i < g.grid * g.grid; i++) {
+    const ink = drawPending.has(i) ? drawPending.get(i).ink : g.board[i];
+    if (ink === ".") continue;
+    c.fillStyle = g.colours["0123456789".indexOf(ink)];
+    c.fillRect(i % g.grid * size, Math.floor(i / g.grid) * size, size, size);
+  }
+  c.strokeStyle = "#1b153018"; c.lineWidth = 1;
+  for (let k = 1; k < g.grid; k++) {
+    c.beginPath(); c.moveTo(k * size + .5, 0); c.lineTo(k * size + .5, cv.height); c.stroke();
+    c.beginPath(); c.moveTo(0, k * size + .5); c.lineTo(cv.width, k * size + .5); c.stroke();
+  }
+}
+function drawAt(e) {
+  const cv = e.target, g = currentGame();
+  if (cv.id !== "drawBoard" || !g || g.kind !== "draw" || g.drawer !== roomInfo.you || g.pause) return;
+  const r = cv.getBoundingClientRect();
+  const x = Math.floor((e.clientX - r.left) / r.width * g.grid), y = Math.floor((e.clientY - r.top) / r.height * g.grid);
+  if (x < 0 || y < 0 || x >= g.grid || y >= g.grid) return;
+  const cell = y * g.grid + x, ink = drawInk < 0 ? "." : String(drawInk);
+  if (cell === drawLast) return;
+  drawLast = cell;
+  drawPending.set(cell, {ink, at: performance.now()});
+  paintDrawBoard();
+  tap("game", {action: "paint", cell, colour: drawInk < 0 ? null : drawInk});
+}
+$("roomButtons").addEventListener("pointerdown", e => { drawLast = -1; drawAt(e); });
+$("roomButtons").addEventListener("pointermove", e => { if (e.buttons) drawAt(e); });
+async function drawGuess(button) {
+  const grid = button.closest(".guess-grid");
+  if (!grid || grid.classList.contains("wait")) return;
+  PalStage.SFX.wake();
+  const out = await tap("game", {action: "guess", word: button.dataset.guess});
+  if (!out) { tipFor("Couldn't reach the game. Please try again."); return; }
+  if (out.error) { tipFor(out.error); return; }
+  tipFor(out.message);
+  if (out.right) { PalStage.SFX.play("fanfare"); return; }
+  PalStage.SFX.play("boing");
+  button.classList.add("nope");
+  grid.classList.add("wait");          // a moment to look again, so tapping every picture isn't the way to win
+  setTimeout(() => grid.classList.remove("wait"), 3000);
+}

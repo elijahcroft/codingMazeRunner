@@ -202,6 +202,27 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   remove one student's, or all of them.
 - **💎 Gems:** three in each place. Each student finds their own. All of them earns
   Treasure Hunter.
+- **🧰 Code chests:** one treasure chest in each place, opened only with code. When a pal
+  walks up to one, the side panel shows the chest's puzzle ("Jump 2 times. 🦘 🦘") with the
+  same code box as the Code race: tap green commands or type, then ▶ Run my code. A miss
+  says what the pal did against what the chest wants. 💡 Help gives a tip, and pressing More
+  help after 30 seconds shows the whole answer. Opening a chest pays 10 coding coins (no
+  daily limit), and the pal acts the code out in a spotlight, so friends nearby can clap.
+  The Park chest is easiest (commands in order). Chests further along want a loop, then two
+  things in a loop, and Candy land and Outer space ask for counting with `i` or two loops.
+  Each chest opens once a day for each student. Every chest locks again the next day with a
+  new puzzle, the same for the whole class, so friends can help each other. Opening every
+  chest in a day puts a line on the projector, and so does being the first in the class to
+  open each chest that day. While a student is at a chest, the line under the world keeps its
+  puzzle in view. When "Code a chest open" is one of today's 🎯 jobs, its **🧰 Take me** button
+  walks the pal to the nearest chest still shut. On the projector, every chest has a sign over
+  it with its puzzle and how many have opened it today (so you can point at one and read the
+  code together), and the jobs card counts the chests opened today. The teacher page lists
+  today's chest puzzles with how many opened each, and a 🧰 count for each student.
+  Opening 5 chests unlocks Treasure sparkles,
+  and 20 (a few days' worth) unlocks the Captain hat. The puzzles are `CHEST_JOBS` in
+  `pixel.py` (the Code race's jobs plus a harder fourth set), and where each chest stands
+  is `CHEST_SPOTS`.
 - **High-fives:** click a classmate's pal. Your pal walks over, and a first high-five
   adds a friend for both of them.
 - **Sitting and reading:** click a glowing spot in front of a bench, towel or snowman
@@ -236,19 +257,42 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   game 5 and 5 more for winning. Coins from playing stop at 40 a day for each student,
   and the coin bar then says missions still pay. Students who already had stars and
   gems were paid for them.
-- **🛍️ Shop:** 15 things to wear, 12 things for a home, and 6 walls and floors, from 15
-  to 90 coins. A student clicks a thing twice to buy it. Shop things never come out of
-  a gift box.
+- **🛍️ Shop:** 17 things to wear, 8 rooms to build, 32 things for a home, and 13 walls
+  and floors, from 15 to 180 coins, and a **✨ Fancy** shelf on top with 7 dear things to
+  save up for (Sun hat, Sparkly mask, Princess hat, Music and Butterfly sparkles, Diamond
+  tiara, and the Royal crown at 200). A student clicks a thing twice to buy it. Furniture
+  can be bought again and again (two beds, three balloons); everything else is bought
+  once. Shop things never come out of a gift box.
+- **✏️ Wear your own drawing:** in 🧢 Me, a student picks one of their drawings and puts it
+  **On my head** or **On my face**, for 40 coins. Everyone sees it on their pal. It's a copy,
+  cut down to what's drawn, so changing or deleting the drawing later doesn't change it. Up
+  to 6 each, and 🗑 Throw one away makes room. A drawing 16 squares wide is worn as wide as
+  a 16 square pal. Like 🖼️ Art, it's a drawing everyone sees straight away.
 - **🔓 Unlocks:** 🧢 Me shows every hat, face and sparkle, including the locked ones,
-  with how to get each (🎁 gift box, 🛍️ price, 🎉 class party, or a goal). Seven
+  with how to get each (🎁 gift box, 🛍️ price, 🎉 class party, or a goal). Nine
   things unlock by themselves at a goal: Gem crown (9 gems), Space helmet (all 21
   gems), Fish hat (5 kinds of fish), Friendship sparkles (5 high-fives), Gold shades
-  (10 game rounds), Dragon horns (15 stars) and Superstar sparkles (27 stars). The
+  (10 game rounds), Dragon horns (15 stars), Superstar sparkles (27 stars), Treasure
+  sparkles (5 🧰 chests) and the Captain hat (20 chests). In winter three more: Santa hat
+  (5 🎁 presents), Snowflake sparkles (15 presents) and Reindeer antlers (25 ⛄ snowballs). The
   three closest goals sit at the top of Me with a bar, and a big 🔓 UNLOCKED! banner
   shows in the Hang out when one is reached.
-- **🏠 Home:** every student has a room of their own. In it they pick a thing and click
-  the floor to put it there, change the walls and floor, and hang up to 5 drawings with
-  🖼️ Art. A rug and a pot plant are free. Friends visit from the Home tab, and the door
+- **🏠 Home:** every student has a home that starts as one living room. Rooms bought in
+  the Shop (Bedroom, Kitchen, Playroom, Garden, Attic, Game room, Pool room, Secret
+  room) join on in a row with open doorways, so the pal just walks from room to room.
+  Each kind of room looks different and comes with its own walls and floor. In a room a
+  student picks a thing and clicks the floor to put it there (up to 12 things a room),
+  changes that room's walls and floor, and hangs up to 5 drawings in each room with
+  🖼️ Art. **✋ Move my things** picks a thing up to put it somewhere else or away;
+  otherwise clicking a thing plays with it (balloons pop, the piano plays, the bed
+  says Zzz...). A rug and a pot plant are free.
+- **🏡 Home levels:** a home grows from Tiny hut to Dream castle (7 levels) on points:
+  1 for each thing out, 2 for a drawing with code, 3 for each room built, and 1 for each
+  ❤️ from a visitor (up to 10). Each level wins a prize that can't be bought (Gold
+  trophy, Rainbow floor, Rainbow, Golden throne, Gold floor, Unicorn), and the class feed
+  says so. A level is kept once reached. A visitor can give each home one ❤️, which pays
+  its owner 2 coins.
+- **Visiting:** friends visit from the Home tab, and the brown door in the living room
   goes back outside. A student's screen shows only the pals in the same place. The
   projector can look into any home: **Look at** lists Outside and every home with
   someone in it, and clicking a name in **Who's here** goes to that pal, inside or out.
@@ -258,8 +302,8 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
 - **🎣 Fishing:** the pier at the Beach has a blue ring. The pal walks over and casts,
   and when ❗ A bite! shows, a click anywhere on the picture reels it in. There are 8
   things to catch, kept in the fish book in 🧢 Me.
-- **Games:** any student can start a 💻 Code race, Tag, Hide & seek, Red light green light,
-  or Copy the dance, and friends choose to join. While a game waits for players, the bar
+- **Games:** any student can start a 💻 Code race, 🎨 Draw & guess, Tag, Hide & seek, Red
+  light green light, or Copy the dance, and friends choose to join. While a game waits for players, the bar
   above the world turns yellow for everyone not in it ("👉 Tap here to join!"), and one tap
   joins. In the race, each press of Run or → is one short run, and moving on red sends a pal
   back a bit. In the dance, the moves stay on the screen with the next one lit, for 3 rounds
@@ -270,9 +314,10 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
 - **🎯 Today's jobs:** three small things to do, at the top of Games, the same for the whole
   class each day so friends can help each other: high-five 2 friends, catch 3 falling stars,
   find a gem, catch something at the pier, finish a game with friends, solve a Code race
-  job, earn a star in a coding mission, clap for a friend's move, visit a friend's home, or
-  dance at the same time as 2 friends (a 🪩 dance party). Every day has at least one coding
-  job (a mission star or a Code race job), so playing leads back to coding. The star job has
+  job, earn a star in a coding mission, code a 🧰 chest open, clap for a friend's move, visit
+  a friend's home, or dance at the same time as 2 friends (a 🪩 dance party). Every day has
+  at least one coding job (a mission star, a Code race job or a chest), so playing leads back
+  to coding. The star job has
   a **💻 Go code** button that opens the next mission. A gem job is swapped for another once
   a student has found every gem, and a star job for the Code race once they have every star.
   Each job pays 5 play coins, and all three open a 🎁 gift box (15 coins once every box gift
@@ -297,6 +342,40 @@ seconds. Friends can join part way through, and players can clap and use 💬 Sa
 race. The jobs are `RACE_JOBS` in `pixel.py`. A solver's code is only shown to the class if
 its words are on the tap list or are the job's own words, and it has no comments, unless
 typing is on.
+
+**🎨 Draw & guess.** Up to 5 pictures, one for each player, and whoever drew longest ago
+draws first, so a big class takes turns across games. The drawer is shown a secret word
+with its picture ("🤫 Draw this: 🐱 Cat") and clicks squares on a 12 by 12 grid, with 10
+colours and a 🧽 to rub out (dragging works too, but is never needed). The picture grows on
+a big easel in the middle of the Park, for everyone and on the projector. The others tap
+one of 6 pictures with words, so nobody types or spells. A wrong guess greys the pictures
+for 3 seconds, so tapping all of them isn't the way to win. The first right guess is 3
+points, the second 2, then 1, and the drawer gets 1 for each friend who guesses. Each picture
+has 60 seconds, then everyone sees what it was. The word is never sent to a guesser's screen
+or the projector until then. The words are `GUESS_WORDS` in `pixel.py`. A drawer could still
+write letters; the tip asks them not to.
+
+**❄️ The Snow Village.** From 16 November to 31 December, the world has one more place at its
+far end: a snowy evening village. Students get there by walking, from 🏞️ Place, or with
+**❄️ Take me** on the Snow Village card in Games, and each one sees a one-time banner saying
+it's open. In it:
+- **🎄 The class tree:** walking up to it (or clicking it) opens a pane where a student hangs
+  one of their drawings on it. One each, swapped by picking another, and up to 28 on the tree,
+  the oldest going first. The star on top lights up at 10. On `/pixel/teacher`, an ornament
+  counts as one of the student's drawings left in the world, so **Remove (name)'s** and
+  **Remove all** take ornaments down too.
+- **⛄ The class snowman:** each click on it rolls one snowball onto the same snowman. 30
+  finish it, with confetti and a banner for everyone, and it joins a row of finished snowmen
+  at the back. The first 3 snowmen each day add 2 to the class party meter.
+- **🎁 Presents:** five each day, one in each of the Park, Wedding, Beach, Night and the
+  Snow Village, in new spots every day and the same spots for everyone. Each student finds
+  their own, for 2 play coins.
+
+The projector shows the snowman count and how many drawings are on the tree in the jobs
+card. The dates are `WINTER_FROM` and `WINTER_TO` in `pixel.py`. The village is never part of
+the gem hunt or the chests, so nothing anyone needs for a goal goes away in January. A
+drawing left out with 🖼️ Art in the Snow Village moves into the next place if the class
+party meter opens a new place, because the village always stays last.
 
 On `/pixel/teacher` you can close the Hang out, start a party, a star shower or a **💻 Code
 race for everyone** (everyone outside in the Hang out is put in it, and the race starts 15

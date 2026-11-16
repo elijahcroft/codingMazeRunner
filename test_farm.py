@@ -1,4 +1,5 @@
 """The Rover Farm (planet_farm.py and its routes in server.py)."""
+import copy
 import json
 import os
 import tempfile
@@ -126,7 +127,8 @@ class Rules(unittest.TestCase):
     def test_mistakes_get_the_farms_own_words(self):
         f = fresh()
         for code, part in (("pick()", "harvest()"), ("plant(berry)", None), ('plant("apple")', "isn't a crop"),
-                           ('jump("east")', "On the farm"), ('if look("east") == "rock":\n    east()', '"fence"'),
+                           ('jump("east")', "On the farm"), ('if look("east") == "wall":\n    east()', '"fence"'),
+                           ("smash()", 'drill("east")'),
                            ("harvest", "brackets"), ("water()", "overnight"),
                            ("while True:\n    ripe()", "something inside it that changes")):
             out = day(f, code)
@@ -140,6 +142,61 @@ class Rules(unittest.TestCase):
         out = day(f, 'print(ripe(), empty(), crop(), x(), y(), width(), height(), battery(), coins(), day(), look("west"))')
         self.assertIsNone(out["error"])
         self.assertEqual(out["prints"][0]["text"], "True False berry 1 1 3 1 14 0 1 fence")
+
+
+class Meteors(unittest.TestCase):
+    def test_a_rock_stops_the_rover_and_drill_cracks_it_for_coins(self):
+        f = fresh(field=[[["berry", 1, 0], [farm_rules.ROCK, 0, 0], ["berry", 1, 0]]])
+        stuck = day(copy.deepcopy(f), ROW)
+        self.assertEqual(stuck["picked"], {"berry": 1})   # the loop never got past the rock
+        self.assertIn('drill("east")', " ".join(stuck["say"]))
+        smart = ('for i in range(3):\n    if look("east") == "rock":\n        drill("east")\n'
+                 '    harvest()\n    plant("berry")\n    east()\n')
+        out = day(f, smart)
+        self.assertEqual((out["drilled"], out["picked"]), (1, {"berry": 2}))
+        self.assertEqual(out["income"], 2 + farm_rules.rock_pay(["berry"]))
+        self.assertFalse(any(c and c[0] == farm_rules.ROCK for c in f["field"][0]))
+
+    def test_a_gem_rock_pays_more_and_drilling_nothing_is_wasted(self):
+        f = fresh(crops=["berry", "carrot"], field=[[None, [farm_rules.ROCK, 0, 1], None]])
+        out = day(f, 'drill("east")\ndrill("east")\n')
+        self.assertEqual(out["gems"], 1)
+        self.assertEqual(out["income"], farm_rules.ROCK_PAYS * 3 * farm_rules.GEM_PAYS)
+        self.assertEqual(out["wasted"], 1)
+
+    def test_meteors_fall_only_after_the_lesson_and_never_fill_a_field(self):
+        f = fresh(field_level=4, field=[[None] * 5 for _ in range(4)])
+        f["job"] = farm_rules.METEOR_JOB
+        self.assertEqual(farm_rules.meteors(f), [])
+        f["job"] = len(farm_rules.JOBS)
+        landed = []
+        for n in range(200):
+            f["day"] = n
+            landed += farm_rules.meteors(f)
+        rocks = [(x, y) for y, row in enumerate(f["field"]) for x, c in enumerate(row) if c]
+        self.assertTrue(landed)
+        self.assertEqual(len(rocks), 5 * 4 // 5)
+        self.assertNotIn((0, 0), rocks)
+
+    def test_the_meteor_job_puts_a_rock_where_the_rover_will_meet_it(self):
+        f = farm_rules.new_farm(5)
+        f["job"] = farm_rules.METEOR_JOB
+        view = farm_rules.view(f, 0, DAY)
+        self.assertEqual(view["field"][0][1][0], farm_rules.ROCK)
+        self.assertEqual(view["job"]["title"], "A meteor!")
+
+
+class Perfect(unittest.TestCase):
+    def test_a_day_with_nothing_wasted_pays_half_as_much_again(self):
+        clean = 'for i in range(2):\n    harvest()\n    plant("berry")\n    east()\nharvest()\nplant("berry")\n'
+        f = fresh()
+        out = day(f, clean)
+        self.assertEqual((out["wasted"], out["perfect"]), (0, 1))
+        out = day(f, ROW)   # the loop's last east() bumps the fence
+        self.assertEqual((out["wasted"], out["perfect"]), (1, 0))
+
+    def test_too_few_picks_is_not_a_perfect_day(self):
+        self.assertEqual(day(fresh(), "harvest()\n")["perfect"], 0)
 
 
 class Jobs(unittest.TestCase):
@@ -325,6 +382,13 @@ class Routes(unittest.TestCase):
         self.assertNotIn("coins", seen)
         self.assertIn("error", self.get(f"/planet/farm/visit?id={bo}&who=nobody"))
         self.assertEqual(self.get("/planet/farm/state?id=nobody"), {"error": "join"})
+        # The class record, and beating it.
+        self.assertEqual(self.get(f"/planet/farm/state?id={bo}")["record"], {"coins": 3, "name": "Ada"})
+        with server.lock:
+            server.farm_of(server.players[ada])["best"] = 1
+        out = self.post("/planet/farm/run", {"id": bo, "code": ROW})
+        self.assertTrue(out["record"])
+        self.assertEqual(out["farm"]["record"]["name"], "Bo")
         # The teacher's list.
         with server.lock:
             rows = server.farm_class()
