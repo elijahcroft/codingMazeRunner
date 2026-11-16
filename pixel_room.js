@@ -332,14 +332,17 @@ function nextCoding() {
   const turn = order.find(l => l.stars[0] && !l.remixed);
   if (turn) return {key: turn.key, turn: true, name: turn.name};
   const fix = order.find(l => l.stars[0] && l.fixed === false);
-  return fix ? {key: fix.key, fix: true, name: fix.name} : null;
+  if (fix) return {key: fix.key, fix: true, name: fix.name};
+  return S.free_open ? {key: "free", free: true, name: "Free stage"} : null;     // all done: there's always a show to make
 }
 function paintNextMission() {
   const b = $("nextMission"), next = nextCoding();
   b.hidden = !next;
   if (!next) return;
   const giftLeft = Object.entries(S.hang.catalog).some(([k, g]) => !g.class && !g.price && !g.goal && !S.hang.gifts.includes(k));
-  b.innerHTML = next.fix
+  b.innerHTML = next.free
+    ? `<b>🎬 Free stage</b><small>Make any show you like, with stage toys</small>`
+    : next.fix
     ? `<b>🐞 Fix it: ${esc(next.name)}</b><small>Find the bug in Pip's code · +15 🪙</small>`
     : next.turn
     ? `<b>🎨 Your turn: ${esc(next.name)}</b><small>Change the code your own way · +15 🪙</small>`

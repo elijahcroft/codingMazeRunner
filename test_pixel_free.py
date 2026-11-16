@@ -31,6 +31,21 @@ class FreeStage(unittest.TestCase):
         self.assertIn("grow", pixel.free_commands("t1"))
 
 
+    def test_every_command_a_student_can_get_has_words_on_the_page(self):
+        import os, re
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "pixel_page.js"), encoding="utf-8") as file:
+            page = file.read()
+        words = page[page.index("const WORDS"):page.index("const SAMPLE")]
+        python = page[page.index("const PYTHON"):page.index("const ALL_PYTHON")]
+        for name in pixel.free_commands(pixel.LEVEL_ORDER[-1]):
+            with self.subTest(command=name):
+                self.assertRegex(words, rf"\b{name}:")
+        for lv in pixel.LEVELS:
+            for key in lv["python"]:
+                with self.subTest(python=key):
+                    self.assertRegex(python, rf"\b{key}:")
+
+
 class FreeStageOverHttp(unittest.TestCase):
     setUp, tearDown, post, get = StudioOverHttp.setUp, StudioOverHttp.tearDown, StudioOverHttp.post, StudioOverHttp.get
 

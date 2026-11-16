@@ -150,7 +150,7 @@ step** right there.
 In the Hang out, a purple **💻 Next mission** button names the next mission and its prize
 (up to 50 🪙, and a 🎁 box while there are boxes left) and opens it in one click. With every
 mission done, it points to a Your turn not done yet, then a Fix it, and once those are done too,
-it goes away.
+it offers the 🎬 Free stage.
 
 The Hang out's 👋 Do and 🎉 Party buttons show their Python under the name (`wave()`,
 `feel("happy")`, `hearts()`), so playing keeps reminding them what the code looks like.
