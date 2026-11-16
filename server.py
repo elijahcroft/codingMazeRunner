@@ -6525,7 +6525,7 @@ DAY_JOBS = {"five": ("🙌", "High-five 2 friends", 2), "catch": ("🌠", "Catch
             "gem": ("💎", "Find a gem", 1), "fish": ("🎣", "Catch something at the pier", 1),
             "game": ("🎮", "Finish a game with friends", 1), "code": ("💻", "Solve a Code race job", 1),
             "clap": ("👏", "Clap for a friend's move", 1), "visit": ("🚪", "Visit a friend's home", 1),
-            "star": ("⭐", "Earn a star in a coding mission", 1)}
+            "star": ("⭐", "Earn a star in a coding mission", 1), "party": ("🪩", "Dance at the same time as 2 friends", 1)}
 CODING_JOBS = ("star", "code")      # every day has one of these, so the Hang out leads back to coding
 DAY_JOBS_EACH = 3
 DAY_JOB_COINS = 5
@@ -7037,6 +7037,10 @@ def dance_party_check(spot):
         room["dance_party_at"] = now
         room_event("danceparty", loc=spot["loc"], seats=together, x=spot["x"])
         hang_fill(1)
+        seats = game_seats()
+        for seat in together:
+            if seat in seats:
+                day_job(players.get(seats[seat][0]), "party")
 
 
 def room_free_spot(lo, hi, me=None):

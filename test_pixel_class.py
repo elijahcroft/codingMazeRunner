@@ -275,6 +275,12 @@ class TeacherAndGames(unittest.TestCase):
             server.room_do(kid, {"what": "move", "name": "dance"})
         self.assertEqual(len(self.parties()), 1)                            # once a minute at most
 
+    def test_a_dance_party_counts_for_everyone_in_it(self):
+        for kid in self.kids:
+            self.jobs(kid, ["party", "clap", "code"])
+            server.room_do(kid, {"what": "move", "name": "dance"})
+        self.assertEqual([self.jobs(k)["have"].get("party") for k in self.kids], [1, 1, 1])
+
     def test_dancing_too_far_apart_in_time_or_place_is_no_party(self):
         mia, ben, alex = self.kids
         server.room_do(mia, {"what": "move", "name": "dance"})

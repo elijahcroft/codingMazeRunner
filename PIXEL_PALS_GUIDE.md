@@ -221,8 +221,8 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
 - **🎯 Today's jobs:** three small things to do, at the top of Games, the same for the
   whole class each day so friends can help each other: high-five 2 friends, catch 3
   falling stars, find a gem, catch something at the pier, finish a game with friends,
-  solve a Code race job, earn a star in a coding mission, clap for a friend's move, or visit
-  a friend's home. Every day has at least one coding job (a mission star or a Code race
+  solve a Code race job, earn a star in a coding mission, clap for a friend's move, visit
+  a friend's home, or dance at the same time as 2 friends (a 🪩 dance party). Every day has at least one coding job (a mission star or a Code race
   job), so playing leads back to coding. The star job has a **💻 Go code** button that opens the
   next mission. A gem job is swapped for another once a student
   has found every gem, and a star job for the Code race once they have every star. Each job pays 5 play coins,
