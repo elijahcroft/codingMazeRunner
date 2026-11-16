@@ -435,6 +435,8 @@
   .float { position: absolute; transform: translate(-50%, 0); font-size: clamp(16px, 2vw, 26px); font-weight: 900; color: #fff; text-shadow: 0 1px 0 #2c5352, 0 0 4px #2c5352; pointer-events: none; animation: float-up 1.4s ease-out forwards; }
   .float.combo { color: #ffd93b; font-size: clamp(24px, 3.2vw, 42px); }
   @keyframes float-up { to { transform: translate(-50%, -64px); opacity: 0; } }
+  body.calm .float { animation: fade-away 1.4s ease-out forwards; }     /* calm: words fade where they are, with no flying */
+  @keyframes fade-away { to { opacity: 0; } }
   @keyframes drop-in { from { transform: translate(-50%, -12px); opacity: 0; } }
   @keyframes party-in { from { transform: translateX(-50%) scale(.3); opacity: 0; } }
   .hang-side { display: flex; flex-direction: column; gap: 8px; min-height: 0; padding: 12px; background: #fffdf6; border-radius: 22px; box-shadow: 0 4px 18px #2c535220; }

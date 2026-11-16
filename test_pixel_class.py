@@ -2,6 +2,7 @@
 import unittest
 from unittest.mock import patch
 
+import pixel
 import server
 
 
@@ -64,6 +65,30 @@ class TeacherAndGames(unittest.TestCase):
         self.assertEqual(people["Alex"]["doing"], "💃 Dancing")
         self.assertEqual(people["Mia"]["doing"], "🎮 In a game")
         self.assertEqual(people["Mia"]["where"], "park")
+
+    def spots(self):
+        return [s for s in server.pixel_room["here"].values() if not s["loc"]]
+
+    def test_a_whole_class_arriving_together_is_spread_out_not_one_heap(self):
+        for i in range(22):
+            self.kid(f"Kid{i}")
+        here = self.spots()
+        self.assertEqual(len(here), 25)
+        self.assertTrue(all(0 < s["x"] < server.hang_width() and 0 <= s["y"] <= 1 for s in here))
+        gaps = [min(server.game_distance(a, b) for b in here if b is not a) for a in here]
+        self.assertGreaterEqual(min(gaps), 30)
+        self.assertEqual(len({(s["x"], s["y"]) for s in here}), 25)
+        # The first few still start together in the Park, where the class begins.
+        self.assertTrue(all(s["x"] < pixel.PLACE_W for s in here[:5]))
+
+    def test_jumping_to_a_place_finds_a_free_spot_there(self):
+        for kid in self.kids[:2]:
+            self.assertEqual(server.room_do(kid, {"what": "go", "name": "beach"}), {"ok": True})
+        a, b = (server.pixel_room["here"][k["id"]] for k in self.kids[:2])
+        left = server.hang_places().index("beach") * pixel.PLACE_W
+        for s in (a, b):
+            self.assertTrue(left <= s["x"] < left + pixel.PLACE_W)
+        self.assertGreaterEqual(server.game_distance(a, b), 30)
 
     def test_ending_when_no_game_is_on_does_nothing(self):
         self.assertEqual(server.pixel_teacher({"action": "end_game"}), {"ok": True})

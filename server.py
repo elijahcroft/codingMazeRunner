@@ -6906,6 +6906,22 @@ def room_wear(p, spot, slot, item):
     return {"ok": True}
 
 
+def room_free_spot(lo, hi, me=None):
+    """Somewhere between lo and hi with room around it, so a class arriving together isn't one heap
+    of pals. Spots go left to right, back row and front row in turn; the first one clear of every
+    pal outside wins, or the least crowded if none is."""
+    others = [s for s in pixel_room["here"].values() if not s["loc"] and s is not me]
+    best, roomiest = (lo + 24, .5), -1
+    for i, x in enumerate(range(lo + 24, hi - 16, 30)):
+        y = .3 if i % 2 else .8
+        near = min((game_distance({"x": x, "y": y}, s) for s in others), default=1e9)
+        if near >= 34:
+            return x, y
+        if near > roomiest:
+            best, roomiest = (x, y), near
+    return best
+
+
 def room_do(p, data):
     room_keep_up()
     room = pixel_room
@@ -6921,8 +6937,9 @@ def room_do(p, data):
             if not room["here"]:
                 room["next_shower"] = time.time() + SHOWER_FIRST
             room["seats"] += 1
+            x, y = room_free_spot(0, hang_width())
             spot = room["here"][p["id"]] = {
-                "seat": room["seats"], "name": hang_name(p), "real": p["name"], "x": 40 + room["seats"] * 47 % 240, "y": room["seats"] * .37 % 1,
+                "seat": room["seats"], "name": hang_name(p), "real": p["name"], "x": x, "y": y,
                 "mood": None, "rest": None, "seen": time.time(), "pal": room_compact(pixel_pal(entry)), "buddies": room_buddies(entry), "wear": dict(entry["wear"]),
                 "loc": 0, "prop": False, "hid": bool(entry.get("hide_name"))}
             room_event("join", loc=0, member=room_row(spot))
@@ -6984,11 +7001,12 @@ def room_do(p, data):
     elif what == "fx" and data.get("name") in pixel.ROOM_FX:
         room_event("fx", seat=seat, name=data["name"], x=spot["x"])
     elif what == "go" and data.get("name") in hang_places():
-        x = hang_places().index(data["name"]) * pixel.PLACE_W + 160
+        left = hang_places().index(data["name"]) * pixel.PLACE_W
+        x, y = room_free_spot(left, left + pixel.PLACE_W, spot)
         if spot["loc"]:
-            room_go(spot, 0, x, .5)
+            room_go(spot, 0, x, y)
             return {"ok": True}
-        spot["x"], spot["y"], spot["rest"] = x, .5, None
+        spot["x"], spot["y"], spot["rest"] = x, y, None
         spot.pop("bite", None)
         room_event("go", seat=seat, x=spot["x"], y=spot["y"])
     elif what == "toy" and data.get("name") in pixel.HANG_TOYS and not spot["loc"]:
