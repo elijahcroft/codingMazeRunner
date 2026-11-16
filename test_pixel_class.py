@@ -229,6 +229,12 @@ class TeacherAndGames(unittest.TestCase):
         self.assertEqual(server.room_view(None, -1)["jobs_done"], 1)
         self.assertNotIn("jobs_done", server.room_view(mia, -1))          # only the class screen counts
 
+    def test_every_job_says_how_to_do_it(self):
+        for key, (icon, words, need, how) in server.DAY_JOBS.items():
+            with self.subTest(key):
+                self.assertTrue(how or key == "star")                      # the star job has a Go code button instead
+        self.assertIn("how", server.day_jobs_view(server.pixel_entry(self.kids[0]))["list"][0])
+
     def test_no_gem_job_once_every_gem_is_found(self):
         mia = self.kids[0]
         server.pixel_entry(mia)["found"] = list(pixel.HANG_FINDS)

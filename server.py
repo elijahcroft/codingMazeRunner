@@ -6521,11 +6521,17 @@ DOING_FOR = 20             # seconds a tap still counts as what they're doing
 # 🎯 Today's jobs: three small things to do in the Hang out, the same for the whole class each day,
 # so friends can help each other. key: (icon, words, how many). Each one pays a few play coins, and
 # all three open a gift box (or pay coins once every box gift is theirs) and fill the party meter a bit.
-DAY_JOBS = {"five": ("🙌", "High-five 2 friends", 2), "catch": ("🌠", "Catch 3 falling stars", 3),
-            "gem": ("💎", "Find a gem", 1), "fish": ("🎣", "Catch something at the pier", 1),
-            "game": ("🎮", "Finish a game with friends", 1), "code": ("💻", "Solve a Code race job", 1),
-            "clap": ("👏", "Clap for a friend's move", 1), "visit": ("🚪", "Visit a friend's home", 1),
-            "star": ("⭐", "Earn a star in a coding mission", 1), "party": ("🪩", "Dance at the same time as 2 friends", 1)}
+# key: (icon, words, how many, how to do it)
+DAY_JOBS = {"five": ("🙌", "High-five 2 friends", 2, "Click a friend's pal."),
+            "catch": ("🌠", "Catch 3 falling stars", 3, "Stars fall in a star shower. Run under them!"),
+            "gem": ("💎", "Find a gem", 1, "Walk near a sparkly 💎 in the world."),
+            "fish": ("🎣", "Catch something at the pier", 1, "Click the blue ring at the Beach."),
+            "game": ("🎮", "Finish a game with friends", 1, "Start or join one below."),
+            "code": ("💻", "Solve a Code race job", 1, "Start a 💻 Code race below with a friend."),
+            "clap": ("👏", "Clap for a friend's move", 1, "When a friend does their ✨ My Move, press 👏 Clap."),
+            "visit": ("🚪", "Visit a friend's home", 1, "Open 🏠 Home and pick a friend."),
+            "star": ("⭐", "Earn a star in a coding mission", 1, ""),
+            "party": ("🪩", "Dance at the same time as 2 friends", 1, "Ask 2 friends to press 💃 Dance with you.")}
 CODING_JOBS = ("star", "code")      # every day has one of these, so the Hang out leads back to coding
 DAY_JOBS_EACH = 3
 DAY_JOB_COINS = 5
@@ -6588,7 +6594,8 @@ def day_job(p, key, who=None):
 
 def day_jobs_view(entry):
     jobs = day_jobs(entry)
-    return {"list": [{"key": k, "icon": DAY_JOBS[k][0], "words": DAY_JOBS[k][1], "have": jobs["have"].get(k, 0), "need": DAY_JOBS[k][2]}
+    return {"list": [{"key": k, "icon": DAY_JOBS[k][0], "words": DAY_JOBS[k][1], "have": jobs["have"].get(k, 0), "need": DAY_JOBS[k][2],
+                      "how": DAY_JOBS[k][3]}
                      for k in jobs["keys"]],
             "done": jobs["paid"], "gift": jobs.get("gift"), "coins": jobs.get("coins", 0)}
 
