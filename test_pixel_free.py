@@ -1,0 +1,81 @@
+"""🎬 Free stage: after My Move, any show at all, with stage toys and no stars."""
+import unittest
+
+import pixel
+import server
+from test_pixel import StudioOverHttp, drawing
+
+SHOW = 'scene("beach")\nfriend("cat")\nfriend_say("Hi!")\nsound("tada")\nrain()\nfor i in range(2):\n    jump()\nsay("The end")'
+
+
+class FreeStage(unittest.TestCase):
+    def test_every_stage_toy_runs(self):
+        out = pixel.public(pixel.perform(SHOW + "\nsnow()\nfriend_jump()\nhide()\nappear()\nbye()",
+                                         commands=pixel.free_commands("m1")))
+        self.assertEqual(out.get("error"), None)
+        done = {s["do"] for s in out["steps"]}
+        for toy in ("scene", "friend", "rain", "snow", "hide", "appear"):
+            self.assertTrue(any(toy in d for d in done), toy)
+
+    def test_it_has_what_they_learned_and_the_toys_only(self):
+        early = pixel.free_commands("m1")
+        self.assertIn("jump", early)
+        self.assertIn("scene", early)
+        self.assertNotIn("grow", early)            # Grow big comes after My Move
+        self.assertIn("grow", pixel.free_commands("t1"))
+
+
+class FreeStageOverHttp(unittest.TestCase):
+    setUp, tearDown, post, get = StudioOverHttp.setUp, StudioOverHttp.tearDown, StudioOverHttp.post, StudioOverHttp.get
+
+    def finish_up_to_my_move(self, me):
+        out = None
+        for key in pixel.LEVEL_ORDER[:pixel.LEVEL_ORDER.index(pixel.FREE_AFTER) + 1]:
+            out = self.post("/pixel/run", {"id": me, "level": key, "code": pixel.LEVEL_BY_KEY[key]["reference"]})
+        return out
+
+    def test_it_opens_with_my_move(self):
+        me = self.post("/join", {"name": "Mia"})["id"]
+        self.post("/pixel/save", {"id": me, "drawing": drawing()})
+        self.assertIn("error", self.get(f"/pixel/level?id={me}&level=free"))
+        self.assertIn("error", self.post("/pixel/run", {"id": me, "level": "free", "code": "jump()"}))
+        self.assertFalse(self.get(f"/pixel/state?id={me}")["free_open"])
+        last = self.finish_up_to_my_move(me)
+        self.assertTrue(last["rewards"]["free_opened"])
+        self.assertTrue(last["state"]["free_open"])
+        level = self.get(f"/pixel/level?id={me}&level=free")
+        self.assertTrue(level["free"])
+        self.assertEqual(level["goals"], [])
+        self.assertIn("scene", level["commands"])
+
+    def test_a_show_runs_keeps_its_code_and_pays_nothing(self):
+        me = self.post("/join", {"name": "Mia"})["id"]
+        self.finish_up_to_my_move(me)
+        coins = server.pixel_entry(server.players[me])["coins"]
+        stars = server.pixel_stars(server.pixel_entry(server.players[me]))
+        out = self.post("/pixel/run", {"id": me, "level": "free", "code": SHOW})
+        self.assertIsNone(out.get("error"))
+        self.assertEqual(out["stars"], [])
+        self.assertEqual(out["rewards"], {})
+        self.assertTrue(any(s["do"] == "say" for s in out["steps"]))
+        self.assertEqual(self.get(f"/pixel/level?id={me}&level=free")["code"], SHOW)
+        entry = server.pixel_entry(server.players[me])
+        self.assertEqual(entry["coins"], coins)
+        self.assertEqual(server.pixel_stars(entry), stars)
+        self.assertNotIn("free", entry["solved"])
+
+    def test_a_command_not_learned_yet_says_so(self):
+        me = self.post("/join", {"name": "Mia"})["id"]
+        self.finish_up_to_my_move(me)
+        out = self.post("/pixel/run", {"id": me, "level": "free", "code": 'look("left")'})   # Who's there? isn't open yet
+        self.assertTrue(out.get("error"))
+
+    def test_the_teacher_page_still_works(self):
+        me = self.post("/join", {"name": "Mia"})["id"]
+        self.finish_up_to_my_move(me)
+        self.post("/pixel/run", {"id": me, "level": "free", "code": SHOW})
+        self.assertTrue(any(r["name"] == "Mia" for r in server.pixel_overview()["students"]))
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1429,6 +1429,21 @@ for _lv in LEVELS:
     _lv["guess"] = GUESSES.get(_lv["key"])
     _lv["fix"] = FIXES.get(_lv["key"])
 
+# 🎬 Free stage: after My Move, a stage with no stars and no rules, where a student makes any
+# show they like with every command they've learned, plus stage toys no mission teaches.
+FREE_AFTER = "m1"
+STAGE_TOYS = ("scene", "sound", "rain", "snow", "friend", "friend_say", "friend_jump", "bye", "hide", "appear")
+FREE = {"key": "free", "name": "Free stage", "chapter": None,
+        "pip": "The stage is all yours! No stars and no rules: make any show you'd like to watch. "
+               "Try the new stage toys, like  scene(\"beach\")  and  friend(\"cat\")  . All words says what each one does.",
+        "job": "Make any show you like.", "goals": [], "hints": [], "coach": [], "adds": list(STAGE_TOYS)}
+
+
+def free_commands(upto):
+    """What works on the Free stage: every command learned up to this mission, and the stage toys."""
+    return tuple(dict.fromkeys(commands_for(upto) + STAGE_TOYS))
+
+
 LEVEL_ORDER = [lv["key"] for lv in LEVELS]
 LEVEL_BY_KEY = {lv["key"]: lv for lv in LEVELS}
 REMIX_COINS = 15           # once per mission, for doing its Your turn
@@ -1729,7 +1744,7 @@ def run_level(lv, code, pal, seed=0, surprise=None):
     """Run a mission. Random missions run on many seeds, so the stars mean the
     program works every time. The first run is the one the student watches:
     with `surprise`, a random mission's watched run gets that seed of its own."""
-    commands = commands_for(lv["key"])
+    commands = lv.get("commands") or commands_for(lv["key"])
     seeds = list(lv.get("seeds", [0]))
     if surprise is not None and "seeds" in lv:
         seeds = [surprise - seed] + seeds

@@ -30,7 +30,9 @@ Both teacher pages are linked from `/admin`.
 6. Mission 9 is **My Move**. They code their own routine and it becomes a big
    button in the Hang out. Eleven more missions come after it, for students who finish.
 
-A big button at the top right always says what comes next.
+A big button at the top right always says what comes next. On Code, that's **💻 Next mission**
+once the open mission is done; it only says Go hang out when every mission is finished, so
+it never pulls a student out of a mission halfway. The 🎉 Hang out tab is always there too.
 
 ## The missions
 
@@ -114,10 +116,23 @@ to the mission in Missions. It only counts once the mission itself is finished. 
 none. They live in `FIXES` in `pixel.py`, and `test_pixel_fix.py` checks that every bug really
 breaks the show and that the guide's code fixes it.
 
+**🎬 Free stage: any show at all.** Finishing My Move opens the Free stage, at the bottom of
+Missions (the My Move win card has a button for it too). There are no stars, no guide and no
+rules: every command the student has learned works, plus ten **stage toys** no mission
+teaches: `scene("beach")`, `sound("tada")`, `rain()`, `snow()`, `friend("cat")`,
+`friend_say("Hi!")`, `friend_jump()`, `bye()`, `hide()` and `appear()`. All words says what
+each one does. Their show's code is kept, and nothing is paid for it, so it's there for
+making things, not for coins. A command from a mission they haven't reached yet says it
+comes in a later chapter.
+
 **Error messages talk about the line itself:** `feel(happy)` says to write `feel("happy")`,
 `right(five)` asks for a number, `name = Luna` says `name = "Luna"`, `Name` when the variable
-is `name` says capitals matter, `say("I am " name)` says to add a `+`, and using a `def` above
-where it's made says to move it up.
+is `name` says capitals matter, `say("I am " name)` says to add a `+`, using a `def` above
+where it's made says to move it up, `name == "Luna"` on its own says one `=` keeps a value,
+`"Luna" = name` says the name goes first, and a slip like `nam` for `name` asks "Did you mean
+name?". **🔈 Read it** on any error reads it out loud, saying a lone `)` as "close bracket".
+After **three misses in a row** with the guide off, the result box offers **🖐 Show me step by
+step** right there.
 
 In the Hang out, a purple **💻 Next mission** button names the next mission and its prize
 (up to 50 🪙, and a 🎁 box while there are boxes left) and opens it in one click. With every

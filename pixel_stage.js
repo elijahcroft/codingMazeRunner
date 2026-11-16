@@ -1053,6 +1053,7 @@ const PalStage = (() => {
       el.textContent = text;
       host.appendChild(el);
       bubbles[who] = {el, until: performance.now() + ms};
+      placeBubbles();      // in place before it's first seen, not one frame later at the left edge
     }
     function placeBubbles() {
       const now = performance.now();

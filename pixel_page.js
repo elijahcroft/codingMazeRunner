@@ -28,8 +28,14 @@ const WORDS = {
   hearts: "Hearts float up.", stars: "Stars float up.", confetti: "Confetti falls everywhere.",
   grow: "Gets bigger.", shrink: "Gets smaller again.", shake: "Wobbles like a jelly.",
   look: "Moves its eyes: left, right, up, down or front.",
+  scene: "Changes the place: stage, wedding, park, beach, night, snowy, candy, space or castle.",
+  sound: "Plays a sound: ding, boing, pop, tada, meow, drum, whoosh or yay.",
+  rain: "Rain falls.", snow: "Snow falls.",
+  friend: "Brings a friend on stage: cat, bunny, kid or bean.", friend_say: "Your friend says something.",
+  friend_jump: "Your friend jumps.", bye: "Your friend goes off stage.",
+  hide: "Your pal disappears.", appear: "Your pal comes back.",
 };
-const SAMPLE = {say: 'say("Hello!")', right: "right(3)", left: "left(3)", wait: "wait(2)", feel: 'feel("happy")', look: 'look("left")'};
+const SAMPLE = {scene: 'scene("beach")', sound: 'sound("tada")', friend: 'friend("cat")', friend_say: 'friend_say("Hi!")', say: 'say("Hello!")', right: "right(3)", left: "left(3)", wait: "wait(2)", feel: 'feel("happy")', look: 'look("left")'};
 const sample = name => SAMPLE[name] || name + "()";
 const PYTHON = {
   for: ["for loop", "for i in range(3):\n    ", "Repeats the lines pushed in under it."],
@@ -168,16 +174,16 @@ async function openMission(key) {
   remixHint = false;
   fixOn = false;
   fixHint = false;
-  coachWay = null;
+  coachWay = data.free ? "own" : null;
   coachOops = "";
   $("levelName").textContent = `${data.chapter.icon} ${data.name}`;
   const n = S.chapters.flatMap(c => c.levels).findIndex(l => l.key === key) + 1;
-  $("levelWhere").textContent = `Mission ${n} of ${S.max_stars / 3}`;
+  $("levelWhere").textContent = data.free ? "No stars, no rules" : `Mission ${n} of ${S.max_stars / 3}`;
   $("pipSays").innerHTML = fmt(data.pip);
   $("job").innerHTML = fmt(data.job);
   $("job").hidden = false;
-  $("goals").hidden = false;
-  $("hint").hidden = false;
+  $("goals").hidden = !!data.free;
+  $("hint").hidden = !!data.free;
   $("hint").textContent = "Help me";
   drawGoals(data.best);
   paintYourTurn();
@@ -566,7 +572,7 @@ function paintCoach() {
   document.body.classList.toggle("building", way === "build");
   $("runButton").classList.remove("nudge");
   box.hidden = !way;
-  $("coachBack").hidden = !!way || !mode;
+  $("coachBack").hidden = !!way || !mode || !!view.free;
   $("code").placeholder = way === "type" ? "" : "Type your code here";
   if (way === "build") paintBuild(box);
   else if (way === "type") paintType(box);
@@ -637,6 +643,13 @@ async function runShow() {
     verdict(`<p>${fmt(out.error)}</p><p>Fix that line, then press Show time! again.</p>${stuckOffer()}`, "bad");
     return;
   }
+  if (view.free) {
+    stage.cheer();
+    $("caption").textContent = "What a show!";
+    verdict(`<p><b>🎬 What a show!</b> Change anything you like, then press Show time! again. Your code is saved.</p>`, "good");
+    paintSteps("stage");
+    return;
+  }
   drawGoals(out.stars.map((g, i) => g || view.best[i]));
   view.best = out.stars.map((g, i) => g || view.best[i]);
   if (out.rewards.fixed) { stage.cheer(); fixDone(); }
@@ -664,7 +677,7 @@ async function runShow() {
 }
 // Three misses in a row with the guide off: offer the guide back, right where they're looking.
 let missStreak = 0;
-function missed() { if (!remixOn && !fixOn) missStreak++; }
+function missed() { if (!remixOn && !fixOn && !view.free) missStreak++; }
 function stuckOffer() {
   if (missStreak < 3 || coachMode() || view.build || remixOn || fixOn) return "";
   return `<p class="next"><button class="btn main" data-steps="1">🖐 Show me step by step</button> Stuck? That's OK. The guide shows every key.</p>`;
@@ -768,7 +781,7 @@ function winButtons(r) {
   const order = S.chapters.flatMap(c => c.levels), next = order[order.findIndex(l => l.key === mode) + 1];
   const hang = !S.hang.needs;
   if (r.hang_opened) return `<button class="btn main" data-view="hang">🎉 Go to the Hang out!</button>${next ? ` <button class="btn" data-mission="${esc(next.key)}">Next mission →</button>` : ""}`;
-  if (mode === "m1") return `<button class="btn main" data-view="hang">🎉 Go show everyone!</button>${next ? ` <button class="btn" data-mission="${esc(next.key)}">Next mission →</button>` : ""}`;
+  if (mode === "m1") return `<button class="btn main" data-view="hang">🎉 Go show everyone!</button>${next ? ` <button class="btn" data-mission="${esc(next.key)}">Next mission →</button>` : ""}${S.free_open ? ` <button class="btn" data-mission="free">🎬 Free stage</button>` : ""}`;
   return `${next ? `<button class="btn main" data-mission="${esc(next.key)}">Next mission →</button>` : ""}${remixButton()}${hang ? ` <button class="btn" data-view="hang">🎉 Hang out</button>` : ""}`;
 }
 function celebrate(r) {
@@ -806,7 +819,8 @@ function nameTiles() {
   return `<div class="name-tiles">${S.hang.names.map(n => `<button class="btn" data-move-name="${esc(n)}">${esc(n)}</button>`).join("")}</div>`;
 }
 function showMoveNames(r) {
-  $("winBody").insertAdjacentHTML("beforeend", `${moveMeaning(r.move)}<p class="win-ask">Pick a name for your move:</p>${nameTiles()}`);
+  const unlocked = r.free_opened ? `<p class="guess-said">🔓 New: 🎬 Free stage, with stage toys like  scene("beach")  and  friend("cat")!</p>` : "";
+  $("winBody").insertAdjacentHTML("beforeend", `${unlocked}${moveMeaning(r.move)}<p class="win-ask">Pick a name for your move:</p>${nameTiles()}`);
   $("winDo").innerHTML = "";
   nameThen(() => { $("winDo").innerHTML = winButtons(r); });
 }
@@ -835,7 +849,8 @@ function openMissions() {
     ch.levels.map(l => {
       const n = l.stars.filter(Boolean).length;
       return `<button class="lvl${l.key === mode ? " here" : ""}" data-mission="${esc(l.key)}" ${l.open ? "" : "disabled"}>${l.open ? "" : "🔒 "}${esc(l.name)}${l.remixed ? " 🎨" : ""}${l.fixed ? " 🐞" : ""}<span class="${n ? "" : "none"}">${"★".repeat(n)}${"☆".repeat(3 - n)}</span></button>`;
-    }).join("")}</div>`).join("");
+    }).join("")}</div>`).join("") +
+    `<h3>🎬 Free stage</h3><div class="lvls"><button class="lvl${mode === "free" ? " here" : ""}" data-mission="free" ${S.free_open ? "" : "disabled"}>${S.free_open ? "" : "🔒 "}Free stage<span class="none">${S.free_open ? "Any show you like" : "Finish My Move"}</span></button></div>`;
   $("trophies").innerHTML = S.badges.map(b =>
     `<div class="trophy${b.got ? " got" : ""}"><i>${b.icon}</i><span><b>${esc(b.name)}</b>${esc(b.how)}</span></div>`).join("");
   $("missions").hidden = false;

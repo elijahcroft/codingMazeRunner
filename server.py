@@ -5651,7 +5651,7 @@ def pixel_entry(p):
     for key, value in (("drawings", []), ("pal", ""), ("solved", {}), ("code", {}),
                        ("badges", []), ("runs", {}), ("misses", {}), ("last_error", ""), ("active", 0),
                        ("gifts", []), ("wear", {}), ("friends", []), ("move", None), ("found", []),
-                       ("stuff", []), ("fish", {}), ("things", {}), ("remixed", []), ("guessed", []), ("fixed", [])):
+                       ("stuff", []), ("fish", {}), ("things", {}), ("remixed", []), ("guessed", []), ("fixed", []), ("free_code", ""), ("free_runs", 0)):
         entry.setdefault(key, value)
     if "coins" not in entry:        # coins came later: pay for the stars and gems already earned
         firsts = sum(1 for key, stars in entry["solved"].items() if key in pixel.LEVEL_BY_KEY and stars[0])
@@ -5735,7 +5735,25 @@ def pixel_frontier(entry):
     return last
 
 
+def pixel_free_open(entry):
+    return bool(entry["solved"].get(pixel.FREE_AFTER, [False])[0])
+
+
+def pixel_free_level(entry):
+    """The Free stage, shaped like a mission so the page can open it the same way."""
+    upto = pixel.LEVEL_ORDER[pixel_frontier(entry)]
+    lv = pixel.FREE
+    return {"key": "free", "name": lv["name"], "free": True, "chapter": {"icon": "🎬", "name": "Free stage"},
+            "pip": lv["pip"], "job": lv["job"], "goals": [], "best": [], "hints": [],
+            "commands": pixel.free_commands(upto), "new": list(pixel.STAGE_TOYS), "chapter_new": list(pixel.STAGE_TOYS),
+            "python": sorted({w for x in pixel.LEVELS[:pixel.LEVEL_ORDER.index(upto) + 1] for w in x["python"]}),
+            "fresh_python": [], "number": None, "code": entry["free_code"], "coach": [], "build": False,
+            "remix": {"ask": "", "hint": "", "done": True, "coins": 0}, "fix": None, "guess": None}
+
+
 def pixel_is_open(entry, key):
+    if key == "free":
+        return pixel_free_open(entry)
     return key in pixel.LEVEL_ORDER and pixel.LEVEL_ORDER.index(key) <= pixel_frontier(entry)
 
 
@@ -5794,7 +5812,7 @@ def pixel_state(p):
                  "fixed": lv["key"] in entry["fixed"] if lv["fix"] else None,
                  "open": pixel.LEVEL_ORDER.index(lv["key"]) <= frontier}
                 for lv in pixel.LEVELS if lv["chapter"] == i]) for i, ch in enumerate(pixel.CHAPTERS)],
-            "current": pixel.LEVEL_ORDER[frontier],
+            "current": pixel.LEVEL_ORDER[frontier], "free_open": pixel_free_open(entry),
             "stars": pixel_stars(entry), "max_stars": 3 * len(pixel.LEVELS),
             "badges": [dict(zip(("icon", "name", "how"), b), key=k, got=k in entry["badges"])
                        for k, b in PIXEL_BADGES.items()],
@@ -5812,6 +5830,8 @@ def pixel_state(p):
 
 
 def pixel_level(entry, key):
+    if key == "free":
+        return pixel_free_level(entry)
     lv = pixel.LEVEL_BY_KEY[key]
     ch = pixel.CHAPTERS[lv["chapter"]]
     return {"key": key, "name": lv["name"], "chapter": ch, "pip": lv["pip"], "job": lv["job"],
@@ -5861,6 +5881,8 @@ def pixel_record(p, key, code, out, guess=None, fixing=False):
             entry["gifts"].append(rewards["gift"])
         if needed and not pixel_hang_needs(entry):
             rewards["hang_opened"] = True
+        if key == pixel.FREE_AFTER:
+            rewards["free_opened"] = True
     if key == "m1" and out["stars"][0]:
         pixel_badge(p, "move", earned)
         steps = pixel.compile_move(out["steps"])
@@ -7251,6 +7273,16 @@ def pixel_post(path, data):
             allowed = pixel_is_open(entry, key)
         if not allowed:
             return {"error": "🔒 That mission isn't open yet."}
+        if key == "free":     # no stars and nothing to win: just keep the code
+            with lock:
+                lv = dict(pixel.FREE, commands=pixel.free_commands(pixel.LEVEL_ORDER[pixel_frontier(entry)]))
+            out = pixel.run_level(lv, code, pal, seed=random.randrange(10 ** 6))
+            with lock:
+                entry["free_code"] = code[:pixel.MAX_CODE]
+                entry["free_runs"] += 1
+                entry["active"] = int(time.time())
+                pixel_save_soon()
+                return dict(out, rewards={}, state=pixel_state(p))
         lv = pixel.LEVEL_BY_KEY[key]
         out = pixel.run_level(lv, code, pal, surprise=random.randrange(1000, 10 ** 6))
         with lock:
