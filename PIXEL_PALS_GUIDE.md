@@ -217,7 +217,8 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   falling stars, find a gem, catch something at the pier, finish a game with friends,
   solve a Code race job, earn a star in a coding mission, clap for a friend's move, or visit
   a friend's home. Every day has at least one coding job (a mission star or a Code race
-  job), so playing leads back to coding. A gem job is swapped for another once a student
+  job), so playing leads back to coding. The star job has a **💻 Go code** button that opens the
+  next mission. A gem job is swapped for another once a student
   has found every gem, and a star job for the Code race once they have every star. Each job pays 5 play coins,
   and all three open a 🎁 gift box (15 coins once every box gift is theirs) and add 2 to
   the class party meter. The bar above the world counts them ("🎯 1 of 3 jobs"), the

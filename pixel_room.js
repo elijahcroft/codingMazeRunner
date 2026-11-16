@@ -469,7 +469,8 @@ function jobsHtml() {
   if (!jobsSeen) return "";
   const done = jobsSeen.list.filter(jobDone).length;
   return `<div class="jobs"><h4>🎯 Today's jobs <small>${jobsSeen.done ? "All done! See you next time." : `${done} of ${jobsSeen.list.length} · do all ${jobsSeen.list.length} for a 🎁`}</small></h4>` +
-    jobsSeen.list.map(j => `<p class="job${jobDone(j) ? " done" : ""}"><span>${jobDone(j) ? "✅" : j.icon}</span>${esc(j.words)}${j.need > 1 ? ` <b>${Math.min(j.have, j.need)}/${j.need}</b>` : ""}</p>`).join("") + `</div>`;
+    jobsSeen.list.map(j => `<p class="job${jobDone(j) ? " done" : ""}"><span>${jobDone(j) ? "✅" : j.icon}</span>${esc(j.words)}${j.need > 1 ? ` <b>${Math.min(j.have, j.need)}/${j.need}</b>` : ""}` +
+      `${j.key === "star" && !jobDone(j) ? `<button class="job-go" data-go-code="1">💻 Go code</button>` : ""}</p>`).join("") + `</div>`;
 }
 const jobsWord = () => (jobsSeen && !jobsSeen.done ? `🎯 ${jobsSeen.list.filter(jobDone).length} of ${jobsSeen.list.length} jobs · ` : "");
 
@@ -539,7 +540,7 @@ function welcomeOnce() {
   try { if (localStorage.getItem(key)) return; localStorage.setItem(key, "1"); } catch (_) { return; }
   roomPane = "games";
   buildRoomButtons();
-  banner(`🎉 Welcome to the Hang out! 🎉<small>Click the ground to walk. Today's 🎯 jobs are in Games, on the right.</small>`, 7000, true);
+  banner(`🎉 Welcome to the Hang out!<small>Click the ground to walk. Today's 🎯 jobs are in Games, on the right.</small>`, 7000, true);
 }
 function closeRoom() {
   if (!stopRoom) return;
@@ -641,6 +642,7 @@ $("palSwitch").addEventListener("click", () => { roomPane = "me"; artArmed = nul
 $("myMove").addEventListener("click", pressMyMove);
 $("nextMission").addEventListener("click", goCode);
 $("clapGo").addEventListener("click", () => { if (clapFor !== null) tap("clap", {seat: clapFor}); });
+$("roomButtons").addEventListener("click", e => { if (e.target.closest("[data-go-code]")) goCode(); });     // the ⭐ job's way to the missions
 $("roomCanvas").addEventListener("click", async e => {
   const r = $("roomCanvas").getBoundingClientRect(), mine = myMember();
   const x = roomStage.state.camX + (e.clientX - r.left) / r.width * PalStage.W, y = (e.clientY - r.top) / r.height * PalStage.H;
