@@ -166,6 +166,8 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   gets a 👏 Clap button while it plays. It can be pressed again after a few seconds.
 - **👋 Do, 💬 Say, 🎉 Party, 🏞️ Place:** moves, words to tap, things to throw, and where
   everyone is.
+- **🪑 Be a prop:** next to "You are...", this turns the pal into a still picture with no
+  face and no name tag, for a made-up game of finding each other. **🙂 Be me again** turns it back.
 - **🧢 Me:** pick which drawing they are (students with two or more drawings also see
   a **🔄 Switch** button above the tabs), gifts to wear, and friends they've high-fived.
 - **🌠 Star showers:** stars fall by surprise every few minutes. Pals run under them, and

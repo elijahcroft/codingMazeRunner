@@ -634,7 +634,8 @@ $("palProp").addEventListener("click", async () => {
   if (!out || !out.ok) return;
   propOn = out.on;
   $("palProp").setAttribute("aria-pressed", propOn);
-  $("palProp").textContent = propOn ? "🪑 Prop: on" : "🪑 Prop: off";
+  $("palProp").textContent = propOn ? "🙂 Be me again" : "🪑 Be a prop";
+  tipFor(propOn ? "You're a prop! No face, no name. Stay still so friends have to find you." : "You're you again!", 5000);
 });
 $("palSwitch").addEventListener("click", () => { roomPane = "me"; artArmed = null; buildRoomButtons(); $("roomButtons").scrollTop = 0; });
 $("myMove").addEventListener("click", pressMyMove);
