@@ -30,9 +30,8 @@ class FreeStage(unittest.TestCase):
         self.assertNotIn("grow", early)            # Grow big comes after My Move
         self.assertIn("grow", pixel.free_commands("t1"))
 
-
     def test_every_command_a_student_can_get_has_words_on_the_page(self):
-        import os, re
+        import os
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "pixel_page.js"), encoding="utf-8") as file:
             page = file.read()
         words = page[page.index("const WORDS"):page.index("const SAMPLE")]

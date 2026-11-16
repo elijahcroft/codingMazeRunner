@@ -20,7 +20,7 @@ Both teacher pages are linked from `/admin`.
    page can pick one of 20 pals from the gallery, three ways: 🖍️ colour it in,
    🔢 by numbers, or ⭐ ready to change. In 🔢 by numbers, squares that are already right
    (the outline, and finished ones) can't be painted over, so a stray click never leaves the
-   picture impossible to finish. Swap waits until it's coloured in.
+   picture impossible to finish. Swap and Move wait until it's coloured in.
 2. While they draw, the little pal in the corner comes alive. It watches the pen, and
    the row of chips under it (👀 👄 💪 🦵 🐰 🐾) lights up as each part is found.
 3. They press ✨ Bring to life. The pal wakes up and says hello, and they try its moves
@@ -73,7 +73,7 @@ and the line that's running lights up, so they can see which lines a click runs.
 pokes is the first `else`: say the count, cheer on the 3rd click and jump on the others.
 Clicks after the show aren't saved or paid; they're for trying it. A `def on_click():` on the
 Free stage works the same way, and so does `def on_key(key):` there: after the show, the arrow
-keys and space go to the pal (once the student clicks outside the code), so they can make a pal
+keys and space go to the pal (unless they click back into the code to type), so they can make a pal
 they steer: a tiny game of their own. **💡 Give me an idea** has one, "Walk with the arrow keys".
 
 **Every mission walks them through it.** The top says the job in one plain sentence. Under
@@ -135,11 +135,12 @@ Missions (the My Move win card has a button for it too). There are no stars, no 
 rules: every command the student has learned works, plus ten **stage toys** no mission
 teaches: `scene("beach")`, `sound("tada")`, `rain()`, `snow()`, `friend("cat")`,
 `friend_say("Hi!")`, `friend_jump()`, `bye()`, `hide()` and `appear()`. All words says what
-each one does. **💡 Give me an idea** (where Help me usually is) offers seven small shows to start
-from, one at a time: a day at the beach, a friend comes to play, a magic trick and so on.
-**Use this idea** puts it under their own code, never over it. The first show of 5 steps or more earns the 🎬 Show Maker trophy. A show that long puts "🎬 Mia made a show on the Free stage" on the projector's list
-of moments, at most once every 5 minutes for each student. Their show's code is kept, and nothing is paid for it, so it's there for
-making things, not for coins. A command from a mission they haven't reached yet says it
+each one does. **💡 Give me an idea** (where Help me usually is) offers seven small shows to
+start from, one at a time: a day at the beach, a friend comes to play, a magic trick and so on.
+**Use this idea** puts it under their own code, never over it. The first show of 5 steps or
+more earns the 🎬 Show Maker trophy, and a show that long puts "🎬 Mia made a show on the Free
+stage" on the projector's list of moments, at most once every 5 minutes for each student.
+Their show's code is kept, and no coins are paid for it: it's for making things. A command from a mission they haven't reached yet says it
 comes in a later chapter.
 
 **Error messages talk about the line itself:** `feel(happy)` says to write `feel("happy")`,
@@ -159,9 +160,9 @@ it offers the 🎬 Free stage.
 The Hang out's 👋 Do and 🎉 Party buttons show their Python under the name (`wave()`,
 `feel("happy")`, `hearts()`), so playing keeps reminding them what the code looks like.
 A student who has drawn something but hasn't finished a mission gets a **💻 Now code my
-pal →** button at the top of Draw. Once they have a star, Draw shows **💻 Keep coding →** instead,
-which goes straight to their next mission, so a student back the next lesson (who always lands
-on Draw) has a way back. On the teacher page, **🎨 Your turns** counts the missions
+pal →** button at the top of Draw. Once they have a star, Draw shows **💻 Keep coding →**
+instead, which goes straight to their next mission, so a student back the next lesson (who
+always lands on Draw) has a way back. On the teacher page, **🎨 Your turns** counts the missions
 where each student changed the code themselves, with 🐞 and the number of bugs they fixed.
 
 **My Move gets better with better code:** a `for` loop adds a sparkle trail, and 8

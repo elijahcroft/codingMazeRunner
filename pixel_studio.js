@@ -380,7 +380,7 @@ function stampSquares(sq) {
 function stampInk(ch) { return ch === "x" ? art.palette[colour] : A.STAMP_INK[ch]; }
 function stampAt(sq) {
   const before = snap(), f = frame();
-  for (const [at, ch] of stampSquares(sq)) f[at] = ch === "x" ? colour : colourFor(A.STAMP_INK[ch], -1);
+  for (const [at, ch] of stampSquares(sq)) if (!kept(at)) f[at] = ch === "x" ? colour : colourFor(A.STAMP_INK[ch], -1);
   PalStage.SFX.play("pop");
   done(before);
 }
@@ -392,6 +392,7 @@ function chooseStamp(key) {
 // ---- Move: pick up some squares, slide them, put them down ------------------------------------
 function inSel(sq) { return sel && sq.x >= sel.x && sq.y >= sel.y && sq.x < sel.x + sel.w && sq.y < sel.y + sel.h; }
 function liftSquares(x0, y0, x1, y1) {
+  if (art.guide) { tipNow("Move works once the picture is coloured in. Keep going with the numbers!"); return; }
   const [left, right] = [Math.min(x0, x1), Math.max(x0, x1)], [top, bottom] = [Math.min(y0, y1), Math.max(y0, y1)];
   const before = snap(), f = frame(), size = art.size, w = right - left + 1, h = bottom - top + 1, pix = [];
   for (let y = top; y <= bottom; y++) for (let x = left; x <= right; x++) {
@@ -849,7 +850,9 @@ function showTip() {
   clearTimeout(tipHold);
   const pen = {pencil: "colour it", eraser: "rub it out", shade: shadeWay < 0 ? "make it darker" : "make it lighter"}[tool];
   let html;
-  if (art && art.guide && tool !== "fill") {
+  if (art && art.guide && (tool === "select" || tool === "swap")) {
+    html = `${tool === "swap" ? "Swap" : "Move"} works once the picture is coloured in. Pick a number and keep going!`;
+  } else if (art && art.guide && tool !== "fill") {
     html = "Pick a number, then colour all its squares.";
   } else if (PENS.includes(tool)) {
     if (stroke && !stroke.held) html = "<b>The pen is down.</b> Slide, then click to stop.";
