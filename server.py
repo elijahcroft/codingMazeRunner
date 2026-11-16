@@ -7288,10 +7288,11 @@ def class_photo():
     if not here:
         return
     per_row = max(4, math.ceil(len(here) / 3))
+    depth = {1: (.5,), 2: (.3, .75), 3: (.15, .5, .85)}[math.ceil(len(here) / per_row)]      # one row stands in the middle
     for i, spot in enumerate(here):
         row, col = divmod(i, per_row)
         in_row = min(per_row, len(here) - row * per_row)
-        spot.update(x=round(160 + (col - (in_row - 1) / 2) * min(34, 280 / max(1, per_row - 1))), y=(.15, .5, .85)[row], rest=None)
+        spot.update(x=round(160 + (col - (in_row - 1) / 2) * min(34, 280 / max(1, per_row - 1))), y=depth[row], rest=None)
         spot.pop("bite", None)
         room_event("go", seat=spot["seat"], x=spot["x"], y=spot["y"])
     room_event("photo", loc=0, count=len(here))

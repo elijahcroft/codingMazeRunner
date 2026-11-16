@@ -310,6 +310,10 @@ class TeacherAndGames(unittest.TestCase):
         self.assertEqual(server.pixel_room["here"][self.kids[2]["id"]]["loc"], alex_loc)
         self.assertEqual([e["count"] for e in server.pixel_room["events"] if e["kind"] == "photo"], [24])
 
+    def test_a_small_class_photo_stands_in_one_row_in_the_middle(self):
+        server.pixel_teacher({"action": "photo"})
+        self.assertEqual({s["y"] for s in self.spots()}, {.5})
+
     def test_no_class_photo_in_the_middle_of_a_game(self):
         self.game("tag")
         self.assertIn("End this game", server.pixel_teacher({"action": "photo"})["error"])
