@@ -104,6 +104,25 @@ class FreeStageOverHttp(unittest.TestCase):
         self.post("/pixel/run", {"id": me, "level": "free", "code": SHOW})
         self.assertEqual(len(feed()), 1)
 
+    def test_my_shows_keep_open_and_delete_without_losing_anything(self):
+        me = self.post("/join", {"name": "Mia"})["id"]
+        shows = lambda **d: self.post("/pixel/free/shows", dict({"id": me}, **d))
+        self.assertIn("error", shows(action="new", code="jump()"))           # not open before My Move
+        self.finish_up_to_my_move(me)
+        first, second = 'say("Beach")\njump()', 'say("Space")\nspin()'
+        out = shows(action="new", code=first)
+        self.assertEqual((out["shows"], out["code"]), ([first], ""))
+        out = shows(action="open", at=0, code=second)                      # the one being made is kept
+        self.assertEqual((out["shows"], out["code"]), ([second], first))
+        self.assertEqual(self.get(f"/pixel/level?id={me}&level=free")["code"], first)
+        out = shows(action="delete", at=0, code=first)
+        self.assertEqual((out["shows"], out["code"]), ([], first))
+        self.assertEqual(shows(action="open", at=3, code="")["error"], "bad")
+        for n in range(server.FREE_SHOWS):
+            shows(action="new", code=f"jump()\nsay('{n}')")
+        self.assertIn("Delete one", shows(action="new", code="spin()")["error"])
+        self.assertEqual(len(server.pixel_entry(server.players[me])["free_shows"]), server.FREE_SHOWS)
+
     def test_a_command_not_learned_yet_says_so(self):
         me = self.post("/join", {"name": "Mia"})["id"]
         self.finish_up_to_my_move(me)

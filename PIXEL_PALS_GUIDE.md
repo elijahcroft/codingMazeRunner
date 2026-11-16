@@ -146,7 +146,10 @@ each one does. Some places open with stars from missions: the stage, park, beach
 are open from the start, then the wedding at 20 ★, snowy at 30, candy at 40, space at 50 and
 the castle at 60. Asking for a locked one says how many stars it needs and which are open. **💡 Give me an idea** (where Help me usually is) offers seven small shows to
 start from, one at a time: a day at the beach, a friend comes to play, a magic trick and so on.
-**Use this idea** puts it under their own code, never over it. The first show of 5 steps or
+**Use this idea** puts it under their own code, never over it. **📼 My shows** keeps up to 6
+shows besides the one they're making: **🆕 New show** puts this one away and starts an empty
+stage, and clicking a kept show opens it and puts away the one they were making, so nothing
+is ever lost. **🗑 Delete one…** asks which, with a **Don't delete** to back out. The first show of 5 steps or
 more earns the 🎬 Show Maker trophy, and a show that long puts "🎬 Mia made a show on the Free
 stage" on the projector's list of moments, at most once every 5 minutes for each student.
 Their show's code is kept, and no coins are paid for it: it's for making things. A command from a mission they haven't reached yet says it

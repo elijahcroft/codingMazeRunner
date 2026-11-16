@@ -183,6 +183,7 @@ async function openMission(key) {
   remixHint = false;
   fixOn = false;
   fixHint = false;
+  deletingShow = false;
   coachWay = data.free ? "own" : null;
   coachOops = "";
   $("levelName").textContent = `${data.chapter.icon} ${data.name}`;
@@ -228,10 +229,41 @@ function guessLine(g) {
     : `<p class="guess-said">🔮 Good guess! It was really: <b>${esc(g.answer)}</b>${/[.!?]$/.test(g.answer) ? "" : "."} Look at the code to see why.</p>`;
 }
 
+// ---- 📼 My shows: on the Free stage, shows kept to come back to ------------------------------------
+let deletingShow = false;
+function showName(code) {
+  const said = /say\("([^"]{1,40})"\)/.exec(code), first = code.split("\n").find(l => l.trim()) || "A show";
+  const name = said ? said[1] : first.trim();
+  return name.length > 18 ? name.slice(0, 17) + "…" : name;
+}
+function paintShows() {
+  const box = $("yourTurn");
+  box.hidden = false;
+  box.classList.remove("fix");
+  box.classList.toggle("on", deletingShow);
+  const shows = view.shows.map((c, i) => `<button class="btn${deletingShow ? " danger" : ""}" data-show="${i}">${deletingShow ? "🗑" : "📼"} ${esc(showName(c))}</button>`).join(" ");
+  box.innerHTML = `<p>📼 My shows: ${deletingShow ? "click the one to delete." : view.shows.length ? "click one to open it. The show you're making is kept." : "keep this show and start another."}</p>
+    <p class="show-row">${shows} ${deletingShow ? `<button class="btn" data-show-del="0">Don't delete</button>`
+      : `<button class="btn main" data-show-new="1">🆕 New show</button>${view.shows.length ? ` <button class="btn" data-show-del="1">🗑 Delete one…</button>` : ""}`}</p>`;
+}
+async function showsDo(action, at) {
+  const out = await post("/pixel/free/shows", {id: me, action, at, code: $("code").value}).catch(() => null);
+  if (!out || out.error) { verdict(`<p>${fmt(out ? out.error : "The computer didn't answer. Try again.")}</p>`, "bad"); return; }
+  const had = view.shows;
+  view.shows = out.shows;
+  deletingShow = false;
+  if (action !== "delete") { setCode(out.code); saveCode(); stopPokes(); resetStage(); }
+  paintShows();
+  verdict(action === "new" ? `<p>📼 Kept! Here's an empty stage for a new show.</p>`
+    : action === "open" ? `<p>📼 Here's <b>${esc(showName(out.code))}</b>. Press ▶ Show time! to watch it.</p>`
+    : `<p>🗑 Deleted <b>${esc(showName(had[at]))}</b>.</p>`, "good");
+}
+
 // ---- Your turn: after a mission, one change to make with the guide off ----------------------
 let remixOn = false, remixHint = false;
 // The same box shows Fix it once Your turn is done, or while a Fix it is on.
 function paintYourTurn() {
+  if (view.free) { paintShows(); return; }
   const box = $("yourTurn"), t = view.remix, f = view.fix;
   const showFix = fixOn || (!remixOn && t.done && !!f && !f.done);
   box.hidden = !view.best[0] || (t.done && !showFix);
@@ -953,6 +985,9 @@ document.addEventListener("click", e => {
   else if (d.remixHint) { remixHint = true; paintYourTurn(); }
   else if (d.fix) { $("win").hidden = true; startFix(); }
   else if (d.fixHint) { fixHint = true; paintYourTurn(); }
+  else if (d.showNew) showsDo("new");
+  else if (d.show !== undefined) showsDo(deletingShow ? "delete" : "open", Number(d.show));
+  else if (d.showDel !== undefined) { deletingShow = d.showDel === "1"; paintShows(); }
   else if (d.read) readAloud([...$("verdict").querySelectorAll("p")].map(p => p.textContent).join(" "));
   else if (d.steps) { missStreak = 0; verdict(null); showSteps(); }
   else if (d.fixReset) { setCode(view.fix.code); $("code").focus(); }

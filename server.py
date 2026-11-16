@@ -5652,7 +5652,7 @@ def pixel_entry(p):
     for key, value in (("drawings", []), ("pal", ""), ("solved", {}), ("code", {}),
                        ("badges", []), ("runs", {}), ("misses", {}), ("last_error", ""), ("active", 0),
                        ("gifts", []), ("wear", {}), ("friends", []), ("move", None), ("found", []),
-                       ("stuff", []), ("fish", {}), ("things", {}), ("remixed", []), ("guessed", []), ("fixed", []), ("free_code", ""), ("free_runs", 0)):
+                       ("stuff", []), ("fish", {}), ("things", {}), ("remixed", []), ("guessed", []), ("fixed", []), ("free_code", ""), ("free_runs", 0), ("free_shows", [])):
         entry.setdefault(key, value)
     if "coins" not in entry:        # coins came later: pay for the stars and gems already earned
         firsts = sum(1 for key, stars in entry["solved"].items() if key in pixel.LEVEL_BY_KEY and stars[0])
@@ -5736,6 +5736,7 @@ def pixel_frontier(entry):
     return last
 
 
+FREE_SHOWS = 6            # shows a student can keep on the Free stage, besides the one they're making
 FREE_FEED_STEPS = 5        # a Free stage show this long goes on the class's list of moments
 FREE_FEED_GAP = 300        # seconds, at most once in this long for each student
 
@@ -5753,7 +5754,7 @@ def pixel_free_level(entry):
             "commands": pixel.free_commands(upto), "new": list(pixel.STAGE_TOYS), "chapter_new": list(pixel.STAGE_TOYS),
             "python": sorted({w for x in pixel.LEVELS[:pixel.LEVEL_ORDER.index(upto) + 1] for w in x["python"]}),
             "fresh_python": [], "number": None, "code": entry["free_code"], "coach": [], "build": False,
-            "ideas": pixel.FREE_IDEAS,
+            "ideas": pixel.FREE_IDEAS, "shows": list(entry["free_shows"]), "shows_max": FREE_SHOWS,
             "remix": {"ask": "", "hint": "", "done": True, "coins": 0}, "fix": None, "guess": None}
 
 
@@ -7252,6 +7253,27 @@ def pixel_post(path, data):
             return room_do(p, data)
         if path == "/pixel/thing/save":
             return thing_save(p, data)
+        if path == "/pixel/free/shows":       # 📼 My shows: keep this one and start a new one, open one, or delete one
+            if not pixel_free_open(entry):
+                return {"error": "🔒 The Free stage opens with My Move."}
+            shows, action, at = entry["free_shows"], data.get("action"), data.get("at")
+            mine = code_in(data)[:pixel.MAX_CODE]
+            if action == "new":
+                if mine.strip() and mine not in shows:
+                    if len(shows) >= FREE_SHOWS:
+                        return {"error": f"You've kept {FREE_SHOWS} shows. Delete one to keep this one too."}
+                    shows.insert(0, mine)
+                entry["free_code"] = ""
+            elif action in ("open", "delete") and type(at) is int and 0 <= at < len(shows):
+                picked = shows.pop(at)
+                if action == "open":
+                    if mine.strip() and mine not in shows:
+                        shows.insert(at, mine)          # the show they were making takes its place: nothing is lost
+                    entry["free_code"] = picked
+            else:
+                return {"error": "bad"}
+            pixel_save_soon()
+            return {"ok": True, "shows": list(shows), "code": entry["free_code"]}
         if path == "/pixel/move/name":
             if not entry["move"] or data.get("name") not in pixel.MOVE_NAMES:
                 return {"error": "bad"}
