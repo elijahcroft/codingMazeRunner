@@ -146,7 +146,7 @@ async function refresh() {
       <td><canvas class="pal" data-picture="${esc(JSON.stringify(s.picture || null))}"></canvas>${esc(s.name)}</td>
       <td>${esc(s.level_name)}<br><small style="color:var(--soft)">${esc(s.chapter)}</small></td>
       <td>${s.misses >= 3 ? `<b style="color:var(--warn)">${s.misses} misses</b>` : s.runs_here}</td>
-      <td>${s.stars}</td><td>${s.turns}${s.fixes ? ` · 🐞 ${s.fixes}` : ""}</td><td>${s.drawings}</td><td>${s.badges}</td><td>${s.hang ? hangCell(data.room.people[s.name], s.move) : ""}${s.let_in ? ` <button class="btn" data-let-in="${esc(s.name)}" data-on="">Lock again</button>`
+      <td>${s.stars}</td><td>${s.turns}${s.fixes ? ` · 🐞 ${s.fixes}` : ""}</td><td>${s.drawings}</td><td>${s.badges}</td><td>${s.hang ? hangCell(data.room.people[s.name], s.move) + (s.jobs ? `<br><small title="Today's jobs done">🎯 ${s.jobs} of 3</small>` : "") : ""}${s.let_in ? ` <button class="btn" data-let-in="${esc(s.name)}" data-on="">Lock again</button>`
         : s.hang ? "" : `<button class="btn" data-let-in="${esc(s.name)}" data-on="1">🔓 Let in</button>`}</td>
       <td class="err">${esc(s.last_error)}</td>
     </tr>`).join("");

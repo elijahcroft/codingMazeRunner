@@ -7207,6 +7207,7 @@ def pixel_overview():
                      "turns": len(entry["remixed"]),
                      "fixes": len(entry["fixed"]),
                      "badges": len(entry["badges"]), "hang": not pixel_hang_needs(entry), "let_in": bool(entry.get("hang_let_in")), "move": bool(entry["move"]),
+                     "jobs": sum(j["have"] >= j["need"] for j in day_jobs_view(entry)["list"]),
                      "active": entry["active"], "picture": pixel_picture(entry)})
     rows.sort(key=lambda r: (r["at"], -r["misses"], r["name"].lower()))
     said = []

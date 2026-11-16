@@ -241,7 +241,8 @@ On `/pixel/teacher` you can close the Hang out, start a party, a star shower or 
 starts 15 seconds later; anyone can leave), and see who's there. When a student has a game
 going, the page says which one and how long is left, and **⏹ End this game** stops it with
 no prizes, so a Code race for everyone can start. The Hang out column says where each
-student is and what they're doing (🌳 Park, 💃 Dancing, 🎮 In a game). The Hang out reopens if
+student is and what they're doing (🌳 Park, 💃 Dancing, 🎮 In a game), and how many of
+today's jobs they've done (🎯 2 of 3). The Hang out reopens if
 the server restarts, and nothing in the room itself is saved, but gifts, friends, My Moves,
 coins, homes, fish and the party meter are. During any game, the projector has a card for
 it (who's IT, the light, the dance, who's been found), and 🎬 Auto follows whoever is IT or

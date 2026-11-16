@@ -183,6 +183,14 @@ class TeacherAndGames(unittest.TestCase):
                 server.day_job(mia, key, who=f"friend{_}" if key == "five" else None)
         self.assertEqual(server.pixel_feed[-1]["text"], "🎯 Mia did all of today's jobs!")
 
+    def test_the_teacher_sees_how_many_jobs_each_student_has_done(self):
+        mia = self.kids[0]
+        key = self.jobs(mia)["keys"][0]
+        for i in range(server.DAY_JOBS[key][2]):
+            server.day_job(mia, key, who=f"friend{i}")
+        rows = {r["name"]: r["jobs"] for r in server.pixel_overview()["students"]}
+        self.assertEqual(rows, {"Mia": 1, "Ben": 0, "Alex": 0})
+
     def test_no_gem_job_once_every_gem_is_found(self):
         mia = self.kids[0]
         server.pixel_entry(mia)["found"] = list(pixel.HANG_FINDS)
