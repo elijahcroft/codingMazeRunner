@@ -133,7 +133,8 @@ teaches: `scene("beach")`, `sound("tada")`, `rain()`, `snow()`, `friend("cat")`,
 `friend_say("Hi!")`, `friend_jump()`, `bye()`, `hide()` and `appear()`. All words says what
 each one does. **💡 Give me an idea** (where Help me usually is) offers six small shows to start
 from, one at a time: a day at the beach, a friend comes to play, a magic trick and so on.
-**Use this idea** puts it under their own code, never over it. Their show's code is kept, and nothing is paid for it, so it's there for
+**Use this idea** puts it under their own code, never over it. A show of 5 steps or more puts "🎬 Mia made a show on the Free stage" on the projector's list
+of moments, at most once every 5 minutes for each student. Their show's code is kept, and nothing is paid for it, so it's there for
 making things, not for coins. A command from a mission they haven't reached yet says it
 comes in a later chapter.
 

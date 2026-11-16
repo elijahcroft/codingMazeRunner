@@ -5735,6 +5735,10 @@ def pixel_frontier(entry):
     return last
 
 
+FREE_FEED_STEPS = 5        # a Free stage show this long goes on the class's list of moments
+FREE_FEED_GAP = 300        # seconds, at most once in this long for each student
+
+
 def pixel_free_open(entry):
     return bool(entry["solved"].get(pixel.FREE_AFTER, [False])[0])
 
@@ -7291,6 +7295,11 @@ def pixel_post(path, data):
                 entry["free_code"] = code[:pixel.MAX_CODE]
                 entry["free_runs"] += 1
                 entry["active"] = int(time.time())
+                # A real show tells the class, now and then, on the projector's list of moments.
+                if not out["error"] and len(out["steps"]) >= FREE_FEED_STEPS \
+                        and time.time() - entry.get("free_fed", 0) >= FREE_FEED_GAP:
+                    entry["free_fed"] = int(time.time())
+                    pixel_feed_add(f"🎬 {p['name']} made a show on the Free stage")
                 pixel_save_soon()
                 return dict(out, rewards={}, state=pixel_state(p))
         lv = pixel.LEVEL_BY_KEY[key]

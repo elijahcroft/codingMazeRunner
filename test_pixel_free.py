@@ -70,6 +70,16 @@ class FreeStageOverHttp(unittest.TestCase):
         self.assertEqual(server.pixel_stars(entry), stars)
         self.assertNotIn("free", entry["solved"])
 
+    def test_a_real_show_tells_the_class_now_and_then(self):
+        me = self.post("/join", {"name": "Zed"})["id"]
+        self.finish_up_to_my_move(me)
+        feed = lambda: [f for f in server.pixel_feed if f["text"] == "🎬 Zed made a show on the Free stage"]
+        self.post("/pixel/run", {"id": me, "level": "free", "code": "jump()"})
+        self.assertEqual(feed(), [])
+        self.post("/pixel/run", {"id": me, "level": "free", "code": SHOW})
+        self.post("/pixel/run", {"id": me, "level": "free", "code": SHOW})
+        self.assertEqual(len(feed()), 1)
+
     def test_a_command_not_learned_yet_says_so(self):
         me = self.post("/join", {"name": "Mia"})["id"]
         self.finish_up_to_my_move(me)
