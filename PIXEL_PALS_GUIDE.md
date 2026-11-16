@@ -324,7 +324,8 @@ their name, so check it before pinning it up.
 4. **5 minutes:** ✨ Bring to life. Let them poke it and try every move.
 5. **15 minutes:** 💻 Code, and the first three missions. The Hang out opens as they finish.
 6. **15 minutes:** hang out, and keep going to My Move. Press 🌠 Star shower now if the
-   room needs a lift.
+   room needs a lift. Anyone who finishes My Move has the 🎬 Free stage to make whatever
+   they like, so fast finishers always have something to code.
 7. **5 minutes, to finish:** press 💻 Code race for everyone and read the fastest code
    together on the projector between jobs.
 
