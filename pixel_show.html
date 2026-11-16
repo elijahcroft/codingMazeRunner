@@ -67,7 +67,7 @@
   <section class="room"><div class="screen" id="host"><canvas id="back" aria-hidden="true"></canvas><canvas id="stage" aria-label="Everyone's pals, hanging out"></canvas>
     <div id="placeTag" hidden></div><div id="banner" hidden></div><div id="closed" hidden>The Hang out is closed for now.</div></div>
     <div class="world">
-      <div class="cam"><button id="camLeft" aria-label="Move the camera left">◀</button><button id="camRight" aria-label="Move the camera right">▶</button><button id="camAuto">🎬 Auto</button></div>
+      <div class="cam"><button id="camLeft" aria-label="Move the camera left">◀</button><button id="camRight" aria-label="Move the camera right">▶</button><button id="camAuto">🎬 Auto</button><button id="savePhoto" hidden>💾 Save the photo</button></div>
       <div id="map" aria-label="Map of the world. Click to move the camera."></div>
       <span id="camWord"></span>
     </div></section>
@@ -236,11 +236,40 @@ watcher = PalStage.follow(stage, {everySound: true, loc: () => cam.loc, onState(
     if (e.kind === "mymove") banner(`✨ <b>${esc(e.by)}</b>: ${esc(e.title)}`, e.ms + 700);
     else if (e.kind === "party") banner(`🎉 CLASS PARTY! 🎉${e.reward ? `<small>New for everyone: ${esc(e.reward.name)}</small>` : ""}`, 6000, true);
     else if (e.kind === "shower") banner("🌠 Star shower!", 3500);
-    else if (e.kind === "photo") { cam.mode = "free"; cam.x = 0; lookAt(0); banner(`📸 Class photo! Say cheese! (${e.count})`, 6000, true); }
+    else if (e.kind === "photo") {
+      cam.mode = "free"; cam.x = 0; lookAt(0);
+      banner(`📸 Class photo! Say cheese! (${e.count})`, 6000, true);
+      $("savePhoto").hidden = false;
+      clearTimeout(photoTimer);
+      photoTimer = setTimeout(() => { $("savePhoto").hidden = true; }, 90000);
+    }
     else if (e.kind === "danceparty") { stage.roomApply({kind: "fx", name: "confetti", x: e.x}, true); banner(`🪩 Dance party! ${e.seats.length} pals dancing together!`, 4000, true); }
   }
 }});
 
+// 📸 The class photo as a picture to keep: the world and the pals, with their name tags drawn in.
+let photoTimer = 0;
+$("savePhoto").addEventListener("click", () => {
+  const host = $("host").getBoundingClientRect(), scale = 2;
+  const out = document.createElement("canvas");
+  out.width = Math.round(host.width * scale); out.height = Math.round(host.height * scale);
+  const g = out.getContext("2d");
+  g.imageSmoothingEnabled = false;
+  for (const cv of [$("back"), $("stage")]) g.drawImage(cv, 0, 0, out.width, out.height);
+  g.font = `800 ${14 * scale}px ui-rounded, system-ui, sans-serif`;
+  g.textAlign = "center"; g.textBaseline = "middle";
+  for (const tag of $("host").querySelectorAll(".tag")) {
+    const r = tag.getBoundingClientRect();
+    if (!r.width || getComputedStyle(tag).display === "none") continue;
+    const x = (r.left - host.left + r.width / 2) * scale, y = (r.top - host.top + r.height / 2) * scale, w = g.measureText(tag.textContent).width + 16 * scale;
+    g.fillStyle = "#fffdf6e8"; g.beginPath(); g.roundRect(x - w / 2, y - 11 * scale, w, 22 * scale, 9 * scale); g.fill();
+    g.fillStyle = "#2c5352"; g.fillText(tag.textContent, x, y);
+  }
+  const a = document.createElement("a");
+  a.href = out.toDataURL("image/png");
+  a.download = `class-photo-${new Date().toISOString().slice(0, 10)}.png`;
+  a.click();
+});
 // The game on now. A Code race shows the job, then the fastest code between rounds, so the class can read it together.
 const GAME_WORD = {hide: "🙈 Hide & seek", tag: "🏃 Tag", race: "🚦 Red light, green light", dance: "💃 Copy the dance", code: "💻 Code race"};
 const DANCE_ICON = {wave: "👋", jump: "🦘", spin: "🌀", cheer: "🎉"};

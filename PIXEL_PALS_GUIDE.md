@@ -257,7 +257,8 @@ seconds later; anyone can leave), and see who's there. When a student has a game
 page says which one and how long is left, and **⏹ End this game** stops it with no prizes,
 so a Code race for everyone can start. **📸 Class photo** lines up everyone outside in the
 Park in rows, in name order, and the projector looks there and says "Say cheese!" so you can
-take a picture. Press 🎬 Auto on the projector afterwards. The Hang out column says where
+take a picture. For a minute and a half the projector also has **💾 Save the photo**, which downloads the picture
+with everyone's name tags. Press 🎬 Auto on the projector afterwards. The Hang out column says where
 each student is and what they're doing (🌳 Park, 💃 Dancing, 🎮 In a game), and how many of
 today's jobs they've done (🎯 2 of 3). The Hang out reopens if the server restarts, and
 nothing in the room itself is saved, but gifts, friends, My Moves, coins, homes, fish and
