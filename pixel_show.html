@@ -23,6 +23,9 @@
   #map .place { flex: 1; padding: 3px 8px; font-size: 13px; color: #5f7c75; border-left: 2px solid #e8efe4; }
   #map .view { position: absolute; top: 0; bottom: 0; background: #ffd27a55; border: 2px solid #f5b83d; border-radius: 10px; pointer-events: none; }
   #map .who { position: absolute; bottom: 5px; transform: translateX(-50%); padding: 0 6px; background: #2c5352; color: #fffdf6; border-radius: 8px; font-size: 13px; white-space: nowrap; }
+  .cam select { font: inherit; color: inherit; border: 0; border-radius: 12px; background: #fffdf6; padding: 8px 10px; cursor: pointer; max-width: 220px; }
+  .cam select.on { background: #ffd27a; }
+  #followTag { position: absolute; right: 14px; top: 12px; padding: 4px 14px; background: #ffd27aee; border-radius: 14px; font-size: clamp(16px, 1.8vw, 26px); font-weight: 800; pointer-events: none; }
   #camWord { font-size: 15px; color: #5f7c75; white-space: nowrap; }
   #people { display: flex; flex-direction: column; gap: 4px; max-height: 44vh; overflow: auto; }
   #people button { display: grid; text-align: left; background: #eef4e8; padding: 4px 10px; font-size: 16px; line-height: 1.15; }
@@ -65,9 +68,9 @@
 <div class="page">
   <div class="meter-row"><span>🎉 Class party</span><div class="track"><i id="bar"></i></div><span id="words"></span><span id="next"></span></div>
   <section class="room"><div class="screen" id="host"><canvas id="back" aria-hidden="true"></canvas><canvas id="stage" aria-label="Everyone's pals, hanging out"></canvas>
-    <div id="placeTag" hidden></div><div id="banner" hidden></div><div id="closed" hidden>The Hang out is closed for now.</div></div>
+    <div id="placeTag" hidden></div><div id="followTag" hidden></div><div id="banner" hidden></div><div id="closed" hidden>The Hang out is closed for now.</div></div>
     <div class="world">
-      <div class="cam"><button id="camLeft" aria-label="Move the camera left">◀</button><button id="camRight" aria-label="Move the camera right">▶</button><button id="camAuto">🎬 Auto</button><button id="savePhoto" hidden>💾 Save the photo</button></div>
+      <div class="cam"><button id="camLeft" aria-label="Move the camera left">◀</button><button id="camRight" aria-label="Move the camera right">▶</button><button id="camAuto">🎬 Auto</button><select id="camFollow" aria-label="Follow one student with the camera"></select><button id="savePhoto" hidden>💾 Save the photo</button></div>
       <div id="map" aria-label="Map of the world. Click to move the camera."></div>
       <span id="camWord"></span>
     </div></section>
@@ -138,6 +141,13 @@ function followSeat(seat) {
   paintWorld();
 }
 function goAuto() { cam.mode = "auto"; cam.moveOn = 0; paintWorld(); }
+// 📷 Follow: the camera stays on one student wherever they go, homes too, until Auto or driving.
+function keepFollowing() {
+  if (cam.mode !== "follow") return;
+  const m = people.find(m => m.seat === cam.seat);
+  if (!m) { goAuto(); return; }          // they left the Hang out
+  lookAt(m.loc);
+}
 // Auto takes turns with everyone, inside the homes too.
 function autoLook(now) {
   if (cam.mode !== "auto" || !people.length) return;
@@ -195,8 +205,17 @@ function paintWorld() {
   $("camAuto").setAttribute("aria-pressed", cam.mode === "auto");
   const who = list.find(m => m.seat === cam.seat);
   $("camWord").textContent = cam.mode === "free" ? "You're driving" : who ? `Watching ${who.name}` : "";
+  const following = cam.mode === "follow" && people.find(m => m.seat === cam.seat), pick = $("camFollow");
+  const options = `<option value="">📷 Follow someone…</option>` + people.slice().sort((a, b) => a.name.localeCompare(b.name))
+    .map(m => `<option value="${m.seat}">📷 ${esc(m.name)}</option>`).join("");
+  if (pick.dataset.options !== options && document.activeElement !== pick) { pick.innerHTML = options; pick.dataset.options = options; }     // not while it's open
+  if (document.activeElement !== pick) pick.value = following ? String(following.seat) : "";
+  pick.classList.toggle("on", !!following);
+  $("followTag").hidden = !following;
+  $("followTag").textContent = following ? `📷 Following ${following.name}` : "";
 }
-setInterval(() => { autoLook(performance.now()); paintWorld(); }, 250);
+setInterval(() => { keepFollowing(); autoLook(performance.now()); paintWorld(); }, 250);
+$("camFollow").addEventListener("change", e => { if (e.target.value) followSeat(+e.target.value); else goAuto(); });
 $("camLeft").addEventListener("click", () => drive((stage.state.camX || 0) - PLACE_W / 2));
 $("camRight").addEventListener("click", () => drive((stage.state.camX || 0) + PLACE_W / 2));
 $("camAuto").addEventListener("click", goAuto);

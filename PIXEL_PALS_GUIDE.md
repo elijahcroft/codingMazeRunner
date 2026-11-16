@@ -305,6 +305,10 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   Each name says where they are and what they're doing (💃 Dancing, 🎣 Fishing,
   🛋️ Decorating...). 🎬 Auto takes turns with everyone, homes included, and the
   screen goes back outside when a home empties.
+- **📷 Follow (projector):** the picker next to 🎬 Auto, under the picture, keeps the camera
+  on one student wherever they go, into homes and back out, with "📷 Following Mia" in the
+  corner. Clicking their name in Who's here does the same. 🎬 Auto, ◀ ▶, dragging the picture
+  or "📷 Follow someone…" stops it, and it goes back to Auto by itself if they leave.
 - **🎣 Fishing:** the pier at the Beach has a blue ring. The pal walks over and casts,
   and when ❗ A bite! shows, a click anywhere on the picture reels it in. There are 8
   things to catch, kept in the fish book in 🧢 Me.
