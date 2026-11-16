@@ -160,6 +160,7 @@ async function openMission(key) {
   mode = key;
   view = data;
   hintsShown = 0;
+  missStreak = 0;
   guessAsked = false;
   guessWaiting = false;
   guessPick = null;
@@ -619,7 +620,8 @@ async function runShow() {
   }
   if (out.error && !out.steps) {
     finishRun();
-    verdict(`<p>${fmt(out.error)}</p>`, "bad");
+    missed();
+    verdict(`<p>${fmt(out.error)}</p>${stuckOffer()}`, "bad");
     return;
   }
   resetStage();
@@ -631,7 +633,8 @@ async function runShow() {
     setBand(out.line || 0);
     stage.sigh();
     $("caption").textContent = out.line ? `The show stopped on line ${out.line}.` : "The show stopped.";
-    verdict(`<p>${fmt(out.error)}</p><p>Fix that line, then press Show time! again.</p>`, "bad");
+    missed();
+    verdict(`<p>${fmt(out.error)}</p><p>Fix that line, then press Show time! again.</p>${stuckOffer()}`, "bad");
     return;
   }
   drawGoals(out.stars.map((g, i) => g || view.best[i]));
@@ -643,11 +646,12 @@ async function runShow() {
     $("caption").textContent = "The bug is still there.";
     verdict(`<p>The show ran, but the bug is still there: <b>${fmt(view.fix.ask)}</b></p><p>Look at the code again, fix it, then press Show time!</p>`, "bad");
   }
-  else if (out.stars[0]) { stage.cheer(); missionDone(out); }
+  else if (out.stars[0]) { missStreak = 0; stage.cheer(); missionDone(out); }
   else {
     stage.sigh();
     $("caption").textContent = "Not quite yet.";
-    verdict(`<p>${fmt(out.reply || "Not quite. Read the job again.")}</p>`, "bad");
+    missed();
+    verdict(`<p>${fmt(out.reply || "Not quite. Read the job again.")}</p>${stuckOffer()}`, "bad");
   }
   paintYourTurn();
   paintCoach();
@@ -657,6 +661,13 @@ async function runShow() {
   else if (out.rewards.gained) { flyStars(out.rewards.gained); showRewards(out.rewards); }
   else showRewards(out.rewards);
   paintSteps("stage");
+}
+// Three misses in a row with the guide off: offer the guide back, right where they're looking.
+let missStreak = 0;
+function missed() { if (!remixOn && !fixOn) missStreak++; }
+function stuckOffer() {
+  if (missStreak < 3 || coachMode() || view.build || remixOn || fixOn) return "";
+  return `<p class="next"><button class="btn main" data-steps="1">🖐 Show me step by step</button> Stuck? That's OK. The guide shows every key.</p>`;
 }
 function finishRun() {
   running = false;
@@ -845,6 +856,7 @@ document.addEventListener("click", e => {
   else if (d.remixHint) { remixHint = true; paintYourTurn(); }
   else if (d.fix) { $("win").hidden = true; startFix(); }
   else if (d.fixHint) { fixHint = true; paintYourTurn(); }
+  else if (d.steps) { missStreak = 0; verdict(null); showSteps(); }
   else if (d.fixReset) { setCode(view.fix.code); $("code").focus(); }
 });
 new ResizeObserver(fitScreen).observe($("stageHost").parentElement);
@@ -891,8 +903,10 @@ $("code").addEventListener("keydown", editorKeys);
 $("code").addEventListener("paste", e => { if (coachTyping()) e.preventDefault(); });
 // A click somewhere else shouldn't stop the keys from working.
 addEventListener("keydown", e => {
-  if (document.activeElement !== document.body || $("stageView").hidden || running || !coachTyping()) return;
+  if (document.activeElement !== document.body || $("stageView").hidden || running || !mode) return;
   if (document.querySelector(".sheet:not([hidden]), .shelf:not([hidden])") || (e.key.length !== 1 && e.key !== "Enter" && e.key !== "Backspace")) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (!coachTyping()) { if (!coachMode()) $("code").focus(); return; }    // their own way: the key goes back where they were typing
   coachFocus();
   coachKey(e);
 });
