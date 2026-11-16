@@ -301,7 +301,7 @@ clicking the pal makes it giggle.
 - **Shared laptops:** a student who lands in someone else's account presses **Not (name)?**
   in My drawings and types their own name. Typing a name again brings back that
   student's work.
-- **Reading:** the 🔈 button on a mission reads it aloud with the laptop's own voice.
+- **Reading:** the 🔈 Read button on a mission reads it aloud with the laptop's own voice.
 - **🐢 Slow**, at the end of the bar under the stage, plays shows at half speed, so a student
   can follow the lit-up line as each one runs. It's remembered on each computer.
 - **Stuck students:** the teacher page marks anyone with 3 misses or more on a
