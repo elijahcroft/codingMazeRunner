@@ -254,7 +254,7 @@ async function showsDo(action, at) {
   deletingShow = false;
   if (action !== "delete") { setCode(out.code); saveCode(); stopPokes(); resetStage(); }
   paintShows();
-  verdict(action === "new" ? `<p>📼 Kept! Here's an empty stage for a new show.</p>`
+  verdict(action === "new" ? `<p>${out.shows.length > had.length ? "📼 Kept! " : ""}Here's an empty stage for a new show.</p>`
     : action === "open" ? `<p>📼 Here's <b>${esc(showName(out.code))}</b>. Press ▶ Show time! to watch it.</p>`
     : `<p>🗑 Deleted <b>${esc(showName(had[at]))}</b>.</p>`, "good");
 }

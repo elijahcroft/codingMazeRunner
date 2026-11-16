@@ -950,6 +950,7 @@ function fillArtKey() {
 function artTyped() {
   const rows = $("artCode").value.split("\n").map(r => r.trim()), size = art.size, note = $("artNote");
   const say = text => { note.textContent = text; };
+  while (rows.length > size && !rows[rows.length - 1]) rows.pop();      // an Enter at the very end is fine
   if (rows.length !== size) return say(`Your picture needs ${size} rows. Now it has ${rows.length}. ${rows.length > size ? "Delete a row." : "Add a row back."}`);
   const odd = rows.findIndex(r => r.length !== size);
   if (odd >= 0) return say(`Row ${odd + 1} has ${rows[odd].length} letters. Every row needs ${size}.`);
