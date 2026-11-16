@@ -319,11 +319,10 @@ their name, so check it before pinning it up.
    projector. Point out the chips lighting up as parts appear.
 4. **5 minutes:** ✨ Bring to life. Let them poke it and try every move.
 5. **15 minutes:** 💻 Code, and the first three missions. The Hang out opens as they finish.
-6. **15 minutes:** hang out, and keep going to My Move. Read out today's 🎯 jobs from the
-   projector: one of them is always a coding job, so it sends students back to the missions.
-   Press 🌠 Star shower now if the room needs a lift.
-7. **5 minutes, to finish:** press 💻 Code race for everyone (⏹ End this game first if a
-   student's game is on) and read the fastest code together on the projector between jobs.
+6. **15 minutes:** hang out, and keep going to My Move. Press 🌠 Star shower now if the
+   room needs a lift.
+7. **5 minutes, to finish:** press 💻 Code race for everyone and read the fastest code
+   together on the projector between jobs.
 
 ## Off-screen fun
 
