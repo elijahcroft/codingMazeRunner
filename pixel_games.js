@@ -31,7 +31,7 @@ function buildGamePane(box) {
       <button data-game="create" data-kind="tag"><b>Tag</b><small>Chase your friends · pass “it”</small></button>
       <button data-game="create" data-kind="race"><b>Red light, green light</b><small>Race to the flag · freeze on red</small></button>
       <button data-game="create" data-kind="dance"><b>Copy the dance</b><small>Tap the moves in order · 3 rounds</small></button>
-      <p class="me-note">Finish a round for 🪙 coins, 2 class-party points and a badge. Winners get extra coins. Your first round of each game earns a gift; then every third round earns another while gifts remain.</p>`;
+      <p class="me-note">Finish a game for 🪙 coins and class-party points. Winners get extra coins. Your first game of each kind gives a 🎁 gift, and so does every third one after that.</p>`;
     return;
   }
   const joined = g.joined.includes(you);
@@ -43,11 +43,11 @@ function buildGamePane(box) {
   } else if (g.phase === "results") {
     body += `<p class="me-note">${esc(g.message)}</p>`;
     if (g.reward) body += `<p class="me-note">${g.reward.won ? "🏆 You won! " : ""}${g.reward.coins ? `+${g.reward.coins} 🪙 coins! ` : ""}+${g.reward.points} class-party points!${g.reward.gift ? " Your gift: " + esc(S.hang.catalog[g.reward.gift].name) + ". Find it in Me." : ""}</p>`;
-    body += `<p class="me-note">Another round will be available in a moment.</p>`;
+    body += `<p class="me-note">Another game can start in a moment.</p>`;
   } else if (!joined && g.kind === "code") {
     body += `<p class="me-note">Your friends are coding! Join in now: everyone gets the same job.</p><button class="wide race-run" data-game="join">💻 Join the Code race</button>`;
   } else if (!joined) {
-    body += `<p class="me-note">A round is underway. You can join the next one, or keep hanging out.</p>`;
+    body += `<p class="me-note">A game is on. You can join the next one, or keep playing here.</p>`;
   } else if (g.kind === "code") {
     body = racePane(g, you);
   } else if (g.kind === "race") {
@@ -61,17 +61,17 @@ function buildGamePane(box) {
       <div class="dance-seq">${g.seq.map((m, i) => `<span class="${i < g.step ? "done" : i === g.step && ready ? "now" : ""}" title="${DANCE_ICONS[m][1]}">${DANCE_ICONS[m][0]}</span>`).join("")}</div>` +
       Object.entries(DANCE_ICONS).map(([m, [icon, word]]) => `<button data-step="${m}" ${ready && !finished ? "" : "disabled"}><span>${icon}</span>${word}</button>`).join("");
   } else if (g.kind === "tag") {
-    body += `<p class="me-note">${g.it === you ? "You're IT! Get close to another player to tag them." : esc(gamePerson(g.it)) + " is IT! Keep moving!"} Play in the Park and Wedding garden. No teleporting. After a tag, everyone gets 3 seconds to scatter.</p>`;
+    body += `<p class="me-note">${g.it === you ? "You're IT! Get close to another player to tag them." : esc(gamePerson(g.it)) + " is IT! Keep moving!"} Stay in the Park and Wedding garden. After a tag, everyone gets 3 seconds to run away.</p>`;
     body += `<p class="me-note">Your tags: ${g.tags[you] || 0}. Click to run, or use the arrow keys.</p>`;
   } else if (g.phase === "hiding" && g.it === you) {
-    body += `<p class="me-note">You're the seeker! Count while everyone hides. Their pals and names are hidden from you. When the countdown ends, walk up to cover and search it.</p>`;
+    body += `<p class="me-note">You're the seeker! Count while everyone hides. When the countdown ends, click a hiding place to look behind it.</p>`;
   } else if (g.found.includes(you)) {
     body += `<p class="me-note">You were found! Cheer on your friends while the seeker finishes. Stay for your reward.</p>`;
   } else if (g.it !== you && g.phase === "playing") {
-    body += `<p class="me-note">${g.hiding ? "You're tucked away. Stay quiet!" : "You didn't reach cover in time. Stay still and hope the seeker misses you!"} ${esc(gamePerson(g.it))} is searching.</p>`;
+    body += `<p class="me-note">${g.hiding ? "You're tucked away. Stay quiet!" : "You didn't get to a hiding place in time. Stay still and hope the seeker misses you!"} ${esc(gamePerson(g.it))} is searching.</p>`;
   } else {
     const searching = g.it === you;
-    body += `<p class="me-note">${searching ? "Choose a hiding place to walk over and search. You must get close!" : g.hiding ? "You're hidden! Choose another spot to move before time runs out." : "Choose cover below, or tap it on the map. Walk there and tuck away!"}</p>`;
+    body += `<p class="me-note">${searching ? "Click a hiding place to walk over and look behind it." : g.hiding ? "You're hidden! Choose another spot to move before time runs out." : "Pick a hiding place below, or click one in the world. Your pal walks there and hides!"}</p>`;
     body += (roomInfo.cover || []).map(c => `<button data-cover="${c.key}" aria-pressed="${g.hiding === c.key}">${esc(c.name)}<small>${c.x < 320 ? "Park" : "Wedding garden"}</small></button>`).join("");
   }
   if (joined && g.phase !== "results") body += `<button data-game="leave">Leave game</button>`;

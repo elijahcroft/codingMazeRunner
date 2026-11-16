@@ -6404,7 +6404,7 @@ def game_action(p, spot, data):
         cover = next((c for c in GAME_COVER if c["key"] == data.get("cover")), None)
         hiding = action == "hide"
         if not cover or (hiding and (game["kind"] != "hide" or game["phase"] != "hiding" or seat == game["it"])) or (not hiding and (game["kind"] != "hide" or game["phase"] != "playing" or seat != game["it"])):
-            return {"error": "You can't do that right now."}
+            return {"error": "Not now! Look at Games on the right to see what to do."}
         if game_distance(game["motion"][seat], cover) > 32:
             return {"error": "Walk closer to that hiding place first."}
         if hiding:
@@ -6423,7 +6423,7 @@ def game_action(p, spot, data):
             game_tick(now)
             return {"ok": True, "message": message}
     else:
-        return {"error": "That action isn't available in this round."}
+        return {"error": "Not in this game! Look at Games on the right to see what to do."}
     return {"ok": True}
 
 
@@ -7056,7 +7056,7 @@ def room_do(p, data):
         if what == "walk":
             return game_walk(spot, data)
         if what != "leave" and not (game["kind"] == "code" and what in ("clap", "say")):     # coders can cheer each other on
-            return {"error": "Finish or leave this round to use hangout activities."}
+            return {"error": "You're in a game! Play it, or press Leave game in Games to do this."}
     if what == "five" and game and game["phase"] in ("hiding", "playing") and data.get("seat") in game["joined"]:
         return {"error": "Your friend is playing a game right now."}
     if what == "leave":
