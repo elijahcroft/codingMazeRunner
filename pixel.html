@@ -462,7 +462,7 @@
   .room-buttons button.locked { background: #f1efe6; box-shadow: none; color: #6d6a58; }
   .room-buttons button.locked canvas { opacity: .5; filter: saturate(.5); }
   .room-buttons button.goal { grid-auto-flow: column; justify-content: start; gap: 10px; text-align: left; background: #fff3c4; }
-  .room-buttons button.goal span { display: grid; gap: 2px; min-width: 0; }
+  .room-buttons button.goal span { display: grid; gap: 2px; min-width: 0; font-size: 15px; line-height: 1.2; }     /* not the big icon size */
   .goal-bar { display: block; height: 8px; border-radius: 4px; background: #e7dcae; overflow: hidden; }
   .goal-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #ff8fb3, #ffc46b); }
   .room-buttons button:disabled { cursor: default; background: #e9f3e2; box-shadow: none; }
@@ -516,6 +516,19 @@
   .room-buttons { flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: auto; gap: 7px; align-content: start; padding: 2px 3px 5px 0; }
   .room-buttons button { display: grid; justify-items: center; align-content: center; gap: 2px; min-height: 62px; min-width: 0; padding: 7px 3px; border: 0; border-radius: 14px; background: #f3f5ea; box-shadow: 0 3px 0 #dbe2cf; color: #2c5352; font-weight: 800; font-size: 14px; line-height: 1.15; overflow-wrap: anywhere; cursor: pointer; }
   .room-buttons button span { font-size: 24px; line-height: 1.1; }
+  /* A laptop's browser bars leave little height: the cards above the Hang out buttons get
+     tighter and lose their small second lines, so the buttons keep room to be seen. */
+  @media (max-height: 720px) {
+    .hang-side { gap: 5px; padding: 8px; }
+    #coinBar { padding: 3px 10px; }
+    #nextMission small, #myMove small { display: none; }
+    #myMove { padding: 6px 10px; }
+    #palStrip { padding: 3px 6px 3px 3px; }
+    #palStripPic { width: 36px !important; height: 36px !important; }     /* drawingInto sizes it inline */
+    #palStrip button { padding: 6px 10px; }
+    .room-tabs { gap: 4px; }
+    .room-tabs button { padding: 5px 3px; }
+  }
   .room-buttons .tap-code { font: 700 11px/1.1 var(--mono); color: #6a4fb0; background: none; padding: 0; white-space: normal; overflow-wrap: normal; }
   .room-buttons button:hover:not(:disabled) { background: #e5efdc; }
   .room-buttons button:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #dbe2cf; }
