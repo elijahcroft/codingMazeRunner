@@ -6500,12 +6500,17 @@ DAY_JOB_COINS = 5
 DAY_JOBS_ALL_COINS = 15
 
 
+def day_order():
+    """Today's order of every job, the same on every screen. The first three are the class's jobs."""
+    today = time.strftime("%Y-%m-%d", time.localtime(time.time()))
+    return today, random.Random("jobs " + today).sample(sorted(DAY_JOBS), len(DAY_JOBS))
+
+
 def day_jobs(entry):
     """This student's jobs today: the class's jobs for the day, skipping a gem when there's none left to find."""
-    today = time.strftime("%Y-%m-%d", time.localtime(time.time()))
+    today, order = day_order()
     jobs = entry.get("day_jobs")
     if not jobs or jobs.get("day") != today:
-        order = random.Random("jobs " + today).sample(sorted(DAY_JOBS), len(DAY_JOBS))
         gems = any(k[:-1] in hang_places() and k not in entry["found"] for k in pixel.HANG_FINDS)
         keys = [k for k in order if k != "gem" or gems][:DAY_JOBS_EACH]
         jobs = entry["day_jobs"] = {"day": today, "keys": keys, "have": {}, "with": [], "paid": False}
@@ -6535,6 +6540,7 @@ def day_job(p, key, who=None):
             else:
                 jobs["coins"] = pixel_pay(p, DAY_JOBS_ALL_COINS, play=False)
             hang_fill(2)
+            pixel_feed_add(f"🎯 {hang_name(p)} did all of today's jobs!")
     pixel_save_soon()
 
 
@@ -6582,7 +6588,8 @@ def room_view(p, after, watch=0):
     out = {"open": room["open"], "words": room["words"], "seq": room["seq"], "you": spot["seat"] if spot else None,
            "meter": hang_view(), "places": ["home"] if loc else hang_places(), "game": game_view(spot["seat"] if spot else None),
            "cover": [] if loc else GAME_COVER, "home": home_view(owner, p, loc) if owner else None, "world": hang_places(),
-           "people": [room_person(s) for s in room["here"].values()], "loc": loc}
+           "people": [room_person(s) for s in room["here"].values()], "loc": loc,
+           "class_jobs": [DAY_JOBS[k][:2] for k in day_order()[1][:DAY_JOBS_EACH]]}
     if p:
         entry = pixel_entry(p)
         out.update(coins=entry["coins"], play_left=pixel.PLAY_COINS_DAY - pixel_play_today(entry),

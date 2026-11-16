@@ -174,6 +174,15 @@ class TeacherAndGames(unittest.TestCase):
         server.room_do(mia, {"what": "home", "seat": self.seat_of(ben)})
         self.assertEqual(self.jobs(mia)["have"]["visit"], 1)
 
+    def test_the_projector_shows_the_class_jobs_and_the_feed_cheers_all_three(self):
+        mia = self.kids[0]
+        keys = self.jobs(mia)["keys"]
+        self.assertEqual(server.room_view(None, -1)["class_jobs"], [server.DAY_JOBS[k][:2] for k in keys])
+        for key in keys:
+            for _ in range(server.DAY_JOBS[key][2]):
+                server.day_job(mia, key, who=f"friend{_}" if key == "five" else None)
+        self.assertEqual(server.pixel_feed[-1]["text"], "🎯 Mia did all of today's jobs!")
+
     def test_no_gem_job_once_every_gem_is_found(self):
         mia = self.kids[0]
         server.pixel_entry(mia)["found"] = list(pixel.HANG_FINDS)

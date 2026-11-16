@@ -214,8 +214,9 @@ No code is needed once they're in.
   solve a Code race job, clap for a friend's move, or visit a friend's home. A gem job is
   swapped for another once a student has found every gem. Each job pays 5 play coins,
   and all three open a 🎁 gift box (15 coins once every box gift is theirs) and add 2 to
-  the class party meter. The bar above the world counts them ("🎯 1 of 3 jobs"). The jobs
-  are `DAY_JOBS` in `server.py`.
+  the class party meter. The bar above the world counts them ("🎯 1 of 3 jobs"), the
+  projector lists the day's three so you can point at them, and Just now cheers anyone
+  who does all three. The jobs are `DAY_JOBS` in `server.py`.
 
 **💻 Code race: coding together.** Everyone in the race gets the same small job, shown
 in the bar above the world with pictures of the moves ("Jump 2 times. 🦘 🦘"). They build

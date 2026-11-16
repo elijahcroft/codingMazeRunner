@@ -55,6 +55,7 @@
   #raceCode { margin: 6px 0 0; padding: 8px 10px; border-radius: 12px; background: #27303f; color: #e9f1e2; font: 700 18px/1.4 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; }
   #raceCode[hidden] { display: none; }
   #raceWho { margin-top: 6px; font-size: 16px; font-weight: 700; }
+  #jobs { display: grid; gap: 2px; font-size: 16px; }
 </style>
 </head>
 <body>
@@ -71,6 +72,7 @@
     <div class="card"><p class="label">Join in at</p><div class="address" id="address"></div></div>
     <div class="card" id="raceCard" hidden><p class="label" id="raceLabel">💻 Code race</p><div id="raceJob"></div><pre id="raceCode" hidden></pre><div id="raceWho"></div></div>
     <div class="card"><p class="label">Look at</p><div id="places"></div><p class="label">Who's here (click to follow)</p><div id="people"></div></div>
+    <div class="card" id="jobsCard" hidden><p class="label">🎯 Today's jobs (all 3 open a 🎁)</p><div id="jobs"></div></div>
     <div class="card" style="flex:1;min-height:0;display:flex;flex-direction:column"><p class="label">Just now</p><ul id="feed"></ul></div>
   </aside>
 </div>
@@ -216,6 +218,9 @@ watcher = PalStage.follow(stage, {everySound: true, loc: () => cam.loc, onState(
   $("next").textContent = data.meter.next ? `Next: ${data.meter.next}` : "Next: a party!";
   game = data.game;
   paintGame(data.game);
+  const jobs = (data.class_jobs || []).map(([icon, words]) => `<span>${icon} ${esc(words)}</span>`).join("");
+  $("jobsCard").hidden = !jobs || !data.open;
+  if ($("jobs").innerHTML !== jobs) $("jobs").innerHTML = jobs;
   for (const e of data.events) {
     autoNotice(e);
     if (e.kind === "mymove") banner(`✨ <b>${esc(e.by)}</b>: ${esc(e.title)}`, e.ms + 700);
