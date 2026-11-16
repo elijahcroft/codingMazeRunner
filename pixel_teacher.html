@@ -97,6 +97,7 @@
       <label style="display:flex;gap:6px;align-items:center;font-weight:700"><input type="checkbox" id="roomTyping"> Let them type their own words</label>
     </div>
     <p id="roomGame" style="margin:8px 0 0;font-size:14px;font-weight:800" hidden></p>
+    <p id="roomJobs" style="margin:8px 0 0;font-size:14px"></p>
     <p id="roomHere" style="margin:8px 0 0;font-size:14px"></p>
     <p id="roomSaid" style="margin:4px 0 0;font-size:14px;color:var(--soft)"></p>
     <div id="roomPlaced" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px;font-size:14px"></div>
@@ -165,6 +166,8 @@ async function refresh() {
     return `<button class="btn" data-placed="${safe}">Remove ${safe}'s (${count})</button>`;
   }).join("") + `<button class="btn" data-placed-all="1">Remove all</button>` : "";
   $("roomHere").textContent = room.open ? (room.here.length ? `Here now: ${room.here.join(", ")}` : "Open, and nobody is here yet. It opens for a student after 3 missions.") : "Closed. Students who open it see a closed sign until you open it again.";
+  const allJobs = data.students.filter(s => s.jobs >= 3).length;
+  $("roomJobs").textContent = `🎯 Today's jobs: ${room.jobs.join(" · ")}. ${allJobs ? `${allJobs} student${allJobs > 1 ? "s have" : " has"} done all 3.` : "Nobody has done all 3 yet."}`;
   const game = room.game;
   $("roomGame").hidden = $("endGame").hidden = !game;
   if (game) $("roomGame").textContent = `🎮 ${GAME_WORD[game.kind]} is on: ${game.count} playing, ${game.phase === "lobby" ? `starting in about ${game.left}s` : `about ${game.left}s left`}.`;

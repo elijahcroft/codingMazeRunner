@@ -217,6 +217,10 @@ class TeacherAndGames(unittest.TestCase):
         self.assertTrue(server.pixel_record(mia, "h1", level["reference"], out)["gained"])
         self.assertEqual(self.jobs(mia)["have"]["star"], 1)
 
+    def test_the_teacher_page_lists_todays_jobs(self):
+        keys = self.jobs(self.kids[0])["keys"]
+        self.assertEqual(server.pixel_overview()["room"]["jobs"], [" ".join(server.DAY_JOBS[k][:2]) for k in keys])
+
     def test_no_gem_job_once_every_gem_is_found(self):
         mia = self.kids[0]
         server.pixel_entry(mia)["found"] = list(pixel.HANG_FINDS)

@@ -7244,7 +7244,7 @@ def pixel_overview():
     return {"students": rows, "missions": [{"key": k, "name": pixel.LEVEL_BY_KEY[k]["name"]} for k in pixel.LEVEL_ORDER],
             "open": pixel_class.get("open", 0), "feed": pixel_feed[-12:],
             "room": {"open": pixel_room["open"], "words": pixel_room["words"], "here": [s["real"] for s in pixel_room["here"].values()],
-                     "said": said[-8:], "game": game_brief(),
+                     "said": said[-8:], "game": game_brief(), "jobs": [" ".join(DAY_JOBS[k][:2]) for k in day_pick(day_order()[1])],
                      "people": {s["real"]: room_person(s) for s in pixel_room["here"].values()}},
             "meter": hang_view(), "stars": pixel_class_stars(), "placed": room_placed_counts()}
 
