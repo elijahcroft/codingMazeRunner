@@ -33,7 +33,7 @@ Both teacher pages are linked from `/admin`.
    button in the Hang out. Fifteen more missions come after it, for students who finish.
 
 A big button at the top right always says what comes next. On Code, that's **💻 Next mission**
-once the open mission is done; it only says Go hang out when every mission is finished, so
+once the open mission is done, and 🎬 Free stage once every mission is finished, so
 it never pulls a student out of a mission halfway. The 🎉 Hang out tab is always there too.
 
 ## The missions

@@ -132,6 +132,7 @@ function paintSteps(name) {
     : name === "draw" && !S.stars && drewSomething() ? ["💻 Now code my pal →", "stage"]
     : name === "draw" && S.stars && todo ? ["💻 Keep coding →", "stage"]          // back next lesson: the way to their mission
     : name === "stage" && todo && view && view.best[0] && todo.key !== mode ? ["💻 Next mission →", null, todo.key]
+    : name === "stage" && !todo && S.free_open && mode !== "free" && view && view.best[0] ? ["🎬 Free stage →", null, "free"]
     : name === "stage" && !todo && !S.hang.needs ? ["🎉 Go hang out →", "hang"]
     : name === "hang" && !hasMove ? ["🌟 Make My Move →", "stage"]
     : name === "hang" ? ["💻 Code more →", "stage"] : null;
