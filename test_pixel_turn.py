@@ -16,7 +16,7 @@ CHANGED = {
     "h4": "dance()\ndance()\ncheer()\nhearts()",
     "b1": "for i in range(10):\n    jump()",
     "b2": "for i in range(4):\n    right(1)\n    left(1)\n    jump()\nconfetti()",
-    "m1": 'spin()\nfor i in range(3):\n    jump()\n    hearts()\nsay("Ta-da")\ndance()\ncheer()',
+    "m1": 'spin()\nfor i in range(3):\n    jump()\n    hearts()\nfeel("silly")\ndance()\ncheer()',
     "t1": 'grow()\ngrow()\nshake()\nshrink()\nshrink()\nsay("Ta-da!")',
     "t2": 'look("left")\nwait(1)\nlook("right")\nwait(1)\nlook("up")\nlook("down")\nlook("front")\nsay("Oh, hello!")',
     "l1": "for i in range(10):\n    say(i + 1)\n    jump()",
@@ -150,9 +150,9 @@ class TurnOverHttp(unittest.TestCase):
         self.assertEqual(out["rewards"]["coins"], pixel.COINS_FIRST + 3 * pixel.COINS_STAR)
 
     def test_a_first_finish_is_the_mission_win_not_a_turn(self):
-        # My Move is the student's own code, and most moves already say something.
+        # My Move is the student's own code, so it may already do what Your turn asks.
         me = self.post("/join", {"name": "Mia"})["id"]
-        move = 'say("Hi")\njump()\nspin()\ncheer()'
+        move = 'feel("silly")\njump()\nspin()\ncheer()'
         for key in pixel.LEVEL_ORDER[:pixel.LEVEL_ORDER.index("m1")]:
             self.post("/pixel/run", {"id": me, "level": key, "code": pixel.LEVEL_BY_KEY[key]["reference"]})
         first = self.post("/pixel/run", {"id": me, "level": "m1", "code": move})
