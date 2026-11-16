@@ -772,7 +772,7 @@ function missionDone(out) {
   const next = order[at + 1];
   $("caption").textContent = "The crowd loves it!";
   const more = out.stars.findIndex(g => !g);
-  verdict(`<p><b>${all ? "Three stars! A perfect show!" : "You did it! The crowd is cheering."}</b>${more >= 0 ? ` For the next star: ${fmt(view.goals[more])}${/[.!?]$/.test(view.goals[more]) ? "" : "."}` : ""}</p>
+  verdict(`<p><b>${all ? "Three stars! A perfect show!" : "You did it! The crowd is cheering."}</b>${more >= 0 ? ` For the next star: ${fmt(view.goals[more])}${/[.!?]$/.test(view.goals[more]) ? "" : "."}${out.reply ? ` ${fmt(out.reply)}` : ""}` : ""}</p>
     <p class="next">${nextButton(next)}${extraButton()}${mode === "m1" ? ` <button class="btn" data-rename="1">Rename my move</button>` : ""}</p>`, "good");
 }
 // The box always stays on screen, so the stage above it never jumps.

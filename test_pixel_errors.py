@@ -84,6 +84,10 @@ class MistakesSayWhatToType(unittest.TestCase):
     def test_random_points_to_randint(self):
         self.assertIn("randint(1, 6)", error("roll = random(1, 6)"))
 
+    def test_a_number_in_quotes_is_a_word(self):
+        out = pixel.run_level(pixel.LEVEL_BY_KEY["w2"], 'for i in range(1, 6):\n    say(i)\n    if i == "3":\n        jump()', pixel.PIP)
+        self.assertIn("Take the quotes off:  == 3", out["reply"])
+
     def test_working_code_has_no_error(self):
         for lv in pixel.LEVELS:
             self.assertEqual(error(lv["reference"]), "", lv["key"])

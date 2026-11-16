@@ -1853,6 +1853,10 @@ def run_level(lv, code, pal, seed=0, surprise=None):
         stars.append(got)
         if not got and reply is None and miss and good:
             reply = miss(report) if callable(miss) else miss
+    quoted = re.search(r"""==\s*(["'])(\d+)\1""", code)
+    if reply and quoted:             # if i == "3": runs, but a word is never the same as a number
+        reply = (f"Your code asks if something is the same as {quoted[1]}{quoted[2]}{quoted[1]} with quotes, which is a word, "
+                 f"not a number. Take the quotes off:  == {quoted[2]}")
     out = public(main)
     if not main["error"] and good is False:
         bad = next(r for r in runs if r["error"])
