@@ -931,6 +931,7 @@ function showArtSheet() {
   box.cols = art.size + 1;
   box.rows = Math.min(art.size, 20);
   fillArtKey();
+  $("artNote").textContent = "";
   $("artSheet").hidden = false;
   thumbInto($("artPreview"), frame(), art.size, art.palette);
   artBefore = snap();
@@ -942,12 +943,18 @@ function fillArtKey() {
     `<span>${esc(LETTER(n))}<i style="background:${art.palette[n]}"></i></span>`).join("");
 }
 // Any row of the right shape goes straight onto the picture. Half-typed rows wait.
+// Anything else says what's wrong, so the picture not changing is never a mystery.
 function artTyped() {
-  const rows = $("artCode").value.split("\n").map(r => r.trim());
-  if (rows.length !== art.size || rows.some(r => r.length !== art.size)) return;
+  const rows = $("artCode").value.split("\n").map(r => r.trim()), size = art.size, note = $("artNote");
+  const say = text => { note.textContent = text; };
+  if (rows.length !== size) return say(`Your picture needs ${size} rows. Now it has ${rows.length}. ${rows.length > size ? "Delete a row." : "Add a row back."}`);
+  const odd = rows.findIndex(r => r.length !== size);
+  if (odd >= 0) return say(`Row ${odd + 1} has ${rows[odd].length} letters. Every row needs ${size}.`);
   const letters = rows.join("");
   const numbers = A.decode(letters);
-  if (numbers.some((n, i) => (n < 0 && letters[i] !== ".") || n >= art.palette.length)) return;
+  const bad = numbers.findIndex((n, i) => (n < 0 && letters[i] !== ".") || n >= art.palette.length);
+  if (bad >= 0) return say(`"${letters[bad]}" in row ${Math.floor(bad / size) + 1} isn't one of your colours. Use a letter from the key, or a dot for empty.`);
+  say("✓ Your drawing changed!");
   art.frames[cur] = numbers;
   thumbInto($("artPreview"), frame(), art.size, art.palette);
   fillArtKey();
