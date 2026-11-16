@@ -220,7 +220,15 @@ function covered(points, width) {
 }
 function put(squares, value) {
   const f = frame();
-  for (const at of squares) f[at] = value;
+  for (const at of squares) if (!kept(at)) f[at] = value;
+}
+// While a picture is coloured by numbers, a square that's already right (the outline, or one
+// that's done) stays put, so a stray click can't leave the picture impossible to finish.
+let guideCache = {letters: null, target: null};
+function kept(at) {
+  if (!art.guide || cur !== 0) return false;
+  if (guideCache.letters !== art.guide) guideCache = {letters: art.guide, target: A.decode(art.guide)};
+  return guideCache.target[at] === art.frames[0][at];
 }
 function shapeSquares(x1, y1) {
   const {x, y} = shape;
@@ -248,7 +256,7 @@ function layDown(x, y) {
   if (tool === "eraser") { put(squares, -1); return; }
   if (tool === "shade") {
     for (const at of squares) {
-      if (f[at] < 0 || shaded.has(at)) continue;
+      if (f[at] < 0 || shaded.has(at) || kept(at)) continue;
       shaded.add(at);
       f[at] = shadeIndex(f[at]);
     }
@@ -258,6 +266,7 @@ function layDown(x, y) {
   const ink = penStyle === "rainbow" ? RAINBOW[Math.floor(stroke.steps / 2) % RAINBOW.length] : colour;
   for (const at of squares) {
     if (penStyle === "checks" && (at % art.size + Math.floor(at / art.size)) % 2) continue;
+    if (kept(at)) continue;
     if (!under.has(at)) under.set(at, f[at]);
     f[at] = ink;
   }
@@ -326,6 +335,7 @@ function pourAt(sq) {
 }
 // Every square of the colour you click turns into your colour, in all the frames.
 function swapAt(sq) {
+  if (art.guide) { tipNow("Swap works once the picture is coloured in. Keep going with the numbers!"); return; }
   const found = frame()[sq.y * art.size + sq.x];
   if (found < 0) { tipNow("That square is empty. Try a coloured one."); return; }
   if (found === colour) { tipNow("Pick a new colour first."); return; }

@@ -18,7 +18,9 @@ Both teacher pages are linked from `/admin`.
 
 1. Students open `/pixel`, type their name and draw a pal. Anyone stuck at a blank
    page can pick one of 20 pals from the gallery, three ways: 🖍️ colour it in,
-   🔢 by numbers, or ⭐ ready to change.
+   🔢 by numbers, or ⭐ ready to change. In 🔢 by numbers, squares that are already right
+   (the outline, and finished ones) can't be painted over, so a stray click never leaves the
+   picture impossible to finish. Swap waits until it's coloured in.
 2. While they draw, the little pal in the corner comes alive. It watches the pen, and
    the row of chips under it (👀 👄 💪 🦵 🐰 🐾) lights up as each part is found.
 3. They press ✨ Bring to life. The pal wakes up and says hello, and they try its moves
