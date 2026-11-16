@@ -6632,6 +6632,10 @@ def room_view(p, after, watch=0):
            "cover": [] if loc else GAME_COVER, "home": home_view(owner, p, loc) if owner else None, "world": hang_places(),
            "people": [room_person(s) for s in room["here"].values()], "loc": loc,
            "class_jobs": [DAY_JOBS[k][:2] for k in day_pick(day_order()[1])]}
+    if not p:          # the class screen: how many have done all of today's jobs
+        today = day_order()[0]
+        out["jobs_done"] = sum(1 for q in players.values() if q.get("pixel") and (q["pixel"].get("day_jobs") or {}).get("day") == today
+                               and q["pixel"]["day_jobs"].get("paid"))
     if p:
         entry = pixel_entry(p)
         out.update(coins=entry["coins"], play_left=pixel.PLAY_COINS_DAY - pixel_play_today(entry),

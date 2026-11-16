@@ -221,6 +221,14 @@ class TeacherAndGames(unittest.TestCase):
         keys = self.jobs(self.kids[0])["keys"]
         self.assertEqual(server.pixel_overview()["room"]["jobs"], [" ".join(server.DAY_JOBS[k][:2]) for k in keys])
 
+    def test_the_projector_counts_who_has_done_all_three(self):
+        self.assertEqual(server.room_view(None, -1)["jobs_done"], 0)
+        mia = self.kids[0]
+        for key in self.jobs(mia, ["clap", "visit", "code"])["keys"]:
+            server.day_job(mia, key)
+        self.assertEqual(server.room_view(None, -1)["jobs_done"], 1)
+        self.assertNotIn("jobs_done", server.room_view(mia, -1))          # only the class screen counts
+
     def test_no_gem_job_once_every_gem_is_found(self):
         mia = self.kids[0]
         server.pixel_entry(mia)["found"] = list(pixel.HANG_FINDS)
