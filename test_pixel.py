@@ -986,7 +986,8 @@ class TheHangOut(unittest.TestCase):
         spots = lambda: {m["name"]: m["x"] for m in self.view()["members"]}
         ben_was = spots()["Ben"]
         self.do(mia, "go", name="beach")
-        self.assertEqual(spots(), {"Mia": 2 * pixel.PLACE_W + 160, "Ben": ben_was})
+        self.assertEqual(spots()["Ben"], ben_was)
+        self.assertTrue(2 * pixel.PLACE_W <= spots()["Mia"] < 3 * pixel.PLACE_W)     # somewhere free on the Beach
 
     def place(self, me, key="ink123", x=100):
         with server.lock:

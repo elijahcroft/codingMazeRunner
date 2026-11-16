@@ -439,12 +439,15 @@
   .hang-screen .bubble { border: 0; border-radius: 16px; box-shadow: 0 3px 12px #2c535240; }
   .hang-screen .bubble::after { border: 0; }
   #roomTip { margin: 6px 0 0; flex: none; font-size: 16px; font-weight: 800; text-align: center; color: #27484a; }
-  #hangBanner { position: absolute; left: 50%; top: 6%; transform: translateX(-50%); max-width: 90%; padding: 6px 18px; background: #fffdf6f2; border-radius: 18px; font-size: clamp(15px, 1.7vw, 22px); font-weight: 800; white-space: nowrap; pointer-events: none; box-shadow: 0 4px 16px #2c535233; animation: drop-in .3s ease-out; }
+  #hangBanner { position: absolute; left: 50%; top: 6%; transform: translateX(-50%); width: max-content; max-width: 90%; padding: 6px 18px; background: #fffdf6f2; border-radius: 18px; font-size: clamp(15px, 1.7vw, 22px); font-weight: 800; text-align: center; text-wrap: balance; pointer-events: none; box-shadow: 0 4px 16px #2c535233; animation: drop-in .3s ease-out; }
   #hangBanner.big { top: 24%; padding: 14px 34px; text-align: center; font-size: clamp(26px, 4vw, 52px); font-weight: 900; color: #d9477e; animation: party-in .5s cubic-bezier(.3, 1.6, .5, 1); }
   #hangBanner small { display: block; font-size: .42em; color: #2c5352; font-weight: 800; }
+  #hangBanner:not(.big) small { font-size: .75em; }     /* .42em is for the big banners; on a small one it was too tiny to read */
   .float { position: absolute; transform: translate(-50%, 0); font-size: clamp(16px, 2vw, 26px); font-weight: 900; color: #fff; text-shadow: 0 1px 0 #2c5352, 0 0 4px #2c5352; pointer-events: none; animation: float-up 1.4s ease-out forwards; }
   .float.combo { color: #ffd93b; font-size: clamp(24px, 3.2vw, 42px); }
   @keyframes float-up { to { transform: translate(-50%, -64px); opacity: 0; } }
+  body.calm .float { animation: fade-away 1.4s ease-out forwards; }     /* calm: words fade where they are, with no flying */
+  @keyframes fade-away { to { opacity: 0; } }
   @keyframes drop-in { from { transform: translate(-50%, -12px); opacity: 0; } }
   @keyframes party-in { from { transform: translateX(-50%) scale(.3); opacity: 0; } }
   .hang-side { display: flex; flex-direction: column; gap: 8px; min-height: 0; padding: 12px; background: #fffdf6; border-radius: 22px; box-shadow: 0 4px 18px #2c535220; }
@@ -470,7 +473,7 @@
   .room-buttons button.locked { background: #f1efe6; box-shadow: none; color: #6d6a58; }
   .room-buttons button.locked canvas { opacity: .5; filter: saturate(.5); }
   .room-buttons button.goal { grid-auto-flow: column; justify-content: start; gap: 10px; text-align: left; background: #fff3c4; }
-  .room-buttons button.goal span { display: grid; gap: 2px; min-width: 0; }
+  .room-buttons button.goal span { display: grid; gap: 2px; min-width: 0; font-size: 15px; line-height: 1.2; }     /* not the big icon size */
   .goal-bar { display: block; height: 8px; border-radius: 4px; background: #e7dcae; overflow: hidden; }
   .goal-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #ff8fb3, #ffc46b); }
   .room-buttons button:disabled { cursor: default; background: #e9f3e2; box-shadow: none; }
@@ -478,6 +481,15 @@
   .room-buttons .wide { grid-column: 1 / -1; min-height: 46px; grid-auto-flow: column; justify-content: center; gap: 8px; font-size: 16px; }
   .fish-book { font-size: 20px; letter-spacing: 2px; }
   .fish-book small { font-size: 12px; letter-spacing: 0; }
+  body:not(:has(#hangView:not([hidden]))) #tags { display: none; }     /* Hide names is for the Hang out's name tags; elsewhere it only crowded the top bar */
+  .jobs { grid-column: 1 / -1; display: grid; gap: 3px; padding: 6px 8px 8px; background: #fff3c4; border-radius: 14px; }
+  .jobs h4 { margin: 0 0 2px; font-size: 15px; }
+  .jobs h4 small { display: block; font-size: 12px; color: #6a5a20; }
+  .job { display: flex; gap: 6px; align-items: baseline; margin: 0; font-size: 14px; font-weight: 800; color: #4a3a10; }
+  .job.done { color: #2d6a3a; }
+  .job b { margin-left: auto; }
+  .job-how { margin: -2px 0 2px 22px; font-size: 12px; font-weight: 700; color: #7a6a30; }
+  .room-buttons .job-go { margin-left: auto; min-height: 0; padding: 3px 8px; border-radius: 9px; background: #e6dcff; box-shadow: 0 2px 0 #b9a6e8; color: #3b1f6b; font-size: 12px; white-space: nowrap; }
   .dance-seq { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
   .dance-seq span { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: #eef3e8; font-size: 24px; }
   .dance-seq .done { background: #bfe7c8; }
@@ -487,21 +499,25 @@
   #palStrip { flex: none; display: flex; align-items: center; gap: 10px; padding: 5px 8px 5px 5px; background: var(--place); border-radius: 18px; font-size: 16px; font-weight: 700; transition: background-color .9s ease; }
   #palStripPic { flex: none; background: #fffdf6; border-radius: 14px; image-rendering: pixelated; }
   #palStrip[hidden] { display: none; }
-  #palStrip span { flex: 1; min-width: 0; line-height: 1.15; }
+  #palStrip span { flex: 1; min-width: 90px; line-height: 1.15; }
+  #palStrip { flex-wrap: wrap; row-gap: 4px; column-gap: 6px; }
+  #palStrip button { padding-left: 9px; padding-right: 9px; }     /* with two drawings there are three buttons: they go to a second row rather than off the panel */
   #palStrip button[hidden] { display: none; }
   #palStrip b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #palStrip button { flex: none; padding: 8px 12px; border: 0; border-radius: 12px; background: var(--place-ink); color: #fffdf6; font: inherit; font-weight: 800; cursor: pointer; }
+  .game-status.invite { background: #ffe58a; border-color: #e0a93f; font-weight: 900; }     /* a game is waiting for you: tap to join */
   .game-status { border: 2px solid #c6dac2; border-radius: 14px; background: #fffdf6; color: #27484a; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; padding: 10px 14px; min-height: 48px; text-align: left; cursor: pointer; font-size: 15px; }
   .game-status span { font-size: 14px; }
   .game-status:hover { background: #eef5e8; }
   .game-status:focus-visible, .games-pane button:focus-visible { outline: 3px solid #376dba; outline-offset: 2px; }
-  .room-buttons.games-pane { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .room-buttons.games-pane { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: max-content; gap: 8px; }     /* auto rows left the race message one line tall when it wrapped */
   .games-pane button small { font-size: 12px; font-weight: 600; line-height: 1.4; }
   .games-pane .me-note { grid-column: 1 / -1; }
   .games-pane button:disabled { opacity: .5; cursor: default; }
   .room-buttons .race-start { grid-auto-flow: row; gap: 2px; background: linear-gradient(135deg, #e6dcff, #d9f2df); box-shadow: 0 3px 0 #b9a6e8; color: #3b1f6b; }
   .room-buttons .race-start b { font-size: 18px; }
   .hang-view.racing #myMove, .hang-view.racing #nextMission, .hang-view.racing #palStrip { display: none; }
+  .hang-view.playing #myMove, .hang-view.playing #nextMission, .hang-view.playing #palStrip { display: none; }     /* in any round: room for its buttons */
   .race-row { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
   .room-buttons .race-row button { min-height: 38px; padding: 5px 3px; font-size: 13px; }
   .race-score small { font-weight: 700; }
@@ -514,6 +530,7 @@
   .room-buttons .race-run:hover:not(:disabled) { background: linear-gradient(135deg, #7f5bef, #b47bef); }
   .race-msg { grid-column: 1 / -1; margin: 0; min-height: 1.3em; font-size: 15px; font-weight: 800; color: #8a2f4f; overflow-wrap: anywhere; }
   .race-msg.good { color: #2d6a3a; }
+  .race-bonus { grid-column: 1 / -1; margin: 0; padding: 6px 10px; border-radius: 12px; background: #fff3c4; color: #5a4208; font-size: 15px; font-weight: 900; }
   .race-reveal { grid-column: 1 / -1; margin: 0; padding: 8px 10px; border-radius: 12px; background: #27303f; color: #e9f1e2; font: 700 14px/1.4 var(--mono); white-space: pre-wrap; }
   #seekerCurtain { position: absolute; inset: 0; z-index: 20; background: #e9f1e2; color: #27484a; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 16px; border-radius: inherit; }
   #seekerCurtain[hidden] { display: none; }
@@ -524,6 +541,19 @@
   .room-buttons { flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: auto; gap: 7px; align-content: start; padding: 2px 3px 5px 0; }
   .room-buttons button { display: grid; justify-items: center; align-content: center; gap: 2px; min-height: 62px; min-width: 0; padding: 7px 3px; border: 0; border-radius: 14px; background: #f3f5ea; box-shadow: 0 3px 0 #dbe2cf; color: #2c5352; font-weight: 800; font-size: 14px; line-height: 1.15; overflow-wrap: anywhere; cursor: pointer; }
   .room-buttons button span { font-size: 24px; line-height: 1.1; }
+  /* A laptop's browser bars leave little height: the cards above the Hang out buttons get
+     tighter and lose their small second lines, so the buttons keep room to be seen. */
+  @media (max-height: 720px) {
+    .hang-side { gap: 5px; padding: 8px; }
+    #coinBar { padding: 3px 10px; }
+    #nextMission small, #myMove small { display: none; }
+    #myMove { padding: 6px 10px; }
+    #palStrip { padding: 3px 6px 3px 3px; }
+    #palStripPic { width: 36px !important; height: 36px !important; }     /* drawingInto sizes it inline */
+    #palStrip button { padding: 6px 10px; }
+    .room-tabs { gap: 4px; }
+    .room-tabs button { padding: 5px 3px; }
+  }
   .room-buttons .tap-code { font: 700 11px/1.1 var(--mono); color: #6a4fb0; background: none; padding: 0; white-space: normal; overflow-wrap: normal; }
   .room-buttons button:hover:not(:disabled) { background: #e5efdc; }
   .room-buttons button:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #dbe2cf; }
@@ -850,7 +880,7 @@
       <button id="nextMission" hidden></button>
       <button id="myMove"></button>
       <button id="clapGo" hidden></button>
-      <div id="palStrip" hidden><canvas id="palStripPic"></canvas><span>You are <b id="palStripName"></b></span><button id="palSwitch">🔄 Switch</button><button id="palFollow" aria-pressed="true"></button><button id="palProp" aria-pressed="false">🪑 Prop: off</button></div>
+      <div id="palStrip" hidden><canvas id="palStripPic"></canvas><span>You are <b id="palStripName"></b></span><button id="palSwitch">🔄 Switch</button><button id="palFollow" aria-pressed="true"></button><button id="palProp" aria-pressed="false" title="Turn your pal into a still picture with no face or name, so friends have to find you">🪑 Be a prop</button></div>
       <div class="room-tabs" id="roomTabs">
         <button data-pane="games">Games</button>
         <button data-pane="do">👋 Do</button>

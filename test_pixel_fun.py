@@ -16,10 +16,13 @@ class Fun(unittest.TestCase):
         self.clock = 1000.
         self.time = patch.object(server.time, "time", side_effect=lambda: self.clock)
         self.save = patch.object(server, "pixel_save_soon")
+        self.jobs = patch.object(server, "day_job")      # today's jobs pay too; they have their own tests in test_pixel_class
         self.time.start()
         self.save.start()
+        self.jobs.start()
         self.addCleanup(self.time.stop)
         self.addCleanup(self.save.stop)
+        self.addCleanup(self.jobs.stop)
         self.addCleanup(self.restore)
         self.mia, self.ben, self.alex = [self.kid(name) for name in ("Mia", "Ben", "Alex")]
 

@@ -25,13 +25,13 @@ function buildGamePane(box) {
   const g = currentGame(), you = roomInfo?.you;
   box.classList.add("games-pane");
   if (!g) {
-    box.innerHTML = `<p class="me-note">Invite the other kids! Anyone can start a game. Friends choose whether to join.</p>
+    box.innerHTML = jobsHtml() + `<p class="me-note">Invite the other kids! Anyone can start a game. Friends choose whether to join.</p>
       <button class="wide race-start" data-game="create" data-kind="code"><b>💻 Code race</b><small>Everyone codes the same job · solve it and your pal does it for everyone</small></button>
       <button data-game="create" data-kind="hide"><b>Hide & seek</b><small>Random seeker · 20 seconds to hide</small></button>
       <button data-game="create" data-kind="tag"><b>Tag</b><small>Chase your friends · pass “it”</small></button>
       <button data-game="create" data-kind="race"><b>Red light, green light</b><small>Race to the flag · freeze on red</small></button>
       <button data-game="create" data-kind="dance"><b>Copy the dance</b><small>Tap the moves in order · 3 rounds</small></button>
-      <p class="me-note">Finish a round for 🪙 coins, 2 class-party points and a badge. Winners get extra coins. Your first round of each game earns a gift; then every third round earns another while gifts remain.</p>`;
+      <p class="me-note">Finish a game for 🪙 coins and class-party points. Winners get extra coins. Your first game of each kind gives a 🎁 gift, and so does every third one after that.</p>`;
     return;
   }
   const joined = g.joined.includes(you);
@@ -43,11 +43,11 @@ function buildGamePane(box) {
   } else if (g.phase === "results") {
     body += `<p class="me-note">${esc(g.message)}</p>`;
     if (g.reward) body += `<p class="me-note">${g.reward.won ? "🏆 You won! " : ""}${g.reward.coins ? `+${g.reward.coins} 🪙 coins! ` : ""}+${g.reward.points} class-party points!${g.reward.gift ? " Your gift: " + esc(S.hang.catalog[g.reward.gift].name) + ". Find it in Me." : ""}</p>`;
-    body += `<p class="me-note">Another round will be available in a moment.</p>`;
+    body += `<p class="me-note">Another game can start in a moment.</p>`;
   } else if (!joined && g.kind === "code") {
     body += `<p class="me-note">Your friends are coding! Join in now: everyone gets the same job.</p><button class="wide race-run" data-game="join">💻 Join the Code race</button>`;
   } else if (!joined) {
-    body += `<p class="me-note">A round is underway. You can join the next one, or keep hanging out.</p>`;
+    body += `<p class="me-note">A game is on. You can join the next one, or keep playing here.</p>`;
   } else if (g.kind === "code") {
     body = racePane(g, you);
   } else if (g.kind === "race") {
@@ -61,17 +61,17 @@ function buildGamePane(box) {
       <div class="dance-seq">${g.seq.map((m, i) => `<span class="${i < g.step ? "done" : i === g.step && ready ? "now" : ""}" title="${DANCE_ICONS[m][1]}">${DANCE_ICONS[m][0]}</span>`).join("")}</div>` +
       Object.entries(DANCE_ICONS).map(([m, [icon, word]]) => `<button data-step="${m}" ${ready && !finished ? "" : "disabled"}><span>${icon}</span>${word}</button>`).join("");
   } else if (g.kind === "tag") {
-    body += `<p class="me-note">${g.it === you ? "You're IT! Get close to another player to tag them." : esc(gamePerson(g.it)) + " is IT! Keep moving!"} Play in the Park and Wedding garden. No teleporting. After a tag, everyone gets 3 seconds to scatter.</p>`;
+    body += `<p class="me-note">${g.it === you ? "You're IT! Get close to another player to tag them." : esc(gamePerson(g.it)) + " is IT! Keep moving!"} Stay in the Park and Wedding garden. After a tag, everyone gets 3 seconds to run away.</p>`;
     body += `<p class="me-note">Your tags: ${g.tags[you] || 0}. Click to run, or use the arrow keys.</p>`;
   } else if (g.phase === "hiding" && g.it === you) {
-    body += `<p class="me-note">You're the seeker! Count while everyone hides. Their pals and names are hidden from you. When the countdown ends, walk up to cover and search it.</p>`;
+    body += `<p class="me-note">You're the seeker! Count while everyone hides. When the countdown ends, click a hiding place to look behind it.</p>`;
   } else if (g.found.includes(you)) {
     body += `<p class="me-note">You were found! Cheer on your friends while the seeker finishes. Stay for your reward.</p>`;
   } else if (g.it !== you && g.phase === "playing") {
-    body += `<p class="me-note">${g.hiding ? "You're tucked away. Stay quiet!" : "You didn't reach cover in time. Stay still and hope the seeker misses you!"} ${esc(gamePerson(g.it))} is searching.</p>`;
+    body += `<p class="me-note">${g.hiding ? "You're tucked away. Stay quiet!" : "You didn't get to a hiding place in time. Stay still and hope the seeker misses you!"} ${esc(gamePerson(g.it))} is searching.</p>`;
   } else {
     const searching = g.it === you;
-    body += `<p class="me-note">${searching ? "Choose a hiding place to walk over and search. You must get close!" : g.hiding ? "You're hidden! Choose another spot to move before time runs out." : "Choose cover below, or tap it on the map. Walk there and tuck away!"}</p>`;
+    body += `<p class="me-note">${searching ? "Click a hiding place to walk over and look behind it." : g.hiding ? "You're hidden! Choose another spot to move before time runs out." : "Pick a hiding place below, or click one in the world. Your pal walks there and hides!"}</p>`;
     body += (roomInfo.cover || []).map(c => `<button data-cover="${c.key}" aria-pressed="${g.hiding === c.key}">${esc(c.name)}<small>${c.x < 320 ? "Park" : "Wedding garden"}</small></button>`).join("");
   }
   if (joined && g.phase !== "results") body += `<button data-game="leave">Leave game</button>`;
@@ -85,7 +85,7 @@ function paintGameState(data) {
   status.hidden = !open;
   const key = JSON.stringify([g?.id, g?.phase, g?.joined, g?.it, g?.found, g?.hiding, g?.tags, g?.message, g?.reward, data.you,
                               g?.light, g?.done, g?.seq, g?.step, g?.round,
-                              g?.solved, g?.pause, g?.reveal, g?.score, g?.job?.job]);
+                              g?.solved, g?.bonus, g?.pause, g?.reveal, g?.score, g?.job?.job]);
   if (key !== gamePaintKey) {
     gamePaintKey = key;
     if (roomPane === "games") buildRoomButtons();
@@ -94,9 +94,10 @@ function paintGameState(data) {
   // A Code race needs room for the code, and every pal in view: the camera stays on the Park.
   const racing = g?.kind === "code" && g.phase === "playing" && g.joined.includes(data.you);
   $("hangView").classList.toggle("racing", !!racing);
+  $("hangView").classList.toggle("playing", !!inRound());
   if (roomStage) roomStage.state.camera = racing ? () => 0 : null;
-  // A Code race needs the job on screen, so a player is taken to Games once when it starts.
-  if (racing && raceShown !== g.id) {
+  // A round's controls are in Games (the job, the moves, the hiding places), so a player is taken there once when it starts.
+  if (g && g.joined.includes(data.you) && ["hiding", "playing"].includes(g.phase) && raceShown !== g.id) {
     raceShown = g.id;
     if (roomPane !== "games") { roomPane = "games"; artArmed = furnArmed = buyArmed = null; buildRoomButtons(); }
   }
@@ -114,15 +115,17 @@ function paintGameClock() {
   if (!roomInfo || $("hangView").hidden) return;
   const g = currentGame(), title = $("gameTitle"), detail = $("gameDetail");
   if (!g) {
+    $("gameStatus").classList.remove("invite");
     title.textContent = "Play with friends";
-    detail.textContent = "💻 Code race, tag, hide & seek, a race or a dance →";
+    detail.textContent = jobsWord() + "💻 Code race, tag, hide & seek, a race or a dance →";
     return;
   }
   const seconds = Math.max(0, Math.ceil(g.until - gameNow()));
   const job = g.kind === "code" && g.phase === "playing" && !g.pause && g.job;
   title.textContent = job ? `💻 ${job.job}` : gameName(g);
   const joined = g.joined.includes(roomInfo.you);
-  detail.textContent = g.phase === "lobby" ? `${g.joined.length} joined · starts in ${seconds}s · ${joined ? "You're in!" : "Join in Games"}`
+  $("gameStatus").classList.toggle("invite", g.phase === "lobby" && !joined);
+  detail.textContent = g.phase === "lobby" ? `${g.joined.length} joined · starts in ${seconds}s · ${joined ? "You're in!" : "👉 Tap here to join!"}`
     : g.phase === "results" ? `Round over · next game in ${seconds}s`
     : g.kind === "race" ? `${seconds}s left · ${g.light === "red" ? "🔴 Red light: freeze!" : "🟢 Green light: run!"} · ${g.done.length} at the flag`
     : g.kind === "dance" ? `Round ${g.round + 1} of 3 · ${seconds}s left · ${g.step} of ${g.seq.length} moves`
@@ -135,7 +138,7 @@ function paintGameClock() {
   const answer = g.kind === "code" && g.phase === "playing" && gameNow() - g.round_at >= g.answer_after;
   if (answer !== raceAnswerOpen) { raceAnswerOpen = answer; if (roomPane === "games" && raceHelp) buildRoomButtons(); }
 }
-setInterval(paintGameClock, 250);
+setInterval(() => { paintGameClock(); tipKeepUp(); }, 250);
 function chooseGameCover(key) {
   const g = currentGame();
   if (!inRound() || g.kind !== "hide") return;
@@ -157,7 +160,12 @@ function gameTick(mine) {
     if (out?.ok && action === "hide") tipFor(`You're hidden ${cover.at}!`);
   });
 }
-$("gameStatus").addEventListener("click", () => { roomPane = "games"; artArmed = null; buildRoomButtons(); });
+// The bar above the world: one tap joins a game that's waiting for players, and opens Games.
+$("gameStatus").addEventListener("click", () => {
+  const g = currentGame();
+  if (g && g.phase === "lobby" && !g.joined.includes(roomInfo.you)) gameDo("join");
+  roomPane = "games"; artArmed = null; buildRoomButtons();
+});
 $("roomButtons").addEventListener("click", e => {
   const action = e.target.closest("[data-game]"), cover = e.target.closest("[data-cover]");
   const step = e.target.closest("[data-step]"), run = e.target.closest("[data-run]"), mine = myMember();
@@ -182,21 +190,28 @@ function racePane(g, you) {
     const r = g.reveal || {};
     body += `<p class="me-note">${r.by ? `⚡ <b>${esc(r.by)}</b> was fastest! Here's their code:` : "Time! Here's one way to code it:"}</p>
       <pre class="race-reveal">${esc(r.code || "")}</pre><p class="me-note">The next job is coming...</p>`;
-  } else if (g.solved.includes(you)) {
-    body += `<p class="race-msg good">⭐ You solved it! Clap for your friends while they finish.</p><pre class="race-reveal">${esc(g.mine)}</pre>`;
+  } else if ((g.bonus || []).includes(you)) {
+    body += `<p class="race-msg good">🌟 Bonus done! Clap for your friends while they finish.</p><pre class="race-reveal">${esc(g.mine)}</pre>`;
+  } else if (g.solved.includes(you)) {        // solved: the same code box, for the bonus
+    if (!raceCode) raceCode = g.mine;
+    body += `<p class="race-msg good">⭐ You solved it!</p><p class="race-bonus">🌟 Bonus: do the whole job 2 times! ${esc(g.bonus_icons)}</p>
+      <p class="me-note">💡 Copy your lines again under them, or put them all in a 🔁 loop.</p>` + raceEditor(job, false);
   } else {
-    const chips = ["for i in range(3):", ...RACE_CHIPS, ...job.chips];
-    body += `<textarea id="raceCode" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Your code"
-        placeholder="Tap the green commands, or type here">${esc(raceCode)}</textarea>
-      <div class="race-chips">${chips.map(c => `<button data-put="${esc(c)}"${c.startsWith("for") ? ' class="loop"' : ""}>${c.startsWith("for") ? "🔁 " : ""}${esc(c)}</button>`).join("")}</div>
-      <button class="wide race-run" data-race="run">▶ Run my code</button>
-      <div class="race-row"><button data-race="undo">⌫ Undo line</button><button data-race="out">⇤ Out of loop</button>
-        <button data-race="help">💡 ${raceHelp ? "More help" : "Help"}</button></div>
-      <p class="race-msg${raceGood ? " good" : ""}" id="raceMsg" role="status">${esc(raceMsg)}</p>${raceHelpText(g)}`;
+    body += raceEditor(job, true) + raceHelpText(g);
   }
-  const names = g.solved.map(s => esc(gamePerson(s))).join(", ");
-  body += `<p class="me-note race-score">Solved: ${names || "nobody yet"} · Your points: ${g.score}<br><small>Solve it: 1 point. First: 2 points. +3 🪙 each time!</small></p>`;
+  const names = g.solved.map(s => esc(gamePerson(s)) + ((g.bonus || []).includes(s) ? " 🌟" : "")).join(", ");
+  body += `<p class="me-note race-score">Solved: ${names || "nobody yet"} · Your points: ${g.score}<br><small>Solve it: 1 point. First: 2 points. +3 🪙 each time! 🌟 Bonus: +1 🪙</small></p>`;
   return body;
+}
+function raceEditor(job, help) {
+  const chips = ["for i in range(3):", ...RACE_CHIPS, ...job.chips];
+  return `<textarea id="raceCode" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Your code"
+      placeholder="Tap the green commands, or type here">${esc(raceCode)}</textarea>
+    <div class="race-chips">${chips.map(c => `<button data-put="${esc(c)}"${c.startsWith("for") ? ' class="loop"' : ""}>${c.startsWith("for") ? "🔁 " : ""}${esc(c)}</button>`).join("")}</div>
+    <button class="wide race-run" data-race="run">▶ Run my code</button>
+    <div class="race-row"><button data-race="undo">⌫ Undo line</button><button data-race="out">⇤ Out of loop</button>
+      ${help ? `<button data-race="help">💡 ${raceHelp ? "More help" : "Help"}</button>` : ""}</div>
+    <p class="race-msg${raceGood ? " good" : ""}" id="raceMsg" role="status">${esc(raceMsg)}</p>`;
 }
 function raceHelpText(g) {
   if (!raceHelp) return "";
@@ -254,8 +269,9 @@ async function raceButton(what) {
   if (!out) raceSay("Couldn't reach the game. Please try again.", false);
   else if (out.error) raceSay(out.error, false);
   else {
-    raceSay(out.message, !!out.solved);
-    if (out.solved) refreshState();
+    const good = "bonus" in out ? out.bonus : !!out.solved;      // a solver's runs are for the bonus
+    raceSay(out.message, good);
+    if (good) refreshState();
     else PalStage.SFX.play("boing");
   }
 }

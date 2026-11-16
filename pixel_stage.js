@@ -555,7 +555,10 @@ const PalStage = (() => {
       return member;
     }
     const buddiesOf = (member, pals) => pals.map((pal, i) => Object.assign(roomBuddy(member, pal, i), {host: member}));
-    const memberPuppet = (pal, seat) => puppet(pal, Math.max(1, Math.round((state.room && state.room.length > 11 ? 32 : 46) / pal.size)), seat + 1);
+    // More than 11 pals in one place and everyone is drawn smaller. It's decided from the whole list,
+    // so a student arriving into a crowd sees the same sizes as everyone else.
+    let crowded = false;
+    const memberPuppet = (pal, seat) => puppet(pal, Math.max(1, Math.round((crowded ? 32 : 46) / pal.size)), seat + 1);
     function makeMember(m, you) {
       return {seat: m.seat, name: m.name, x: m.x, y: m.y, tx: m.x, ty: m.y, flip: false, mood: m.mood, move: null, moveFrom: 0, until: 0,
               talkUntil: 0, me: m.seat === you, rest: m.rest || null, restNext: null, wear: m.wear || {}, size: m.pal.size, queue: null, spotUntil: 0, trail: false, sparked: 0,
@@ -566,6 +569,7 @@ const PalStage = (() => {
       state.visible = false;
       state.soft = true;
       state.scene = data.scene || state.scene;
+      crowded = data.members.length > 11;
       state.room = data.members.map(m => roomMember(m, you));
       state.camX = 0;
       state.placed = (data.placed || []).map(placedThing);
@@ -574,6 +578,10 @@ const PalStage = (() => {
     }
     function roomSync(rows, you) {
       if (!state.room) return;
+      if ((rows.length > 11) !== crowded) {        // the crowd grew past 11 or shrank back: resize everyone
+        crowded = rows.length > 11;
+        for (const m of state.room) m.pup = memberPuppet(m.pal, m.seat);
+      }
       const seats = new Set(rows.map(r => r.seat));
       for (const m of state.room) if (!seats.has(m.seat)) { clearTag(m); clearBubble("s" + m.seat); }
       state.room = state.room.filter(m => seats.has(m.seat));

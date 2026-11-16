@@ -27,7 +27,19 @@ const PLACE_NAMES = {park: ["🌳", "Park"], wedding: ["💒", "Wedding"], beach
 const SLOT_NAMES = {hat: "Hats", face: "Faces", sparkle: "Sparkles"};
 const ROOM_TIP = "Walk to the edge to explore! Gold ring: sit. Pink ring: play. Blue ring: fish. Find the 💎 gems!";
 const HOME_TIP = "Click the floor to walk. Click a door to go through it.";
-const roomTipNow = () => (atHome() ? HOME_TIP : ROOM_TIP);
+// While you're in a round, the tip under the world says what to do in that game.
+function gameTip(g) {
+  const you = roomInfo.you, it = g.it === you;
+  if (g.kind === "tag") return it ? "You're IT! Click near a friend to tag them." : "Run! Click the ground to get away from IT.";
+  if (g.kind === "hide" && g.phase === "hiding") return it ? "You're counting. Everyone else is hiding!" : "Hide! Pick a hiding place on the right.";
+  if (g.kind === "hide") return it ? "Click a hiding place to walk there and look." : "Stay still! The seeker is looking.";
+  if (g.kind === "race") return "Green light: press Run or → again and again. Red light: stop!";
+  if (g.kind === "dance") return "Tap the lit-up move on the right, in order.";
+  if (g.kind === "code") return (g.bonus || []).includes(you) ? "Bonus done! Clap for your friends while they finish."
+    : (g.solved || []).includes(you) ? "You solved it! Try the 🌟 Bonus on the right, or clap for your friends." : "Build your code on the right, then press ▶ Run my code.";
+  return ROOM_TIP;
+}
+const roomTipNow = () => (atHome() ? HOME_TIP : inRound() ? gameTip(currentGame()) : ROOM_TIP);
 
 function fitRoomScreen() {
   const host = $("roomHost"), wrap = host.parentElement, main = wrap.parentElement;
@@ -54,11 +66,16 @@ function buildRoomButtons() {
   if (roomPane === "games") {
     buildGamePane(box);
   } else if (roomPane === "say") {
-    box.innerHTML = Object.entries(S.room_words).map(([group, words]) =>
+    // Wedding words come first at the Wedding, and last everywhere else.
+    const me = myMember(), here = me && !atHome() && roomStage.state.places ? roomStage.state.places[Math.floor(me.x / PalStage.W)] : "";
+    const groups = Object.entries(S.room_words).sort(([a], [b]) => (here !== "wedding") * ((a === "Wedding") - (b === "Wedding")));
+    box.innerHTML = groups.map(([group, words]) =>
       `<h4>${esc(group)}</h4>` + words.map(w => `<button data-tap="say" data-name="${esc(w)}">${esc(w)}</button>`).join("")).join("");
   } else if (roomPane === "place") {
+    const friends = ((roomInfo && roomInfo.people) || []).filter(m => !m.loc && m.seat !== roomInfo.you);
     box.innerHTML = ((roomInfo && roomInfo.world) || ["park"]).map(n => big([...PLACE_NAMES[n], "go", n])).join("") +
-      `<button data-home="mine"><span>🏠</span>My home</button>`;
+      `<button data-home="mine"><span>🏠</span>My home</button>` +
+      (friends.length ? `<h4>👫 Go to a friend</h4>` + friends.map(m => `<button data-friend="${m.seat}"><span>🏃</span>${esc(m.name)}</button>`).join("") : "");
   } else if (roomPane === "shop") {
     buildShopPane(box);
   } else if (roomPane === "home") {
@@ -242,7 +259,8 @@ function paintPalStrip() {
   $("palStripName").textContent = d.title || "My drawing";
   const on = S.hang.buddies === true;
   $("palFollow").setAttribute("aria-pressed", on);
-  $("palFollow").textContent = on ? "👯 My drawings follow me: on" : "👯 My drawings follow me: off";
+  $("palFollow").textContent = on ? "👯 Buddies: on" : "👯 Buddies: off";
+  $("palFollow").title = "Your other drawings come along with your pal";
 }
 async function choosePal(key) {
   if (key === S.pal) return;
@@ -270,7 +288,7 @@ function howToGetLong(key) {
   if (item.goal) { const [have, n, what] = goalLeft(key); return `${GOAL_WORDS[what][1](n)} to unlock the ${item.name}! You have ${have}.`; }
   if (item.price) return `The ${item.name} is in the 🛍️ Shop for 🪙 ${item.price}.`;
   if (item.class) return `The ${item.name} comes when the class party meter fills up!`;
-  return `The ${item.name} can come out of a 🎁 gift box. Finish a mission or play a game to get one!`;
+  return `The ${item.name} can come out of a 🎁 gift box. Finish a mission, play a game, or do all 3 of today's 🎯 jobs to get one!`;
 }
 function buildMePane(box) {
   const {gifts, catalog, wear, friends} = S.hang, pics = finishedDrawings();
@@ -292,7 +310,7 @@ function buildMePane(box) {
     `<button data-pal="${esc(d.key)}" aria-pressed="${S.pal === d.key}"><canvas data-palpic="${esc(d.key)}"></canvas>${esc(d.title || "My drawing")}</button>`).join("") : "";
   const book = S.hang.fish_book, fish = S.hang.fish;
   const hide = `<button class="wide" data-hidename aria-pressed="${!!S.hang.hide_name}"><span>🙈</span>${S.hang.hide_name ? "Your name tag is invisible to others. Click to show it." : "Make my name tag disappear"}</button>`;
-  box.innerHTML = hide + who + goals + (gifts.length ? "" : `<p class="me-note">Finish a mission to get a gift box! Click a 🔒 thing to see how to get it.</p>`) + slots +
+  box.innerHTML = hide + who + goals + (gifts.length ? "" : `<p class="me-note">Finish a mission or all 3 of today's 🎯 jobs to get a gift box! Click a 🔒 thing to see how to get it.</p>`) + slots +
     `<h4>🙌 Friends you've high-fived: ${friends.length}</h4><p class="me-note">${friends.length ? friends.map(esc).join(", ") : "Click a friend's pal to high-five them."}</p>` +
     `<h4>🎣 Fish book: ${Object.keys(fish).length} of ${Object.keys(book).length}</h4><p class="me-note fish-book">${Object.keys(book).map(k =>
       fish[k] ? `<span title="${esc(book[k][1])}">${book[k][0]}<small>×${fish[k]}</small></span>` : "❔").join(" ")}</p>` +
@@ -400,6 +418,13 @@ function roomEvent(e, you) {
     banner(`🎉 CLASS PARTY! 🎉${e.reward ? `<small>New for everyone: ${esc(e.reward.name)}</small>` : ""}`, 6000, true);
     if (e.reward && e.reward.kind === "gift" && !S.hang.gifts.includes(e.reward.key)) S.hang.gifts.push(e.reward.key);
     if (roomPane === "me") buildRoomButtons();
+  } else if (e.kind === "photo") {             // the teacher's class photo: everyone lined up in the Park
+    banner(`📸 Class photo! Say cheese!<small>Look at the big screen</small>`, 5000, true);
+    PalStage.SFX.play("ding");
+  } else if (e.kind === "danceparty") {        // 3 pals danced at once
+    roomStage.roomApply({kind: "fx", name: "confetti", x: e.x}, false);
+    banner(`🪩 Dance party! 🪩<small>${e.seats.length} pals dancing together · +1 for the class party</small>`, 4000, true);
+    PalStage.SFX.play("yay");
   } else if (e.kind === "shower") {
     banner("🌠 Star shower! Run and catch them!", 3500);
   } else if (e.kind === "five" && (e.fresh || []).includes(you)) {
@@ -419,6 +444,7 @@ function roomState(data) {
   $("roomType").hidden = !open || !data.words;
   paintMeter(data.meter);
   paintCoins(data);
+  paintJobs(data.jobs);
   const home = JSON.stringify(data.home), people = JSON.stringify(data.people);
   if (home !== homeSeen || people !== peopleSeen) {
     if (!data.home !== (homeSeen === "null" || !homeSeen)) { furnArmed = artArmed = null; fishing = null; $("roomTip").textContent = roomTipNow(); }
@@ -429,15 +455,53 @@ function roomState(data) {
     roomJoining = true;
     tap("join").finally(() => { roomJoining = false; });
   }
-  const places = data.places.join();
+  const places = data.places.join() + "|" + data.people.filter(m => !m.loc).map(m => m.seat + m.name).join();     // places, and who's outside to go to
   if (places !== placesSeen) { placesSeen = places; if (roomPane === "place") buildRoomButtons(); }
   for (const e of data.events) roomEvent(e, data.you);
 }
+// ---- 🎯 Today's jobs: three small things to do, the same for the whole class each day ---------------
+let jobsSeen = null;
+const jobDone = j => j.have >= j.need;
+function paintJobs(jobs) {
+  if (!jobs) return;
+  const was = jobsSeen;
+  jobsSeen = jobs;
+  if (JSON.stringify(was) === JSON.stringify(jobs)) return;
+  if (roomPane === "games" && !currentGame()) buildRoomButtons();
+  if (!was) return;                       // what was done before this screen opened isn't news
+  const fresh = jobs.list.filter(j => jobDone(j) && !was.list.some(w => w.key === j.key && jobDone(w)));
+  if (!fresh.length) return;
+  if (jobs.done && !was.done) {
+    const gift = jobs.gift && S.hang.catalog[jobs.gift];
+    banner(`🎯 All 3 jobs done! 🎯<small>${gift ? `🎁 A new gift: ${esc(gift.name)}. Put it on in 🧢 Me!` : `+${jobs.coins} 🪙`}</small>`, 6000, true);
+    PalStage.SFX.play("fanfare");
+    if (roomPane === "me") buildRoomButtons();
+  } else {
+    banner(`🎯 Job done: ${esc(fresh[0].words)}!<small>${jobs.list.filter(jobDone).length} of ${jobs.list.length} jobs today</small>`, 3500);
+    PalStage.SFX.play("ding");
+  }
+}
+function jobsHtml() {
+  if (!jobsSeen) return "";
+  const done = jobsSeen.list.filter(jobDone).length;
+  return `<div class="jobs"><h4>🎯 Today's jobs <small>${jobsSeen.done ? "All done! See you next time." : `${done} of ${jobsSeen.list.length} · do all ${jobsSeen.list.length} for a 🎁`}</small></h4>` +
+    jobsSeen.list.map(j => `<p class="job${jobDone(j) ? " done" : ""}"><span>${jobDone(j) ? "✅" : j.icon}</span>${esc(j.words)}${j.need > 1 ? ` <b>${Math.min(j.have, j.need)}/${j.need}</b>` : ""}` +
+      `${j.key === "star" && !jobDone(j) ? `<button class="job-go" data-go-code="1">💻 Go code</button>` : ""}</p>` +
+      (j.how && !jobDone(j) ? `<p class="job-how">${esc(j.how)}</p>` : "")).join("") + `</div>`;
+}
+const jobsWord = () => (jobsSeen && !jobsSeen.done ? `🎯 ${jobsSeen.list.filter(jobDone).length} of ${jobsSeen.list.length} jobs · ` : "");
+
 let tipTimer = 0;
 function tipFor(text, ms = 3500) {
   $("roomTip").textContent = text;
   clearTimeout(tipTimer);
-  tipTimer = setTimeout(() => { $("roomTip").textContent = roomTipNow(); }, ms);
+  tipTimer = setTimeout(() => { tipTimer = 0; $("roomTip").textContent = roomTipNow(); }, ms);
+}
+// The everyday tip follows the game (IT changes, a solve), unless a short message is showing.
+function tipKeepUp() {
+  if (tipTimer || !roomInfo || $("hangView").hidden) return;
+  const text = roomTipNow();
+  if ($("roomTip").textContent !== text) $("roomTip").textContent = text;
 }
 
 // The page takes the colour of the place in the middle of the screen.
@@ -484,6 +548,16 @@ function openRoom() {
   paintPalStrip();
   fitRoomScreen();
   stopRoom = PalStage.follow(roomStage, {id: me, onState: roomState});
+  welcomeOnce();
+}
+// A student's first time in the Hang out says where to start, once. It's kept for each
+// student on this computer; if the browser won't keep it, it stays quiet rather than repeat.
+function welcomeOnce() {
+  const key = "pixelHangHello:" + me;
+  try { if (localStorage.getItem(key)) return; localStorage.setItem(key, "1"); } catch (_) { return; }
+  roomPane = "games";
+  buildRoomButtons();
+  banner(`🎉 Welcome to the Hang out!<small>Click the ground to walk. Today's 🎯 jobs are in Games, on the right.</small>`, 7000, true);
 }
 function closeRoom() {
   if (!stopRoom) return;
@@ -525,6 +599,7 @@ $("roomButtons").addEventListener("click", e => {
   const pick = name => { const el = e.target.closest(`[data-${name}]`); return el && !el.disabled ? el.dataset[name] : null; };
   if (pick("buy")) { buy(pick("buy")); return; }
   if (pick("home")) { goHome(pick("home")); return; }
+  if (pick("friend")) { PalStage.SFX.wake(); tap("go", {seat: +pick("friend")}).then(out => { if (out && out.error) tipFor(out.error); }); return; }
   if (pick("room")) { goRoom(+pick("room")); return; }
   if (pick("furn")) { furnArmed = furnArmed === pick("furn") ? null : pick("furn"); buildRoomButtons(); return; }
   if (pick("away")) { tap("unfurnish", {key: pick("away")}); furnArmed = null; buildRoomButtons(); return; }
@@ -578,12 +653,14 @@ $("palProp").addEventListener("click", async () => {
   if (!out || !out.ok) return;
   propOn = out.on;
   $("palProp").setAttribute("aria-pressed", propOn);
-  $("palProp").textContent = propOn ? "🪑 Prop: on" : "🪑 Prop: off";
+  $("palProp").textContent = propOn ? "🙂 Be me again" : "🪑 Be a prop";
+  tipFor(propOn ? "You're a prop! No face, no name. Stay still so friends have to find you." : "You're you again!", 5000);
 });
 $("palSwitch").addEventListener("click", () => { roomPane = "me"; artArmed = null; buildRoomButtons(); $("roomButtons").scrollTop = 0; });
 $("myMove").addEventListener("click", pressMyMove);
 $("nextMission").addEventListener("click", goCode);
 $("clapGo").addEventListener("click", () => { if (clapFor !== null) tap("clap", {seat: clapFor}); });
+$("roomButtons").addEventListener("click", e => { if (e.target.closest("[data-go-code]")) goCode(); });     // the ⭐ job's way to the missions
 $("roomCanvas").addEventListener("click", async e => {
   const r = $("roomCanvas").getBoundingClientRect(), mine = myMember();
   const x = roomStage.state.camX + (e.clientX - r.left) / r.width * PalStage.W, y = (e.clientY - r.top) / r.height * PalStage.H;

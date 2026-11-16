@@ -27,6 +27,9 @@
   #people { display: flex; flex-direction: column; gap: 4px; max-height: 44vh; overflow: auto; }
   #people button { display: grid; text-align: left; background: #eef4e8; padding: 4px 10px; font-size: 16px; line-height: 1.15; }
   #people small { font-size: 13px; font-weight: 700; color: #5f7c75; }
+  #people.many { display: grid; grid-template-columns: 1fr 1fr; max-height: 34vh; }     /* a whole class: two columns, so more fit without scrolling */
+  #people.many button { font-size: 14px; padding: 3px 7px; }
+  #people.many small { font-size: 11px; }
   #places { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
   #places button { font: inherit; font-size: 14px; color: inherit; border: 0; border-radius: 12px; background: #eef4e8; padding: 4px 10px; cursor: pointer; }
   #places button[aria-pressed="true"] { background: #ffd27a; }
@@ -55,6 +58,7 @@
   #raceCode { margin: 6px 0 0; padding: 8px 10px; border-radius: 12px; background: #27303f; color: #e9f1e2; font: 700 18px/1.4 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; }
   #raceCode[hidden] { display: none; }
   #raceWho { margin-top: 6px; font-size: 16px; font-weight: 700; }
+  #jobs { display: grid; gap: 2px; font-size: 16px; }
 </style>
 </head>
 <body>
@@ -63,7 +67,7 @@
   <section class="room"><div class="screen" id="host"><canvas id="back" aria-hidden="true"></canvas><canvas id="stage" aria-label="Everyone's pals, hanging out"></canvas>
     <div id="placeTag" hidden></div><div id="banner" hidden></div><div id="closed" hidden>The Hang out is closed for now.</div></div>
     <div class="world">
-      <div class="cam"><button id="camLeft" aria-label="Move the camera left">◀</button><button id="camRight" aria-label="Move the camera right">▶</button><button id="camAuto">🎬 Auto</button></div>
+      <div class="cam"><button id="camLeft" aria-label="Move the camera left">◀</button><button id="camRight" aria-label="Move the camera right">▶</button><button id="camAuto">🎬 Auto</button><button id="savePhoto" hidden>💾 Save the photo</button></div>
       <div id="map" aria-label="Map of the world. Click to move the camera."></div>
       <span id="camWord"></span>
     </div></section>
@@ -71,6 +75,7 @@
     <div class="card"><p class="label">Join in at</p><div class="address" id="address"></div></div>
     <div class="card" id="raceCard" hidden><p class="label" id="raceLabel">💻 Code race</p><div id="raceJob"></div><pre id="raceCode" hidden></pre><div id="raceWho"></div></div>
     <div class="card"><p class="label">Look at</p><div id="places"></div><p class="label">Who's here (click to follow)</p><div id="people"></div></div>
+    <div class="card" id="jobsCard" hidden><p class="label">🎯 Today's jobs (all 3 open a 🎁)<b id="jobsDone"></b></p><div id="jobs"></div></div>
     <div class="card" style="flex:1;min-height:0;display:flex;flex-direction:column"><p class="label">Just now</p><ul id="feed"></ul></div>
   </aside>
 </div>
@@ -110,7 +115,7 @@ stage.roomHooks({everySound: true});
 // ---- The camera: Auto goes to whoever's up to something, or you can drive -------------------
 const PLACE_W = PalStage.W, PLACE_WORD = {home: "🏠 Home", park: "🌳 Park", wedding: "💒 Wedding", beach: "🏖️ Beach", night: "🌙 Night", snowy: "⛄ Snowy hill", candy: "🍭 Candy land", space: "🚀 Space"};
 const cam = {mode: "auto", seat: null, x: 0, moveOn: 0, loc: 0};
-let people = [], homeName = "", watcher = null;
+let people = [], homeName = "", watcher = null, game = null;
 // Which place the screen shows: 0 is outside, any other number is someone's home.
 function lookAt(loc) {
   if (loc === cam.loc) return;
@@ -135,7 +140,13 @@ function followSeat(seat) {
 function goAuto() { cam.mode = "auto"; cam.moveOn = 0; paintWorld(); }
 // Auto takes turns with everyone, inside the homes too.
 function autoLook(now) {
-  if (cam.mode !== "auto" || now < cam.moveOn || !people.length) return;
+  if (cam.mode !== "auto" || !people.length) return;
+  if (game && game.phase === "playing" && (game.kind === "tag" || game.kind === "hide") && people.some(m => m.seat === game.it)) {
+    cam.seat = game.it;     // a chase is best watched from the chaser
+    lookAt(0);
+    return;
+  }
+  if (now < cam.moveOn) return;
   const at = people.findIndex(m => m.seat === cam.seat), next = people[(at + 1) % people.length];
   cam.seat = next.seat;
   lookAt(next.loc);
@@ -144,15 +155,31 @@ function autoLook(now) {
 const SHOW_THESE = ["mymove", "toy", "five", "found", "go", "rest", "move", "fx"];
 function autoNotice(e) {
   const now = performance.now();
+  if (cam.mode === "auto" && e.kind === "danceparty") {      // a dance party is worth a look straight away
+    cam.seat = e.seats[0];
+    cam.moveOn = now + 8000;
+    return;
+  }
   if (cam.mode !== "auto" || !SHOW_THESE.includes(e.kind) || now < cam.moveOn - 5000) return;     // at least 3 seconds on each person
   cam.seat = e.seat;
   cam.moveOn = now + 8000;
+}
+// Names on the map, left to right. One that would sit on the name before it goes up a row.
+function mapNames(list, wide) {
+  const px = $("map").clientWidth || 1, rows = [-1e9, -1e9];
+  return list.slice().sort((a, b) => a.x - b.x).map(m => {
+    const at = Math.max(2, Math.min(98, m.x / wide * 100)), half = (m.name.length * 7 + 14) / px * 50;
+    const row = rows[0] <= at - half ? 0 : rows[1] <= at - half ? 1 : rows[0] < rows[1] ? 0 : 1;
+    rows[row] = at + half;
+    return `<span class="who" style="left:${at}%;bottom:${5 + row * 18}px">${esc(m.name)}</span>`;
+  }).join("");
 }
 function paintWorld() {
   const places = stage.state.places || ["park"], wide = worldWide(), left = stage.state.camX || 0, list = crew();
   $("map").innerHTML = places.map(p => `<div class="place">${p === "home" ? `🏠 ${esc(homeName)}'s home` : PLACE_WORD[p]}</div>`).join("") +
     `<div class="view" style="left:${left / wide * 100}%;width:${PLACE_W / wide * 100}%"></div>` +
-    list.map(m => `<span class="who" style="left:${Math.max(2, Math.min(98, m.x / wide * 100))}%">${esc(m.name)}</span>`).join("");
+    mapNames(list, wide);
+  $("people").classList.toggle("many", people.length > 10);
   $("people").innerHTML = people.map(m => `<button data-seat="${m.seat}" aria-pressed="${cam.mode === "follow" && cam.seat === m.seat}"><span>${esc(m.name)}</span>
     <small>${m.loc ? esc(m.where) : PLACE_WORD[m.where] || ""}${m.doing ? " · " + esc(m.doing) : ""}</small></button>`).join("") || "Nobody yet";
   const homes = [...new Map(people.filter(m => m.loc).map(m => [m.loc, m.home])).entries()];
@@ -198,20 +225,74 @@ watcher = PalStage.follow(stage, {everySound: true, loc: () => cam.loc, onState(
   $("bar").style.width = Math.min(100, data.meter.points / data.meter.goal * 100) + "%";
   $("words").textContent = `${data.meter.points} of ${data.meter.goal}`;
   $("next").textContent = data.meter.next ? `Next: ${data.meter.next}` : "Next: a party!";
-  paintRace(data.game);
+  game = data.game;
+  paintGame(data.game);
+  const jobs = (data.class_jobs || []).map(([icon, words]) => `<span>${icon} ${esc(words)}</span>`).join("");
+  $("jobsCard").hidden = !jobs || !data.open;
+  $("jobsDone").textContent = data.jobs_done ? ` · ✅ ${data.jobs_done} done` : "";
+  if ($("jobs").innerHTML !== jobs) $("jobs").innerHTML = jobs;
   for (const e of data.events) {
     autoNotice(e);
     if (e.kind === "mymove") banner(`✨ <b>${esc(e.by)}</b>: ${esc(e.title)}`, e.ms + 700);
     else if (e.kind === "party") banner(`🎉 CLASS PARTY! 🎉${e.reward ? `<small>New for everyone: ${esc(e.reward.name)}</small>` : ""}`, 6000, true);
     else if (e.kind === "shower") banner("🌠 Star shower!", 3500);
+    else if (e.kind === "photo") {
+      cam.mode = "free"; cam.x = 0; lookAt(0);
+      banner(`📸 Class photo! Say cheese! (${e.count})`, 6000, true);
+      $("savePhoto").hidden = false;
+      clearTimeout(photoTimer);
+      photoTimer = setTimeout(() => { $("savePhoto").hidden = true; }, 90000);
+    }
+    else if (e.kind === "danceparty") { stage.roomApply({kind: "fx", name: "confetti", x: e.x}, true); banner(`🪩 Dance party! ${e.seats.length} pals dancing together!`, 4000, true); }
   }
 }});
 
-// A Code race: the job, then the fastest code between rounds, so the class can read it together.
-function paintRace(g) {
-  $("raceCard").hidden = !g || g.kind !== "code";
-  if ($("raceCard").hidden) return;
+// 📸 The class photo as a picture to keep: the world and the pals, with their name tags drawn in.
+let photoTimer = 0;
+$("savePhoto").addEventListener("click", () => {
+  const host = $("host").getBoundingClientRect(), scale = 2;
+  const out = document.createElement("canvas");
+  out.width = Math.round(host.width * scale); out.height = Math.round(host.height * scale);
+  const g = out.getContext("2d");
+  g.imageSmoothingEnabled = false;
+  for (const cv of [$("back"), $("stage")]) g.drawImage(cv, 0, 0, out.width, out.height);
+  g.font = `800 ${14 * scale}px ui-rounded, system-ui, sans-serif`;
+  g.textAlign = "center"; g.textBaseline = "middle";
+  for (const tag of $("host").querySelectorAll(".tag")) {
+    const r = tag.getBoundingClientRect();
+    if (!r.width || getComputedStyle(tag).display === "none") continue;
+    const x = (r.left - host.left + r.width / 2) * scale, y = (r.top - host.top + r.height / 2) * scale, w = g.measureText(tag.textContent).width + 16 * scale;
+    g.fillStyle = "#fffdf6e8"; g.beginPath(); g.roundRect(x - w / 2, y - 11 * scale, w, 22 * scale, 9 * scale); g.fill();
+    g.fillStyle = "#2c5352"; g.fillText(tag.textContent, x, y);
+  }
+  const a = document.createElement("a");
+  a.href = out.toDataURL("image/png");
+  a.download = `class-photo-${new Date().toISOString().slice(0, 10)}.png`;
+  a.click();
+});
+// The game on now. A Code race shows the job, then the fastest code between rounds, so the class can read it together.
+const GAME_WORD = {hide: "🙈 Hide & seek", tag: "🏃 Tag", race: "🚦 Red light, green light", dance: "💃 Copy the dance", code: "💻 Code race"};
+const DANCE_ICON = {wave: "👋", jump: "🦘", spin: "🌀", cheer: "🎉"};
+function paintGame(g) {
+  $("raceCard").hidden = !g;
+  if (!g) return;
   const name = seat => (people.find(m => m.seat === seat) || {}).name || "A friend";
+  if (g.kind !== "code") {
+    const left = Math.max(0, Math.ceil(g.until - g.now)), names = seats => seats.map(name).join(", ") || "nobody yet";
+    $("raceLabel").textContent = GAME_WORD[g.kind] + (g.phase === "lobby" || g.phase === "results" ? "" : ` · ${left}s left`);
+    $("raceJob").textContent = g.phase === "lobby" ? `Starting soon! ${g.joined.length} joined. Join in Games.`
+      : g.phase === "results" ? g.message
+      : g.kind === "tag" ? `${name(g.it)} is IT!`
+      : g.kind === "hide" ? (g.phase === "hiding" ? `${name(g.it)} is counting. Hide!` : `${name(g.it)} is looking!`)
+      : g.kind === "race" ? (g.light === "red" ? "🔴 Red light: freeze!" : "🟢 Green light: run!")
+      : `Round ${g.round + 1} of 3: ${(g.seq || []).map(m => DANCE_ICON[m] || m).join(" ")}`;
+    $("raceCode").hidden = true;
+    $("raceWho").textContent = g.phase !== "playing" && g.phase !== "hiding" ? ""
+      : g.kind === "hide" && g.phase === "playing" ? `Found: ${names(g.found)} (${g.found.length} of ${g.joined.length - 1})`
+      : g.kind === "race" ? `At the flag: ${names(g.done)}`
+      : `Playing: ${g.joined.length}`;
+    return;
+  }
   const reveal = g.phase === "playing" && g.pause && g.reveal;
   $("raceLabel").textContent = g.phase === "playing" ? `💻 Code race · Job ${g.round + 1} of ${g.rounds}` : "💻 Code race";
   $("raceJob").textContent = g.phase === "lobby" ? `Starting soon! ${g.joined.length} joined. Join in Games.`
@@ -219,7 +300,7 @@ function paintRace(g) {
     : reveal ? (reveal.by ? `⚡ ${reveal.by} was fastest!` : "Here's one way:") : `${g.job.job} ${g.job.icons}`;
   $("raceCode").hidden = !reveal;
   $("raceCode").textContent = reveal ? reveal.code : "";
-  $("raceWho").textContent = g.phase === "playing" ? `Solved: ${g.solved.map(name).join(", ") || "nobody yet"} (${g.solved.length} of ${g.joined.length})` : "";
+  $("raceWho").textContent = g.phase === "playing" ? `Solved: ${g.solved.map(s => name(s) + ((g.bonus || []).includes(s) ? " 🌟" : "")).join(", ") || "nobody yet"} (${g.solved.length} of ${g.joined.length})` : "";
 }
 
 async function refresh() {

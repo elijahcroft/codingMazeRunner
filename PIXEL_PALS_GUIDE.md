@@ -183,12 +183,17 @@ actions or more adds a big finish. Running the mission again updates the move.
 ## The Hang out
 
 Everyone's pal is in one soft little world, and what one child taps, everyone sees.
-No code is needed once they're in.
+No code is needed once they're in. The first time a student comes in, a 🎉 Welcome banner
+says to click the ground to walk and that today's 🎯 jobs are in Games, and Games opens.
 
 - **One long world:** the places sit side by side, and the camera follows your pal. Walk
   to the edge of the screen to reach the next place. A full party meter makes the world
-  longer. 🏞️ Place jumps just that student somewhere, not the whole class.
-- **Walking:** click the ground. Arrow keys work too.
+  longer. 🏞️ Place jumps just that student somewhere, not the whole class. A student
+  arriving, or jumping somewhere, lands on a free spot with room around it, so a whole
+  class arriving at once fills the Park and then spills into the next place instead of
+  landing in one heap.
+- **Walking:** click the ground. Arrow keys work too. 🏞️ Place also lists everyone outside under
+  **👫 Go to a friend**, which puts your pal right next to them.
 - **Toys (pink rings):** click the fountain, trampoline, snowman, rocket and so on. The pal
   walks over and it goes off for everyone nearby.
 - **🖼️ Art:** a student picks one of their drawings and clicks the world to leave it
@@ -202,13 +207,20 @@ No code is needed once they're in.
 - **Sitting and reading:** click a glowing spot in front of a bench, towel or snowman
   and the pal walks over and sits. 🪑 Sit and 📖 Read in the Do tab work anywhere. A pal
   stays put until it walks away.
-- **Buddies:** up to 3 of a student's other drawings come along, smaller, and wander
-  near their pal. They join in with its dances and naps, and sit when it sits. A new
-  drawing shows up the next time the student comes back to the Hang out.
+- **Buddies:** with **👯 Buddies: on** (next to "You are..."), up to 3 of a student's other
+  drawings come along, smaller, and wander near their pal. They join in with its dances and
+  naps, and sit when it sits. A new drawing shows up the next time the student comes back to
+  the Hang out.
 - **✨ My Move:** the student's pal does their routine in a spotlight, and everyone else
   gets a 👏 Clap button while it plays. It can be pressed again after a few seconds.
+- **🪩 Dance party:** when 3 pals in one place press 💃 Dance within 4 seconds of each other,
+  everyone there gets confetti and a banner, and the class party meter goes up by 1 (at most once
+  a minute). Nothing on screen says so, so it's a nice one to let the class discover.
 - **👋 Do, 💬 Say, 🎉 Party, 🏞️ Place:** moves, words to tap, things to throw, and where
-  everyone is.
+  everyone is. 💬 Say puts the wedding words first in the Wedding garden, and last everywhere
+  else.
+- **🪑 Be a prop:** next to "You are...", this turns the pal into a still picture with no
+  face and no name tag, for a made-up game of finding each other. **🙂 Be me again** turns it back.
 - **🧢 Me:** pick which drawing they are (students with two or more drawings also see
   a **🔄 Switch** button above the tabs), gifts to wear, and friends they've high-fived.
 - **🌠 Star showers:** stars fall by surprise every few minutes. Pals run under them, and
@@ -247,31 +259,59 @@ No code is needed once they're in.
   and when ❗ A bite! shows, a click anywhere on the picture reels it in. There are 8
   things to catch, kept in the fish book in 🧢 Me.
 - **Games:** any student can start a 💻 Code race, Tag, Hide & seek, Red light green light,
-  or Copy the dance, and friends choose to join. In the race, each press of Run or → is one short
-  run, and moving on red sends a pal back a bit. In the dance, the moves stay on the
-  screen with the next one lit, for 3 rounds that get longer.
+  or Copy the dance, and friends choose to join. While a game waits for players, the bar
+  above the world turns yellow for everyone not in it ("👉 Tap here to join!"), and one tap
+  joins. In the race, each press of Run or → is one short run, and moving on red sends a pal
+  back a bit. In the dance, the moves stay on the screen with the next one lit, for 3 rounds
+  that get longer. When a round starts, the side panel opens Games and hides My Move and
+  Next mission until it ends, so the game's buttons fit on a small laptop, and the line
+  under the world says what to do in that game ("You're IT! Click near a friend to tag
+  them.").
+- **🎯 Today's jobs:** three small things to do, at the top of Games, the same for the whole
+  class each day so friends can help each other: high-five 2 friends, catch 3 falling stars,
+  find a gem, catch something at the pier, finish a game with friends, solve a Code race
+  job, earn a star in a coding mission, clap for a friend's move, visit a friend's home, or
+  dance at the same time as 2 friends (a 🪩 dance party). Every day has at least one coding
+  job (a mission star or a Code race job), so playing leads back to coding. The star job has
+  a **💻 Go code** button that opens the next mission. A gem job is swapped for another once
+  a student has found every gem, and a star job for the Code race once they have every star.
+  Each job pays 5 play coins, and all three open a 🎁 gift box (15 coins once every box gift
+  is theirs) and add 2 to the class party meter. The bar above the world counts them ("🎯 1
+  of 3 jobs"), the projector lists the day's three so you can point at them, and Just now
+  cheers anyone who does all three. The jobs are `DAY_JOBS` in `server.py`.
 
-**💻 Code race: coding together.** Everyone in the race gets the same small job, shown
-in the bar above the world with pictures of the moves ("Jump 2 times. 🦘 🦘"). They build
-the code by tapping green commands (typing works too). 🔁 for picks the 3 so they can type
-a new number, and **⇤ Out of loop** sends the next command back out of the loop. ▶ Run
-my code checks it. A miss says what the pal did against what the job wants ("Your pal
-did 🦘. The job is 🦘 🦘."), or gives the bug and its line. A solve makes that pal do the
-code in a spotlight for everyone, with a 👏 Clap button for the others, and pays 3 coding
-coins. Solving is 1 point and solving first is 2. There are 3 jobs, each harder: commands
-in order, then a loop, then more than one thing in a loop. Between jobs, everyone sees the
-fastest code, or one way to do it if time ran out. 💡 Help gives a tip, and the whole
-answer after 30 seconds. Friends can join part way through, and players can clap and use
-💬 Say while they race. The jobs are `RACE_JOBS` in `pixel.py`. A solver's code is only
-shown to the class if its words are on the tap list or are the job's own words, and it
-has no comments, unless typing is on.
+**💻 Code race: coding together.** Everyone in the race gets the same small job, shown in the
+bar above the world with pictures of the moves ("Jump 2 times. 🦘 🦘"). They build the code by
+tapping green commands (typing works too). 🔁 for picks the 3 so they can type a new number,
+and **⇤ Out of loop** sends the next command back out of the loop. ▶ Run my code checks it.
+A miss says what the pal did against what the job wants ("Your pal did 🦘. The job is 🦘 🦘."),
+or gives the bug and its line. A solve makes that pal do the code in a spotlight for
+everyone, with a 👏 Clap button for the others, and pays 3 coding coins. Solving is 1 point
+and solving first is 2. There are 3 jobs, each harder: commands in order, then a loop, then
+more than one thing in a loop. Between jobs, everyone sees the fastest code, or one way to
+do it if time ran out. A student who has solved the job gets a **🌟 Bonus**: do the whole job
+2 times. Their code stays in the box, so copying the lines again works, and putting it all
+in a loop is the neat way. It pays 1 coding coin and plays in the spotlight, but gives no
+race points, so it never changes who wins. 💡 Help gives a tip, and the whole answer after 30
+seconds. Friends can join part way through, and players can clap and use 💬 Say while they
+race. The jobs are `RACE_JOBS` in `pixel.py`. A solver's code is only shown to the class if
+its words are on the tap list or are the job's own words, and it has no comments, unless
+typing is on.
 
-On `/pixel/teacher` you can close the Hang out, start a party, a star shower or a
-**💻 Code race for everyone** (everyone outside in the Hang out is put in it, and the race
-starts 15 seconds later; anyone can leave), and see who's there. The Hang out reopens if
-the server restarts, and nothing in the room itself is saved, but gifts, friends, My Moves,
-coins, homes, fish and the party meter are. During a Code race, the projector shows the
-job, who has solved it, and the fastest code between jobs.
+On `/pixel/teacher` you can close the Hang out, start a party, a star shower or a **💻 Code
+race for everyone** (everyone outside in the Hang out is put in it, and the race starts 15
+seconds later; anyone can leave), and see who's there. When a student has a game going, the
+page says which one and how long is left, and **⏹ End this game** stops it with no prizes,
+so a Code race for everyone can start. **📸 Class photo** lines up everyone outside in the
+Park in rows, in name order, and the projector looks there and says "Say cheese!" so you can
+take a picture. For a minute and a half the projector also has **💾 Save the photo**, which downloads the picture
+with everyone's name tags. Press 🎬 Auto on the projector afterwards. The Hang out column says where
+each student is and what they're doing (🌳 Park, 💃 Dancing, 🎮 In a game), and how many of
+today's jobs they've done (🎯 2 of 3). The Hang out reopens if the server restarts, and
+nothing in the room itself is saved, but gifts, friends, My Moves, coins, homes, fish and
+the party meter are. During any game, the projector has a card for it (who's IT, the light,
+the dance, who's been found), and 🎬 Auto follows whoever is IT or seeking. During a Code
+race, it shows the job, who has solved it, and the fastest code between jobs.
 
 **Words:** students tap words from a list. `say()` takes any words, so a My Move only
 shows lines that are on that list, and a line that isn't gets left out. **Let them type
@@ -280,7 +320,8 @@ on your page. A My Move's name is picked from a list.
 
 **🌿 Calm** at the top of the page cuts the flying bits, stops the wiggling, and holds
 the background still. It's remembered on each computer, and it starts on for anyone
-whose computer is set to reduce motion.
+whose computer is set to reduce motion. In the Hang out, **🏷️ Hide names** next to it hides the name tags
+over the pals on that screen.
 
 ## How a pal comes alive
 
