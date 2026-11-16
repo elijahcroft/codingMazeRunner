@@ -288,7 +288,7 @@ function howToGetLong(key) {
   if (item.goal) { const [have, n, what] = goalLeft(key); return `${GOAL_WORDS[what][1](n)} to unlock the ${item.name}! You have ${have}.`; }
   if (item.price) return `The ${item.name} is in the 🛍️ Shop for 🪙 ${item.price}.`;
   if (item.class) return `The ${item.name} comes when the class party meter fills up!`;
-  return `The ${item.name} can come out of a 🎁 gift box. Finish a mission or play a game to get one!`;
+  return `The ${item.name} can come out of a 🎁 gift box. Finish a mission, play a game, or do all 3 of today's 🎯 jobs to get one!`;
 }
 function buildMePane(box) {
   const {gifts, catalog, wear, friends} = S.hang, pics = finishedDrawings();
@@ -310,7 +310,7 @@ function buildMePane(box) {
     `<button data-pal="${esc(d.key)}" aria-pressed="${S.pal === d.key}"><canvas data-palpic="${esc(d.key)}"></canvas>${esc(d.title || "My drawing")}</button>`).join("") : "";
   const book = S.hang.fish_book, fish = S.hang.fish;
   const hide = `<button class="wide" data-hidename aria-pressed="${!!S.hang.hide_name}"><span>🙈</span>${S.hang.hide_name ? "Your name tag is invisible to others. Click to show it." : "Make my name tag disappear"}</button>`;
-  box.innerHTML = hide + who + goals + (gifts.length ? "" : `<p class="me-note">Finish a mission to get a gift box! Click a 🔒 thing to see how to get it.</p>`) + slots +
+  box.innerHTML = hide + who + goals + (gifts.length ? "" : `<p class="me-note">Finish a mission or all 3 of today's 🎯 jobs to get a gift box! Click a 🔒 thing to see how to get it.</p>`) + slots +
     `<h4>🙌 Friends you've high-fived: ${friends.length}</h4><p class="me-note">${friends.length ? friends.map(esc).join(", ") : "Click a friend's pal to high-five them."}</p>` +
     `<h4>🎣 Fish book: ${Object.keys(fish).length} of ${Object.keys(book).length}</h4><p class="me-note fish-book">${Object.keys(book).map(k =>
       fish[k] ? `<span title="${esc(book[k][1])}">${book[k][0]}<small>×${fish[k]}</small></span>` : "❔").join(" ")}</p>` +
