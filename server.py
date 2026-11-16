@@ -6437,7 +6437,7 @@ def code_run(p, spot, game, data, now):
     if seat in game["solved"]:                  # solved already: this run is for the bonus
         out = pixel.race_check(race_bonus(game["job"]), code)
         if not out["ok"]:
-            return {"ok": True, "solved": True, "bonus": False, "message": out["message"].replace("The job is", "The bonus is"), "line": out["line"]}
+            return {"ok": True, "solved": True, "bonus": False, "message": out["message"].replace("The job wants", "The bonus wants"), "line": out["line"]}
         game.setdefault("bonus", []).append(seat)
         code_spotlight(spot, game["job"], out["steps"], now, "🌟 Bonus!", False)
         coins = pixel_pay(p, CODE_BONUS_COINS, play=False)
@@ -7190,7 +7190,7 @@ def chests_view(entry):
         job = pixel.chest_job(place, mine["day"])
         view.append({"place": place, "x": x, "deep": deep, "open": place in mine["open"], "job": job["job"],
                      "icons": pixel.race_icons(job["want"]), "chips": job.get("chips", []), "loops": job.get("loops", 0),
-                     "hint": job["answer"]})
+                     "hint": job["answer"], "words": pixel.race_words(job["want"]), "moves": pixel.chest_chips(job)})
     return view
 
 
@@ -7224,9 +7224,9 @@ def room_chest(p, spot, data):
     if place in mine["open"]:
         return {"ok": True, "open": True, "message": "This chest is open! It locks again tomorrow with a new puzzle."}
     job = pixel.chest_job(place, mine["day"])
-    out = pixel.race_check(job, code)
+    out = pixel.race_check(job, code, "The chest wants")
     if not out["ok"]:
-        return {"ok": True, "open": False, "message": out["message"].replace("The job is", "The chest wants"), "line": out["line"]}
+        return {"ok": True, "open": False, "message": out["message"], "line": out["line"]}
     first = not chest_counts()[place]
     mine["open"].append(place)
     entry["chest_count"] += 1

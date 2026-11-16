@@ -934,7 +934,7 @@ const PalHang = (() => {
   /** The 🧰 chest this pal is standing at and hasn't opened today. The chests come from the server. */
   function chestAt(places, x, deep, chests) {
     const at = placeAt(places, x);
-    return (at && (chests || []).find(c => c.place === at.scene && !c.open && Math.abs(x - at.left - c.x) < 20 && Math.abs(deep - c.deep) < .2)) || null;
+    return (at && (chests || []).find(c => c.place === at.scene && !c.open && Math.abs(x - at.left - c.x) < 28 && Math.abs(deep - c.deep) < .2)) || null;     // 28: a pal stops beside it, not on it
   }
   // ---- Homes ---------------------------------------------------------------------------
   // A home is a row of rooms, one screen each, with open doorways between them. Each room
@@ -1830,6 +1830,13 @@ const PalHang = (() => {
       if (!playing) for (const c of state.chests || []) {
         const i = places.indexOf(c.place), x = i * W + c.x - cam;
         if (i >= 0 && "count" in c && x > 0 && x < W) sign(g, x, `🧰 ${c.job}${c.count ? ` ✅ ${c.count}` : ""}`, seatFeet(c.deep) - 66, 6);     // above a pal standing at it
+      }
+      // On a student's screen, a shut chest says it can be opened with code.
+      const me = (state.room || []).find(m => m.seat === state.you);
+      if (!playing) for (const c of state.chests || []) {
+        const i = places.indexOf(c.place), x = i * W + c.x - cam;
+        if (me && Math.abs(me.x - i * W - c.x) < 34) continue;     // standing at it: the panel on the right says it all
+        if (i >= 0 && !("count" in c) && !c.open && x > 0 && x < W) sign(g, x, "🧰 Code me open!", seatFeet(c.deep) - 30 + (PalStage.calm ? 0 : Math.round(Math.sin(now / 400) * 1.5)), 6);
       }
     }
     frame = requestAnimationFrame(paint);

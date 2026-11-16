@@ -23,7 +23,12 @@ class Jobs(unittest.TestCase):
 
     def test_misses_say_what_happened(self):
         job = pixel.RACE_JOBS[0][0]
-        self.assertIn("🦘 🦘 🦘", pixel.race_check(job, "jump()\n" * 3)["message"])
+        three = pixel.race_check(job, "jump()\n" * 3)["message"]
+        self.assertIn("🦘 jump 3 times", three)
+        self.assertIn("1 too many", three)
+        self.assertIn("one more", pixel.race_check(job, "jump()")["message"])
+        self.assertIn("Move 1 should be 🦘 jump", pixel.race_check(job, "spin()\njump()")["message"])
+        self.assertIn("loop smaller", pixel.race_check(job, "for i in range(9):\n    jump()")["message"])
         self.assertIn("anything", pixel.race_check(job, "")["message"])
         bug = pixel.race_check(job, "jmp()")
         self.assertEqual(bug["line"], 1)
@@ -119,7 +124,7 @@ class Race(unittest.TestCase):
         coins, score = server.pixel_entry(mia)["coins"], dict(game["score"])
         miss = self.run_code(mia, "jump()\njump()\njump()")
         self.assertEqual((miss["solved"], miss["bonus"]), (True, False))
-        self.assertIn("The bonus is 🦘 🦘 🦘 🦘", miss["message"])
+        self.assertIn("The bonus wants: 🦘 jump 4 times", miss["message"])
         out = self.run_code(mia, "jump()\njump()\njump()\njump()")      # copying the lines again works
         self.assertEqual((out["solved"], out["bonus"]), (True, True))
         self.assertEqual(server.pixel_entry(mia)["coins"], coins + server.CODE_BONUS_COINS)

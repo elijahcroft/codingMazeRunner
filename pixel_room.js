@@ -61,6 +61,7 @@ function tap(what, more = {}) {
 
 // ---- The buttons ----------------------------------------------------------------------
 function buildRoomButtons() {
+  if (bannerHeld && !chestBusy()) { const held = bannerHeld; bannerHeld = null; setTimeout(() => banner(...held), 600); }
   document.querySelectorAll("[data-pane]").forEach(b => b.setAttribute("aria-pressed", b.dataset.pane === roomPane));
   const box = $("roomButtons");
   box.classList.remove("games-pane");
@@ -432,6 +433,7 @@ function paintMoveButton() {
   const b = $("myMove"), move = S.hang.move;
   const open = S.chapters.flatMap(c => c.levels).find(l => l.key === "m1").open;
   b.classList.toggle("none-yet", !move);
+  b.hidden = !move && !open;      // locked, it only repeats what 💻 Next mission says, so it waits out of the way
   if (!move) {
     b.disabled = !open;
     b.innerHTML = open ? "<b>🌟 Make your My Move</b><small>Code a routine and it becomes this button</small>"
@@ -487,7 +489,12 @@ async function pressMyMove() {
 }
 
 // ---- What just happened -------------------------------------------------------------------
-function banner(html, ms, big = false) {
+// While a student codes at a shut 🧰 chest, nothing covers the world: small news is skipped,
+// and big news waits until they open it or leave. The teacher's class photo still shows.
+let bannerHeld = null;
+const chestBusy = () => roomPane === "chest" && chestNow() && !chestNow().open;
+function banner(html, ms, big = false, now = false) {
+  if (!now && chestBusy()) { if (big) bannerHeld = [html, ms, big]; return; }
   const el = $("hangBanner");
   el.innerHTML = html;
   el.className = big ? "big" : "";
@@ -519,7 +526,7 @@ function roomEvent(e, you) {
     if (e.reward && e.reward.kind === "gift" && !S.hang.gifts.includes(e.reward.key)) S.hang.gifts.push(e.reward.key);
     if (roomPane === "me") buildRoomButtons();
   } else if (e.kind === "photo") {             // the teacher's class photo: everyone lined up in the Park
-    banner(`📸 Class photo! Say cheese!<small>Look at the big screen</small>`, 5000, true);
+    banner(`📸 Class photo! Say cheese!<small>Look at the big screen</small>`, 5000, true, true);
     PalStage.SFX.play("ding");
   } else if (e.kind === "danceparty") {        // 3 pals danced at once
     roomStage.roomApply({kind: "fx", name: "confetti", x: e.x}, false);
@@ -701,6 +708,9 @@ function walkTo(x, y) {
   const mine = myMember();
   if (!mine) return;
   if (inRound()) { tap("walk", {x, y}).then(out => { if (out?.error) tipFor(out.error); }); return; }
+  // Walking onto a shut 🧰 chest stops beside it, so the pal doesn't hide it.
+  const places = roomStage.state.places || ["park"], c = !atHome() && PalHang.chestAt(places, x, y, S.hang.chests);
+  if (c) { const cx = places.indexOf(c.place) * PalStage.W + c.x; x = cx + (mine.x < cx ? -22 : 22); }
   roomStage.roomApply({kind: "walk", seat: mine.seat, x, y});     // at once, without waiting for the server
   tap("walk", {x: Math.round(x), y: Math.round(y * 100) / 100});
 }
@@ -1048,7 +1058,7 @@ function lookForWinter(mine) {
   if (!villageHello && v >= 0) {           // once a winter on each computer: where the Snow Village is
     villageHello = true;
     const key = "pixelVillageHello:" + me + ":" + new Date().getFullYear();
-    try { if (!localStorage.getItem(key)) { localStorage.setItem(key, "1"); setTimeout(() => banner("❄️ The Snow Village is open!<small>Find it in 🏞️ Place. Hang a drawing on the class tree!</small>", 6000, true), 8000); } } catch (_) {}
+    try { if (!localStorage.getItem(key)) { localStorage.setItem(key, "1"); setTimeout(() => banner("❄️ The Snow Village is open!<small>Find it in 🏞️ Go to. Hang a drawing on the class tree!</small>", 6000, true), 8000); } } catch (_) {}
   }
 }
 function clickVillage(spot, mine) {

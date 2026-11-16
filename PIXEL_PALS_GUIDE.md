@@ -188,11 +188,11 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
 
 - **One long world:** the places sit side by side, and the camera follows your pal. Walk
   to the edge of the screen to reach the next place. A full party meter makes the world
-  longer. 🏞️ Place jumps just that student somewhere, not the whole class. A student
+  longer. 🏞️ Go to jumps just that student somewhere, not the whole class. A student
   arriving, or jumping somewhere, lands on a free spot with room around it, so a whole
   class arriving at once fills the Park and then spills into the next place instead of
   landing in one heap.
-- **Walking:** click the ground. Arrow keys work too. 🏞️ Place also lists everyone outside under
+- **Walking:** click the ground. Arrow keys work too. 🏞️ Go to also lists everyone outside under
   **👫 Go to a friend**, which puts your pal right next to them.
 - **Toys (pink rings):** click the fountain, trampoline, snowman, rocket and so on. The pal
   walks over and it goes off for everyone nearby.
@@ -202,10 +202,16 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   remove one student's, or all of them.
 - **💎 Gems:** three in each place. Each student finds their own. All of them earns
   Treasure Hunter.
-- **🧰 Code chests:** one treasure chest in each place, opened only with code. When a pal
-  walks up to one, the side panel shows the chest's puzzle ("Jump 2 times. 🦘 🦘") with the
-  same code box as the Code race: tap green commands or type, then ▶ Run my code. A miss
-  says what the pal did against what the chest wants. 💡 Help gives a tip, and pressing More
+- **🧰 Code chests:** one treasure chest in each place, opened only with code. A shut chest
+  has a **🧰 Code me open!** sign over it on the student's screen. A pal that walks onto a chest
+  stops beside it, so the chest stays in view. The side panel then becomes the chest and nothing
+  else: "Code the chest open!", what it wants in words and pictures ("🦘 jump 2 times"),
+  numbered steps, and a code box with only the green buttons that puzzle needs (🔁 for only on
+  loop chests). **← Leave** goes back to the usual buttons. A miss says in a pink box what the
+  pal did, what the chest wants, and the one thing to change ("So close! Just one more: 🦘
+  jump()", "That's 1 too many!", "Move 1 should be..."). The Code race uses the same messages.
+  Small pop-ups like the star shower are skipped while a student codes a chest, and big ones
+  (class party, unlocks) wait until the chest is open or they leave. 💡 Help gives a tip, and pressing More
   help after 30 seconds shows the whole answer. Opening a chest pays 10 coding coins (no
   daily limit), and the pal acts the code out in a spotlight, so friends nearby can clap.
   The Park chest is easiest (commands in order). Chests further along want a loop, then two
@@ -214,7 +220,7 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   new puzzle, the same for the whole class, so friends can help each other. Opening every
   chest in a day puts a line on the projector, and so does being the first in the class to
   open each chest that day. While a student is at a chest, the line under the world keeps its
-  puzzle in view. When "Code a chest open" is one of today's 🎯 jobs, its **🧰 Take me** button
+  puzzle in view. After opening one, **🧰 Take me to the next chest** walks them on. When "Code a chest open" is one of today's 🎯 jobs, its **🧰 Take me** button
   walks the pal to the nearest chest still shut. On the projector, every chest has a sign over
   it with its puzzle and how many have opened it today (so you can point at one and read the
   code together), and the jobs card counts the chests opened today. The teacher page lists
@@ -237,7 +243,7 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
 - **🪩 Dance party:** when 3 pals in one place press 💃 Dance within 4 seconds of each other,
   everyone there gets confetti and a banner, and the class party meter goes up by 1 (at most once
   a minute). Nothing on screen says so, so it's a nice one to let the class discover.
-- **👋 Do, 💬 Say, 🎉 Party, 🏞️ Place:** moves, words to tap, things to throw, and where
+- **👋 Do, 💬 Say, 🎉 Party, 🏞️ Go to:** moves, words to tap, things to throw, and where
   everyone is. 💬 Say puts the wedding words first in the Wedding garden, and last everywhere
   else.
 - **🪑 Be a prop:** next to "You are...", this turns the pal into a still picture with no
@@ -356,7 +362,7 @@ or the projector until then. The words are `GUESS_WORDS` in `pixel.py`. A drawer
 write letters; the tip asks them not to.
 
 **❄️ The Snow Village.** From 16 November to 31 December, the world has one more place at its
-far end: a snowy evening village. Students get there by walking, from 🏞️ Place, or with
+far end: a snowy evening village. Students get there by walking, from 🏞️ Go to, or with
 **❄️ Take me** on the Snow Village card in Games, and each one sees a one-time banner saying
 it's open. In it:
 - **🎄 The class tree:** walking up to it (or clicking it) opens a pane where a student hangs

@@ -1918,7 +1918,44 @@ def race_icons(names):
     return shown + (" ..." if len(names) > 12 else "")
 
 
-def race_check(job, code):
+RACE_WORDS = {"say": "say", "jump": "jump", "wave": "wave", "spin": "spin", "dance": "dance", "cheer": "cheer",
+              "hearts": "hearts", "stars": "stars", "confetti": "confetti"}
+
+
+def race_words(names):
+    """Moves in words and pictures, with repeats counted: 🦘 jump 3 times, then 🌀 spin."""
+    for size in range(2, len(names) // 2 + 1):      # a pattern done again and again
+        times = len(names) // size
+        if len(names) % size == 0 and list(names) == list(names[:size]) * times and len(set(names[:size])) > 1:
+            return f"{race_words(names[:size])}. Do that {times} times"
+    runs = []
+    for name in names:
+        if runs and runs[-1][0] == name:
+            runs[-1][1] += 1
+        else:
+            runs.append([name, 1])
+    shown = [f"{RACE_ICONS.get(n, '❓')} {RACE_WORDS.get(n, n)}" + (f" {k} times" if k > 1 else "") for n, k in runs[:8]]
+    return ", then ".join(shown) + (" ..." if len(runs) > 8 else "")
+
+
+def race_miss(did, want, wants, looped=False):
+    """What a student's pal did against what's wanted, and the one thing to change."""
+    if did == want[:len(did)]:
+        missing = len(want) - len(did)
+        nxt = want[len(did)]
+        tip = (f"Good start! {missing} more to go. Next is {RACE_ICONS.get(nxt, '')} {nxt}()."
+               if missing > 1 else f"So close! Just one more: {RACE_ICONS.get(nxt, '')} {nxt}().")
+    elif did[:len(want)] == want:
+        extra = len(did) - len(want)
+        tip = (f"That's {extra} too many! Make the number in the loop smaller." if looped
+               else f"That's {extra} too many! Take away {'a line' if extra == 1 else f'{extra} lines'}.")
+    else:
+        i = next(i for i, (a, b) in enumerate(zip(did, want)) if a != b) if any(a != b for a, b in zip(did, want)) else min(len(did), len(want))
+        tip = f"Move {i + 1} should be {RACE_ICONS.get(want[i], '')} {want[i]}, but your pal did {RACE_ICONS.get(did[i], '')} {did[i]}."
+    return f"Your pal did: {race_words(did)}.\n{wants}: {race_words(want)}.\n{tip}"
+
+
+def race_check(job, code, wants="The job wants"):
     """Runs a student's code for a Code race job. Returns whether it does the job,
     a message for the student, the error's line, and the steps for the Hang out."""
     out = perform(code, PIP, commands=RACE_COMMANDS)
@@ -1933,9 +1970,9 @@ def race_check(job, code):
     if not did:
         message = "Your pal didn't do anything yet. Tap a green command to add it."
     elif did != want:
-        message = f"Your pal did {race_icons(did)}. The job is {race_icons(want)}."
+        message = race_miss(did, want, wants, r.fors + r.whiles > 0)
     elif job.get("said") and [_plain(s) for s in r.said] != [_plain(s) for s in job["said"]]:
-        message = ("Your pal said " + ", ".join(f'"{s}"' for s in r.said) + ". The job wants "
+        message = ("Your pal said " + ", ".join(f'"{s}"' for s in r.said) + f". {wants} "
                    + ", ".join(f'"{s}"' for s in job["said"]) + ".")
     elif r.fors + r.whiles < job.get("loops", 0):
         message = ("That's the right moves! Now use a loop: tap 🔁 for." if job["loops"] == 1
@@ -1962,6 +1999,17 @@ CHEST_JOBS = RACE_JOBS + ((
     {"job": "Spin 2 times, then make hearts 3 times. Use 2 loops!", "want": ["spin"] * 2 + ["hearts"] * 3, "loops": 2,
      "answer": "for i in range(2):\n    spin()\nfor i in range(3):\n    hearts()"}),)
 CHEST_COINS = 10           # coding coins, so no daily limit
+
+
+def chest_chips(job):
+    """The green buttons at a chest: only the moves its puzzle needs, so nothing else gets in the way."""
+    chips = list(job.get("chips", []))
+    for name in dict.fromkeys(job["want"]):
+        if name == "say":
+            chips += [] if any(c.startswith("say(") for c in chips) else [f'say("{w}")' for w in dict.fromkeys(job.get("said", ["Hello!"]))]
+        else:
+            chips.append(f"{name}()")
+    return chips
 
 
 def chest_job(place, day):

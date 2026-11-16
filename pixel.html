@@ -457,6 +457,7 @@
   #myMove small { font-size: 13px; font-weight: 800; opacity: .85; }
   #myMove:hover:not(:disabled) { filter: brightness(1.05); }
   #myMove:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 #d9779a; }
+  #myMove[hidden] { display: none; }
   #myMove:disabled { background: #e7e4d8; color: #6d6a58; box-shadow: none; cursor: default; }
   #myMove.none-yet:not(:disabled) { background: linear-gradient(135deg, #bfe7dc, #d7c9f4); color: #2c4a52; box-shadow: 0 4px 0 #a3bcc4; }
   #nextMission { flex: none; display: grid; gap: 0; padding: 4px 10px; border: 3px solid #7a3fe4; border-radius: 16px; background: #f3ecff; color: #3b1f6b; cursor: pointer; font: inherit; text-align: left; }
@@ -551,6 +552,19 @@
   .room-buttons .race-run:hover:not(:disabled) { background: linear-gradient(135deg, #7f5bef, #b47bef); }
   .race-msg { grid-column: 1 / -1; margin: 0; min-height: 1.3em; font-size: 15px; font-weight: 800; color: #8a2f4f; overflow-wrap: anywhere; }
   .race-msg.good { color: #2d6a3a; }
+  .race-msg.said { padding: 8px 10px; border-radius: 12px; background: #ffe6ec; border: 2px solid #f2a7bc; white-space: pre-line; line-height: 1.35; }
+  .race-msg.said.good { background: #e3f6e6; border-color: #9fd6aa; }
+  .race-row.two { grid-template-columns: repeat(2, 1fr); }
+  .chest-head { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; }
+  .chest-head h4 { margin: 0; font-size: 19px; }
+  .chest-head small { font-size: 13px; font-weight: 700; color: #4d6f68; }
+  .chest-icon { font-size: 34px; line-height: 1; }
+  .room-buttons .chest-head button { min-height: 34px; padding: 4px 10px; font-size: 14px; }
+  .chest-want { grid-column: 1 / -1; display: grid; gap: 2px; padding: 8px 12px; border-radius: 12px; background: #fff3c4; border: 2px solid #e8cf7a; color: #5a4208; }
+  .chest-want b { font-size: 19px; line-height: 1.3; }
+  .chest-want small { font-size: 13px; font-weight: 700; }
+  .chest-steps { grid-column: 1 / -1; margin: 0; padding-left: 22px; font-size: 14px; font-weight: 700; color: #3b4f4c; }
+  .hang-view.chesting #roomTabs { display: none; }     /* at a chest, only the chest: ← Leave brings the buttons back */
   .race-bonus { grid-column: 1 / -1; margin: 0; padding: 6px 10px; border-radius: 12px; background: #fff3c4; color: #5a4208; font-size: 15px; font-weight: 900; }
   .race-reveal { grid-column: 1 / -1; margin: 0; padding: 8px 10px; border-radius: 12px; background: #27303f; color: #e9f1e2; font: 700 14px/1.4 var(--mono); white-space: pre-wrap; }
   #seekerCurtain { position: absolute; inset: 0; z-index: 20; background: #e9f1e2; color: #27484a; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 16px; border-radius: inherit; }
@@ -903,15 +917,15 @@
       <button id="clapGo" hidden></button>
       <div id="palStrip" hidden><canvas id="palStripPic"></canvas><span>You are <b id="palStripName"></b></span><button id="palSwitch">🔄 Switch</button><button id="palFollow" aria-pressed="true"></button><button id="palProp" aria-pressed="false" title="Turn your pal into a still picture with no face or name, so friends have to find you">🪑 Be a prop</button></div>
       <div class="room-tabs" id="roomTabs">
-        <button data-pane="games">Games</button>
+        <button data-pane="games">🎯 Games</button>
         <button data-pane="do">👋 Do</button>
         <button data-pane="say">💬 Say</button>
-        <button data-pane="party">🎉 Party</button>
-        <button data-pane="place">🏞️ Place</button>
-        <button data-pane="art">🖼️ Art</button>
+        <button data-pane="place">🏞️ Go to</button>
         <button data-pane="home">🏠 Home</button>
-        <button data-pane="shop">🛍️ Shop</button>
+        <button data-pane="party">🎉 Party</button>
         <button data-pane="me">🧢 Me</button>
+        <button data-pane="shop">🛍️ Shop</button>
+        <button data-pane="art">🖼️ Art</button>
       </div>
       <div class="room-buttons" id="roomButtons"></div>
       <form id="roomType" class="life-say" hidden>

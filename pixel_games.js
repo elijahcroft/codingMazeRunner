@@ -187,6 +187,7 @@ $("roomButtons").addEventListener("click", e => {
   else if (e.target.closest("[data-ink]")) { drawInk = +e.target.closest("[data-ink]").dataset.ink; buildRoomButtons(); }
   else if (e.target.closest("[data-drawwipe]")) { drawPending.clear(); tap("game", {action: "paint", wipe: true}); }
   else if (e.target.closest("[data-guess]")) drawGuess(e.target.closest("[data-guess]"));
+  else if (e.target.closest("[data-chestleave]")) { roomPane = "do"; buildRoomButtons(); }     // the chest stays shut; walk back to try again
 });
 
 // ---- Code race: everyone codes the same little job ------------------------------------------
@@ -215,15 +216,16 @@ function racePane(g, you) {
   body += `<p class="me-note race-score">Solved: ${names || "nobody yet"} · Your points: ${g.score}<br><small>Solve it: 1 point. First: 2 points. +3 🪙 each time! 🌟 Bonus: +1 🪙</small></p>`;
   return body;
 }
-function raceEditor(job, help) {
-  const chips = ["for i in range(3):", ...RACE_CHIPS, ...job.chips];
+function raceEditor(job, help, chest = false) {
+  // At a 🧰 chest, only the moves its puzzle needs, and the loop only when it wants one.
+  const loops = !chest || job.loops, chips = [...(loops ? ["for i in range(3):"] : []), ...(chest ? job.moves : [...RACE_CHIPS, ...job.chips])];
   return `<textarea id="raceCode" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Your code"
-      placeholder="Tap the green commands, or type here">${esc(raceCode)}</textarea>
+      placeholder="${chest ? "Tap a green button ↓" : "Tap the green commands, or type here"}">${esc(raceCode)}</textarea>
     <div class="race-chips">${chips.map(c => `<button data-put="${esc(c)}"${c.startsWith("for") ? ' class="loop"' : ""}>${c.startsWith("for") ? "🔁 " : ""}${esc(c)}</button>`).join("")}</div>
     <button class="wide race-run" data-race="run">▶ Run my code</button>
-    <div class="race-row"><button data-race="undo">⌫ Undo line</button><button data-race="out">⇤ Out of loop</button>
+    <div class="race-row${loops ? "" : " two"}"><button data-race="undo">⌫ ${chest ? "Take back" : "Undo line"}</button>${loops ? `<button data-race="out">⇤ Out of loop</button>` : ""}
       ${help ? `<button data-race="help">💡 ${raceHelp ? "More help" : "Help"}</button>` : ""}</div>
-    <p class="race-msg${raceGood ? " good" : ""}" id="raceMsg" role="status">${esc(raceMsg)}</p>`;
+    <p class="race-msg${raceGood ? " good" : ""}${raceMsg ? " said" : ""}" id="raceMsg" role="status">${esc(raceMsg)}</p>`;
 }
 function raceTip(job) {
   return job.loops === 2 ? "Use two 🔁 for lines. Tap ⇤ Out of loop before the second one, so it isn't inside the first."
@@ -262,7 +264,7 @@ function raceAdd(line) {
 function raceSay(text, good) {
   raceMsg = text; raceGood = good;
   const el = $("raceMsg");
-  if (el) { el.textContent = text; el.classList.toggle("good", good); }
+  if (el) { el.textContent = text; el.classList.toggle("good", good); el.classList.toggle("said", !!text && text !== "Running..."); }
 }
 async function raceButton(what) {
   if (what === "help") { raceHelp = Math.min(2, raceHelp + 1); buildRoomButtons(); return; }
@@ -338,17 +340,25 @@ function buildChestPane(box) {
   if (!c) { box.innerHTML = ""; return; }
   const key = `chest:${c.place}:${c.job}`;
   if (raceFor !== key) { raceFor = key; raceCode = ""; raceMsg = ""; raceGood = false; raceHelp = 0; raceOut = 0; chestSince = performance.now(); chestJust = ""; }
-  const opened = S.hang.chests.filter(x => x.open && world.includes(x.place)).length;
-  let body = `<h4>🧰 The ${esc(PLACE_NAMES[c.place][1])} chest <small>· ${opened} of ${world.length} open today · +10 🪙 each</small></h4>`;
-  if (c.open) body += `<p class="race-msg good">${esc(chestJust || "✅ You opened it!")}</p><p class="me-note">It locks again tomorrow with a new puzzle.</p>`;
-  else {
+  const here = S.hang.chests.filter(x => world.includes(x.place)), opened = here.filter(x => x.open).length;
+  let body = `<div class="chest-head"><span class="chest-icon" aria-hidden="true">${c.open ? "🪙" : "🧰"}</span>
+      <div><h4>${c.open ? "You opened it!" : "Code the chest open!"}</h4><small>${esc(PLACE_NAMES[c.place][1])} chest${c.open ? "" : " · wins 10 🪙"}</small></div>
+      <button data-chestleave>← Leave</button></div>`;
+  if (c.open) {
+    const left = here.length - opened;
+    body += `<p class="race-msg good said">${esc(chestJust || "✅ You opened it!")}</p>
+      <p class="me-note">🧰 You've opened ${opened} of ${here.length} chests today.${left ? "" : " That's all of them! New puzzles tomorrow."}</p>` +
+      (left ? `<button class="wide race-run" data-go-chest="1">🧰 Take me to the next chest</button>` : "");
+  } else {
     let help = "";
     if (raceHelp) {
       const wait = Math.ceil(CHEST_ANSWER_AFTER - (performance.now() - chestSince) / 1000);
       help = `<p class="me-note">💡 ${raceTip(c)}</p>` + (raceHelp < 2 ? "" : wait <= 0 ? `<pre class="race-reveal">${esc(c.hint)}</pre>`
         : `<p class="me-note">The whole answer shows in ${wait}s. Try first, then press More help again!</p>`);
     }
-    body += `<p class="race-bonus">🔒 ${esc(c.job)} ${esc(c.icons)}</p>` + raceEditor(c, true) + help;
+    body += `<div class="chest-want"><small>🔒 The chest wants your pal to:</small><b>${esc(c.words || c.icons)}</b>${c.loops ? `<small>💡 ${esc(c.job)}</small>` : ""}</div>
+      <ol class="chest-steps">${c.loops ? "<li>Tap <b>🔁 for</b>, then type how many times.</li><li>Tap the moves to put them in the loop.</li>"
+        : "<li>Tap the green buttons to add code.</li>"}<li>Press <b>▶ Run my code</b>.</li></ol>` + raceEditor(c, true, true) + help;
   }
   box.innerHTML = body;
   if (raceHelp && !c.open) box.lastElementChild.scrollIntoView({block: "nearest"});      // the help, under the code box
