@@ -78,6 +78,17 @@ class PokesOverHttp(unittest.TestCase):
         self.assertEqual(entry["coins"], coins)
         self.assertEqual(self.post("/pixel/poke", {"id": me, "level": "k2", "code": K2, "clicks": "3"}), {"error": "bad"})
 
+    def test_a_click_keeps_the_shows_own_surprises(self):
+        me = self.post("/join", {"name": "Mia"})["id"]
+        for key in pixel.LEVEL_ORDER[:pixel.LEVEL_ORDER.index("r1") + 1]:      # randint comes with Surprise!
+            self.post("/pixel/run", {"id": me, "level": key, "code": pixel.LEVEL_BY_KEY[key]["reference"]})
+        code = "n = randint(1, 1000)\nsay(n)\ndef on_click():\n    say(n)"
+        for _ in range(3):
+            show = self.post("/pixel/run", {"id": me, "level": "free", "code": code})
+            said = next(s["text"] for s in show["steps"] if s["do"] == "say")
+            out = self.post("/pixel/poke", {"id": me, "level": "free", "code": code, "events": ["click"], "seed": show["seed"]})
+            self.assertEqual(out["steps"][0]["text"], said)
+
     def test_the_free_stage_listens_too(self):
         me = self.post("/join", {"name": "Mia"})["id"]
         for key in pixel.LEVEL_ORDER[:pixel.LEVEL_ORDER.index(pixel.FREE_AFTER) + 1]:

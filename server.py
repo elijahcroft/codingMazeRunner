@@ -7282,7 +7282,9 @@ def pixel_post(path, data):
             if not pixel_is_open(entry, key):
                 return {"error": "🔒 That mission isn't open yet."}
             commands = pixel.free_commands(pixel.LEVEL_ORDER[pixel_frontier(entry)]) if key == "free" else pixel.commands_for(key)
-        return pixel.poke(code, pal, events, commands)
+        seed = data.get("seed")
+        seed = seed % 10 ** 7 if isinstance(seed, int) and not isinstance(seed, bool) else 0
+        return pixel.poke(code, pal, events, commands, seed=seed)
     if path == "/pixel/run":
         key = str(data.get("level", ""))
         with lock:

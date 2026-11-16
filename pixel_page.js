@@ -691,7 +691,7 @@ let poke = null;
 const POKE_KEYS = {ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down", " ": "space"};
 function listenForPokes(out) {
   const hears = out.error ? [] : (out.events || []).filter(e => e === "click" || e === "key");
-  poke = hears.length ? {code: $("code").value, level: mode, events: [], ticket: 0, hears} : null;
+  poke = hears.length ? {code: $("code").value, level: mode, events: [], ticket: 0, hears, seed: out.seed || 0} : null;     // the show's own surprises
   $("stageHost").classList.toggle("pokeable", !!poke && hears.includes("click"));
   if (!poke) return;
   if (hears.includes("key")) document.activeElement.blur();      // so the keys go to the pal, not the code
@@ -713,7 +713,7 @@ async function sendPoke(event) {
   const mine = poke, ticket = ++mine.ticket;
   mine.events.push(event);
   if (event === "click") StageSFX.play("click");
-  const out = await post("/pixel/poke", {id: me, level: mine.level, code: mine.code, events: mine.events}).catch(() => null);
+  const out = await post("/pixel/poke", {id: me, level: mine.level, code: mine.code, events: mine.events, seed: mine.seed}).catch(() => null);
   if (poke !== mine || ticket !== mine.ticket) return;          // a newer click, or a new show, took over
   if (!out || out.error) {
     stopPokes();
