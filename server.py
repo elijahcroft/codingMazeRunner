@@ -6175,6 +6175,8 @@ def code_tick(game, seats, now):
             names = " and ".join(seats[s][1]["name"] for s in winners)
             game_finish(f"💻 Top coder{'s' if len(winners) > 1 else ''}: {names}!" if winners else "Good coding, everyone!",
                         reward=True, winners=winners)
+            if winners:
+                pixel_feed_add(f"💻 Code race: top coder{'s' if len(winners) > 1 else ''} {names}!")
         return
     if now < game["until"] and not all(s in game["solved"] for s in game["joined"]):
         return

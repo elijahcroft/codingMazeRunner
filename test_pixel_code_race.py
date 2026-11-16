@@ -163,6 +163,7 @@ class Race(unittest.TestCase):
             self.advance(server.CODE_PAUSE)
         self.assertEqual(game["phase"], "results")
         self.assertIn("Ben", game["message"])
+        self.assertEqual(server.pixel_feed[-1]["text"], "💻 Code race: top coder Ben!")     # Just now, on the projector
         reward = game["rewards"][self.seat(self.kids[1])]
         self.assertTrue(reward["won"])
         self.assertIn("play_code", server.pixel_entry(self.kids[1])["badges"])
