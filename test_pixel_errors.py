@@ -41,6 +41,29 @@ class MistakesSayWhatToType(unittest.TestCase):
     def test_a_command_nobody_made_still_offers_def(self):
         self.assertIn("def zoom():", error("zoom()"))
 
+    def test_two_equals_on_a_line_of_its_own_means_one(self):
+        e = error('name == "Luna"\nsay(name)')
+        self.assertIn('name = "Luna"', e)
+        self.assertIn("one  =", e)
+
+    def test_the_name_on_the_wrong_side(self):
+        e = error('"Luna" = name')
+        self.assertIn('name = "Luna"', e)
+        self.assertNotIn("==", e)
+
+    def test_a_for_loop_with_no_counter(self):
+        self.assertIn("for i in range(5):", error("for in range(5):\n    jump()"))
+
+    def test_a_colon_line_with_nothing_under_it(self):
+        e = error("for i in range(5):")
+        self.assertIn("needs a line under it", e)
+
+    def test_a_spelling_slip_in_a_name_they_made(self):
+        e = error('name = "Luna"\nsay(f"Hi {nam}")')
+        self.assertIn("Did you mean  name", e)
+        e = error('jumps = 3\nfor i in range(jumsp):\n    jump()')
+        self.assertIn("Did you mean  jumps", e)
+
     def test_working_code_has_no_error(self):
         for lv in pixel.LEVELS:
             self.assertEqual(error(lv["reference"]), "", lv["key"])

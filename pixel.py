@@ -433,6 +433,14 @@ def plain_syntax(code, e):
         return 'Words need a  "  at both ends. Add the missing one. Hold Shift and press the  "  key.'
     if re.search(r"""["'][^"']*["']\s+[A-Za-z_]\w*\s*\)|[A-Za-z_]\w*\s+["']""", line) and "(" in line:
         return 'To join words and a name, put a  +  between them, like  say("I am " + name)'
+    flipped = re.fullmatch(r"""(".*"|'.*'|\d+)\s*=\s*([A-Za-z_]\w*)""", line)
+    if flipped:
+        return f"The name goes first, then the  =  then what to keep in it. Write  {flipped[2]} = {flipped[1]}"
+    if re.match(r"for\s+in\b", line):
+        return "A for loop needs a name to count with. Write it like this:  " + re.sub(r"^for\s+in\b", "for i in", line)
+    if line.endswith(":") and not any(l.strip() for l in lines[n:]):
+        return ("This line ends with a  :  so it needs a line under it, pushed in. "
+                "Press Enter, then Tab, and add a command like  jump()")
     if re.match(r"(repeat|loop)\b", line) or (re.match(r"for\b", line) and " in " not in line):
         return "To repeat lines, write it like this:  for i in range(3):"
     hint = re.sub(r"^Syntax error on line \S+: ", "", syntax_message(e, "def my_move():")).rstrip(".")
@@ -563,6 +571,9 @@ class Director(Brain):
         same = [n for n in self.named if n.lower() == name.lower()]
         if same:
             return f"Capital letters matter in names. You made  {same[0]}  , so write  {same[0]}  here, not  {name}"
+        typo = difflib.get_close_matches(name, [n for n in self.named if n not in self.funcs], 1, 0.75)
+        if typo:
+            return f"I don't know  {name}  . Did you mean  {typo[0]}  ? Check the spelling: it has to match exactly."
         node = self.at_name if self.at_name is not None and self.at_name.id == name else None
         up = self.parent.get(id(node))
         if isinstance(up, ast.Call) and isinstance(up.func, ast.Name) and up.func.id in USAGE \
@@ -815,6 +826,12 @@ class Director(Brain):
             v = node.value
             if isinstance(v, ast.Name) and (v.id in self.sensors or v.id in self.funcs):
                 raise BotError(f"To use {v.id}, add brackets:  {v.id}()")
+            if isinstance(v, ast.Compare) and isinstance(v.left, ast.Name) and len(v.ops) == 1 \
+                    and isinstance(v.ops[0], ast.Eq):
+                right = v.comparators[0]
+                shown = f'"{right.value}"' if isinstance(right, ast.Constant) and isinstance(right.value, str) else ast.unparse(right)
+                raise BotError(f"To keep something in  {v.left.id}  use one  =  like  "
+                               f"{v.left.id} = {shown}   Two  ==  is for asking if two things are the same.")
             raise BotError('That line doesn\'t do anything on its own. Words need  say("...")  '
                            'and commands need brackets, like  jump()')
         if isinstance(node, (ast.Try, ast.With, ast.ClassDef, ast.Delete, ast.Raise,
