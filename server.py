@@ -5893,6 +5893,8 @@ def pixel_record(p, key, code, out, guess=None, fixing=False):
     coins = pixel_pay(p, pixel.COINS_STAR * gained + (pixel.COINS_FIRST if first else 0)
                       + (pixel.REMIX_COINS if remixed else 0) + (pixel.GUESS_COINS if right else 0)
                       + (pixel.FIX_COINS if fixed else 0), play=False)
+    if gained:
+        day_job(p, "star")
     return dict(rewards, gained=gained, badges=earned, coins=coins)
 
 
@@ -6519,25 +6521,37 @@ DOING_FOR = 20             # seconds a tap still counts as what they're doing
 DAY_JOBS = {"five": ("🙌", "High-five 2 friends", 2), "catch": ("🌠", "Catch 3 falling stars", 3),
             "gem": ("💎", "Find a gem", 1), "fish": ("🎣", "Catch something at the pier", 1),
             "game": ("🎮", "Finish a game with friends", 1), "code": ("💻", "Solve a Code race job", 1),
-            "clap": ("👏", "Clap for a friend's move", 1), "visit": ("🚪", "Visit a friend's home", 1)}
+            "clap": ("👏", "Clap for a friend's move", 1), "visit": ("🚪", "Visit a friend's home", 1),
+            "star": ("⭐", "Earn a star in a coding mission", 1)}
+CODING_JOBS = ("star", "code")      # every day has one of these, so the Hang out leads back to coding
 DAY_JOBS_EACH = 3
 DAY_JOB_COINS = 5
 DAY_JOBS_ALL_COINS = 15
 
 
 def day_order():
-    """Today's order of every job, the same on every screen. The first three are the class's jobs."""
+    """Today's order of every job, the same on every screen."""
     today = time.strftime("%Y-%m-%d", time.localtime(time.time()))
     return today, random.Random("jobs " + today).sample(sorted(DAY_JOBS), len(DAY_JOBS))
 
 
+def day_pick(order, can=lambda key: True):
+    """The first jobs in today's order that can be done, with at least one coding job among them."""
+    keys = [k for k in order if can(k)][:DAY_JOBS_EACH]
+    if not any(k in CODING_JOBS for k in keys):
+        keys[-1] = next(k for k in order if k in CODING_JOBS and can(k))
+    return keys
+
+
 def day_jobs(entry):
-    """This student's jobs today: the class's jobs for the day, skipping a gem when there's none left to find."""
+    """This student's jobs today: the class's jobs for the day, swapping out a gem when there's none
+    left to find, or a mission star when they have them all."""
     today, order = day_order()
     jobs = entry.get("day_jobs")
     if not jobs or jobs.get("day") != today:
         gems = any(k[:-1] in hang_places() and k not in entry["found"] for k in pixel.HANG_FINDS)
-        keys = [k for k in order if k != "gem" or gems][:DAY_JOBS_EACH]
+        stars = pixel_stars(entry) < 3 * len(pixel.LEVELS)
+        keys = day_pick(order, lambda k: (k != "gem" or gems) and (k != "star" or stars))
         jobs = entry["day_jobs"] = {"day": today, "keys": keys, "have": {}, "with": [], "paid": False}
     return jobs
 
@@ -6614,7 +6628,7 @@ def room_view(p, after, watch=0):
            "meter": hang_view(), "places": ["home"] if loc else hang_places(), "game": game_view(spot["seat"] if spot else None),
            "cover": [] if loc else GAME_COVER, "home": home_view(owner, p, loc) if owner else None, "world": hang_places(),
            "people": [room_person(s) for s in room["here"].values()], "loc": loc,
-           "class_jobs": [DAY_JOBS[k][:2] for k in day_order()[1][:DAY_JOBS_EACH]]}
+           "class_jobs": [DAY_JOBS[k][:2] for k in day_pick(day_order()[1])]}
     if p:
         entry = pixel_entry(p)
         out.update(coins=entry["coins"], play_left=pixel.PLAY_COINS_DAY - pixel_play_today(entry),

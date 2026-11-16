@@ -46,6 +46,7 @@ class Race(unittest.TestCase):
         self.clock = 1000.
         for p in (patch.object(server.time, "time", side_effect=lambda: self.clock),
                   patch.object(server, "pixel_save_soon"),
+                  patch.object(server, "day_job"),          # today's jobs pay too; they have their own tests in test_pixel_class
                   patch.object(server.random, "choice", side_effect=lambda rows: rows[0])):
             p.start()
             self.addCleanup(p.stop)

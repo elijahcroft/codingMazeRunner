@@ -191,6 +191,32 @@ class TeacherAndGames(unittest.TestCase):
         rows = {r["name"]: r["jobs"] for r in server.pixel_overview()["students"]}
         self.assertEqual(rows, {"Mia": 1, "Ben": 0, "Alex": 0})
 
+    def test_every_day_has_a_coding_job(self):
+        mia = self.kids[0]
+        for day in range(60):
+            self.clock = 1000. + day * 86400
+            keys = self.jobs(mia)["keys"]
+            self.assertEqual(len(set(keys)), 3)
+            self.assertTrue(set(keys) & set(server.CODING_JOBS), keys)
+            self.assertEqual([j[1] for j in server.room_view(None, -1)["class_jobs"]], [server.DAY_JOBS[k][1] for k in keys])
+
+    def test_with_every_star_the_coding_job_is_the_code_race(self):
+        mia = self.kids[0]
+        server.pixel_entry(mia)["solved"].update({k: [True] * 3 for k in pixel.LEVEL_ORDER})
+        for day in range(30):
+            self.clock = 1000. + day * 86400
+            keys = self.jobs(mia)["keys"]
+            self.assertNotIn("star", keys)
+            self.assertIn("code", keys)
+
+    def test_earning_a_mission_star_counts(self):
+        mia = self.kids[0]
+        self.jobs(mia, ["star", "clap", "visit"])
+        level = pixel.LEVEL_BY_KEY["h1"]
+        out = pixel.run_level(level, level["reference"], server.pixel_pal(server.pixel_entry(mia)))
+        self.assertTrue(server.pixel_record(mia, "h1", level["reference"], out)["gained"])
+        self.assertEqual(self.jobs(mia)["have"]["star"], 1)
+
     def test_no_gem_job_once_every_gem_is_found(self):
         mia = self.kids[0]
         server.pixel_entry(mia)["found"] = list(pixel.HANG_FINDS)
