@@ -922,6 +922,8 @@ function openMissions() {
   $("trophies").innerHTML = S.badges.map(b =>
     `<div class="trophy${b.got ? " got" : ""}"><i>${b.icon}</i><span><b>${esc(b.name)}</b>${esc(b.how)}</span></div>`).join("");
   $("missions").hidden = false;
+  const here = $("missionList").querySelector(".here");
+  if (here) here.scrollIntoView({block: "center"});         // eleven chapters: start where they are
 }
 function closeSheets() {
   for (const id of ["missions", "bookSheet"]) $(id).hidden = true;
