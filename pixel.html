@@ -471,6 +471,7 @@
   .room-buttons .wide { grid-column: 1 / -1; min-height: 46px; grid-auto-flow: column; justify-content: center; gap: 8px; font-size: 16px; }
   .fish-book { font-size: 20px; letter-spacing: 2px; }
   .fish-book small { font-size: 12px; letter-spacing: 0; }
+  body:not(:has(#hangView:not([hidden]))) #tags { display: none; }     /* Hide names is for the Hang out's name tags; elsewhere it only crowded the top bar */
   .jobs { grid-column: 1 / -1; display: grid; gap: 3px; padding: 6px 8px 8px; background: #fff3c4; border-radius: 14px; }
   .jobs h4 { margin: 0 0 2px; font-size: 15px; }
   .jobs h4 small { display: block; font-size: 12px; color: #6a5a20; }
