@@ -706,6 +706,9 @@ function verdict(html, kind) {
   const box = $("verdict");
   box.className = "panel" + (kind ? " " + kind : "");
   box.innerHTML = html || `<p style="color:var(--ink-soft)">Pip is watching. Your result shows up here.</p>`;
+  // Error messages are the longest reading on the page, so they can be heard too.
+  if (kind === "bad" && "speechSynthesis" in window)
+    box.insertAdjacentHTML("afterbegin", `<button class="btn verdict-read" data-read="1" title="Read this to me">🔈 Read it</button>`);
 }
 function fitScreen() {
   const wrap = $("stageHost").parentElement, room = wrap.getBoundingClientRect();
@@ -856,6 +859,7 @@ document.addEventListener("click", e => {
   else if (d.remixHint) { remixHint = true; paintYourTurn(); }
   else if (d.fix) { $("win").hidden = true; startFix(); }
   else if (d.fixHint) { fixHint = true; paintYourTurn(); }
+  else if (d.read) readAloud([...$("verdict").querySelectorAll("p")].map(p => p.textContent).join(" "));
   else if (d.steps) { missStreak = 0; verdict(null); showSteps(); }
   else if (d.fixReset) { setCode(view.fix.code); $("code").focus(); }
 });
@@ -872,10 +876,13 @@ document.addEventListener("click", e => { if (e.target.classList.contains("sheet
 // Reads the mission aloud with the computer's own voice, for anyone who'd rather
 // hear it. A second press stops it.
 const CODE_WORDS = {"()": " ", "(": " ", ")": " ", '"': " "};
+const SYMBOL_NAMES = {"(": "open bracket", ")": "close bracket", '"': "quote mark", ":": "colon", "+": "plus", "=": "equals", "==": "two equals", "[": "open square bracket", "]": "close square bracket"};
 function readAloud(text) {
   if (!("speechSynthesis" in window)) return;
   if (speechSynthesis.speaking) { speechSynthesis.cancel(); return; }
-  const line = new SpeechSynthesisUtterance(text.replace(/[()"]/g, c => CODE_WORDS[c]).replace(/\s+/g, " "));
+  const said = text.replace(/"\s+marks/g, "quote marks").replace(/(^|\s)(==|[()":+=\[\]])(?=[\s.,]|$)/g, (_, gap, c) => `${gap}${SYMBOL_NAMES[c]}`)   // a symbol on its own is said by name
+    .replace(/[()"]/g, c => CODE_WORDS[c]).replace(/\s+/g, " ");
+  const line = new SpeechSynthesisUtterance(said);
   line.rate = .92;
   speechSynthesis.speak(line);
 }
