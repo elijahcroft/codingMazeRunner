@@ -620,6 +620,7 @@ async function runShow() {
   running = true;
   stopPokes();
   paintCoach();
+  $("palSelect").disabled = true;           // a new pal mid-show would cut the show short
   const ticket = ++runTicket;
   saveCode();
   StageSFX.wake();
@@ -748,6 +749,7 @@ function finishRun() {
   const was = running;
   running = false;
   if (was && mode) paintCoach();
+  $("palSelect").disabled = false;
   $("runButton").disabled = false;
   $("doRow").classList.remove("playing");
 }
