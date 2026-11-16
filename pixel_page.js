@@ -549,10 +549,11 @@ function paintType(box) {
   const at = code.split("\n").length - 1, done = code === target;
   const names = [...lines.map((c, i) => `Line ${i + 1}`), "▶ Show time!"];
   if (done) {
-    const won = !!view.best[0] && !guessWaiting;
-    if (!won) $("runButton").classList.add("nudge");
+    const won = !!view.best[0] && !guessWaiting && !running;
+    if (!won && !running) $("runButton").classList.add("nudge");
     box.innerHTML = stepList(names, won ? lines.length + 1 : lines.length) + (guessWaiting
       ? `<p class="coach-say">🔮 Before you watch: guess what will happen!</p><p class="coach-next">👉 Pick your guess under the stage, on the right.</p>`
+      : running ? `<p class="coach-say">👀 Watch your code run!</p><p class="coach-next">The lit-up line is the one your pal is doing now.</p>`
       : won ? `<p class="coach-say">✅ Mission done! Your code works.</p><p class="coach-next">👉 Pick what's next under the stage, on the right.</p>`
       : `<p class="coach-say">🎉 You typed it all!</p><p class="coach-next">👇 Now press the pink <b>▶ Show time!</b> button.</p>`);
     return;
@@ -614,6 +615,7 @@ async function runShow() {
   if (guessWaiting) { guessWaiting = false; paintCoach(); }
   running = true;
   stopPokes();
+  paintCoach();
   const ticket = ++runTicket;
   saveCode();
   StageSFX.wake();
@@ -733,7 +735,9 @@ function stuckOffer() {
   return `<p class="next"><button class="btn main" data-steps="1">🖐 Show me step by step</button> Stuck? That's OK. The guide shows every key.</p>`;
 }
 function finishRun() {
+  const was = running;
   running = false;
+  if (was && mode) paintCoach();
   $("runButton").disabled = false;
   $("doRow").classList.remove("playing");
 }
