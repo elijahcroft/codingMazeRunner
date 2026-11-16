@@ -704,6 +704,15 @@ class Director(Brain):
                        f"thing{'s' if len(target) != 1 else ''}, so the positions go from "
                        f"0 to {len(target) - 1}.")
 
+    def call_user(self, fn, args):
+        need = len(fn.args.args)
+        if len(args) != need:          # plainer than "expected 1 thing(s) but got 0"
+            if not need:
+                raise BotError(f"{fn.name}() doesn't take anything in its ( ). Try  {fn.name}()")
+            raise BotError(f"{fn.name}() needs {need} thing{'s' if need != 1 else ''} in its ( ), like  "
+                           f"{fn.name}({', '.join(['3'] * need)})  . You gave it {len(args) or 'nothing'}.")
+        return super().call_user(fn, args)
+
     def call(self, node, frame):
         if node.keywords:
             raise BotError("Commands don't take name=value here. Just put the value in the brackets.")
@@ -917,6 +926,19 @@ class Report:
         self.upper = sum(1 for n in nodes if isinstance(n, ast.Attribute) and n.attr in ("upper", "lower"))
         self.randoms = sum(1 for n in nodes if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
                            and n.func.id in ("choice", "randint"))
+        self.calls = Counter(n.func.id for n in nodes if isinstance(n, ast.Call) and isinstance(n.func, ast.Name))
+        self.methods = Counter(n.func.attr for n in nodes if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute))
+        self.adds = count(ast.AugAssign)
+        self.elifs = sum(1 for n in nodes if isinstance(n, ast.If) and len(n.orelse) == 1
+                         and isinstance(n.orelse[0], ast.If) and n.orelse[0].col_offset == n.col_offset)
+        self.positions = set()          # numbers used in [ ], like the 0 in moods[0]
+        for n in nodes:
+            if isinstance(n, ast.Subscript):
+                try:
+                    self.positions.add(ast.literal_eval(n.slice))
+                except (ValueError, TypeError, SyntaxError):
+                    pass
+        self.loops_over = [n.iter.id for n in nodes if isinstance(n, ast.For) and isinstance(n.iter, ast.Name)]
         self.lines = len(tree.body) if tree else 0
         self.code_lines = sum(1 for line in code.split("\n")
                               if line.strip() and not line.strip().startswith("#"))
@@ -1006,6 +1028,8 @@ CHAPTERS = [
     {"key": "r", "name": "Surprise!", "icon": "🎲"},
     {"key": "k", "name": "Click Me!", "icon": "🖱️"},
     {"key": "c", "name": "Keep Going", "icon": "⏳"},
+    {"key": "j", "name": "My List", "icon": "📋"},
+    {"key": "s", "name": "Keep Score", "icon": "🏆"},
 ]
 
 # `adds` opens commands, and `python` opens the shapes of Python on the chips.
@@ -1404,6 +1428,133 @@ LEVELS = [
      "hints": ["Start with  n = 5  . Under  while n > 0:  say n, then make it smaller with  n = n - 1",
                'n = 5\nwhile n > 0:\n    say(n)\n    n = n - 1\ncheer()'],
      "reference": 'n = 5\nwhile n > 0:\n    say(n)\n    n = n - 1\ncheer()'},
+
+    # My List: a list kept in a variable, gone through, added to, and looked into by position.
+    {"key": "j1", "chapter": 11, "name": "Snack list", "adds": [], "python": ["list", "len"],
+     "pip": "A list can have a name, like any variable. Then a for loop can visit each thing on it, "
+            "and len() tells you how many things are on it.",
+     "job": "Say yum for every snack on your list, then say how many snacks there are.",
+     "coach": [
+               ('snacks = ["cake", "apple", "pie"]', "A list called snacks, with 3 things in the [ ] brackets. Commas go between them."),
+               ('for snack in snacks:', "Visit each snack on the list, one at a time. snack is the one we're on."),
+               ('    say("Yum, " + snack)', "Pushed in, so it happens for every snack."),
+               ('say(len(snacks))', "Not pushed in: once, after the loop. len() counts the list. I moved it back for you."),
+     ],
+     "goals": [("Your pal says yum for every snack on the list", lambda r: len(_the_list(r)) >= 2 and _says_each(r),
+                'Try  for snack in snacks:  and push  say("Yum, " + snack)  in under it.'),
+               ("It goes through the list with a for loop", lambda r: any(isinstance(r.values.get(name), list) for name in r.loops_over),
+                "Give the list a name first, like  snacks = [...]  , then  for snack in snacks:"),
+               ("It says how many snacks with len()", lambda r: r.calls["len"] >= 1 and bool(r.said) and r.said[-1] == str(len(_the_list(r))),
+                "After the loop, not pushed in:  say(len(snacks))")],
+     "hints": ["Make the list first:  snacks = [\"cake\", \"apple\", \"pie\"]  . Then  for snack in snacks:",
+               'snacks = ["cake", "apple", "pie"]\nfor snack in snacks:\n    say("Yum, " + snack)\nsay(len(snacks))'],
+     "reference": 'snacks = ["cake", "apple", "pie"]\nfor snack in snacks:\n    say("Yum, " + snack)\nsay(len(snacks))'},
+
+    {"key": "j2", "chapter": 11, "name": "Who's coming?", "adds": [], "python": ["append"],
+     "pip": "A list can grow! .append() adds one more thing to the end of a list. "
+            "Start a party list with one friend, then add more.",
+     "job": "Start a list with one friend, add 2 more with .append(), say hi to everyone, then wave.",
+     "coach": [
+               ('guests = ["Ana"]', "A list with one friend on it so far."),
+               ('guests.append("Ben")', ".append() adds Ben to the end of the list."),
+               ('guests.append("Cy")', "And Cy. Now the list is Ana, Ben, Cy."),
+               ('for guest in guests:', "Visit everyone on the list."),
+               ('    say("Hi " + guest)', "Say hi to each one."),
+               ('wave()', "Not pushed in: one wave at the end. I moved it back for you."),
+     ],
+     "goals": [("You add to the list with .append()", lambda r: r.methods["append"] >= 1, 'Try  guests.append("Ben")  under the first line.'),
+               ("Your pal says hi to everyone on the list, added ones too", lambda r: len(_the_list(r)) >= 3 and _says_each(r),
+                lambda r: f"Your list ended up as {show_value(_the_list(r))}. Add 2 friends, then say hi to each one in a for loop."),
+               ("It waves once, after all the hellos", lambda r: r.n("wave") == 1 and r.log[-1][0] == "wave", "Put  wave()  at the bottom, not pushed in.")],
+     "hints": ['.append() goes after the list\'s name and a dot:  guests.append("Ben")',
+               'guests = ["Ana"]\nguests.append("Ben")\nguests.append("Cy")\nfor guest in guests:\n    say("Hi " + guest)\nwave()'],
+     "reference": 'guests = ["Ana"]\nguests.append("Ben")\nguests.append("Cy")\nfor guest in guests:\n    say("Hi " + guest)\nwave()'},
+
+    {"key": "j3", "chapter": 11, "name": "First and last", "adds": [], "python": ["index"],
+     "pip": "Every thing on a list has a position. The first is [0], not [1]! And [-1] is always the last one, "
+            "however long the list is.",
+     "job": "Feel the first mood on the list and say it. Then feel the last one and say it.",
+     "coach": [
+               ('moods = ["happy", "sad", "silly"]', "A list of 3 moods. Their positions are 0, 1 and 2."),
+               ('feel(moods[0])', "moods[0] is the first one on the list: happy."),
+               ('say("First: " + moods[0])', "Say it too."),
+               ('feel(moods[-1])', "moods[-1] is the last one on the list: silly."),
+               ('say("Last: " + moods[-1])', "And say that one."),
+     ],
+     "goals": [("Your pal feels the first mood on the list, with [0]", lambda r: 0 in r.positions and bool(_the_list(r)) and _feels(r)[:1] == _the_list(r)[:1],
+                "Try  feel(moods[0])  . Position 0 is the first thing on a list."),
+               ("Then the last mood, with [-1]", lambda r: -1 in r.positions and len(_the_list(r)) >= 2 and _feels(r)[-1:] == _the_list(r)[-1:],
+                "Try  feel(moods[-1])  . -1 means the last thing, however long the list is."),
+               ("It says the first and last moods out loud", lambda r: len(_the_list(r)) >= 2 and all(any(m in s for s in r.said) for m in (_the_list(r)[0], _the_list(r)[-1])), None)],
+     "hints": ["moods[0] is the first mood, and moods[-1] is the last.",
+               'moods = ["happy", "sad", "silly"]\nfeel(moods[0])\nsay("First: " + moods[0])\nfeel(moods[-1])\nsay("Last: " + moods[-1])'],
+     "reference": 'moods = ["happy", "sad", "silly"]\nfeel(moods[0])\nsay("First: " + moods[0])\nfeel(moods[-1])\nsay("Last: " + moods[-1])'},
+
+    # Keep Score: a number that changes as the show goes, choices with elif, and a def that takes a number.
+    {"key": "s1", "chapter": 12, "name": "Rack up points", "adds": [], "python": ["change"],
+     "pip": "A variable can change while the show runs. points += 2 means: add 2 to points. "
+            "(score is already a word your pal knows, so call it points.)",
+     "job": "Start at 0 points. Jump 5 times, get 2 points each jump, and say the points. Then cheer.",
+     "coach": [
+               ('points = 0', "points starts at 0."),
+               ('for i in range(5):', "Go round 5 times."),
+               ('    jump()', "Jump!"),
+               ('    points += 2', "Add 2 to points. Now it's 2, then 4, then 6..."),
+               ('    say(points)', "Say the points so far."),
+               ('cheer()', "Not pushed in: cheer once at the end. I moved it back for you."),
+     ],
+     "goals": [("Your pal counts up its points: 2, 4, 6...", lambda r: _counts_up(r) >= 5,
+                lambda r: f"Your pal said {', '.join(r.said[:6]) or 'nothing'}. The points should go up after every jump."),
+               ("Points go up with +=", lambda r: r.adds >= 1, "Try  points += 2  inside the loop. It means: add 2 to points."),
+               ("It cheers once, at the very end", lambda r: r.n("cheer") == 1 and r.log[-1][0] == "cheer", None)],
+     "hints": ["points = 0  goes before the loop. Inside the loop:  points += 2  and then  say(points)",
+               'points = 0\nfor i in range(5):\n    jump()\n    points += 2\n    say(points)\ncheer()'],
+     "reference": 'points = 0\nfor i in range(5):\n    jump()\n    points += 2\n    say(points)\ncheer()'},
+
+    {"key": "s2", "chapter": 12, "name": "Big, middle, small", "adds": [], "python": ["elif"], "seeds": range(30),
+     "pip": "elif means: else, if. It asks a second question, only when the first answer was no. "
+            "So your pal can do 3 different things!",
+     "job": "Roll a dice and say it. Cheer on a 6, jump on a 4 or 5, and feel sad on 1, 2 or 3.",
+     "coach": [
+               ('roll = randint(1, 6)', "A dice roll from 1 to 6."),
+               ('say(roll)', "Say what you rolled."),
+               ('if roll == 6:', "First question: is it a 6?"),
+               ('    cheer()', "Yes? Cheer!"),
+               ('elif roll >= 4:', "If not a 6, next question: is it 4 or more? elif lines up with the if. I moved it back for you."),
+               ('    jump()', "Yes? Jump."),
+               ('else:', "Not 6, not 4 or 5. That leaves 1, 2 or 3."),
+               ('    feel("sad")', "Aww."),
+     ],
+     "goals": [("It cheers on a 6, and only on a 6", lambda r: r.randoms >= 1 and all((o.n("cheer") > 0) == (_roll(o) == 6) for o in r.others),
+                "Try  if roll == 6:  with  cheer()  pushed in under it."),
+               ("It jumps on a 4 or 5, with elif", lambda r: r.elifs >= 1 and all((o.n("jump") > 0) == (_roll(o) in (4, 5)) for o in r.others),
+                "Under the if, lined up with it:  elif roll >= 4:  and push  jump()  in under it."),
+               ("It does something else on 1, 2 or 3, with else", lambda r: r.elses >= 1 and all(
+                   _roll(o) > 3 or (o.n("cheer") == 0 and o.n("jump") == 0 and len(o.log) >= 2) for o in r.others), None)],
+     "hints": ["if roll == 6:  then  elif roll >= 4:  then  else:  . All three line up, and the moves are pushed in under them.",
+               'roll = randint(1, 6)\nsay(roll)\nif roll == 6:\n    cheer()\nelif roll >= 4:\n    jump()\nelse:\n    feel("sad")'],
+     "reference": 'roll = randint(1, 6)\nsay(roll)\nif roll == 6:\n    cheer()\nelif roll >= 4:\n    jump()\nelse:\n    feel("sad")'},
+
+    {"key": "s3", "chapter": 12, "name": "Hop how many?", "adds": [], "python": ["param"],
+     "pip": "A def can take a number! In  def hop(n):  , n is whatever number you put in the ( ). "
+            "So hop(2) hops 2 times, and hop(4) hops 4.",
+     "job": "Make hop(n) jump n times and say how many. Then use it with 2, and with 4.",
+     "coach": [
+               ('def hop(n):', "A new command, hop. n is the number you give it."),
+               ('    for i in range(n):', "Go round n times."),
+               ('        jump()', "Jump!"),
+               ('    say(f"{n} hops!")', "After the loop, still inside the def: say how many. I moved it back for you."),
+               ('hop(2)', "Not pushed in: use it! n is 2 this time. I moved it back for you."),
+               ('hop(4)', "And again, with 4."),
+     ],
+     "goals": [("You make a command with a number in its ( )", lambda r: r.params >= 1, "Try  def hop(n):  . n is a name for the number you give it."),
+               ("You use it 2 times, with different numbers", lambda r: sum(r.own_calls.values()) >= 2 and len({c for c, _ in _hops(r)}) >= 2,
+                "Under the def, not pushed in:  hop(2)  and then  hop(4)"),
+               ("Your pal says how many hops after each one", lambda r: len(_hops(r)) >= 2 and all(c > 0 and str(t).split()[:1] == [str(c)] for c, t in _hops(r)),
+                'Inside the def, after the loop:  say(f"{n} hops!")')],
+     "hints": ["Inside the def, use n where the number goes:  for i in range(n):",
+               'def hop(n):\n    for i in range(n):\n        jump()\n    say(f"{n} hops!")\nhop(2)\nhop(4)'],
+     "reference": 'def hop(n):\n    for i in range(n):\n        jump()\n    say(f"{n} hops!")\nhop(2)\nhop(4)'},
 ]
 
 # "Your turn": after a mission, one change for the student to make with the guide off.
@@ -1460,6 +1611,18 @@ REMIXES = {
     "c1": ("Then walk all the way back to spot 0, with a second while loop.", lambda r: r.whiles >= 2 and 10 in _visited(r) and r.x == 0,
            "Add  while x() > 0:  at the bottom, with  left(1)  pushed in under it."),
     "c2": ("Count down from 10 instead of 5.", lambda r: _countdown(r) >= 10, "Change only one thing: the 5 in the first line."),
+    "j1": ("Add a 4th snack to the list. Change nothing else.", lambda r: len(_the_list(r)) >= 4 and _says_each(r) and r.said[-1] == str(len(_the_list(r))),
+           "Inside the [ ] brackets, put a comma and one more snack in quotes."),
+    "j2": ("Add yourself to the party with one more .append().", lambda r: r.methods["append"] >= 3 and len(_the_list(r)) >= 4 and _says_each(r),
+           'Add  guests.append("...")  with your name, above the for line.'),
+    "j3": ("Feel the middle mood too, in between, with [1].", lambda r: 1 in r.positions and len(_the_list(r)) >= 3
+           and _feels(r)[:3] == [_the_list(r)[0], _the_list(r)[1], _the_list(r)[-1]],
+           "Add  feel(moods[1])  just above the line with moods[-1]."),
+    "s1": ("Make every jump worth 5 points instead of 2.", lambda r: _nums(r)[:2] == [5, 10], "Change only one thing: the number after +="),
+    "s2": ("Add one more elif, so your pal spins on a 1.", lambda r: r.elifs >= 2 and all((o.n("spin") > 0) == (_roll(o) == 1) for o in r.others),
+           "Add  elif roll == 1:  with  spin()  pushed in under it, just above the else."),
+    "s3": ("Add a third hop with a bigger number, like hop(6).", lambda r: sum(r.own_calls.values()) >= 3 and max((c for c, _ in _hops(r)), default=0) >= 5,
+           "Add one more line at the bottom, not pushed in, like  hop(6)"),
     "k2": ("Make your pal spin on the 3rd click, as well as cheer.", lambda r: len(r.reacts) >= 4 and [r.did(i, "spin") for i in range(4)] == [False, False, True, False],
            "Add  spin()  under  cheer()  , pushed in just as far."),
 }
@@ -1490,6 +1653,12 @@ GUESSES = {
     "k2": ("What does your pal do on the 2nd click?", ["Cheers", "Jumps", "Nothing"], 1),
     "c1": ("How many steps will your pal take?", ["2", "8", "10"], 1),
     "c2": ("What's the last number your pal says?", ["0", "1", "5"], 1),
+    "j1": ("What's the last thing your pal says?", ["pie", "3", "Yum, cake"], 1),
+    "j2": ("How many hellos will your pal say?", ["1", "2", "3"], 2),
+    "j3": ("Which face will your pal have at the end?", ["Happy", "Sad", "Silly"], 2),
+    "s1": ("What's the last number your pal says?", ["5", "10", "2"], 1),
+    "s2": ("What does your pal do when it rolls a 5?", ["Cheers", "Jumps", "Feels sad"], 1),
+    "s3": ("How many jumps in the whole show?", ["4", "6", "2"], 1),
 }
 # "Fix it": after a mission, Pip's code for it with one bug in it, to find and fix.
 # (what went wrong, the code with the bug, check that it's fixed, a hint that says where to look).
@@ -1552,6 +1721,19 @@ FIXES = {
            "Only lines pushed in under  def on_click():  wait for a click. Is the say line pushed in?"),
     "k2": ("Pip's show won't even start! Something is wrong near the end.", 'def on_click():\n    say(clicks())\n    if clicks() == 3:\n        cheer()\n    else:\n    jump()',
            lambda r: len(r.reacts) >= 4 and all(r.did(i, "jump") for i in (0, 1, 3)), "Look at the last line. What's under  else:  has to be pushed in."),
+    "j1": ("Pip's pal says yum only 2 times, and two snacks are squashed together!", 'snacks = ["cake" "apple", "pie"]\nfor snack in snacks:\n    say("Yum, " + snack)\nsay(len(snacks))',
+           lambda r: len(_the_list(r)) >= 3 and _says_each(r), "Look at the list on line 1. Every snack needs a comma after it, except the last."),
+    "j2": ("Pip's pal only says hi to Cy!", 'guests = ["Ana"]\nguests.append("Ben")\nguests = ["Cy"]\nfor guest in guests:\n    say("Hi " + guest)\nwave()',
+           lambda r: len(_the_list(r)) >= 3 and _says_each(r), "Line 3 makes a brand new list with only Cy on it. Use  .append()  to add to the list instead."),
+    "j3": ("Pip's show stops with a message about position 3!", 'moods = ["happy", "sad", "silly"]\nfeel(moods[0])\nsay("First: " + moods[0])\nfeel(moods[3])\nsay("Last: " + moods[-1])',
+           lambda r: len(_the_list(r)) >= 2 and _feels(r)[-1:] == _the_list(r)[-1:], "Positions start at 0, so 3 moods are at 0, 1 and 2. Use [-1] for the last one."),
+    "s1": ("Pip's pal says 2 every time. The points never add up!", 'for i in range(5):\n    points = 0\n    jump()\n    points += 2\n    say(points)\ncheer()',
+           lambda r: _counts_up(r) >= 5, "Where is  points = 0  ? Inside the loop, points starts again from 0 every time round."),
+    "s2": ("Pip's pal cheers on a 6, and then jumps too!", 'roll = randint(1, 6)\nsay(roll)\nif roll == 6:\n    cheer()\nif roll >= 4:\n    jump()\nelse:\n    feel("sad")',
+           lambda r: r.elifs >= 1 and all((o.n("jump") > 0) == (_roll(o) in (4, 5)) for o in r.others),
+           "The second if asks its question even after a 6. Make it  elif  , so it only asks when the first answer was no."),
+    "s3": ("Pip's show stops: hop has no number!", 'def hop(n):\n    for i in range(n):\n        jump()\n    say(f"{n} hops!")\nhop(2)\nhop()',
+           lambda r: sum(r.own_calls.values()) >= 2 and len({c for c, _ in _hops(r)}) >= 2, "Look at the last line. hop needs a number in its ( ), like  hop(4)"),
 }
 for _lv in LEVELS:
     _lv["remix"] = REMIXES[_lv["key"]]
@@ -1651,6 +1833,50 @@ def _click_said(r, i, words):
     return i < len(r.reacts) and any(name == "say" and args and str(args[0]) == str(words) for name, args in r.reacts[i])
 
 
+def _the_list(r):
+    """The longest list the program kept in a variable, or []."""
+    lists = [v for v in r.values.values() if isinstance(v, list)]
+    return max(lists, key=len) if lists else []
+
+
+def _says_each(r):
+    """True if the pal said every thing on the list (inside its words)."""
+    items = _the_list(r)
+    return bool(items) and all(any(str(x) in s for s in r.said) for x in items)
+
+
+def _feels(r):
+    return [args[0] for name, args in r.log if name == "feel" and args]
+
+
+def _nums(r):
+    return [int(s) for s in r.said if s.lstrip("-").isdigit()]
+
+
+def _counts_up(r):
+    """How many numbers the pal said, if they go up by the same step each time, or 0."""
+    nums = _nums(r)
+    steps = {b - a for a, b in zip(nums, nums[1:])}
+    return len(nums) if len(nums) >= 2 and len(steps) == 1 and steps.pop() > 0 else 0
+
+
+def _roll(o):
+    """The dice number a run said first, or 0."""
+    return int(o.said[0]) if o.said and o.said[0].isdigit() else 0
+
+
+def _hops(r):
+    """(jumps since the last say, what was said) for every say."""
+    out, jumps = [], 0
+    for name, args in r.log:
+        if name == "jump":
+            jumps += 1
+        elif name == "say":
+            out.append((jumps, args[0] if args else ""))
+            jumps = 0
+    return out
+
+
 def _visited(r):
     spot, seen = START, {START}
     for name, args in r.log:
@@ -1706,6 +1932,9 @@ GIFTS = {
     "candyspark": {"name": "Candy sparkles", "slot": "sparkle"}, "firespark": {"name": "Fire sparkles", "slot": "sparkle"},
     "propeller": {"name": "Propeller cap", "slot": "hat"}, "bubblespark": {"name": "Bubble sparkles", "slot": "sparkle"},
     "beret": {"name": "Beret", "slot": "hat"}, "pixelshades": {"name": "Pixel shades", "slot": "face"},
+    "gradcap": {"name": "Graduation cap", "slot": "hat"}, "viking": {"name": "Viking helmet", "slot": "hat"},
+    "sprout": {"name": "Little sprout", "slot": "hat"}, "freckles": {"name": "Freckles", "slot": "face"},
+    "codespark": {"name": "Code sparkles", "slot": "sparkle"}, "petalspark": {"name": "Petal sparkles", "slot": "sparkle"},
     # These unlock by themselves when a goal is reached: [what is counted, how many].
     "gemcrown": {"name": "Gem crown", "slot": "hat", "goal": ["gems", 9]},
     "fishhat": {"name": "Fish hat", "slot": "hat", "goal": ["fish", 5]},

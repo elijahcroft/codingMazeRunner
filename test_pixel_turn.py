@@ -32,6 +32,12 @@ CHANGED = {
     "c2": 'n = 10\nwhile n > 0:\n    say(n)\n    n = n - 1\ncheer()',
     "k1": 'def on_click():\n    jump()\n    say("Hee hee!")\n    spin()',
     "k2": 'def on_click():\n    say(clicks())\n    if clicks() == 3:\n        cheer()\n        spin()\n    else:\n        jump()',
+    "j1": 'snacks = ["cake", "apple", "pie", "taco"]\nfor snack in snacks:\n    say("Yum, " + snack)\nsay(len(snacks))',
+    "j2": 'guests = ["Ana"]\nguests.append("Ben")\nguests.append("Cy")\nguests.append("Mia")\nfor guest in guests:\n    say("Hi " + guest)\nwave()',
+    "j3": 'moods = ["happy", "sad", "silly"]\nfeel(moods[0])\nsay("First: " + moods[0])\nfeel(moods[1])\nfeel(moods[-1])\nsay("Last: " + moods[-1])',
+    "s1": 'points = 0\nfor i in range(5):\n    jump()\n    points += 5\n    say(points)\ncheer()',
+    "s2": 'roll = randint(1, 6)\nsay(roll)\nif roll == 6:\n    cheer()\nelif roll >= 4:\n    jump()\nelif roll == 1:\n    spin()\nelse:\n    feel("sad")',
+    "s3": 'def hop(n):\n    for i in range(n):\n        jump()\n    say(f"{n} hops!")\nhop(2)\nhop(4)\nhop(6)',
 }
 
 
@@ -74,7 +80,22 @@ TRUTH = {
     "c2": lambda st: _said(st)[-1],
     "k1": lambda st: "3 times" if _n(st, "jump") == 3 and _n(st, "event") == 3 else "?",
     "k2": lambda st: "Jumps" if _n(_click(st, 1), "jump") and not _n(_click(st, 1), "cheer") else "?",
+    "j1": lambda st: _said(st)[-1],
+    "j2": lambda st: str(sum(1 for t in _said(st) if t.startswith("Hi "))),
+    "j3": lambda st: [s["mood"] for s in st if s["do"] == "feel"][-1].capitalize(),
+    "s1": lambda st: _said(st)[-1],
+    "s2": lambda st: _on_five(),
+    "s3": lambda st: str(_n(st, "jump")),
 }
+
+
+def _on_five():
+    """s2's guide code on a roll of 5, found by trying the dice seeds."""
+    for seed in range(60):
+        st = pixel.perform(pixel.LEVEL_BY_KEY["s2"]["reference"], seed=seed)["steps"]
+        if _said(st)[:1] == ["5"]:
+            return "Jumps" if _n(st, "jump") and not _n(st, "cheer") and not _n(st, "feel") else "?"
+    return "no 5 rolled"
 
 
 def run(key, code):

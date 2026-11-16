@@ -134,6 +134,10 @@ const PalStage = (() => {
     beret: {rows: ["....r......", "..rrrrrr...", ".rrrrrrrrr.", "rrrrrrrrrrr", ".ddddddddd."], ink: {r: "#e8294f", d: "#8f1d3a"}},
     pixelshades: {rows: ["kkkkkkkkkkk", "kwkkk.kwkkk", ".kkk...kkk."], ink: {k: "#1b1530", w: "#ffffff"}},
     propeller: {rows: ["rrrr.k.bbbb", "....kkk....", "..kkyyykk..", ".kyyryyyyk.", "kyyyyyyyyyk", "kkkkkkkkkkk"], ink: {k: "#1b1530", r: "#e8294f", b: "#2f6fe4", y: "#ffd93b"}},
+    gradcap: {rows: ["....kkk....", "kkkkkkkkkkk", "..kkkkkkk.y", "..kkkkkkk.y", "..kkkkkkk.y"], ink: {k: "#1b1530", y: "#ffd93b"}},
+    viking: {rows: ["w.........w", "ww.......ww", ".w.ggggg.w.", "..ggggggg..", ".ggggggggg.", "yyyyyyyyyyy"], ink: {w: "#fff2dc", g: "#9a96a8", y: "#c98a2e"}},
+    sprout: {rows: ["gg...gg", "gggdggg", ".ggdgg.", "...d...", "...d..."], ink: {g: "#5cc96a", d: "#2fa84f"}},
+    freckles: {rows: ["o.o.....o.o", ".o.......o."], ink: {o: "#c4703a"}},
     // unlocked by reaching a goal
     gemcrown: {rows: ["k...k...k", "kb.kpk.gk", "kyykyykyk", "kyyyyyyyk", "kbyryygyk", "kkkkkkkkk"], ink: {k: "#8a5a00", y: "#ffd93b", r: "#e8294f", b: "#7ab8ff", g: "#35d0bd", p: "#ff5fa2"}},
     fishhat: {rows: ["...oooo...o", ".oooooooooo", "owkoooyooo.", ".oooooooooo", "...oooo...o"], ink: {o: "#ff9a3c", w: "#ffffff", k: "#1b1530", y: "#ffd93b"}},
@@ -157,7 +161,7 @@ const PalStage = (() => {
   const SPARKLE_INK = {goldspark: ["#ffd93b", "#fff2a6"], heartspark: ["#ff5fa2", "#ffc9e3"], rainbow: ["#ff5fa2", "#ffd93b", "#35d0bd", "#7ab8ff", "#c5a3ff"],
                        icespark: ["#7ab8ff", "#d6f4ff", "#ffffff"], leafspark: ["#35d0bd", "#8ee06b", "#eaffd6"],
                        galaxyspark: ["#7a3fe4", "#c5a3ff", "#2f6fe4", "#ffffff"], candyspark: ["#ff8fc7", "#ffffff", "#7ab8ff"],
-                       firespark: ["#ff9a3c", "#ffd93b", "#e8294f"], bubblespark: ["#d6f4ff", "#7ab8ff", "#ffffff"], friendspark: ["#ff5fa2", "#ffd93b", "#8ee06b", "#7ab8ff"],
+                       firespark: ["#ff9a3c", "#ffd93b", "#e8294f"], codespark: ["#3ddc84", "#b8f5c8", "#ffffff"], petalspark: ["#ff8fc7", "#ffc9e3", "#fff2fb"], bubblespark: ["#d6f4ff", "#7ab8ff", "#ffffff"], friendspark: ["#ff5fa2", "#ffd93b", "#8ee06b", "#7ab8ff"],
                        superspark: ["#ffd93b", "#ffffff", "#ff9a3c", "#ffd93b"],
                        chestspark: ["#ffd93b", "#c98a2e", "#fff2a6"], musicspark: ["#c2258c", "#7a3fe4", "#ffffff"],
                        butterflyspark: ["#ff9fb5", "#ffd27a", "#c7b4f0", "#8ee06b"], snowspark: ["#ffffff", "#d6f4ff", "#9fd8ee"]};

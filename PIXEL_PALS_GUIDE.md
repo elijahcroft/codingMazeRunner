@@ -38,7 +38,7 @@ it never pulls a student out of a mission halfway. The 🎉 Hang out tab is alwa
 
 ## The missions
 
-24 missions and 72 stars. The first star opens the next mission, and the other two are
+30 missions and 90 stars. The first star opens the next mission, and the other two are
 for going further.
 
 | Chapter | Missions | What it teaches |
@@ -54,8 +54,10 @@ for going further.
 | 🎲 Surprise! | Surprise mood, Roll the dice, Lucky jumps | `choice()` and `randint()`: code that does something different each time |
 | 🖱️ Click Me! | Poke me!, Count the pokes | Events (`def on_click():`), `clicks()` and `else` |
 | ⏳ Keep Going | Walk to the edge, Countdown | `while` loops: going round as long as the answer is yes, with `x()` and a variable that changes |
+| 📋 My List | Snack list, Who's coming?, First and last | A list kept in a variable: a `for` loop over it, `len()`, `.append()`, and `[0]` / `[-1]` |
+| 🏆 Keep Score | Rack up points, Big, middle, small, Hop how many? | `+=` to change a number, `if` / `elif` / `else`, and `def hop(n):` that takes a number |
 
-The last fifteen come after My Move on purpose, so a student who has already made their
+The last twenty-one come after My Move on purpose, so a student who has already made their
 move doesn't have it locked behind new missions. They start easy (one new command each)
 and get harder.
 
