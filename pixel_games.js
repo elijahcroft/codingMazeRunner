@@ -94,6 +94,7 @@ function paintGameState(data) {
   // A Code race needs room for the code, and every pal in view: the camera stays on the Park.
   const racing = g?.kind === "code" && g.phase === "playing" && g.joined.includes(data.you);
   $("hangView").classList.toggle("racing", !!racing);
+  $("hangView").classList.toggle("playing", !!inRound());
   if (roomStage) roomStage.state.camera = racing ? () => 0 : null;
   // A round's controls are in Games (the job, the moves, the hiding places), so a player is taken there once when it starts.
   if (g && g.joined.includes(data.you) && ["hiding", "playing"].includes(g.phase) && raceShown !== g.id) {

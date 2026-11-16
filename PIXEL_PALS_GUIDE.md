@@ -206,7 +206,8 @@ No code is needed once they're in.
   or Copy the dance, and friends choose to join. In the race, each press of Run or → is one short
   run, and moving on red sends a pal back a bit. In the dance, the moves stay on the
   screen with the next one lit, for 3 rounds that get longer. When a round starts, the
-  side panel opens Games, and the line under the world says what to do in that game
+  side panel opens Games and hides My Move and Next mission until it ends, so the game's
+  buttons fit on a small laptop, and the line under the world says what to do in that game
   ("You're IT! Click near a friend to tag them.").
 - **🎯 Today's jobs:** three small things to do, at the top of Games, the same for the
   whole class each day so friends can help each other: high-five 2 friends, catch 3
