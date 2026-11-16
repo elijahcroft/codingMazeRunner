@@ -429,7 +429,7 @@
   .hang-screen .bubble { border: 0; border-radius: 16px; box-shadow: 0 3px 12px #2c535240; }
   .hang-screen .bubble::after { border: 0; }
   #roomTip { margin: 6px 0 0; flex: none; font-size: 16px; font-weight: 800; text-align: center; color: #27484a; }
-  #hangBanner { position: absolute; left: 50%; top: 6%; transform: translateX(-50%); width: max-content; max-width: 90%; padding: 6px 18px; background: #fffdf6f2; border-radius: 18px; font-size: clamp(15px, 1.7vw, 22px); font-weight: 800; text-align: center; pointer-events: none; box-shadow: 0 4px 16px #2c535233; animation: drop-in .3s ease-out; }
+  #hangBanner { position: absolute; left: 50%; top: 6%; transform: translateX(-50%); width: max-content; max-width: 90%; padding: 6px 18px; background: #fffdf6f2; border-radius: 18px; font-size: clamp(15px, 1.7vw, 22px); font-weight: 800; text-align: center; text-wrap: balance; pointer-events: none; box-shadow: 0 4px 16px #2c535233; animation: drop-in .3s ease-out; }
   #hangBanner.big { top: 24%; padding: 14px 34px; text-align: center; font-size: clamp(26px, 4vw, 52px); font-weight: 900; color: #d9477e; animation: party-in .5s cubic-bezier(.3, 1.6, .5, 1); }
   #hangBanner small { display: block; font-size: .42em; color: #2c5352; font-weight: 800; }
   #hangBanner:not(.big) small { font-size: .75em; }     /* .42em is for the big banners; on a small one it was too tiny to read */
