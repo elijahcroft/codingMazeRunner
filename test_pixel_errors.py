@@ -74,6 +74,16 @@ class MistakesSayWhatToType(unittest.TestCase):
         self.assertTrue(said.endswith("…"))
         self.assertLessEqual(len(said), pixel.MAX_SAY)
 
+    def test_list_mistakes(self):
+        self.assertIn('["Ana", "Ben"]', error('for name in [Ana, Ben]:\n    say(name)'))
+        self.assertIn("Add a  ]", error('for name in ["Ana", "Ben":\n    say(name)'))
+
+    def test_a_command_used_for_a_variable_with_a_close_name(self):
+        self.assertIn("Did you mean  jumps", error('jumps = 4\nsay(f"{jump} jumps!")'))
+
+    def test_random_points_to_randint(self):
+        self.assertIn("randint(1, 6)", error("roll = random(1, 6)"))
+
     def test_working_code_has_no_error(self):
         for lv in pixel.LEVELS:
             self.assertEqual(error(lv["reference"]), "", lv["key"])

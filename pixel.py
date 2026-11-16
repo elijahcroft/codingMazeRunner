@@ -434,6 +434,8 @@ def plain_syntax(code, e):
         return 'Words need a  "  at both ends. Add the missing one. Hold Shift and press the  "  key.'
     if re.search(r"""["'][^"']*["']\s+[A-Za-z_]\w*\s*\)|[A-Za-z_]\w*\s+["']""", line) and "(" in line:
         return 'To join words and a name, put a  +  between them, like  say("I am " + name)'
+    if line.count("[") > line.count("]"):
+        return "This line opens a list with  [  but never closes it. Add a  ]  after the last thing in the list"
     flipped = re.fullmatch(r"""(".*"|'.*'|\d+)\s*=\s*([A-Za-z_]\w*)""", line)
     if flipped:
         return f"The name goes first, then the  =  then what to keep in it. Write  {flipped[2]} = {flipped[1]}"
@@ -556,6 +558,9 @@ class Director(Brain):
             return super().lookup(name, frame)
         except BotError as err:
             text = str(err)
+            mine = difflib.get_close_matches(name, [n for n in self.named if n not in self.funcs and n != name], 1, 0.8)
+            if "is a command" in text and mine:      # f"{jump} jumps!" when the variable is jumps
+                raise BotError(f"{name} is a command, not one of your variables. Did you mean  {mine[0]}  ?")
             up = self.parent.get(id(self.at_name)) if self.at_name is not None and self.at_name.id == name else None
             if name not in self.named and isinstance(up, ast.Call) and isinstance(up.func, ast.Name) \
                     and up.func.id != "say" and '"' in USAGE.get(up.func.id, ""):
@@ -579,6 +584,9 @@ class Director(Brain):
             return f"I don't know  {name}  . Did you mean  {typo[0]}  ? Check the spelling: it has to match exactly."
         node = self.at_name if self.at_name is not None and self.at_name.id == name else None
         up = self.parent.get(id(node))
+        if isinstance(up, ast.List):
+            return f'Words in a list need quotes round each one, like  ["{name}", "Ben"]'
+
         if isinstance(up, ast.Call) and isinstance(up.func, ast.Name) and up.func.id in USAGE \
                 and up.func.id != "say":
             command = up.func.id
@@ -769,6 +777,8 @@ class Director(Brain):
             raise BotError('Your pal talks with say(), not print(). Try  say("Hello")')
         if name == "range":
             raise BotError("range() goes in a for loop, like  for i in range(4):")
+        if name in ("random", "rand", "dice") and name not in self.funcs:
+            raise BotError("For a surprise number, use  randint(1, 6)  : the two numbers are the smallest and biggest it can be.")
         if name in ("walk", "move", "go"):
             raise BotError(f"There's no {name}(). Your pal walks with  right(3)  or  left(3)")
         known = [c for c in COMMANDS + tuple(SENSORS) if c in self.commands] + list(self.funcs) + list(HELPERS)
