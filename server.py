@@ -7098,8 +7098,17 @@ def pixel_overview():
     return {"students": rows, "missions": [{"key": k, "name": pixel.LEVEL_BY_KEY[k]["name"]} for k in pixel.LEVEL_ORDER],
             "open": pixel_class.get("open", 0), "feed": pixel_feed[-12:],
             "room": {"open": pixel_room["open"], "words": pixel_room["words"], "here": [s["real"] for s in pixel_room["here"].values()],
-                     "said": said[-8:]},
+                     "said": said[-8:], "game": game_brief(),
+                     "people": {s["real"]: room_person(s) for s in pixel_room["here"].values()}},
             "meter": hang_view(), "stars": pixel_class_stars(), "placed": room_placed_counts()}
+
+
+def game_brief():
+    """The game on now, in a few words for the teacher."""
+    game = pixel_room.get("game")
+    if not game or game["phase"] == "results":
+        return None
+    return {"kind": game["kind"], "phase": game["phase"], "count": len(game["joined"]), "left": max(0, round(game["until"] - time.time()))}
 
 
 def pixel_teacher(data):
@@ -7132,8 +7141,8 @@ def pixel_teacher(data):
     if action == "code_race":          # everyone outside in the Hang out is in, and anyone can leave
         if not pixel_room["open"]:
             return {"error": "Open the Hang out first."}
-        if pixel_room["game"]:
-            return {"error": "A game is on right now. Try again when it ends."}
+        if pixel_room["game"] and pixel_room["game"]["phase"] != "results":
+            return {"error": "A game is on right now. Press ⏹ End this game first."}
         seats = [s["seat"] for s in pixel_room["here"].values() if not s["loc"]]
         if len(seats) < 2:
             return {"error": "At least 2 students need to be in the Hang out, outside their homes."}
@@ -7142,6 +7151,9 @@ def pixel_teacher(data):
                               "joined": seats, "until": time.time() + GAME_JOIN_SECONDS, "rewards": {}}
         room_event("game", message=f"💻 Code race for everyone! It starts in {GAME_JOIN_SECONDS} seconds.")
         return {"ok": True, "count": len(seats)}
+    if action == "end_game":           # no prizes: nobody finished the round
+        game_finish("The teacher ended this game.")
+        return {"ok": True}
     if action == "open":
         key = data.get("level")
         pixel_class["open"] = pixel.LEVEL_ORDER.index(key) if key in pixel.LEVEL_ORDER else 0

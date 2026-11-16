@@ -95,8 +95,8 @@ function paintGameState(data) {
   const racing = g?.kind === "code" && g.phase === "playing" && g.joined.includes(data.you);
   $("hangView").classList.toggle("racing", !!racing);
   if (roomStage) roomStage.state.camera = racing ? () => 0 : null;
-  // A Code race needs the job on screen, so a player is taken to Games once when it starts.
-  if (racing && raceShown !== g.id) {
+  // A round's controls are in Games (the job, the moves, the hiding places), so a player is taken there once when it starts.
+  if (g && g.joined.includes(data.you) && ["hiding", "playing"].includes(g.phase) && raceShown !== g.id) {
     raceShown = g.id;
     if (roomPane !== "games") { roomPane = "games"; artArmed = furnArmed = buyArmed = null; buildRoomButtons(); }
   }
@@ -135,7 +135,7 @@ function paintGameClock() {
   const answer = g.kind === "code" && g.phase === "playing" && gameNow() - g.round_at >= g.answer_after;
   if (answer !== raceAnswerOpen) { raceAnswerOpen = answer; if (roomPane === "games" && raceHelp) buildRoomButtons(); }
 }
-setInterval(paintGameClock, 250);
+setInterval(() => { paintGameClock(); tipKeepUp(); }, 250);
 function chooseGameCover(key) {
   const g = currentGame();
   if (!inRound() || g.kind !== "hide") return;

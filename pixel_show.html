@@ -110,7 +110,7 @@ stage.roomHooks({everySound: true});
 // ---- The camera: Auto goes to whoever's up to something, or you can drive -------------------
 const PLACE_W = PalStage.W, PLACE_WORD = {home: "🏠 Home", park: "🌳 Park", wedding: "💒 Wedding", beach: "🏖️ Beach", night: "🌙 Night", snowy: "⛄ Snowy hill", candy: "🍭 Candy land", space: "🚀 Space"};
 const cam = {mode: "auto", seat: null, x: 0, moveOn: 0, loc: 0};
-let people = [], homeName = "", watcher = null;
+let people = [], homeName = "", watcher = null, game = null;
 // Which place the screen shows: 0 is outside, any other number is someone's home.
 function lookAt(loc) {
   if (loc === cam.loc) return;
@@ -135,7 +135,13 @@ function followSeat(seat) {
 function goAuto() { cam.mode = "auto"; cam.moveOn = 0; paintWorld(); }
 // Auto takes turns with everyone, inside the homes too.
 function autoLook(now) {
-  if (cam.mode !== "auto" || now < cam.moveOn || !people.length) return;
+  if (cam.mode !== "auto" || !people.length) return;
+  if (game && game.phase === "playing" && (game.kind === "tag" || game.kind === "hide") && people.some(m => m.seat === game.it)) {
+    cam.seat = game.it;     // a chase is best watched from the chaser
+    lookAt(0);
+    return;
+  }
+  if (now < cam.moveOn) return;
   const at = people.findIndex(m => m.seat === cam.seat), next = people[(at + 1) % people.length];
   cam.seat = next.seat;
   lookAt(next.loc);
@@ -148,11 +154,21 @@ function autoNotice(e) {
   cam.seat = e.seat;
   cam.moveOn = now + 8000;
 }
+// Names on the map, left to right. One that would sit on the name before it goes up a row.
+function mapNames(list, wide) {
+  const px = $("map").clientWidth || 1, rows = [-1e9, -1e9];
+  return list.slice().sort((a, b) => a.x - b.x).map(m => {
+    const at = Math.max(2, Math.min(98, m.x / wide * 100)), half = (m.name.length * 7 + 14) / px * 50;
+    const row = rows[0] <= at - half ? 0 : rows[1] <= at - half ? 1 : rows[0] < rows[1] ? 0 : 1;
+    rows[row] = at + half;
+    return `<span class="who" style="left:${at}%;bottom:${5 + row * 18}px">${esc(m.name)}</span>`;
+  }).join("");
+}
 function paintWorld() {
   const places = stage.state.places || ["park"], wide = worldWide(), left = stage.state.camX || 0, list = crew();
   $("map").innerHTML = places.map(p => `<div class="place">${p === "home" ? `🏠 ${esc(homeName)}'s home` : PLACE_WORD[p]}</div>`).join("") +
     `<div class="view" style="left:${left / wide * 100}%;width:${PLACE_W / wide * 100}%"></div>` +
-    list.map(m => `<span class="who" style="left:${Math.max(2, Math.min(98, m.x / wide * 100))}%">${esc(m.name)}</span>`).join("");
+    mapNames(list, wide);
   $("people").innerHTML = people.map(m => `<button data-seat="${m.seat}" aria-pressed="${cam.mode === "follow" && cam.seat === m.seat}"><span>${esc(m.name)}</span>
     <small>${m.loc ? esc(m.where) : PLACE_WORD[m.where] || ""}${m.doing ? " · " + esc(m.doing) : ""}</small></button>`).join("") || "Nobody yet";
   const homes = [...new Map(people.filter(m => m.loc).map(m => [m.loc, m.home])).entries()];
@@ -198,7 +214,8 @@ watcher = PalStage.follow(stage, {everySound: true, loc: () => cam.loc, onState(
   $("bar").style.width = Math.min(100, data.meter.points / data.meter.goal * 100) + "%";
   $("words").textContent = `${data.meter.points} of ${data.meter.goal}`;
   $("next").textContent = data.meter.next ? `Next: ${data.meter.next}` : "Next: a party!";
-  paintRace(data.game);
+  game = data.game;
+  paintGame(data.game);
   for (const e of data.events) {
     autoNotice(e);
     if (e.kind === "mymove") banner(`✨ <b>${esc(e.by)}</b>: ${esc(e.title)}`, e.ms + 700);
@@ -207,11 +224,29 @@ watcher = PalStage.follow(stage, {everySound: true, loc: () => cam.loc, onState(
   }
 }});
 
-// A Code race: the job, then the fastest code between rounds, so the class can read it together.
-function paintRace(g) {
-  $("raceCard").hidden = !g || g.kind !== "code";
-  if ($("raceCard").hidden) return;
+// The game on now. A Code race shows the job, then the fastest code between rounds, so the class can read it together.
+const GAME_WORD = {hide: "🙈 Hide & seek", tag: "🏃 Tag", race: "🚦 Red light, green light", dance: "💃 Copy the dance", code: "💻 Code race"};
+const DANCE_ICON = {wave: "👋", jump: "🦘", spin: "🌀", cheer: "🎉"};
+function paintGame(g) {
+  $("raceCard").hidden = !g;
+  if (!g) return;
   const name = seat => (people.find(m => m.seat === seat) || {}).name || "A friend";
+  if (g.kind !== "code") {
+    const left = Math.max(0, Math.ceil(g.until - g.now)), names = seats => seats.map(name).join(", ") || "nobody yet";
+    $("raceLabel").textContent = GAME_WORD[g.kind] + (g.phase === "lobby" || g.phase === "results" ? "" : ` · ${left}s left`);
+    $("raceJob").textContent = g.phase === "lobby" ? `Starting soon! ${g.joined.length} joined. Join in Games.`
+      : g.phase === "results" ? g.message
+      : g.kind === "tag" ? `${name(g.it)} is IT!`
+      : g.kind === "hide" ? (g.phase === "hiding" ? `${name(g.it)} is counting. Hide!` : `${name(g.it)} is looking!`)
+      : g.kind === "race" ? (g.light === "red" ? "🔴 Red light: freeze!" : "🟢 Green light: run!")
+      : `Round ${g.round + 1} of 3: ${(g.seq || []).map(m => DANCE_ICON[m] || m).join(" ")}`;
+    $("raceCode").hidden = true;
+    $("raceWho").textContent = g.phase !== "playing" && g.phase !== "hiding" ? ""
+      : g.kind === "hide" && g.phase === "playing" ? `Found: ${names(g.found)} (${g.found.length} of ${g.joined.length - 1})`
+      : g.kind === "race" ? `At the flag: ${names(g.done)}`
+      : `Playing: ${g.joined.length}`;
+    return;
+  }
   const reveal = g.phase === "playing" && g.pause && g.reveal;
   $("raceLabel").textContent = g.phase === "playing" ? `💻 Code race · Job ${g.round + 1} of ${g.rounds}` : "💻 Code race";
   $("raceJob").textContent = g.phase === "lobby" ? `Starting soon! ${g.joined.length} joined. Join in Games.`

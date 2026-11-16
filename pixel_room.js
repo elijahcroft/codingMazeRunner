@@ -27,7 +27,18 @@ const PLACE_NAMES = {park: ["🌳", "Park"], wedding: ["💒", "Wedding"], beach
 const SLOT_NAMES = {hat: "Hats", face: "Faces", sparkle: "Sparkles"};
 const ROOM_TIP = "Walk to the edge to explore! Gold ring: sit. Pink ring: play. Blue ring: fish. Find the 💎 gems!";
 const HOME_TIP = "Click the floor to walk. Click a door to go through it.";
-const roomTipNow = () => (atHome() ? HOME_TIP : ROOM_TIP);
+// While you're in a round, the tip under the world says what to do in that game.
+function gameTip(g) {
+  const you = roomInfo.you, it = g.it === you;
+  if (g.kind === "tag") return it ? "You're IT! Click near a friend to tag them." : "Run! Click the ground to get away from IT.";
+  if (g.kind === "hide" && g.phase === "hiding") return it ? "You're counting. Everyone else is hiding!" : "Hide! Pick a hiding place on the right.";
+  if (g.kind === "hide") return it ? "Click a hiding place to walk there and look." : "Stay still! The seeker is looking.";
+  if (g.kind === "race") return "Green light: press Run or → again and again. Red light: stop!";
+  if (g.kind === "dance") return "Tap the lit-up move on the right, in order.";
+  if (g.kind === "code") return (g.solved || []).includes(you) ? "You solved it! Clap for your friends while they finish." : "Build your code on the right, then press ▶ Run my code.";
+  return ROOM_TIP;
+}
+const roomTipNow = () => (atHome() ? HOME_TIP : inRound() ? gameTip(currentGame()) : ROOM_TIP);
 
 function fitRoomScreen() {
   const host = $("roomHost"), wrap = host.parentElement, main = wrap.parentElement;
@@ -434,7 +445,13 @@ let tipTimer = 0;
 function tipFor(text, ms = 3500) {
   $("roomTip").textContent = text;
   clearTimeout(tipTimer);
-  tipTimer = setTimeout(() => { $("roomTip").textContent = roomTipNow(); }, ms);
+  tipTimer = setTimeout(() => { tipTimer = 0; $("roomTip").textContent = roomTipNow(); }, ms);
+}
+// The everyday tip follows the game (IT changes, a solve), unless a short message is showing.
+function tipKeepUp() {
+  if (tipTimer || !roomInfo || $("hangView").hidden) return;
+  const text = roomTipNow();
+  if ($("roomTip").textContent !== text) $("roomTip").textContent = text;
 }
 
 // The page takes the colour of the place in the middle of the screen.
