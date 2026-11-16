@@ -948,6 +948,9 @@ def perform(code, pal=PIP, events=(), seed=0, commands=EVERYTHING, setup=None):
         error, line = str(e), e.line
     except BotError as e:
         error, line = str(e), e.line
+        if "That's a very long show" in error and director and any(isinstance(n, ast.While) for n in ast.walk(director.tree)):
+            error = re.sub(r"That's a very long show!.*", "Your while loop never stopped! Something pushed in under the  while  "
+                           "has to change each time round, so its question ends up no.", error)
     except RecursionError:
         error = "Your program called itself too many times."
     return {"steps": show.steps, "after": show.steps[show.mark:], "error": error, "line": line,
@@ -989,6 +992,7 @@ CHAPTERS = [
     {"key": "w", "name": "Smart Pal", "icon": "🧠"},
     {"key": "r", "name": "Surprise!", "icon": "🎲"},
     {"key": "k", "name": "Click Me!", "icon": "🖱️"},
+    {"key": "c", "name": "Keep Going", "icon": "⏳"},
 ]
 
 # `adds` opens commands, and `python` opens the shapes of Python on the chips.
@@ -1350,6 +1354,43 @@ LEVELS = [
      "hints": ["clicks() is a number. Ask  if clicks() == 3:  then put  else:  under it, lined up with the if.",
                'def on_click():\n    say(clicks())\n    if clicks() == 3:\n        cheer()\n    else:\n        jump()'],
      "reference": 'def on_click():\n    say(clicks())\n    if clicks() == 3:\n        cheer()\n    else:\n        jump()'},
+
+    # Keep Going: while loops, which go round as long as their question is yes.
+    {"key": "c1", "chapter": 10, "name": "Walk to the edge", "adds": ["x"], "python": ["while"],
+     "pip": "A while loop keeps going round as long as its question is yes. x() is the spot your pal is on. "
+            "It starts on spot 2, and the edge of the stage is spot 10.",
+     "job": "Walk right until you get to the edge, then say something.",
+     "coach": [
+               ('while x() < 10:', "x() is the spot your pal is on. While it's less than 10, keep going round!"),
+               ('    right(1)', "One step right. After every step, the loop asks its question again."),
+               ('say("The edge!")', "This line isn't pushed in, so it runs when the loop is done. I moved it back for you."),
+     ],
+     "goals": [("Your pal gets to the edge, spot 10", lambda r: 10 in _visited(r),
+                lambda r: f"Your pal stopped on spot {r.x}. The edge is spot 10."),
+               ("It uses a while loop", lambda r: r.whiles >= 1, None),
+               ("It says something when it gets there", lambda r: r.x == 10 and bool(r.log) and r.log[-1][0] == "say", None)],
+     "hints": ["Try  while x() < 10:  and push  right(1)  in under it.",
+               'while x() < 10:\n    right(1)\nsay("The edge!")'],
+     "reference": 'while x() < 10:\n    right(1)\nsay("The edge!")'},
+
+    {"key": "c2", "chapter": 10, "name": "Countdown", "adds": [], "python": [],
+     "pip": "A countdown! Each time round, n gets 1 smaller. When n gets to 0, the question  n > 0  is no, "
+            "and the loop stops.",
+     "job": "Count down from 5 to 1, then cheer.",
+     "coach": [
+               ('n = 5', "n is a variable. It starts at 5."),
+               ('while n > 0:', "Keep going round while n is more than 0."),
+               ('    say(n)', "Say the number."),
+               ('    n = n - 1', "Make n one smaller. Without this line, the loop would never stop!"),
+               ('cheer()', "Not pushed in: when the countdown is done, cheer! I moved it back for you."),
+     ],
+     "goals": [("Your pal counts down to 1, from 5 or more", lambda r: _countdown(r) >= 5,
+                lambda r: f"Your pal said {', '.join(r.said[:6]) or 'nothing'}. I want 5, 4, 3, 2, 1."),
+               ("It uses a while loop", lambda r: r.whiles >= 1, None),
+               ("It cheers once, at the very end", lambda r: r.n("cheer") == 1 and r.log[-1][0] == "cheer", None)],
+     "hints": ["Start with  n = 5  . Under  while n > 0:  say n, then make it smaller with  n = n - 1",
+               'n = 5\nwhile n > 0:\n    say(n)\n    n = n - 1\ncheer()'],
+     "reference": 'n = 5\nwhile n > 0:\n    say(n)\n    n = n - 1\ncheer()'},
 ]
 
 # "Your turn": after a mission, one change for the student to make with the guide off.
@@ -1403,6 +1444,9 @@ REMIXES = {
            "Change only the two numbers in  randint(2, 5)"),
     "k1": ("Make your pal do 3 things on every click.", lambda r: len(r.reacts) >= 3 and all(_click_moves(r, i) >= 3 for i in range(3)),
            "Add one more line under  def on_click():  , pushed in like the others. Try  spin()"),
+    "c1": ("Then walk all the way back to spot 0, with a second while loop.", lambda r: r.whiles >= 2 and 10 in _visited(r) and r.x == 0,
+           "Add  while x() > 0:  at the bottom, with  left(1)  pushed in under it."),
+    "c2": ("Count down from 10 instead of 5.", lambda r: _countdown(r) >= 10, "Change only one thing: the 5 in the first line."),
     "k2": ("Make your pal spin on the 3rd click, as well as cheer.", lambda r: len(r.reacts) >= 4 and [r.did(i, "spin") for i in range(4)] == [False, False, True, False],
            "Add  spin()  under  cheer()  , pushed in just as far."),
 }
@@ -1431,6 +1475,8 @@ GUESSES = {
     "r3": ("What's the fewest jumps your pal can do?", ["0", "2", "5"], 1),
     "k1": ("Pip clicks your pal 3 times. How many times will it jump?", ["Never", "Once", "3 times"], 2),
     "k2": ("What does your pal do on the 2nd click?", ["Cheers", "Jumps", "Nothing"], 1),
+    "c1": ("How many steps will your pal take?", ["2", "8", "10"], 1),
+    "c2": ("What's the last number your pal says?", ["0", "1", "5"], 1),
 }
 # "Fix it": after a mission, Pip's code for it with one bug in it, to find and fix.
 # (what went wrong, the code with the bug, check that it's fixed, a hint that says where to look).
@@ -1484,6 +1530,10 @@ FIXES = {
            lambda r: all(o.n("say") == 1 and o.log[-1][0] == "say" for o in r.others), "Lines pushed in are inside the loop. Should the say line be inside?"),
     "w2": ("Pip's count stops at 1!", "for i in range(1, 6):\n    say(i)\n    if i = 3:\n        jump()",
            lambda r: r.n("jump") == 1 and _after_three(r), "To ask if two things are the same, Python uses  ==  , two equals signs."),
+    "c1": ("Pip's pal walks the wrong way, and the show never ends!", 'while x() < 10:\n    left(1)\nsay("The edge!")',
+           lambda r: 10 in _visited(r) and r.log[-1][0] == "say", "Which way is the edge? Look at the line inside the loop."),
+    "c2": ("Pip's countdown says 5 again and again and never stops!", 'n = 5\nwhile n > 0:\n    say(n)\nn = n - 1\ncheer()',
+           lambda r: _countdown(r) >= 5 and r.n("cheer") == 1, "The line that makes n smaller has to go round with the loop. Is it pushed in?"),
     "k1": ("Pip's pal giggles once at the very start, and never when it's clicked!", 'def on_click():\n    jump()\nsay("Hee hee!")',
            lambda r: len(r.reacts) >= 3 and all(r.did(i, "jump") and r.did(i, "say") for i in range(3)),
            "Only lines pushed in under  def on_click():  wait for a click. Is the say line pushed in?"),
@@ -1565,6 +1615,17 @@ def _click_name_slip(r):
     return f"Nothing happens when I click your pal. Did you mean  def on_click():  instead of  def {near[0]}():  ? It has to be spelled just like that." if near else None
 
 
+def _countdown(r):
+    """The number a countdown to 1 started from, at the end of what the pal said, or 0."""
+    nums = [int(s) for s in r.said if s.lstrip("-").isdigit()]
+    if not nums or nums[-1] != 1:
+        return 0
+    i = len(nums) - 1
+    while i > 0 and nums[i - 1] == nums[i] + 1:
+        i -= 1
+    return nums[i]
+
+
 def _click_said(r, i, words):
     return i < len(r.reacts) and any(name == "say" and args and str(args[0]) == str(words) for name, args in r.reacts[i])
 
@@ -1623,6 +1684,7 @@ GIFTS = {
     "blush": {"name": "Rosy cheeks", "slot": "face"},
     "candyspark": {"name": "Candy sparkles", "slot": "sparkle"}, "firespark": {"name": "Fire sparkles", "slot": "sparkle"},
     "propeller": {"name": "Propeller cap", "slot": "hat"}, "bubblespark": {"name": "Bubble sparkles", "slot": "sparkle"},
+    "beret": {"name": "Beret", "slot": "hat"}, "pixelshades": {"name": "Pixel shades", "slot": "face"},
     # These unlock by themselves when a goal is reached: [what is counted, how many].
     "gemcrown": {"name": "Gem crown", "slot": "hat", "goal": ["gems", 9]},
     "fishhat": {"name": "Fish hat", "slot": "hat", "goal": ["fish", 5]},

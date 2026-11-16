@@ -29,6 +29,7 @@ const WORDS = {
   grow: "Gets bigger.", shrink: "Gets smaller again.", shake: "Wobbles like a jelly.",
   look: "Moves its eyes: left, right, up, down or front.",
   clicks: "How many times your pal has been clicked so far: 1, then 2, then 3...",
+  x: "The spot your pal is on, from 0 at the left to 10 at the right.",
   scene: "Changes the place: stage, wedding, park, beach, night, snowy, candy, space or castle.",
   sound: "Plays a sound: ding, boing, pop, tada, meow, drum, whoosh or yay.",
   rain: "Rain falls.", snow: "Snow falls.",
@@ -46,6 +47,7 @@ const PYTHON = {
   def: ["def", "def my_move():\n    ", "Makes a new command. The lines pushed in under it are what it does."],
   if: ["if", "if i == 3:\n    ", "Only runs the lines pushed in under it when the answer is yes."],
   click: ["on click", "def on_click():\n    ", "Makes your pal wait for a click. The lines pushed in under it run every time it's clicked."],
+  while: ["while loop", "while x() < 10:\n    ", "Goes round and round as long as its question is yes."],
   else: ["else", "else:\n    ", "Goes under an if, lined up with it. Its lines run when the if's answer is no."],
   random: ["surprise", 'mood = choice(["happy", "silly"])', "choice() picks one thing from a list by surprise. randint(1, 6) picks a number from 1 to 6."],
 };
@@ -430,7 +432,7 @@ const KEY_HELP = {
   "(": "Hold Shift and press 9", ")": "Hold Shift and press 0", '"': "Hold Shift and press the ' key, next to Enter",
   ":": "Hold Shift and press the ; key", "!": "Hold Shift and press 1", " ": "Press the long space bar", "\n": "Press Enter", ".": "Press the . key",
   "+": "Hold Shift and press the = key, next to Backspace", "=": "Press the = key, next to Backspace", ",": "Press the , key, next to M",
-  "-": "Press the - key, next to 0", "_": "Hold Shift and press the - key, next to 0", "[": "Press the [ key, next to P", "]": "Press the ] key, next to [", "{": "Hold Shift and press the [ key", "}": "Hold Shift and press the ] key",
+  "-": "Press the - key, next to 0", "<": "Hold Shift and press the , key", ">": "Hold Shift and press the . key", "_": "Hold Shift and press the - key, next to 0", "[": "Press the [ key, next to P", "]": "Press the ] key, next to [", "{": "Hold Shift and press the [ key", "}": "Hold Shift and press the ] key",
 };
 const ACTIONS = /^\s*(say|jump|right|left|wave|dance|cheer|spin|hearts|stars|confetti|feel)\(/gm;
 let coachWay = null, coachOops = "", coachEarly = false;     // coachWay: "type", "build", or "own" for a student's own way

@@ -30,7 +30,7 @@ Both teacher pages are linked from `/admin`.
    as Pip.
 5. After 3 missions, the Hang out opens and stays open.
 6. Mission 9 is **My Move**. They code their own routine and it becomes a big
-   button in the Hang out. Thirteen more missions come after it, for students who finish.
+   button in the Hang out. Fifteen more missions come after it, for students who finish.
 
 A big button at the top right always says what comes next. On Code, that's **💻 Next mission**
 once the open mission is done; it only says Go hang out when every mission is finished, so
@@ -38,7 +38,7 @@ it never pulls a student out of a mission halfway. The 🎉 Hang out tab is alwa
 
 ## The missions
 
-22 missions and 66 stars. The first star opens the next mission, and the other two are
+24 missions and 72 stars. The first star opens the next mission, and the other two are
 for going further.
 
 | Chapter | Missions | What it teaches |
@@ -53,8 +53,9 @@ for going further.
 | 🧠 Smart Pal | Make a move, Number three | `def`, and `if` inside a loop |
 | 🎲 Surprise! | Surprise mood, Roll the dice, Lucky jumps | `choice()` and `randint()`: code that does something different each time |
 | 🖱️ Click Me! | Poke me!, Count the pokes | Events (`def on_click():`), `clicks()` and `else` |
+| ⏳ Keep Going | Walk to the edge, Countdown | `while` loops: going round as long as the answer is yes, with `x()` and a variable that changes |
 
-The last thirteen come after My Move on purpose, so a student who has already made their
+The last fifteen come after My Move on purpose, so a student who has already made their
 move doesn't have it locked behind new missions. They start easy (one new command each)
 and get harder.
 
@@ -75,6 +76,12 @@ Clicks after the show aren't saved or paid; they're for trying it. A `def on_cli
 Free stage works the same way, and so does `def on_key(key):` there: after the show, the arrow
 keys and space go to the pal (unless they click back into the code to type), so they can make a pal
 they steer: a tiny game of their own. **💡 Give me an idea** has one, "Walk with the arrow keys".
+
+**⏳ Keep Going is `while`.** Walk to the edge uses `x()`, the spot the pal is on, so the
+loop stops when the pal gets there. Countdown makes a variable smaller each time round. A
+`while` that never stops says so in plain words ("Your while loop never stopped! Something
+pushed in under the while has to change each time round"), and that's the bug in both of
+their Fix its.
 
 **Every mission walks them through it.** The top says the job in one plain sentence. Under
 it, the guide gives one line at a time: what the line does, the exact keys as tiles, and

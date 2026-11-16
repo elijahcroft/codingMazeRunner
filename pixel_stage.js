@@ -131,6 +131,8 @@ const PalStage = (() => {
     roundglasses: {rows: [".kkk...kkk.", "kwwwkkkwwwk", "kwwwk.kwwwk", ".kkk...kkk."], ink: {k: "#4a2c1d", w: "#d6f4ff"}},
     clownnose: {rows: [".rr.", "rwrr", "rrrr", ".rr."], ink: {r: "#e8294f", w: "#ffffff"}},
     blush: {rows: ["pp.......pp", "pp.......pp"], ink: {p: "#e8406f"}},
+    beret: {rows: ["....r......", "..rrrrrr...", ".rrrrrrrrr.", "rrrrrrrrrrr", ".ddddddddd."], ink: {r: "#e8294f", d: "#8f1d3a"}},
+    pixelshades: {rows: ["kkkkkkkkkkk", "kwkkk.kwkkk", ".kkk...kkk."], ink: {k: "#1b1530", w: "#ffffff"}},
     propeller: {rows: ["rrrr.k.bbbb", "....kkk....", "..kkyyykk..", ".kyyryyyyk.", "kyyyyyyyyyk", "kkkkkkkkkkk"], ink: {k: "#1b1530", r: "#e8294f", b: "#2f6fe4", y: "#ffd93b"}},
     // unlocked by reaching a goal
     gemcrown: {rows: ["k...k...k", "kb.kpk.gk", "kyykyykyk", "kyyyyyyyk", "kbyryygyk", "kkkkkkkkk"], ink: {k: "#8a5a00", y: "#ffd93b", r: "#e8294f", b: "#7ab8ff", g: "#35d0bd", p: "#ff5fa2"}},

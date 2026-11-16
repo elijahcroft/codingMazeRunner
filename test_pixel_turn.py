@@ -28,6 +28,8 @@ CHANGED = {
     "r1": 'mood = choice(["happy", "silly", "cool", "sleepy"])\nfeel(mood)\nsay("I feel " + mood)',
     "r2": "roll = randint(1, 6)\nsay(roll)\nif roll == 6:\n    cheer()\nif roll == 1:\n    jump()",
     "r3": 'jumps = randint(5, 10)\nfor i in range(jumps):\n    jump()\nsay(f"{jumps} lucky jumps!")',
+    "c1": 'while x() < 10:\n    right(1)\nsay("The edge!")\nwhile x() > 0:\n    left(1)',
+    "c2": 'n = 10\nwhile n > 0:\n    say(n)\n    n = n - 1\ncheer()',
     "k1": 'def on_click():\n    jump()\n    say("Hee hee!")\n    spin()',
     "k2": 'def on_click():\n    say(clicks())\n    if clicks() == 3:\n        cheer()\n        spin()\n    else:\n        jump()',
 }
@@ -68,6 +70,8 @@ TRUTH = {
     "r1": lambda st: "Sad" if [s["mood"] for s in st if s["do"] == "feel"][0] in ("happy", "silly", "cool") else "?",
     "r2": lambda st: "6" if 1 <= int(_said(st)[0]) <= 6 else "?",
     "r3": lambda st: "2" if _n(st, "jump") >= 2 else "?",
+    "c1": lambda st: str(_n(st, "walk")),
+    "c2": lambda st: _said(st)[-1],
     "k1": lambda st: "3 times" if _n(st, "jump") == 3 and _n(st, "event") == 3 else "?",
     "k2": lambda st: "Jumps" if _n(_click(st, 1), "jump") and not _n(_click(st, 1), "cheer") else "?",
 }
