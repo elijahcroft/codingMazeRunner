@@ -27,6 +27,9 @@
   #people { display: flex; flex-direction: column; gap: 4px; max-height: 44vh; overflow: auto; }
   #people button { display: grid; text-align: left; background: #eef4e8; padding: 4px 10px; font-size: 16px; line-height: 1.15; }
   #people small { font-size: 13px; font-weight: 700; color: #5f7c75; }
+  #people.many { display: grid; grid-template-columns: 1fr 1fr; max-height: 34vh; }     /* a whole class: two columns, so more fit without scrolling */
+  #people.many button { font-size: 14px; padding: 3px 7px; }
+  #people.many small { font-size: 11px; }
   #places { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
   #places button { font: inherit; font-size: 14px; color: inherit; border: 0; border-radius: 12px; background: #eef4e8; padding: 4px 10px; cursor: pointer; }
   #places button[aria-pressed="true"] { background: #ffd27a; }
@@ -171,6 +174,7 @@ function paintWorld() {
   $("map").innerHTML = places.map(p => `<div class="place">${p === "home" ? `🏠 ${esc(homeName)}'s home` : PLACE_WORD[p]}</div>`).join("") +
     `<div class="view" style="left:${left / wide * 100}%;width:${PLACE_W / wide * 100}%"></div>` +
     mapNames(list, wide);
+  $("people").classList.toggle("many", people.length > 10);
   $("people").innerHTML = people.map(m => `<button data-seat="${m.seat}" aria-pressed="${cam.mode === "follow" && cam.seat === m.seat}"><span>${esc(m.name)}</span>
     <small>${m.loc ? esc(m.where) : PLACE_WORD[m.where] || ""}${m.doing ? " · " + esc(m.doing) : ""}</small></button>`).join("") || "Nobody yet";
   const homes = [...new Map(people.filter(m => m.loc).map(m => [m.loc, m.home])).entries()];
