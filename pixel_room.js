@@ -530,6 +530,16 @@ function openRoom() {
   paintPalStrip();
   fitRoomScreen();
   stopRoom = PalStage.follow(roomStage, {id: me, onState: roomState});
+  welcomeOnce();
+}
+// A student's first time in the Hang out says where to start, once. It's kept for each
+// student on this computer; if the browser won't keep it, it stays quiet rather than repeat.
+function welcomeOnce() {
+  const key = "pixelHangHello:" + me;
+  try { if (localStorage.getItem(key)) return; localStorage.setItem(key, "1"); } catch (_) { return; }
+  roomPane = "games";
+  buildRoomButtons();
+  banner(`🎉 Welcome to the Hang out! 🎉<small>Click the ground to walk. Today's 🎯 jobs are in Games, on the right.</small>`, 7000, true);
 }
 function closeRoom() {
   if (!stopRoom) return;

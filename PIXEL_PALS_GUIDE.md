@@ -136,7 +136,8 @@ actions or more adds a big finish. Running the mission again updates the move.
 ## The Hang out
 
 Everyone's pal is in one soft little world, and what one child taps, everyone sees.
-No code is needed once they're in.
+No code is needed once they're in. The first time a student comes in, a 🎉 Welcome banner
+says to click the ground to walk and that today's 🎯 jobs are in Games, and Games opens.
 
 - **One long world:** the places sit side by side, and the camera follows your pal. Walk
   to the edge of the screen to reach the next place. A full party meter makes the world
