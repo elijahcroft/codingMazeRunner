@@ -214,7 +214,8 @@ class Show:
 
     @staticmethod
     def text(value):
-        return show_value(value)[:MAX_SAY]
+        words = show_value(value)
+        return words if len(words) <= MAX_SAY else words[:MAX_SAY - 1].rstrip() + "…"   # the … shows there was more
 
     def walk_to(self, spot):
         spot = max(0, min(SPOTS - 1, spot))
@@ -659,6 +660,13 @@ class Director(Brain):
             raise BotError("Dots aren't part of Pixel Pals, except  name.upper()  and  name.lower()")
         if isinstance(node, ast.Constant) and isinstance(node.value, float):
             raise BotError("Use whole numbers here, like 3 (not 3.5).")
+        if isinstance(node, ast.Constant) and isinstance(node.value, str) and len(node.value) > MAX_TEXT:
+            raise BotError(f"That's a lot of words! Keep each one under {MAX_TEXT} letters, "
+                           f"or split them into two  say()  lines.")
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "input" \
+                and "input" not in self.funcs:
+            raise BotError('Your pal can\'t ask questions with input(). Put the words in a variable '
+                           'instead, like  name = "Luna"')
         if type(node).__name__ in ("TemplateStr", "NamedExpr", "Await", "Yield", "YieldFrom", "Starred"):
             raise BotError("That isn't part of Pixel Pals.")
         return super().eval(node, frame)

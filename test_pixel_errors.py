@@ -64,6 +64,16 @@ class MistakesSayWhatToType(unittest.TestCase):
         e = error('jumps = 3\nfor i in range(jumsp):\n    jump()')
         self.assertIn("Did you mean  jumps", e)
 
+    def test_long_words_say_what_to_do(self):
+        self.assertIn("split them into two", error('say("' + "la " * 80 + '")'))
+        self.assertIn('name = "Luna"', error("name = input()"))
+
+    def test_a_long_bubble_shows_it_was_cut(self):
+        steps = pixel.public(pixel.perform('say("' + "la " * 30 + '")'))["steps"]
+        said = next(s["text"] for s in steps if s["do"] == "say")
+        self.assertTrue(said.endswith("…"))
+        self.assertLessEqual(len(said), pixel.MAX_SAY)
+
     def test_working_code_has_no_error(self):
         for lv in pixel.LEVELS:
             self.assertEqual(error(lv["reference"]), "", lv["key"])
