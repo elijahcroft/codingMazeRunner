@@ -227,7 +227,10 @@ did 🦘. The job is 🦘 🦘."), or gives the bug and its line. A solve makes 
 code in a spotlight for everyone, with a 👏 Clap button for the others, and pays 3 coding
 coins. Solving is 1 point and solving first is 2. There are 3 jobs, each harder: commands
 in order, then a loop, then more than one thing in a loop. Between jobs, everyone sees the
-fastest code, or one way to do it if time ran out. 💡 Help gives a tip, and the whole
+fastest code, or one way to do it if time ran out. A student who has solved the job gets a
+**🌟 Bonus**: do the whole job 2 times. Their code stays in the box, so copying the lines again
+works, and putting it all in a loop is the neat way. It pays 1 coding coin and plays in the
+spotlight, but gives no race points, so it never changes who wins. 💡 Help gives a tip, and the whole
 answer after 30 seconds. Friends can join part way through, and players can clap and use
 💬 Say while they race. The jobs are `RACE_JOBS` in `pixel.py`. A solver's code is only
 shown to the class if its words are on the tap list or are the job's own words, and it

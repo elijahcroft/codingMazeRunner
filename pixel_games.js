@@ -85,7 +85,7 @@ function paintGameState(data) {
   status.hidden = !open;
   const key = JSON.stringify([g?.id, g?.phase, g?.joined, g?.it, g?.found, g?.hiding, g?.tags, g?.message, g?.reward, data.you,
                               g?.light, g?.done, g?.seq, g?.step, g?.round,
-                              g?.solved, g?.pause, g?.reveal, g?.score, g?.job?.job]);
+                              g?.solved, g?.bonus, g?.pause, g?.reveal, g?.score, g?.job?.job]);
   if (key !== gamePaintKey) {
     gamePaintKey = key;
     if (roomPane === "games") buildRoomButtons();
@@ -182,21 +182,28 @@ function racePane(g, you) {
     const r = g.reveal || {};
     body += `<p class="me-note">${r.by ? `⚡ <b>${esc(r.by)}</b> was fastest! Here's their code:` : "Time! Here's one way to code it:"}</p>
       <pre class="race-reveal">${esc(r.code || "")}</pre><p class="me-note">The next job is coming...</p>`;
-  } else if (g.solved.includes(you)) {
-    body += `<p class="race-msg good">⭐ You solved it! Clap for your friends while they finish.</p><pre class="race-reveal">${esc(g.mine)}</pre>`;
+  } else if ((g.bonus || []).includes(you)) {
+    body += `<p class="race-msg good">🌟 Bonus done! Clap for your friends while they finish.</p><pre class="race-reveal">${esc(g.mine)}</pre>`;
+  } else if (g.solved.includes(you)) {        // solved: the same code box, for the bonus
+    if (!raceCode) raceCode = g.mine;
+    body += `<p class="race-msg good">⭐ You solved it!</p><p class="race-bonus">🌟 Bonus: do the whole job 2 times! ${esc(g.bonus_icons)}</p>
+      <p class="me-note">💡 Copy your lines again under them, or put them all in a 🔁 loop.</p>` + raceEditor(job, false);
   } else {
-    const chips = ["for i in range(3):", ...RACE_CHIPS, ...job.chips];
-    body += `<textarea id="raceCode" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Your code"
-        placeholder="Tap the green commands, or type here">${esc(raceCode)}</textarea>
-      <div class="race-chips">${chips.map(c => `<button data-put="${esc(c)}"${c.startsWith("for") ? ' class="loop"' : ""}>${c.startsWith("for") ? "🔁 " : ""}${esc(c)}</button>`).join("")}</div>
-      <button class="wide race-run" data-race="run">▶ Run my code</button>
-      <div class="race-row"><button data-race="undo">⌫ Undo line</button><button data-race="out">⇤ Out of loop</button>
-        <button data-race="help">💡 ${raceHelp ? "More help" : "Help"}</button></div>
-      <p class="race-msg${raceGood ? " good" : ""}" id="raceMsg" role="status">${esc(raceMsg)}</p>${raceHelpText(g)}`;
+    body += raceEditor(job, true) + raceHelpText(g);
   }
-  const names = g.solved.map(s => esc(gamePerson(s))).join(", ");
-  body += `<p class="me-note race-score">Solved: ${names || "nobody yet"} · Your points: ${g.score}<br><small>Solve it: 1 point. First: 2 points. +3 🪙 each time!</small></p>`;
+  const names = g.solved.map(s => esc(gamePerson(s)) + ((g.bonus || []).includes(s) ? " 🌟" : "")).join(", ");
+  body += `<p class="me-note race-score">Solved: ${names || "nobody yet"} · Your points: ${g.score}<br><small>Solve it: 1 point. First: 2 points. +3 🪙 each time! 🌟 Bonus: +1 🪙</small></p>`;
   return body;
+}
+function raceEditor(job, help) {
+  const chips = ["for i in range(3):", ...RACE_CHIPS, ...job.chips];
+  return `<textarea id="raceCode" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Your code"
+      placeholder="Tap the green commands, or type here">${esc(raceCode)}</textarea>
+    <div class="race-chips">${chips.map(c => `<button data-put="${esc(c)}"${c.startsWith("for") ? ' class="loop"' : ""}>${c.startsWith("for") ? "🔁 " : ""}${esc(c)}</button>`).join("")}</div>
+    <button class="wide race-run" data-race="run">▶ Run my code</button>
+    <div class="race-row"><button data-race="undo">⌫ Undo line</button><button data-race="out">⇤ Out of loop</button>
+      ${help ? `<button data-race="help">💡 ${raceHelp ? "More help" : "Help"}</button>` : ""}</div>
+    <p class="race-msg${raceGood ? " good" : ""}" id="raceMsg" role="status">${esc(raceMsg)}</p>`;
 }
 function raceHelpText(g) {
   if (!raceHelp) return "";
@@ -254,8 +261,9 @@ async function raceButton(what) {
   if (!out) raceSay("Couldn't reach the game. Please try again.", false);
   else if (out.error) raceSay(out.error, false);
   else {
-    raceSay(out.message, !!out.solved);
-    if (out.solved) refreshState();
+    const good = "bonus" in out ? out.bonus : !!out.solved;      // a solver's runs are for the bonus
+    raceSay(out.message, good);
+    if (good) refreshState();
     else PalStage.SFX.play("boing");
   }
 }

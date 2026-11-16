@@ -75,7 +75,7 @@ class Race(unittest.TestCase):
         server.room_keep_up()
 
     def run_code(self, p, code):
-        self.clock += server.CODE_RUN_GAP
+        self.clock += server.CODE_RUN_GAP + .01      # just past the gap, whatever the float rounding
         return self.do(p, "run", code=code)
 
     def begin(self, count=2):
@@ -101,13 +101,45 @@ class Race(unittest.TestCase):
         move = self.events("mymove")[-1]
         self.assertEqual(move["seat"], self.seat(self.kids[0]))
         self.assertEqual([s["do"] for s in move["steps"]], ["jump", "jump"])
-        self.assertTrue(self.run_code(self.kids[0], "jump()")["solved"])      # already solved: no second go
+        again = self.run_code(self.kids[0], "jump()")                          # already solved: a run now is for the bonus
+        self.assertTrue(again["solved"])
+        self.assertFalse(again["bonus"])
         self.assertEqual(game["score"], {self.seat(self.kids[0]): 2})
         self.run_code(self.kids[1], "jump()\njump()")
         self.assertEqual(game["score"][self.seat(self.kids[1])], 1)
         self.assertTrue(game["pause_until"])                                   # everyone solved: the round ends
         self.assertEqual(game["reveal"], {"by": "Mia", "code": "jump()\njump()"})
         self.assertIn("error", self.run_code(self.kids[1], "jump()"))
+
+    def test_after_solving_the_bonus_is_the_whole_job_two_times(self):
+        game = self.begin()
+        mia, ben = self.kids[:2]
+        self.assertTrue(self.run_code(mia, "jump()\njump()")["solved"])
+        coins, score = server.pixel_entry(mia)["coins"], dict(game["score"])
+        miss = self.run_code(mia, "jump()\njump()\njump()")
+        self.assertEqual((miss["solved"], miss["bonus"]), (True, False))
+        self.assertIn("The bonus is 🦘 🦘 🦘 🦘", miss["message"])
+        out = self.run_code(mia, "jump()\njump()\njump()\njump()")      # copying the lines again works
+        self.assertEqual((out["solved"], out["bonus"]), (True, True))
+        self.assertEqual(server.pixel_entry(mia)["coins"], coins + server.CODE_BONUS_COINS)
+        self.assertEqual(game["score"], score)                                # no race points: the winner doesn't change
+        self.assertEqual(self.events("mymove")[-1]["title"], "🌟 Bonus!")
+        self.assertIn("Bonus done", self.run_code(mia, "jump()")["message"])  # once a job
+        self.assertEqual(server.pixel_entry(mia)["coins"], coins + server.CODE_BONUS_COINS)
+        self.assertFalse(self.run_code(ben, "jump()\njump()\njump()\njump()")["solved"])     # not solved yet: no bonus
+        view = server.game_view(self.seat(mia))
+        self.assertEqual(view["bonus"], [self.seat(mia)])
+        self.assertEqual(view["bonus_icons"], "🦘 🦘 🦘 🦘")
+
+    def test_a_loop_round_the_job_does_the_bonus_and_a_loop_job_still_needs_its_loop(self):
+        game = self.begin()
+        mia = self.kids[0]
+        self.run_code(mia, "jump()\njump()")
+        self.assertTrue(self.run_code(mia, "for i in range(2):\n    jump()\n    jump()")["bonus"])
+        game["job"] = pixel.RACE_JOBS[1][0]                                   # Jump 5 times. Use a loop!
+        game["solved"], game["bonus"] = [self.seat(mia)], []
+        self.assertIn("loop", self.run_code(mia, "\n".join(["jump()"] * 10))["message"])
+        self.assertTrue(self.run_code(mia, "for i in range(10):\n    jump()")["bonus"])
 
     def test_every_screen_sees_the_solve_and_the_claps(self):
         self.begin()

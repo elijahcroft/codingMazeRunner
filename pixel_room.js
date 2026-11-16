@@ -35,7 +35,8 @@ function gameTip(g) {
   if (g.kind === "hide") return it ? "Click a hiding place to walk there and look." : "Stay still! The seeker is looking.";
   if (g.kind === "race") return "Green light: press Run or → again and again. Red light: stop!";
   if (g.kind === "dance") return "Tap the lit-up move on the right, in order.";
-  if (g.kind === "code") return (g.solved || []).includes(you) ? "You solved it! Clap for your friends while they finish." : "Build your code on the right, then press ▶ Run my code.";
+  if (g.kind === "code") return (g.bonus || []).includes(you) ? "Bonus done! Clap for your friends while they finish."
+    : (g.solved || []).includes(you) ? "You solved it! Try the 🌟 Bonus on the right, or clap for your friends." : "Build your code on the right, then press ▶ Run my code.";
   return ROOM_TIP;
 }
 const roomTipNow = () => (atHome() ? HOME_TIP : inRound() ? gameTip(currentGame()) : ROOM_TIP);

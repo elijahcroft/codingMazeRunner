@@ -493,7 +493,7 @@
   .game-status span { font-size: 14px; }
   .game-status:hover { background: #eef5e8; }
   .game-status:focus-visible, .games-pane button:focus-visible { outline: 3px solid #376dba; outline-offset: 2px; }
-  .room-buttons.games-pane { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .room-buttons.games-pane { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: max-content; gap: 8px; }     /* auto rows left the race message one line tall when it wrapped */
   .games-pane button small { font-size: 12px; font-weight: 600; line-height: 1.4; }
   .games-pane .me-note { grid-column: 1 / -1; }
   .games-pane button:disabled { opacity: .5; cursor: default; }
@@ -512,6 +512,7 @@
   .room-buttons .race-run:hover:not(:disabled) { background: linear-gradient(135deg, #7f5bef, #b47bef); }
   .race-msg { grid-column: 1 / -1; margin: 0; min-height: 1.3em; font-size: 15px; font-weight: 800; color: #8a2f4f; overflow-wrap: anywhere; }
   .race-msg.good { color: #2d6a3a; }
+  .race-bonus { grid-column: 1 / -1; margin: 0; padding: 6px 10px; border-radius: 12px; background: #fff3c4; color: #5a4208; font-size: 15px; font-weight: 900; }
   .race-reveal { grid-column: 1 / -1; margin: 0; padding: 8px 10px; border-radius: 12px; background: #27303f; color: #e9f1e2; font: 700 14px/1.4 var(--mono); white-space: pre-wrap; }
   #seekerCurtain { position: absolute; inset: 0; z-index: 20; background: #e9f1e2; color: #27484a; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 16px; border-radius: inherit; }
   #seekerCurtain[hidden] { display: none; }

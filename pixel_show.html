@@ -259,7 +259,7 @@ function paintGame(g) {
     : reveal ? (reveal.by ? `⚡ ${reveal.by} was fastest!` : "Here's one way:") : `${g.job.job} ${g.job.icons}`;
   $("raceCode").hidden = !reveal;
   $("raceCode").textContent = reveal ? reveal.code : "";
-  $("raceWho").textContent = g.phase === "playing" ? `Solved: ${g.solved.map(name).join(", ") || "nobody yet"} (${g.solved.length} of ${g.joined.length})` : "";
+  $("raceWho").textContent = g.phase === "playing" ? `Solved: ${g.solved.map(s => name(s) + ((g.bonus || []).includes(s) ? " 🌟" : "")).join(", ") || "nobody yet"} (${g.solved.length} of ${g.joined.length})` : "";
 }
 
 async function refresh() {

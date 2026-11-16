@@ -6029,6 +6029,7 @@ CODE_PAUSE = 8                   # seconds between rounds, showing the fastest c
 CODE_RUN_GAP = .8                # seconds between one student's runs
 CODE_MAX = 1000                  # characters of code in one run
 CODE_SOLVE_COINS = 3             # for each job solved, paid as coding coins
+CODE_BONUS_COINS = 1             # for the bonus after solving: the whole job 2 times
 CODE_ANSWER_AFTER = 30           # seconds into a round before 💡 Help shows a whole answer
 # Hiding places belong to the place they stand in: park things in the Park (x under 320),
 # wedding things in the Wedding garden. "at" finishes the sentence "You're hidden ...".
@@ -6144,7 +6145,7 @@ def code_round(game, now):
     """A new job for everyone, from the next list, so each round asks a bit more."""
     jobs = pixel.RACE_JOBS[game["round"]]
     job = random.choice(jobs)
-    game.update(job=job, solved=[], codes={}, pause_until=0, reveal=None, round_at=now,
+    game.update(job=job, solved=[], bonus=[], codes={}, pause_until=0, reveal=None, round_at=now,
                 until=now + CODE_SECONDS[game["round"]])
     room_event("game", message=f"💻 Round {game['round'] + 1} of {pixel.RACE_ROUNDS}: {job['job']}")
 
@@ -6184,18 +6185,46 @@ def code_tick(game, seats, now):
                else "Time! Here's one way to code it.")
 
 
+def race_bonus(job):
+    """The bonus after solving: the whole job 2 times. Copying the lines again always works,
+    and a loop round all of it is the neat way."""
+    bonus = dict(job, want=job["want"] * 2)
+    if job.get("said"):
+        bonus["said"] = job["said"] * 2
+    return bonus
+
+
+def code_spotlight(spot, game, steps, now, title, big):
+    """A solver's pal does their code for everyone, and friends can clap."""
+    allowed = pixel.ROOM_SAYS | set(game["job"].get("said", ()))
+    steps = [s for s in steps if s["do"] != "say" or pixel_room["words"] or s["text"] in allowed]
+    steps, spot["x"], ms = pixel.stage_move(steps, spot["x"], True, room_width(spot) - 8)
+    spot.update(rest=None, claps=0, move_until=now + ms / 1000 + .7)     # friends can clap while it plays
+    room_event("mymove", seat=spot["seat"], by=spot["name"], title=title, steps=steps, loop=False, big=big, ms=ms)
+
+
 def code_run(p, spot, game, data, now):
     seat = spot["seat"]
     if game["pause_until"]:
         return {"error": "Wait for the next job!"}
-    if seat in game["solved"]:
-        return {"ok": True, "solved": True, "message": "⭐ You solved this one! Clap for your friends."}
+    if seat in game.get("bonus", ()):
+        return {"ok": True, "solved": True, "bonus": True, "message": "🌟 Bonus done! Clap for your friends."}
     if now - game["ran"].get(seat, 0) < CODE_RUN_GAP:
         return {"error": "One moment..."}
     game["ran"][seat] = now
     code = data.get("code")
     if not isinstance(code, str) or len(code) > CODE_MAX:
         return {"error": "That code is too long for the race."}
+    if seat in game["solved"]:                  # solved already: this run is for the bonus
+        out = pixel.race_check(race_bonus(game["job"]), code)
+        if not out["ok"]:
+            return {"ok": True, "solved": True, "bonus": False, "message": out["message"].replace("The job is", "The bonus is"), "line": out["line"]}
+        game.setdefault("bonus", []).append(seat)
+        code_spotlight(spot, game, out["steps"], now, "🌟 Bonus!", False)
+        coins = pixel_pay(p, CODE_BONUS_COINS, play=False)
+        pixel_save_soon()
+        return {"ok": True, "solved": True, "bonus": True, "coins": coins,
+                "message": f"🌟 Bonus! The whole job 2 times! +{coins} 🪙 Watch your pal."}
     out = pixel.race_check(game["job"], code)
     if not out["ok"]:
         return {"ok": True, "solved": False, "message": out["message"], "line": out["line"]}
@@ -6203,12 +6232,7 @@ def code_run(p, spot, game, data, now):
     game["solved"].append(seat)
     game["codes"][seat] = code
     game["score"][seat] = game["score"].get(seat, 0) + 1 + fastest
-    allowed = pixel.ROOM_SAYS | set(game["job"].get("said", ()))
-    steps = [s for s in out["steps"] if s["do"] != "say" or pixel_room["words"] or s["text"] in allowed]
-    steps, spot["x"], ms = pixel.stage_move(steps, spot["x"], True, room_width(spot) - 8)
-    spot.update(rest=None, claps=0, move_until=now + ms / 1000 + .7)     # friends can clap while it plays
-    room_event("mymove", seat=seat, by=spot["name"], title="⚡ Solved it first!" if fastest else "⭐ Solved it!",
-               steps=steps, loop=False, big=fastest, ms=ms)
+    code_spotlight(spot, game, out["steps"], now, "⚡ Solved it first!" if fastest else "⭐ Solved it!", fastest)
     room_event("game", message=f"⚡ {spot['name']} solved it first!" if fastest else f"⭐ {spot['name']} solved it!")
     coins = pixel_pay(p, CODE_SOLVE_COINS, play=False)
     day_job(p, "code")
@@ -6439,7 +6463,8 @@ def game_view(you):
         job = game["job"]
         out.update(job={"job": job["job"], "icons": pixel.race_icons(job["want"]), "chips": job.get("chips", []),
                         "loops": job.get("loops", 0), "hint": job["answer"]},
-                   solved=game["solved"], pause=game["pause_until"], reveal=game["reveal"], rounds=pixel.RACE_ROUNDS,
+                   solved=game["solved"], bonus=game.get("bonus", []), bonus_icons=pixel.race_icons(job["want"] * 2),
+                   pause=game["pause_until"], reveal=game["reveal"], rounds=pixel.RACE_ROUNDS,
                    round_at=game["round_at"], answer_after=CODE_ANSWER_AFTER,
                    mine=game["codes"].get(you, ""))
     return out
