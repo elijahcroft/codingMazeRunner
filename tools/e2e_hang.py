@@ -21,7 +21,7 @@ and plays through what children do in the Hang out at 1366x768:
   * a star shower and catching one, the teacher closing and opening the Hang
     out while the class is in it, and a page reload in the middle of things,
   * the projector's people, places, map, game card, follow, and the labels
-    on its buttons.
+    on its buttons, and Auto leaving a home to show a My Move outside.
 
 It records console errors, and checks the layout at 1366x768 for text that is
 cut off or pushed off the screen.  It is a tool, not a unittest: it is not
@@ -426,7 +426,7 @@ def pstate(p):
       tag: document.getElementById('placeTag').hidden ? null : document.getElementById('placeTag').innerText,
       follow: document.getElementById('followTag').hidden ? null : document.getElementById('followTag').innerText,
       word: document.getElementById('camWord').innerText,
-      mode: cam.mode, loc: cam.loc,
+      mode: cam.mode, loc: cam.loc, seat: cam.seat,
       race: [document.getElementById('raceLabel').innerText,
              document.getElementById('raceJob').innerText,
              document.getElementById('raceWho').innerText],
@@ -1403,6 +1403,57 @@ def projector_checks(a, b, p, report):
             report.check(f"{label}'s layout still fits", not issues, issues)
 
 
+def projector_moment_check(a, b, p, report):
+    """Auto in a home must not miss a My Move outside: it jumps there and shows the banner.
+    A place the teacher picked by hand stays put but still shows the banner."""
+    # Both students back outside, so the home starts empty.
+    for d in (a, b):
+        if d.js("return !!(roomInfo && roomInfo.home)"):
+            pane(d, "home")
+            click_room(d, '[data-home="out"]')
+            time.sleep(1)
+    # Ben goes home. Auto is sped up through its 8-second turns until it looks there.
+    pane(b, "home")
+    click_room(b, '[data-home="mine"]')
+    wait(b, "return !!(roomInfo && roomInfo.home)", 6, "Ben's home")
+    p.js("document.getElementById('camAuto').click()")
+    looked = wait(p, "cam.mode = 'auto'; cam.moveOn = 0; return cam.loc !== 0", 15,
+                 "Auto to look into Ben's home")
+    report.check("Auto can be looking into a home", looked, pstate(p))
+    # Ana, still outside, does her My Move. Auto must leave the home for it.
+    time.sleep(7)
+    ana_seat = room(a).get("you")
+    if a.js("return !!S.hang.move") and ana_seat is not None:
+        a.click("#myMove")
+        wait(p, "return cam.loc === 0", 6, "the projector to jump outside for the My Move")
+        ps = pstate(p)
+        report.check("Auto leaves the home for a My Move outside", ps["loc"] == 0, ps)
+        report.check("Auto jumps to the pal doing the My Move", ps["seat"] == ana_seat, ps)
+        report.check("the projector shows the My Move banner from another place",
+                     "My Move" in (ps["banner"] or ""), ps)
+        shot(p, "projector-moment-mymove", report, shot_dir)
+        time.sleep(1)
+    else:
+        report.problem("Ana has no My Move to test the projector moment")
+    # A place the teacher picked by hand keeps the camera there, but the class still sees the banner.
+    time.sleep(7)
+    click_text(p, "#places [data-loc]", report.names[1])
+    picked = wait(p, "return cam.mode === 'free' && cam.loc !== 0", 6, "the projector to look at Ben's home by hand")
+    report.check("the teacher can look at a home by hand", picked, pstate(p))
+    if picked and a.js("return !!S.hang.move"):
+        a.click("#myMove")
+        time.sleep(1.2)
+        ps = pstate(p)
+        report.check("a hand-picked camera stays in the home", ps["loc"] != 0 and ps["mode"] == "free", ps)
+        report.check("a hand-picked camera still shows the My Move banner",
+                     "My Move" in (ps["banner"] or ""), ps)
+    # Leave things as the later sections expect them: outside and Auto.
+    pane(b, "home")
+    click_room(b, '[data-home="out"]')
+    p.js("document.getElementById('camAuto').click()")
+    time.sleep(1)
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -1470,6 +1521,7 @@ def main():
             ("names/calm/mute/prop/buddies", lambda: hide_name_calm_mute_prop_buddies(a, b, report)),
             ("shop/me/art/home", lambda: shop_me_art_home(a, b, c, p, report)),
             ("projector", lambda: projector_checks(a, b, p, report)),
+            ("projector moment", lambda: projector_moment_check(a, b, p, report)),
             ("star shower", lambda: shower_check(base_url, a, b, p, report)),
             ("teacher close/open", lambda: teacher_close_open(a, b, c, p, report)),
             ("reload", lambda: reload_check(a, b, report)),

@@ -257,6 +257,53 @@ function autoLook(now) {
   cam.moveOn = now + 8000;
 }
 const SHOW_THESE = ["mymove", "toy", "five", "found", "go", "rest", "move", "fx"];
+// Class-wide moments that Auto must chase, even when it is looking into a home.
+// A game start or a Pal ball goal says so with event.moment instead of a kind.
+const MOMENT_THESE = ["mymove", "shower", "party", "photo"];
+let momentQueue = [];
+const isMoment = e => !!e.moment || MOMENT_THESE.includes(e.kind);
+function momentPlace(e) {
+  if (e.kind === "shower") {                 // the stars land outside, wherever the first one falls
+    const star = (e.stars || [])[0];
+    return {loc: 0, x: star ? star.x : null};
+  }
+  if (e.moment === "goal") return {loc: 0, x: typeof e.x === "number" ? e.x : null};
+  if (e.moment === "game") {                 // games are outside, and the host is a good place to watch
+    const who = people.find(m => m.seat === e.focus);
+    return {loc: 0, seat: who && !who.loc ? who.seat : null};
+  }
+  if (e.kind === "party") return {loc: 0};
+  const who = people.find(m => m.seat === e.seat);
+  if (who) return {loc: who.loc, seat: who.seat};
+  return {loc: typeof e.loc === "number" ? e.loc : 0};
+}
+function noteMoment(e) {
+  if (!isMoment(e) || cam.mode !== "auto") return false;
+  const place = momentPlace(e);
+  // A party with nobody outside stays where it is: the pals in the home can party too.
+  if (e.kind === "party" && place.loc === 0 && cam.loc !== 0 && !people.some(m => !m.loc)) return false;
+  const moved = cam.loc !== place.loc;
+  if (place.seat != null) cam.seat = place.seat;
+  else if (typeof place.x === "number") { cam.seat = null; cam.x = keepIn(place.x - PLACE_W / 2); }
+  else {
+    const first = people.find(m => m.loc === place.loc);
+    cam.seat = first ? first.seat : null;
+  }
+  lookAt(place.loc);
+  cam.moveOn = performance.now() + 8000;
+  // Changing place asks for a fresh snapshot, so the moment's own moves and
+  // effects are played again on the pals in the new place.
+  if (moved) momentQueue.push({e, at: performance.now()});
+  return moved;
+}
+function playQueuedMoments() {
+  const now = performance.now(), keep = [];
+  for (const item of momentQueue) {
+    if (now - item.at < 6000 && (item.e.loc == null || item.e.loc === cam.loc)) stage.roomApply(item.e, true);
+    else if (now - item.at < 6000) keep.push(item);
+  }
+  momentQueue = keep;
+}
 function autoNotice(e) {
   const now = performance.now();
   if (cam.mode === "auto" && e.kind === "danceparty") {      // a dance party is worth a look straight away
@@ -340,6 +387,7 @@ watcher = PalStage.follow(stage, {everySound: true, loc: () => cam.loc, onState(
   people = data.people || [];
   homeName = data.home ? data.home.name : "";
   homeRooms = data.home ? data.home.rooms.map(r => r.name) : [];
+  if (data.members) playQueuedMoments();       // the new place is here: play the moment it jumped for
   if (cam.loc && !people.some(m => m.loc === cam.loc)) lookAt(0);     // everyone left that home
   $("closed").hidden = data.open;
   $("bar").style.width = Math.min(100, data.meter.points / data.meter.goal * 100) + "%";
@@ -362,6 +410,7 @@ watcher = PalStage.follow(stage, {everySound: true, loc: () => cam.loc, onState(
   if (data.snowman) $("snowLine").textContent = `❄️ Snowman ${data.snowman.balls} of ${data.snowman.need} · ⛄ built today: ${data.snowman.built} · 🎄 on the tree: ${(stage.state.tree || []).length}`;
   if ($("jobs").innerHTML !== jobs) $("jobs").innerHTML = jobs;
   for (const e of data.events) {
+    noteMoment(e);
     autoNotice(e);
     if (e.kind === "mymove") banner(`✨ <b>${esc(e.by)}</b>: ${esc(e.title)}`, e.ms + 700);
     else if (e.kind === "bigshow") playBigShow(e);
@@ -375,12 +424,12 @@ watcher = PalStage.follow(stage, {everySound: true, loc: () => cam.loc, onState(
       banner(`⛄ The class built a snowman! That's ${e.built} today!`, 5000, true);
     }
     else if (e.kind === "photo") {
-      cam.mode = "free"; cam.x = 0; lookAt(0);
       banner(`📸 Class photo! Say cheese! (${e.count})`, 6000, true);
       $("savePhoto").hidden = false;
       clearTimeout(photoTimer);
       photoTimer = setTimeout(() => { $("savePhoto").hidden = true; }, 90000);
     }
+    else if (e.kind === "game" && e.moment) banner(esc(e.message), 5000, e.moment === "goal");
     else if (e.kind === "danceparty") { stage.roomApply({kind: "fx", name: "confetti", x: e.x}, true); banner(`🪩 Dance party! ${e.seats.length} pals dancing together!`, 4000, true); }
   }
 }});

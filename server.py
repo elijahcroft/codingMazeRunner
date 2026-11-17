@@ -6079,6 +6079,9 @@ def pixel_record(p, key, code, out, guess=None, fixing=False):
 # It's in memory only, and seats are what travel, because a player id works as a
 # login. Words are tapped from a list unless the teacher turns typing on.
 ROOM_EVENTS = 500
+# Big class moments the projector must show even while Auto is looking into a
+# home. A game start or a Pal ball goal says so with `moment` instead of a kind.
+ROOM_MOMENTS = {"mymove", "shower", "party", "photo"}
 ROOM_AWAY = 14             # seconds without a word from a browser before a pal leaves
 SHOWER_FIRST = 75          # seconds after the first pal arrives
 SHOWER_GAP = (150, 210)    # seconds between star showers
@@ -6135,7 +6138,8 @@ EVERYWHERE = object()
 
 def room_event(kind, loc=EVERYWHERE, **more):
     """`loc` is where it happened: 0 is the world outside, and any other number is
-    somebody's home. Left out, it's where the pal in `seat` is, or everywhere."""
+    somebody's home. Left out, it's where the pal in `seat` is, or everywhere.
+    `moment` marks a class-wide game moment (a start or a goal) for the projector."""
     room = pixel_room
     if loc is EVERYWHERE:
         spot = next((s for s in room["here"].values() if s["seat"] == more.get("seat")), None)
@@ -6145,6 +6149,11 @@ def room_event(kind, loc=EVERYWHERE, **more):
     del room["events"][:-ROOM_EVENTS]
     with room_news:
         room_news.notify_all()
+
+
+def room_moment(event):
+    """Whether the class projector should see this even while watching a home."""
+    return event["kind"] in ROOM_MOMENTS or bool(event.get("moment"))
 
 
 def hang_meter():
@@ -6380,7 +6389,7 @@ def game_begin(now):
         game["motion"][seat] = {"x": spot["x"], "y": spot["y"], "tx": spot["x"], "ty": spot["y"], "at": now}
     if kind == "race":
         game.update(light="green", light_until=now + random.uniform(*RACE_GREEN), done=[])
-        room_event("game", message="🟢 Green light! Run to the flag!")
+        room_event("game", message="🟢 Green light! Run to the flag!", moment="game", focus=game["host"])
     elif kind == "dance":
         game.update(round=0, score={}, frozen={})
         dance_round(game, now)
@@ -6397,13 +6406,13 @@ def game_begin(now):
         game.update(score={}, apples=[], apple_serial=0)
         for _ in range(APPLE_COUNT):
             game["apples"].append(game_apple(game))
-        room_event("game", message="🍎 Apple grab! Walk onto apples. Golden ones are worth 3.")
+        room_event("game", message="🍎 Apple grab! Walk onto apples. Golden ones are worth 3.", moment="game", focus=game["host"])
     elif kind == "ball":
         game.update(team_score={"blue": 0, "orange": 0}, goal_until=0, kick_at=0,
                     ball={"x": GAME_WIDTH / 2, "y": .55, "vx": 0, "vy": 0}, ball_at=now)
-        room_event("game", message="⚽ Pal ball! Blue kicks right, Orange kicks left. Walk into the ball to kick it!")
+        room_event("game", message="⚽ Pal ball! Blue kicks right, Orange kicks left. Walk into the ball to kick it!", moment="game", focus=game["host"])
     else:
-        room_event("game", message="🙈 Hide! The seeker is counting..." if kind == "hide" else "Tag! Run!")
+        room_event("game", message="🙈 Hide! The seeker is counting..." if kind == "hide" else "Tag! Run!", moment="game", focus=game["host"])
 
 
 def dance_round(game, now):
@@ -6412,7 +6421,7 @@ def dance_round(game, now):
     count = 3 + game["round"]
     game.update(seq=[random.choice(pixel.DANCE_MOVES) for _ in range(count)], progress={},
                 show_until=now + DANCE_READY, until=now + DANCE_READY + 4 + 2 * count)
-    room_event("game", message=f"Round {game['round'] + 1} of {DANCE_ROUNDS}: copy the dance!")
+    room_event("game", message=f"Round {game['round'] + 1} of {DANCE_ROUNDS}: copy the dance!", moment="game", focus=game["host"])
 
 
 def dance_tick(game, seats, now):
@@ -6445,7 +6454,7 @@ def draw_turn(game, now):
     game.update(drawer=seat, word=word[0], choices=choices, board="." * pixel.DRAW_GRID ** 2, guessed=[], wrong={},
                 pause_until=0, until=now + DRAW_SECONDS, round_at=now)
     name = pair[1]["name"] if pair else "A friend"
-    room_event("game", message=f"🎨 Picture {game['round'] + 1} of {len(game['order'])}: {name} is drawing! Guess on the right.")
+    room_event("game", message=f"🎨 Picture {game['round'] + 1} of {len(game['order'])}: {name} is drawing! Guess on the right.", moment="game", focus=game["host"])
 
 
 def draw_tick(game, seats, now):
@@ -6523,7 +6532,7 @@ def code_round(game, now):
     job = random.choice(jobs)
     game.update(job=job, solved=[], bonus=[], codes={}, pause_until=0, reveal=None, round_at=now,
                 until=now + CODE_SECONDS[game["round"]])
-    room_event("game", message=f"💻 Round {game['round'] + 1} of {pixel.RACE_ROUNDS}: {job['job']}")
+    room_event("game", message=f"💻 Round {game['round'] + 1} of {pixel.RACE_ROUNDS}: {job['job']}", moment="game", focus=game["host"])
 
 
 def code_clean(code, job):
@@ -6747,7 +6756,8 @@ def ball_tick(game, seats, now):
         game["goal_until"] = now + BALL_GOAL_PAUSE
         ball["vx"] = ball["vy"] = 0
         blue, orange = game["team_score"].get("blue", 0), game["team_score"].get("orange", 0)
-        room_event("game", message=f"⚽ GOAL for {'🔵 Blue' if team == 'blue' else '🟠 Orange'}! 🔵 {blue} — {orange} 🟠 Get ready for the next kick!")
+        room_event("game", message=f"⚽ GOAL for {'🔵 Blue' if team == 'blue' else '🟠 Orange'}! 🔵 {blue} — {orange} 🟠 Get ready for the next kick!",
+                   moment="goal", x=round(ball["x"], 1), y=round(ball["y"], 2))
         return
     # Outside a goal, the ends of the world bounce the ball back into play.
     if ball["x"] < BALL_WALL:
@@ -6859,7 +6869,7 @@ def game_action(p, spot, data):
         pixel_room["game_serial"] += 1
         pixel_room["game"] = {"id": pixel_room["game_serial"], "kind": kind, "phase": "lobby", "host": seat,
                               "joined": [seat], "until": now + GAME_JOIN_SECONDS, "rewards": {}}
-        room_event("game", message=f"🎮 {spot['name']} started {GAME_TITLES[kind]}! Tap the yellow bar above to join.")
+        room_event("game", message=f"🎮 {spot['name']} started {GAME_TITLES[kind]}! Tap the yellow bar above to join.", moment="game", focus=seat)
     elif not game:
         return {"error": "This round has ended."}
     elif action == "join" and (game["phase"] == "lobby" or (game["kind"] in STILL_GAMES and game["phase"] == "playing")):
@@ -7197,7 +7207,10 @@ def room_view(p, after, watch=0):
         if p and winter():
             out["ornament"] = next((r["key"] for r in pixel_class.get("tree", []) if r["owner"] == p["id"]), None)
     else:
-        out["events"] = [e for e in room["events"] if e["n"] > after and e["loc"] in (None, loc)]
+        # Each screen sees its own place, except the class projector: it also gets
+        # the class-wide moments, so Auto never misses one from another place.
+        out["events"] = [e for e in room["events"] if e["n"] > after and
+                         (e["loc"] in (None, loc) or (not p and room_moment(e)))]
     # Snapshots restore newly revealed pals and keep concealed positions off every
     # other child's browser (including the class projector). No stale trails leak.
     if room.get("game"):
@@ -8432,7 +8445,7 @@ def pixel_teacher(data):
         pixel_room["game_serial"] += 1
         pixel_room["game"] = {"id": pixel_room["game_serial"], "kind": "code", "phase": "lobby", "host": seats[0],
                               "joined": seats, "until": time.time() + GAME_JOIN_SECONDS, "rewards": {}}
-        room_event("game", message=f"💻 Code race for everyone! It starts in {GAME_JOIN_SECONDS} seconds.")
+        room_event("game", message=f"💻 Code race for everyone! It starts in {GAME_JOIN_SECONDS} seconds.", moment="game", focus=seats[0])
         return {"ok": True, "count": len(seats)}
     if action == "photo":              # 📸 everyone outside lines up in the Park, in rows, for a picture
         if not pixel_room["open"]:
