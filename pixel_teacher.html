@@ -27,6 +27,17 @@
   th { text-align: left; font-size: 13px; color: var(--soft); padding: 4px 8px; white-space: nowrap; }
   td { padding: 5px 8px; border-top: 1px solid var(--line); vertical-align: top; }
   tr.stuck td { background: #fff1f3; }
+  tr.dim td { opacity: .3; }
+  .strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 6px; }
+  .tile { display: flex; align-items: center; gap: 5px; min-height: 46px; padding: 4px 7px; border: 2px solid var(--ink);
+          border-radius: 8px; background: var(--paper); color: var(--ink); font-family: inherit; font-weight: 800;
+          text-align: left; cursor: pointer; }
+  .tile:hover { background: #e7defd; }
+  .tile.zero { opacity: .35; cursor: default; }
+  .tile.picked { background: var(--sun); }
+  .tile .ic { font-size: 17px; line-height: 1; }
+  .tile .nm { flex: 1; font-size: 13px; line-height: 1.15; }
+  .tile b { font-size: 18px; font-weight: 900; }
   .err { color: var(--warn); font-size: 13px; }
   .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   #poster-page { display: none; }
@@ -67,6 +78,12 @@
   <div class="card">
     <div class="row"><b id="classStars" style="white-space:nowrap"></b><div class="bar" style="flex:1"><i id="classBar"></i></div></div>
     <p style="margin:6px 0 0;font-size:14px;color:var(--soft)" id="classGoal"></p>
+  </div>
+
+  <h2>📊 Where the class is</h2>
+  <div class="card">
+    <div id="strip" class="strip" aria-label="Chapters: how many students are on each"></div>
+    <p id="stripHint" style="margin:6px 0 0;font-size:13px;color:var(--soft)">Tap a tile to highlight those students. Tap it again to show everyone.</p>
   </div>
 
   <h2>Who's where</h2>
@@ -146,7 +163,7 @@ async function refresh() {
   classRows = data.students;
   setTimeout(() => document.querySelectorAll("canvas.pal").forEach(paintPal));
   $("rows").innerHTML = data.students.map(s => `
-    <tr class="${s.misses >= 3 ? "stuck" : ""}">
+    <tr class="${s.misses >= 3 ? "stuck" : ""}" data-place="${esc(s.place)}">
       <td><canvas class="pal" data-picture="${esc(JSON.stringify(s.picture || null))}"></canvas>${esc(s.name)}</td>
       <td>${esc(s.level_name)}<br><small style="color:var(--soft)">${esc(s.chapter)}</small></td>
       <td>${s.misses >= 3 ? `<b style="color:var(--warn)">${s.misses} misses</b>` : s.runs_here}</td>
@@ -154,6 +171,11 @@ async function refresh() {
         : s.hang ? "" : `<button class="btn" data-let-in="${esc(s.name)}" data-on="1">🔓 Let in</button>`}</td>
       <td class="err">${esc(s.last_error)}</td>
     </tr>`).join("");
+  const strip = data.strip;
+  $("strip").innerHTML = strip.chapters.map(ch => stripTile(ch.key, ch.icon, ch.short, ch.name, ch.count)).join("")
+    + stripTile("not", "🌱", "Not started", "Not started", strip.not_started)
+    + stripTile("done", "🏁", "All done", "All done", strip.all_done);
+  applyStrip();
   const pick = $("openTo");
   if (!pick.options.length) {
     pick.innerHTML = data.missions.map((m, i) => `<option value="${esc(m.key)}">${i + 1}. ${esc(m.name)}</option>`).join("");
@@ -185,6 +207,24 @@ function hangCell(here, move) {
   const can = move ? "Yes, with My Move" : "Yes";
   if (!here) return can;
   return `<b>${esc(PLACE_WORD[here.where] || here.where)}</b>${here.doing ? `<br><small>${esc(here.doing)}</small>` : ""}`;
+}
+// 📊 Where the class is: one tile per chapter, and a tile for each end of the line.
+let stripPick = null;
+function stripTile(place, icon, short, full, count) {
+  return `<button type="button" class="tile${count ? "" : " zero"}" data-place="${esc(place)}" data-label="${esc(full)}" title="${esc(full)}: ${count} student${count === 1 ? "" : "s"}"${count ? "" : " disabled"}><span class="ic" aria-hidden="true">${icon}</span><span class="nm">${esc(short)}</span><b>${count}</b></button>`;
+}
+function applyStrip() {
+  const tiles = [...document.querySelectorAll("#strip .tile")];
+  if (stripPick && !tiles.some(t => t.dataset.place === stripPick && !t.disabled)) stripPick = null;
+  tiles.forEach(t => {
+    const on = t.dataset.place === stripPick;
+    t.classList.toggle("picked", on);
+    t.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+  document.querySelectorAll("#rows tr").forEach(tr => tr.classList.toggle("dim", !!stripPick && tr.dataset.place !== stripPick));
+  const picked = tiles.find(t => t.dataset.place === stripPick);
+  $("stripHint").textContent = picked ? `Showing ${picked.dataset.label}. Tap the tile again to show everyone.`
+    : "Tap a tile to highlight those students. Tap it again to show everyone.";
 }
 const LETTERS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 function paintPal(cv) {
@@ -231,6 +271,12 @@ $("rows").addEventListener("click", async e => {
   refresh();
 });
 $("roomTyping").addEventListener("change", async e => { await call({action: "room_words", on: e.target.checked}); refresh(); });
+$("strip").addEventListener("click", e => {
+  const tile = e.target.closest("[data-place]");
+  if (!tile || tile.disabled) return;
+  stripPick = stripPick === tile.dataset.place ? null : tile.dataset.place;
+  applyStrip();
+});
 // Every pal in the class on one page, to print and pin up.
 let classRows = [];
 $("poster").addEventListener("click", () => {

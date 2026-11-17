@@ -8053,6 +8053,35 @@ def pixel_picture(entry):
     return None if pal is pixel.PIP else pixel_picture_of(pal)
 
 
+def pixel_where_class(entry, at):
+    """The "Where the class is" tile for one student: "not" until they have
+    run anything, "done" once every mission has a first star, or the chapter
+    of the open, unfinished mission they are on."""
+    started = sum(1 for key in pixel.LEVEL_ORDER if (entry["solved"].get(key) or [False])[0])
+    if not started and not any(entry["runs"].values()):
+        return "not"
+    if started == len(pixel.LEVEL_ORDER):
+        return "done"
+    return pixel.CHAPTERS[pixel.LEVEL_BY_KEY[pixel.LEVEL_ORDER[at]]["chapter"]]["key"]
+
+
+def pixel_class_strip(rows):
+    """One count per chapter for the teacher's strip, plus Not started and All done."""
+    chapters = [{"key": ch["key"], "icon": ch["icon"], "name": ch["name"],
+                 "short": pixel.CHAPTER_SHORT.get(ch["key"], ch["name"]), "count": 0}
+                for ch in pixel.CHAPTERS]
+    by_key = {ch["key"]: ch for ch in chapters}
+    not_started = all_done = 0
+    for row in rows:
+        if row["place"] == "not":
+            not_started += 1
+        elif row["place"] == "done":
+            all_done += 1
+        elif row["place"] in by_key:
+            by_key[row["place"]]["count"] += 1
+    return {"chapters": chapters, "not_started": not_started, "all_done": all_done}
+
+
 def pixel_overview():
     """The teacher's page and the projector: where everyone is, who's stuck,
     the party meter and the recent moments."""
@@ -8066,6 +8095,7 @@ def pixel_overview():
         lv = pixel.LEVEL_BY_KEY[key]
         rows.append({"name": q["name"], "level": key, "level_name": lv["name"], "at": at,
                      "chapter": pixel.CHAPTERS[lv["chapter"]]["name"], "stars": pixel_stars(entry),
+                     "place": pixel_where_class(entry, at),
                      "drawings": len(entry["drawings"]), "misses": entry["misses"].get(key, 0),
                      "runs_here": entry["runs"].get(key, 0), "last_error": entry["last_error"],
                      "turns": len(entry["remixed"]),
@@ -8079,6 +8109,7 @@ def pixel_overview():
     for e in pixel_room["events"]:
         said += [e["text"]] if e["kind"] == "say" else [s["text"] for s in e["steps"] if s["do"] == "say"] if e["kind"] == "mymove" else []
     return {"students": rows, "missions": [{"key": k, "name": pixel.LEVEL_BY_KEY[k]["name"]} for k in pixel.LEVEL_ORDER],
+            "strip": pixel_class_strip(rows),
             "open": pixel_class.get("open", 0), "feed": pixel_feed[-12:],
             "room": {"open": pixel_room["open"], "words": pixel_room["words"], "here": [s["real"] for s in pixel_room["here"].values()],
                      "said": said[-8:], "game": game_brief(), "jobs": [" ".join(DAY_JOBS[k][:2]) for k in day_pick(day_order()[1])],

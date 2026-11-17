@@ -493,6 +493,13 @@ the party meter are. During any game, the projector has a card for it (who's IT,
 the dance, who's been found), and 🎬 Auto follows whoever is IT or seeking. During a Code
 race, it shows the job, who has solved it, and the fastest code between jobs.
 
+**📊 Where the class is** sits above Who's where. It has one small tile for each of the
+17 chapters, with its icon, a short name and how many students have their open,
+unfinished mission in that chapter. **🌱 Not started** counts students who haven't run
+a mission yet, and **🏁 All done** counts students who have finished every mission. A
+tile with 0 is faded. Click a tile to highlight those students in Who's where; click it
+again to show everyone. It updates with the rest of the page every 8 seconds.
+
 **Words:** students tap words from a list. `say()` takes any words, so a My Move only
 shows lines that are on that list, and a line that isn't gets left out. **Let them type
 their own words** turns typing on for the room and for My Moves, and what they say shows

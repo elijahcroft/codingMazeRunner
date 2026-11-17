@@ -1150,6 +1150,16 @@ CHAPTERS = [
     {"key": "g", "name": "Give It Back", "icon": "📦"},
 ]
 
+# The teacher page's "Where the class is" strip has one tile per chapter, so
+# these are the names for a tile that has to stay small on a projector.
+CHAPTER_SHORT = {
+    "a": "Opening Night", "h": "Come Alive", "b": "Again!", "m": "My Move",
+    "t": "Encore!", "l": "Count on Me", "v": "Name Tags", "w": "Smart Pal",
+    "r": "Surprise!", "k": "Click Me!", "c": "Keep Going", "j": "My List",
+    "s": "Keep Score", "n": "Loop in Loop", "u": "Music", "p": "Word Play",
+    "g": "Give Back",
+}
+
 # `adds` opens commands, and `python` opens the shapes of Python on the chips.
 # A goal is (what it asks, check, and what Pip says when it's missing).
 # The last hint is always a program that does the job.
