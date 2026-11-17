@@ -886,6 +886,7 @@ let playedAt = 0, checkedAt = 0;
 function playLoop(now) {
   requestAnimationFrame(playLoop);
   if (!art || now - playedAt < 45) return;     // a little pal doesn't need 60 frames a second
+  if ($("drawView").hidden) return;           // on Code or the Hang out nobody can see it, and the drawing can't change
   playedAt = now;
   const n = art.frames.length;
   if (now - checkedAt > 160) { checkedAt = now; freshMini(); }

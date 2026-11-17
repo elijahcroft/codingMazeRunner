@@ -603,8 +603,10 @@ const PalStage = (() => {
       const seats = new Set(rows.map(r => r.seat));
       for (const m of state.room) if (!seats.has(m.seat)) { clearTag(m); clearBubble("s" + m.seat); }
       state.room = state.room.filter(m => seats.has(m.seat));
+      let missing = false;
       for (const row of rows) {
         let m = state.room.find(m => m.seat === row.seat);
+        if (!m && !row.pal) { missing = true; continue; }        // a pal this screen hasn't been sent yet: ask for everyone
         if (!m) { m = roomMember(row, you); state.room.push(m); }
         if (row.playing || m.playing) {
           m.x = row.x; m.y = row.y; m.tx = row.tx ?? row.x; m.ty = row.ty ?? row.y;
@@ -615,6 +617,7 @@ const PalStage = (() => {
         m.concealed = !!row.concealed; m.tucked = !!row.tucked; m.playing = !!row.playing; m.role = row.role || ""; m.prop = !!row.prop; m.hid = !!row.hid;
         if (m.concealed && m.tag) m.tag.style.display = "none";
       }
+      return missing;
     }
     /** Which pal on this stage is yours. It's only known once you've joined. */
     function roomYou(you) {
@@ -1510,10 +1513,10 @@ const PalStage = (() => {
         stage.state.home = data.home || null;
         if (data.members) stage.roomStart(data, data.you);
         for (const e of data.events) stage.roomApply(e, everySound || e.seat === data.you);
-        if (data.game_members) stage.roomSync(data.game_members, data.you);
+        const missing = data.game_members && stage.roomSync(data.game_members, data.you);
         stage.roomYou(data.you);
         onState(data);
-        after = data.open ? data.seq : -1;
+        after = data.open && !missing ? data.seq : -1;
         if (!data.open) await new Promise(r => setTimeout(r, 2000));
       }
     })();

@@ -94,6 +94,8 @@ import shutil
 import socket
 import threading
 import time
+import gzip
+import hashlib
 import zlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
@@ -6704,6 +6706,16 @@ def game_view(you):
     return out
 
 
+# What a screen needs each time to keep the pals it already has in step. The drawings, names and
+# clothes are sent once, in `members`, so the frequent updates stay small on school wifi.
+SYNC_KEYS = ("seat", "x", "y", "tx", "ty", "concealed", "tucked", "playing", "role", "prop", "hid")
+
+
+def sync_row(spot, you):
+    row = game_room_row(spot, you)
+    return {k: row[k] for k in SYNC_KEYS if k in row}
+
+
 def game_room_row(spot, you):
     row, game = room_row(spot), pixel_room.get("game")
     if not game or game["phase"] not in ("hiding", "playing") or spot["seat"] not in game["joined"]:
@@ -6898,11 +6910,11 @@ def room_view(p, after, watch=0):
     # Snapshots restore newly revealed pals and keep concealed positions off every
     # other child's browser (including the class projector). No stale trails leak.
     if room.get("game"):
-        out["game_members"] = [game_room_row(s, out["you"]) for s in here]
+        out["game_members"] = [sync_row(s, out["you"]) for s in here]
         active = set(room["game"]["joined"]) if room["game"]["kind"] not in STILL_GAMES else set()     # nothing is hidden in a Code race
         out["events"] = [e for e in out["events"] if e.get("seat") not in active and e.get("other") not in active or e["kind"] in ("leave", "move")]
     elif not whole:
-        out["game_members"] = [game_room_row(s, out["you"]) for s in here]
+        out["game_members"] = [sync_row(s, out["you"]) for s in here]
     return out
 
 
@@ -7906,8 +7918,8 @@ def pixel_get(path, query):
         except ValueError:
             after = -1
         if after >= 0 and query.get("wait") and pixel_room["open"] and pixel_room["seq"] <= after:
-            with room_news:
-                room_news.wait(.2 if pixel_room.get("game") else 5)
+            with room_news:       # checked again while held, so news that lands just before the wait isn't missed for 5 s
+                room_news.wait_for(lambda: pixel_room["seq"] > after or not pixel_room["open"], .2 if pixel_room.get("game") else 5)
         with lock:
             try:
                 watch = int(query.get("loc", ["0"])[0])
@@ -8452,19 +8464,34 @@ PAGES = {
     "/admin": ("admin.html", "text/html; charset=utf-8"),
 }
 STATIC = {p: load(f) for p, (f, _) in PAGES.items()}
+# Each page squeezed once, and a tag for it, so a reload with nothing new downloads nothing.
+STATIC_GZ = {p: gzip.compress(body, 9) for p, body in STATIC.items()}
+STATIC_TAG = {p: '"' + hashlib.sha1(body).hexdigest()[:16] + '"' for p, body in STATIC.items()}
+SQUEEZE_FROM = 1400       # answers smaller than one network packet go as they are
 
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass  # keep the console quiet
 
-    def _send(self, code, body, ctype="application/json"):
+    def _send(self, code, body, ctype="application/json", squeezed=None, tag=None):
         if isinstance(body, (dict, list)):
-            body = json.dumps(body).encode()
+            body = json.dumps(body, separators=(",", ":")).encode()
         elif isinstance(body, str):
             body = body.encode()
+        gz = "gzip" in self.headers.get("Accept-Encoding", "")
+        if gz and squeezed is None and len(body) >= SQUEEZE_FROM:
+            squeezed = gzip.compress(body, 5)
+        if gz and squeezed is not None:
+            body = squeezed
         self.send_response(code)
         self.send_header("Content-Type", ctype)
+        if gz and squeezed is not None:
+            self.send_header("Content-Encoding", "gzip")
+        self.send_header("Vary", "Accept-Encoding")
+        if tag:
+            self.send_header("ETag", tag)
+            self.send_header("Cache-Control", "no-cache")     # check each time; a restarted server with new code sends the new code
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         try:
@@ -8485,7 +8512,12 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split("?")[0]
         if path in PAGES:
-            self._send(200, STATIC[path], PAGES[path][1])
+            if self.headers.get("If-None-Match") == STATIC_TAG[path]:
+                self.send_response(304)
+                self.send_header("ETag", STATIC_TAG[path])
+                self.end_headers()
+                return
+            self._send(200, STATIC[path], PAGES[path][1], squeezed=STATIC_GZ[path], tag=STATIC_TAG[path])
             return
         if path == "/state":
             pid = self.path.split("id=")[-1] if "id=" in self.path else ""

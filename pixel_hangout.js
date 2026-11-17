@@ -1727,6 +1727,10 @@ const PalHang = (() => {
     fine.width = W * FINE; fine.height = H * FINE;
     const lo = small.getContext("2d"), ink = fine.getContext("2d");
     let frame = 0, last = 0, stopped = false;
+    // The canvas's size, kept by the browser as it changes, so painting never has to stop and measure the page.
+    let boxW = canvas.getBoundingClientRect().width, boxH = canvas.getBoundingClientRect().height;
+    const sizer = new ResizeObserver(([e]) => { boxW = e.contentRect.width; boxH = e.contentRect.height; });
+    sizer.observe(canvas);
     const homeArt = {};
     function artFor(scene, home, n) {
       if (scene === "home") {     // each room is painted again only when something in it changes
@@ -1755,10 +1759,9 @@ const PalHang = (() => {
     function paint(now) {
       if (stopped) return;
       frame = requestAnimationFrame(paint);
-      const box2 = canvas.getBoundingClientRect();
-      if (!box2.width || now - last < 33) return;
+      if (!boxW || now - last < 33) return;
       last = now;
-      const ratio = Math.min(1.5, devicePixelRatio || 1), w = Math.round(box2.width * ratio), h = Math.round(box2.height * ratio);
+      const ratio = Math.min(1.5, devicePixelRatio || 1), w = Math.round(boxW * ratio), h = Math.round(boxH * ratio);
       if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
       const state = read(), places = state.places || ["park"], cam = Math.round(state.camX || 0), first = Math.floor(cam / W);
       const showing = [first, first + 1].filter(i => places[i]);
@@ -1840,7 +1843,7 @@ const PalHang = (() => {
       }
     }
     frame = requestAnimationFrame(paint);
-    return () => { stopped = true; cancelAnimationFrame(frame); };
+    return () => { stopped = true; cancelAnimationFrame(frame); sizer.disconnect(); };
   }
 
   return {start, seatAt, toyAt, gemAt, chestAt, presentAt, villageAt, coverAt, cutCover, coverHigh, furniturePicture, furnitureAt, lookColour, doorAt, fishAt, PLACES: Object.keys(PLACES)};
