@@ -17,7 +17,7 @@ Both teacher pages are linked from `/admin`.
 ## How a class goes
 
 1. Students open `/pixel`, type their name and draw a pal. Anyone stuck at a blank
-   page can pick one of 20 pals from the gallery, three ways: 🖍️ colour it in,
+   page can pick one of 26 pals from the gallery, three ways: 🖍️ colour it in,
    🔢 by numbers, or ⭐ ready to change. In 🔢 by numbers, squares that are already right
    (the outline, and finished ones) can't be painted over, so a stray click never leaves the
    picture impossible to finish. Swap and Move wait until it's coloured in.
