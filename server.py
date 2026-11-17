@@ -6668,6 +6668,8 @@ def game_tick(now):
         return
     seats = game_seats()
     game["joined"] = [s for s in game["joined"] if s in seats]
+    if "done" in game:                  # a racer who left is not waiting at the flag any more
+        game["done"] = [s for s in game["done"] if s in game["joined"]]
     if not game["joined"]:
         game_finish("Everyone left. Start a new game when friends return.")
         return
@@ -7193,7 +7195,7 @@ def room_furnish(p, spot, data):
     rooms, what, piece = home_rooms(home), data.get("what"), data.get("piece")
     if what == "look":
         key, n = data.get("key"), data.get("room")
-        if not pixel_has(entry, key) or key in pixel.FURNITURE:
+        if not isinstance(key, str) or not pixel_has(entry, key) or key in pixel.FURNITURE:
             return {"error": "bad"}
         if not isinstance(n, int) or isinstance(n, bool) or not 0 <= n < len(rooms):
             n = home_room_at(home, spot["x"])       # the room the pal is in
@@ -7213,7 +7215,7 @@ def room_furnish(p, spot, data):
                 return {"error": "bad"}
         else:
             key = data.get("key")
-            if key not in pixel.FURNITURE or not pixel_has(entry, key):
+            if not isinstance(key, str) or key not in pixel.FURNITURE or not pixel_has(entry, key):
                 return {"error": "bad"}
             if sum(i["key"] == key for r in rooms for i in r["items"]) >= pixel_copies(entry, key):
                 name = pixel.FURNITURE[key]["name"]
@@ -7234,6 +7236,8 @@ def room_furnish(p, spot, data):
 
 def room_buy(p, key):
     """Buys something in the shop. Furniture can be bought again and again: the rest just once."""
+    if not isinstance(key, str):
+        return {"error": "bad"}
     entry, item = pixel_entry(p), pixel.SHOP.get(key)
     if not item or key in entry["gifts"] or item["kind"] != "furniture" and key in entry["stuff"]:
         return {"error": "bad"}
@@ -7407,7 +7411,7 @@ def room_chest(p, spot, data):
     """🧰 Code opens a chest: today's puzzle for that place. The pal does the code for everyone."""
     place, code, now = data.get("place"), data.get("code"), time.time()
     game = pixel_room.get("game")
-    if place not in pixel.CHEST_SPOTS or place not in hang_places() or spot["loc"]:
+    if not isinstance(place, str) or place not in pixel.CHEST_SPOTS or place not in hang_places() or spot["loc"]:
         return {"error": "bad"}
     if game and spot["seat"] in game.get("joined", ()) and game["phase"] in ("hiding", "playing"):
         return {"error": "Finish the game first!"}
@@ -7691,6 +7695,8 @@ def room_placed_counts():
 
 def room_wear(p, spot, slot, item):
     entry = pixel_entry(p)
+    if item is not None and not isinstance(item, str):
+        return {"error": "bad"}
     gift = pixel.GIFTS.get(item)
     own = next((w for w in entry["mywear"] if w["key"] == item), None)
     if slot not in pixel.WEAR_SLOTS or (item is not None and not (gift and gift["slot"] == slot and item in pixel_owned(entry))
@@ -7790,6 +7796,8 @@ def room_do(p, data):
         return {"error": "The Hang out is closed."}
     spot = room["here"].get(p["id"])
     what = data.get("what")
+    if not isinstance(what, str):
+        return {"error": "bad"}
     if what == "join":
         entry = pixel_entry(p)
         if pixel_hang_needs(entry):
@@ -7809,7 +7817,8 @@ def room_do(p, data):
         return {"error": "join"}
     spot["seen"] = time.time()
     seat = spot["seat"]
-    did = DOING.get(data.get("name") if what == "move" else what)
+    label = data.get("name") if what == "move" else what
+    did = DOING.get(label) if isinstance(label, str) else None
     if did:
         spot["did"] = [did, spot["seen"]]
     if what == "game":
@@ -7859,7 +7868,8 @@ def room_do(p, data):
         spot["mood"] = data["name"]
         room_event("feel", seat=seat, name=data["name"])
     elif what == "say":
-        text = " ".join(str(data.get("text", "")).split())[:pixel.LIVE_WORDS_MAX]
+        text = data.get("text")
+        text = " ".join(text.split())[:pixel.LIVE_WORDS_MAX] if isinstance(text, str) else ""
         if not text or not (text in pixel.ROOM_SAYS or room["words"]):
             return {"error": "bad"}
         room_event("say", seat=seat, text=text)
@@ -8137,7 +8147,8 @@ def pixel_post(path, data):
             save_state()
             return out
     with lock:
-        p = players.get(data.get("id"))
+        pid = data.get("id")
+        p = players.get(pid) if isinstance(pid, str) else None
         if not p:
             return {"error": "join"}
         entry = pixel_entry(p)
@@ -8152,11 +8163,13 @@ def pixel_post(path, data):
             pixel_save_soon()
             return {"ok": True, "badges": earned}
         if path == "/pixel/delete":
-            pixel.delete_drawing(entry["drawings"], data.get("key"))
-            entry["things"].pop(data.get("key"), None)
-            room_unplace(lambda r: r["owner"] == p["id"] and r["key"] == data.get("key"))
+            key = data.get("key")
+            pixel.delete_drawing(entry["drawings"], key)
+            entry["things"].pop(key, None)
+            room_unplace(lambda r: r["owner"] == p["id"] and r["key"] == key)
             if entry.get("home"):
-                home_unplace(p, lambda r: r["key"] == data.get("key"))
+                home_unplace(p, lambda r: r["key"] == key)
+            tree_unhang(lambda r: r["owner"] == p["id"] and r["key"] == key)
             pixel_save_soon()
             return {"ok": True}
         if path == "/pixel/pal":

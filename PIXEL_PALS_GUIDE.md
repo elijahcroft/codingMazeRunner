@@ -503,6 +503,10 @@ clicking the pal makes it giggle.
 - **Stuck students:** the teacher page marks anyone with 3 misses or more on a
   mission, and shows their last error. With the guide off, Help me gives two or three
   hints, and the last one is a working answer.
+- **If something goes wrong:** a muddled tap from a browser (a missing field, or a list
+  where a word belongs) gets a short "bad" answer, not a dropped connection. A student
+  who leaves in the middle of a race doesn't leave the round stuck: the next pal to the
+  flag wins.
 - **Opening missions:** "Open up to here" on the teacher page lets everyone reach a
   mission. Opening past Find the spotlight opens the Hang out for everyone too.
 
