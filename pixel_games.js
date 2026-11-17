@@ -5,7 +5,7 @@ let gameClock = {server: 0, local: 0};
 const gameNow = () => gameClock.server + (performance.now() - gameClock.local) / 1000;
 const currentGame = () => roomInfo && roomInfo.game;
 const inRound = () => { const g = currentGame(); return g && g.joined.includes(roomInfo.you) && ["hiding", "playing"].includes(g.phase); };
-const GAME_NAMES = {hide: "Hide & seek", tag: "Tag", race: "Red light, green light", dance: "Copy the dance", code: "💻 Code race", draw: "🎨 Draw & guess"};
+const GAME_NAMES = {hide: "Hide & seek", tag: "Tag", race: "Red light, green light", dance: "Copy the dance", code: "💻 Code race", draw: "🎨 Draw & guess", apples: "🍎 Apple grab"};
 const gameName = g => GAME_NAMES[g.kind];
 const DANCE_ICONS = {wave: ["👋", "Wave"], jump: ["🦘", "Jump"], spin: ["🌀", "Spin"], cheer: ["🎉", "Cheer"]};
 let danceReady = false;
@@ -32,6 +32,7 @@ function buildGamePane(box) {
       <button data-game="create" data-kind="tag"><b>Tag</b><small>Chase your friends · pass “it”</small></button>
       <button data-game="create" data-kind="race"><b>Red light, green light</b><small>Race to the flag · freeze on red</small></button>
       <button data-game="create" data-kind="dance"><b>Copy the dance</b><small>Tap the moves in order · 3 rounds</small></button>
+      <button data-game="create" data-kind="apples"><b>🍎 Apple grab</b><small>Walk onto apples · most apples in 60 seconds wins</small></button>
       <p class="me-note">Finish a game for 🪙 coins and class-party points. Winners get extra coins. Your first game of each kind gives a 🎁 gift, and so does every third one after that.</p>`;
     return;
   }
@@ -65,6 +66,11 @@ function buildGamePane(box) {
     body += `<p class="me-note">Round ${g.round + 1} of 3. ${finished ? "⭐ You did the whole dance! Wait for the next round." : ready ? "Tap the lit-up move!" : "Get ready... look at the dance!"} Rounds won: ${g.score}</p>
       <div class="dance-seq">${g.seq.map((m, i) => `<span class="${i < g.step ? "done" : i === g.step && ready ? "now" : ""}" title="${DANCE_ICONS[m][1]}">${DANCE_ICONS[m][0]}</span>`).join("")}</div>` +
       Object.entries(DANCE_ICONS).map(([m, [icon, word]]) => `<button data-step="${m}" ${ready && !finished ? "" : "disabled"}><span>${icon}</span>${word}</button>`).join("");
+  } else if (g.kind === "apples") {
+    const scores = g.scores || {};
+    body += `<p class="me-note">Walk your pal onto an apple to grab it. A golden apple is worth 3! Most apples when the 60 seconds end wins.</p>`;
+    body += g.joined.map(s => `<p class="me-note">🍎 ${esc(gamePerson(s))}${s === you ? " (you)" : ""}: ${scores[s] || 0}</p>`).join("");
+    body += `<p class="me-note">Click the ground to walk, or use the arrow keys.</p>`;
   } else if (g.kind === "tag") {
     body += `<p class="me-note">${g.it === you ? "You're IT! Get close to another player to tag them." : esc(gamePerson(g.it)) + " is IT! Keep moving!"} Stay in the Park and Wedding garden. After a tag, everyone gets 3 seconds to run away.</p>`;
     body += `<p class="me-note">Your tags: ${g.tags[you] || 0}. Click to run, or use the arrow keys.</p>`;
@@ -92,7 +98,7 @@ function paintGameState(data) {
   const key = JSON.stringify([g?.id, g?.phase, g?.joined, g?.it, g?.found, g?.hiding, g?.tags, g?.message, g?.reward, data.you,
                               g?.light, g?.done, g?.seq, g?.step, g?.round,
                               g?.solved, g?.bonus, g?.pause, g?.reveal, g?.score, g?.job?.job,
-                              g?.drawer, g?.guessed, g?.word, g?.choices]);
+                              g?.drawer, g?.guessed, g?.word, g?.choices, g?.apples, g?.scores]);
   if (key !== gamePaintKey) {
     gamePaintKey = key;
     if (roomPane === "games") buildRoomButtons();
@@ -125,7 +131,7 @@ function paintGameClock() {
   if (!g) {
     $("gameStatus").classList.remove("invite");
     title.textContent = "Play with friends";
-    detail.textContent = jobsWord() + "💻 Code race, 🎨 draw & guess, tag, hide & seek, a race or a dance →";
+    detail.textContent = jobsWord() + "💻 Code race, 🎨 draw & guess, 🍎 apple grab, tag, hide & seek, a race or a dance →";
     return;
   }
   const seconds = Math.max(0, Math.ceil(g.until - gameNow()));
@@ -137,6 +143,7 @@ function paintGameClock() {
     : g.phase === "results" ? `Round over · next game in ${seconds}s`
     : g.kind === "race" ? `${seconds}s left · ${g.light === "red" ? "🔴 Red light: freeze!" : "🟢 Green light: run!"} · ${g.done.length} at the flag`
     : g.kind === "dance" ? `Round ${g.round + 1} of 3 · ${seconds}s left · ${g.step} of ${g.seq.length} moves`
+    : g.kind === "apples" ? `${seconds}s left · 🍎 ${(g.apples || []).length} on the ground · You have ${g.score}`
     : g.kind === "code" ? (g.pause ? `Next job in ${seconds}s` : `${g.job.icons} · Job ${g.round + 1} of ${g.rounds} · ${seconds}s · ${g.solved.length} of ${g.joined.length} solved`)
     : g.kind === "draw" ? (g.pause ? `Next picture in ${seconds}s` : `${g.drawer === roomInfo.you ? "You're drawing!" : gamePerson(g.drawer) + " is drawing"} · Picture ${g.round + 1} of ${g.turns} · ${seconds}s · ${g.guessed.length} guessed`)
     : g.phase === "hiding" ? `${seconds}s to hide · ${g.it === roomInfo.you ? "You're counting!" : gamePerson(g.it) + " is counting"}`

@@ -1471,6 +1471,18 @@ const PalHang = (() => {
     shape(g, [[x - 2, y - 7], [x + 2, y - 7], [x, y - 3]], "#e6f3ff");
     if (shine > .7) twinkle(g, x + 5, y - 8, 2.4, "#ffffff");
   }
+  // 🍎 An apple to grab: red, or golden and worth more. It sits on the ground and bobs gently unless Calm is on.
+  function apple(g, ax, ay, gold = false, shine = 0) {
+    g.save(); g.translate(ax, ay); g.scale(1.7, 1.7);       // big enough to spot next to a pal
+    const x = 0, y = 0;
+    oval(g, x, y + 1, 6.4, 1.8, "#1b15302e");
+    oval(g, x, y - 5.2, 5.4, 5.2, gold ? "#f0b52e" : "#e0453f");
+    oval(g, x - 1.4, y - 6.8, 2.1, 1.7, gold ? "#ffeaa0" : "#ff9c9c");
+    line(g, [[x, y - 10], [x + .8, y - 13]], "#7a4a2a", 1.1);
+    shape(g, [[x + .8, y - 12], [x + 5, y - 13.2], [x + 2.8, y - 10.4]], "#5aa45c");
+    if (gold && shine) twinkle(g, x, y - 15, 2.2 + shine, "#fff2b0");
+    g.restore();
+  }
   // A treasure chest: shut with a gold lock, or open with the lid up and coins shining.
   function chest(g, x, y, open, shine = 0) {
     g.save();
@@ -1803,6 +1815,10 @@ const PalHang = (() => {
       if (edge !== null) line(ink, [[edge - 2, 110], [edge - 2, H]], "#b76e43", 3);
       if (race) for (let i = 0; i < 12; i++) box(ink, race.finish - cam + i % 2 * 4, PalStage.GROUND_TOP - 8 + i * 5, 4, 5, 0, i % 4 < 2 ? "#1b1530" : "#fffdf6");
       if (playing && state.game.kind === "draw" && state.game.board) easel(ink, 160 - cam, state.game);
+      if (playing && state.game.kind === "apples") for (const a of state.game.apples || []) {
+        const bob = PalStage.calm ? 0 : Math.sin(now / 360 + a.id) * 1.2;
+        apple(ink, a.x - cam, seatFeet(a.y) + bob, a.gold, PalStage.calm ? 0 : Math.abs(Math.sin(now / 520 + a.id)));
+      }
       lo.drawImage(fine, 0, 0, W, H);
       // 3. The hiding places, standing on top of all that.
       for (const c of covers) cutCover(lo, c, cam);

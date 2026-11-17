@@ -325,7 +325,7 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
 - **🎣 Fishing:** the pier at the Beach has a blue ring. The pal walks over and casts,
   and when ❗ A bite! shows, a click anywhere on the picture reels it in. There are 8
   things to catch, kept in the fish book in 🧢 Me.
-- **Games:** any student can start a 💻 Code race, 🎨 Draw & guess, Tag, Hide & seek, Red
+- **Games:** any student can start a 💻 Code race, 🎨 Draw & guess, 🍎 Apple grab, Tag, Hide & seek, Red
   light green light, or Copy the dance, and friends choose to join. While a game waits for players, the bar
   above the world turns yellow for everyone not in it ("👉 Tap here to join!"), and one tap
   joins. In the race, each press of Run or → is one short run, and moving on red sends a pal
@@ -377,6 +377,15 @@ points, the second 2, then 1, and the drawer gets 1 for each friend who guesses.
 has 60 seconds, then everyone sees what it was. The word is never sent to a guesser's screen
 or the projector until then. The words are `GUESS_WORDS` in `pixel.py`. A drawer could still
 write letters; the tip asks them not to.
+
+**🍎 Apple grab.** A 60-second round for 2 or more players. Five apples lie in the Park and
+Wedding garden, in new random spots each round, and a new one appears as soon as one is
+taken. A pal grabs an apple by walking onto it (click the ground or use the arrow keys), and
+the server decides the grab, so everyone sees the same apples. A ⭐ golden apple is worth 3.
+The panel lists every player's count as it changes, so the class can see who is ahead. The
+most apples when the 60 seconds end wins, and a tie shares the win. It pays coins and
+class-party points, with the first-game gift and the 🍎 Apple Picker badge, exactly like the
+other games. In 🌿 Calm the apples stay still.
 
 **❄️ The Snow Village.** From 16 November to 31 December, the world has one more place at its
 far end: a snowy evening village. Students get there by walking, from 🏞️ Go to, or with

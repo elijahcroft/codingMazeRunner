@@ -38,6 +38,7 @@ function gameTip(g) {
   if (g.kind === "hide") return it ? "Click a hiding place to walk there and look." : "Stay still! The seeker is looking.";
   if (g.kind === "race") return "Green light: press Run or → again and again. Red light: stop!";
   if (g.kind === "dance") return "Tap the lit-up move on the right, in order.";
+  if (g.kind === "apples") return "Walk onto apples! Golden ones are worth 3. Most apples when time is up wins.";
   if (g.kind === "draw") return g.pause ? "Look! The next picture is coming." : g.drawer === you ? "You're drawing! Click squares on the right. No letters!"
     : (g.guessed || []).includes(you) ? "You got it! Watch the picture grow." : "What is it? Tap the picture on the right!";
   if (g.kind === "code") return (g.bonus || []).includes(you) ? "Bonus done! Clap for your friends while they finish."

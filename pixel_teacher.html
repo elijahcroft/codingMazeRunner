@@ -178,7 +178,7 @@ async function refresh() {
   $("roomSaid").textContent = room.words && room.said.length ? `Just said: ${room.said.slice(-5).join(" / ")}` : "";
   $("feed").innerHTML = data.feed.slice().reverse().map(f => `<li>${esc(f.text)}</li>`).join("") || `<li style="color:var(--soft)">Nothing yet.</li>`;
 }
-const GAME_WORD = {hide: "Hide & seek", tag: "Tag", race: "Red light, green light", dance: "Copy the dance", code: "💻 Code race", draw: "🎨 Draw & guess"};
+const GAME_WORD = {hide: "Hide & seek", tag: "Tag", race: "Red light, green light", dance: "Copy the dance", code: "💻 Code race", draw: "🎨 Draw & guess", apples: "🍎 Apple grab"};
 const PLACE_WORD = {park: "🌳 Park", wedding: "💒 Wedding", beach: "🏖️ Beach", night: "🌙 Night", snowy: "⛄ Snowy hill", candy: "🍭 Candy land", space: "🚀 Space", village: "❄️ Snow Village"};
 // Where a student is in the Hang out right now, and what they're doing. Not there now: just whether they can go.
 function hangCell(here, move) {

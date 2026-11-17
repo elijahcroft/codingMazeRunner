@@ -5648,6 +5648,7 @@ PIXEL_BADGES = {
     "play_dance": ("🪩", "Dance Copycat", "Finish a round of copy the dance"),
     "play_code": ("💻", "Code Racer", "Finish a Code race"),
     "play_draw": ("🎨", "Picture Guesser", "Finish a game of Draw & guess"),
+    "play_apples": ("🍎", "Apple Picker", "Finish a round of Apple grab"),
     "angler": ("🎣", "Gone Fishing", "Catch every kind of thing in the sea"),
     "all": ("🏆", "Star of the Show", "Get all the stars in the game"),
     "remix": ("🎨", "Remixer", "Do a Your turn: change a mission's code your own way"),
@@ -6134,10 +6135,16 @@ GAME_HIDE_SECONDS = 20
 GAME_ROUND_SECONDS = 90
 GAME_SPEED = 85
 GAME_WIDTH = 640                 # Park + Wedding garden, available to every class
-GAME_KINDS = ("hide", "tag", "race", "dance", "code", "draw")
+GAME_KINDS = ("hide", "tag", "race", "dance", "code", "draw", "apples")
 GAME_TITLES = {"hide": "Hide & seek", "tag": "Tag", "race": "Red light, green light", "dance": "Copy the dance", "code": "a Code race",
-               "draw": "Draw & guess"}
+               "draw": "Draw & guess", "apples": "Apple grab"}
 STILL_GAMES = ("code", "draw")   # everyone stands in a row in the Park, and nothing is hidden
+APPLE_SECONDS = 60               # one short round, so the next game can start
+APPLE_COUNT = 5                  # apples on the ground at once
+APPLE_REACH = 16                 # how close a pal has to walk to grab one
+APPLE_GAP = 34                   # apples keep this far apart, so two are never picked up together
+APPLE_GOLD_CHANCE = .12          # an occasional golden apple
+APPLE_WORTH, APPLE_GOLD_WORTH = 1, 3
 RACE_START, RACE_END = 30, 600
 RACE_SECONDS = 90
 RACE_STEP = 34                   # how far one click or key press runs, so stopping is just not pressing
@@ -6181,6 +6188,24 @@ def game_distance(a, b):
     return ((a["x"] - b["x"]) ** 2 + ((a["y"] - b["y"]) * 42) ** 2) ** .5
 
 
+def game_apple(game):
+    """A new apple on a free patch of ground, away from the other apples and the pals.
+    The server picks every spot, so every screen sees the same apples."""
+    for _ in range(40):
+        x, y = random.uniform(20, GAME_WIDTH - 20), random.uniform(.05, .95)
+        spot = {"x": x, "y": y}
+        if any(game_distance(spot, a) < APPLE_GAP for a in game["apples"]):
+            continue
+        if any(game_distance(spot, c) < APPLE_GAP for c in GAME_COVER):     # keep apples out of the hiding places
+            continue
+        if any(game_distance(spot, m) < APPLE_REACH + 12 for m in game["motion"].values()):
+            continue
+        break
+    game["apple_serial"] = game.get("apple_serial", 0) + 1
+    return {"id": game["apple_serial"], "x": round(x, 1), "y": round(y, 2),
+            "gold": random.random() < APPLE_GOLD_CHANCE}
+
+
 def game_finish(message, reward=False, winners=()):
     game = pixel_room["game"]
     if not game or game["phase"] == "results":
@@ -6218,7 +6243,8 @@ def game_begin(now):
     game, seats, kind = pixel_room["game"], game_seats(), pixel_room["game"]["kind"]
     game["it"] = random.choice(game["joined"]) if kind in ("hide", "tag") else None
     game.update(phase="hiding" if kind == "hide" else "playing",
-                until=now + (GAME_HIDE_SECONDS if kind == "hide" else RACE_SECONDS if kind == "race" else GAME_ROUND_SECONDS),
+                until=now + (GAME_HIDE_SECONDS if kind == "hide" else RACE_SECONDS if kind == "race"
+                             else APPLE_SECONDS if kind == "apples" else GAME_ROUND_SECONDS),
                 motion={}, hidden={}, found=[], tags={}, grace=now + 3, started=now)
     for i, seat in enumerate(game["joined"]):
         spot = seats[seat][1]
@@ -6245,6 +6271,11 @@ def game_begin(now):
         order = sorted(game["joined"], key=lambda s: drew.get(seats[s][0], 0))[:DRAW_TURNS]
         game.update(round=0, score={}, order=order, used=[])
         draw_turn(game, now)
+    elif kind == "apples":
+        game.update(score={}, apples=[], apple_serial=0)
+        for _ in range(APPLE_COUNT):
+            game["apples"].append(game_apple(game))
+        room_event("game", message="🍎 Apple grab! Walk onto apples. Golden ones are worth 3.")
     else:
         room_event("game", message="The seeker is counting!" if kind == "hide" else "Tag! Run!")
 
@@ -6488,6 +6519,30 @@ def race_tick(game, seats, now):
                 room_event("game", message=f"Oops! {seats[seat][1]['name']} moved on red. Back a bit!")
 
 
+def apples_tick(game, seats, now):
+    """Pals pick up apples by walking onto them, and a new one grows when one is taken."""
+    if now >= game["until"]:
+        best = max(game["score"].values(), default=0)
+        winners = [s for s in game["joined"] if best and game["score"].get(s) == best]
+        names = " and ".join(seats[s][1]["name"] for s in winners)
+        game_finish(f"🍎 Most apples: {names}!" if winners else "🍎 Time! Nobody grabbed an apple.",
+                    reward=True, winners=winners)
+        return
+    for seat in game["joined"]:
+        motion = game["motion"].get(seat)
+        if not motion:
+            continue
+        apple = next((a for a in game["apples"] if game_distance(motion, a) < APPLE_REACH), None)
+        if not apple:
+            continue
+        game["apples"].remove(apple)
+        points = APPLE_GOLD_WORTH if apple["gold"] else APPLE_WORTH
+        game["score"][seat] = game["score"].get(seat, 0) + points
+        game["apples"].append(game_apple(game))
+        if apple["gold"]:       # only golden ones are news: a tip for every apple would pop up every second
+            room_event("game", message=f"⭐ {seats[seat][1]['name']} grabbed a golden apple! +{APPLE_GOLD_WORTH}")
+
+
 def game_tick(now):
     game = pixel_room.get("game")
     if not game:
@@ -6535,6 +6590,9 @@ def game_tick(now):
         return
     if game["kind"] == "draw":
         draw_tick(game, seats, now)
+        return
+    if game["kind"] == "apples":
+        apples_tick(game, seats, now)
         return
     if game["phase"] == "hiding":
         if now >= game["until"]:
@@ -6703,6 +6761,9 @@ def game_view(you):
                    choices=[pixel.GUESS_BY_KEY[k] for k in game["choices"]], word=pixel.GUESS_BY_KEY[game["word"]] if shown else None,
                    guessed=game["guessed"], wrong=game["wrong"].get(you, 0), pause=game["pause_until"],
                    turns=len(game["order"]), round_at=game["round_at"], scores=game["score"])
+    if game["kind"] == "apples":
+        # The whole game view travels with every room update, so the apples need no extra sync key.
+        out.update(apples=game.get("apples", []), scores=game.get("score", {}))
     return out
 
 

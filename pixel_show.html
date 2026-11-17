@@ -313,7 +313,7 @@ $("savePhoto").addEventListener("click", () => {
   a.click();
 });
 // The game on now. A Code race shows the job, then the fastest code between rounds, so the class can read it together.
-const GAME_WORD = {hide: "🙈 Hide & seek", tag: "🏃 Tag", race: "🚦 Red light, green light", dance: "💃 Copy the dance", code: "💻 Code race", draw: "🎨 Draw & guess"};
+const GAME_WORD = {hide: "🙈 Hide & seek", tag: "🏃 Tag", race: "🚦 Red light, green light", dance: "💃 Copy the dance", code: "💻 Code race", draw: "🎨 Draw & guess", apples: "🍎 Apple grab"};
 const DANCE_ICON = {wave: "👋", jump: "🦘", spin: "🌀", cheer: "🎉"};
 function paintGame(g) {
   $("raceCard").hidden = !g;
@@ -328,12 +328,14 @@ function paintGame(g) {
       : g.kind === "hide" ? (g.phase === "hiding" ? `${name(g.it)} is counting. Hide!` : `${name(g.it)} is looking!`)
       : g.kind === "race" ? (g.light === "red" ? "🔴 Red light: freeze!" : "🟢 Green light: run!")
       : g.kind === "draw" ? (g.pause && g.word ? `It was ${g.word[1]} ${g.word[2]}!` : `${name(g.drawer)} is drawing! Is it... ${(g.choices || []).map(c => c[1]).join(" ")}`)
+      : g.kind === "apples" ? "Walk onto apples! Golden ones are worth 3."
       : `Round ${g.round + 1} of 3: ${(g.seq || []).map(m => DANCE_ICON[m] || m).join(" ")}`;
     $("raceCode").hidden = true;
     $("raceWho").textContent = g.phase !== "playing" && g.phase !== "hiding" ? ""
       : g.kind === "hide" && g.phase === "playing" ? `Found: ${names(g.found)} (${g.found.length} of ${g.joined.length - 1})`
       : g.kind === "race" ? `At the flag: ${names(g.done)}`
       : g.kind === "draw" ? `Guessed it: ${names(g.guessed || [])} (${(g.guessed || []).length} of ${g.joined.length - 1})`
+      : g.kind === "apples" ? `Apples: ${g.joined.map(s => `${name(s)} ${(g.scores || {})[s] || 0}`).join(" · ")}`
       : `Playing: ${g.joined.length}`;
     return;
   }
