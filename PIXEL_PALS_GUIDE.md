@@ -181,7 +181,9 @@ comes in a later chapter.
 is `name` says capitals matter, `say("I am " name)` says to add a `+`, using a `def` above
 where it's made says to move it up, `name == "Luna"` on its own says one `=` keeps a value,
 `"Luna" = name` says the name goes first, and a slip like `nam` for `name` asks "Did you mean
-name?". **🔈 Read it** on any error reads it out loud, saying a lone `)` as "close bracket".
+name?". A missing `}` in an f-string says to close its `{ }`, a line that stops after `=` or
+`+` says what to put next, and `break` or `continue` outside a loop says to put it under a
+`for` or `while`. **🔈 Read it** on any error reads it out loud, saying a lone `)` as "close bracket".
 After **three misses in a row** with the guide off, the result box offers **🖐 Show me step by
 step** right there.
 

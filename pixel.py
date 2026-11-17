@@ -19,7 +19,7 @@ import random
 import re
 from collections import Counter
 
-from cycles import Brain, BotError, _Frame, _TooLong, syntax_message
+from cycles import Brain, BotError, _Break, _Continue, _Frame, _TooLong, syntax_message
 
 SIZES = (16, 24, 32, 48)
 SPEEDS = (3, 6, 10)         # frames a second: slow, medium, fast
@@ -441,6 +441,16 @@ def plain_syntax(code, e):
     lines = code.split("\n")
     n = e.lineno or 1
     line = lines[n - 1].strip() if n <= len(lines) else ""
+    msg = e.msg or ""
+    if "f-string" in msg:
+        if "expecting '}'" in msg or "unterminated" in msg:
+            return 'An f-string needs a  }  to close the  {  around a name. Write  say(f"Hi {name}")'
+        if "single '}'" in msg:
+            return 'There is an extra  }  in this f-string. Every  {  needs one  } , like  say(f"Hi {name}")'
+        if "valid expression required" in msg or "empty expression" in msg:
+            return 'Put something inside the curly brackets of the f-string, like  say(f"Hi {name}")'
+    if re.match(r"print\b", line) and not re.match(r"print\s*=", line):
+        return 'Your pal talks with say(), not print(). Try  say("Hello")'
     bare = re.fullmatch(r"([A-Za-z_]+)\s+(\w+)", line)
     known = list(COMMANDS) + list(SENSORS)
     near = bare and difflib.get_close_matches(bare[1].lower(), known, 1, 0.7)
@@ -471,6 +481,12 @@ def plain_syntax(code, e):
                 "Press Enter, then Tab, and add a command like  jump()")
     if re.match(r"(repeat|loop)\b", line) or (re.match(r"for\b", line) and " in " not in line):
         return "To repeat lines, write it like this:  for i in range(3):"
+    if re.search(r"(?:[+\-*/%]|(?<![=!<>])=(?!=))\s*\)*\s*$", line):
+        if line.rstrip().endswith("="):
+            return ('After the  =  put what to keep: a number like  3 , '
+                    'or words in quotes like  name = "Luna"')
+        return ('Something is missing after the sign at the end. Put a number or words there, '
+                'like  say("Hi " + name)')
     hint = re.sub(r"^Syntax error on line \S+: ", "", syntax_message(e, "def my_move():")).rstrip(".")
     plainer = {
         "a bracket  (  is never closed with  )":
@@ -525,6 +541,11 @@ class Director(Brain):
             self.tree = ast.parse(code)
         except SyntaxError as e:
             raise_at(e.lineno or 1, plain_syntax(code, e))
+        except (UnicodeError, ValueError):
+            bad = next((i for i, text in enumerate(code.split("\n"), 1)
+                        if "\x00" in text or any(0xD800 <= ord(ch) <= 0xDFFF for ch in text)), 1)
+            raise_at(bad, "Some letters or an invisible character in your code can't be read here. "
+                          "Delete the odd character and type that line again with the keyboard.")
         self.named = {n.id for n in ast.walk(self.tree)
                       if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store)}
         self.named |= {n.name for n in ast.walk(self.tree) if isinstance(n, ast.FunctionDef)}
@@ -803,10 +824,20 @@ class Director(Brain):
             if lo > hi:
                 raise BotError("randint(a, b) needs a to be no bigger than b.")
             return self.show.rng.randint(lo, hi)
-        if name in ("max", "min", "abs"):
-            return super().call(node, frame)
+        if name in ("max", "min"):
+            if len(args) < 2:
+                raise BotError(f"{name}() needs at least two numbers, like  {name}(2, 5)")
+            nums = [self.number(a, f"{name}()") for a in args]
+            return max(nums) if name == "max" else min(nums)
+        if name == "abs":
+            if len(args) != 1:
+                raise BotError("abs() takes one number, like  abs(-3)")
+            return abs(self.number(args[0], "abs()"))
         if name == "print":
             raise BotError('Your pal talks with say(), not print(). Try  say("Hello")')
+        if name == "open":
+            raise BotError('You don\'t need open() here. Your pal can use the commands in All words, '
+                           'like  say("Hello")')
         if name == "range":
             raise BotError("range() goes in a for loop, like  for i in range(4):")
         if name in ("random", "rand", "dice") and name not in self.funcs:
@@ -892,7 +923,23 @@ class Director(Brain):
                              ast.Assert, ast.Nonlocal, ast.AsyncFunctionDef)) or \
                 type(node).__name__ in ("Match", "TypeAlias", "TryStar"):
             raise BotError("That kind of line isn't part of Pixel Pals.")
-        super().run_statement(node, frame)
+        try:
+            super().run_statement(node, frame)
+        except (_Break, _Continue):
+            if not self.outside_loop(node):
+                raise                  # a real loop takes it, or the function call explains it
+            raise_at(node.lineno, "break and continue only work inside a loop. "
+                                  "Put the line under a  for  or  while  loop.")
+
+    def outside_loop(self, node):
+        """Whether a break or continue has no loop in the function around it to belong to."""
+        while id(node) in self.parent:
+            node = self.parent[id(node)]
+            if isinstance(node, (ast.For, ast.While)):
+                return False
+            if isinstance(node, ast.FunctionDef):
+                return True
+        return True
 
 
 def raise_at(line, text):
@@ -959,9 +1006,15 @@ class Report:
                               if line.strip() and not line.strip().startswith("#"))
 
         def depth(node):
-            """How deep the loops go: 1 for a plain loop, 2 for a loop inside one."""
-            deep = max((depth(child) for child in ast.iter_child_nodes(node)), default=0)
-            return deep + 1 if isinstance(node, (ast.For, ast.While)) else deep
+            """How deep the loops go: 1 for a plain loop, 2 for a loop inside one.
+            Walked with a stack, because student code can stack things very deep."""
+            deepest, stack = 0, [(node, 0)]
+            while stack:
+                node, deep = stack.pop()
+                deep = deep + 1 if isinstance(node, (ast.For, ast.While)) else deep
+                deepest = max(deepest, deep)
+                stack.extend((child, deep) for child in ast.iter_child_nodes(node))
+            return deepest
         self.loop_depth = depth(tree) if tree else 0
 
     def n(self, name):
@@ -1008,7 +1061,8 @@ def perform(code, pal=PIP, events=(), seed=0, commands=EVERYTHING, setup=None):
                    else "Something pushed in under the  while  has to change each time round, so its question ends up no.")
             error = re.sub(r"That's a very long show!.*", "Your while loop never stopped! " + why, error)
     except RecursionError:
-        error = "Your program called itself too many times."
+        error = ("Your code has too many things stacked on one line. Split it into smaller "
+                 "lines, and check that a list doesn't have itself inside it.")
     return {"steps": show.steps, "after": show.steps[show.mark:], "error": error, "line": line,
             "events": sorted(f[3:] for f in (director.funcs if director else {}) if f[3:] in EVENTS
                              and f.startswith("on_")),
@@ -1508,7 +1562,7 @@ LEVELS = [
                 "Try  feel(moods[0])  . Position 0 is the first thing on a list."),
                ("Then the last mood, with [-1]", lambda r: -1 in r.positions and len(_the_list(r)) >= 2 and _feels(r)[-1:] == _the_list(r)[-1:],
                 "Try  feel(moods[-1])  . -1 means the last thing, however long the list is."),
-               ("It says the first and last moods out loud", lambda r: len(_the_list(r)) >= 2 and all(any(m in s for s in r.said) for m in (_the_list(r)[0], _the_list(r)[-1])), None)],
+               ("It says the first and last moods out loud", lambda r: len(_the_list(r)) >= 2 and all(any(str(m) in s for s in r.said) for m in (_the_list(r)[0], _the_list(r)[-1])), None)],
      "hints": ["moods[0] is the first mood, and moods[-1] is the last.",
                'moods = ["happy", "sad", "silly"]\nfeel(moods[0])\nsay("First: " + moods[0])\nfeel(moods[-1])\nsay("Last: " + moods[-1])'],
      "reference": 'moods = ["happy", "sad", "silly"]\nfeel(moods[0])\nsay("First: " + moods[0])\nfeel(moods[-1])\nsay("Last: " + moods[-1])'},
