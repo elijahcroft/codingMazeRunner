@@ -135,10 +135,18 @@ glows. Pressing it early says to finish typing first.
   buttons, with a count of how many they have. **Show me step by step** walks them
   through a version with a sparkle trail and a big finish.
 - **If the code stops matching the steps,** the guide says so and offers **↩ Go back to
-  where it was right** (which removes what doesn't match) or **✋ Keep my code**.
+  where it was right** (which removes what doesn't match) or **✋ Keep my code**. Going
+  back to a line whose pushed-in spaces were typed over puts the spaces back for them, so
+  the next key is always the line's first real letter, never the space bar. Pressing Show
+  time! too early says to finish typing first, and that warning goes away when they carry
+  on, open another mission, or turn the guide back on.
 
 The guide's lines live in `coach` on each mission in `pixel.py`, and a test checks they
-always add up to the working answer, which earns all three stars.
+always add up to the working answer, which earns all three stars. `test_pixel_coach.py`
+also checks the lines' indentation and the keys the guide names. `tools/e2e_coach.py` is
+the slower end-to-end check: it types every mission in a real headless browser, one key
+at a time, and tries the guide's buttons and mistakes. It is a tool, not a unittest, so
+it is not part of `python3 -m unittest test_pixel*.py`.
 
 The first finish of a mission gives the big win: stars, confetti, and a 🎁 box to tap
 open with something to wear in the Hang out. **Open it later** is always there, and the

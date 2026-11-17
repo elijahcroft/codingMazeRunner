@@ -200,6 +200,7 @@ async function openMission(key) {
   deletingShow = false;
   coachWay = data.free ? "own" : null;
   coachOops = "";
+  coachEarly = false;
   $("levelName").textContent = `${data.chapter.icon} ${data.name}`;
   const n = S.chapters.flatMap(c => c.levels).findIndex(l => l.key === key) + 1;
   $("levelWhere").textContent = data.free ? "No stars, no rules" : `Mission ${n} of ${S.max_stars / 3}`;
@@ -587,7 +588,13 @@ function goodPrefix() {
   const code = $("code").value, target = coachTarget();
   let n = 0;
   while (n < code.length && code[n] === target[n]) n++;
-  return code.slice(0, n);
+  // The guide pushes each line's leading spaces in, so going back to a line
+  // whose indent was typed over must push them in again: the next key is the
+  // line's first real character, never the space bar.
+  const start = target.lastIndexOf("\n", n - 1) + 1;
+  let end = start;
+  while (target[end] === " ") end++;
+  return n >= start && n < end ? target.slice(0, end) : code.slice(0, n);
 }
 const coachActions = {
   back() { coachOops = ""; coachPut(goodPrefix()); coachFocus(); },
@@ -600,6 +607,7 @@ function showSteps() {
   paintYourTurn();
   coachWay = "type";
   coachOops = "";
+  coachEarly = false;
   updateEditor();
   coachFocus();
 }
