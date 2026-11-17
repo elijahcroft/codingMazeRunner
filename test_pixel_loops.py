@@ -16,10 +16,10 @@ def report(code):
 
 
 class TheChapter(unittest.TestCase):
-    def test_it_comes_last_and_has_three_missions(self):
-        self.assertEqual(pixel.CHAPTERS[-1], {"key": "n", "name": "Loop in a Loop", "icon": "🪆"})
-        self.assertEqual([lv["key"] for lv in pixel.LEVELS[-3:]], ["n1", "n2", "n3"])
-        self.assertEqual({lv["chapter"] for lv in pixel.LEVELS[-3:]}, {len(pixel.CHAPTERS) - 1})
+    def test_it_has_three_missions(self):
+        chapter = next(i for i, ch in enumerate(pixel.CHAPTERS) if ch["key"] == "n")
+        self.assertEqual(pixel.CHAPTERS[chapter], {"key": "n", "name": "Loop in a Loop", "icon": "🪆"})
+        self.assertEqual([lv["key"] for lv in pixel.LEVELS if lv["chapter"] == chapter], ["n1", "n2", "n3"])
 
     def test_each_reference_earns_all_three_stars(self):
         for key in ("n1", "n2", "n3"):
@@ -92,8 +92,8 @@ class LoopsOverHttp(unittest.TestCase):
                 self.assertEqual(out["stars"], [True, True, True], out.get("reply"))
                 self.assertEqual(out["rewards"]["gained"], 3)
         state = self.get(f"/pixel/state?id={me}")
-        self.assertEqual(state["chapters"][-1]["name"], "Loop in a Loop")
-        self.assertEqual(len(state["chapters"][-1]["levels"]), 3)
+        chapter = next(ch for ch in state["chapters"] if ch["name"] == "Loop in a Loop")
+        self.assertEqual(len(chapter["levels"]), 3)
 
 
 if __name__ == "__main__":

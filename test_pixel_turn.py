@@ -41,6 +41,9 @@ CHANGED = {
     "n1": "for round in range(4):\n    for i in range(3):\n        wave()\n    jump()",
     "n2": 'for i in range(1, 5):\n    for j in range(1, 5):\n        say(f"{i} x {j} = {i * j}")',
     "n3": "for step in range(4):\n    for i in range(step + 1):\n        right(1)\n    jump()",
+    "u1": 'note("C")\nnote("D")\nnote("E")\nnote("C")\ncheer()',
+    "u2": 'tune = ["C", "C", "G", "G", "A", "A", "C2"]\nfor n in tune:\n    note(n)\nnote("G", 2)',
+    "u3": 'def beat():\n    note("C")\n    note("rest")\n    note("G")\nfor i in range(5):\n    beat()\nnote("C", 2)',
 }
 
 
@@ -57,6 +60,14 @@ def _click(steps, i):
     """The steps after click number i (0 is the first), up to the next click."""
     at = [j for j, s in enumerate(steps) if s["do"] == "event"]
     return steps[at[i] + 1: at[i + 1] if i + 1 < len(at) else len(steps)]
+
+
+def _note_steps(steps):
+    return [s for s in steps if s["do"] == "note"]
+
+
+def _last_note(steps):
+    return _note_steps(steps)[-1]
 
 
 TRUTH = {
@@ -92,6 +103,9 @@ TRUTH = {
     "n1": lambda st: str(_n(st, "wave")),
     "n2": lambda st: str(_n(st, "say")),
     "n3": lambda st: str(_n(st, "jump")),
+    "u1": lambda st: str(_n(st, "note")),
+    "u2": lambda st: {"C": "A long C", "G": "A long G"}.get(_last_note(st)["name"], "?") if _last_note(st)["beats"] == 2 else "?",
+    "u3": lambda st: str(sum(1 for s in _note_steps(st) if s["name"] == "rest")),
 }
 
 

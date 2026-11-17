@@ -910,6 +910,7 @@ class Report:
         self.log = show.log
         self.counts = Counter(name for name, _ in show.log)
         self.said = [str(s["text"]) for s in show.steps if s["do"] == "say"]
+        self.notes = [(s["name"], s["beats"]) for s in show.steps if s["do"] == "note"]
         self.walks = [s["by"] for s in show.steps if s["do"] == "walk"]
         self.poses = {s["frame"] for s in show.steps if s["do"] == "pose"} | show.posed
         self.x = show.x
@@ -1051,6 +1052,7 @@ CHAPTERS = [
     {"key": "j", "name": "My List", "icon": "📋"},
     {"key": "s", "name": "Keep Score", "icon": "🏆"},
     {"key": "n", "name": "Loop in a Loop", "icon": "🪆"},
+    {"key": "u", "name": "Make Music", "icon": "🎵"},
 ]
 
 # `adds` opens commands, and `python` opens the shapes of Python on the chips.
@@ -1633,6 +1635,66 @@ LEVELS = [
      "hints": ["The inside loop's range uses the stair number:  range(step + 1)",
                'for step in range(3):\n    for i in range(step + 1):\n        right(1)\n    jump()'],
      "reference": 'for step in range(3):\n    for i in range(step + 1):\n        right(1)\n    jump()'},
+
+    # Make Music: note() sings one note, a tune in a list, and a beat made with a def.
+    {"key": "u1", "chapter": 14, "name": "First notes", "adds": ["note"], "python": [],
+     "pip": "Your pal can sing! note() plays one note. Try C, D and E: that is the start of lots of tunes.",
+     "job": "Make your pal sing C, then D, then E, then cheer.",
+     "coach": [
+               ('note("C")', 'This line sings the note C. The note name is a word, so it goes inside the " marks.'),
+               ('note("D")', 'Now D. Each line sings the next note, from top to bottom.'),
+               ('note("E")', 'And E. C, D, E is the start of lots of tunes!'),
+               ('cheer()', 'Last, cheer. You just made music!'),
+     ],
+     "goals": [("Your pal sings 3 notes", lambda r: len(_notes(r)) >= 3,
+                lambda r: f"I heard {len(_notes(r))} note{'' if len(_notes(r)) == 1 else 's'}. I need 3."),
+               ("Your pal sings C, then D, then E", lambda r: [n for n, _ in _notes(r)][:3] == ["C", "D", "E"],
+                'Try  note("C")  then  note("D")  then  note("E")'),
+               ("Your pal cheers at the end", lambda r: bool(r.log) and r.n("cheer") == 1 and r.log[-1][0] == "cheer", None)],
+     "hints": ['Put each note on its own line. The note name goes inside  "  marks, like  note("C")',
+               'note("C")\nnote("D")\nnote("E")\ncheer()'],
+     "reference": 'note("C")\nnote("D")\nnote("E")\ncheer()'},
+
+    {"key": "u2", "chapter": 14, "name": "Twinkle", "adds": [], "python": ["for", "list"],
+     "pip": "A tune can be a list of notes! Put the tune in a list, then a for loop sings each note on it.",
+     "job": "Put the start of Twinkle Twinkle in a list, sing it with a loop, then hold a long G.",
+     "coach": [
+               ('tune = ["C", "C", "G", "G", "A", "A"]', "A list called tune. The notes go in [ ] with commas between them."),
+               ('for n in tune:', "Visit each note on the list, one at a time. n is the note we are on."),
+               ('    note(n)', "Pushed in, so it sings every note on the list."),
+               ('note("G", 2)', 'Not pushed in: one long G at the end, held for 2 beats, like "star" in the song. I moved it back for you.'),
+     ],
+     "goals": [("Your pal sings the whole tune", lambda r: len(_notes(r)) >= 7,
+                lambda r: f"I heard {len(_notes(r))} notes. The list has 6 notes, plus 1 long note at the end."),
+               ("A for loop sings each note on the list", lambda r: r.fors >= 1 and any(isinstance(r.values.get(name), list) for name in r.loops_over),
+                "Give the list a name first, like  tune = [...]  , then  for n in tune:"),
+               ("The tune is C C G G A A, then a long G", lambda r: [n for n, _ in _notes(r)] == ["C", "C", "G", "G", "A", "A", "G"] and _notes(r)[-1] == ("G", 2),
+                "Check the order in the list: C C G G A A. Then  note(\"G\", 2)  holds the last G for 2 beats.")],
+     "hints": ['Make the list first:  tune = ["C", "C", "G", "G", "A", "A"]  . Then  for n in tune:',
+               'tune = ["C", "C", "G", "G", "A", "A"]\nfor n in tune:\n    note(n)\nnote("G", 2)'],
+     "reference": 'tune = ["C", "C", "G", "G", "A", "A"]\nfor n in tune:\n    note(n)\nnote("G", 2)'},
+
+    {"key": "u3", "chapter": 14, "name": "Make a beat", "adds": [], "python": ["def"],
+     "pip": "A def can be a little tune! Make a beat once, then use it again and again in a loop.",
+     "job": "Make a beat with 3 notes in a def, play it 3 times, then hold a long C.",
+     "coach": [
+               ('def beat():', "A new command called beat. The lines pushed in under it are its pattern."),
+               ('    note("C")', "First note of the beat: C."),
+               ('    note("rest")', "A rest is a short silence. It is a note too."),
+               ('    note("G")', "Last note of the beat: G."),
+               ('for i in range(3):', "Not pushed in: after the def, this loop plays the beat 3 times."),
+               ('    beat()', "Pushed in, so the whole beat plays each time round."),
+               ('note("C", 2)', "One long C at the end, held for 2 beats. Not pushed in: it plays once. I moved it back for you."),
+     ],
+     "goals": [("Your pal plays the beat 3 times", lambda r: sum(r.own_calls.values()) >= 3,
+                "After the def, not pushed in:  for i in range(3):  with  beat()  pushed in under it."),
+               ("You make a beat with def", lambda r: len(r.defs) >= 1,
+                "Start with  def beat():  and push the three notes in under it."),
+               ("It plays C, rest, G three times, then a long C", lambda r: [n for n, _ in _notes(r)] == ["C", "rest", "G"] * 3 + ["C"] and _notes(r)[-1] == ("C", 2),
+                "The beat is C, rest, G. Play it 3 times, then  note(\"C\", 2)  for a long finish.")],
+     "hints": ['Under  def beat():  push in  note("C")  ,  note("rest")  and  note("G")  . Then call  beat()  inside a for loop.',
+               'def beat():\n    note("C")\n    note("rest")\n    note("G")\nfor i in range(3):\n    beat()\nnote("C", 2)'],
+     "reference": 'def beat():\n    note("C")\n    note("rest")\n    note("G")\nfor i in range(3):\n    beat()\nnote("C", 2)'},
 ]
 
 # "Your turn": after a mission, one change for the student to make with the guide off.
@@ -1709,6 +1771,13 @@ REMIXES = {
            "Change only one thing: the 3 in range(3)"),
     "k2": ("Make your pal spin on the 3rd click, as well as cheer.", lambda r: len(r.reacts) >= 4 and [r.did(i, "spin") for i in range(4)] == [False, False, True, False],
            "Add  spin()  under  cheer()  , pushed in just as far."),
+    "u1": ("Sing C, D, E, then C again, then cheer.", lambda r: [n for n, _ in _notes(r)][:4] == ["C", "D", "E", "C"] and r.n("cheer") >= 1,
+           'Add one more  note("C")  line above  cheer()'),
+    "u2": ("Add the high note C2 to the end of your tune.", lambda r: "C2" in [n for n, _ in _notes(r)] and r.fors >= 1
+           and any(isinstance(r.values.get(name), list) for name in r.loops_over),
+           'In the list, put a comma after the last "A" and add "C2"'),
+    "u3": ("Play your beat 5 times instead of 3.", lambda r: [n for n, _ in _notes(r)] == ["C", "rest", "G"] * 5 + ["C"] and _notes(r)[-1] == ("C", 2),
+           "Change only one thing: the 3 in range(3)"),
 }
 # "Guess first": before the first run of the guide's code, one question about what it will do.
 # (question, choices, the right choice). test_pixel_turn.py checks each answer against a real run.
@@ -1746,6 +1815,9 @@ GUESSES = {
     "n1": ("How many times will your pal wave?", ["3", "6", "2"], 1),
     "n2": ("How many facts will your pal say?", ["3", "6", "9"], 2),
     "n3": ("How many jumps will your pal make?", ["1", "3", "6"], 1),
+    "u1": ("How many notes will your pal sing?", ["3", "1", "4"], 0),
+    "u2": ("What is the last note your pal sings?", ["A long C", "A long G", "A rest"], 1),
+    "u3": ("How many rests will your pal sing?", ["3", "1", "9"], 0),
 }
 # "Fix it": after a mission, Pip's code for it with one bug in it, to find and fix.
 # (what went wrong, the code with the bug, check that it's fixed, a hint that says where to look).
@@ -1830,6 +1902,15 @@ FIXES = {
     "n3": ("Pip's stairs are all the same size! The first should be 1 step, then 2, then 3.", 'for step in range(3):\n    for i in range(2):\n        right(1)\n    jump()',
             lambda r: _stair_runs(r) == [1, 2, 3] and r.log[-1][0] == "jump",
             "Inside range( ), use the stair number, not a 2. Step 0 should go once, step 1 twice."),
+    "u1": ("Pip's tune should be C, D, E, but it ends on the wrong note!", 'note("C")\nnote("D")\nnote("D")\ncheer()',
+             lambda r: [n for n, _ in _notes(r)][:3] == ["C", "D", "E"] and r.n("cheer") >= 1,
+             "Look at line 3. E comes after D."),
+    "u2": ("Pip's loop sings C again and again! It should sing each note on the list.", 'tune = ["C", "C", "G", "G", "A", "A"]\nfor n in tune:\n    note("C")\nnote("G", 2)',
+             lambda r: [n for n, _ in _notes(r)] == ["C", "C", "G", "G", "A", "A", "G"],
+             'Look at the line pushed in under the for loop. Use  n  , not  "C"  .'),
+    "u3": ("Pip's beat has a note that isn't real, so the show stops!", 'def beat():\n    note("C")\n    note("rest")\n    note("Q")\nfor i in range(3):\n    beat()\nnote("C", 2)',
+             lambda r: [n for n, _ in _notes(r)] == ["C", "rest", "G"] * 3 + ["C"] and _notes(r)[-1] == ("C", 2),
+             'Look at line 4. The notes are C, D, E, F, G, A, B, C2 and rest.'),
 }
 for _lv in LEVELS:
     _lv["remix"] = REMIXES[_lv["key"]]
@@ -1934,6 +2015,11 @@ def _the_list(r):
     """The longest list the program kept in a variable, or []."""
     lists = [v for v in r.values.values() if isinstance(v, list)]
     return max(lists, key=len) if lists else []
+
+
+def _notes(r):
+    """The notes the pal sang, in order, as (note, beats) pairs, like [("C", 1), ("E", 2)]."""
+    return r.notes
 
 
 def _says_each(r):
@@ -2057,6 +2143,8 @@ GIFTS = {
     "codespark": {"name": "Code sparkles", "slot": "sparkle"}, "petalspark": {"name": "Petal sparkles", "slot": "sparkle"},
     "loophat": {"name": "Loop hat", "slot": "hat"}, "spiralhat": {"name": "Spiral hat", "slot": "hat"},
     "loopspark": {"name": "Loop sparkles", "slot": "sparkle"},
+    "notehat": {"name": "Music-note hat", "slot": "hat"}, "pianohat": {"name": "Piano hat", "slot": "hat"},
+    "notespark": {"name": "Note sparkles", "slot": "sparkle"},
     # These unlock by themselves when a goal is reached: [what is counted, how many].
     "gemcrown": {"name": "Gem crown", "slot": "hat", "goal": ["gems", 9]},
     "fishhat": {"name": "Fish hat", "slot": "hat", "goal": ["fish", 5]},
