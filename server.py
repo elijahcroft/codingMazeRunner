@@ -5655,6 +5655,7 @@ PIXEL_BADGES = {
     "remix": ("🎨", "Remixer", "Do a Your turn: change a mission's code your own way"),
     "fix": ("🐞", "Bug Squasher", "Do a Fix it: find and fix the bug in Pip's code"),
     "show": ("🎬", "Show Maker", "Make a show of your own on the Free stage, 5 steps or more"),
+    "showtime": ("🎤", "Showtime", "Perform your Free stage show in the Hang out"),
 }
 
 
@@ -5677,7 +5678,7 @@ def pixel_entry(p):
     for key, value in (("drawings", []), ("pal", ""), ("solved", {}), ("code", {}),
                        ("badges", []), ("runs", {}), ("misses", {}), ("last_error", ""), ("active", 0),
                        ("gifts", []), ("wear", {}), ("friends", []), ("move", None), ("found", []),
-                       ("stuff", []), ("fish", {}), ("things", {}), ("remixed", []), ("guessed", []), ("fixed", []), ("free_code", ""), ("free_runs", 0), ("free_shows", []),
+                       ("stuff", []), ("fish", {}), ("things", {}), ("remixed", []), ("guessed", []), ("fixed", []), ("free_code", ""), ("free_runs", 0), ("free_shows", []), ("performed", 0), ("perform_until", 0),
                        ("chests", {}), ("chest_count", 0), ("mywear", []), ("presents", {}), ("present_count", 0), ("snowballs", 0)):
         entry.setdefault(key, value)
     if "coins" not in entry:        # coins came later: pay for the stars and gems already earned
@@ -5903,6 +5904,7 @@ def pixel_state(p):
             "hang": {"needs": pixel_hang_needs(entry), "gifts": pixel_owned(entry), "catalog": pixel.GIFTS,
                      "wear": entry["wear"], "friends": entry["friends"], "progress": pixel_progress(entry), "buddies": bool(entry.get("buddies_on")), "hide_name": bool(entry.get("hide_name")), "move": pixel_move_public(entry),
                      "found": entry["found"], "gems": len(pixel.HANG_FINDS), "place_max": pixel.PLACED_EACH, "chests": chests_view(entry),
+                     "free_show": bool((entry["free_code"] or "").strip() or entry["free_shows"]),
                      "names": pixel.MOVE_NAMES, "coins": entry["coins"], "shop": pixel.SHOP, "stuff": entry["stuff"],
                      "furniture": pixel.FURNITURE, "walls": pixel.HOME_WALLS, "floors": pixel.HOME_FLOORS,
                      "rooms": pixel.HOME_ROOMS, "levels": pixel.HOME_LEVELS, "item_max": pixel.HOME_ITEMS,
@@ -6015,6 +6017,7 @@ SHOWER_GAP = (150, 210)    # seconds between star showers
 SHOWER_SECONDS = 14
 COMBO_SECONDS = 4          # catches this close together count as a combo
 CLAP_GAP = .25             # seconds between one student's claps
+PERFORM_GAP = 30           # seconds between one student's Free stage shows in the Hang out
 FIVE_GAP = 1.2             # seconds between one student's high-fives
 FIVES_FOR_BADGE = 5
 COMBO_FOR_BADGE = 5
@@ -6941,6 +6944,7 @@ def room_set(on):
 # What the class screen says each child is up to, by their last tap.
 DOING = {"wave": "👋 Waving", "dance": "💃 Dancing", "jump": "🦘 Jumping", "cheer": "🎉 Cheering", "spin": "🌀 Spinning", "nap": "😴 Napping",
          "say": "💬 Talking", "fx": "✨ Making a party", "toy": "🎈 Playing", "fish": "🎣 Fishing", "mymove": "🌟 Doing their My Move",
+         "perform": "🎤 Doing their show",
          "buy": "🛍️ Shopping", "furnish": "🛋️ Decorating", "unfurnish": "🛋️ Decorating", "look": "🎨 Painting the walls",
          "place": "🖼️ Showing a drawing", "find": "💎 Found a gem!", "five": "🙌 High-fiving", "walk": "🚶 Exploring", "go": "🚶 Exploring",
          "catch": "🌠 Catching stars", "home": "🚪 Moving house to house", "chest": "🧰 Coding a chest open"}
@@ -7307,6 +7311,49 @@ def room_my_move(p, spot):
         spot["filled"] = now
         hang_fill(pixel.MOVE_POINTS)
     return {"ok": True, "ms": ms}
+
+
+def room_perform(p, spot, data):
+    """🎤 A student's Free stage show, played by their pal for everyone in the Hang out.
+    Only the steps the Hang out can show are kept, words follow the My Move rule, and
+    it's capped at about 20 seconds."""
+    room, entry, now = pixel_room, pixel_entry(p), time.time()
+    if not pixel_free_open(entry):
+        return {"error": "The 🎬 Free stage opens when you finish My Move. Finish My Move first."}
+    show = data.get("show")
+    if show is not None:
+        if type(show) is not int or not 0 <= show < len(entry["free_shows"]):
+            return {"error": "That show isn't there. Open the 🎬 Free stage and pick one."}
+        code = entry["free_shows"][show]
+    else:
+        code = entry["free_code"]
+        if not code.strip() and entry["free_shows"]:
+            code = entry["free_shows"][0]
+    if not code.strip():
+        return {"error": "There's no show to perform yet. Make one on the 🎬 Free stage first."}
+    if now < spot.get("move_until", 0) or now < entry.get("perform_until", 0):
+        return {"error": "One show at a time! Wait for your show to finish."}
+    wait = PERFORM_GAP - (now - entry.get("performed", 0))
+    if wait > 0:
+        return {"error": f"One show at a time! Your next show can start in {math.ceil(wait)} seconds."}
+    lv = dict(pixel.FREE, commands=pixel.free_commands(pixel.LEVEL_ORDER[pixel_frontier(entry)]),
+              setup=pixel.free_setup(pixel_stars(entry)))
+    out = pixel.run_level(lv, code, pixel_pal(entry), seed=random.randrange(10 ** 6))
+    if out["error"]:
+        return {"error": f"{out['error']} Fix it on the 🎬 Free stage first.", "line": out["line"]}
+    steps = pixel.compile_move(out["steps"])
+    steps, spot["x"], ms = pixel.stage_move(steps, spot["x"], room["words"],
+                                            room_width(spot) - 8, max_ms=pixel.PERFORM_MS)
+    if not steps:
+        return {"error": "That show has nothing the Hang out can show yet. Add a move on the 🎬 Free stage first."}
+    spot.update(rest=None, claps=0, move_until=now + ms / 1000 + .7)
+    entry["performed"], entry["perform_until"], entry["active"] = now, now + ms / 1000, int(now)
+    earned = []
+    pixel_badge(p, "showtime", earned)
+    room_event("mymove", seat=spot["seat"], by=spot["name"], title="Showtime!", steps=steps,
+               loop=False, big=False, ms=ms, perform=True)
+    pixel_save_soon()
+    return {"ok": True, "ms": ms, "badges": earned}
 
 
 def room_high_five(p, spot, other_seat):
@@ -7925,6 +7972,8 @@ def room_do(p, data):
         return thing_poke(p, spot, data)
     elif what == "mymove":
         return room_my_move(p, spot)
+    elif what == "perform":
+        return room_perform(p, spot, data)
     elif what == "clap":
         target = next((s for s in room["here"].values() if s["seat"] == data.get("seat")), None)
         now = time.time()
@@ -8194,6 +8243,8 @@ def pixel_post(path, data):
                         return {"error": f"You've kept {FREE_SHOWS} shows. Delete one to keep this one too."}
                     shows.insert(0, mine)
                 entry["free_code"] = ""
+            elif action == "save":              # the show being made, before 🎤 Show my friends
+                entry["free_code"] = mine
             elif action in ("open", "delete") and type(at) is int and 0 <= at < len(shows):
                 picked = shows.pop(at)
                 if action == "open":

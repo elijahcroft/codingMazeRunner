@@ -184,6 +184,16 @@ stage" on the projector's list of moments, at most once every 5 minutes for each
 Their show's code is kept, and no coins are paid for it: it's for making things. A command from a mission they haven't reached yet says it
 comes in a later chapter.
 
+**🎤 Show my friends** takes a Free stage show into the Hang out, once the Hang out is
+open. The button sits under 📼 My shows and plays the show on the student's own pal where
+they are standing, so everyone there sees it and can 👏 Clap. It plays moves, feelings,
+notes, waits, hearts, stars, confetti and walking; stage-only things like `scene()` and
+`rain()` quietly stay on the Free stage. A show plays for at most about 20 seconds, a
+student can start another after 30 seconds, and the first one earns the 🎤 Showtime badge.
+Words follow the same rule as My Move, and a code error asks them to fix it on the Free
+stage first. In the Hang out's 👋 Do, a **🎤 My show** button does the same once they have
+a show.
+
 **Error messages talk about the line itself:** `feel(happy)` says to write `feel("happy")`,
 `right(five)` asks for a number, `name = Luna` says `name = "Luna"`, `Name` when the variable
 is `name` says capitals matter, `say("I am " name)` says to add a `+`, using a `def` above
@@ -271,6 +281,10 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   the Hang out.
 - **✨ My Move:** the student's pal does their routine in a spotlight, and everyone else
   gets a 👏 Clap button while it plays. It can be pressed again after a few seconds.
+- **🎤 My show:** a student with a Free stage show gets 🎤 My show in 👋 Do. Their pal
+  acts it out where everyone is standing, with a 🎤 banner and a 👏 Clap for friends, for
+  up to about 20 seconds. The first one earns 🎤 Showtime, and they can start another
+  after 30 seconds.
 - **🪩 Dance party:** when 3 pals in one place press 💃 Dance within 4 seconds of each other,
   everyone there gets confetti and a banner, and the class party meter goes up by 1 (at most once
   a minute). Nothing on screen says so, so it's a nice one to let the class discover.

@@ -104,6 +104,10 @@ function buildRoomButtons() {
     buildMePane(box);
   } else if (roomPane === "art") {
     buildArtPane(box);
+  } else if (roomPane === "do") {
+    box.innerHTML = ROOM_PANES.do.map(big).join("") +
+      (S.free_open && S.hang.free_show
+        ? `<button data-perform="1"><span>🎤</span>My show<small>Play your Free stage show for everyone</small></button>` : "");
   } else box.innerHTML = ROOM_PANES[roomPane].map(big).join("");
 }
 // ---- Coins and the shop ---------------------------------------------------------------------
@@ -494,6 +498,15 @@ async function pressMyMove() {
   paintMoveButton();
   setTimeout(paintMoveButton, wait + 50);
 }
+async function pressPerform() {
+  PalStage.SFX.wake();
+  const out = await tap("perform");
+  if (!out || !out.ok) {
+    tipFor((out && out.error) || "Couldn't start your show. Try again.", 6000);
+    return;
+  }
+  if (out.badges && out.badges.length) showRewards({badges: out.badges});
+}
 
 // ---- What just happened -------------------------------------------------------------------
 // While a student codes at a shut 🧰 chest, nothing covers the world: small news is skipped,
@@ -526,7 +539,7 @@ function roomEvent(e, you) {
   if (e.kind === "game" && e.message) {
     tipFor(e.message);
   } else if (e.kind === "mymove") {
-    banner(`✨ <b>${esc(e.by)}</b>: ${esc(e.title)}`, e.ms + 700);
+    banner(e.perform ? `🎤 <b>${esc(e.by)}</b>'s show` : `✨ <b>${esc(e.by)}</b>: ${esc(e.title)}`, e.ms + 700);
     if (e.seat !== you) showClap(e.seat, e.by, e.ms + 700);
   } else if (e.kind === "party") {
     banner(`🎉 CLASS PARTY! 🎉${e.reward ? `<small>New for everyone: ${esc(e.reward.name)}</small>` : ""}`, 6000, true);
@@ -668,7 +681,7 @@ function openRoom() {
     roomStage.roomHooks({
       caught: star => tap("catch", {star}).then(out => { if (out && out.badges && out.badges.length) showRewards({badges: out.badges}); }),
       tick: lookForGem,
-      moveEnded: m => { if (m.me && m.claps) tipFor(`👏 ${m.claps} clap${m.claps === 1 ? "" : "s"} for your move!`); },
+      moveEnded: m => { if (m.me && m.claps) tipFor(`👏 ${m.claps} clap${m.claps === 1 ? "" : "s"} for your ${m.perform ? "show" : "move"}!`); },
     });
   }
   if (stopRoom) return;
@@ -737,6 +750,7 @@ $("roomTabs").addEventListener("click", e => {
 });
 $("roomButtons").addEventListener("click", e => {
   const pick = name => { const el = e.target.closest(`[data-${name}]`); return el && !el.disabled ? el.dataset[name] : null; };
+  if (pick("perform")) { pressPerform(); return; }
   if (pick("buy")) { buy(pick("buy")); return; }
   if (pick("home")) { goHome(pick("home")); return; }
   if (pick("friend")) { PalStage.SFX.wake(); tap("go", {seat: +pick("friend")}).then(out => { if (out && out.error) tipFor(out.error); }); return; }

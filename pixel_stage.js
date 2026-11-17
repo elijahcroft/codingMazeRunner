@@ -1062,6 +1062,7 @@ const PalStage = (() => {
         m.qSound = sound;
         m.trail = e.loop;
         m.bigFinish = e.big;
+        m.perform = !!e.perform;
         m.spotUntil = now + e.ms + 700;
         m.claps = 0;
         if (sound) SFX.play("tada");

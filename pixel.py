@@ -2664,7 +2664,9 @@ MOVE_NAMES = ("Moon Hop", "Super Spin", "Wiggle Blast", "Star Dance", "Happy Sto
               "Bunny Bounce", "Disco Dash", "Jelly Jump", "Rocket Roll", "Silly Shuffle", "Thunder Clap", "Cloud Skip", "Pixel Party")
 MOVE_MAX = 24              # the most steps one My Move can play
 MOVE_GAP = 6               # seconds between presses, however short the move is
-MOVE_MS = {"jump": 650, "wave": 1400, "dance": 2400, "cheer": 1400, "spin": 600, "hearts": 600, "stars": 600, "confetti": 600}
+MOVE_MS = {"jump": 650, "wave": 1400, "dance": 2400, "cheer": 1400, "spin": 600, "nap": 3200,
+           "hearts": 600, "stars": 600, "confetti": 600}
+PERFORM_MS = 20000         # a Free stage show performed for friends plays at most this long
 ROOM_SPOT = 26             # how far one spot on the Code stage is in the Hang out
 WALK_MS_PER_PIXEL = 12
 
@@ -2692,14 +2694,17 @@ def compile_move(steps):
     return out[:MOVE_MAX]
 
 
-def stage_move(steps, x, words_allowed, max_x=312):
+def stage_move(steps, x, words_allowed, max_x=312, max_ms=None):
     """A saved move, ready for this pal at this spot in the room. say() takes
     any words, so only words from the tap list show unless typing is on.
+    With `max_ms`, the rest of a too-long show is left out too.
     Returns the steps, where the pal ends up, and how long it all takes."""
     played, total = [], 0
     for s in steps:
         if s["do"] == "say" and not (words_allowed or s["text"] in ROOM_SAYS):
             continue
+        if max_ms is not None and total + s["ms"] > max_ms:
+            break
         s = dict(s)
         if s["do"] == "walk":
             x = max(8, min(max_x, x + s.pop("dx")))

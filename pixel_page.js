@@ -255,9 +255,11 @@ function paintShows() {
   box.classList.remove("fix");
   box.classList.toggle("on", deletingShow);
   const shows = view.shows.map((c, i) => `<button class="btn${deletingShow ? " danger" : ""}" data-show="${i}">${deletingShow ? "🗑" : "📼"} ${esc(showName(c))}</button>`).join(" ");
+  const hangOpen = !S.hang.needs;
   box.innerHTML = `<p>📼 My shows: ${deletingShow ? "click the one to delete." : view.shows.length ? "click one to open it. The show you're making is kept." : "keep this show and start another."}</p>
     <p class="show-row">${shows} ${deletingShow ? `<button class="btn" data-show-del="0">Don't delete</button>`
-      : `<button class="btn main" data-show-new="1">🆕 New show</button>${view.shows.length ? ` <button class="btn" data-show-del="1">🗑 Delete one…</button>` : ""}`}</p>`;
+      : `<button class="btn main" data-show-new="1">🆕 New show</button>${view.shows.length ? ` <button class="btn" data-show-del="1">🗑 Delete one…</button>` : ""}`}</p>
+    ${hangOpen ? `<p class="show-friends"><button class="btn main" data-show-perform="1">🎤 Show my friends</button><small>Plays your show on your pal in the Hang out</small></p>` : ""}`;
 }
 async function showsDo(action, at) {
   const out = await post("/pixel/free/shows", {id: me, action, at, code: $("code").value}).catch(() => null);
@@ -270,6 +272,28 @@ async function showsDo(action, at) {
   verdict(action === "new" ? `<p>${out.shows.length > had.length ? "📼 Kept! " : ""}Here's an empty stage for a new show.</p>`
     : action === "open" ? `<p>📼 Here's <b>${esc(showName(out.code))}</b>. Press ▶ Show time! to watch it.</p>`
     : `<p>🗑 Deleted <b>${esc(showName(had[at]))}</b>.</p>`, "good");
+}
+// 🎤 Play this show on your pal in the Hang out, so everyone there sees it.
+async function showFriends() {
+  const code = $("code").value;
+  if (!code.trim() && !view.shows.length) {
+    verdict(`<p>Make a show first, then press 🎤 Show my friends.</p>`, "bad");
+    return;
+  }
+  const kept = await post("/pixel/free/shows", {id: me, action: "save", code}).catch(() => null);
+  if (!kept || kept.error) {
+    verdict(`<p>${fmt(kept ? kept.error : "The computer didn't answer. Try again.")}</p>`, "bad");
+    return;
+  }
+  await showView("hang");
+  await tap("join");
+  PalStage.SFX.wake();
+  const out = await tap("perform");
+  if (!out || !out.ok) {
+    tipFor((out && out.error) || "Couldn't start your show. Try again.", 6000);
+    return;
+  }
+  if (out.badges && out.badges.length) showRewards({badges: out.badges});
 }
 
 // ---- Your turn: after a mission, one change to make with the guide off ----------------------
@@ -1001,6 +1025,7 @@ document.addEventListener("click", e => {
   else if (d.fix) { $("win").hidden = true; startFix(); }
   else if (d.fixHint) { fixHint = true; paintYourTurn(); }
   else if (d.showNew) showsDo("new");
+  else if (d.showPerform) showFriends();
   else if (d.show !== undefined) showsDo(deletingShow ? "delete" : "open", Number(d.show));
   else if (d.showDel !== undefined) { deletingShow = d.showDel === "1"; paintShows(); }
   else if (d.read) readAloud([...$("verdict").querySelectorAll("p")].map(p => p.textContent).join(" "));
