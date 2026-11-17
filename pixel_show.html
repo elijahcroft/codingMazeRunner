@@ -63,6 +63,26 @@
   #raceCode[hidden] { display: none; }
   #raceWho { margin-top: 6px; font-size: 16px; font-weight: 700; }
   #jobs { display: grid; gap: 2px; font-size: 16px; }
+  /* 🎬 Big screen: one student's Free stage show, full size, over the world. */
+  #bigShow { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 14px; background: #1b1530dd; }
+  .bigshow-card { width: min(96vw, 1320px); max-height: 96vh; display: flex; flex-direction: column; gap: 10px; padding: 12px 16px; background: #fffdf6; border-radius: 22px; box-shadow: 0 18px 60px #0008; }
+  .bigshow-bar { display: flex; align-items: center; gap: 10px; min-height: 52px; }
+  .bigshow-bar h2 { flex: 1; margin: 0; font-size: clamp(24px, 3vw, 42px); line-height: 1.1; color: #2c5352; }
+  .bigshow-bar button { font: inherit; font-size: clamp(16px, 1.5vw, 24px); font-weight: 900; padding: 7px 16px; border: 3px solid #2c5352; border-radius: 14px; background: #ffd27a; color: #2c5352; cursor: pointer; }
+  .bigshow-bar button:hover { background: #ffe4a3; }
+  #bigShowSound { background: #bfe3dc; }
+  .bigshow-body { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 14px; min-height: 0; }
+  .bigshow-stage { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 16px; background: #2a1140; }
+  .bigshow-stage canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+  .bigshow-code { position: relative; min-height: 0; max-height: calc(96vh - 130px); overflow: auto; padding: 10px 12px; border-radius: 14px; background: #1f1933; color: #f4efff;
+                  font: 700 clamp(15px, 1.45vw, 24px)/1.5 ui-monospace, Menlo, Consolas, monospace; }
+  .show-line { display: flex; gap: 10px; padding: 1px 6px; border-radius: 7px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .show-line .ln { flex: none; width: 2.2em; text-align: right; color: #8f88ab; user-select: none; }
+  .show-line .tx { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .show-line.run { background: #ffd23f; color: #1b1530; }
+  .show-line.run .ln { color: #5a4208; }
+  .hl-k { color: #ff9ecb; font-weight: 700; } .hl-c { color: #8ee06b; } .hl-s { color: #ffd98a; } .hl-n { color: #9fd6ff; } .hl-h { color: #8f88ab; }
+  .show-line.run .hl-k, .show-line.run .hl-c, .show-line.run .hl-s, .show-line.run .hl-n, .show-line.run .hl-h { color: #1b1530; }
 </style>
 </head>
 <body>
@@ -82,6 +102,19 @@
     <div class="card" id="jobsCard" hidden><p class="label">🎯 Today's jobs (all 3 open a 🎁)<b id="jobsDone"></b></p><div id="jobs"></div><p class="label" id="chestLine" hidden></p><p class="label" id="snowLine" hidden></p></div>
     <div class="card" style="flex:1;min-height:0;display:flex;flex-direction:column"><p class="label">Just now</p><ul id="feed"></ul></div>
   </aside>
+</div>
+<div id="bigShow" hidden>
+  <div class="bigshow-card">
+    <div class="bigshow-bar">
+      <h2 id="bigShowTitle">🎬 A show</h2>
+      <button id="bigShowSound" type="button" hidden>🔊 Click for sound</button>
+      <button id="bigShowClose" type="button">✕ Close</button>
+    </div>
+    <div class="bigshow-body">
+      <div class="bigshow-stage" id="bigShowHost"><canvas id="bigShowStage" aria-label="The student's show on the theatre stage"></canvas></div>
+      <div class="bigshow-code" id="bigShowCode" aria-label="The show's code. The line that is running is lit up."></div>
+    </div>
+  </div>
 </div>
 <script src="/pixel/art.js"></script>
 <script src="/pixel/rig.js"></script>
@@ -270,6 +303,7 @@ watcher = PalStage.follow(stage, {everySound: true, loc: () => cam.loc, onState(
   for (const e of data.events) {
     autoNotice(e);
     if (e.kind === "mymove") banner(`✨ <b>${esc(e.by)}</b>: ${esc(e.title)}`, e.ms + 700);
+    else if (e.kind === "bigshow") playBigShow(e);
     else if (e.kind === "party") banner(`🎉 CLASS PARTY! 🎉${e.reward ? `<small>New for everyone: ${esc(e.reward.name)}</small>` : ""}`, 6000, true);
     else if (e.kind === "shower") banner("🌠 Star shower!", 3500);
     else if (e.kind === "tree") stage.state.tree = e.tree;
@@ -350,6 +384,119 @@ function paintGame(g) {
   $("raceCode").textContent = reveal ? reveal.code : "";
   $("raceWho").textContent = g.phase === "playing" ? `Solved: ${g.solved.map(s => name(s) + ((g.bonus || []).includes(s) ? " 🌟" : "")).join(", ") || "nobody yet"} (${g.solved.length} of ${g.joined.length})` : "";
 }
+
+// 🎬 Big screen: the teacher can play one student's Free stage show, full size, over the world.
+const SHOW_KEYWORDS = new Set(["for", "in", "if", "elif", "else", "while", "def", "and", "or", "not",
+  "True", "False", "global", "return", "break", "import", "from", "as"]);
+const SHOW_COMMANDS = new Set(["say", "jump", "right", "left", "wave", "dance", "cheer", "spin", "hearts", "stars",
+  "confetti", "feel", "grow", "shrink", "shake", "look", "note", "sound", "scene", "rain", "snow", "friend", "friend_say",
+  "friend_jump", "bye", "hide", "appear", "wait", "play", "eat", "nap", "put", "take", "point", "everyone", "x", "clicks",
+  "hungry", "sleepy", "touching", "score", "weather", "range", "len", "str", "int", "choice", "randint", "abs", "max", "min"]);
+function paintShowLine(text) {
+  const pattern = /#.*|f?"(?:[^"\\]|\\.)*"?|f?'(?:[^'\\]|\\.)*'?|\b\d+\b|\b[A-Za-z_]\w*\b/g;
+  let out = "", at = 0, m;
+  while ((m = pattern.exec(text))) {
+    out += esc(text.slice(at, m.index));
+    const t = m[0], c = t[0];
+    if (c === "#") out += `<span class="hl-h">${esc(t)}</span>`;
+    else if (c === '"' || c === "'" || (c === "f" && (t[1] === '"' || t[1] === "'"))) out += `<span class="hl-s">${esc(t)}</span>`;
+    else if (/^\d/.test(t)) out += `<span class="hl-n">${t}</span>`;
+    else if (SHOW_KEYWORDS.has(t)) out += `<span class="hl-k">${esc(t)}</span>`;
+    else if (SHOW_COMMANDS.has(t)) out += `<span class="hl-c">${esc(t)}</span>`;
+    else out += esc(t);
+    at = m.index + t.length;
+  }
+  return out + esc(text.slice(at));
+}
+let bigStage = null, bigTicket = 0, bigCloseTimer = 0, bigAfter = 0, bigLastId = 0, bigLineEls = [];
+function ensureBigStage() {
+  if (!bigStage) {
+    bigStage = PalStage.create($("bigShowStage"), $("bigShowHost"));
+    bigStage.fresh();
+  }
+  return bigStage;
+}
+function paintBigCode(code, line) {
+  const box = $("bigShowCode");
+  box.innerHTML = "";
+  bigLineEls = String(code).split("\n").map((text, i) => {
+    const row = document.createElement("div");
+    row.className = "show-line";
+    const ln = document.createElement("span"); ln.className = "ln"; ln.textContent = String(i + 1);
+    const tx = document.createElement("span"); tx.className = "tx"; tx.innerHTML = paintShowLine(text);
+    row.append(ln, tx);
+    box.appendChild(row);
+    return row;
+  });
+  setBigLine(line);
+}
+function setBigLine(n) {
+  bigLineEls.forEach((row, i) => row.classList.toggle("run", i + 1 === n));
+  if (n > 0 && bigLineEls[n - 1]) {
+    const row = bigLineEls[n - 1], box = $("bigShowCode"), top = row.offsetTop;
+    if (top < box.scrollTop || top + row.offsetHeight > box.scrollTop + box.clientHeight) {
+      box.scrollTop = Math.max(0, top - box.clientHeight / 3);
+    }
+  }
+}
+function paintSound() {
+  $("bigShowSound").hidden = !PalStage.SFX.locked;
+  if (!PalStage.SFX.locked) return;
+  $("bigShowSound").textContent = "🔊 Click for sound";
+}
+async function playBigShow(show) {
+  if (!show || !show.show_id || show.show_id <= bigLastId) return;
+  bigLastId = show.show_id;
+  bigAfter = Math.max(bigAfter, show.show_id);
+  const ticket = ++bigTicket;
+  clearTimeout(bigCloseTimer);
+  $("bigShowTitle").textContent = `🎬 ${show.name}'s show`;
+  paintBigCode(show.code || "", 0);
+  $("bigShow").hidden = false;
+  const stage = ensureBigStage();
+  stage.fresh();
+  stage.setPal(show.pal || PIP);
+  stage.state.scene = "stage";
+  stage.state.visible = true;
+  paintSound();
+  PalStage.SFX.unlock().then(paintSound);
+  await stage.play(show.steps || [], {onStep(s) {
+    if (ticket === bigTicket && s.line) setBigLine(s.line);
+  }});
+  if (ticket !== bigTicket) return;          // a newer show (or Close) took over
+  setBigLine(0);
+  bigCloseTimer = setTimeout(() => closeBigShow(ticket), 5000);
+}
+function closeBigShow(ticket = bigTicket) {
+  if (ticket !== bigTicket) return;
+  bigTicket++;
+  clearTimeout(bigCloseTimer);
+  if (bigStage) bigStage.stop();
+  $("bigShow").hidden = true;
+}
+$("bigShowClose").addEventListener("click", () => closeBigShow());
+$("bigShowSound").addEventListener("click", async () => {
+  const on = await PalStage.SFX.unlock();
+  paintSound();
+  if (!on && PalStage.SFX.locked) $("bigShowSound").textContent = "🔊 Click once more for sound";
+});
+$("bigShow").addEventListener("pointerdown", async () => {
+  if (!PalStage.SFX.locked) return;
+  await PalStage.SFX.unlock();
+  paintSound();
+}, true);
+async function pollBigShow() {
+  const data = await fetch(`/pixel/bigshow?after=${bigAfter}`).then(r => r.json()).catch(() => null);
+  if (!data) return;
+  if (typeof data.n === "number" && data.n < bigAfter) { bigAfter = 0; bigLastId = 0; return; }   // the server restarted: ask again from the start
+  if (data.show_id) playBigShow(data);
+  else if (typeof data.n === "number") bigAfter = Math.max(bigAfter, data.n);
+}
+(async () => {
+  const first = await fetch("/pixel/bigshow?now=1").then(r => r.json()).catch(() => null);
+  if (first && typeof first.n === "number") bigAfter = Math.max(bigAfter, first.n);
+  setInterval(pollBigShow, 1500);       // a fallback, so it works even with the Hang out closed
+})();
 
 async function refresh() {
   const over = await fetch("/pixel/overview").then(r => r.json()).catch(() => null);

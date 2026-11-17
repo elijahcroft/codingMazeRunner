@@ -10,7 +10,7 @@ your own character do something fun, and show the class.
 |---|---|
 | `/pixel` | Students: 🎨 Draw, 💻 Code, 🎉 Hang out |
 | `/pixel/teacher` | You: who's stuck, opening missions, the Hang out. Needs the admin key |
-| `/pixel/show` | The projector: the Hang out, the party meter and the class's recent moments |
+| `/pixel/show` | The projector: the Hang out, the party meter, the class's recent moments, and 🎬 Big screen shows |
 
 Both teacher pages are linked from `/admin`.
 
@@ -213,6 +213,14 @@ student can start another after 30 seconds, and the first one earns the 🎤 Sho
 Words follow the same rule as My Move, and a code error asks them to fix it on the Free
 stage first. In the Hang out's 👋 Do, a **🎤 My show** button does the same once they have
 a show.
+
+**🎬 On the big screen** is for the projector. In Who's where, a student with a Free stage
+show has a small **🎬 Big screen** button. Pressing it plays their show at once, full size,
+on the theatre stage with their own pal, and puts their code beside it. It is the same
+runner as 🎤 Show my friends, but the projector can show everything: scenes, friends, rain,
+snow and notes too. Press it again, or for someone else, and the new show replaces the old
+one. If the show has a mistake, the page says to ask the student to fix it on the Free
+stage first.
 
 **Error messages talk about the line itself:** `feel(happy)` says to write `feel("happy")`,
 `right(five)` asks for a number, `name = Luna` says `name = "Luna"`, `Name` when the variable
@@ -502,6 +510,16 @@ the party meter are. During any game, the projector has a card for it (who's IT,
 the dance, who's been found), and 🎬 Auto follows whoever is IT or seeking. During a Code
 race, it shows the job, who has solved it, and the fastest code between jobs.
 
+**🎬 Big screen** is the small button in Who's where, on the row of any student with a Free
+stage show. It plays that show on the projector straight away, on the theatre stage and with
+the student's own pal, and shows their code beside it with the running line lit up. The
+projector fills with it over the Hang out; **✕ Close** ends it, and it closes by itself a
+few seconds after the show ends. Pressing the button again, or for another student, replaces
+the show that's playing. If the projector hasn't been clicked yet, a **🔊 Click for sound**
+button turns the notes on, and the show follows 🌿 Calm and mute on that computer. If the
+show has a mistake, the page says so in plain words and asks the student to fix it on the
+🎬 Free stage first.
+
 **📊 Where the class is** sits above Who's where. It has one small tile for each of the
 17 chapters, with its icon, a short name and how many students have their open,
 unfinished mission in that chapter. **🌱 Not started** counts students who haven't run
@@ -512,7 +530,9 @@ again to show everyone. It updates with the rest of the page every 8 seconds.
 **Words:** students tap words from a list. `say()` takes any words, so a My Move only
 shows lines that are on that list, and a line that isn't gets left out. **Let them type
 their own words** turns typing on for the room and for My Moves, and what they say shows
-on your page. A My Move's name is picked from a list.
+on your page. A My Move's name is picked from a list. The projector's 🎬 Big screen show
+follows the same rule: its `say()` and `friend_say()` lines only speak tap-list words unless
+typing is on, though the student's code is still shown beside the stage.
 
 **🌿 Calm** at the top of the page cuts the flying bits, stops the wiggling, and holds
 the background still. It's remembered on each computer, and it starts on for anyone

@@ -89,10 +89,11 @@
   <h2>Who's where</h2>
   <div class="card scroll">
     <table>
-      <thead><tr><th>Name</th><th>Mission</th><th>Tries here</th><th>Stars</th><th title="Missions where they changed the code themselves, and 🐞 bugs they fixed">🎨 Your turns</th><th>Drawings</th><th>Trophies</th><th>Hang out</th><th>Last problem</th></tr></thead>
+      <thead><tr><th>Name</th><th>Mission</th><th>Tries here</th><th>Stars</th><th title="Missions where they changed the code themselves, and 🐞 bugs they fixed">🎨 Your turns</th><th>Drawings</th><th>🎬 Show</th><th>Trophies</th><th>Hang out</th><th>Last problem</th></tr></thead>
       <tbody id="rows"></tbody>
     </table>
     <p id="none" style="margin:8px 0 0;color:var(--soft)" hidden>Nobody has opened Pixel Pals yet.</p>
+    <p id="bigShowNote" style="margin:8px 0 0;font-size:14px;font-weight:800" aria-live="polite" hidden></p>
   </div>
 
   <h2>Open missions for everyone</h2>
@@ -167,7 +168,9 @@ async function refresh() {
       <td><canvas class="pal" data-picture="${esc(JSON.stringify(s.picture || null))}"></canvas>${esc(s.name)}</td>
       <td>${esc(s.level_name)}<br><small style="color:var(--soft)">${esc(s.chapter)}</small></td>
       <td>${s.misses >= 3 ? `<b style="color:var(--warn)">${s.misses} misses</b>` : s.runs_here}</td>
-      <td>${s.stars}</td><td>${s.turns}${s.fixes ? ` · 🐞 ${s.fixes}` : ""}</td><td>${s.drawings}</td><td>${s.badges}</td><td>${s.hang ? hangCell(data.room.people[s.name], s.move) + (s.jobs ? `<br><small title="Today's jobs done">🎯 ${s.jobs} of 3</small>` : "") + (s.chests ? ` <small title="Chests coded open today">🧰 ${s.chests}</small>` : "") : ""}${s.let_in ? ` <button class="btn" data-let-in="${esc(s.name)}" data-on="">Lock again</button>`
+      <td>${s.stars}</td><td>${s.turns}${s.fixes ? ` · 🐞 ${s.fixes}` : ""}</td><td>${s.drawings}</td>
+      <td>${s.free_show ? `<button class="btn" data-big-show="${esc(s.name)}">🎬 Big screen</button>` : ""}</td>
+      <td>${s.badges}</td><td>${s.hang ? hangCell(data.room.people[s.name], s.move) + (s.jobs ? `<br><small title="Today's jobs done">🎯 ${s.jobs} of 3</small>` : "") + (s.chests ? ` <small title="Chests coded open today">🧰 ${s.chests}</small>` : "") : ""}${s.let_in ? ` <button class="btn" data-let-in="${esc(s.name)}" data-on="">Lock again</button>`
         : s.hang ? "" : `<button class="btn" data-let-in="${esc(s.name)}" data-on="1">🔓 Let in</button>`}</td>
       <td class="err">${esc(s.last_error)}</td>
     </tr>`).join("");
@@ -269,6 +272,23 @@ $("rows").addEventListener("click", async e => {
   b.disabled = true;
   await call({action: "let_in", name: b.dataset.letIn, on: !!b.dataset.on});
   refresh();
+});
+// 🎬 Big screen: play one student's Free stage show full size on the projector.
+let bigShowNoteTimer = 0;
+$("rows").addEventListener("click", async e => {
+  const b = e.target.closest("[data-big-show]");
+  if (!b) return;
+  b.disabled = true;
+  const note = $("bigShowNote");
+  clearTimeout(bigShowNoteTimer);
+  note.hidden = false;
+  note.textContent = `🎬 Starting ${b.dataset.bigShow}'s show on the projector…`;
+  const out = await call({action: "big_show", name: b.dataset.bigShow}).catch(() => null);
+  note.textContent = !out ? "🎬 Couldn't reach the server. Check the projector is on, then try again."
+    : out.error ? out.error
+    : `🎬 ${out.name}'s show is on the projector now. If the notes are quiet, click 🔊 Click for sound on the projector.`;
+  b.disabled = false;
+  bigShowNoteTimer = setTimeout(() => { note.hidden = true; }, 15000);
 });
 $("roomTyping").addEventListener("change", async e => { await call({action: "room_words", on: e.target.checked}); refresh(); });
 $("strip").addEventListener("click", e => {

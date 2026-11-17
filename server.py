@@ -6029,6 +6029,7 @@ def room_empty():
 
 
 pixel_room = dict(room_empty(), open=True, words=False)
+pixel_bigshow = {"n": 0, "show": None}     # 🎬 the last show the teacher put on the projector
 
 
 def room_compact(pal):
@@ -7370,6 +7371,46 @@ def room_perform(p, spot, data):
     return {"ok": True, "ms": ms, "badges": earned}
 
 
+def class_show_steps(steps):
+    """A Free stage show's full steps for the projector, with say() and friend_say()
+    following the same public-screen words rule as the Hang out: only tap-list words
+    show unless the teacher has let students type their own."""
+    return [dict(s) for s in steps
+            if s["do"] not in ("say", "friend_say") or pixel_room["words"] or s["text"] in pixel.ROOM_SAYS]
+
+
+def pixel_big_show(data):
+    """🎬 Play one student's Free stage show, full size, on the projector. The same
+    runner and pal as 🎤 Show my friends, but the projector's stage can show the
+    scenes, friends, weather and notes the Hang out leaves out."""
+    who = data.get("name")
+    p = next((q for q in players.values() if q.get("pixel") and q["name"] == who), None)
+    if not p:
+        return {"error": "No student with that name. Refresh the page and try again."}
+    entry = pixel_entry(p)
+    code = entry["free_code"]
+    if not code.strip() and entry["free_shows"]:
+        code = entry["free_shows"][0]
+    if not code.strip():
+        return {"error": f"{p['name']} has no Free stage show yet. They can make one on the 🎬 Free stage first."}
+    if not pixel_free_open(entry):
+        return {"error": f"The 🎬 Free stage isn't open for {p['name']} yet. They finish My Move first."}
+    lv = dict(pixel.FREE, commands=pixel.free_commands(pixel.LEVEL_ORDER[pixel_frontier(entry)]),
+              setup=pixel.free_setup(pixel_stars(entry)))
+    out = pixel.run_level(lv, code, pixel_pal(entry), seed=random.randrange(10 ** 6))
+    if out["error"]:
+        return {"error": f"{p['name']}'s show isn't ready: {out['error']} Ask them to fix it on the 🎬 Free stage first."}
+    steps = class_show_steps(out["steps"])
+    if not steps:
+        return {"error": f"{p['name']}'s show has nothing to play yet. Ask them to add a move on the 🎬 Free stage."}
+    pixel_bigshow["n"] += 1
+    show = {"show_id": pixel_bigshow["n"], "name": p["name"], "by": p["name"], "code": code,
+            "steps": steps, "pal": room_compact(pixel_pal(entry))}
+    pixel_bigshow["show"] = show
+    room_event("bigshow", **show)
+    return {"ok": True, "name": p["name"], "steps": len(steps)}
+
+
 def room_high_five(p, spot, other_seat):
     """Your pal goes over and high-fives theirs. A first high-five is a new friend for both."""
     room, now = pixel_room, time.time()
@@ -8101,6 +8142,7 @@ def pixel_overview():
                      "turns": len(entry["remixed"]),
                      "fixes": len(entry["fixed"]),
                      "badges": len(entry["badges"]), "hang": not pixel_hang_needs(entry), "let_in": bool(entry.get("hang_let_in")), "move": bool(entry["move"]),
+                     "free_show": bool((entry["free_code"] or "").strip() or entry["free_shows"]),
                      "jobs": sum(j["have"] >= j["need"] for j in day_jobs_view(entry)["list"]),
                      "chests": len(chests_today(entry)["open"]),
                      "active": entry["active"], "picture": pixel_picture(entry)})
@@ -8191,6 +8233,8 @@ def pixel_teacher(data):
             return {"error": "A game is on right now. Press ⏹ End this game first."}
         class_photo()
         return {"ok": True}
+    if action == "big_show":           # 🎬 one student's Free stage show, full size on the projector
+        return pixel_big_show(data)
     if action == "end_game":           # no prizes: nobody finished the round
         game_finish("The teacher ended this game.")
         return {"ok": True}
@@ -8220,6 +8264,17 @@ def pixel_get(path, query):
         if path == "/pixel/overview":       # the projector has no login, so no student rows
             over = pixel_overview()
             return {"feed": over["feed"], "room_open": pixel_room["open"], "address": f"http://{get_lan_ip()}:{PORT}/pixel"}
+        if path == "/pixel/bigshow":        # the projector asks for the next 🎬 Big screen show
+            if query.get("now"):
+                return {"n": pixel_bigshow["n"]}
+            try:
+                after = int(query.get("after", ["0"])[0])
+            except ValueError:
+                after = 0
+            show = pixel_bigshow["show"]
+            if not show or show["show_id"] <= after:
+                return {"n": pixel_bigshow["n"]}
+            return show
         p = players.get(query.get("id", [""])[0])
         if not p:
             return {"you": None}

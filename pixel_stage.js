@@ -88,6 +88,15 @@ const PalStage = (() => {
       /** A note that climbs with each one in a row, for stars and combos. */
       climb(n) { if (!muted && wake()) notes([1, 1.5].map(k => 523 * 2 ** (Math.min(n, 14) / 12) * k), .06, .16, "triangle"); },
       get muted() { return muted; },
+      /** Whether sound will stay silent until the page is clicked (browsers need a gesture). */
+      get locked() { return !muted && (!ac || ac.state !== "running"); },
+      /** Try to turn sound on after a click. Resolves true once it can play. */
+      unlock() {
+        const c = wake();
+        if (!c) return Promise.resolve(false);
+        return Promise.resolve(c.state === "running" ? undefined : c.resume())
+          .then(() => c.state === "running").catch(() => false);
+      },
       toggle() {
         muted = !muted;
         try { localStorage.setItem("pixelMute", muted ? "1" : "0"); } catch (_) {}
