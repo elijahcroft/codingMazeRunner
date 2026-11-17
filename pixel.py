@@ -943,6 +943,12 @@ class Report:
         self.code_lines = sum(1 for line in code.split("\n")
                               if line.strip() and not line.strip().startswith("#"))
 
+        def depth(node):
+            """How deep the loops go: 1 for a plain loop, 2 for a loop inside one."""
+            deep = max((depth(child) for child in ast.iter_child_nodes(node)), default=0)
+            return deep + 1 if isinstance(node, (ast.For, ast.While)) else deep
+        self.loop_depth = depth(tree) if tree else 0
+
     def n(self, name):
         return self.counts[name]
 
@@ -1030,6 +1036,7 @@ CHAPTERS = [
     {"key": "c", "name": "Keep Going", "icon": "⏳"},
     {"key": "j", "name": "My List", "icon": "📋"},
     {"key": "s", "name": "Keep Score", "icon": "🏆"},
+    {"key": "n", "name": "Loop in a Loop", "icon": "🪆"},
 ]
 
 # `adds` opens commands, and `python` opens the shapes of Python on the chips.
@@ -1555,6 +1562,63 @@ LEVELS = [
      "hints": ["Inside the def, use n where the number goes:  for i in range(n):",
                'def hop(n):\n    for i in range(n):\n        jump()\n    say(f"{n} hops!")\nhop(2)\nhop(4)'],
      "reference": 'def hop(n):\n    for i in range(n):\n        jump()\n    say(f"{n} hops!")\nhop(2)\nhop(4)'},
+
+    # Loop in a Loop: a for loop inside a for loop.
+    {"key": "n1", "chapter": 13, "name": "Clap clap, jump", "adds": [], "python": ["nested"],
+     "pip": "A loop can go inside another loop! The inside loop does its job, then the outside loop goes round again.",
+     "job": "Wave 2 times, then jump. Do that 3 times, with a loop inside a loop.",
+     "coach": [
+               ('for round in range(3):', "The outside loop goes round 3 times, once for each round."),
+               ('    for i in range(2):', "The inside loop is pushed in under the first one. It goes round 2 times."),
+               ('        wave()', "Wave! This happens 2 times in every round."),
+               ('    jump()', "Not pushed in as far as wave(), so it jumps once after the 2 waves. I moved it back for you."),
+     ],
+     "goals": [("Your pal waves 6 times or more", lambda r: r.n("wave") >= 6,
+                lambda r: f"Your pal waved {r.n('wave')} times. 2 waves in each of 3 rounds is 6."),
+               ("One loop is inside the other", lambda r: r.loop_depth >= 2,
+                "Push a for loop in under the first for loop. The lines inside it go further in."),
+               ("Your pal jumps after each pair of waves", lambda r: r.n("jump") >= 3 and r.first("wave", "wave", "jump"),
+                "Put jump() back out one step, so it runs after the inside loop.")],
+     "hints": ["The inside loop's line needs 8 spaces in front of it. The jump needs 4.",
+               'for round in range(3):\n    for i in range(2):\n        wave()\n    jump()'],
+     "reference": 'for round in range(3):\n    for i in range(2):\n        wave()\n    jump()'},
+
+    {"key": "n2", "chapter": 13, "name": "Times table", "adds": [], "python": ["nested"],
+     "pip": "The outside loop picks a row, and the inside loop says every fact in that row. That's a times table!",
+     "job": "Say the 3 by 3 times table: 1 x 1 = 1, up to 3 x 3 = 9.",
+     "coach": [
+               ('for i in range(1, 4):', "The outside loop picks 1, 2, then 3. These are the rows."),
+               ('    for j in range(1, 4):', "The inside loop picks 1, 2, then 3. These are the facts in each row."),
+               ('        say(f"{i} x {j} = {i * j}")', "Say the fact and the answer. The { } parts put the numbers inside the words."),
+     ],
+     "goals": [("Your pal says 9 facts", lambda r: len(r.said) >= 9,
+                lambda r: f"Your pal said {len(r.said)} things. I want 9 facts, from 1 x 1 = 1 to 3 x 3 = 9."),
+               ("One loop is inside the other", lambda r: r.loop_depth >= 2,
+                "Push the j loop in under the i loop, and push say() in under the j loop."),
+               ("Every fact is right, all the way to 3 x 3 = 9", lambda r: _table(r) >= 9,
+                "Check the numbers in the f-string: use i, j and i * j in the right places.")],
+     "hints": ["The outside loop is the rows, and the inside loop is the facts in each row.",
+               'for i in range(1, 4):\n    for j in range(1, 4):\n        say(f"{i} x {j} = {i * j}")'],
+     "reference": 'for i in range(1, 4):\n    for j in range(1, 4):\n        say(f"{i} x {j} = {i * j}")'},
+
+    {"key": "n3", "chapter": 13, "name": "Stairs", "adds": [], "python": ["nested"],
+     "pip": "Each stair is a little bigger! The inside loop walks right once for the first stair, twice for the second, and so on.",
+     "job": "Climb 3 stairs: walk 1 step right and jump, then 2 steps and jump, then 3 steps and jump.",
+     "coach": [
+               ('for step in range(3):', "The outside loop counts the stairs: step 0, 1 and 2."),
+               ('    for i in range(step + 1):', "The inside loop walks once for step 0, twice for step 1, three times for step 2."),
+               ('        right(1)', "One step right. The inside loop does this again and again."),
+               ('    jump()', "Not pushed in as far as right(), so it jumps after each stair. I moved it back for you."),
+     ],
+     "goals": [("Your pal takes 6 steps right or more", lambda r: r.n("right") >= 6,
+                lambda r: f"Your pal took {r.n('right')} steps right. 1 + 2 + 3 is 6."),
+               ("One loop is inside the other", lambda r: r.loop_depth >= 2,
+                "Push the i loop in under the step loop, and push right(1) in under the i loop."),
+               ("The stairs get bigger: 1 step, then 2, then 3", lambda r: _stair_runs(r)[:3] == [1, 2, 3] and r.log[-1][0] == "jump",
+                "The first jump needs 1 step before it, the second 2, the third 3. Use step + 1 in the inside range.")],
+     "hints": ["The inside loop's range uses the stair number:  range(step + 1)",
+               'for step in range(3):\n    for i in range(step + 1):\n        right(1)\n    jump()'],
+     "reference": 'for step in range(3):\n    for i in range(step + 1):\n        right(1)\n    jump()'},
 ]
 
 # "Your turn": after a mission, one change for the student to make with the guide off.
@@ -1623,6 +1687,12 @@ REMIXES = {
            "Add  elif roll == 1:  with  spin()  pushed in under it, just above the else."),
     "s3": ("Add a third hop with a bigger number, like hop(6).", lambda r: sum(r.own_calls.values()) >= 3 and max((c for c, _ in _hops(r)), default=0) >= 5,
            "Add one more line at the bottom, not pushed in, like  hop(6)"),
+    "n1": ("Make it 4 rounds, and wave 3 times each round.", lambda r: r.n("wave") >= 12 and r.n("jump") >= 4 and r.loop_depth >= 2,
+           "Change the numbers in the two range( ) lines. The outside one is rounds, the inside one is waves."),
+    "n2": ("Go up to 4, so your pal says the 4 times table too.", lambda r: _table(r) >= 16 and r.loop_depth >= 2,
+           "Change both 4s in the two range(1, 4) lines to 5, so the loops go up to 4."),
+    "n3": ("Climb one more stair, so there are 4 steps.", lambda r: _stair_runs(r) == [1, 2, 3, 4],
+           "Change only one thing: the 3 in range(3)"),
     "k2": ("Make your pal spin on the 3rd click, as well as cheer.", lambda r: len(r.reacts) >= 4 and [r.did(i, "spin") for i in range(4)] == [False, False, True, False],
            "Add  spin()  under  cheer()  , pushed in just as far."),
 }
@@ -1659,6 +1729,9 @@ GUESSES = {
     "s1": ("What's the last number your pal says?", ["5", "10", "2"], 1),
     "s2": ("What does your pal do when it rolls a 5?", ["Cheers", "Jumps", "Feels sad"], 1),
     "s3": ("How many jumps in the whole show?", ["4", "6", "2"], 1),
+    "n1": ("How many times will your pal wave?", ["3", "6", "2"], 1),
+    "n2": ("How many facts will your pal say?", ["3", "6", "9"], 2),
+    "n3": ("How many jumps will your pal make?", ["1", "3", "6"], 1),
 }
 # "Fix it": after a mission, Pip's code for it with one bug in it, to find and fix.
 # (what went wrong, the code with the bug, check that it's fixed, a hint that says where to look).
@@ -1734,6 +1807,15 @@ FIXES = {
            "The second if asks its question even after a 6. Make it  elif  , so it only asks when the first answer was no."),
     "s3": ("Pip's show stops: hop has no number!", 'def hop(n):\n    for i in range(n):\n        jump()\n    say(f"{n} hops!")\nhop(2)\nhop()',
            lambda r: sum(r.own_calls.values()) >= 2 and len({c for c, _ in _hops(r)}) >= 2, "Look at the last line. hop needs a number in its ( ), like  hop(4)"),
+    "n1": ("Pip wanted 2 waves each round, but the pal waves only once!", 'for round in range(3):\n    for i in range(1):\n        wave()\n    jump()',
+            lambda r: r.n("wave") >= 6 and r.n("jump") >= 3 and r.loop_depth >= 2,
+            "The number in range( ) is how many times that loop goes round."),
+    "n2": ("Pip's table stops at 2 x 3! It needs the whole 3 times table.", 'for i in range(1, 4):\n    for j in range(1, 3):\n        say(f"{i} x {j} = {i * j}")',
+            lambda r: _table(r) >= 9 and r.loop_depth >= 2,
+            "Look at the second range( ). It says how many facts are in each row."),
+    "n3": ("Pip's stairs are all the same size! The first should be 1 step, then 2, then 3.", 'for step in range(3):\n    for i in range(2):\n        right(1)\n    jump()',
+            lambda r: _stair_runs(r) == [1, 2, 3] and r.log[-1][0] == "jump",
+            "Inside range( ), use the stair number, not a 2. Step 0 should go once, step 1 twice."),
 }
 for _lv in LEVELS:
     _lv["remix"] = REMIXES[_lv["key"]]
@@ -1853,6 +1935,29 @@ def _nums(r):
     return [int(s) for s in r.said if s.lstrip("-").isdigit()]
 
 
+def _table(r):
+    """How many different times-table facts the pal said, like "3 x 2 = 6", all correct."""
+    facts = set()
+    for said in r.said:
+        fact = re.fullmatch(r"\s*(\d+)\s*x\s*(\d+)\s*=\s*(\d+)\s*", said)
+        if fact and int(fact[1]) * int(fact[2]) == int(fact[3]):
+            facts.add((int(fact[1]), int(fact[2])))
+    return len(facts)
+
+
+def _stair_runs(r):
+    """How many steps right the pal took before each jump, like [1, 2, 3] for stairs."""
+    runs, steps = [], 0
+    for name, args in r.log:
+        if name in ("right", "left"):
+            step = args[0] if args else 1
+            steps += step if name == "right" else -step
+        elif name == "jump":
+            runs.append(steps)
+            steps = 0
+    return runs
+
+
 def _counts_up(r):
     """How many numbers the pal said, if they go up by the same step each time, or 0."""
     nums = _nums(r)
@@ -1935,6 +2040,8 @@ GIFTS = {
     "gradcap": {"name": "Graduation cap", "slot": "hat"}, "viking": {"name": "Viking helmet", "slot": "hat"},
     "sprout": {"name": "Little sprout", "slot": "hat"}, "freckles": {"name": "Freckles", "slot": "face"},
     "codespark": {"name": "Code sparkles", "slot": "sparkle"}, "petalspark": {"name": "Petal sparkles", "slot": "sparkle"},
+    "loophat": {"name": "Loop hat", "slot": "hat"}, "spiralhat": {"name": "Spiral hat", "slot": "hat"},
+    "loopspark": {"name": "Loop sparkles", "slot": "sparkle"},
     # These unlock by themselves when a goal is reached: [what is counted, how many].
     "gemcrown": {"name": "Gem crown", "slot": "hat", "goal": ["gems", 9]},
     "fishhat": {"name": "Fish hat", "slot": "hat", "goal": ["fish", 5]},

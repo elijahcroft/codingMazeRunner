@@ -30,7 +30,7 @@ Both teacher pages are linked from `/admin`.
    as Pip.
 5. After 3 missions, the Hang out opens and stays open.
 6. Mission 9 is **My Move**. They code their own routine and it becomes a big
-   button in the Hang out. Fifteen more missions come after it, for students who finish.
+   button in the Hang out. Twenty-four more missions come after it, for students who finish.
 
 A big button at the top right always says what comes next. On Code, that's **💻 Next mission**
 once the open mission is done, and 🎬 Free stage once every mission is finished, so
@@ -38,7 +38,7 @@ it never pulls a student out of a mission halfway. The 🎉 Hang out tab is alwa
 
 ## The missions
 
-30 missions and 90 stars. The first star opens the next mission, and the other two are
+33 missions and 99 stars. The first star opens the next mission, and the other two are
 for going further.
 
 | Chapter | Missions | What it teaches |
@@ -56,8 +56,9 @@ for going further.
 | ⏳ Keep Going | Walk to the edge, Countdown | `while` loops: going round as long as the answer is yes, with `x()` and a variable that changes |
 | 📋 My List | Snack list, Who's coming?, First and last | A list kept in a variable: a `for` loop over it, `len()`, `.append()`, and `[0]` / `[-1]` |
 | 🏆 Keep Score | Rack up points, Big, middle, small, Hop how many? | `+=` to change a number, `if` / `elif` / `else`, and `def hop(n):` that takes a number |
+| 🪆 Loop in a Loop | Clap clap, jump, Times table, Stairs | A `for` loop inside another `for` loop: the inside loop runs all the way through each time the outside one goes round |
 
-The last twenty-one come after My Move on purpose, so a student who has already made their
+The last twenty-four come after My Move on purpose, so a student who has already made their
 move doesn't have it locked behind new missions. They start easy (one new command each)
 and get harder.
 
@@ -84,6 +85,13 @@ loop stops when the pal gets there. Countdown makes a variable smaller each time
 `while` that never stops says so in plain words ("Your while loop never stopped! Something
 pushed in under the while has to change each time round"), and that's the bug in both of
 their Fix its.
+
+**🪆 Loop in a Loop puts one loop inside another.** In Clap clap, jump, the inside loop
+waves twice, and the jump line sits one step further out, so it jumps after each pair of
+waves. The whole thing happens 3 times. Times table uses the outside loop for the rows and
+the inside loop for each fact, and Stairs walks one more step right each time before it
+jumps. The guide pushes each line in to the right depth, and Help me says which loop a line
+belongs in.
 
 **Every mission walks them through it.** The top says the job in one plain sentence. Under
 it, the guide gives one line at a time: what the line does, the exact keys as tiles, and

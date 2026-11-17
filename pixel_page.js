@@ -56,6 +56,7 @@ const PYTHON = {
   change: ["+=", "points += 2", "Changes a number variable: adds to what it already is."],
   elif: ["elif", "elif roll >= 4:\n    ", "Goes after an if, lined up with it. Asks a second question when the first answer was no."],
   param: ["def with a number", "def hop(n):\n    ", "Makes a command that takes a number. n is whatever goes in its ( )."],
+  nested: ["loop in a loop", "for i in range(3):\n    for j in range(2):\n        ", "A loop pushed in under another loop. The inside loop runs all the way through each time the outside loop goes round."],
 };
 const ALL_PYTHON = Object.keys(PYTHON);
 
@@ -475,6 +476,7 @@ const KEY_HELP = {
   ":": "Hold Shift and press the ; key", "!": "Hold Shift and press 1", " ": "Press the long space bar", "\n": "Press Enter", ".": "Press the . key",
   "+": "Hold Shift and press the = key, next to Backspace", "=": "Press the = key, next to Backspace", ",": "Press the , key, next to M",
   "-": "Press the - key, next to 0", "<": "Hold Shift and press the , key", ">": "Hold Shift and press the . key", "_": "Hold Shift and press the - key, next to 0", "[": "Press the [ key, next to P", "]": "Press the ] key, next to [", "{": "Hold Shift and press the [ key", "}": "Hold Shift and press the ] key",
+  "*": "Hold Shift and press the 8 key",
 };
 const ACTIONS = /^\s*(say|jump|right|left|wave|dance|cheer|spin|hearts|stars|confetti|feel)\(/gm;
 let coachWay = null, coachOops = "", coachEarly = false;     // coachWay: "type", "build", or "own" for a student's own way
@@ -969,7 +971,7 @@ function openMissions() {
     `<div class="trophy${b.got ? " got" : ""}"><i>${b.icon}</i><span><b>${esc(b.name)}</b>${esc(b.how)}</span></div>`).join("");
   $("missions").hidden = false;
   const here = $("missionList").querySelector(".here");
-  if (here) here.scrollIntoView({block: "center"});         // eleven chapters: start where they are
+  if (here) here.scrollIntoView({block: "center"});         // fourteen chapters: start where they are
 }
 function closeSheets() {
   for (const id of ["missions", "bookSheet"]) $(id).hidden = true;

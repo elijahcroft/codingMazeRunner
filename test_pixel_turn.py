@@ -38,6 +38,9 @@ CHANGED = {
     "s1": 'points = 0\nfor i in range(5):\n    jump()\n    points += 5\n    say(points)\ncheer()',
     "s2": 'roll = randint(1, 6)\nsay(roll)\nif roll == 6:\n    cheer()\nelif roll >= 4:\n    jump()\nelif roll == 1:\n    spin()\nelse:\n    feel("sad")',
     "s3": 'def hop(n):\n    for i in range(n):\n        jump()\n    say(f"{n} hops!")\nhop(2)\nhop(4)\nhop(6)',
+    "n1": "for round in range(4):\n    for i in range(3):\n        wave()\n    jump()",
+    "n2": 'for i in range(1, 5):\n    for j in range(1, 5):\n        say(f"{i} x {j} = {i * j}")',
+    "n3": "for step in range(4):\n    for i in range(step + 1):\n        right(1)\n    jump()",
 }
 
 
@@ -86,6 +89,9 @@ TRUTH = {
     "s1": lambda st: _said(st)[-1],
     "s2": lambda st: _on_five(),
     "s3": lambda st: str(_n(st, "jump")),
+    "n1": lambda st: str(_n(st, "wave")),
+    "n2": lambda st: str(_n(st, "say")),
+    "n3": lambda st: str(_n(st, "jump")),
 }
 
 
