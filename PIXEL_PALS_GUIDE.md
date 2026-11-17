@@ -92,9 +92,9 @@ their Fix its.
 **🪆 Loop in a Loop puts one loop inside another.** In Clap clap, jump, the inside loop
 waves twice, and the jump line sits one step further out, so it jumps after each pair of
 waves. The whole thing happens 3 times. Times table uses the outside loop for the rows and
-the inside loop for each fact, and Stairs walks one more step right each time before it
-jumps. The guide pushes each line in to the right depth, and Help me says which loop a line
-belongs in.
+the inside loop for each fact. That is 9 facts, from 1 x 1 = 1 to 3 x 3 = 9. Stairs walks
+one more step right each time before it jumps, so it takes 6 steps in all (1 + 2 + 3). The
+guide pushes each line in to the right depth, and Help me says which loop a line belongs in.
 
 **🎵 Make Music is the chapter of notes.** `note("C")` sings one note, `note("rest")` is a
 short silence, and `note("E", 2)` holds a note for 2 beats. First notes sings C, D and E.
@@ -107,7 +107,8 @@ they see where a `def` and a loop end.
 Big name uses `name = "Luna"` and `say(name * 3)` to say the name 3 times in one bubble.
 How long? counts the letters with `len(word)` and jumps that many times with
 `for i in range(len(word)):`. First letter says `word[0]`, then `for letter in word:`
-says every letter, and ends with a cheer. The guide shows the `"` and `*` keys, and Help
+says every letter, and ends with a cheer. The first letter L is said twice: once on its
+own, then again when the loop starts. The guide shows the `"` and `*` keys, and Help
 me says where to put `len()` and which line belongs inside the loop.
 
 **📦 Give It Back is the last chapter.** A `def` can hand a value back with `return`.
@@ -143,7 +144,9 @@ glows. Pressing it early says to finish typing first.
 
 The guide's lines live in `coach` on each mission in `pixel.py`, and a test checks they
 always add up to the working answer, which earns all three stars. `test_pixel_coach.py`
-also checks the lines' indentation and the keys the guide names. `tools/e2e_coach.py` is
+also checks the lines' indentation and the keys the guide names. `test_pixel_wording.py`
+checks the four new chapters' words: short sentences, a next step in every missing message,
+and Fix it hints that point at the line without giving the code away. `tools/e2e_coach.py` is
 the slower end-to-end check: it types every mission in a real headless browser, one key
 at a time, and tries the guide's buttons and mistakes. It is a tool, not a unittest, so
 it is not part of `python3 -m unittest test_pixel*.py`.
