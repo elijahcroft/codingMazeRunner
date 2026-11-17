@@ -51,9 +51,11 @@ const PYTHON = {
   while: ["while loop", "while x() < 10:\n    ", "Goes round and round as long as its question is yes."],
   else: ["else", "else:\n    ", "Goes under an if, lined up with it. Its lines run when the if's answer is no."],
   random: ["surprise", 'mood = choice(["happy", "silly"])', "choice() picks one thing from a list by surprise. randint(1, 6) picks a number from 1 to 6."],
-  len: ["len()", "len(snacks)", "How many things are on a list."],
+  len: ["len()", "len(snacks)", "How many things are on a list, or how many letters are in a word."],
   append: [".append()", 'guests.append("Ben")', "Adds one more thing to the end of a list."],
-  index: ["[0] and [-1]", "moods[0]", "One thing from a list by its position. [0] is the first, [-1] is the last."],
+  index: ["[0] and [-1]", "moods[0]", "One thing from a list, or one letter from a word, by its position. [0] is the first, [-1] is the last."],
+  word: ["words", 'name = "Luna"', "A word goes in quotes. Keep it in a variable, and * repeats it: name * 3 is LunaLunaLuna."],
+  letters: ["for each letter", "for letter in word:\n    ", "Visits each letter in a word, one at a time, like a list."],
   change: ["+=", "points += 2", "Changes a number variable: adds to what it already is."],
   elif: ["elif", "elif roll >= 4:\n    ", "Goes after an if, lined up with it. Asks a second question when the first answer was no."],
   param: ["def with a number", "def hop(n):\n    ", "Makes a command that takes a number. n is whatever goes in its ( )."],
@@ -973,7 +975,7 @@ function openMissions() {
     `<div class="trophy${b.got ? " got" : ""}"><i>${b.icon}</i><span><b>${esc(b.name)}</b>${esc(b.how)}</span></div>`).join("");
   $("missions").hidden = false;
   const here = $("missionList").querySelector(".here");
-  if (here) here.scrollIntoView({block: "center"});         // fourteen chapters: start where they are
+  if (here) here.scrollIntoView({block: "center"});         // sixteen chapters: start where they are
 }
 function closeSheets() {
   for (const id of ["missions", "bookSheet"]) $(id).hidden = true;

@@ -30,7 +30,7 @@ Both teacher pages are linked from `/admin`.
    as Pip.
 5. After 3 missions, the Hang out opens and stays open.
 6. Mission 9 is **My Move**. They code their own routine and it becomes a big
-   button in the Hang out. Twenty-seven more missions come after it, for students who finish.
+   button in the Hang out. Thirty more missions come after it, for students who finish.
 
 A big button at the top right always says what comes next. On Code, that's **💻 Next mission**
 once the open mission is done, and 🎬 Free stage once every mission is finished, so
@@ -38,7 +38,7 @@ it never pulls a student out of a mission halfway. The 🎉 Hang out tab is alwa
 
 ## The missions
 
-36 missions and 108 stars. The first star opens the next mission, and the other two are
+39 missions and 117 stars. The first star opens the next mission, and the other two are
 for going further.
 
 | Chapter | Missions | What it teaches |
@@ -58,8 +58,9 @@ for going further.
 | 🏆 Keep Score | Rack up points, Big, middle, small, Hop how many? | `+=` to change a number, `if` / `elif` / `else`, and `def hop(n):` that takes a number |
 | 🪆 Loop in a Loop | Clap clap, jump, Times table, Stairs | A `for` loop inside another `for` loop: the inside loop runs all the way through each time the outside one goes round |
 | 🎵 Make Music | First notes, Twinkle, Make a beat | `note()`: one note, a tune kept in a list, and a beat made with a `def` |
+| 🔤 Word Play | Big name, How long?, First letter | Words: repeating with `*`, counting letters with `len()`, and `word[0]` / a loop over each letter |
 
-The last twenty-seven come after My Move on purpose, so a student who has already made their
+The last thirty come after My Move on purpose, so a student who has already made their
 move doesn't have it locked behind new missions. They start easy (one new command each)
 and get harder.
 
@@ -94,12 +95,19 @@ the inside loop for each fact, and Stairs walks one more step right each time be
 jumps. The guide pushes each line in to the right depth, and Help me says which loop a line
 belongs in.
 
-**🎵 Make Music is the last chapter.** `note("C")` sings one note, `note("rest")` is a
+**🎵 Make Music is the chapter of notes.** `note("C")` sings one note, `note("rest")` is a
 short silence, and `note("E", 2)` holds a note for 2 beats. First notes sings C, D and E.
 Twinkle keeps the tune in a list, and a `for` loop sings each note on it before a long G ("little star").
 Make a beat puts C, rest, G in a `def beat():`, calls it 3 times in a loop, then finishes
 on a long C. The guide pushes `beat()` in under the loop and the long note back out, so
 they see where a `def` and a loop end.
+
+**🔤 Word Play is the last chapter.** Words are kept in a variable, just like numbers.
+Big name uses `name = "Luna"` and `say(name * 3)` to say the name 3 times in one bubble.
+How long? counts the letters with `len(word)` and jumps that many times with
+`for i in range(len(word)):`. First letter says `word[0]`, then `for letter in word:`
+says every letter, and ends with a cheer. The guide shows the `"` and `*` keys, and Help
+me says where to put `len()` and which line belongs inside the loop.
 
 **Every mission walks them through it.** The top says the job in one plain sentence. Under
 it, the guide gives one line at a time: what the line does, the exact keys as tiles, and

@@ -20,10 +20,10 @@ def notes(code):
 
 
 class TheChapter(unittest.TestCase):
-    def test_it_comes_last_and_has_three_missions(self):
-        self.assertEqual(pixel.CHAPTERS[-1], {"key": "u", "name": "Make Music", "icon": "🎵"})
-        self.assertEqual([lv["key"] for lv in pixel.LEVELS[-3:]], ["u1", "u2", "u3"])
-        self.assertEqual({lv["chapter"] for lv in pixel.LEVELS[-3:]}, {len(pixel.CHAPTERS) - 1})
+    def test_it_has_three_missions(self):
+        chapter = next(i for i, ch in enumerate(pixel.CHAPTERS) if ch["key"] == "u")
+        self.assertEqual(pixel.CHAPTERS[chapter], {"key": "u", "name": "Make Music", "icon": "🎵"})
+        self.assertEqual([lv["key"] for lv in pixel.LEVELS if lv["chapter"] == chapter], ["u1", "u2", "u3"])
 
     def test_the_first_mission_opens_note(self):
         self.assertEqual(pixel.LEVEL_BY_KEY["u1"]["adds"], ["note"])
@@ -102,8 +102,8 @@ class MusicOverHttp(unittest.TestCase):
                 self.assertEqual(out["stars"], [True, True, True], out.get("reply"))
                 self.assertEqual(out["rewards"]["gained"], 3)
         state = self.get(f"/pixel/state?id={me}")
-        self.assertEqual(state["chapters"][-1]["name"], "Make Music")
-        self.assertEqual(len(state["chapters"][-1]["levels"]), 3)
+        chapter = next(ch for ch in state["chapters"] if ch["name"] == "Make Music")
+        self.assertEqual(len(chapter["levels"]), 3)
 
 
 if __name__ == "__main__":

@@ -44,6 +44,9 @@ CHANGED = {
     "u1": 'note("C")\nnote("D")\nnote("E")\nnote("C")\ncheer()',
     "u2": 'tune = ["C", "C", "G", "G", "A", "A", "C2"]\nfor n in tune:\n    note(n)\nnote("G", 2)',
     "u3": 'def beat():\n    note("C")\n    note("rest")\n    note("G")\nfor i in range(5):\n    beat()\nnote("C", 2)',
+    "p1": 'name = "Mia"\nsay(name * 3)\ncheer()',
+    "p2": 'word = "Pixel"\nsay(len(word))\nfor i in range(len(word)):\n    jump()',
+    "p3": 'word = "Luna"\nsay(word[0])\nfor letter in word:\n    say(letter)\nsay(word)\ncheer()',
 }
 
 
@@ -106,6 +109,9 @@ TRUTH = {
     "u1": lambda st: str(_n(st, "note")),
     "u2": lambda st: {"C": "A long C", "G": "A long G"}.get(_last_note(st)["name"], "?") if _last_note(st)["beats"] == 2 else "?",
     "u3": lambda st: str(sum(1 for s in _note_steps(st) if s["name"] == "rest")),
+    "p1": lambda st: str(_said(st)[0].count("Luna")),
+    "p2": lambda st: str(_n(st, "jump")),
+    "p3": lambda st: _said(st)[0],
 }
 
 

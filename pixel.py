@@ -985,6 +985,11 @@ class Report:
         self.range_name = any(
             isinstance(n, ast.For) and isinstance(n.iter, ast.Call)
             and any(isinstance(a, ast.Name) for a in n.iter.args) for n in nodes)
+        self.range_len = any(                    # for i in range(len(word)):
+            isinstance(n, ast.For) and isinstance(n.iter, ast.Call)
+            and isinstance(n.iter.func, ast.Name) and n.iter.func.id == "range"
+            and any(isinstance(a, ast.Call) and isinstance(a.func, ast.Name) and a.func.id == "len"
+                    for a in n.iter.args) for n in nodes)
         self.upper = sum(1 for n in nodes if isinstance(n, ast.Attribute) and n.attr in ("upper", "lower"))
         self.randoms = sum(1 for n in nodes if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
                            and n.func.id in ("choice", "randint"))
@@ -1107,6 +1112,7 @@ CHAPTERS = [
     {"key": "s", "name": "Keep Score", "icon": "🏆"},
     {"key": "n", "name": "Loop in a Loop", "icon": "🪆"},
     {"key": "u", "name": "Make Music", "icon": "🎵"},
+    {"key": "p", "name": "Word Play", "icon": "🔤"},
 ]
 
 # `adds` opens commands, and `python` opens the shapes of Python on the chips.
@@ -1749,6 +1755,65 @@ LEVELS = [
      "hints": ['Under  def beat():  push in  note("C")  ,  note("rest")  and  note("G")  . Then call  beat()  inside a for loop.',
                'def beat():\n    note("C")\n    note("rest")\n    note("G")\nfor i in range(3):\n    beat()\nnote("C", 2)'],
      "reference": 'def beat():\n    note("C")\n    note("rest")\n    note("G")\nfor i in range(3):\n    beat()\nnote("C", 2)'},
+
+    # Word Play: words kept in variables, repeating with *, len() on a word,
+    # and a for loop that visits each letter.
+    {"key": "p1", "chapter": 15, "name": "Big name", "adds": [], "python": ["word"],
+     "pip": "A word can be kept in a variable. The * sign repeats it! Keep the name, say it 3 times, then cheer.",
+     "job": "Keep a name in a variable, say it 3 times in one bubble, then cheer.",
+     "coach": [
+               ('name = "Luna"', 'A variable called name keeps the word Luna. The word goes inside the " marks.'),
+               ('say(name * 3)', "say() says the name 3 times in one go. The * repeats the word."),
+               ('cheer()', "Last, cheer. You made a name chant!"),
+     ],
+     "goals": [("Your pal says the name 3 times", lambda r: bool(_word(r)) and r.said[:1] == [_word(r) * 3],
+                "Keep the name in a variable, then  say(name * 3)  says it 3 times."),
+               ("It all comes in one speech bubble", lambda r: r.n("say") == 1,
+                "One say() line makes one bubble. Try  say(name * 3)  instead of 3 say lines."),
+               ("Your pal cheers at the end", lambda r: bool(r.log) and r.n("cheer") == 1 and r.log[-1][0] == "cheer", None)],
+     "hints": ['Put the name in a variable first:  name = "Luna"  . Then  say(name * 3)  repeats it 3 times.',
+               'name = "Luna"\nsay(name * 3)\ncheer()'],
+     "reference": 'name = "Luna"\nsay(name * 3)\ncheer()'},
+
+    {"key": "p2", "chapter": 15, "name": "How long?", "adds": [], "python": ["word", "len"],
+     "pip": "len() counts the letters in a word. Say the number, then jump that many times with a loop.",
+     "job": "Say how many letters the word Luna has, then jump that many times.",
+     "coach": [
+               ('word = "Luna"', 'A variable called word keeps the word Luna. The word goes inside the " marks.'),
+               ('say(len(word))', "len() counts the letters in the word. This says 4."),
+               ('for i in range(len(word)):', "A loop that goes round once for each letter, so 4 times."),
+               ('    jump()', "Pushed in, so it jumps every time round. That is 4 jumps."),
+     ],
+     "goals": [("Your pal says how many letters Luna has", lambda r: bool(_word(r)) and r.said[:1] == [str(len(_word(r)))],
+                "len(word) counts the letters. Say it with  say(len(word)) ."),
+               ("Your pal jumps that many times", lambda r: bool(_word(r)) and r.n("jump") == len(_word(r)),
+                lambda r: f"Your pal jumped {r.n('jump')} times. The word has {len(_word(r))} letters."),
+               ("You use len() in a loop", lambda r: r.range_len,
+                "Put len(word) inside range( ), like  for i in range(len(word)):")],
+     "hints": ["Count the letters with  len(word)  . Then put it inside range( ):  for i in range(len(word)):",
+               'word = "Luna"\nsay(len(word))\nfor i in range(len(word)):\n    jump()'],
+     "reference": 'word = "Luna"\nsay(len(word))\nfor i in range(len(word)):\n    jump()'},
+
+    {"key": "p3", "chapter": 15, "name": "First letter", "adds": [], "python": ["word", "index", "letters"],
+     "pip": "word[0] is the first letter. A for loop can visit every letter in a word, one at a time.",
+     "job": "Say the first letter of the word Luna, then say each letter with a loop, then cheer.",
+     "coach": [
+               ('word = "Luna"', 'A variable called word keeps the word Luna.'),
+               ('say(word[0])', "The [0] picks the first letter. Positions start at 0, so this says L."),
+               ('for letter in word:', "A loop that visits each letter in the word, one at a time. letter is the one we are on."),
+               ('    say(letter)', "Pushed in, so it says every letter: L, u, n, a."),
+               ('cheer()', "Not pushed in, so it cheers once at the end. I moved it back for you."),
+     ],
+     "goals": [("Your pal says the first letter", lambda r: bool(_word(r)) and r.said[:1] == [_word(r)[0]],
+                "The first letter is at position 0:  say(word[0])"),
+               ("A loop says every letter of the word", lambda r: r.fors >= 1 and bool(_word(r))
+                and any(isinstance(r.values.get(name), str) for name in r.loops_over)
+                and r.said[1:1 + len(_word(r))] == list(_word(r)),
+                "Use  for letter in word:  with  say(letter)  pushed in under it."),
+               ("Your pal cheers at the end", lambda r: bool(r.log) and r.n("cheer") == 1 and r.log[-1][0] == "cheer", None)],
+     "hints": ["The first letter is  word[0]  . Then  for letter in word:  with  say(letter)  pushed in.",
+               'word = "Luna"\nsay(word[0])\nfor letter in word:\n    say(letter)\ncheer()'],
+     "reference": 'word = "Luna"\nsay(word[0])\nfor letter in word:\n    say(letter)\ncheer()'},
 ]
 
 # "Your turn": after a mission, one change for the student to make with the guide off.
@@ -1832,6 +1897,14 @@ REMIXES = {
            'In the list, put a comma after the last "A" and add "C2"'),
     "u3": ("Play your beat 5 times instead of 3.", lambda r: [n for n, _ in _notes(r)] == ["C", "rest", "G"] * 5 + ["C"] and _notes(r)[-1] == ("C", 2),
            "Change only one thing: the 3 in range(3)"),
+    "p1": ("Use your own name instead of Luna.", lambda r: bool(_word(r)) and _word(r) != "Luna" and r.said[:1] == [_word(r) * 3],
+           'Change only the first line, like  name = "Mia"'),
+    "p2": ("Use a longer word, like Pixel, and jump that many times.",
+           lambda r: len(_word(r)) >= 5 and r.said[:1] == [str(len(_word(r)))] and r.n("jump") == len(_word(r)) and r.range_len,
+           'Change only the word in the first line, like  word = "Pixel"'),
+    "p3": ("Say the whole word at the end too, before you cheer.",
+           lambda r: bool(_word(r)) and r.said[-1:] == [_word(r)] and r.fors >= 1,
+           "Add  say(word)  just above  cheer()"),
 }
 # "Guess first": before the first run of the guide's code, one question about what it will do.
 # (question, choices, the right choice). test_pixel_turn.py checks each answer against a real run.
@@ -1872,6 +1945,9 @@ GUESSES = {
     "u1": ("How many notes will your pal sing?", ["3", "1", "4"], 0),
     "u2": ("What is the last note your pal sings?", ["A long C", "A long G", "A rest"], 1),
     "u3": ("How many rests will your pal sing?", ["3", "1", "9"], 0),
+    "p1": ("How many times will the name Luna appear in the bubble?", ["3", "1", "4"], 0),
+    "p2": ("How many times will your pal jump?", ["4", "1", "5"], 0),
+    "p3": ("What will your pal say first?", ["L", "u", "Luna"], 0),
 }
 # "Fix it": after a mission, Pip's code for it with one bug in it, to find and fix.
 # (what went wrong, the code with the bug, check that it's fixed, a hint that says where to look).
@@ -1965,6 +2041,17 @@ FIXES = {
     "u3": ("Pip's beat has a note that isn't real, so the show stops!", 'def beat():\n    note("C")\n    note("rest")\n    note("Q")\nfor i in range(3):\n    beat()\nnote("C", 2)',
              lambda r: [n for n, _ in _notes(r)] == ["C", "rest", "G"] * 3 + ["C"] and _notes(r)[-1] == ("C", 2),
              'Look at line 4. The notes are C, D, E, F, G, A, B, C2 and rest.'),
+    "p1": ("Pip wanted the name 3 times, but the pal says it only twice!", 'name = "Luna"\nsay(name * 2)\ncheer()',
+           lambda r: bool(_word(r)) and r.said[:1] == [_word(r) * 3] and r.n("say") == 1
+           and bool(r.log) and r.log[-1][0] == "cheer",
+           "Look at the * line. The number after * is how many times the word is said."),
+    "p2": ("Pip's pal says 5, but it jumps only 4 times! The number and the jumps should match.", 'word = "Luna"\nsay(len(word) + 1)\nfor i in range(len(word)):\n    jump()',
+           lambda r: bool(_word(r)) and r.said[:1] == [str(len(_word(r)))] and r.n("jump") == len(_word(r)) and r.range_len,
+           "Look at the say line. Take away the + 1: the word has 4 letters."),
+    "p3": ("Pip's show stops: the word has no letter at position 4!", 'word = "Luna"\nsay(word[4])\nfor letter in word:\n    say(letter)\ncheer()',
+           lambda r: bool(_word(r)) and r.said[:1] == [_word(r)[0]]
+           and r.said[1:1 + len(_word(r))] == list(_word(r)) and bool(r.log) and r.log[-1][0] == "cheer",
+           "Positions start at 0. The 4 letters are at 0, 1, 2 and 3, so [0] is the first letter."),
 }
 for _lv in LEVELS:
     _lv["remix"] = REMIXES[_lv["key"]]
@@ -2074,6 +2161,12 @@ def _the_list(r):
 def _notes(r):
     """The notes the pal sang, in order, as (note, beats) pairs, like [("C", 1), ("E", 2)]."""
     return r.notes
+
+
+def _word(r):
+    """The longest word the program kept in a variable, or ""."""
+    words = [v for v in r.values.values() if isinstance(v, str)]
+    return max(words, key=len) if words else ""
 
 
 def _says_each(r):
@@ -2199,6 +2292,8 @@ GIFTS = {
     "loopspark": {"name": "Loop sparkles", "slot": "sparkle"},
     "notehat": {"name": "Music-note hat", "slot": "hat"}, "pianohat": {"name": "Piano hat", "slot": "hat"},
     "notespark": {"name": "Note sparkles", "slot": "sparkle"},
+    "wordhat": {"name": "Letter blocks hat", "slot": "hat"}, "bookhat": {"name": "Storybook hat", "slot": "hat"},
+    "letterspark": {"name": "Letter sparkles", "slot": "sparkle"},
     # These unlock by themselves when a goal is reached: [what is counted, how many].
     "gemcrown": {"name": "Gem crown", "slot": "hat", "goal": ["gems", 9]},
     "fishhat": {"name": "Fish hat", "slot": "hat", "goal": ["fish", 5]},
