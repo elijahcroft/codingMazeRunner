@@ -7434,7 +7434,7 @@ def room_find(p, spot, key):
 
 
 PLACE_WORDS = {"park": "Park", "wedding": "Wedding", "beach": "Beach", "night": "Night", "snowy": "Snowy hill", "candy": "Candy land", "space": "Outer space",
-               "village": "Snow Village"}
+               "sea": "Under the sea", "village": "Snow Village"}
 
 
 def chests_today(entry):

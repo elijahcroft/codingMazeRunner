@@ -25,7 +25,7 @@ function tapCode(what, name) {
   return "";
 }
 const PLACE_NAMES = {park: ["🌳", "Park"], wedding: ["💒", "Wedding"], beach: ["🏖️", "Beach"], night: ["🌙", "Night"],
-                     snowy: ["⛄", "Snowy hill"], candy: ["🍭", "Candy land"], space: ["🚀", "Space"],
+                     snowy: ["⛄", "Snowy hill"], candy: ["🍭", "Candy land"], space: ["🚀", "Space"], sea: ["🌊", "Under the sea"],
                      village: ["❄️", "Snow Village"]};
 const SLOT_NAMES = {hat: "Hats", face: "Faces", sparkle: "Sparkles"};
 const ROOM_TIP = "Walk to the edge to explore! Gold ring: sit. Pink ring: play. Blue ring: fish. Find 💎 gems and 🧰 chests!";

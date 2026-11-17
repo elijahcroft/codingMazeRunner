@@ -173,6 +173,9 @@ const PalStage = (() => {
     earmuffs: {rows: ["...kkkkk...", "..k.....k..", ".k.......k.", "pp.......pp", "ppp.....ppp", "ppp.....ppp", ".p.......p."], ink: {k: "#9a96a8", p: "#ff8fc7"}},
     santa: {rows: ["....rrr....", "...rrrrrr..", "..rrrrrrrww", ".rrrrrrr.ww", "wwwwwwwwwww", "wwwwwwwwwww"], ink: {r: "#e8294f", w: "#ffffff"}},
     antlers: {rows: ["b.b.....b.b", ".bb.....bb.", "..b.....b..", "..bb...bb.."], ink: {b: "#a0673a"}},
+    // 🎉 The class party meter's Bubble helmet: a glass dome you can see the pal through.
+    bubblehelmet: {rows: ["..bbbbbbb..", ".bww.....b.", "bw........b", "b.........b", "b.........b", ".b.......b.", "..bbbbbbb.."],
+                   ink: {b: "#3f8fc8", w: "#ffffff"}},
   };
   // Sparkles are a few colours that fly off a pal while it moves.
   const SPARKLE_INK = {goldspark: ["#ffd93b", "#fff2a6"], heartspark: ["#ff5fa2", "#ffc9e3"], rainbow: ["#ff5fa2", "#ffd93b", "#35d0bd", "#7ab8ff", "#c5a3ff"],
@@ -952,6 +955,7 @@ const PalStage = (() => {
       sparks: {ink: ["#ffa95c", "#ffe39a"], sound: "whoosh", word: "Whoosh!"}, fireflies: {ink: ["#fff2a0", "#fff8c8"], sound: "ding", word: "Glowy!"},
       stars: {ink: ["#ffd93b", "#ffffff", "#c5a3ff"], sound: "ding", word: "Wow, stars!"}, snow: {ink: ["#ffffff", "#d6ecfa"], sound: "whoosh", word: "Brrr!", fall: true},
       candy: {ink: ["#ff8fa8", "#ffd27a", "#8fd0c8"], sound: "yay", word: "Sweet!", fall: true}, rocket: {ink: ["#ffa95c", "#ffe39a", "#ffffff"], sound: "fanfare", word: "Blast off!"},
+      bubbles: {ink: ["#d6f4ff", "#7ab8ff", "#ffffff"], sound: "blip", word: "Bubbles!"},
       // The things in a home (pixel.py FURNITURE "toy").
       pop: {ink: ["#ff8fa8", "#7ab8ff", "#ffd27a"], sound: "pop", word: "Pop!"}, glow: {ink: ["#ffe39a", "#fff6c8"], sound: "click", word: "Click!"},
       hug: {ink: ["#ff8fc7", "#ffc9e3"], sound: "ding", word: "Big hug!"}, snack: {ink: ["#ff8fa8", "#ffd27a", "#8fd0c8"], sound: "eat", word: "Yum yum!"},
@@ -967,7 +971,10 @@ const PalStage = (() => {
     // A toy goes off for everyone, once the pal has walked over to it.
     function playToy(m, name, now) {
       const fx = TOY_FX[name], base = roomBase(m);
-      if (fx.fall) burst(i => ({x: m.x - 34 + Math.random() * 68, y: base - 90 - Math.random() * 30, vx: 0, vy: 1 + Math.random(), g: .04, colour: fx.ink[i % fx.ink.length], w: 3, h: 3, life: 1500}), 30);
+      if (name === "bubbles") burst(i => ({x: m.x - 20 + Math.random() * 40, y: base - 8 - Math.random() * 12,
+                                           vx: (Math.random() - .5) * .5, vy: -.8 - Math.random() * 1.2,
+                                           g: -.004, img: PROPS.bubble, life: 1500 + Math.random() * 900}), 24);
+      else if (fx.fall) burst(i => ({x: m.x - 34 + Math.random() * 68, y: base - 90 - Math.random() * 30, vx: 0, vy: 1 + Math.random(), g: .04, colour: fx.ink[i % fx.ink.length], w: 3, h: 3, life: 1500}), 30);
       else pop(m.x, base - 28, fx.ink, 30);
       if (name === "rocket") sparks.push({x: m.x - 12, y: base - 60, vy: -2.6, img: PROPS.rocket, life: 2400});
       floatUp(fx.word, m.x, base - 74);
@@ -1540,6 +1547,7 @@ const PalStage = (() => {
   for (const [key, {rows, ink}] of Object.entries(PROP_ART)) PROPS[key] = rowsSprite(rows, ink, 2);
   PROPS.rocket = rowsSprite(["...rr...", "..rwwr..", "..wwww..", "..wbbw..", "..wbbw..", "..wwww..", ".rwwwwr.", "rrwwwwrr", "r.oyyo.r", "...oo..."],
                             {r: "#ff8fa8", w: "#f5f2ff", b: "#7fc8dc", o: "#ffa95c", y: "#ffe39a"}, 2);
+  PROPS.bubble = rowsSprite(["..ww..", ".w..w.", "w.g..w", "w....w", ".w..w.", "..ww.."], {w: "#d6f4ff", g: "#ffffff"});
 
   // Keeps a stage up to date with the Hang out. The server holds each request until
   // there's news, so a tap shows up everywhere straight away.

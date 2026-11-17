@@ -134,6 +134,23 @@ const PalHang = (() => {
     oval(g, x - 1.4, y - 4.6, .8, .8, "#fff6e6");
     oval(g, x + 1.4, y - 4, .8, .8, "#fff6e6");
   }
+  // A coral fan: a few branches with round tips, for the sea floor.
+  function coral(g, x, y, s, colour, light) {
+    oval(g, x, y, 10 * s, 2 * s, "#2b5a4a33");
+    [[-9, -9], [-4, -16], [2, -20], [8, -13], [12, -6]].forEach(([dx, dy], i) => {
+      line(g, [[x, y], [x + dx * s * .7, y + dy * s * .7]], colour, 2.2 * s);
+      oval(g, x + dx * s, y + dy * s, (2.6 + (i % 2) * .8) * s, (2.6 + (i % 2) * .8) * s, light);
+    });
+  }
+  // A little pink bubble vent: the "play" spot on the sea floor.
+  function bubbleVent(g, x, y, s = 1) {
+    oval(g, x, y + 2 * s, 14 * s, 2.6 * s, "#a98a5a33");
+    rock(g, x, y, .8 * s, "#8aa6a0", "#c3d4c8");
+    shape(g, [[x - 7 * s, y - 2 * s], [x, y - 12 * s], [x + 7 * s, y - 2 * s]], "#ff8fa8");
+    shape(g, [[x - 4.5 * s, y - 3 * s], [x, y - 9 * s], [x + 4.5 * s, y - 3 * s]], "#ffd0e2");
+    box(g, x - 2 * s, y - 8 * s, 4 * s, 5 * s, 1, "#e8709a");
+    oval(g, x, y - 6 * s, 2.4 * s, 2.4 * s, "#d6f4ff"); oval(g, x - .8 * s, y - 7 * s, .9 * s, .9 * s, "#ffffff");
+  }
   function balloon(g, x, y, colour, tieX, tieY) {
     line(g, [[x, y + 6], [tieX, tieY]], "#fffdf6", .6);
     ink(g, g => {
@@ -352,7 +369,7 @@ const PalHang = (() => {
   function soft(draw) { inking = true; try { draw(); } finally { inking = false; } }
   tree = inked(tree); pine = inked(pine); shrub = inked(shrub); rock = inked(rock); mushroom = inked(mushroom); cottage = inked(cottage);
   lamp = inked(lamp); bench = inked(bench); trampoline = inked(trampoline); sandcastle = inked(sandcastle); beachball = inked(beachball);
-  cakeTable = inked(cakeTable); telescope = inked(telescope); snowballs = inked(snowballs); fountain = inked(fountain);
+  cakeTable = inked(cakeTable); telescope = inked(telescope); snowballs = inked(snowballs); fountain = inked(fountain); coral = inked(coral);
 
   // ---- The places ---------------------------------------------------------------------
   const PLACES = {
@@ -857,6 +874,100 @@ const PalHang = (() => {
       trampoline(g, 204, 136);
       rock(g, 180, 154, .8, "#5f4f96", "#a798dc"); rock(g, 236, 168, .7, "#5f4f96", "#a798dc"); rock(g, 30, 166, .6, "#5f4f96", "#a798dc");
     },
+    // 🌊 Under the sea: the last place the class party meter opens. Sunlight comes down
+    // through the water onto a sandy floor with coral, a sunken chest and a reef. The
+    // seaweed, fish and bubbles are painted moving in seaLife(), and hold still in 🌿 Calm.
+    sea(g) {
+      sky(g, "#7fdfee", "#0a3a66", 170);
+      glow(g, 160, 4, 120, "#fff6c033");
+      // the surface of the water, far above
+      for (let i = 0; i < 5; i++) {
+        const y = 5 + i * 4;
+        line(g, Array.from({length: 17}, (_, n) => [n * 20, y + Math.sin(n * .9 + i) * 1.6]), i % 2 ? "#bff6ff" : "#e8fdff", .8);
+      }
+      soft(() => {
+        hills(g, 96, "#1f6f96", [[60, 76, 150], [245, 72, 320]]);
+        hills(g, 105, "#2c88a2", [[95, 92, 200], [280, 88, 320]]);
+      });
+      // a far-off wreck, and a rowboat half buried in the sand
+      soft(() => {
+        shape(g, [[18, 104], [46, 100], [58, 108], [36, 112]], "#3a6f8c");
+        line(g, [[34, 101], [34, 78]], "#3a6f8c", 2);
+        shape(g, [[35, 80], [54, 86], [35, 91]], "#4b86a0");
+      });
+      ink(g, g => {
+        oval(g, 120, 112, 28, 4, "#3f2f7444");
+        shape(g, [[94, 104], [146, 104], [138, 116], [102, 116]], "#5b7f86");
+        shape(g, [[98, 106], [142, 106], [135, 113], [105, 113]], "#7fa6a4");
+        line(g, [[100, 104], [114, 78]], "#7d573f", 2);
+        shape(g, [[114, 81], [132, 89], [114, 98]], "#c9d9d2");
+        line(g, [[120, 104], [120, 92]], "#5b7f86", 1);
+      });
+      // the sandy sea floor, where the pals walk
+      ground(g, 108, "#f2dca8", "#c9a468");
+      patches(g, "#fae9ba", 116, 8);
+      for (let i = 0; i < 14; i++) {
+        const x = (i * 61 + 12) % W, y = 118 + (i * 37) % 58;
+        line(g, [[x - 7, y], [x + 7, y - 1]], "#ddc084", .8);
+      }
+      // flat stones and shells
+      [[46, 164, .8, "#8aa6a0", "#c3d4c8"], [118, 174, .6, "#8aa6a0", "#c3d4c8"],
+       [196, 168, .7, "#7f9a96", "#b8cec4"], [268, 172, .9, "#8aa6a0", "#c3d4c8"]].forEach(([x, y, s, c, l]) => rock(g, x, y, s, c, l));
+      ink(g, g => {
+        [[132, 170], [226, 148], [312, 164]].forEach(([x, y], i) => {
+          oval(g, x, y + .6, 5, 1.6, "#a98a5a33");
+          oval(g, x, y, 4.2, 2.6, i % 2 ? "#ffd6e3" : "#fffdf6");
+          line(g, [[x - 2.6, y + 1], [x, y - 1.8], [x + 2.6, y + 1]], "#e2b8a8", .6);
+        });
+        // a little starfish
+        oval(g, 88, 176, 3.4, 1.6, "#a98a5a33");
+        for (let a = 0; a < 5; a++) oval(g, 88 + Math.cos(a * 1.26 - 1.57) * 3, 175 + Math.sin(a * 1.26 - 1.57) * 3, 1.5, 1.5, "#ff9a6a");
+        oval(g, 88, 175, 2, 2, "#ffb37a");
+      });
+      // coral fans, left and right
+      ink(g, g => {
+        coral(g, 26, 154, 1.15, "#e8709a", "#ff9fc0");
+        coral(g, 44, 168, .8, "#ff9a5c", "#ffc28c");
+        coral(g, 296, 150, 1.2, "#b06fd0", "#d9a8f0");
+        coral(g, 278, 168, .75, "#e8709a", "#ff9fc0");
+      });
+      // big reef rocks
+      ink(g, g => {
+        rock(g, 92, 166, 1.1, "#7f9a96", "#b8cec4");
+        rock(g, 246, 172, 1.2, "#728d8a", "#a9c2b8");
+        rock(g, 206, 152, .7, "#7f9a96", "#b8cec4");
+      });
+      // the sunken treasure chest decoration (the code chest is separate)
+      ink(g, g => {
+        oval(g, 286, 139, 16, 3, "#3f2f7455");
+        box(g, 274, 128, 24, 11, 2, "#a5703e");
+        box(g, 274, 128, 24, 3, 1.4, "#c98a4e");
+        box(g, 280, 126, 12, 3, 1, "#d9a45c");
+        box(g, 284, 132, 4, 4, 1, "#ffd93b");
+        oval(g, 286, 134, 1.2, 1.2, "#8a5a00");
+        [[278, 136], [294, 136], [282, 139], [293, 139]].forEach(([x, y]) => oval(g, x, y, 2, 1.2, "#ffd93b"));
+        line(g, [[274, 138], [298, 131]], "#4f8f5f", 1.4);
+        oval(g, 278, 133, 2.4, 1.4, "#6fb583"); oval(g, 296, 136, 2.2, 1.2, "#6fb583");
+      });
+      // the bubble vents for the bubbles toy
+      ink(g, g => {
+        bubbleVent(g, 160, 136, 1);
+        bubbleVent(g, 92, 154, .9);
+        bubbleVent(g, 300, 151, .85);
+      });
+      // seats: a big clam and a rock ledge
+      ink(g, g => {
+        oval(g, 112, 152, 20, 3, "#a98a5a33");
+        shape(g, [[96, 151], [112, 142], [128, 151]], "#d98aa8");
+        shape(g, [[99, 150], [112, 145], [125, 150]], "#ffc3d6");
+        for (let i = 0; i < 4; i++) line(g, [[104 + i * 5, 150], [112, 146]], "#e8a8be", .6);
+        oval(g, 232, 161, 22, 3.4, "#a98a5a33");
+        rock(g, 232, 155, 1.8, "#7f9a96", "#b8cec4");
+        oval(g, 232, 158, 18, 3, "#5f8f88");
+      });
+      // soft light spots on the sand
+      for (let i = 0; i < 9; i++) oval(g, (i * 71 + 26) % W, 121 + (i * 43) % 52, 7, 1.7, "#fff6c833");
+    },
   };
 
   // Where a pal can sit in each place: [x, how deep on the ground from 0 to 1].
@@ -868,6 +979,7 @@ const PalHang = (() => {
     snowy: [[104, .05], [220, .05]],
     candy: [[126, .05], [196, .05]],
     space: [[118, .55], [278, .75]],
+    sea: [[112, .55], [232, .75]],
     village: [],
     home: [],
   };
@@ -880,6 +992,7 @@ const PalHang = (() => {
     snowy: [[160, .05, 60, "snow"], [28, .05, 60, "snow"], [268, .3, 30, "bounce"]],
     candy: [[160, .05, 40, "bounce"], [34, .05, 70, "candy"], [286, .05, 70, "candy"]],
     space: [[40, .05, 70, "rocket"], [204, .2, 30, "bounce"], [160, .9, 40, "stars"]],
+    sea: [[160, .12, 34, "bubbles"], [92, .62, 36, "bubbles"], [300, .55, 34, "bubbles"]],
     village: [],
     home: [],
   };
@@ -887,7 +1000,7 @@ const PalHang = (() => {
   const GEMS = {
     park: [[70, .75], [168, .95], [304, .5]], wedding: [[22, .6], [160, .9], [300, .8]], beach: [[130, .9], [230, .55], [20, .8]],
     night: [[50, .7], [150, .9], [300, .6]], snowy: [[60, .85], [190, .6], [305, .9]], candy: [[90, .7], [240, .9], [20, .5]],
-    space: [[80, .8], [240, .5], [310, .9]], village: [], home: [],
+    space: [[80, .8], [240, .5], [310, .9]], sea: [[70, .78], [196, .55], [304, .92]], village: [], home: [],
   };
   // ❄️ The same spots as TREE_X, SNOWMAN_X and SNOWMAN_DEEP in pixel.py.
   const VILLAGE_TREE_X = 92, SNOWMAN_X = 238, SNOWMAN_DEEP = .2, SNOWMAN_REACH = 46;
@@ -895,7 +1008,7 @@ const PalHang = (() => {
   const ORNAMENT_SLOTS = [[52, [-5, 5]], [64, [-10, 0, 10]], [76, [-15, -5, 5, 15]], [88, [-20, -10, 0, 10, 20]],
                           [100, [-20, -12, -4, 4, 12, 20]], [112, [-28, -20, -12, -4, 4, 12, 20, 28]]].flatMap(([y, xs]) => xs.map(dx => [dx, y]));
   const ORNAMENT_ORDER = ORNAMENT_SLOTS.map((_, i) => i * 11 % ORNAMENT_SLOTS.length);
-  const PLACE_LABEL = {home: "Home", park: "Park", wedding: "Wedding", beach: "Beach", night: "Night", snowy: "Snowy hill", candy: "Candy land", space: "Outer space", village: "Snow Village"};
+  const PLACE_LABEL = {home: "Home", park: "Park", wedding: "Wedding", beach: "Beach", night: "Night", snowy: "Snowy hill", candy: "Candy land", space: "Outer space", sea: "Under the sea", village: "Snow Village"};
   const seatFeet = deep => PalStage.GROUND_TOP + deep * PalStage.GROUND_DEEP;
   const placeAt = (places, x) => { const i = Math.floor(x / W); return places[i] ? {scene: places[i], left: i * W} : null; };
   /** The seat at a spot in the world (the furniture counts as well as the ground in front of it). */
@@ -1650,6 +1763,99 @@ const PalHang = (() => {
   function butterflies(g, t, colours, spots) {
     spots.forEach(([x, y], i) => butterfly(g, x + Math.sin(t * .5 + i * 2) * 22, y + Math.sin(t * .9 + i) * 7, Math.abs(Math.sin(t * 9 + i)), colours[i % colours.length]));
   }
+  // 🌊 A slow fish, with a dark edge and a lighter tail fin.
+  function seaFish(g, x, y, dir, colour, fin) {
+    oval(g, x, y, 5.8, 3, "#123f5e");
+    oval(g, x + dir * .2, y, 5, 2.4, colour);
+    shape(g, [[x - dir * 4.6, y], [x - dir * 8, y - 3.6], [x - dir * 8, y + 3.6]], "#123f5e");
+    shape(g, [[x - dir * 4.8, y], [x - dir * 7, y - 2.2], [x - dir * 7, y + 2.2]], fin);
+    oval(g, x + dir * 2.6, y - .8, .9, .9, "#102a44");
+    oval(g, x + dir * 2.8, y - 1.1, .4, .4, "#ffffff");
+    shape(g, [[x - dir * .8, y - 2.3], [x + dir * 1.2, y - 4.4], [x + dir * 1.8, y - 2]], fin);
+  }
+  // A little fish for the school, small enough to read as a shoal.
+  function tinyFish(g, x, y, dir, colour) {
+    oval(g, x, y, 2.6, 1.3, colour);
+    shape(g, [[x - dir * 2, y], [x - dir * 4, y - 1.6], [x - dir * 4, y + 1.6]], colour);
+    oval(g, x + dir * 1.2, y - .3, .4, .4, "#143452");
+  }
+  // A jellyfish, its tentacles drifting behind it.
+  function jellyfish(g, x, y, t, calm) {
+    glow(g, x, y, 15, "#ff9fc044");
+    g.fillStyle = "#ff9fc0";
+    g.beginPath(); g.arc(x, y, 7, Math.PI, 0); g.fill();
+    g.fillStyle = "#ffd9ea";
+    g.beginPath(); g.arc(x - .6, y - .8, 5.6, Math.PI, 0); g.fill();
+    for (let i = 0; i < 5; i++) {
+      const wob = calm ? 0 : Math.sin(t * 1.5 + i) * 2;
+      line(g, [[x - 5.4 + i * 2.7, y], [x - 5.4 + i * 2.7 + wob, y + 10 + (i % 2) * 3]], "#e8a8c0", 1);
+    }
+    oval(g, x - 2.4, y - 2.2, 1.2, .8, "#ffffffaa");
+  }
+  // A little sea turtle, paddling slowly.
+  function seaTurtle(g, x, y, t, calm) {
+    const paddle = calm ? 0 : Math.sin(t * 2.2) * 1.6;
+    oval(g, x - 8, y + 2 + paddle, 4.4, 2, "#2f8a68");
+    oval(g, x + 7, y + 2 - paddle, 4.4, 2, "#2f8a68");
+    oval(g, x, y, 8.4, 5.4, "#1f5f55");
+    oval(g, x, y - 1, 7.2, 4.2, "#3f9f72");
+    oval(g, x - 2.4, y - 2, 2.2, 1.4, "#8ee0a0");
+    oval(g, x + 2.2, y - 1, 1.8, 1.2, "#6fcf8e");
+    oval(g, x + 8.2, y - 2, 2.8, 2.2, "#7fcf8e");
+    oval(g, x + 9.6, y - 2.7, .5, .5, "#143452");
+  }
+  // 🌿 A seaweed stem that bends in the water. In calm mode the clock is 0, so it holds still.
+  function seaweed(g, x, feet, tall, colour, light, phase, t, calm) {
+    const points = [];
+    for (let i = 0; i <= 6; i++) {
+      const f = i / 6, sway = calm ? 0 : Math.sin(t * 1.1 + phase + f * 2.6) * (1 + f * 4);
+      points.push([x + sway, feet - tall * f]);
+    }
+    line(g, points, "#1f5f55", 3);
+    line(g, points, colour, 1.6);
+    for (let i = 1; i < 6; i++) {
+      const [lx, ly] = points[i], side = i % 2 ? 1 : -1;
+      oval(g, lx + side * (2.6 + i * .25), ly - .6, 2.4, 1.2, light);
+    }
+  }
+  // Everything that moves under the sea. Called for the sea even in calm mode, with t = 0,
+  // so the fish and seaweed stay in the picture but stop moving.
+  function seaLife(g, t, calm) {
+    const time = calm ? 0 : t;
+    for (let i = 0; i < 3; i++) {
+      const x = 52 + i * 104 + (calm ? 0 : Math.sin(time * .22 + i * 1.4) * 8);
+      g.globalAlpha = .10;
+      shape(g, [[x, 0], [x + 26, 0], [x + 38 + (calm ? 0 : Math.sin(time * .3 + i) * 5), 120], [x + 4, 120]], "#d6fbff");
+      g.globalAlpha = 1;
+    }
+    [[18, 166, 48, "#3f9f72", "#8ee0a0", .2], [38, 178, 32, "#2f8a68", "#6fcf8e", 1.3],
+     [62, 180, 24, "#2f8a68", "#6fcf8e", 2.4], [286, 172, 42, "#3f9f72", "#8ee0a0", 2.1],
+     [306, 164, 34, "#2f8a68", "#6fcf8e", .8], [238, 178, 26, "#3f9f72", "#8ee0a0", 2.8],
+     [272, 180, 20, "#2f8a68", "#6fcf8e", 1.7]].forEach(([x, feet, tall, colour, light, phase]) =>
+      seaweed(g, x, feet, tall, colour, light, phase, time, calm));
+    [[28, 70, 1, "#ff9a6a", "#ffd0a8"], [212, 52, -1, "#ff8fc7", "#ffd9ea"], [150, 94, 1, "#7ab8ff", "#d6f4ff"]].forEach(([fx, fy, dir, colour, fin], i) => {
+      const travel = (time * (4.5 + i * 1.4) + i * 90) % (W + 60);
+      const x = calm ? fx : dir > 0 ? travel - 30 : W + 30 - travel;
+      const y = fy + (calm ? 0 : Math.sin(time * .6 + i * 2) * 3);
+      seaFish(g, x, y, dir, colour, fin);
+    });
+    // a little school, drifting together
+    [[142, 40], [152, 45], [147, 51], [160, 37], [165, 49], [137, 46]].forEach(([sx, sy], i) => {
+      const x = calm ? sx : (sx + time * (3.2 + (i % 3) * .7) + i * 7) % (W + 30) - 12;
+      const y = sy + (calm ? 0 : Math.sin(time * .9 + i * 1.7) * 2.2);
+      tinyFish(g, x, y, 1, i % 2 ? "#8fd0c8" : "#7ab8ff");
+    });
+    seaTurtle(g, calm ? 206 : 206 + Math.sin(time * .22) * 14, calm ? 30 : 30 + Math.sin(time * .4) * 4, time, calm);
+    jellyfish(g, calm ? 238 : 238 + Math.sin(time * .3) * 22, calm ? 55 : 55 + Math.sin(time * .55) * 5, time, calm);
+    const n = calm ? 4 : 14;
+    for (let i = 0; i < n; i++) {
+      const p = calm ? .14 + i * .21 : (time * .13 + i / n) % 1;
+      const x = 26 + (i * 47 + 17) % 270 + (calm ? 0 : Math.sin(time * .8 + i) * 4);
+      const y = 168 - p * 150, r = 1.5 + (i % 3) * .6;
+      oval(g, x, y, r, r, "#d6f4ffdd");
+      oval(g, x - r * .35, y - r * .35, r * .4, r * .4, "#ffffff");
+    }
+  }
   function drift(g, scene, t) {
     if (scene === "village") {
       for (let i = 0; i < 26; i++) {
@@ -1821,6 +2027,7 @@ const PalHang = (() => {
         ink.beginPath(); ink.rect(i * W - cam, 0, W, H); ink.clip();
         ink.translate(i * W - cam, 0);
         if (!PalStage.calm) drift(ink, places[i], now / 1000);
+        if (places[i] === "sea") seaLife(ink, now / 1000, PalStage.calm);
         if (state.found) GEMS[places[i]].forEach(([x, deep], n) => {
           if (state.found.has(places[i] + n)) return;
           oval(ink, x, seatFeet(deep) + 1, 5, 1.4, "#1b15302e");

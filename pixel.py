@@ -2400,6 +2400,7 @@ GIFTS = {
     "moustache": {"name": "Silly moustache", "slot": "face"},
     "goldspark": {"name": "Gold sparkles", "slot": "sparkle"}, "heartspark": {"name": "Heart sparkles", "slot": "sparkle"},
     "crown": {"name": "Golden crown", "slot": "hat", "class": True}, "rainbow": {"name": "Rainbow sparkles", "slot": "sparkle", "class": True},
+    "bubblehelmet": {"name": "Bubble helmet", "slot": "hat", "class": True},
     # These have a price: they come from the shop, never from a box.
     "beanie": {"name": "Rainbow hat", "slot": "hat", "price": 40}, "bunny": {"name": "Bunny ears", "slot": "hat", "price": 50},
     "catears": {"name": "Cat ears", "slot": "hat", "price": 50}, "pirate": {"name": "Pirate hat", "slot": "hat", "price": 60},
@@ -2474,13 +2475,15 @@ WEAR_SLOTS = ("hat", "face", "sparkle")
 # What each full party meter brings, in order. After these it's just a party.
 HANG_REWARDS = [{"kind": "place", "key": "snowy", "name": "Snowy hill"}, {"kind": "gift", "key": "crown", "name": "Golden crown"},
                 {"kind": "place", "key": "candy", "name": "Candy land"}, {"kind": "gift", "key": "rainbow", "name": "Rainbow sparkles"},
-                {"kind": "place", "key": "space", "name": "Outer space"}]
+                {"kind": "place", "key": "space", "name": "Outer space"},
+                {"kind": "gift", "key": "bubblehelmet", "name": "Bubble helmet"},
+                {"kind": "place", "key": "sea", "name": "Under the sea"}]
 # The Hang out is one long world: each place sits beside the last, and a new place
 # from the party meter makes it longer.
 PLACE_W = 320
 HANG_WORLD = HANG_PLACES + tuple(r["key"] for r in HANG_REWARDS if r["kind"] == "place")
 HANG_FINDS = tuple(f"{place}{i}" for place in HANG_WORLD for i in range(3))     # gems to find, three in each place
-HANG_TOYS = ("splash", "bounce", "apples", "bells", "cake", "petals", "sand", "coconut", "sparks", "fireflies", "stars", "snow", "candy", "rocket")
+HANG_TOYS = ("splash", "bounce", "apples", "bells", "cake", "petals", "sand", "coconut", "sparks", "fireflies", "stars", "snow", "candy", "rocket", "bubbles")
 PLACED_EACH = 5            # drawings each student can leave out in the world
 PLACED_ALL = 60            # and in the whole world, oldest going first
 PLACE_GAP = .5             # seconds between placing drawings
@@ -2775,8 +2778,8 @@ def race_check(job, code, wants="The job wants"):
 # so friends can help each other, and gets harder further along the world. Each student
 # opens each chest once a day.
 CHEST_SPOTS = {"park": (240, .6), "wedding": (90, .55), "beach": (282, .45), "night": (92, .5),
-               "snowy": (240, .75), "candy": (252, .55), "space": (62, .45)}     # x in the place, and how deep
-CHEST_TIER = {"park": 0, "wedding": 1, "beach": 1, "night": 2, "snowy": 2, "candy": 3, "space": 3}
+               "snowy": (240, .75), "candy": (252, .55), "space": (62, .45), "sea": (64, .5)}     # x in the place, and how deep
+CHEST_TIER = {"park": 0, "wedding": 1, "beach": 1, "night": 2, "snowy": 2, "candy": 3, "space": 3, "sea": 3}
 CHEST_JOBS = RACE_JOBS + ((
     {"job": "Count 1 to 5 with say(). Use a loop!", "want": ["say"] * 5, "said": ["1", "2", "3", "4", "5"], "loops": 1,
      "chips": ["say(i + 1)"], "answer": "for i in range(5):\n    say(i + 1)"},

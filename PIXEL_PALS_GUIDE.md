@@ -257,7 +257,7 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   landing in one heap.
 - **Walking:** click the ground. Arrow keys work too. 🏞️ Go to also lists everyone outside under
   **👫 Go to a friend**, which puts your pal right next to them.
-- **Toys (pink rings):** click the fountain, trampoline, snowman, rocket and so on. The pal
+- **Toys (pink rings):** click the fountain, trampoline, snowman, rocket, bubble vent and so on. The pal
   walks over and it goes off for everyone nearby.
 - **🖼️ Art:** a student picks one of their drawings and clicks the world to leave it
   there for everyone, up to 5 each. They stay between classes. Clicking one on the Art
@@ -278,7 +278,7 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   help after 30 seconds shows the whole answer. Opening a chest pays 10 coding coins (no
   daily limit), and the pal acts the code out in a spotlight, so friends nearby can clap.
   The Park chest is easiest (commands in order). Chests further along want a loop, then two
-  things in a loop, and Candy land and Outer space ask for counting with `i`, two loops, or
+  things in a loop, and Candy land, Outer space and Under the sea ask for counting with `i`, two loops, or
   a loop inside a loop. Some puzzles sing notes too (`note("C")`, shown as 🎵 C), or ask for
   a word 3 times in one bubble (`say("Hi" * 3)`), and the green buttons show the note names.
   Each chest opens once a day for each student. Every chest locks again the next day with a
@@ -323,8 +323,9 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   catches close together climb: ×2, ×3, ×4.
 - **🎉 Class party meter:** a mission's first finish adds 2, and a My Move adds 1 (at most
   once every 45 seconds for each student). A full meter is a party for everyone, and
-  brings something new: Snowy hill, a Golden crown, Candy land, Rainbow sparkles, then
-  Outer space. After those, it's just a party.
+  brings something new: Snowy hill, a Golden crown, Candy land, Rainbow sparkles, Outer
+  space, a Bubble helmet, then Under the sea, with bubble vents to send bubbles up and
+  slow fish to watch. After those, it's just a party.
 
 - **🪙 Coins:** coding pays the most. A mission's first finish pays 20 coins, and every
   star pays 10, so a three-star mission is 50. Playing pays a little: a gem 3, a new
@@ -345,7 +346,7 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   a 16 square pal. Like 🖼️ Art, it's a drawing everyone sees straight away.
 - **🔓 Unlocks:** 🧢 Me shows every hat, face and sparkle, including the locked ones,
   with how to get each (🎁 gift box, 🛍️ price, 🎉 class party, or a goal). Nine
-  things unlock by themselves at a goal: Gem crown (9 gems), Space helmet (all 21
+  things unlock by themselves at a goal: Gem crown (9 gems), Space helmet (21
   gems), Fish hat (5 kinds of fish), Friendship sparkles (5 high-fives), Gold shades
   (10 game rounds), Dragon horns (15 stars), Superstar sparkles (27 stars), Treasure
   sparkles (5 🧰 chests) and the Captain hat (20 chests). In winter three more: Santa hat
