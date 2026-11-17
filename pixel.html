@@ -358,6 +358,9 @@
   .sheet { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; background: rgba(27, 21, 48, .55); }
   .sheet-card { width: min(860px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 16px 18px 18px; }
   .sheet-card h3 { margin: 12px 0 6px; font-size: 16px; font-weight: 900; }
+  /* Missions jumps to the mission you're on. Keep its title and Close button in reach. */
+  #missions .sheet-card > .shelf-head { position: sticky; top: -16px; z-index: 2;
+    padding: 12px 0 8px; margin: -12px 0 2px; background: var(--paper); }
   .lvls { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
   .lvl { padding: 5px 8px; text-align: left; border: 2px solid var(--ink); border-radius: 8px; background: var(--paper); font-size: 14px; font-weight: 800; line-height: 1.15; }
   .lvl:hover:not(:disabled) { background: var(--plum-soft); }
@@ -522,6 +525,13 @@
   .room-buttons.games-pane { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: max-content; gap: 8px; }     /* auto rows left the race message one line tall when it wrapped */
   .games-pane button small { font-size: 12px; font-weight: 600; line-height: 1.4; }
   .games-pane .me-note { grid-column: 1 / -1; }
+  /* On a small laptop, keep the games above the seasonal Snow Village card. */
+  .games-pane:has([data-game="create"]) > .jobs { order: 0; }
+  .games-pane:has([data-game="create"]) > button { order: 1; }
+  .games-pane:has([data-game="create"]) > .jobs.winter { order: 2; }
+  .games-pane:has([data-game="create"]) > .me-note { order: 3; }
+  /* 🎤 My show is the newest thing in Do: keep it in the first row, not the last. */
+  .room-buttons button[data-perform] { order: -1; }
   .games-pane button:disabled { opacity: .5; cursor: default; }
   .room-buttons .race-start { grid-auto-flow: row; gap: 2px; background: linear-gradient(135deg, #e6dcff, #d9f2df); box-shadow: 0 3px 0 #b9a6e8; color: #3b1f6b; }
   .room-buttons .race-start b { font-size: 18px; }
@@ -580,7 +590,7 @@
   .room-buttons button span { font-size: 24px; line-height: 1.1; }
   /* A laptop's browser bars leave little height: the cards above the Hang out buttons get
      tighter and lose their small second lines, so the buttons keep room to be seen. */
-  @media (max-height: 720px) {
+  @media (max-height: 800px) {
     .hang-side { gap: 5px; padding: 8px; }
     #coinBar { padding: 3px 10px; }
     #nextMission small, #myMove small { display: none; }
@@ -590,6 +600,7 @@
     #palStrip button { padding: 6px 10px; }
     .room-tabs { gap: 4px; }
     .room-tabs button { padding: 5px 3px; }
+    .room-buttons button[data-perform] small { display: none; }     /* the label says enough */
   }
   .room-buttons .tap-code { font: 700 11px/1.1 var(--mono); color: #6a4fb0; background: none; padding: 0; white-space: normal; overflow-wrap: normal; }
   .room-buttons button:hover:not(:disabled) { background: #e5efdc; }

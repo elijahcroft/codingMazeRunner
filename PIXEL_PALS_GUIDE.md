@@ -518,6 +518,11 @@ clicking the pal makes it giggle.
 - **Tools worth showing the class:** Mirror draws both sides at once, so one eye stamp
   makes a pair. Shade makes colours darker or lighter. Swap recolours a whole pal in
   one click. Move picks up part of a drawing. More has Add outline.
+- **Small school laptops:** on a 1366×768 or 1280×720 screen the Hang out cards
+  shrink so the tabs and buttons stay in view. Games shows the games above the
+  seasonal Snow Village card, 🎤 My show sits first in 👋 Do, and the Missions
+  sheet keeps its title and Close button in view when it jumps to the mission
+  the student is on.
 - **Shared laptops:** a student who lands in someone else's account presses **Not (name)?**
   in My drawings and types their own name. Typing a name again brings back that
   student's work.
