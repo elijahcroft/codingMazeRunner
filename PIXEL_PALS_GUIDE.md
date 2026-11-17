@@ -256,7 +256,9 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   help after 30 seconds shows the whole answer. Opening a chest pays 10 coding coins (no
   daily limit), and the pal acts the code out in a spotlight, so friends nearby can clap.
   The Park chest is easiest (commands in order). Chests further along want a loop, then two
-  things in a loop, and Candy land and Outer space ask for counting with `i` or two loops.
+  things in a loop, and Candy land and Outer space ask for counting with `i`, two loops, or
+  a loop inside a loop. Some puzzles sing notes too (`note("C")`, shown as 🎵 C), or ask for
+  a word 3 times in one bubble (`say("Hi" * 3)`), and the green buttons show the note names.
   Each chest opens once a day for each student. Every chest locks again the next day with a
   new puzzle, the same for the whole class, so friends can help each other. Opening every
   chest in a day puts a line on the projector, and so does being the first in the class to
@@ -368,11 +370,15 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   them.").
 - **🎯 Today's jobs:** three small things to do, at the top of Games, the same for the whole
   class each day so friends can help each other: high-five 2 friends, catch 3 falling stars,
-  find a gem, catch something at the pier, finish a game with friends, solve a Code race
-  job, earn a star in a coding mission, code a 🧰 chest open, clap for a friend's move, visit
-  a friend's home, or dance at the same time as 2 friends (a 🪩 dance party). Every day has
-  at least one coding job (a mission star, a Code race job or a chest), so playing leads back
-  to coding. The star job has
+  find a gem, catch something at the pier, finish a game with friends, grab 5 apples in
+  🍎 Apple grab, score a goal in ⚽ Pal ball, solve a Code race job, earn a star in a coding
+  mission, code a 🧰 chest open, clap for a friend's move, visit a friend's home, or dance at
+  the same time as 2 friends (a 🪩 dance party). The apple and ball jobs happen in a game with
+  2 or more players, like the game job. A goal counts for every player on the scoring
+  team, so a teammate's kick helps everyone on that team. Every day has at least one coding job
+  (a mission star, a Code race job or a chest), so playing leads back to coding. The apple job
+  counts each apple a student's pal grabs, and the ball job counts a goal for each player on the
+  scoring team, once a day. The star job has
   a **💻 Go code** button that opens the next mission. A gem job is swapped for another once
   a student has found every gem, and a star job for the Code race once they have every star.
   Each job pays 5 play coins, and all three open a 🎁 gift box (15 coins once every box gift
@@ -387,10 +393,14 @@ and **⇤ Out of loop** sends the next command back out of the loop. ▶ Run my 
 A miss says what the pal did against what the job wants ("Your pal did 🦘. The job is 🦘 🦘."),
 or gives the bug and its line. A solve makes that pal do the code in a spotlight for
 everyone, with a 👏 Clap button for the others, and pays 3 coding coins. Solving is 1 point
-and solving first is 2. There are 3 jobs, each harder: commands in order, then a loop, then
-more than one thing in a loop. Between jobs, everyone sees the fastest code, or one way to
-do it if time ran out. A student who has solved the job gets a **🌟 Bonus**: do the whole job
-2 times. Their code stays in the box, so copying the lines again works, and putting it all
+and solving first is 2. There are 3 rounds, each harder: commands in order, then a loop, then
+more than one thing in a loop. New small jobs also sing notes (`note("C")`, with 🎵 C in the
+bar and on the green buttons) and can say a word 3 times in one bubble (`say("Hi" * 3)`). A
+close miss says what to change: "Move 2 should be 🎵 E, but your pal sang 🎵 D", or "So close!
+Just one more: 🎵 C." For a job with a loop inside a loop, a miss says to put one loop inside
+the other. Between jobs, everyone sees the fastest code, or one way to do it if time ran out.
+A student who has solved the job gets a **🌟 Bonus**: do the whole job 2 times. Their code
+stays in the box, so copying the lines again works, and putting it all
 in a loop is the neat way. It pays 1 coding coin and plays in the spotlight, but gives no
 race points, so it never changes who wins. 💡 Help gives a tip, and the whole answer after 30
 seconds. Friends can join part way through, and players can clap and use 💬 Say while they

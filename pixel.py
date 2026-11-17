@@ -2466,23 +2466,30 @@ DANCE_MOVES = ("wave", "jump", "spin", "cheer")
 # Round 1 takes a job from the first list (commands in order), round 2 from the
 # second (a loop), round 3 from the third (more than one thing in a loop). A job is
 # what the pal must do, in order, and how many loops it must use. `said` is what its
-# say() lines must be, and those words may show in the room even with typing off.
-RACE_COMMANDS = ("say", "jump", "wave", "spin", "dance", "cheer", "hearts", "stars", "confetti")
+# say() lines must be, and those words may show in the room even with typing off. `notes`
+# is what its note() lines must sing, in order, and `depth` 2 asks for a loop in a loop.
+RACE_COMMANDS = ("say", "jump", "wave", "spin", "dance", "cheer", "hearts", "stars", "confetti", "note")
 RACE_ICONS = {"say": "💬", "jump": "🦘", "wave": "👋", "spin": "🌀", "dance": "💃", "cheer": "🎉",
-              "hearts": "💕", "stars": "⭐", "confetti": "🎊"}
+              "hearts": "💕", "stars": "⭐", "confetti": "🎊", "note": "🎵"}
 RACE_JOBS = (
     ({"job": "Jump 2 times.", "want": ["jump"] * 2, "answer": "jump()\njump()"},
      {"job": "Wave, then spin.", "want": ["wave", "spin"], "answer": "wave()\nspin()"},
      {"job": 'Say "Hello!", then jump.', "want": ["say", "jump"], "said": ["Hello!"], "answer": 'say("Hello!")\njump()'},
      {"job": "Cheer, then make hearts.", "want": ["cheer", "hearts"], "answer": "cheer()\nhearts()"},
-     {"job": "Spin 3 times.", "want": ["spin"] * 3, "answer": "spin()\nspin()\nspin()"}),
+     {"job": "Spin 3 times.", "want": ["spin"] * 3, "answer": "spin()\nspin()\nspin()"},
+     {"job": "Sing C, then E, then G.", "want": ["note"] * 3, "notes": ["C", "E", "G"],
+      "chips": ['note("C")', 'note("E")', 'note("G")'], "answer": 'note("C")\nnote("E")\nnote("G")'},
+     {"job": 'Say "Hi" 3 times in one bubble.', "want": ["say"], "said": ["HiHiHi"], "words": ["Hi"],
+      "chips": ['say("Hi" * 3)'], "answer": 'say("Hi" * 3)'}),
     ({"job": "Jump 5 times. Use a loop!", "want": ["jump"] * 5, "loops": 1, "answer": "for i in range(5):\n    jump()"},
      {"job": "Spin 4 times with a loop. Then cheer!", "want": ["spin"] * 4 + ["cheer"], "loops": 1,
       "answer": "for i in range(4):\n    spin()\ncheer()"},
      {"job": "Wave 3 times. Use a loop!", "want": ["wave"] * 3, "loops": 1, "answer": "for i in range(3):\n    wave()"},
      {"job": "Jump 10 times! Use a loop.", "want": ["jump"] * 10, "loops": 1, "answer": "for i in range(10):\n    jump()"},
      {"job": "Make stars 4 times with a loop. Then jump!", "want": ["stars"] * 4 + ["jump"], "loops": 1,
-      "answer": "for i in range(4):\n    stars()\njump()"}),
+      "answer": "for i in range(4):\n    stars()\njump()"},
+     {"job": "Sing C 3 times. Use a loop!", "want": ["note"] * 3, "notes": ["C"] * 3, "loops": 1,
+      "chips": ['note("C")'], "answer": 'for i in range(3):\n    note("C")'}),
     ({"job": "Jump, then spin. Do that 3 times with a loop!", "want": ["jump", "spin"] * 3, "loops": 1,
       "answer": "for i in range(3):\n    jump()\n    spin()"},
      {"job": "Count 1, 2, 3 with say(). Use a loop!", "want": ["say"] * 3, "said": ["1", "2", "3"], "loops": 1,
@@ -2492,7 +2499,9 @@ RACE_JOBS = (
      {"job": "Make hearts, then cheer. Do that 3 times with a loop!", "want": ["hearts", "cheer"] * 3, "loops": 1,
       "answer": "for i in range(3):\n    hearts()\n    cheer()"},
      {"job": 'Say "Hooray!", then jump. Do that 3 times with a loop!', "want": ["say", "jump"] * 3, "said": ["Hooray!"] * 3,
-      "loops": 1, "answer": 'for i in range(3):\n    say("Hooray!")\n    jump()'}),
+      "loops": 1, "answer": 'for i in range(3):\n    say("Hooray!")\n    jump()'},
+     {"job": "Do 2 rounds of: jump 3 times, then cheer. Use a loop in a loop!", "want": (["jump"] * 3 + ["cheer"]) * 2,
+      "loops": 2, "depth": 2, "answer": "for round in range(2):\n    for i in range(3):\n        jump()\n    cheer()"}),
 )
 RACE_ROUNDS = len(RACE_JOBS)
 
@@ -2501,46 +2510,91 @@ def _plain(text):
     return re.sub(r"[^a-z0-9]", "", str(text).lower())
 
 
-def race_icons(names):
-    shown = " ".join(RACE_ICONS.get(n, "❓") for n in names[:12])
+def _note_slots(names, notes):
+    """Line note names up with the moves, and None where a move isn't note()."""
+    notes, at, slots = list(notes or ()), 0, []
+    for name in names:
+        if name == "note":
+            slots.append(notes[at] if at < len(notes) else "")
+            at += 1
+        else:
+            slots.append(None)
+    return slots
+
+
+def _race_icon(name, note=None):
+    if name == "note":
+        return f"{RACE_ICONS['note']} {note}" if note else RACE_ICONS["note"]
+    return RACE_ICONS.get(name, "❓")
+
+
+def race_icons(names, notes=()):
+    """Pictures of the moves, with a note's name: 🦘 🦘, or 🎵 C 🎵 E 🎵 G."""
+    slots = _note_slots(names, notes)
+    shown = " ".join(_race_icon(n, note) for n, note in list(zip(names, slots))[:12])
     return shown + (" ..." if len(names) > 12 else "")
 
 
 RACE_WORDS = {"say": "say", "jump": "jump", "wave": "wave", "spin": "spin", "dance": "dance", "cheer": "cheer",
-              "hearts": "hearts", "stars": "stars", "confetti": "confetti"}
+              "hearts": "hearts", "stars": "stars", "confetti": "confetti", "note": "note"}
 
 
-def race_words(names):
-    """Moves in words and pictures, with repeats counted: 🦘 jump 3 times, then 🌀 spin."""
-    for size in range(2, len(names) // 2 + 1):      # a pattern done again and again
-        times = len(names) // size
-        if len(names) % size == 0 and list(names) == list(names[:size]) * times and len(set(names[:size])) > 1:
-            return f"{race_words(names[:size])}. Do that {times} times"
+def _race_word_labels(names, notes=()):
+    slots = _note_slots(names, notes)
+    return [(f"🎵 {note}" if name == "note" and note else
+             f"{_race_icon(name, note)} {RACE_WORDS.get(name, name)}")
+            for name, note in zip(names, slots)]
+
+
+def _race_words_labels(labels):
+    for size in range(2, len(labels) // 2 + 1):      # a pattern done again and again
+        times = len(labels) // size
+        if len(labels) % size == 0 and labels == labels[:size] * times and len(set(labels[:size])) > 1:
+            return f"{_race_words_labels(labels[:size])}. Do that {times} times"
     runs = []
-    for name in names:
-        if runs and runs[-1][0] == name:
+    for label in labels:
+        if runs and runs[-1][0] == label:
             runs[-1][1] += 1
         else:
-            runs.append([name, 1])
-    shown = [f"{RACE_ICONS.get(n, '❓')} {RACE_WORDS.get(n, n)}" + (f" {k} times" if k > 1 else "") for n, k in runs[:8]]
+            runs.append([label, 1])
+    shown = [f"{label}" + (f" {k} times" if k > 1 else "") for label, k in runs[:8]]
     return ", then ".join(shown) + (" ..." if len(runs) > 8 else "")
 
 
-def race_miss(did, want, wants, looped=False):
+def race_words(names, notes=()):
+    """Moves in words and pictures, with repeats counted: 🦘 jump 3 times, then 🌀 spin.
+    Note names are shown too, so a miss can say which note was wrong."""
+    return _race_words_labels(_race_word_labels(names, notes))
+
+
+def race_miss(did, want, wants, looped=False, did_notes=(), want_notes=()):
     """What a student's pal did against what's wanted, and the one thing to change."""
-    if did == want[:len(did)]:
+    did_slots, want_slots = _note_slots(did, did_notes), _note_slots(want, want_notes)
+
+    def label(names, slots, i):
+        if names[i] == "note" and slots[i]:
+            return f"🎵 {slots[i]}"
+        return f"{RACE_ICONS.get(names[i], '')} {names[i]}"
+
+    if len(did) < len(want) and did == want[:len(did)]:
         missing = len(want) - len(did)
-        nxt = want[len(did)]
-        tip = (f"Good start! {missing} more to go. Next is {RACE_ICONS.get(nxt, '')} {nxt}()."
-               if missing > 1 else f"So close! Just one more: {RACE_ICONS.get(nxt, '')} {nxt}().")
-    elif did[:len(want)] == want:
+        nxt = label(want, want_slots, len(did))
+        tip = (f"Good start! {missing} more to go. Next is {nxt}."
+               if missing > 1 else f"So close! Just one more: {nxt}.")
+    elif len(did) > len(want) and did[:len(want)] == want:
         extra = len(did) - len(want)
         tip = (f"That's {extra} too many! Make the number in the loop smaller." if looped
                else f"That's {extra} too many! Take away {'a line' if extra == 1 else f'{extra} lines'}.")
     else:
-        i = next(i for i, (a, b) in enumerate(zip(did, want)) if a != b) if any(a != b for a, b in zip(did, want)) else min(len(did), len(want))
-        tip = f"Move {i + 1} should be {RACE_ICONS.get(want[i], '')} {want[i]}, but your pal did {RACE_ICONS.get(did[i], '')} {did[i]}."
-    return f"Your pal did: {race_words(did)}.\n{wants}: {race_words(want)}.\n{tip}"
+        first = min(len(did), len(want))
+        i = next((i for i in range(first)
+                  if did[i] != want[i] or (did[i] == "note" and did_slots[i] != want_slots[i])), first)
+        if did[i] == want[i] == "note" and did_slots[i] != want_slots[i]:
+            tip = f"Move {i + 1} should be 🎵 {want_slots[i]}, but your pal sang 🎵 {did_slots[i]}."
+        else:
+            tip = (f"Move {i + 1} should be {label(want, want_slots, i)}, "
+                   f"but your pal did {label(did, did_slots, i)}.")
+    return f"Your pal did: {race_words(did, did_notes)}.\n{wants}: {race_words(want, want_notes)}.\n{tip}"
 
 
 def race_check(job, code, wants="The job wants"):
@@ -2549,6 +2603,8 @@ def race_check(job, code, wants="The job wants"):
     out = perform(code, PIP, commands=RACE_COMMANDS)
     r, error = out["report"], out["error"]
     did = [name for name, _ in r.log]
+    did_notes = [args[0] for name, args in r.log if name == "note" and args]
+    want_notes = list(job.get("notes") or ())
     if error:
         closed = re.search(r"(\w+)\(\) isn't open yet.*", error)
         if closed:
@@ -2558,13 +2614,23 @@ def race_check(job, code, wants="The job wants"):
     if not did:
         message = "Your pal didn't do anything yet. Tap a green command to add it."
     elif did != want:
-        message = race_miss(did, want, wants, r.fors + r.whiles > 0)
+        message = race_miss(did, want, wants, r.fors + r.whiles > 0, did_notes, want_notes)
     elif job.get("said") and [_plain(s) for s in r.said] != [_plain(s) for s in job["said"]]:
         message = ("Your pal said " + ", ".join(f'"{s}"' for s in r.said) + f". {wants} "
                    + ", ".join(f'"{s}"' for s in job["said"]) + ".")
+    elif want_notes and did_notes != want_notes:
+        message = race_miss(did, want, wants, r.fors + r.whiles > 0, did_notes, want_notes)
     elif r.fors + r.whiles < job.get("loops", 0):
-        message = ("That's the right moves! Now use a loop: tap 🔁 for." if job["loops"] == 1
-                   else f"That's the right moves! Now use {job['loops']} loops, one for each move.")
+        if job.get("depth", 0) > 1:
+            message = ("That's the right moves! Now use a loop in a loop: tap 🔁 for, "
+                       "then tap 🔁 for again inside it.")
+        elif job["loops"] == 1:
+            message = "That's the right moves! Now use a loop: tap 🔁 for."
+        else:
+            message = f"That's the right moves! Now use {job['loops']} loops, one for each move."
+    elif r.loop_depth < job.get("depth", 0):
+        message = ("That's the right moves! Now put one loop inside the other: tap 🔁 for, "
+                   "then tap 🔁 for again inside it.")
     else:
         return {"ok": True, "message": "⭐ You solved it! Watch your pal.", "steps": compile_move(out["steps"])}
     return {"ok": False, "message": message, "line": None}
@@ -2585,7 +2651,13 @@ CHEST_JOBS = RACE_JOBS + ((
     {"job": "Jump, spin and wave. Do that 3 times with a loop!", "want": ["jump", "spin", "wave"] * 3, "loops": 1,
      "answer": "for i in range(3):\n    jump()\n    spin()\n    wave()"},
     {"job": "Spin 2 times, then make hearts 3 times. Use 2 loops!", "want": ["spin"] * 2 + ["hearts"] * 3, "loops": 2,
-     "answer": "for i in range(2):\n    spin()\nfor i in range(3):\n    hearts()"}),)
+     "answer": "for i in range(2):\n    spin()\nfor i in range(3):\n    hearts()"},
+    {"job": "Sing C, then E, then G. Do that 2 times with a loop!", "want": ["note"] * 6,
+     "notes": ["C", "E", "G"] * 2, "loops": 1,
+     "chips": ['note("C")', 'note("E")', 'note("G")'],
+     "answer": 'for i in range(2):\n    note("C")\n    note("E")\n    note("G")'},
+    {"job": 'Say "Hi" 3 times in one bubble, then jump!', "want": ["say", "jump"], "said": ["HiHiHi"], "words": ["Hi"],
+     "chips": ['say("Hi" * 3)'], "answer": 'say("Hi" * 3)\njump()'}),)
 CHEST_COINS = 10           # coding coins, so no daily limit
 
 
@@ -2595,6 +2667,8 @@ def chest_chips(job):
     for name in dict.fromkeys(job["want"]):
         if name == "say":
             chips += [] if any(c.startswith("say(") for c in chips) else [f'say("{w}")' for w in dict.fromkeys(job.get("said", ["Hello!"]))]
+        elif name == "note":
+            chips += [] if any(c.startswith("note(") for c in chips) else [f'note("{w}")' for w in dict.fromkeys(job.get("notes", ["C"]))]
         else:
             chips.append(f"{name}()")
     return chips

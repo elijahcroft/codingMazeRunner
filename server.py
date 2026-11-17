@@ -6445,7 +6445,7 @@ def code_clean(code, job):
     the tap list or the job, unless the teacher lets students type their own."""
     if pixel_room["words"]:
         return True
-    allowed = pixel.ROOM_SAYS | set(job.get("said", ()))
+    allowed = pixel.ROOM_SAYS | set(job.get("said", ())) | set(job.get("words", ()))
     words = re.findall(r'"([^"]*)"', code) + re.findall(r"'([^']*)'", code)
     return "#" not in code and all(w in allowed for w in words)
 
@@ -6483,6 +6483,8 @@ def race_bonus(job):
     bonus = dict(job, want=job["want"] * 2)
     if job.get("said"):
         bonus["said"] = job["said"] * 2
+    if job.get("notes"):
+        bonus["notes"] = job["notes"] * 2
     return bonus
 
 
@@ -6578,6 +6580,9 @@ def apples_tick(game, seats, now):
         game["apples"].remove(apple)
         points = APPLE_GOLD_WORTH if apple["gold"] else APPLE_WORTH
         game["score"][seat] = game["score"].get(seat, 0) + points
+        pair = seats.get(seat)
+        if pair:
+            day_job(players.get(pair[0]), "apples")
         game["apples"].append(game_apple(game))
         if apple["gold"]:       # only golden ones are news: a tip for every apple would pop up every second
             room_event("game", message=f"⭐ {seats[seat][1]['name']} grabbed a golden apple! +{APPLE_GOLD_WORTH}")
@@ -6648,6 +6653,11 @@ def ball_tick(game, seats, now):
     team = "orange" if ball["x"] <= BALL_GOAL_AT and mouth else "blue" if ball["x"] >= GAME_WIDTH - BALL_GOAL_AT and mouth else None
     if team:
         game["team_score"][team] = game["team_score"].get(team, 0) + 1
+        for scoring in game["joined"]:          # a goal counts for every player on that team
+            if game["teams"].get(scoring) == team:
+                pair = seats.get(scoring)
+                if pair:
+                    day_job(players.get(pair[0]), "ball")
         game["goal_until"] = now + BALL_GOAL_PAUSE
         ball["vx"] = ball["vy"] = 0
         blue, orange = game["team_score"].get("blue", 0), game["team_score"].get("orange", 0)
@@ -6871,9 +6881,10 @@ def game_view(you):
                score=game.get("score", {}).get(you, 0), ready=game.get("show_until", 0))
     if game["kind"] == "code" and game.get("job"):
         job = game["job"]
-        out.update(job={"job": job["job"], "icons": pixel.race_icons(job["want"]), "chips": job.get("chips", []),
-                        "loops": job.get("loops", 0), "hint": job["answer"]},
-                   solved=game["solved"], bonus=game.get("bonus", []), bonus_icons=pixel.race_icons(job["want"] * 2),
+        out.update(job={"job": job["job"], "icons": pixel.race_icons(job["want"], job.get("notes")),
+                        "chips": job.get("chips", []), "loops": job.get("loops", 0), "hint": job["answer"]},
+                   solved=game["solved"], bonus=game.get("bonus", []),
+                   bonus_icons=pixel.race_icons(job["want"] * 2, (job.get("notes") or []) * 2),
                    pause=game["pause_until"], reveal=game["reveal"], rounds=pixel.RACE_ROUNDS,
                    round_at=game["round_at"], answer_after=CODE_ANSWER_AFTER,
                    mine=game["codes"].get(you, ""))
@@ -6953,12 +6964,15 @@ DOING_FOR = 20             # seconds a tap still counts as what they're doing
 # 🎯 Today's jobs: three small things to do in the Hang out, the same for the whole class each day,
 # so friends can help each other. key: (icon, words, how many). Each one pays a few play coins, and
 # all three open a gift box (or pay coins once every box gift is theirs) and fill the party meter a bit.
-# key: (icon, words, how many, how to do it)
+# key: (icon, words, how many, how to do it). The apple and ball jobs happen in a game, so
+# they need 2 or more players before they can be done, like the finish a game job.
 DAY_JOBS = {"five": ("🙌", "High-five 2 friends", 2, "Click a friend's pal."),
             "catch": ("🌠", "Catch 3 falling stars", 3, "Stars fall in a star shower. Run under them!"),
             "gem": ("💎", "Find a gem", 1, "Walk near a sparkly 💎 in the world."),
             "fish": ("🎣", "Catch something at the pier", 1, "Click the blue ring at the Beach."),
             "game": ("🎮", "Finish a game with friends", 1, "Start or join one below."),
+            "apples": ("🍎", "Grab 5 apples in Apple grab", 5, "Start or join 🍎 Apple grab with a friend. Walk onto apples to grab them."),
+            "ball": ("⚽", "Score a goal in Pal ball", 1, "Start or join ⚽ Pal ball with a friend. Kick the ball into your team's goal."),
             "code": ("💻", "Solve a Code race job", 1, "Start a 💻 Code race below with a friend."),
             "clap": ("👏", "Clap for a friend's move", 1, "When a friend does their ✨ My Move, press 👏 Clap."),
             "visit": ("🚪", "Visit a friend's home", 1, "Open 🏠 Home and pick a friend."),
@@ -7437,8 +7451,9 @@ def chests_view(entry):
     for place, (x, deep) in pixel.CHEST_SPOTS.items():
         job = pixel.chest_job(place, mine["day"])
         view.append({"place": place, "x": x, "deep": deep, "open": place in mine["open"], "job": job["job"],
-                     "icons": pixel.race_icons(job["want"]), "chips": job.get("chips", []), "loops": job.get("loops", 0),
-                     "hint": job["answer"], "words": pixel.race_words(job["want"]), "moves": pixel.chest_chips(job)})
+                     "icons": pixel.race_icons(job["want"], job.get("notes")), "chips": job.get("chips", []),
+                     "loops": job.get("loops", 0), "hint": job["answer"],
+                     "words": pixel.race_words(job["want"], job.get("notes")), "moves": pixel.chest_chips(job)})
     return view
 
 

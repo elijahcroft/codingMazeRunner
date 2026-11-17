@@ -233,12 +233,17 @@ function racePane(g, you) {
   body += `<p class="me-note race-score">Solved: ${names || "nobody yet"} · Your points: ${g.score}<br><small>Solve it: 1 point. First: 2 points. +3 🪙 each time! 🌟 Bonus: +1 🪙</small></p>`;
   return body;
 }
+function raceChipLabel(code) {
+  // Notes say their name as well as the code, so nobody has to remember which letter is which.
+  const note = code.match(/^note\("([^"]+)"(?:,\s*(\d+))?\)$/);
+  return note ? `🎵 ${esc(code)}` : esc(code);
+}
 function raceEditor(job, help, chest = false) {
   // At a 🧰 chest, only the moves its puzzle needs, and the loop only when it wants one.
   const loops = !chest || job.loops, chips = [...(loops ? ["for i in range(3):"] : []), ...(chest ? job.moves : [...RACE_CHIPS, ...job.chips])];
   return `<textarea id="raceCode" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Your code"
       placeholder="${chest ? "Tap a green button ↓" : "Tap the green commands, or type here"}">${esc(raceCode)}</textarea>
-    <div class="race-chips">${chips.map(c => `<button data-put="${esc(c)}"${c.startsWith("for") ? ' class="loop"' : ""}>${c.startsWith("for") ? "🔁 " : ""}${esc(c)}</button>`).join("")}</div>
+    <div class="race-chips">${chips.map(c => `<button data-put="${esc(c)}"${c.startsWith("for") ? ' class="loop"' : ""}>${c.startsWith("for") ? "🔁 " : ""}${raceChipLabel(c)}</button>`).join("")}</div>
     <button class="wide race-run" data-race="run">▶ Run my code</button>
     <div class="race-row${loops ? "" : " two"}"><button data-race="undo">⌫ ${chest ? "Take back" : "Undo line"}</button>${loops ? `<button data-race="out">⇤ Out of loop</button>` : ""}
       ${help ? `<button data-race="help">💡 ${raceHelp ? "More help" : "Help"}</button>` : ""}</div>

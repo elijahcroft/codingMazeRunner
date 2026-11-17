@@ -16,10 +16,13 @@ class Apples(unittest.TestCase):
         self.clock = 1000.
         self.time = patch.object(server.time, "time", side_effect=lambda: self.clock)
         self.save = patch.object(server, "pixel_save_soon")
+        self.job = patch.object(server, "day_job")      # today's jobs pay too; they have their own tests
         self.time.start()
         self.save.start()
+        self.job.start()
         self.addCleanup(self.time.stop)
         self.addCleanup(self.save.stop)
+        self.addCleanup(self.job.stop)
         self.addCleanup(self.restore)
         self.kids = [self.kid(name) for name in ("Mia", "Ben", "Alex")]
 
