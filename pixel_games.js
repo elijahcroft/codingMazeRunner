@@ -140,7 +140,7 @@ function paintGameClock() {
   if (!g) {
     $("gameStatus").classList.remove("invite");
     title.textContent = "Play with friends";
-    detail.textContent = jobsWord() + "💻 Code race, 🎨 draw & guess, 🍎 apple grab, ⚽ pal ball, tag, hide & seek, a race or a dance →";
+    detail.textContent = jobsWord() + "💻 Code race, ⚽ pal ball, 🍎 apple grab and 5 more games →";
     return;
   }
   const seconds = Math.max(0, Math.ceil(g.until - gameNow()));
