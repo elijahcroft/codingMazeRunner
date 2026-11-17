@@ -129,7 +129,7 @@
   <section class="room"><div class="screen" id="host"><canvas id="back" aria-hidden="true"></canvas><canvas id="stage" aria-label="Everyone's pals, hanging out"></canvas>
     <div id="placeTag" hidden></div><div id="followTag" hidden></div><div id="banner" hidden></div><div id="closed" hidden>The Hang out is closed for now.</div></div>
     <div class="world">
-      <div class="cam"><button id="camLeft" aria-label="Move the camera left">◀</button><button id="camRight" aria-label="Move the camera right">▶</button><button id="camAuto">🎬 Auto</button><select id="camFollow" aria-label="Follow one student with the camera"></select><button id="savePhoto" hidden>💾 Save the photo</button></div>
+      <div class="cam"><button id="camLeft" aria-label="Move the camera left">◀ Left</button><button id="camRight" aria-label="Move the camera right">Right ▶</button><button id="camAuto">🎬 Auto</button><select id="camFollow" aria-label="Follow one student with the camera"></select><button id="savePhoto" hidden>💾 Save the photo</button></div>
       <div id="map" aria-label="Map of the world. Click to move the camera."></div>
       <span id="camWord"></span>
     </div></section>
@@ -280,15 +280,20 @@ function mapNames(list, wide) {
 }
 function paintWorld() {
   const places = stage.state.places || ["park"], wide = worldWide(), left = stage.state.camX || 0, list = crew();
-  $("map").innerHTML = places.map((p, i) => `<div class="place">${p === "home" ? `🏠 ${esc(homeRooms[i] || homeName)}` : PLACE_WORD[p]}</div>`).join("") +
+  // Only replace a list when it really changed: rebuilding every 250 ms threw away
+  // a click or a keyboard focus that landed at the wrong moment.
+  const mapHtml = places.map((p, i) => `<div class="place">${p === "home" ? `🏠 ${esc(homeRooms[i] || homeName)}` : PLACE_WORD[p]}</div>`).join("") +
     `<div class="view" style="left:${left / wide * 100}%;width:${PLACE_W / wide * 100}%"></div>` +
     mapNames(list, wide);
+  if ($("map").innerHTML !== mapHtml) $("map").innerHTML = mapHtml;
   $("people").classList.toggle("many", people.length > 10);
-  $("people").innerHTML = people.map(m => `<button data-seat="${m.seat}" aria-pressed="${cam.mode === "follow" && cam.seat === m.seat}"><span>${esc(m.name)}</span>
+  const peopleHtml = people.map(m => `<button data-seat="${m.seat}" aria-pressed="${cam.mode === "follow" && cam.seat === m.seat}"><span>${esc(m.name)}</span>
     <small>${m.loc ? esc(m.where) : PLACE_WORD[m.where] || ""}${m.doing ? " · " + esc(m.doing) : ""}</small></button>`).join("") || "Nobody yet";
+  if ($("people").innerHTML !== peopleHtml) $("people").innerHTML = peopleHtml;
   const homes = [...new Map(people.filter(m => m.loc).map(m => [m.loc, m.home])).entries()];
-  $("places").innerHTML = `<button data-loc="0" aria-pressed="${!cam.loc}">🌳 Outside (${people.filter(m => !m.loc).length})</button>` +
+  const placesHtml = `<button data-loc="0" aria-pressed="${!cam.loc}">🌳 Outside (${people.filter(m => !m.loc).length})</button>` +
     homes.map(([loc, name]) => `<button data-loc="${loc}" aria-pressed="${cam.loc === loc}">🏠 ${esc(name)} (${people.filter(m => m.loc === loc).length})</button>`).join("");
+  if ($("places").innerHTML !== placesHtml) $("places").innerHTML = placesHtml;
   $("placeTag").hidden = !cam.loc;
   $("placeTag").textContent = cam.loc ? `🏠 ${homeName}'s home` : "";
   $("camAuto").setAttribute("aria-pressed", cam.mode === "auto");
@@ -308,12 +313,13 @@ $("camFollow").addEventListener("change", e => { if (e.target.value) followSeat(
 $("camLeft").addEventListener("click", () => drive((stage.state.camX || 0) - PLACE_W / 2));
 $("camRight").addEventListener("click", () => drive((stage.state.camX || 0) + PLACE_W / 2));
 $("camAuto").addEventListener("click", goAuto);
-$("map").addEventListener("pointerdown", e => {
+$("map").addEventListener("click", e => {
   const r = $("map").getBoundingClientRect();
   drive((e.clientX - r.left) / r.width * worldWide() - PLACE_W / 2);
 });
-$("people").addEventListener("pointerdown", e => { const b = e.target.closest("[data-seat]"); if (b) followSeat(+b.dataset.seat); });
-$("places").addEventListener("pointerdown", e => {
+// click, not pointerdown: a keyboard press (Enter on a focused button) must work too.
+$("people").addEventListener("click", e => { const b = e.target.closest("[data-seat]"); if (b) followSeat(+b.dataset.seat); });
+$("places").addEventListener("click", e => {
   const b = e.target.closest("[data-loc]");
   if (!b) return;
   lookAt(+b.dataset.loc);

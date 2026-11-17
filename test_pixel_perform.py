@@ -81,7 +81,7 @@ class Perform(unittest.TestCase):
         mia = self.kid()
         self.enter(mia, "jump()")
         self.assertTrue(self.perform(mia)["ok"])
-        self.assertIn("One show at a time", self.perform(mia)["error"])
+        self.assertIn("One thing at a time", self.perform(mia)["error"])
         self.advance(5)
         waiting = self.perform(mia)["error"]
         self.assertIn("One show at a time", waiting)

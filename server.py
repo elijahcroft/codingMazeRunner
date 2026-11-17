@@ -6403,7 +6403,7 @@ def game_begin(now):
                     ball={"x": GAME_WIDTH / 2, "y": .55, "vx": 0, "vy": 0}, ball_at=now)
         room_event("game", message="⚽ Pal ball! Blue kicks right, Orange kicks left. Walk into the ball to kick it!")
     else:
-        room_event("game", message="The seeker is counting!" if kind == "hide" else "Tag! Run!")
+        room_event("game", message="🙈 Hide! The seeker is counting..." if kind == "hide" else "Tag! Run!")
 
 
 def dance_round(game, now):
@@ -7435,7 +7435,7 @@ def room_perform(p, spot, data):
     if not code.strip():
         return {"error": "There's no show to perform yet. Make one on the 🎬 Free stage first."}
     if now < spot.get("move_until", 0) or now < entry.get("perform_until", 0):
-        return {"error": "One show at a time! Wait for your show to finish."}
+        return {"error": "One thing at a time! Wait for your pal to finish this one."}
     wait = PERFORM_GAP - (now - entry.get("performed", 0))
     if wait > 0:
         return {"error": f"One show at a time! Your next show can start in {math.ceil(wait)} seconds."}

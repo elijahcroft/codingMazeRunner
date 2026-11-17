@@ -273,6 +273,8 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   **👫 Go to a friend**, which puts your pal right next to them.
 - **Toys (pink rings):** click the fountain, trampoline, snowman, rocket, bubble vent and so on. The pal
   walks over and it goes off for everyone nearby.
+- **Gems stay found:** once a student finds a 💎, it stays found when they leave the
+  Hang out and come back, so nobody has to look for the same one twice.
 - **🖼️ Art:** a student picks one of their drawings and clicks the world to leave it
   there for everyone, up to 5 each. They stay between classes. Clicking one on the Art
   tab takes it back, and deleting the drawing removes it. On `/pixel/teacher` you can
@@ -300,7 +302,9 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   chest in a day puts a line on the projector, and so does being the first in the class to
   open each chest that day. While a student is at a chest, the line under the world keeps its
   puzzle in view. After opening one, **🧰 Take me to the next chest** walks them on. When "Code a chest open" is one of today's 🎯 jobs, its **🧰 Take me** button
-  walks the pal to the nearest chest still shut. On the projector, every chest has a sign over
+  walks the pal to the nearest chest still shut. A chest is only coded while the pal is
+  beside it: walking away puts the usual buttons back, and **← Leave** keeps the chest
+  shut until they click it again or walk back. On the projector, every chest has a sign over
   it with its puzzle and how many have opened it today (so you can point at one and read the
   code together), and the jobs card counts the chests opened today. The teacher page lists
   today's chest puzzles with how many opened each, and a 🧰 count for each student.
@@ -318,7 +322,9 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   naps, and sit when it sits. A new drawing shows up the next time the student comes back to
   the Hang out.
 - **✨ My Move:** the student's pal does their routine in a spotlight, and everyone else
-  gets a 👏 Clap button while it plays. It can be pressed again after a few seconds.
+  gets a 👏 Clap button while it plays. It can be pressed again after a few seconds. While
+  a My Move or a 🎤 My show is playing, the other one says to wait, and My Move says
+  "Getting ready..." rather than looking ready and doing nothing.
 - **🎤 My show:** a student with a Free stage show gets 🎤 My show in 👋 Do. Their pal
   acts it out where everyone is standing, with a 🎤 banner and a 👏 Clap for friends, for
   up to about 20 seconds. The first one earns 🎤 Showtime, and they can start another
@@ -391,8 +397,9 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   screen goes back outside when a home empties.
 - **📷 Follow (projector):** the picker next to 🎬 Auto, under the picture, keeps the camera
   on one student wherever they go, into homes and back out, with "📷 Following Mia" in the
-  corner. Clicking their name in Who's here does the same. 🎬 Auto, ◀ ▶, dragging the picture
-  or "📷 Follow someone…" stops it, and it goes back to Auto by itself if they leave.
+  corner. Clicking their name in Who's here does the same. 🎬 Auto, ◀ Left, Right ▶, dragging
+  the picture or "📷 Follow someone…" stops it, and it goes back to Auto by itself if they
+  leave. Look at, Who's here and the camera buttons work from the keyboard too.
 - **🎣 Fishing:** the pier at the Beach has a blue ring. The pal walks over and casts,
   and when ❗ A bite! shows, a click anywhere on the picture reels it in. There are 8
   things to catch, kept in the fish book in 🧢 Me.
@@ -404,7 +411,9 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   that get longer. When a round starts, the side panel opens Games and hides My Move and
   Next mission until it ends, so the game's buttons fit on a small laptop, and the line
   under the world says what to do in that game ("You're IT! Click near a friend to tag
-  them.").
+  them."). In Hide & seek the seeker's own line says "You're counting..." while everyone
+  else is told to hide. If a student opens another tab during a round, its buttons say
+  why they can't be used yet, and a hat that can't be changed does not stay on.
 - **🎯 Today's jobs:** three small things to do, at the top of Games, the same for the whole
   class each day so friends can help each other: high-five 2 friends, catch 3 falling stars,
   find a gem, catch something at the pier, finish a game with friends, grab 5 apples in
@@ -555,7 +564,14 @@ typing is on, though the student's code is still shown beside the stage.
 **🌿 Calm** at the top of the page cuts the flying bits, stops the wiggling, and holds
 the background still. It's remembered on each computer, and it starts on for anyone
 whose computer is set to reduce motion. In the Hang out, **🏷️ Hide names** next to it hides the name tags
-over the pals on that screen.
+over the pals on that screen. The sound button says **🔊 Sound** or **🔇 Muted**, so it is
+never just an icon.
+
+`tools/e2e_hang.py` is the slower end-to-end check for the Hang out: four students in
+separate browsers and the projector at 1366×768 walk, fish, code a chest, shop, visit a
+home, play every game, and try the teacher's buttons and a reload, while it watches for
+console errors, cut-off text and things that don't update on another screen. Like
+`e2e_coach.py` it needs the server running and is not part of the unittests.
 
 ## How a pal comes alive
 

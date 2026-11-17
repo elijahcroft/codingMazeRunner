@@ -130,7 +130,7 @@ function paintGameState(data) {
   }
   const counting = g?.kind === "hide" && g.phase === "hiding" && g.it === data.you;
   $("seekerCurtain").hidden = !counting;
-  $("myMove").disabled = !!inRound();
+  $("myMove").disabled = !!inRound() || performance.now() < moveReadyAt;     // a move or show is still playing
   paintDrawBoard();
   paintGameClock();
 }
@@ -204,7 +204,11 @@ $("roomButtons").addEventListener("click", e => {
   else if (e.target.closest("[data-ink]")) { drawInk = +e.target.closest("[data-ink]").dataset.ink; buildRoomButtons(); }
   else if (e.target.closest("[data-drawwipe]")) { drawPending.clear(); tap("game", {action: "paint", wipe: true}); }
   else if (e.target.closest("[data-guess]")) drawGuess(e.target.closest("[data-guess]"));
-  else if (e.target.closest("[data-chestleave]")) { roomPane = "do"; buildRoomButtons(); }     // the chest stays shut; walk back to try again
+  else if (e.target.closest("[data-chestleave]")) {     // the chest stays shut; click it again, or walk back, to code it
+    chestDismissed = chestPlace; chestNear = null;
+    roomPane = "do"; buildRoomButtons();
+    tipFor("Left the chest. Click it again to code it, or walk away.", 4000);
+  }
 });
 
 // ---- Code race: everyone codes the same little job ------------------------------------------
@@ -334,13 +338,31 @@ $("roomButtons").addEventListener("keydown", e => {
 // Walking up to a chest opens its pane, with the same code box as the Code race. The chests further
 // along the world are harder, and they all lock again tomorrow with new puzzles.
 const CHEST_ANSWER_AFTER = 30;      // seconds of trying before More help shows the whole answer
-let chestPlace = null, chestNear = null, chestSince = 0, chestJust = "";
+let chestPlace = null, chestNear = null, chestDismissed = null, chestSince = 0, chestJust = "";
 const chestNow = () => (S.hang.chests || []).find(c => c.place === chestPlace);
 function lookForChest(mine) {
-  const c = PalHang.chestAt(roomStage.state.places || ["park"], mine.x, mine.y, S.hang.chests);
-  if (!c) { chestNear = null; return; }
+  const places = roomStage.state.places || ["park"];
+  const c = PalHang.chestAt(places, mine.x, mine.y, S.hang.chests);
+  if (!c) {
+    chestNear = null;
+    chestDismissed = null;
+    // Still standing at the chest we were coding (shut or already open)? Keep its pane.
+    // Walked away? Put the usual buttons back, so a chest can't be coded from afar.
+    const here = chestPlace && (S.hang.chests || []).find(x => x.place === chestPlace);
+    if (roomPane === "chest" && here) {
+      const at = places.indexOf(here.place), gx = at * PalStage.W + here.x;
+      if (at < 0 || Math.abs(mine.x - gx) > 38 || Math.abs(mine.y - here.deep) > .3) {
+        roomPane = "do"; artArmed = furnArmed = buyArmed = null;
+        buildRoomButtons();
+        tipFor("You walked away from the chest. Walk back to code it.", 4000);
+      }
+    }
+    return;
+  }
+  if (c.place === chestDismissed) return;      // ← Leave: don't pop straight back open
   if (c.place === chestNear) return;
   chestNear = chestPlace = c.place;
+  chestDismissed = null;
   roomPane = "chest"; artArmed = furnArmed = buyArmed = null;
   buildRoomButtons();
   PalStage.SFX.play("ding");
@@ -353,6 +375,7 @@ function goToChest() {
   const shut = (S.hang.chests || []).filter(c => !c.open && places.includes(c.place))
     .map(c => ({c, x: places.indexOf(c.place) * PalStage.W + c.x})).sort((a, b) => Math.abs(a.x - mine.x) - Math.abs(b.x - mine.x));
   if (!shut.length) { tipFor("You opened every chest today! New puzzles tomorrow."); return; }
+  chestDismissed = null;
   walkTo(shut[0].x, shut[0].c.deep);
   tipFor(`🧰 Walking to the ${PLACE_NAMES[shut[0].c.place][1]} chest...`);
 }

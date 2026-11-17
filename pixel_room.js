@@ -492,7 +492,12 @@ async function pressMyMove() {
   if (performance.now() < moveReadyAt) return;
   PalStage.SFX.wake();
   const out = await tap("mymove");
-  if (!out || !out.ok) return;
+  if (!out || !out.ok) {
+    // The server says "wait" if a show is playing. Say so, rather than doing nothing.
+    if (out && out.error === "wait") tipFor("One thing at a time! Wait for the show to finish.", 4000);
+    else if (out && out.error && out.error.length > 8) tipFor(out.error, 5000);
+    return;
+  }
   const wait = Math.max(6000, out.ms);
   moveReadyAt = performance.now() + wait;
   paintMoveButton();
@@ -505,6 +510,11 @@ async function pressPerform() {
     tipFor((out && out.error) || "Couldn't start your show. Try again.", 6000);
     return;
   }
+  // A show and a My Move use the same pal for everyone: hold My Move until it ends.
+  const wait = Math.max(6000, out.ms || 0);
+  moveReadyAt = performance.now() + wait;
+  paintMoveButton();
+  setTimeout(paintMoveButton, wait + 50);
   if (out.badges && out.badges.length) showRewards({badges: out.badges});
 }
 
@@ -537,7 +547,10 @@ function paintMeter(m) {
 function roomEvent(e, you) {
   if ((e.kind === "place" || e.kind === "unplace") && roomPane === "art") buildRoomButtons();
   if (e.kind === "game" && e.message) {
-    tipFor(e.message);
+    // "The seeker is counting!" is said to everyone, but the seeker is the one who
+    // has to count, so their tip comes from the game itself ("You're counting...").
+    const g = (roomStage && roomStage.state.game) || currentGame();     // the event's state, not the last poll's
+    tipFor(g && g.kind === "hide" && g.phase === "hiding" ? gameTip(g) : e.message);
   } else if (e.kind === "mymove") {
     banner(e.perform ? `🎤 <b>${esc(e.by)}</b>'s show` : `✨ <b>${esc(e.by)}</b>: ${esc(e.title)}`, e.ms + 700);
     if (e.seat !== you) showClap(e.seat, e.by, e.ms + 700);
@@ -669,6 +682,7 @@ function lookForGem(mine) {
   st.found.add(key);
   tap("find", {key}).then(out => {
     if (!out || !out.ok) return;
+    if (!S.hang.found.includes(key)) S.hang.found.push(key);     // so the gem stays found when you come back
     tipFor(`💎 You found a gem! That's ${out.found} of ${S.hang.gems}.`);
     if (out.badges.length) showRewards({badges: out.badges});
   });
@@ -794,18 +808,28 @@ $("roomButtons").addEventListener("click", e => {
   }
   const worn = e.target.closest("[data-wear]");
   if (worn) {
-    const {wear: key, slot} = worn.dataset, wear = S.hang.wear;
+    const {wear: key, slot} = worn.dataset, wear = S.hang.wear, before = {...wear};
     if (wear[slot] === key) delete wear[slot]; else wear[slot] = key;
     PalStage.SFX.wake();
-    tap("wear", {slot, item: wear[slot] || null});
     buildRoomButtons();
+    tap("wear", {slot, item: wear[slot] || null}).then(out => {
+      if (out && out.ok) return;
+      S.hang.wear = before;       // a game (or a moved-on screen) refused it: put it back
+      tipFor((out && out.error && out.error.length > 3 && out.error !== "bad") ? out.error
+             : "Couldn't change that right now. Try again.", 5000);
+      if (roomPane === "me") buildRoomButtons();
+    });
     return;
   }
   const b = e.target.closest("[data-tap]");
   if (!b) return;
   PalStage.SFX.wake();
   const {tap: what, name: word} = b.dataset;
-  if (what === "say") tap("say", {text: word}); else tap(what, {name: word});
+  const request = what === "say" ? tap("say", {text: word}) : tap(what, {name: word});
+  request.then(out => {
+    if (!out || !out.error || out.error.length < 4) return;
+    tipFor(out.error === "wait" ? "One moment! Let that finish." : out.error, 4500);
+  });
 });
 async function hideMyName() {
   const out = await tap("hidename", {on: !S.hang.hide_name});
@@ -876,6 +900,8 @@ $("roomCanvas").addEventListener("click", async e => {
     }
   }
   if (atHome() && PalHang.doorAt(x, y)) { goHome("out"); return; }
+  const chestHere = !atHome() && PalHang.chestAt(roomStage.state.places, x, depth, S.hang.chests);
+  if (chestHere && chestHere.place === chestDismissed) chestDismissed = null;     // a click on the chest asks for it again
   const pier = !atHome() && PalHang.fishAt(roomStage.state.places, x, y);
   const front = pier && palAt(x, y);
   if (pier && (!front || front.me)) {
@@ -884,19 +910,20 @@ $("roomCanvas").addEventListener("click", async e => {
     tipFor("🎣 Walking to the pier...");
     return;
   }
+  const hit = palAt(x, y);
   const thing = roomPane !== "art" && thingAt(x, y);
-  if (thing) { pokeThing(thing); return; }
+  // A friend under the click is a high-five, even if a coded drawing is under them.
+  if (thing && !(hit && !hit.me)) { pokeThing(thing); return; }
   const snowy = !atHome() && PalHang.villageAt(roomStage.state.places, x, y);
-  if (snowy && !palAt(x, y)) { clickVillage(snowy, mine); return; }
+  if (snowy && !hit) { clickVillage(snowy, mine); return; }
   if (roomPane === "art") {
     const own = roomStage.state.placed.find(p => p.mine && Math.abs(x - p.x) < 22 && y > PalStage.groundOf(p) - 44 && y < PalStage.groundOf(p) + 6);
     if (own) { tap("unplace", {piece: own.id}); return; }
   }
-  const hit = palAt(x, y);
   const places = roomStage.state.places, seat = PalHang.seatAt(places, x, y);
   const piece = atHome() && PalHang.furnitureAt(roomInfo.home, x, y), pieceToy = piece && (S.hang.furniture[piece.key] || {}).toy;
   const toy = PalHang.toyAt(places, x, y) || (pieceToy ? {x: piece.x, y: piece.y, fx: pieceToy} : null);     // at home, the things are toys
-  if (hit && hit.me && !seat && !toy) { tap("move", {name: "jump"}); return; }
+  if (hit && hit.me && !seat && !toy && !chestHere) { tap("move", {name: "jump"}); return; }     // a chest under the click wins over your own pal
   if (hit && !hit.me) {
     const out = await tap("five", {seat: hit.seat});
     if (out && out.badges && out.badges.length) showRewards({badges: out.badges});
@@ -1069,6 +1096,11 @@ function lookForWinter(mine) {
     });
   }
   const v = places.indexOf("village"), near = v >= 0 && Math.abs(mine.x - v * PalStage.W - 92) < 30 && mine.y < .45;
+  if (!near && treeNear && roomPane === "tree") {     // walking away puts the usual buttons back
+    roomPane = "do"; artArmed = furnArmed = buyArmed = null;
+    buildRoomButtons();
+    tipFor("Walk back to the tree to hang a drawing.", 3500);
+  }
   if (near && !treeNear) {
     roomPane = "tree"; artArmed = furnArmed = buyArmed = null;
     buildRoomButtons();
