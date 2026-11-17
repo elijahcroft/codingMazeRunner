@@ -69,6 +69,7 @@ let solid = false, mirror = false, showGrid = true, onion = false;
 let shadeWay = -1, stampKey = "Heart", penStyle = "plain";
 let zoom = 1, fit = 16, panAt = {x: 0, y: 0};
 let easy = recall("pixelEasyPen") === "1";
+let rainbowStep = 0;      // carries on from click to click, so a rainbow shows on touchpads too
 let undoList = [], redoList = [];
 let hover = null;         // the square under the pointer
 let stroke = null;        // a pencil or eraser line being drawn: {before, x, y, held}
@@ -79,6 +80,50 @@ let cell = 16;
 
 // ---- Saving --------------------------------------------------------------------------------
 let dirty = false, saving = false, saveTimer = 0;
+// Two tabs of the same student: after a save, tell the other tab so it starts
+// from the newer picture instead of saving its old copy back over it.
+const tabSync = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("pixel-draw") : null;
+
+function tellOtherTab(drawing) {
+  if (!tabSync || !me || !drawing) return;
+  try { tabSync.postMessage({id: me, drawing}); } catch (_) {}
+}
+function adoptOtherTab(drawing) {
+  if (!art || !drawing || drawing.key !== art.key) return;
+  const same = JSON.stringify(drawing.frames) === JSON.stringify(art.frames.map(A.encode))
+    && (drawing.guide || "") === (art.guide || "")
+    && (drawing.title || "") === (art.title || "")
+    && drawing.speed === art.speed;
+  if (same) return;
+  art.title = drawing.title || "";
+  art.size = drawing.size;
+  art.speed = drawing.speed;
+  art.palette = drawing.palette.slice();
+  art.frames = drawing.frames.map(A.decode);
+  art.names = (drawing.names || drawing.frames.map(() => "")).slice();
+  art.guide = drawing.guide || "";
+  art.marks = drawing.marks || "";
+  if (cur >= art.frames.length) cur = 0;
+  if (colour >= art.palette.length) colour = A.INK;
+  $("title").value = art.title;
+  undoList = [];
+  redoList = [];
+  buildMine();
+  buildGuideKey();
+  buildReel();
+  refreshOptions();
+  fitBoard();
+  savedSays("Updated from your other tab ✓");
+}
+if (tabSync) tabSync.onmessage = event => {
+  const msg = event.data || {};
+  if (!me || !art || msg.id !== me || !msg.drawing || msg.drawing.key !== art.key) return;
+  // Never take the picture away from a tab that is mid-change; its own save
+  // will go through and the other tab will hear about that one.
+  if (dirty || saving || stroke || shape || sel) return;
+  if ($("drawView").hidden || !$("shelf").hidden || !$("lifeView").hidden) return;
+  adoptOtherTab(msg.drawing);
+};
 
 function savedSays(text, bad) {
   $("saved").textContent = text;
@@ -100,9 +145,11 @@ async function saveNow() {
   saving = true;
   dirty = false;
   let answer = null;
-  try { answer = await post("/pixel/save", payload()); } catch (_) {}
+  const sent = payload();
+  try { answer = await post("/pixel/save", sent); } catch (_) {}
   saving = false;
   if (answer && answer.ok) {
+    tellOtherTab(sent.drawing);
     if (answer.badges && answer.badges.length) showRewards({badges: answer.badges});
     if (dirty) saveTimer = setTimeout(saveNow, 2000);
     else savedSays("Saved ✓");
@@ -111,22 +158,32 @@ async function saveNow() {
   }
   if (answer && answer.error === "join") { store("mazeId", ""); location.reload(); return false; }
   dirty = true;
-  savedSays("Not saved yet. Trying again...", true);
+  savedSays(answer && answer.error === "full"
+    ? "Your shelf is full. Delete a drawing in My drawings, then this will save."
+    : answer && answer.error === "bad"
+      ? "This picture can't be saved. Try a smaller one."
+      : "Not saved yet. Trying again...", true);
   saveTimer = setTimeout(saveNow, 5000);
   return false;
 }
 addEventListener("pagehide", () => {
-  if (dirty && art) navigator.sendBeacon("/pixel/save", new Blob([JSON.stringify(payload())], {type: "application/json"}));
+  // Also when a save is already on its way: a fetch can be cut off by the
+  // reload, and the beacon is the copy that gets there.
+  if ((dirty || saving) && art) navigator.sendBeacon("/pixel/save", new Blob([JSON.stringify(payload())], {type: "application/json"}));
 });
 
 // ---- Undo: a snapshot of the frames from before each change --------------------------------
-function snap() { return JSON.stringify({frames: art.frames.map(A.encode), names: art.names, cur}); }
+function snap() { return JSON.stringify({frames: art.frames.map(A.encode), names: art.names, cur, guide: art.guide || ""}); }
 function restore(text) {
   const saved = JSON.parse(text);
   art.frames = saved.frames.map(A.decode);
   art.names = saved.names;
   cur = saved.cur;
+  // The guide is part of the picture while it's being coloured by numbers, so
+  // undo has to bring it back (including after the last square cleared it).
+  art.guide = saved.guide || "";
   buildReel();
+  buildGuideKey();
   changed();
   checkGuide();
 }
@@ -263,7 +320,9 @@ function layDown(x, y) {
     return;
   }
   stroke.steps++;
-  const ink = penStyle === "rainbow" ? RAINBOW[Math.floor(stroke.steps / 2) % RAINBOW.length] : colour;
+  // A click is a whole stroke on a touchpad, so the rainbow colour has to carry
+  // on between strokes: one colour every two squares, whether dragging or clicking.
+  const ink = penStyle === "rainbow" ? RAINBOW[Math.floor(rainbowStep++ / 2) % RAINBOW.length] : colour;
   for (const at of squares) {
     if (penStyle === "checks" && (at % art.size + Math.floor(at / art.size)) % 2) continue;
     if (kept(at)) continue;
@@ -322,9 +381,28 @@ function dropTheShape() {
   repaint();
 }
 function pourAt(sq) {
-  const before = snap(), f = frame();
-  if (f[sq.y * art.size + sq.x] === colour) return;
-  const size = art.size, spots = A.flood(f, size, sq.x, sq.y);
+  const before = snap(), f = frame(), at = sq.y * art.size + sq.x;
+  const size = art.size;
+  if (art.guide && cur === 0) {
+    const target = A.decode(art.guide);
+    if (target[at] !== colour) {
+      const number = guideColours().indexOf(target[at]) + 1;
+      tipNow(number ? `That square is number ${number}. Pick number ${number} first, then fill.`
+                    : "That square has no number. Try a square that does.");
+      return;
+    }
+    // Only the squares that want this number: every unfinished square starts
+    // white and they are all joined, so a normal flood would paint the page.
+    // It still fills the rest of the region when the clicked square is done.
+    const spots = A.floodTarget(target, size, sq.x, sq.y, colour);
+    if (mirror) spots.push(...A.floodTarget(target, size, size - 1 - sq.x, sq.y, colour));
+    put(spots.map(([x, y]) => y * size + x), colour);
+    PalStage.SFX.play("pop");
+    done(before);
+    return;
+  }
+  if (f[at] === colour) return;
+  const spots = A.flood(f, size, sq.x, sq.y);
   put(spots.map(([x, y]) => y * size + x), colour);
   const across = size - 1 - sq.x;
   if (mirror && f[sq.y * size + across] !== colour) {
@@ -428,7 +506,7 @@ function selectEverything() {
   liftSquares(Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys));
 }
 function selDown(sq, e) {
-  if (sel && sel.grab) { sel.grab = null; showTip(); return; }             // it was following: put it here
+  if (sel && sel.grab) { dropSel(); return; }                             // it was following: put it here
   if (inSel(sq)) {
     $("board").setPointerCapture(e.pointerId);
     sel.grab = {dx: sq.x - sel.x, dy: sq.y - sel.y, held: true, moved: false};
@@ -682,8 +760,9 @@ function buildReel() {
   if (on) on.scrollIntoView({block: "nearest", inline: "nearest"});
   $("speed").hidden = art.frames.length < 2;
   $("quick").hidden = art.frames.length > 1;
-  $("reelNote").textContent = art.frames.length < 2
-    ? "Copy it, change a bit, and it moves!"
+  $("reelNote").textContent = art.frames.length >= limits.max_frames
+    ? `${art.frames.length} is the most. Delete one to add another.`
+    : art.frames.length < 2 ? "Copy it, change a bit, and it moves!"
     : `${art.frames.length} pictures in a row.`;
   refreshButtons();
   repaint();
@@ -693,6 +772,8 @@ function refreshButtons() {
   $("undo").disabled = !undoList.length;
   $("redo").disabled = !redoList.length;
   $("copyFrame").disabled = $("newFrame").disabled = full;
+  $("copyFrame").title = $("newFrame").title = full
+    ? `That's all ${limits.max_frames} frames. Delete one to make room.` : "";
   $("deleteFrame").disabled = n < 2;
   $("frameLeft").disabled = cur === 0;
   $("frameRight").disabled = cur === n - 1;
@@ -816,12 +897,14 @@ function refreshOptions() {
 }
 function chooseTool(key) {
   settle();
+  offerUntil = 0;                 // a new tool is a new instruction: drop the old Easy pen offer
   if (key === "picker" && tool !== "picker") toolBefore = tool;
   tool = key;
   refreshOptions();
   showTip();
 }
 function chooseColour(n) {
+  offerUntil = 0;
   colour = n;
   if (tool === "eraser" || tool === "picker" || tool === "select") chooseTool("pencil");   // picking a colour means painting
   refreshOptions();
@@ -852,7 +935,9 @@ function showTip() {
   let html;
   if (art && art.guide && (tool === "select" || tool === "swap")) {
     html = `${tool === "swap" ? "Swap" : "Move"} works once the picture is coloured in. Pick a number and keep going!`;
-  } else if (art && art.guide && tool !== "fill") {
+  } else if (art && art.guide && tool === "fill") {
+    html = "Pick a number, then fill its squares.";
+  } else if (art && art.guide) {
     html = "Pick a number, then colour all its squares.";
   } else if (PENS.includes(tool)) {
     if (stroke && !stroke.held) html = "<b>The pen is down.</b> Slide, then click to stop.";
@@ -869,7 +954,7 @@ function showTip() {
     html = `<b>${esc(stampKey)}.</b> Click your drawing to stamp it.`;
   } else if (tool === "select") {
     if (sel && sel.grab && !sel.grab.held) html = "<b>It's following you.</b> Click where it should go.";
-    else if (sel) html = "Slide the box, or use the arrow keys.";
+    else if (sel) html = "<b>Click to put it down.</b> Or slide it with the arrow keys.";
     else if (shape) html = "<b>Now click the other corner.</b>";
     else html = "Click one corner, then the other corner.";
   } else if (shape) {
@@ -911,6 +996,7 @@ function hand(blob, name) {
   setTimeout(() => URL.revokeObjectURL(link.href), 5000);
 }
 function download() {
+  settle();                       // a floating Move selection is part of the picture
   const scale = Math.floor(512 / art.size);
   if (art.frames.length > 1) {
     hand(new Blob([A.gif(art.frames, art.size, scale, art.palette, art.speed)], {type: "image/gif"}), fileName(".gif"));
@@ -930,6 +1016,7 @@ function artRows() {
   return rows.join("\n");
 }
 function showArtSheet() {
+  settle();
   const box = $("artCode");
   box.value = artRows();
   box.cols = art.size + 1;
@@ -970,6 +1057,7 @@ function closeArtSheet() {
   done(artBefore);
 }
 function showBeads() {
+  settle();
   const size = art.size, px = 18, cv = $("beadGrid"), g = cv.getContext("2d"), f = frame();
   cv.width = cv.height = size * px + 1;
   g.fillStyle = "#ffffff";
@@ -1003,17 +1091,25 @@ function showBeads() {
 
 // ---- Opening and starting drawings ----------------------------------------------------------
 function openDrawing(saved) {
+  // Changes not saved yet belong to the drawing being left: send them before it goes.
+  if (dirty && art && art.key !== saved.key) post("/pixel/save", payload()).catch(() => {});
   art = Object.assign({}, saved, {frames: saved.frames.map(A.decode), palette: saved.palette.slice(), marks: saved.marks || "",
                                   names: (saved.names || saved.frames.map(() => "")).slice()});
   cur = 0;
   undoList = [];
   redoList = [];
+  dirty = false;
+  clearTimeout(saveTimer);
   stroke = null;
   shape = null;
   shapeEnd = null;
   sel = null;
   zoom = 1;
   panAt = {x: 0, y: 0};
+  offerUntil = 0;                 // don't carry "Try Easy pen" onto a new drawing
+  lonelyClicks = 0;
+  lastClick = null;
+  rainbowStep = 0;
   if (colour >= art.palette.length) colour = A.INK;
   $("title").value = art.title;
   buildMine();
@@ -1118,7 +1214,7 @@ function joinScene() {
   const moves = ["dance", "wave", "cheer", "walk"];
   g.imageSmoothingEnabled = false;
   const paint = () => {
-    const t = performance.now() / 1000;
+    const t = PalStage.calm ? 0 : performance.now() / 1000;
     g.clearRect(0, 0, cv.width, cv.height);
     pals.forEach((pup, i) => {
       const beat = Math.floor((t + i * 1.7) / 3), move = beat % 2 ? moves[(beat + i) % moves.length] : null;
@@ -1127,7 +1223,7 @@ function joinScene() {
     });
   };
   paint();
-  joinTimer = setInterval(paint, 66);
+  if (!PalStage.calm) joinTimer = setInterval(paint, 66);
   $("join").hidden = false;
   $("name").focus();
 }
@@ -1303,7 +1399,8 @@ $("mix").addEventListener("change", e => addColour(e.target.value));
 $("title").addEventListener("input", e => { art.title = e.target.value; changed(); });
 
 addEventListener("keydown", e => {
-  const typing = e.target.matches("input");
+  // Text boxes and pickers keep their own keys, including Ctrl+Z.
+  const typing = e.target.matches("input, textarea, select");
   if ((e.ctrlKey || e.metaKey) && !typing && e.key.toLowerCase() === "z") {
     e.preventDefault();
     if (!$("drawView").hidden) { if (e.shiftKey) redo(); else undo(); }

@@ -74,14 +74,16 @@ function livePreview(now) {
   const g = cv.getContext("2d");
   g.clearRect(0, 0, room, room);
   if (rig.empty) return;
-  const t = (now - miniBorn) / 1000;
+  // 🌿 Calm holds the little pal still too: no idle wobble, no watching the pen.
+  const t = PalStage.calm ? 0 : (now - miniBorn) / 1000;
   let aim = null;
-  if (hover) {                    // it watches the pen
+  if (hover && !PalStage.calm) {  // it watches the pen
     const dx = hover.x - rig.axis, dy = hover.y - (rig.top + rig.neck) / 2;
     aim = [Math.abs(dx) > art.size / 6 ? Math.sign(dx) : 0, Math.abs(dy) > art.size / 5 ? Math.sign(dy) : 0];
   }
   if (miniMove && (now - miniMoveAt) / 1000 > (PixelRig.LASTS[miniMove] || 1)) miniMove = null;
-  const pose = PalStage.livePose(rig, mini.lifeline, t, {move: miniMove, moveT: (now - miniMoveAt) / 1000, aim});
+  const pose = PalStage.livePose(rig, mini.lifeline, t, {move: PalStage.calm ? null : miniMove,
+                                                        moveT: (now - miniMoveAt) / 1000, aim});
   mini.draw(g, 0, pose, room / 2, room - Math.round(art.size * .1));
 }
 

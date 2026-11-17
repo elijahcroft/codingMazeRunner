@@ -567,7 +567,21 @@ clicking the pal makes it giggle.
   around a zoomed picture.
 - **Tools worth showing the class:** Mirror draws both sides at once, so one eye stamp
   makes a pair. Shade makes colours darker or lighter. Swap recolours a whole pal in
-  one click. Move picks up part of a drawing. More has Add outline.
+  one click. Move picks up part of a drawing. More has Add outline. The 🌈 rainbow
+  pen changes colour every two squares, whether the student drags or clicks one
+  square at a time.
+- **🔢 By numbers:** Fill only fills the number the student picked, so it can't flood
+  the whole page one colour. Finishing the last square ends the guide; Undo brings
+  the numbers back with the last square, and Redo finishes it again. Swap and Move
+  wait until the picture is coloured in.
+- **Frames:** 12 is the most. Copy and Blank stop there, and the Frames note says
+  **Delete one to add another**. The frame row's ⋯ More has Move it, to change
+  the order.
+- **Two tabs:** two tabs of the same student in one browser stay in step after each
+  save, so one tab doesn't quietly save its old copy over the other. If both tabs
+  have unsaved changes before either saves, the last save still wins.
+- **🌿 Calm** holds the little pal in the Studio's corner still too, and stops it
+  watching the pen, along with the flying bits and wiggling elsewhere.
 - **Small school laptops:** on a 1366×768 or 1280×720 screen the Hang out cards
   shrink so the tabs and buttons stay in view. Games shows the games above the
   seasonal Snow Village card, 🎤 My show sits first in 👋 Do, and the Missions

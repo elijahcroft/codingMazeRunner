@@ -194,6 +194,24 @@ const PixelArt = (() => {
     return out;
   }
 
+  // Every square joined to (x, y) that holds this value in `target`.  Used by
+  // colour-by-numbers Fill, where the unfinished squares are all one colour but
+  // the numbers under them are not: a normal flood would paint the whole page.
+  function floodTarget(target, size, x, y, value) {
+    const seen = new Set([y * size + x]), todo = [[x, y]], out = [];
+    while (todo.length) {
+      const [cx, cy] = todo.pop();
+      out.push([cx, cy]);
+      for (const [nx, ny] of [[cx - 1, cy], [cx + 1, cy], [cx, cy - 1], [cx, cy + 1]]) {
+        const at = ny * size + nx;
+        if (nx < 0 || ny < 0 || nx >= size || ny >= size || seen.has(at) || target[at] !== value) continue;
+        seen.add(at);
+        todo.push([nx, ny]);
+      }
+    }
+    return out;
+  }
+
   function flip(frame, size) {
     return frame.map((_, i) => frame[(i - i % size) + size - 1 - i % size]);
   }
@@ -315,7 +333,7 @@ const PixelArt = (() => {
   }
 
   return {PALETTE, STARTERS, STAMPS, STAMP_INK, INK, blank, encode, decode, fromRows,
-          line, box, circle, flood, flip, shift, turn, outline, shade, gif};
+          line, box, circle, flood, floodTarget, flip, shift, turn, outline, shade, gif};
 })();
 
 if (typeof module !== "undefined") module.exports = PixelArt;
