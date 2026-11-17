@@ -30,7 +30,7 @@ Both teacher pages are linked from `/admin`.
    as Pip.
 5. After 3 missions, the Hang out opens and stays open.
 6. Mission 9 is **My Move**. They code their own routine and it becomes a big
-   button in the Hang out. Thirty more missions come after it, for students who finish.
+   button in the Hang out. Thirty-three more missions come after it, for students who finish.
 
 A big button at the top right always says what comes next. On Code, that's **💻 Next mission**
 once the open mission is done, and 🎬 Free stage once every mission is finished, so
@@ -38,7 +38,7 @@ it never pulls a student out of a mission halfway. The 🎉 Hang out tab is alwa
 
 ## The missions
 
-39 missions and 117 stars. The first star opens the next mission, and the other two are
+42 missions and 126 stars. The first star opens the next mission, and the other two are
 for going further.
 
 | Chapter | Missions | What it teaches |
@@ -59,8 +59,9 @@ for going further.
 | 🪆 Loop in a Loop | Clap clap, jump, Times table, Stairs | A `for` loop inside another `for` loop: the inside loop runs all the way through each time the outside one goes round |
 | 🎵 Make Music | First notes, Twinkle, Make a beat | `note()`: one note, a tune kept in a list, and a beat made with a `def` |
 | 🔤 Word Play | Big name, How long?, First letter | Words: repeating with `*`, counting letters with `len()`, and `word[0]` / a loop over each letter |
+| 📦 Give It Back | Double it, How many jumps?, Pick a mood | `return`: a `def` that hands a value back, used inside `say()` and `range()` |
 
-The last thirty come after My Move on purpose, so a student who has already made their
+The last thirty-three come after My Move on purpose, so a student who has already made their
 move doesn't have it locked behind new missions. They start easy (one new command each)
 and get harder.
 
@@ -102,12 +103,23 @@ Make a beat puts C, rest, G in a `def beat():`, calls it 3 times in a loop, then
 on a long C. The guide pushes `beat()` in under the loop and the long note back out, so
 they see where a `def` and a loop end.
 
-**🔤 Word Play is the last chapter.** Words are kept in a variable, just like numbers.
+**🔤 Word Play is the chapter of words.** Words are kept in a variable, just like numbers.
 Big name uses `name = "Luna"` and `say(name * 3)` to say the name 3 times in one bubble.
 How long? counts the letters with `len(word)` and jumps that many times with
 `for i in range(len(word)):`. First letter says `word[0]`, then `for letter in word:`
 says every letter, and ends with a cheer. The guide shows the `"` and `*` keys, and Help
 me says where to put `len()` and which line belongs inside the loop.
+
+**📦 Give It Back is the last chapter.** A `def` can hand a value back with `return`.
+Double it puts `return n * 2` in `double(n)`, so `say(double(3))` says 6 and
+`say(double(5))` says 10. How many jumps? hands back `len(word)` and uses it inside
+`range(jumps_for("Pip"))`, so the pal jumps once for each letter. Pick a mood uses `if`
+and two `return` lines to hand back "happy" for more than 5 points and "sad" for 5 or
+fewer: `feel(mood_for(8))` feels happy and `feel(mood_for(2))` feels sad. The guide
+pushes the lines in under the `def`, then moves the last `return` and the calls back out,
+so they see where a `def` ends. A `return` outside a `def` says it only works inside
+one, and a `def` that forgets to hand a value back makes the pal say "nothing" (Python's
+None), or says the number never came back.
 
 **Every mission walks them through it.** The top says the job in one plain sentence. Under
 it, the guide gives one line at a time: what the line does, the exact keys as tiles, and
@@ -200,8 +212,10 @@ is `name` says capitals matter, `say("I am " name)` says to add a `+`, using a `
 where it's made says to move it up, `name == "Luna"` on its own says one `=` keeps a value,
 `"Luna" = name` says the name goes first, and a slip like `nam` for `name` asks "Did you mean
 name?". A missing `}` in an f-string says to close its `{ }`, a line that stops after `=` or
-`+` says what to put next, and `break` or `continue` outside a loop says to put it under a
-`for` or `while`. **🔈 Read it** on any error reads it out loud, saying a lone `)` as "close bracket".
+`+` says what to put next, `break` or `continue` outside a loop says to put it under a
+`for` or `while`, and `return` outside a `def` says it only works inside one. A `def` that
+forgets `return` makes the pal say "nothing", and a loop that needs a number from it says
+the number never came back. **🔈 Read it** on any error reads it out loud, saying a lone `)` as "close bracket".
 After **three misses in a row** with the guide off, the result box offers **🖐 Show me step by
 step** right there.
 

@@ -60,6 +60,7 @@ const PYTHON = {
   elif: ["elif", "elif roll >= 4:\n    ", "Goes after an if, lined up with it. Asks a second question when the first answer was no."],
   param: ["def with a number", "def hop(n):\n    ", "Makes a command that takes a number. n is whatever goes in its ( )."],
   nested: ["loop in a loop", "for i in range(3):\n    for j in range(2):\n        ", "A loop pushed in under another loop. The inside loop runs all the way through each time the outside loop goes round."],
+  return: ["return", "return n * 2", "Hands a value back out of a def, so say(double(3)) can use it."],
 };
 const ALL_PYTHON = Object.keys(PYTHON);
 
@@ -999,7 +1000,7 @@ function openMissions() {
     `<div class="trophy${b.got ? " got" : ""}"><i>${b.icon}</i><span><b>${esc(b.name)}</b>${esc(b.how)}</span></div>`).join("");
   $("missions").hidden = false;
   const here = $("missionList").querySelector(".here");
-  if (here) here.scrollIntoView({block: "center"});         // sixteen chapters: start where they are
+  if (here) here.scrollIntoView({block: "center"});         // seventeen chapters: start where they are
 }
 function closeSheets() {
   for (const id of ["missions", "bookSheet"]) $(id).hidden = true;

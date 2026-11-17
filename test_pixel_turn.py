@@ -47,6 +47,9 @@ CHANGED = {
     "p1": 'name = "Mia"\nsay(name * 3)\ncheer()',
     "p2": 'word = "Pixel"\nsay(len(word))\nfor i in range(len(word)):\n    jump()',
     "p3": 'word = "Luna"\nsay(word[0])\nfor letter in word:\n    say(letter)\nsay(word)\ncheer()',
+    "g1": 'def double(n):\n    return n * 2\nsay(double(3))\nsay(double(5))\nsay(double(2))',
+    "g2": 'def jumps_for(word):\n    return len(word)\nfor i in range(jumps_for("Pip")):\n    jump()\nsay(jumps_for("Pip"))',
+    "g3": 'def mood_for(points):\n    if points >= 5:\n        return "happy"\n    return "sad"\nfeel(mood_for(8))\nfeel(mood_for(2))\nfeel(mood_for(5))',
 }
 
 
@@ -112,6 +115,9 @@ TRUTH = {
     "p1": lambda st: str(_said(st)[0].count("Luna")),
     "p2": lambda st: str(_n(st, "jump")),
     "p3": lambda st: _said(st)[0],
+    "g1": lambda st: _said(st)[0],
+    "g2": lambda st: str(_n(st, "jump")),
+    "g3": lambda st: [s["mood"] for s in st if s["do"] == "feel"][0].capitalize(),
 }
 
 

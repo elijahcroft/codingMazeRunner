@@ -1,4 +1,4 @@
-"""Word Play: the last chapter, where words repeat with *, len() counts letters, and a loop visits them."""
+"""Word Play: the chapter of words, where words repeat with *, len() counts letters, and a loop visits them."""
 import os
 import unittest
 
@@ -17,13 +17,14 @@ def report(code):
 
 
 class TheChapter(unittest.TestCase):
-    def test_it_comes_last_and_has_three_missions(self):
-        self.assertEqual(pixel.CHAPTERS[-1], {"key": "p", "name": "Word Play", "icon": "🔤"})
-        self.assertEqual([lv["key"] for lv in pixel.LEVELS[-3:]], ["p1", "p2", "p3"])
-        self.assertEqual({lv["chapter"] for lv in pixel.LEVELS[-3:]}, {len(pixel.CHAPTERS) - 1})
+    def test_it_has_three_missions(self):
+        chapter = next(i for i, ch in enumerate(pixel.CHAPTERS) if ch["key"] == "p")
+        self.assertEqual(pixel.CHAPTERS[chapter], {"key": "p", "name": "Word Play", "icon": "🔤"})
+        self.assertEqual([lv["key"] for lv in pixel.LEVELS if lv["chapter"] == chapter], ["p1", "p2", "p3"])
 
     def test_make_music_comes_just_before_it(self):
-        self.assertEqual(pixel.CHAPTERS[-2], {"key": "u", "name": "Make Music", "icon": "🎵"})
+        chapter = next(i for i, ch in enumerate(pixel.CHAPTERS) if ch["key"] == "u")
+        self.assertEqual(pixel.CHAPTERS[chapter], {"key": "u", "name": "Make Music", "icon": "🎵"})
         self.assertEqual(pixel.LEVEL_BY_KEY["u3"]["chapter"] + 1, pixel.LEVEL_BY_KEY["p1"]["chapter"])
 
     def test_each_reference_earns_all_three_stars(self):
@@ -114,9 +115,9 @@ class WordsOverHttp(unittest.TestCase):
                 self.assertEqual(out["stars"], [True, True, True], out.get("reply"))
                 self.assertEqual(out["rewards"]["gained"], 3)
         state = self.get(f"/pixel/state?id={me}")
-        self.assertEqual(state["chapters"][-1]["name"], "Word Play")
-        self.assertEqual(len(state["chapters"][-1]["levels"]), 3)
-        self.assertEqual(state["max_stars"], 117)
+        chapter = next(ch for ch in state["chapters"] if ch["name"] == "Word Play")
+        self.assertEqual(len(chapter["levels"]), 3)
+        self.assertEqual(state["max_stars"], 126)
 
 
 if __name__ == "__main__":

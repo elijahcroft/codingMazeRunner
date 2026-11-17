@@ -153,6 +153,8 @@ const PalStage = (() => {
     pianohat: {rows: ["wwwwwwwwwww", "wkwkwkwkwkw", "wwwwwwwwwww", "wwwwwwwwwww", "kkkkkkkkkkk"], ink: {w: "#ffffff", k: "#1b1530"}},
     wordhat: {rows: ["...........", "ppp.bbb.ggg", "ppp.bbb.ggg", "kkkkkkkkkkk", "kwwwwwwwwwk", "kkkkkkkkkkk"], ink: {p: "#ff5fa2", b: "#7ab8ff", g: "#8ee06b", k: "#1b1530", w: "#ffffff"}},
     bookhat: {rows: ["..wwwwwww..", ".wkkkwkkkw.", "wwwwwwwwwww", "kwwwwwwwwwk", "kkkkkkkkkkk"], ink: {w: "#fff2dc", k: "#8f1d3a"}},
+    boxhat: {rows: ["..p.....p..", ".ppp...ppp.", "..ppppppp..", "..rrrrrrr..", ".rrryyyrrr.", "..rrrrrrr.."], ink: {p: "#ff5fa2", r: "#e8294f", y: "#ffd93b"}},
+    returnhat: {rows: ["oo.......oo", "ooo.....ooo", ".ooo...ooo.", "..ooo.ooo..", "...oyyyo...", "....ooo...."], ink: {o: "#ff9a3c", y: "#ffd93b"}},
     // unlocked by reaching a goal
     gemcrown: {rows: ["k...k...k", "kb.kpk.gk", "kyykyykyk", "kyyyyyyyk", "kbyryygyk", "kkkkkkkkk"], ink: {k: "#8a5a00", y: "#ffd93b", r: "#e8294f", b: "#7ab8ff", g: "#35d0bd", p: "#ff5fa2"}},
     fishhat: {rows: ["...oooo...o", ".oooooooooo", "owkoooyooo.", ".oooooooooo", "...oooo...o"], ink: {o: "#ff9a3c", w: "#ffffff", k: "#1b1530", y: "#ffd93b"}},
@@ -182,7 +184,8 @@ const PalStage = (() => {
                        butterflyspark: ["#ff9fb5", "#ffd27a", "#c7b4f0", "#8ee06b"], snowspark: ["#ffffff", "#d6f4ff", "#9fd8ee"],
                        loopspark: ["#35d0bd", "#7ab8ff", "#ffffff"],
                        notespark: ["#7a3fe4", "#ff5fa2", "#ffd93b", "#ffffff"],
-                       letterspark: ["#ff5fa2", "#7ab8ff", "#ffd93b", "#8ee06b"]};
+                       letterspark: ["#ff5fa2", "#7ab8ff", "#ffd93b", "#8ee06b"],
+                       givespark: ["#ff9a3c", "#ffd93b", "#7ab8ff", "#ffffff"]};
   const FRIEND_INK = {cat: "#ffc266", bunny: "#c5a3ff", kid: "#7ab8ff", bean: "#8ee06b"};
   const FRIEND_ART = {cat: "Cat", bunny: "Bunny", kid: "Kid", bean: "Bean"};
 

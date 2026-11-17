@@ -333,6 +333,9 @@ class Show:
         self.step("look", way=args[0])
 
     def c_feel(self, name, *args):
+        if len(args) == 1 and args[0] is None:
+            raise BotError("feel() got nothing back. If a def should hand back a feeling, "
+                           "check it has a return.")
         if len(args) != 1 or args[0] not in FEELINGS:
             raise BotError(f'Pick a feeling, like  feel("happy"). The feelings are: {word_list(FEELINGS)}.')
         self.step("feel", mood=args[0])
@@ -739,6 +742,12 @@ class Director(Brain):
                        f"thing{'s' if len(target) != 1 else ''}, so the positions go from "
                        f"0 to {len(target) - 1}.")
 
+    def number(self, value, what):
+        if value is None:
+            raise BotError(f"{what} needs a number, but it got nothing back. "
+                           f"If a def should hand back a number, check it has a return.")
+        return super().number(value, what)
+
     def call_user(self, fn, args):
         need = len(fn.args.args)
         if len(args) != need:          # plainer than "expected 1 thing(s) but got 0"
@@ -868,6 +877,9 @@ class Director(Brain):
                        f"and, on a list, .append()")
 
     def run_statement(self, node, frame):
+        if isinstance(node, ast.Return) and frame.module:
+            raise_at(node.lineno, "return only works inside a def. Put the def line above it, "
+                                  "then push the return in under the def.")
         if isinstance(node, ast.For):
             self.tick()
             if not isinstance(node.target, ast.Name):
@@ -990,6 +1002,28 @@ class Report:
             and isinstance(n.iter.func, ast.Name) and n.iter.func.id == "range"
             and any(isinstance(a, ast.Call) and isinstance(a.func, ast.Name) and a.func.id == "len"
                     for a in n.iter.args) for n in nodes)
+        self.returns = count(ast.Return)         # return lines, with or without a value
+        self.return_values = sum(1 for n in nodes
+                                 if isinstance(n, ast.Return) and n.value is not None)
+        self.return_calls = Counter(             # commands used inside  return ...
+            call.func.id for ret in nodes if isinstance(ret, ast.Return) and ret.value is not None
+            for call in ast.walk(ret.value)
+            if isinstance(call, ast.Call) and isinstance(call.func, ast.Name))
+        self.return_names = {                   # the variables  return  hands back
+            name.id for ret in nodes if isinstance(ret, ast.Return) and ret.value is not None
+            for name in ast.walk(ret.value) if isinstance(name, ast.Name)}
+        self.call_in_call = Counter()            # double() in say(double(3)), jumps_for() in range(...)
+        for call in nodes:
+            if isinstance(call, ast.Call):
+                for arg in call.args:
+                    for inner in ast.walk(arg):
+                        if isinstance(inner, ast.Call) and isinstance(inner.func, ast.Name):
+                            self.call_in_call[inner.func.id] += 1
+        self.range_funcs = tuple(                # the defs called inside range( ... )
+            a.func.id for n in nodes if isinstance(n, ast.For)
+            and isinstance(n.iter, ast.Call) and isinstance(n.iter.func, ast.Name)
+            and n.iter.func.id == "range"
+            for a in n.iter.args if isinstance(a, ast.Call) and isinstance(a.func, ast.Name))
         self.upper = sum(1 for n in nodes if isinstance(n, ast.Attribute) and n.attr in ("upper", "lower"))
         self.randoms = sum(1 for n in nodes if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
                            and n.func.id in ("choice", "randint"))
@@ -1113,6 +1147,7 @@ CHAPTERS = [
     {"key": "n", "name": "Loop in a Loop", "icon": "🪆"},
     {"key": "u", "name": "Make Music", "icon": "🎵"},
     {"key": "p", "name": "Word Play", "icon": "🔤"},
+    {"key": "g", "name": "Give It Back", "icon": "📦"},
 ]
 
 # `adds` opens commands, and `python` opens the shapes of Python on the chips.
@@ -1814,6 +1849,70 @@ LEVELS = [
      "hints": ["The first letter is  word[0]  . Then  for letter in word:  with  say(letter)  pushed in.",
                'word = "Luna"\nsay(word[0])\nfor letter in word:\n    say(letter)\ncheer()'],
      "reference": 'word = "Luna"\nsay(word[0])\nfor letter in word:\n    say(letter)\ncheer()'},
+
+    # Give It Back: a def hands a value back with return, and the value can go
+    # inside say( ) or range( ).
+    {"key": "g1", "chapter": 16, "name": "Double it", "adds": [], "python": ["def", "param", "return"],
+     "pip": "A def can hand an answer back with return. Then say() can use that answer.",
+     "job": "Make double() hand back n * 2, then say double(3) and double(5).",
+     "coach": [
+               ('def double(n):', "A new command called double. n is the number you give it."),
+               ('    return n * 2', "return hands the answer back. double(3) gives 6, and double(5) gives 10."),
+               ('say(double(3))', "Not pushed in. say() says what double(3) hands back, so 6."),
+               ('say(double(5))', "Now double(5) hands back 10. The same def works for any number."),
+     ],
+     "goals": [("Your pal says 6, then 10", lambda r: r.said[:2] == ["6", "10"] and r.return_values >= 1,
+                lambda r: f"Your pal said {r.said[:2]}. Say double(3) then double(5): that says 6, then 10."),
+               ("You use double() inside say() twice", lambda r: r.call_in_call["double"] >= 2,
+                "Put double( ) inside say( ), like  say(double(3))  and  say(double(5)) ."),
+               ("double() hands the answer back with return", lambda r: r.return_values >= 1 and "double" in r.defs
+                and "n" in r.return_names,
+                "Inside the def, write  return n * 2  . return hands the answer back to say().")],
+     "hints": ["Under  def double(n):  push in  return n * 2  . Then  say(double(3))  and  say(double(5)) .",
+               'def double(n):\n    return n * 2\nsay(double(3))\nsay(double(5))'],
+     "reference": 'def double(n):\n    return n * 2\nsay(double(3))\nsay(double(5))'},
+
+    {"key": "g2", "chapter": 16, "name": "How many jumps?", "adds": [], "python": ["def", "param", "return", "len"],
+     "pip": "A def can count the letters in a word and hand that number back. Then a loop can use it!",
+     "job": "Make jumps_for() hand back len(word), then jump once for each letter in Pip.",
+     "coach": [
+               ('def jumps_for(word):', "A new command that takes a word. word is whatever you give it."),
+               ('    return len(word)', "len() counts the letters, and return hands that number back. Pip has 3 letters."),
+               ('for i in range(jumps_for("Pip")):', "Not pushed in. range() uses the number jumps_for() hands back, so 3."),
+               ('    jump()', "Pushed in, so it jumps 3 times, once for each letter in Pip."),
+     ],
+     "goals": [("Your pal jumps 3 times", lambda r: r.n("jump") == 3 and r.return_values >= 1,
+                lambda r: f"Your pal jumped {r.n('jump')} times. Pip has 3 letters, so use jumps_for(\"Pip\") in range()."),
+               ("A loop uses jumps_for() to count the jumps", lambda r: "jumps_for" in r.range_funcs,
+                'Put  jumps_for("Pip")  inside range( ), like  for i in range(jumps_for("Pip")):'),
+               ("jumps_for() hands back len(word) with return", lambda r: r.return_values >= 1
+                and r.return_calls["len"] >= 1 and "word" in r.return_names,
+                "Inside the def, write  return len(word)  . return hands the number back to range().")],
+     "hints": ["Under  def jumps_for(word):  push in  return len(word)  . Then use it inside range( ).",
+               'def jumps_for(word):\n    return len(word)\nfor i in range(jumps_for("Pip")):\n    jump()'],
+     "reference": 'def jumps_for(word):\n    return len(word)\nfor i in range(jumps_for("Pip")):\n    jump()'},
+
+    {"key": "g3", "chapter": 16, "name": "Pick a mood", "adds": [], "python": ["def", "return", "if"],
+     "pip": "An if inside a def can hand back different answers. Give mood_for() 8 points and 2 points to see!",
+     "job": "Make mood_for() hand back happy for more than 5 points, and sad for 5 or fewer. Feel both moods.",
+     "coach": [
+               ('def mood_for(points):', "A new command that takes a number of points."),
+               ('    if points > 5:', "Pushed in. Ask if the points are more than 5."),
+               ('        return "happy"', "Only runs when the answer is yes. return hands back happy."),
+               ('    return "sad"', "Not pushed in under the if, so it runs when the answer is no. It hands back sad."),
+               ('feel(mood_for(8))', "8 is more than 5, so mood_for(8) hands back happy."),
+               ('feel(mood_for(2))', "2 is not more than 5, so mood_for(2) hands back sad."),
+     ],
+     "goals": [("Your pal feels happy, then sad", lambda r: [a[0] for n, a in r.log if n == "feel"][:2] == ["happy", "sad"]
+                and r.return_values >= 1,
+                "Use feel(mood_for(8)) then feel(mood_for(2)): 8 is more than 5, and 2 is not."),
+               ("mood_for() picks the feeling inside feel()", lambda r: r.call_in_call["mood_for"] >= 2,
+                "Put mood_for( ) inside feel( ), like  feel(mood_for(8))  and  feel(mood_for(2)) ."),
+               ("mood_for() hands back both moods with return", lambda r: r.return_values >= 2 and r.ifs >= 1,
+                'Use  return "happy"  under the if, and  return "sad"  after it.')],
+     "hints": ['Under  def mood_for(points):  put  if points > 5:  with  return "happy"  pushed in. Then  return "sad"  back out.',
+               'def mood_for(points):\n    if points > 5:\n        return "happy"\n    return "sad"\nfeel(mood_for(8))\nfeel(mood_for(2))'],
+     "reference": 'def mood_for(points):\n    if points > 5:\n        return "happy"\n    return "sad"\nfeel(mood_for(8))\nfeel(mood_for(2))'},
 ]
 
 # "Your turn": after a mission, one change for the student to make with the guide off.
@@ -1905,6 +2004,17 @@ REMIXES = {
     "p3": ("Say the whole word at the end too, before you cheer.",
            lambda r: bool(_word(r)) and r.said[-1:] == [_word(r)] and r.fors >= 1,
            "Add  say(word)  just above  cheer()"),
+    "g1": ("Say double(2) as well, so your pal also says 4.",
+           lambda r: r.said[:3] == ["6", "10", "4"] and r.return_values >= 1 and r.call_in_call["double"] >= 3,
+           "Add one more line at the bottom:  say(double(2))"),
+    "g2": ('Say how many letters Pip has after the jumps.',
+           lambda r: r.said == ["3"] and r.n("jump") == 3 and r.return_values >= 1
+           and r.call_in_call["jumps_for"] >= 2,
+           'Add  say(jumps_for("Pip"))  under the jump line.'),
+    "g3": ("Make 5 points happy too: change the cut-off to 5 or more, then feel mood_for(5).",
+           lambda r: [a[0] for n, a in r.log if n == "feel"][:3] == ["happy", "sad", "happy"]
+           and r.return_values >= 2 and r.call_in_call["mood_for"] >= 3,
+           "Change the  >  in the if to  >=  , then add  feel(mood_for(5))  at the bottom."),
 }
 # "Guess first": before the first run of the guide's code, one question about what it will do.
 # (question, choices, the right choice). test_pixel_turn.py checks each answer against a real run.
@@ -1948,6 +2058,9 @@ GUESSES = {
     "p1": ("How many times will the name Luna appear in the bubble?", ["3", "1", "4"], 0),
     "p2": ("How many times will your pal jump?", ["4", "1", "5"], 0),
     "p3": ("What will your pal say first?", ["L", "u", "Luna"], 0),
+    "g1": ("What number will your pal say first?", ["3", "6", "10"], 1),
+    "g2": ("How many times will your pal jump?", ["3", "2", "5"], 0),
+    "g3": ("How will your pal feel first?", ["Happy", "Sad", "Silly"], 0),
 }
 # "Fix it": after a mission, Pip's code for it with one bug in it, to find and fix.
 # (what went wrong, the code with the bug, check that it's fixed, a hint that says where to look).
@@ -2052,6 +2165,15 @@ FIXES = {
            lambda r: bool(_word(r)) and r.said[:1] == [_word(r)[0]]
            and r.said[1:1 + len(_word(r))] == list(_word(r)) and bool(r.log) and r.log[-1][0] == "cheer",
            "Positions start at 0. The 4 letters are at 0, 1, 2 and 3, so [0] is the first letter."),
+    "g1": ("Pip's double() says the answer instead of handing it back, so the pal says 'nothing'!", 'def double(n):\n    say(n * 2)\nsay(double(3))\nsay(double(5))',
+           lambda r: r.said[:2] == ["6", "10"] and r.return_values >= 1,
+           "Look at line 2. Use  return n * 2  so say(double(3)) gets the answer back."),
+    "g2": ("Pip forgot return, so range() gets nothing and the show stops!", 'def jumps_for(word):\n    len(word)\nfor i in range(jumps_for("Pip")):\n    jump()',
+           lambda r: r.n("jump") == 3 and "jumps_for" in r.range_funcs and r.return_values >= 1,
+           "Look at line 2. Put  return  in front of  len(word)  so the number comes back."),
+    "g3": ("Pip pushed the last return inside the if, so 2 points gets nothing and the show stops!", 'def mood_for(points):\n    if points > 5:\n        return "happy"\n        return "sad"\nfeel(mood_for(8))\nfeel(mood_for(2))',
+           lambda r: [a[0] for n, a in r.log if n == "feel"][:2] == ["happy", "sad"] and r.return_values >= 2,
+           'Line 4 is pushed in too far. Move  return "sad"  back out, in line with  if  .'),
 }
 for _lv in LEVELS:
     _lv["remix"] = REMIXES[_lv["key"]]
@@ -2294,6 +2416,8 @@ GIFTS = {
     "notespark": {"name": "Note sparkles", "slot": "sparkle"},
     "wordhat": {"name": "Letter blocks hat", "slot": "hat"}, "bookhat": {"name": "Storybook hat", "slot": "hat"},
     "letterspark": {"name": "Letter sparkles", "slot": "sparkle"},
+    "boxhat": {"name": "Gift box hat", "slot": "hat"}, "returnhat": {"name": "Boomerang hat", "slot": "hat"},
+    "givespark": {"name": "Give-back sparkles", "slot": "sparkle"},
     # These unlock by themselves when a goal is reached: [what is counted, how many].
     "gemcrown": {"name": "Gem crown", "slot": "hat", "goal": ["gems", 9]},
     "fishhat": {"name": "Fish hat", "slot": "hat", "goal": ["fish", 5]},
