@@ -34,6 +34,8 @@ const PalStage = (() => {
       o.stop(t + length + .02);
     };
     const notes = (list, gap, length = .12, type = "square") => list.forEach((f, i) => tone(f, i * gap, length, type));
+    // C4 to B4, then C2 is the next C up, like the top of Twinkle Twinkle.
+    const NOTE_FREQ = {C: 262, D: 294, E: 330, F: 349, G: 392, A: 440, B: 494, C2: 523};
     const SOUNDS = {
       ding: () => notes([988, 1319], .07, .25, "triangle"),
       boing: () => tone(180, 0, .22, "square", .05, 520),
@@ -76,6 +78,13 @@ const PalStage = (() => {
       /** Each pal has its own pitch to talk at. */
       voiceAt(pitch) { voice = pitch; },
       play(name) { if (!muted && wake() && SOUNDS[name]) SOUNDS[name](); },
+      /** A soft note: one of C, D, E, F, G, A, B or the high C2. rests are silent. */
+      note(name, beats = 1) {
+        if (muted || !wake() || !NOTE_FREQ[name]) return;
+        const length = Math.min(1.1, Math.max(.18, beats * .34));
+        tone(NOTE_FREQ[name], 0, length, "triangle", .04);
+        tone(NOTE_FREQ[name] * 2, 0, length * .55, "sine", .012);
+      },
       /** A note that climbs with each one in a row, for stars and combos. */
       climb(n) { if (!muted && wake()) notes([1, 1.5].map(k => 523 * 2 ** (Math.min(n, 14) / 12) * k), .06, .16, "triangle"); },
       get muted() { return muted; },
@@ -529,9 +538,13 @@ const PalStage = (() => {
     // A thing someone drew and coded plays the steps of one click, one after another.
     const THING_SIZES = [1, 1.35, 1.7];
     function thingStep(th, s, now, sound) {
-      th.act = s.do; th.actFrom = now; th.actMs = s.ms;
+      th.act = s.do === "note" && s.name === "rest" ? "rest" : s.do; th.actFrom = now; th.actMs = s.ms;
       if (s.do === "say") { bubble("t" + th.id, s.text, Math.min(5200, 1300 + s.text.length * 55)); if (sound) SFX.play("blip"); }
       else if (s.do === "sound") { if (sound) SFX.play(s.name); }
+      else if (s.do === "note") {
+        bubble("t" + th.id, "🎵 " + s.name, Math.max(500, s.ms || 400));
+        if (sound && s.name !== "rest") SFX.note(s.name, s.beats || 1);
+      }
       else if (s.do === "size") { th.grew = THING_SIZES[th.size - 1] || 1; th.size = s.to; if (sound) SFX.play("boing"); }
       else if (s.do === "hide" || s.do === "appear") { th.hidden = s.do === "hide"; pop(th.x, roomBase(th) - 20, ["#ffffff", "#c5a3ff"]); if (sound) SFX.play("whoosh"); }
       else if (s.do === "pose") { th.frame = s.frame; pop(th.x, roomBase(th) - 24, ["#ffd93b", "#ffffff"], 8); if (sound) SFX.play("click"); }
@@ -554,7 +567,8 @@ const PalStage = (() => {
       if (act === "size") size = th.grew + (size - th.grew) * held;
       const rig = th.pup.rigOf(frame);
       if (rig.empty) return;
-      const hop = act === "jump" ? Math.sin(held * Math.PI) * 30 : 0;
+      const hop = act === "jump" ? Math.sin(held * Math.PI) * 30
+                : act === "note" && !calm ? Math.sin(held * Math.PI) * 7 : 0;
       const squeeze = act === "spin" ? Math.cos(held * Math.PI * 4) : 1;
       const shake = act === "shake" ? Math.sin(held * Math.PI * 10) * 3 : 0;
       if (th.hidden) {
@@ -651,6 +665,10 @@ const PalStage = (() => {
     function moveStep(m, s, now, sound) {
       if (s.do === "walk") { m.tx = s.x; }
       else if (s.do === "say") { say(m, s.text, now, sound); }
+      else if (s.do === "note") {
+        bubble("s" + m.seat, "🎵 " + s.name, Math.max(500, s.ms || 400));
+        if (sound && s.name !== "rest") SFX.note(s.name, s.beats || 1);
+      }
       else if (s.do === "feel") { m.mood = s.mood === "calm" ? null : s.mood; }
       else if (ROOM_LASTS[s.do]) { setMove(m, s.do, now); if (sound) SFX.play(MOVE_SOUND[s.do]); }
       else if (s.do === "hearts" || s.do === "stars" || s.do === "confetti") { roomFx(s.do, m.x); if (sound) SFX.play(FX_SOUND[s.do]); }
@@ -1340,6 +1358,15 @@ const PalStage = (() => {
       async rain(s, t) { fall("rain", 90, ["#7ab8ff"]); await sleep(1000, t); },
       async snow(s, t) { fall("snow", 70, ["#ffffff"]); await sleep(1000, t); },
       async sound(s, t) { SFX.play(s.name); await sleep(260, t); },
+      async note(s, t) {
+        const ms = 400 * (s.beats || 1);
+        bubble("pal", "🎵 " + s.name, ms / rate);
+        if (s.name !== "rest") SFX.note(s.name, s.beats || 1);
+        if (calm) { await sleep(ms, t); return; }        // 🌿 Calm: the bubble, no bob
+        await tween(200, t, u => { state.y = Math.sin(u * Math.PI) * 7; });
+        state.y = 0;
+        await sleep(ms - 200, t);
+      },
       async scene(s, t) {
         await tween(170, t, u => { canvas.style.filter = `brightness(${1 - u * .8})`; });
         state.scene = s.name;

@@ -32,12 +32,13 @@ const WORDS = {
   x: "The spot your pal is on, from 0 at the left to 10 at the right.",
   scene: "Changes the place: stage, wedding, park, beach, night, snowy, candy, space or castle.",
   sound: "Plays a sound: ding, boing, pop, tada, meow, drum, whoosh or yay.",
+  note: "Sings a note: C, D, E, F, G, A, B, the high C2, or rest. A second number is how many beats.",
   rain: "Rain falls.", snow: "Snow falls.",
   friend: "Brings a friend on stage: cat, bunny, kid or bean.", friend_say: "Your friend says something.",
   friend_jump: "Your friend jumps.", bye: "Your friend goes off stage.",
   hide: "Your pal disappears.", appear: "Your pal comes back.",
 };
-const SAMPLE = {scene: 'scene("beach")', sound: 'sound("tada")', friend: 'friend("cat")', friend_say: 'friend_say("Hi!")', say: 'say("Hello!")', right: "right(3)", left: "left(3)", wait: "wait(2)", feel: 'feel("happy")', look: 'look("left")'};
+const SAMPLE = {scene: 'scene("beach")', sound: 'sound("tada")', note: 'note("C", 2)', friend: 'friend("cat")', friend_say: 'friend_say("Hi!")', say: 'say("Hello!")', right: "right(3)", left: "left(3)", wait: "wait(2)", feel: 'feel("happy")', look: 'look("left")'};
 const sample = name => SAMPLE[name] || name + "()";
 const PYTHON = {
   for: ["for loop", "for i in range(3):\n    ", "Repeats the lines pushed in under it."],
@@ -643,6 +644,7 @@ function captionFor(s) {
     say: () => `your pal says "${esc(s.text)}"`, walk: () => `your pal walks to spot ${s.to}`,
     jump: () => "your pal jumps", spin: () => "your pal spins", wave: () => "your pal waves", dance: () => "your pal dances",
     cheer: () => "your pal cheers", feel: () => `your pal feels ${esc(s.mood)}`, wait: () => "your pal waits",
+    note: () => s.name === "rest" ? "🎵 your pal rests" : `🎵 your pal sings ${esc(s.name)}`,
     hearts: () => "hearts float up", stars: () => "stars float up", confetti: () => "confetti falls",
     event: () => "👆 Pip clicks your pal to test it",
   };

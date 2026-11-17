@@ -149,13 +149,16 @@ breaks the show and that the guide's code fixes it.
 
 **🎬 Free stage: any show at all.** Finishing My Move opens the Free stage, at the bottom of
 Missions (the My Move win card has a button for it too). There are no stars, no guide and no
-rules: every command the student has learned works, plus ten **stage toys** no mission
-teaches: `scene("beach")`, `sound("tada")`, `rain()`, `snow()`, `friend("cat")`,
+rules: every command the student has learned works, plus eleven **stage toys** no mission
+teaches: `scene("beach")`, `sound("tada")`, `note("C")`, `rain()`, `snow()`, `friend("cat")`,
 `friend_say("Hi!")`, `friend_jump()`, `bye()`, `hide()` and `appear()`. All words says what
-each one does. Some places open with stars from missions: the stage, park, beach and night
+each one does. `note()` sings C, D, E, F, G, A, B, the high `C2` or `rest`, and a second
+number holds it for that many beats, like `note("E", 2)`; each beat is about 0.4 seconds.
+Some places open with stars from missions: the stage, park, beach and night
 are open from the start, then the wedding at 20 ★, snowy at 30, candy at 40, space at 50 and
-the castle at 60. Asking for a locked one says how many stars it needs and which are open. **💡 Give me an idea** (where Help me usually is) offers seven small shows to
-start from, one at a time: a day at the beach, a friend comes to play, a magic trick and so on.
+the castle at 60. Asking for a locked one says how many stars it needs and which are open. **💡 Give me an idea** (where Help me usually is) offers eight small shows to
+start from, one at a time: a day at the beach, a friend comes to play, a magic trick, Sing
+Twinkle Twinkle and so on.
 **Use this idea** puts it under their own code, never over it. **📼 My shows** keeps up to 6
 shows besides the one they're making: **🆕 New show** puts this one away and starts an empty
 stage, and clicking a kept show opens it and puts away the one they were making, so nothing

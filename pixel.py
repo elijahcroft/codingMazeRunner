@@ -129,6 +129,8 @@ START = 2
 
 SCENES = ("stage", "wedding", "park", "beach", "night", "snowy", "candy", "space", "castle")
 SOUNDS = ("ding", "boing", "pop", "tada", "meow", "drum", "whoosh", "yay")
+NOTES = ("C", "D", "E", "F", "G", "A", "B", "C2", "rest")     # C2 is the next C up
+NOTE_MS = 400             # one beat of a note, in a show or in the Hang out
 FRIENDS = ("cat", "bunny", "kid", "bean")
 PROPS = ("star", "gem", "cake", "ball")
 EVENTS = ("click", "feed", "play", "sleep", "key")
@@ -145,10 +147,10 @@ USAGE = {
     "spin": "spin()", "shake": "shake()", "grow": "grow()", "shrink": "shrink()",
     "hide": "hide()", "appear": "appear()", "pose": 'pose("happy")', "play": "play()",
     "wait": "wait(2)", "hearts": "hearts()", "stars": "stars()", "confetti": "confetti()",
-    "rain": "rain()", "snow": "snow()", "sound": 'sound("ding")', "scene": 'scene("park")',
-    "friend": 'friend("cat")', "friend_say": 'friend_say("Hi!")', "friend_jump": "friend_jump()",
-    "bye": "bye()", "eat": "eat()", "nap": "nap()", "put": 'put("star", 7)',
-    "take": 'take("star")', "point": "point()", "wave": "wave()", "dance": "dance()",
+    "rain": "rain()", "snow": "snow()", "sound": 'sound("ding")', "note": 'note("C", 2)',
+    "scene": 'scene("park")', "friend": 'friend("cat")', "friend_say": 'friend_say("Hi!")',
+    "friend_jump": "friend_jump()", "bye": "bye()", "eat": "eat()", "nap": "nap()",
+    "put": 'put("star", 7)', "take": 'take("star")', "point": "point()", "wave": "wave()", "dance": "dance()",
     "cheer": "cheer()", "look": 'look("left")', "feel": 'feel("happy")', "everyone": 'everyone("dance")',
 }
 COMMANDS = tuple(USAGE)
@@ -339,6 +341,18 @@ class Show:
         if len(args) != 1 or args[0] not in SOUNDS:
             raise BotError(f'Pick a sound, like  sound("ding"). The sounds are: {word_list(SOUNDS)}.')
         self.step("sound", name=args[0])
+
+    def c_note(self, name, *args):
+        if not args or len(args) > 2:
+            raise BotError(f'Pick a note, like  note("C"). The notes are: {word_list(NOTES)}.')
+        note = args[0].strip() if isinstance(args[0], str) else ""
+        note = {n.lower(): n for n in NOTES}.get(note.lower())
+        if note is None:
+            raise BotError(f'Pick a note, like  note("C"). The notes are: {word_list(NOTES)}.')
+        beats = args[1] if len(args) == 2 else 1
+        if isinstance(beats, bool) or not isinstance(beats, int) or not 1 <= beats <= 8:
+            raise BotError('note() takes a length from 1 to 8 beats, like  note("E", 2)')
+        self.step("note", name=note, beats=beats)
 
     def c_scene(self, name, *args):
         if len(args) != 1 or args[0] not in SCENES:
@@ -1833,10 +1847,10 @@ def free_setup(stars):
     def setup(show):
         show.stars = stars
     return setup
-STAGE_TOYS = ("scene", "sound", "rain", "snow", "friend", "friend_say", "friend_jump", "bye", "hide", "appear")
+STAGE_TOYS = ("scene", "sound", "note", "rain", "snow", "friend", "friend_say", "friend_jump", "bye", "hide", "appear")
 FREE = {"key": "free", "name": "Free stage", "chapter": None,
         "pip": "The stage is all yours! No stars and no rules: make any show you'd like to watch. "
-               "Try the new stage toys, like  scene(\"beach\")  and  friend(\"cat\")  . All words says what each one does.",
+               "Try the stage toys:  scene(\"beach\")  for a new place,  note(\"C\")  to sing, and  friend(\"cat\")  for a friend. All words says what each one does.",
         "job": "Make any show you like.", "goals": [], "hints": [], "coach": [], "adds": list(STAGE_TOYS)}
 
 # 💡 Give me an idea: small shows to start from, made only of what a student has at My Move.
@@ -1848,6 +1862,7 @@ FREE_IDEAS = [
     ("A starry night", 'scene("night")\nsay("Look at the stars!")\nfor i in range(3):\n    jump()\nstars()\nfeel("happy")'),
     ("Walk with the arrow keys", 'say("Press the arrow keys!")\ndef on_key(key):\n    if key == "left":\n        left(1)\n    if key == "right":\n        right(1)\n    if key == "space":\n        jump()'),
     ("A rainy day", 'scene("park")\nrain()\nfeel("sad")\nsay("Oh no, rain!")\nwait(1)\nfeel("happy")\nsay("I love puddles!")\ndance()'),
+    ("Sing Twinkle Twinkle", 'tune = ["C", "C", "G", "G", "A", "A", "G", "F", "F", "E", "E", "D", "D"]\nfor n in tune:\n    note(n)\nnote("C", 2)'),
 ]
 
 
@@ -2432,6 +2447,9 @@ def compile_move(steps):
             out.append({"do": "feel", "mood": s["mood"], "ms": 400})
         elif do == "wait":
             out.append({"do": "wait", "ms": min(2000, int(s["beats"] * 450))})
+        elif do == "note":
+            out.append({"do": "note", "name": s["name"], "beats": s["beats"],
+                        "ms": NOTE_MS * s["beats"]})
         elif do in MOVE_MS:
             out.append({"do": do, "ms": MOVE_MS[do]})
     return out[:MOVE_MAX]
@@ -2503,7 +2521,7 @@ def run_level(lv, code, pal, seed=0, surprise=None):
 # ---- Furniture students draw and code ----------------------------------------------
 # Any drawing put out at home (or in the world) can have a program. Clicking it
 # runs the program's on_click, and everyone in that place sees what it does.
-THING_COMMANDS = ("say", "sound", "jump", "spin", "shake", "grow", "shrink", "hide", "appear",
+THING_COMMANDS = ("say", "sound", "note", "jump", "spin", "shake", "grow", "shrink", "hide", "appear",
                   "pose", "play", "wait", "hearts", "stars", "confetti", "clicks") + HELPERS
 THING_FRAMES = 4           # frames a placed drawing keeps, for pose() and play()
 THING_STEPS = 30           # the most steps one click can play
@@ -2566,6 +2584,9 @@ def thing_steps(steps, frames, words_allowed, look=None):
             step = {"do": "wait", "ms": min(2000, s["beats"] * 450)}
         elif do == "sound":
             step = {"do": "sound", "name": s["name"], "ms": THING_MS["sound"]}
+        elif do == "note":
+            step = {"do": "note", "name": s["name"], "beats": s["beats"],
+                    "ms": NOTE_MS * s["beats"]}
         elif do == "size":
             look["size"] = s["to"]
             step = {"do": "size", "to": s["to"], "ms": THING_MS["size"]}
