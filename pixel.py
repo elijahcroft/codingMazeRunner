@@ -2207,7 +2207,10 @@ FREE = {"key": "free", "name": "Free stage", "chapter": None,
                "Try the stage toys:  scene(\"beach\")  for a new place,  note(\"C\")  to sing, and  friend(\"cat\")  for a friend. All words says what each one does.",
         "job": "Make any show you like.", "goals": [], "hints": [], "coach": [], "adds": list(STAGE_TOYS)}
 
-# 💡 Give me an idea: small shows to start from, made only of what a student has at My Move.
+# 💡 Give me an idea: small shows to start from, all runnable on the Free stage as soon as
+# it opens. They use the commands and stage toys open at My Move, plus Python the page
+# already runs; the later ones add a loop in a loop, words and return, and still work for a
+# student who has just finished My Move.
 FREE_IDEAS = [
     ("A day at the beach", 'scene("beach")\nsay("Time to swim!")\nfor i in range(3):\n    jump()\nsound("yay")\nfeel("happy")'),
     ("A friend comes to play", 'friend("cat")\nfriend_say("Can I play?")\nsay("Yes! Let\'s dance!")\ndance()\nfriend_jump()\nhearts()'),
@@ -2217,6 +2220,12 @@ FREE_IDEAS = [
     ("Walk with the arrow keys", 'say("Press the arrow keys!")\ndef on_key(key):\n    if key == "left":\n        left(1)\n    if key == "right":\n        right(1)\n    if key == "space":\n        jump()'),
     ("A rainy day", 'scene("park")\nrain()\nfeel("sad")\nsay("Oh no, rain!")\nwait(1)\nfeel("happy")\nsay("I love puddles!")\ndance()'),
     ("Sing Twinkle Twinkle", 'tune = ["C", "C", "G", "G", "A", "A", "G", "F", "F", "E", "E", "D", "D"]\nfor n in tune:\n    note(n)\nnote("C", 2)'),
+    ("Robot dance party", 'say("Beep boop! Dance time!")\nfor party in range(2):\n    for step in range(3):\n        jump()\n        spin()\n    cheer()\nconfetti()'),
+    ("Spell my name", 'name = "Luna"\nsay("Watch me spell my name!")\nfor letter in name:\n    say(letter)\n    jump()\ncheer()'),
+    ("Ode to Joy", 'tune = ["E", "E", "F", "G", "G", "F", "E", "D", "C", "C", "D", "E", "E", "D"]\nfor n in tune:\n    note(n)\nnote("D", 4)\ncheer()'),
+    ("Drum beat", 'def beat():\n    note("C")\n    note("C")\n    note("rest")\n    jump()\nsay("Boom boom!")\nfor i in range(3):\n    beat()\ncheer()'),
+    ("Count the stars", 'def count_stars():\n    return 4\nsay("Let\'s count the stars!")\nsay(count_stars())\nfor i in range(count_stars()):\n    stars()'),
+    ("Picnic with a friend", 'scene("park")\nfriend("bunny")\nfriend_say("I brought cake!")\nsay("Yum! Let\'s dance!")\nfor i in range(2):\n    friend_jump()\nfor n in ["C", "E", "G"]:\n    note(n)\nnote("C2", 2)\ncheer()'),
 ]
 
 

@@ -192,9 +192,12 @@ each one does. `note()` sings C, D, E, F, G, A, B, the high `C2` or `rest`, and 
 number holds it for that many beats, like `note("E", 2)`; each beat is about 0.4 seconds.
 Some places open with stars from missions: the stage, park, beach and night
 are open from the start, then the wedding at 20 ★, snowy at 30, candy at 40, space at 50 and
-the castle at 60. Asking for a locked one says how many stars it needs and which are open. **💡 Give me an idea** (where Help me usually is) offers eight small shows to
+the castle at 60. Asking for a locked one says how many stars it needs and which are open. **💡 Give me an idea** (where Help me usually is) offers fourteen small shows to
 start from, one at a time: a day at the beach, a friend comes to play, a magic trick, Sing
-Twinkle Twinkle and so on.
+Twinkle Twinkle, Robot dance party, Spell my name, Ode to Joy, Drum beat, Count the stars
+and Picnic with a friend. Some use Python from later chapters (a loop in a loop, a word's
+letters, `return`), but every one runs as soon as the Free stage opens, and they are fun
+to share with friends.
 **Use this idea** puts it under their own code, never over it. **📼 My shows** keeps up to 6
 shows besides the one they're making: **🆕 New show** puts this one away and starts an empty
 stage, and clicking a kept show opens it and puts away the one they were making, so nothing
