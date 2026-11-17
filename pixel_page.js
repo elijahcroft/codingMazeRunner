@@ -133,13 +133,16 @@ function paintSteps(name) {
   const go = $("goNext"), hasMove = !!S.hang.move;
   // On Code it points at more code: nothing while a mission is unfinished, the next mission after
   // a win, and the Hang out only once every mission is done. The Hang out tab is always there too.
-  const todo = S.chapters.flatMap(c => c.levels).find(l => l.open && !l.stars[0]);
+  const all = S.chapters.flatMap(c => c.levels), todo = all.find(l => l.open && !l.stars[0]);
+  // My Move can be a few missions away: say how far, since the button opens the next one first.
+  const toMove = all.slice(0, all.findIndex(l => l.key === "m1") + 1).filter(l => !l.stars[0]).length;
   const next = name === "life" ? ["💻 Code my pal →", "stage"]
     : name === "draw" && !S.stars && drewSomething() ? ["💻 Now code my pal →", "stage"]
     : name === "draw" && S.stars && todo ? ["💻 Keep coding →", "stage"]          // back next lesson: the way to their mission
     : name === "stage" && todo && view && view.best[0] && todo.key !== mode ? ["💻 Next mission →", null, todo.key]
     : name === "stage" && !todo && S.free_open && mode !== "free" && view && view.best[0] ? ["🎬 Free stage →", null, "free"]
     : name === "stage" && !todo && !S.hang.needs ? ["🎉 Go hang out →", "hang"]
+    : name === "hang" && !hasMove && toMove > 1 ? [`🌟 My Move in ${toMove - 1} mission${toMove === 2 ? "" : "s"} →`, "stage"]
     : name === "hang" && !hasMove ? ["🌟 Make My Move →", "stage"]
     : name === "hang" ? ["💻 Code more →", "stage"] : null;
   go.hidden = !next;
