@@ -526,6 +526,18 @@ button turns the notes on, and the show follows 🌿 Calm and mute on that compu
 show has a mistake, the page says so in plain words and asks the student to fix it on the
 🎬 Free stage first.
 
+**📋 Today's recap** is the end-of-lesson celebration. Press **📋 Show today's recap** on
+`/pixel/teacher`, and the projector fills with today's good news for the class: missions
+finished and stars earned, how many students played, the chapter icons the class reached,
+Your turns and Fix its, the games finished by kind, shows performed, fish caught, gems
+found, and the class party meter with anything newly unlocked. It also shows up to five
+small **shout-outs** ("first to reach 🎵 Make Music", "most claps", "a new drawing"), picked
+so no student gets more than one and never a worst or a last place. Only what really
+happened today is shown; an empty tile is left out. The counts are kept in the class state
+by day, so they start fresh each lesson. Names follow the projector's rules: a student with
+**🏷️ Hide names** on shows as **Secret pal**. **✕ Close** brings the world back, and the
+recap closes by itself after 2 minutes.
+
 **📊 Where the class is** sits above Who's where. It has one small tile for each of the
 17 chapters, with its icon, a short name and how many students have their open,
 unfinished mission in that chapter. **🌱 Not started** counts students who haven't run

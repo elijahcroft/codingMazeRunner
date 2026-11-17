@@ -80,6 +80,15 @@
     <p style="margin:6px 0 0;font-size:14px;color:var(--soft)" id="classGoal"></p>
   </div>
 
+  <h2>📋 Today's recap</h2>
+  <div class="card">
+    <div class="row">
+      <button class="btn" id="recapGo">📋 Show today's recap</button>
+      <span style="font-size:14px;color:var(--soft)">A big, cheerful look at today on the projector. It closes by itself after 2 minutes.</span>
+    </div>
+    <p id="recapNote" style="margin:8px 0 0;font-size:14px;font-weight:800" aria-live="polite" hidden></p>
+  </div>
+
   <h2>📊 Where the class is</h2>
   <div class="card">
     <div id="strip" class="strip" aria-label="Chapters: how many students are on each"></div>
@@ -289,6 +298,22 @@ $("rows").addEventListener("click", async e => {
     : `🎬 ${out.name}'s show is on the projector now. If the notes are quiet, click 🔊 Click for sound on the projector.`;
   b.disabled = false;
   bigShowNoteTimer = setTimeout(() => { note.hidden = true; }, 15000);
+});
+// 📋 Today's recap: a big, cheerful end to the lesson, on the projector.
+let recapNoteTimer = 0;
+$("recapGo").addEventListener("click", async () => {
+  const b = $("recapGo"), note = $("recapNote");
+  b.disabled = true;
+  clearTimeout(recapNoteTimer);
+  note.hidden = false;
+  note.textContent = "📋 Putting today's recap on the projector…";
+  const out = await call({action: "recap"}).catch(() => null);
+  if (!out) note.textContent = "📋 Couldn't reach the server. Check the projector is on, then try again.";
+  else if (out.error) note.textContent = "📋 " + out.error + " Check the projector is on, then try again.";
+  else note.textContent = `📋 Today's recap is on the projector: ${out.missions} mission${out.missions === 1 ? "" : "s"} `
+    + `and ${out.stars} star${out.stars === 1 ? "" : "s"} so far. Press ✕ Close on the projector when you're ready.`;
+  b.disabled = false;
+  recapNoteTimer = setTimeout(() => { note.hidden = true; }, 20000);
 });
 $("roomTyping").addEventListener("change", async e => { await call({action: "room_words", on: e.target.checked}); refresh(); });
 $("strip").addEventListener("click", e => {

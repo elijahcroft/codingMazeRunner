@@ -5851,6 +5851,52 @@ def pixel_feed_add(text):
     del pixel_feed[:-40]
 
 
+# ---- 📋 Today's recap: light counts for the end of the lesson -------------------
+# They live in the class state and are dated by day, like day_jobs, so each new
+# day starts at zero. Old saves simply have no "days" key yet.
+DAY_KEEP = 7              # days of counters to keep, so the file stays small
+
+
+def pixel_day_name():
+    return time.strftime("%Y-%m-%d", time.localtime(time.time()))
+
+
+def pixel_day():
+    """Today's counters, made when first needed."""
+    day = pixel_day_name()
+    days = pixel_class.setdefault("days", {})
+    got = days.get(day)
+    if got is None:
+        got = days[day] = {
+            "players": [], "kids": {}, "missions": 0, "stars": 0, "chapters": [],
+            "first_chapter": {}, "turns": 0, "fixes": 0, "games": {}, "shows": 0,
+            "fish": 0, "gems": 0, "drawings": 0, "first_mission": None,
+            "first_game": None, "first_show": None, "first_drawing": None, "unlocks": []}
+        for old in sorted(days)[:-DAY_KEEP]:
+            days.pop(old, None)
+    return got
+
+
+def pixel_day_kid(p):
+    """One student's part of today's counts. The first touch is what counts them as playing."""
+    day = pixel_day()
+    kid = day["kids"].get(p["id"])
+    if kid is None:
+        kid = day["kids"][p["id"]] = {"stars": 0, "missions": 0, "turns": 0, "fixes": 0,
+                                      "games": 0, "shows": 0, "fish": 0, "gems": 0,
+                                      "claps": 0, "drawings": 0}
+        day["players"].append(p["id"])
+    return kid
+
+
+def pixel_day_touch(p):
+    """Count a student as having played today, and save the first time so it isn't lost."""
+    fresh = p["id"] not in pixel_day()["kids"]
+    pixel_day_kid(p)
+    if fresh:
+        pixel_save_soon()
+
+
 def pixel_badge(p, key, earned=None):
     entry = pixel_entry(p)
     if key in entry["badges"]:
@@ -5882,6 +5928,7 @@ def pixel_owned(entry):
 
 def pixel_state(p):
     entry = pixel_entry(p)
+    pixel_day_touch(p)
     frontier = pixel_frontier(entry)
     return {"you": {"name": p["name"]},
             "drawings": list(entry["drawings"]), "pal": pixel_pal(entry)["key"], "pip": pixel.PIP,
@@ -5942,6 +5989,7 @@ def pixel_record(p, key, code, out, guess=None, fixing=False):
     entry = pixel_entry(p)
     earned = []
     entry["active"] = int(time.time())
+    day, kid = pixel_day(), pixel_day_kid(p)
     entry["runs"][key] = entry["runs"].get(key, 0) + 1
     before = pixel_stars(entry)
     needed = pixel_hang_needs(entry)
@@ -5960,6 +6008,20 @@ def pixel_record(p, key, code, out, guess=None, fixing=False):
             pixel_badge(p, "loop", earned)
     if first:
         pixel_feed_add(f"⭐ {p['name']} finished {pixel.LEVEL_BY_KEY[key]['name']}")
+        day["missions"] += 1
+        kid["missions"] += 1
+        if day["first_mission"] is None:
+            day["first_mission"] = {"pid": p["id"], "name": pixel.LEVEL_BY_KEY[key]["name"]}
+        chapter = pixel.LEVEL_BY_KEY[key]["chapter"]
+        reached_before = any(k != key and k in pixel.LEVEL_BY_KEY
+                             and pixel.LEVEL_BY_KEY[k]["chapter"] == chapter
+                             and (stars or [False])[0]
+                             for k, stars in entry["solved"].items())
+        if not reached_before:
+            ch = pixel.CHAPTERS[chapter]
+            if ch["key"] not in day["chapters"]:
+                day["chapters"].append(ch["key"])
+            day["first_chapter"].setdefault(ch["key"], p["id"])
         hang_fill(pixel.MISSION_POINTS)
         left = [g for g in pixel.BOX_GIFTS if g not in entry["gifts"]]
         if left:
@@ -5983,6 +6045,8 @@ def pixel_record(p, key, code, out, guess=None, fixing=False):
     if remixed:
         entry["remixed"].append(key)
         rewards["remixed"] = True
+        day["turns"] += 1
+        kid["turns"] += 1
         pixel_badge(p, "remix", earned)
         pixel_feed_add(f"🎨 {p['name']} did Your turn on {pixel.LEVEL_BY_KEY[key]['name']}")
     lv = pixel.LEVEL_BY_KEY[key]
@@ -5991,6 +6055,8 @@ def pixel_record(p, key, code, out, guess=None, fixing=False):
     if fixed:
         entry["fixed"].append(key)
         rewards["fixed"] = True
+        day["fixes"] += 1
+        kid["fixes"] += 1
         pixel_badge(p, "fix", earned)
         pixel_feed_add(f"🐞 {p['name']} fixed the bug in {lv['name']}")
     right = False
@@ -5999,6 +6065,8 @@ def pixel_record(p, key, code, out, guess=None, fixing=False):
         right = guess == lv["guess"][2]
         rewards["guess"] = {"right": right, "answer": lv["guess"][1][lv["guess"][2]]}
     gained = pixel_stars(entry) - before
+    day["stars"] += gained
+    kid["stars"] += gained
     coins = pixel_pay(p, pixel.COINS_STAR * gained + (pixel.COINS_FIRST if first else 0)
                       + (pixel.REMIX_COINS if remixed else 0) + (pixel.GUESS_COINS if right else 0)
                       + (pixel.FIX_COINS if fixed else 0), play=False)
@@ -6030,6 +6098,7 @@ def room_empty():
 
 pixel_room = dict(room_empty(), open=True, words=False)
 pixel_bigshow = {"n": 0, "show": None}     # 🎬 the last show the teacher put on the projector
+pixel_recap = {"n": 0, "recap": None}      # 📋 the last end-of-lesson recap the teacher put on it
 
 
 def room_compact(pal):
@@ -6116,6 +6185,10 @@ def hang_fill(points):
         reward = pixel.HANG_REWARDS[meter["level"]] if meter["level"] < len(pixel.HANG_REWARDS) else None
         meter["level"] += 1
         pixel_feed_add(f"🎉 Class party!{' New: ' + reward['name'] if reward else ''}")
+        if reward:
+            unlocks = pixel_day()["unlocks"]
+            if reward["name"] not in unlocks:
+                unlocks.append(reward["name"])
         room_event("party", reward=reward, meter=hang_view())
     pixel_save_soon()
 
@@ -6143,6 +6216,11 @@ GAME_WIDTH = 640                 # Park + Wedding garden, available to every cla
 GAME_KINDS = ("hide", "tag", "race", "dance", "code", "draw", "apples", "ball")
 GAME_TITLES = {"hide": "Hide & seek", "tag": "Tag", "race": "Red light, green light", "dance": "Copy the dance", "code": "a Code race",
                "draw": "Draw & guess", "apples": "Apple grab", "ball": "Pal ball"}
+GAME_RECAP_ICONS = {"hide": "🙈", "tag": "🏃", "race": "🚦", "dance": "💃", "code": "💻",
+                    "draw": "🎨", "apples": "🍎", "ball": "⚽"}
+GAME_RECAP_NAMES = {"hide": "Hide & seek", "tag": "Tag", "race": "Red light, green light",
+                    "dance": "Copy the dance", "code": "Code race", "draw": "Draw & guess",
+                    "apples": "Apple grab", "ball": "Pal ball"}
 STILL_GAMES = ("code", "draw")   # everyone stands in a row in the Park, and nothing is hidden
 APPLE_SECONDS = 60               # one short round, so the next game can start
 APPLE_COUNT = 5                  # apples on the ground at once
@@ -6242,6 +6320,7 @@ def game_finish(message, reward=False, winners=()):
     game.update(phase="results", until=time.time() + 10, message=message)
     game["rewards"] = {}
     if reward:
+        first_pid = None
         for seat in game["joined"]:
             pair = game_seats().get(seat)
             if not pair:
@@ -6249,6 +6328,8 @@ def game_finish(message, reward=False, winners=()):
             p = players.get(pair[0])
             if not p:
                 continue
+            first_pid = first_pid or p["id"]
+            pixel_day_kid(p)["games"] += 1
             entry, earned = pixel_entry(p), []
             rounds = entry.setdefault("play_rounds", {})
             rounds[game["kind"]] = rounds.get(game["kind"], 0) + 1
@@ -6263,6 +6344,10 @@ def game_finish(message, reward=False, winners=()):
             coins = pixel_pay(p, pixel.COINS_ROUND + (pixel.COINS_WIN if seat in winners else 0))
             day_job(p, "game")
             game["rewards"][seat] = {"badges": earned, "gift": gift, "points": 2, "coins": coins, "won": seat in winners}
+        day = pixel_day()
+        day["games"][game["kind"]] = day["games"].get(game["kind"], 0) + 1
+        if first_pid and day["first_game"] is None:
+            day["first_game"] = {"pid": first_pid, "kind": game["kind"]}
         hang_fill(2 * len(game["rewards"]))
         pixel_save_soon()
     room_event("game", message=message)
@@ -7300,6 +7385,9 @@ def room_fish(p, spot, data):
     if len(entry["fish"]) == len(pixel.FISH):
         pixel_badge(p, "angler", earned)
     room_event("fished", seat=spot["seat"], icon=pixel.FISH[kind][0])
+    day, kid = pixel_day(), pixel_day_kid(p)
+    day["fish"] += 1
+    kid["fish"] += 1
     day_job(p, "fish")
     pixel_save_soon()
     return {"ok": True, "fish": kind, "new": new, "coins": coins, "badges": earned}
@@ -7363,6 +7451,11 @@ def room_perform(p, spot, data):
         return {"error": "That show has nothing the Hang out can show yet. Add a move on the 🎬 Free stage first."}
     spot.update(rest=None, claps=0, move_until=now + ms / 1000 + .7)
     entry["performed"], entry["perform_until"], entry["active"] = now, now + ms / 1000, int(now)
+    day, kid = pixel_day(), pixel_day_kid(p)
+    day["shows"] += 1
+    kid["shows"] += 1
+    if day["first_show"] is None:
+        day["first_show"] = {"pid": p["id"]}
     earned = []
     pixel_badge(p, "showtime", earned)
     room_event("mymove", seat=spot["seat"], by=spot["name"], title="Showtime!", steps=steps,
@@ -7468,6 +7561,9 @@ def room_find(p, spot, key):
         pixel_pay(p, pixel.COINS_GEM)
         day_job(p, "gem")
         room_event("found", seat=spot["seat"])
+        day, kid = pixel_day(), pixel_day_kid(p)
+        day["gems"] += 1
+        kid["gems"] += 1
         if len(entry["found"]) == len(pixel.HANG_FINDS):
             pixel_badge(p, "treasure", earned)
         pixel_save_soon()
@@ -7905,6 +8001,7 @@ def room_do(p, data):
         entry = pixel_entry(p)
         if pixel_hang_needs(entry):
             return {"error": "locked"}
+        pixel_day_touch(p)
         if not spot:
             if not room["here"]:
                 room["next_shower"] = time.time() + SHOWER_FIRST
@@ -8039,6 +8136,9 @@ def room_do(p, data):
             spot["clapped"] = now
             target["claps"] = target.get("claps", 0) + 1
             room_event("clap", seat=target["seat"], claps=target["claps"])
+            target_p = next((players.get(pid) for pid, s in room["here"].items() if s is target), None)
+            if target_p:
+                pixel_day_kid(target_p)["claps"] += 1
             day_job(p, "clap")
     elif what == "five":
         return room_high_five(p, spot, data.get("seat"))
@@ -8121,6 +8221,114 @@ def pixel_class_strip(rows):
         elif row["place"] in by_key:
             by_key[row["place"]]["count"] += 1
     return {"chapters": chapters, "not_started": not_started, "all_done": all_done}
+
+
+def pixel_recap_shoutouts(day, kids):
+    """3 to 5 kind shout-outs for today, never the same student twice and never a
+    "worst" or a last place. Names go through hang_name, like the projector's tags."""
+    offered = []
+
+    def name_of(pid):
+        p = players.get(pid)
+        return hang_name(p) if p else None
+
+    def offer(icon, pid, text):
+        if pid and name_of(pid):
+            offered.append({"pid": pid, "icon": icon, "text": text.format(name=name_of(pid))})
+
+    def most(key):
+        return max(kids.items(), key=lambda kv: kv[1].get(key, 0), default=None)
+
+    chapters = {ch["key"]: ch for ch in pixel.CHAPTERS}
+    for key in [k for k in day.get("chapters", []) if k in chapters][:2]:
+        pid = (day.get("first_chapter") or {}).get(key)
+        if pid:
+            ch = chapters[key]
+            offer(ch["icon"], pid, "{name} was first to reach " + ch["icon"] + " " + ch["name"] + " today")
+    first = day.get("first_mission") or {}
+    if first.get("pid"):
+        offer("⭐", first["pid"], "{name} was first to finish a mission today: " + first.get("name", "a mission"))
+    first = day.get("first_drawing") or {}
+    if first.get("pid"):
+        offer("🎨", first["pid"], "{name} made a new drawing today")
+    best = most("claps")
+    if best and best[1].get("claps", 0):
+        offer("👏", best[0], "{name} got the most claps today: " + str(best[1]["claps"]) + " 👏")
+    first = day.get("first_show") or {}
+    if first.get("pid"):
+        offer("🎤", first["pid"], "{name} was first to perform a show today 🎤")
+    first = day.get("first_game") or {}
+    if first.get("pid"):
+        icon = GAME_RECAP_ICONS.get(first.get("kind"), "🎮")
+        offer(icon, first["pid"], "{name} was in the class's first game today: "
+              + icon + " " + GAME_RECAP_NAMES.get(first.get("kind"), "a game"))
+    best = most("fish")
+    if best and best[1].get("fish", 0) >= 2:
+        offer("🎣", best[0], "{name} caught " + str(best[1]["fish"]) + " fish today 🎣")
+    best = most("gems")
+    if best and best[1].get("gems", 0):
+        offer("💎", best[0], "{name} found " + str(best[1]["gems"]) + " gems today 💎")
+    best = most("stars")
+    if best and best[1].get("stars", 0) >= 2:
+        offer("⭐", best[0], "{name} earned " + str(best[1]["stars"]) + " stars today ⭐")
+    best = most("games")
+    if best and best[1].get("games", 0) >= 2:
+        offer("🎮", best[0], "{name} finished " + str(best[1]["games"]) + " games today 🎮")
+    best = most("turns")
+    if best and best[1].get("turns", 0):
+        n = best[1]["turns"]
+        offer("🎨", best[0], "{name} did " + str(n) + " Your turn" + ("s" if n != 1 else "") + " today 🎨")
+    best = most("fixes")
+    if best and best[1].get("fixes", 0):
+        n = best[1]["fixes"]
+        offer("🐞", best[0], "{name} fixed " + str(n) + " bug" + ("s" if n != 1 else "") + " today 🐞")
+    for pid in kids:                      # a kind fallback, so a quiet day still has a few
+        offer("👋", pid, "{name} joined in today")
+    picked, used, used_names = [], set(), set()
+    for item in offered:
+        name = name_of(item["pid"])
+        if item["pid"] in used or name in used_names:
+            continue
+        used.add(item["pid"])
+        used_names.add(name)
+        picked.append({"who": hashlib.sha1(item["pid"].encode()).hexdigest()[:12],
+                       "icon": item["icon"], "text": item["text"]})
+        if len(picked) == 5:
+            break
+    return picked
+
+
+def pixel_recap_view():
+    """Everything honest to say about today. A missing count is just left out by the page."""
+    day = pixel_day()
+    kids = day.get("kids") or {}
+    chapters = []
+    for key in day.get("chapters", []):
+        ch = next((c for c in pixel.CHAPTERS if c["key"] == key), None)
+        if ch:
+            chapters.append({"key": key, "icon": ch["icon"], "name": ch["name"],
+                             "short": pixel.CHAPTER_SHORT.get(key, ch["name"])})
+    games = [{"key": kind, "icon": GAME_RECAP_ICONS.get(kind, "🎮"),
+              "name": GAME_RECAP_NAMES.get(kind, kind), "count": day.get("games", {}).get(kind, 0)}
+             for kind in GAME_KINDS if day.get("games", {}).get(kind)]
+    return {"day": pixel_day_name(), "students": len(set(day.get("players") or []) | set(kids)),
+            "missions": day.get("missions", 0), "stars": day.get("stars", 0),
+            "chapters": chapters, "turns": day.get("turns", 0), "fixes": day.get("fixes", 0),
+            "games": games, "shows": day.get("shows", 0), "fish": day.get("fish", 0),
+            "gems": day.get("gems", 0), "drawings": day.get("drawings", 0),
+            "party": hang_view(), "unlocks": list(day.get("unlocks") or []),
+            "shoutouts": pixel_recap_shoutouts(day, kids)}
+
+
+def pixel_recap_show():
+    """📋 Put today's recap on the projector, like 🎬 Big screen: an event and a poll fallback."""
+    payload = pixel_recap_view()
+    pixel_recap["n"] += 1
+    payload = dict(payload, recap_id=pixel_recap["n"])
+    pixel_recap["recap"] = payload
+    room_event("recap", **payload)
+    return {"ok": True, "students": payload["students"], "missions": payload["missions"],
+            "stars": payload["stars"]}
 
 
 def pixel_overview():
@@ -8235,6 +8443,8 @@ def pixel_teacher(data):
         return {"ok": True}
     if action == "big_show":           # 🎬 one student's Free stage show, full size on the projector
         return pixel_big_show(data)
+    if action == "recap":              # 📋 the end-of-lesson recap, full size on the projector
+        return pixel_recap_show()
     if action == "end_game":           # no prizes: nobody finished the round
         game_finish("The teacher ended this game.")
         return {"ok": True}
@@ -8275,6 +8485,17 @@ def pixel_get(path, query):
             if not show or show["show_id"] <= after:
                 return {"n": pixel_bigshow["n"]}
             return show
+        if path == "/pixel/recap":          # and for the next 📋 Today's recap
+            if query.get("now"):
+                return {"n": pixel_recap["n"]}
+            try:
+                after = int(query.get("after", ["0"])[0])
+            except ValueError:
+                after = 0
+            recap = pixel_recap["recap"]
+            if not recap or recap["recap_id"] <= after:
+                return {"n": pixel_recap["n"]}
+            return recap
         p = players.get(query.get("id", [""])[0])
         if not p:
             return {"you": None}
@@ -8303,10 +8524,18 @@ def pixel_post(path, data):
             return {"error": "join"}
         entry = pixel_entry(p)
         if path == "/pixel/save":
+            pixel_day_touch(p)
+            was = {d["key"] for d in entry["drawings"]}
             error = pixel.save_drawing(entry["drawings"], data.get("drawing"))
             if error:
                 return {"error": error}
             saved = entry["drawings"][0]
+            if saved["key"] not in was:          # a brand new drawing, not an autosave of one being changed
+                day, kid = pixel_day(), pixel_day_kid(p)
+                day["drawings"] += 1
+                kid["drawings"] += 1
+                if day["first_drawing"] is None:
+                    day["first_drawing"] = {"pid": p["id"]}
             earned = []
             if len(saved["frames"]) >= 2:
                 pixel_badge(p, "artist", earned)
