@@ -600,7 +600,7 @@ const PalStage = (() => {
     function makeMember(m, you) {
       return {seat: m.seat, name: m.name, x: m.x, y: m.y, tx: m.x, ty: m.y, flip: false, mood: m.mood, move: null, moveFrom: 0, until: 0,
               talkUntil: 0, me: m.seat === you, rest: m.rest || null, restNext: null, wear: m.wear || {}, wearArt: m.wear_art || {}, size: m.pal.size, queue: null, spotUntil: 0, trail: false, sparked: 0,
-              pal: m.pal, pup: memberPuppet(m.pal, m.seat), concealed: !!m.concealed, tucked: !!m.tucked, playing: !!m.playing, role: m.role || "", prop: !!m.prop, hid: !!m.hid};
+              pal: m.pal, pup: memberPuppet(m.pal, m.seat), concealed: !!m.concealed, tucked: !!m.tucked, playing: !!m.playing, role: m.role || "", prop: !!m.prop, hid: !!m.hid, team: m.team || ""};
     }
     function roomStart(data, you) {
       roomStop();
@@ -634,7 +634,7 @@ const PalStage = (() => {
           m.rest = m.restNext = m.toyNext = null;
           clearBubble("s" + m.seat);
         }
-        m.concealed = !!row.concealed; m.tucked = !!row.tucked; m.playing = !!row.playing; m.role = row.role || ""; m.prop = !!row.prop; m.hid = !!row.hid;
+        m.concealed = !!row.concealed; m.tucked = !!row.tucked; m.playing = !!row.playing; m.role = row.role || ""; m.prop = !!row.prop; m.hid = !!row.hid; m.team = row.team || "";
         if (m.concealed && m.tag) m.tag.style.display = "none";
       }
       return missing;
@@ -880,6 +880,14 @@ const PalStage = (() => {
         const hop = m.move === "jump" ? Math.sin(Math.min(1, held) * Math.PI) * (m.bigHop ? 90 : 44) : 0;
         m.hop = hop;
         const squeeze = m.move === "spin" ? Math.cos(held * Math.PI * 4) : 1;
+        if (m.team) {          // ⚽ Pal ball: a small ring under each player's pal, Blue or Orange
+          const ring = m.team === "blue" ? "#3f7ddc" : "#e8832f";
+          g.save();
+          g.beginPath(); g.ellipse(m.x, roomBase(m) + 2, 12, 4.2, 0, 0, Math.PI * 2);
+          g.fillStyle = ring + "55"; g.fill();
+          g.strokeStyle = ring; g.lineWidth = 2.4; g.stroke();
+          g.restore();
+        }
         m.pup.draw(g, frame, pose, m.x, roomBase(m) - hop, {flip: m.flip, squeeze});
         if (Math.abs(squeeze) > .4) drawWear(m, roomBase(m) - hop);
         if (m.rest === "read" && !m.move && !rig.empty) drawBook(m, rig);
@@ -899,7 +907,8 @@ const PalStage = (() => {
         m.tag.textContent = m.name;
         host.appendChild(m.tag);
       }
-      m.tag.textContent = m.tucked && m.me ? "You · Hidden" : m.hid && m.me ? "You · Name hidden" : m.name + (m.role ? " · " + m.role : "");
+      const team = m.team === "blue" ? "🔵 " : m.team === "orange" ? "🟠 " : "";
+      m.tag.textContent = m.tucked && m.me ? "You · Hidden" : m.hid && m.me ? "You · Name hidden" : team + m.name + (m.role ? " · " + m.role : "");
       const x = m.x - state.camX;
       m.tag.style.display = x < -30 || x > W + 30 || (m.hid && !m.me) ? "none" : "";
       m.tag.style.left = x / W * 100 + "%";

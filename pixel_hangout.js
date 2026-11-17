@@ -1483,6 +1483,32 @@ const PalHang = (() => {
     if (gold && shine) twinkle(g, x, y - 15, 2.2 + shine, "#fff2b0");
     g.restore();
   }
+  // ⚽ Pal ball: a goal frame at each end of the game area, and one big pixel ball.
+  // Blue scores in the right goal, Orange in the left one.
+  const BALL_GAME_WIDTH = 640, BALL_GOAL_X = 14, BALL_INK = {blue: "#3f7ddc", orange: "#e8832f"};
+  function goalFrame(g, x, into, colour) {
+    const top = seatFeet(.22), bottom = seatFeet(.98), back = x + into * 10;
+    line(g, [[x, top], [x, bottom]], colour, 2.4);       // the posts, and the net behind them
+    line(g, [[back, top - 4], [back, bottom + 2]], colour, 2.4);
+    line(g, [[x, top], [back, top - 4]], colour, 2.4);
+    line(g, [[x, bottom], [back, bottom + 2]], colour, 2.4);
+    for (let i = 1; i < 5; i++) {
+      const y = top + (bottom - top) * i / 5;
+      line(g, [[x + into, y], [back, y - 3]], colour + "66", .8);
+    }
+  }
+  function ball(g, x, feet, roll = 0) {
+    const r = 8;
+    oval(g, x, feet + 1, 9, 2, "#1b15302e");
+    g.save(); g.translate(x, feet - r); g.rotate(roll);
+    oval(g, 0, 0, r + 1.2, r + 1.2, "#243b53");
+    oval(g, 0, 0, r, r, "#fffdf6");
+    shape(g, [[-2.8, -2.6], [2.8, -2.6], [3.6, 1.4], [0, 3.8], [-3.6, 1.4]], "#243b53");
+    oval(g, -r * .62, -r * .5, 2.2, 2.2, "#cfdae4");
+    oval(g, r * .58, -r * .62, 1.7, 1.7, "#cfdae4");
+    oval(g, r * .4, r * .55, 1.5, 1.5, "#cfdae4");
+    g.restore();
+  }
   // A treasure chest: shut with a gold lock, or open with the lid up and coins shining.
   function chest(g, x, y, open, shine = 0) {
     g.save();
@@ -1738,7 +1764,7 @@ const PalHang = (() => {
     small.width = W; small.height = H;
     fine.width = W * FINE; fine.height = H * FINE;
     const lo = small.getContext("2d"), ink = fine.getContext("2d");
-    let frame = 0, last = 0, stopped = false;
+    let frame = 0, last = 0, stopped = false, ballDrawn = null;     // the ball eases towards the server's spot
     // The canvas's size, kept by the browser as it changes, so painting never has to stop and measure the page.
     let boxW = canvas.getBoundingClientRect().width, boxH = canvas.getBoundingClientRect().height;
     const sizer = new ResizeObserver(([e]) => { boxW = e.contentRect.width; boxH = e.contentRect.height; });
@@ -1822,6 +1848,24 @@ const PalHang = (() => {
       lo.drawImage(fine, 0, 0, W, H);
       // 3. The hiding places, standing on top of all that.
       for (const c of covers) cutCover(lo, c, cam);
+      // The ⚽ ball and its goals stay on top of the scenery, so they are never lost behind a bush.
+      if (playing && state.game.kind === "ball") {
+        goalFrame(lo, BALL_GOAL_X - cam, 1, BALL_INK.orange);       // Orange scores on the left
+        goalFrame(lo, BALL_GAME_WIDTH - BALL_GOAL_X - cam, -1, BALL_INK.blue);   // Blue scores on the right
+        const b = state.game.ball;
+        if (b) {
+          const tx = b.x, ty = seatFeet(b.y);
+          if (!ballDrawn || Math.hypot(tx - ballDrawn.x, ty - ballDrawn.y) > 120) ballDrawn = {x: tx, y: ty, at: now};
+          else {
+            const dt = Math.max(0, Math.min(.1, (now - ballDrawn.at) / 1000));
+            ballDrawn.at = now;
+            const ease = 1 - Math.exp(-14 * dt);       // the server sends the ball 5 times a second: ease in between
+            ballDrawn.x += (tx - ballDrawn.x) * ease;
+            ballDrawn.y += (ty - ballDrawn.y) * ease;
+          }
+          ball(lo, ballDrawn.x - cam, ballDrawn.y, PalStage.calm ? 0 : ballDrawn.x / 10);
+        }
+      }
       // 4. Onto the screen in big pixels, with the words kept sharp enough to read.
       g.setTransform(1, 0, 0, 1, 0, 0);
       g.imageSmoothingEnabled = false;
@@ -1843,6 +1887,11 @@ const PalHang = (() => {
       if (race) {
         sign(g, W / 2, race.light === "red" ? "🔴 RED LIGHT: FREEZE!" : "🟢 GREEN LIGHT: RUN!", 8, 11);
         if (race.finish - cam > 0 && race.finish - cam < W) sign(g, race.finish - cam, "🏁 Finish", 104);
+      }
+      if (playing && state.game.kind === "ball") {
+        const lx = BALL_GOAL_X - cam, rx = BALL_GAME_WIDTH - BALL_GOAL_X - cam;
+        if (onScreen(lx + 30)) sign(g, lx + 34, "← Orange goal", 70, 6);
+        if (onScreen(rx - 30)) sign(g, rx - 34, "Blue goal →", 70, 6);
       }
       if (hiding) for (const c of covers) sign(g, Math.round(c.x) - cam, c.name, Math.min(coverFeet(c) + 7, H - 13), 6);     // the name stays on the screen
       // On the class screen, each chest says what it asks for and how many have opened it today.

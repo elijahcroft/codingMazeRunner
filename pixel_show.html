@@ -313,7 +313,7 @@ $("savePhoto").addEventListener("click", () => {
   a.click();
 });
 // The game on now. A Code race shows the job, then the fastest code between rounds, so the class can read it together.
-const GAME_WORD = {hide: "🙈 Hide & seek", tag: "🏃 Tag", race: "🚦 Red light, green light", dance: "💃 Copy the dance", code: "💻 Code race", draw: "🎨 Draw & guess", apples: "🍎 Apple grab"};
+const GAME_WORD = {hide: "🙈 Hide & seek", tag: "🏃 Tag", race: "🚦 Red light, green light", dance: "💃 Copy the dance", code: "💻 Code race", draw: "🎨 Draw & guess", apples: "🍎 Apple grab", ball: "⚽ Pal ball"};
 const DANCE_ICON = {wave: "👋", jump: "🦘", spin: "🌀", cheer: "🎉"};
 function paintGame(g) {
   $("raceCard").hidden = !g;
@@ -329,6 +329,7 @@ function paintGame(g) {
       : g.kind === "race" ? (g.light === "red" ? "🔴 Red light: freeze!" : "🟢 Green light: run!")
       : g.kind === "draw" ? (g.pause && g.word ? `It was ${g.word[1]} ${g.word[2]}!` : `${name(g.drawer)} is drawing! Is it... ${(g.choices || []).map(c => c[1]).join(" ")}`)
       : g.kind === "apples" ? "Walk onto apples! Golden ones are worth 3."
+      : g.kind === "ball" ? `🔵 Blue ${(g.team_scores || {}).blue || 0} — ${(g.team_scores || {}).orange || 0} Orange 🟠 · walk into the ball to kick it`
       : `Round ${g.round + 1} of 3: ${(g.seq || []).map(m => DANCE_ICON[m] || m).join(" ")}`;
     $("raceCode").hidden = true;
     $("raceWho").textContent = g.phase !== "playing" && g.phase !== "hiding" ? ""
@@ -336,6 +337,7 @@ function paintGame(g) {
       : g.kind === "race" ? `At the flag: ${names(g.done)}`
       : g.kind === "draw" ? `Guessed it: ${names(g.guessed || [])} (${(g.guessed || []).length} of ${g.joined.length - 1})`
       : g.kind === "apples" ? `Apples: ${g.joined.map(s => `${name(s)} ${(g.scores || {})[s] || 0}`).join(" · ")}`
+      : g.kind === "ball" ? `Blue: ${g.joined.filter(s => (g.teams || {})[s] === "blue").map(name).join(", ") || "nobody"} · Orange: ${g.joined.filter(s => (g.teams || {})[s] === "orange").map(name).join(", ") || "nobody"}`
       : `Playing: ${g.joined.length}`;
     return;
   }

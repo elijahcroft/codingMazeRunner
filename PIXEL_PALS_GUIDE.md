@@ -335,7 +335,7 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
 - **🎣 Fishing:** the pier at the Beach has a blue ring. The pal walks over and casts,
   and when ❗ A bite! shows, a click anywhere on the picture reels it in. There are 8
   things to catch, kept in the fish book in 🧢 Me.
-- **Games:** any student can start a 💻 Code race, 🎨 Draw & guess, 🍎 Apple grab, Tag, Hide & seek, Red
+- **Games:** any student can start a 💻 Code race, 🎨 Draw & guess, 🍎 Apple grab, ⚽ Pal ball, Tag, Hide & seek, Red
   light green light, or Copy the dance, and friends choose to join. While a game waits for players, the bar
   above the world turns yellow for everyone not in it ("👉 Tap here to join!"), and one tap
   joins. In the race, each press of Run or → is one short run, and moving on red sends a pal
@@ -396,6 +396,19 @@ The panel lists every player's count as it changes, so the class can see who is 
 most apples when the 60 seconds end wins, and a tie shares the win. It pays coins and
 class-party points, with the first-game gift and the 🍎 Apple Picker badge, exactly like the
 other games. In 🌿 Calm the apples stay still.
+
+**⚽ Pal ball.** A 90-second round for 2 or more players. Players are put on teams in join
+order: the first is 🔵 Blue, the next 🟠 Orange, then Blue again, so odd numbers are fine.
+Blue kicks right, into the blue goal; Orange kicks left, into the orange goal. One big ball
+starts in the middle of the Park and Wedding garden, and a pal kicks it by walking into it
+(click the ground or use the arrow keys). The server moves the ball, slows it with friction
+and bounces it off the top and bottom of the ground, so everyone sees the same ball and the
+same goals. A goal rests the ball in the net for 2 seconds, then puts it back in the middle
+and adds 1 to that team's score. The team with more goals when the 90 seconds end wins, and
+a draw shares the win. Each player's pal has a small blue or orange ring under it for the
+round, and a sign over each goal says whose it is. It pays coins and class-party points,
+with the first-game gift and the ⚽ Ball Player badge, exactly like the other games. In
+🌿 Calm the ball does not spin.
 
 **❄️ The Snow Village.** From 16 November to 31 December, the world has one more place at its
 far end: a snowy evening village. Students get there by walking, from 🏞️ Go to, or with

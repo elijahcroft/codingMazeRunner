@@ -5649,6 +5649,7 @@ PIXEL_BADGES = {
     "play_code": ("💻", "Code Racer", "Finish a Code race"),
     "play_draw": ("🎨", "Picture Guesser", "Finish a game of Draw & guess"),
     "play_apples": ("🍎", "Apple Picker", "Finish a round of Apple grab"),
+    "play_ball": ("⚽", "Ball Player", "Finish a round of Pal ball"),
     "angler": ("🎣", "Gone Fishing", "Catch every kind of thing in the sea"),
     "all": ("🏆", "Star of the Show", "Get all the stars in the game"),
     "remix": ("🎨", "Remixer", "Do a Your turn: change a mission's code your own way"),
@@ -6135,9 +6136,9 @@ GAME_HIDE_SECONDS = 20
 GAME_ROUND_SECONDS = 90
 GAME_SPEED = 85
 GAME_WIDTH = 640                 # Park + Wedding garden, available to every class
-GAME_KINDS = ("hide", "tag", "race", "dance", "code", "draw", "apples")
+GAME_KINDS = ("hide", "tag", "race", "dance", "code", "draw", "apples", "ball")
 GAME_TITLES = {"hide": "Hide & seek", "tag": "Tag", "race": "Red light, green light", "dance": "Copy the dance", "code": "a Code race",
-               "draw": "Draw & guess", "apples": "Apple grab"}
+               "draw": "Draw & guess", "apples": "Apple grab", "ball": "Pal ball"}
 STILL_GAMES = ("code", "draw")   # everyone stands in a row in the Park, and nothing is hidden
 APPLE_SECONDS = 60               # one short round, so the next game can start
 APPLE_COUNT = 5                  # apples on the ground at once
@@ -6145,6 +6146,18 @@ APPLE_REACH = 16                 # how close a pal has to walk to grab one
 APPLE_GAP = 34                   # apples keep this far apart, so two are never picked up together
 APPLE_GOLD_CHANCE = .12          # an occasional golden apple
 APPLE_WORTH, APPLE_GOLD_WORTH = 1, 3
+BALL_SECONDS = 90                # one round, like the other team games
+BALL_REACH = 15                  # how close a pal has to walk to kick the ball
+BALL_KICK = 270                  # starting speed of a kick, in game pixels per second
+BALL_FRICTION = 2.4              # per second: the ball slows to a stop on the grass
+BALL_STOP = 8                    # slower than this and it stops
+BALL_BOUNCE = .72                # how much speed is kept bouncing off a line
+BALL_TOP, BALL_BOTTOM = .04, .96     # the top and bottom of the ground band
+BALL_WALL = 8                    # where the ball bounces off the end of the world
+BALL_GOAL_AT = 14                # how far into a goal the ball gets before it counts
+BALL_GOAL_TOP, BALL_GOAL_BOTTOM = .28, .92      # the mouth of each goal
+BALL_GOAL_PAUSE = 2              # seconds the ball rests in the goal before the middle again
+BALL_KICK_GAP = .25              # seconds between kicks, so a pal can't push it in one long shove
 RACE_START, RACE_END = 30, 600
 RACE_SECONDS = 90
 RACE_STEP = 34                   # how far one click or key press runs, so stopping is just not pressing
@@ -6182,6 +6195,18 @@ GAME_COVER = [
 
 def game_seats():
     return {s["seat"]: (pid, s) for pid, s in pixel_room["here"].items()}
+
+
+def game_teams(joined):
+    """Split players in join order: first Blue, next Orange, and so on. Odd numbers are fine."""
+    return {seat: ("blue" if i % 2 == 0 else "orange") for i, seat in enumerate(joined)}
+
+
+def ball_spot(team, n):
+    """A kick-off spot on the team's own half, in rows, so a big class isn't one heap."""
+    col, row = n % 4, n // 4
+    x = 268 - col * 56 if team == "blue" else 372 + col * 56
+    return max(24, min(GAME_WIDTH - 24, x)), round(min(.9, .3 + row * .2), 2)
 
 
 def game_distance(a, b):
@@ -6244,8 +6269,11 @@ def game_begin(now):
     game["it"] = random.choice(game["joined"]) if kind in ("hide", "tag") else None
     game.update(phase="hiding" if kind == "hide" else "playing",
                 until=now + (GAME_HIDE_SECONDS if kind == "hide" else RACE_SECONDS if kind == "race"
-                             else APPLE_SECONDS if kind == "apples" else GAME_ROUND_SECONDS),
+                             else APPLE_SECONDS if kind == "apples" else BALL_SECONDS if kind == "ball" else GAME_ROUND_SECONDS),
                 motion={}, hidden={}, found=[], tags={}, grace=now + 3, started=now)
+    teams = game_teams(game["joined"]) if kind == "ball" else {}
+    if kind == "ball":
+        game["teams"] = teams
     for i, seat in enumerate(game["joined"]):
         spot = seats[seat][1]
         spot.update(x=80 + i * 71 % 480, y=.55, rest=None)
@@ -6255,6 +6283,11 @@ def game_begin(now):
             spot.update(x=RACE_START, y=round((i + .5) / len(game["joined"]), 2))
         if kind in STILL_GAMES:     # everyone in a row in the Park, so a solver (or the drawer) is easy to watch
             spot.update(x=round(30 + i * 260 / max(1, len(game["joined"]) - 1)), y=.3 + .5 * (i % 2))
+        if kind == "ball":          # each team on its own side, behind the ball for the way it kicks
+            team = teams[seat]
+            slot = sum(1 for s in game["joined"][:i] if teams[s] == team)
+            x, y = ball_spot(team, slot)
+            spot.update(x=x, y=y)
         game["motion"][seat] = {"x": spot["x"], "y": spot["y"], "tx": spot["x"], "ty": spot["y"], "at": now}
     if kind == "race":
         game.update(light="green", light_until=now + random.uniform(*RACE_GREEN), done=[])
@@ -6276,6 +6309,10 @@ def game_begin(now):
         for _ in range(APPLE_COUNT):
             game["apples"].append(game_apple(game))
         room_event("game", message="🍎 Apple grab! Walk onto apples. Golden ones are worth 3.")
+    elif kind == "ball":
+        game.update(team_score={"blue": 0, "orange": 0}, goal_until=0, kick_at=0,
+                    ball={"x": GAME_WIDTH / 2, "y": .55, "vx": 0, "vy": 0}, ball_at=now)
+        room_event("game", message="⚽ Pal ball! Blue kicks right, Orange kicks left. Walk into the ball to kick it!")
     else:
         room_event("game", message="The seeker is counting!" if kind == "hide" else "Tag! Run!")
 
@@ -6543,6 +6580,83 @@ def apples_tick(game, seats, now):
             room_event("game", message=f"⭐ {seats[seat][1]['name']} grabbed a golden apple! +{APPLE_GOLD_WORTH}")
 
 
+def ball_tick(game, seats, now):
+    """Pal ball: pals kick the ball by walking into it, friction slows it, and goals score."""
+    if now >= game["until"]:
+        blue, orange = game["team_score"].get("blue", 0), game["team_score"].get("orange", 0)
+        if blue == orange:
+            game_finish(f"⚽ Draw! 🔵 Blue {blue} — {orange} 🟠 Orange. Everyone shares the win!",
+                        reward=True, winners=list(game["joined"]))
+        else:
+            team = "blue" if blue > orange else "orange"
+            winners = [s for s in game["joined"] if game["teams"].get(s) == team]
+            if winners:
+                names = " and ".join(seats[s][1]["name"] for s in winners)
+                game_finish(f"⚽ 🔵 Blue {blue} — {orange} 🟠 Orange! {names} win{'s' if len(winners) == 1 else ''}!",
+                            reward=True, winners=winners)
+            else:       # the team that scored has left: still pay the round, but no winner this time
+                game_finish(f"⚽ 🔵 Blue {blue} — {orange} 🟠 Orange! That team has left, so no winner this time.",
+                            reward=True)
+        return
+    if game.get("goal_until"):
+        if now < game["goal_until"]:
+            return                                  # the ball rests in the goal for a moment
+        game.update(goal_until=0, ball_at=now, ball={"x": GAME_WIDTH / 2, "y": .55, "vx": 0, "vy": 0})
+        return
+    ball = game["ball"]
+    # A pal who is walking into the ball kicks it away from themselves.
+    if now >= game.get("kick_at", 0):
+        for seat in game["joined"]:
+            motion = game["motion"].get(seat)
+            if not motion or game_distance(motion, {"x": motion["tx"], "y": motion["ty"]}) <= 1.5:
+                continue
+            if game_distance(motion, ball) >= BALL_REACH:
+                continue
+            # Kick the way the pal is walking: that is away from them when they run into the
+            # ball, and it still works when one big server step takes them past it.
+            dx, dy = motion["tx"] - motion["x"], (motion["ty"] - motion["y"]) * 42
+            far = math.hypot(dx, dy)
+            if far < .01:
+                dx, dy = ball["x"] - motion["x"], (ball["y"] - motion["y"]) * 42
+                far = math.hypot(dx, dy) or 1
+            ball["vx"], ball["vy"] = dx / far * BALL_KICK, dy / far * BALL_KICK / 42
+            ball["x"] += dx / far * 2          # a little separation, so it leaves the pal
+            ball["y"] += dy / far * 2 / 42
+            game["kick_at"] = now + BALL_KICK_GAP
+            break
+    dt = max(0, min(.5, now - game.get("ball_at", now)))
+    game["ball_at"] = now
+    if dt:
+        drag = math.exp(-BALL_FRICTION * dt)
+        ball["vx"] *= drag
+        ball["vy"] *= drag
+        if abs(ball["vx"]) < BALL_STOP:
+            ball["vx"] = 0
+        if abs(ball["vy"]) * 42 < BALL_STOP:
+            ball["vy"] = 0
+        ball["x"] += ball["vx"] * dt
+        ball["y"] += ball["vy"] * dt
+    if ball["y"] < BALL_TOP:
+        ball["y"], ball["vy"] = BALL_TOP, abs(ball["vy"]) * BALL_BOUNCE
+    elif ball["y"] > BALL_BOTTOM:
+        ball["y"], ball["vy"] = BALL_BOTTOM, -abs(ball["vy"]) * BALL_BOUNCE
+    # The right goal is Blue's (Blue kicks right); the left goal is Orange's.
+    mouth = BALL_GOAL_TOP <= ball["y"] <= BALL_GOAL_BOTTOM
+    team = "orange" if ball["x"] <= BALL_GOAL_AT and mouth else "blue" if ball["x"] >= GAME_WIDTH - BALL_GOAL_AT and mouth else None
+    if team:
+        game["team_score"][team] = game["team_score"].get(team, 0) + 1
+        game["goal_until"] = now + BALL_GOAL_PAUSE
+        ball["vx"] = ball["vy"] = 0
+        blue, orange = game["team_score"].get("blue", 0), game["team_score"].get("orange", 0)
+        room_event("game", message=f"⚽ GOAL for {'🔵 Blue' if team == 'blue' else '🟠 Orange'}! 🔵 {blue} — {orange} 🟠 Get ready for the next kick!")
+        return
+    # Outside a goal, the ends of the world bounce the ball back into play.
+    if ball["x"] < BALL_WALL:
+        ball["x"], ball["vx"] = BALL_WALL, abs(ball["vx"]) * BALL_BOUNCE
+    elif ball["x"] > GAME_WIDTH - BALL_WALL:
+        ball["x"], ball["vx"] = GAME_WIDTH - BALL_WALL, -abs(ball["vx"]) * BALL_BOUNCE
+
+
 def game_tick(now):
     game = pixel_room.get("game")
     if not game:
@@ -6593,6 +6707,9 @@ def game_tick(now):
         return
     if game["kind"] == "apples":
         apples_tick(game, seats, now)
+        return
+    if game["kind"] == "ball":
+        ball_tick(game, seats, now)
         return
     if game["phase"] == "hiding":
         if now >= game["until"]:
@@ -6764,12 +6881,17 @@ def game_view(you):
     if game["kind"] == "apples":
         # The whole game view travels with every room update, so the apples need no extra sync key.
         out.update(apples=game.get("apples", []), scores=game.get("score", {}))
+    if game["kind"] == "ball":
+        ball = game.get("ball", {})
+        out.update(ball={"x": round(ball.get("x", GAME_WIDTH / 2), 1), "y": round(ball.get("y", .55), 2)},
+                   teams={s: t for s, t in game.get("teams", {}).items() if s in game["joined"]},
+                   team_scores=game.get("team_score", {"blue": 0, "orange": 0}), goal_until=game.get("goal_until", 0))
     return out
 
 
 # What a screen needs each time to keep the pals it already has in step. The drawings, names and
 # clothes are sent once, in `members`, so the frequent updates stay small on school wifi.
-SYNC_KEYS = ("seat", "x", "y", "tx", "ty", "concealed", "tucked", "playing", "role", "prop", "hid")
+SYNC_KEYS = ("seat", "x", "y", "tx", "ty", "concealed", "tucked", "playing", "role", "prop", "hid", "team")
 
 
 def sync_row(spot, you):
@@ -6787,6 +6909,8 @@ def game_room_row(spot, you):
     row.update(tx=motion["tx"], ty=motion["ty"], concealed=hidden, playing=True,
                tucked=seat in game["hidden"] and seat not in game["found"],
                role=("SEEKER" if game["kind"] == "hide" else "IT") if seat == game["it"] else "FOUND" if seat in game["found"] else "")
+    if game["kind"] == "ball":
+        row["team"] = game.get("teams", {}).get(seat)
     if hidden:
         row.update(x=160, y=.55, tx=160, ty=.55, tucked=False)
     return row
