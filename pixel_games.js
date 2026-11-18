@@ -199,6 +199,7 @@ function paintGameState(data) {
   const racing = ["code", "draw"].includes(g?.kind) && g.phase === "playing" && g.joined.includes(data.you);
   $("hangView").classList.toggle("racing", !!racing);
   $("hangView").classList.toggle("playing", !!inRound());
+  paintShopNudge();      // quiet while a round is on
   if (roomStage) roomStage.state.camera = racing ? () => 0 : null;
   // A round's controls are in Games (the job, the moves, the hiding places), so a player is taken there once when it starts.
   if (g && g.joined.includes(data.you) && ["hiding", "playing", "dressing", "runway"].includes(g.phase) && raceShown !== g.id) {

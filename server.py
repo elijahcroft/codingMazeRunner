@@ -6157,6 +6157,23 @@ def pixel_owned(entry):
             + [k for k in pixel.GOAL_GIFTS if have[pixel.GIFTS[k]["goal"][0]] >= pixel.GIFTS[k]["goal"][1]])
 
 
+def pixel_bought_anything(entry):
+    """Whether this student has ever bought in the Shop (or made a Wear-my-drawing).
+    Box gifts, goal gifts, home prizes and the walls a room comes with are not in
+    the Shop, so they don't count as buying."""
+    if entry.get("mywear"):
+        return True
+    if any(key in pixel.SHOP for key in entry["stuff"]):
+        return True
+    return any(key in pixel.SHOP and pixel.SHOP[key]["kind"] == "wear" for key in entry["gifts"])
+
+
+def pixel_shop_nudge(entry):
+    """The gentle 'you can buy something' line: enough coins for the cheapest
+    thing in the Shop, and nothing bought yet. It stops for good after a buy."""
+    return not pixel_bought_anything(entry) and entry["coins"] >= pixel.SHOP_CHEAPEST
+
+
 def pixel_state(p):
     entry = pixel_entry(p)
     pixel_day_touch(p)
@@ -6191,6 +6208,7 @@ def pixel_state(p):
                      "thing_start": pixel.THING_START,
                      "mywear": entry["mywear"], "my_wear_price": pixel.MY_WEAR_PRICE, "my_wear_max": pixel.MY_WEAR_MAX,
                      "fancy": pixel.FANCY_PRICE, "winter": winter_view(entry), "wish": entry.get("wish"),
+                     "shop_nudge": pixel_shop_nudge(entry),
                      "paints": pixel.FURN_PAINTS, "sizes": pixel.FURN_SIZES}}
 
 
@@ -7914,7 +7932,7 @@ def room_view(p, after, watch=0):
         entry = pixel_entry(p)
         out.update(coins=entry["coins"], play_left=pixel.PLAY_COINS_DAY - pixel_play_today(entry),
                    owned=pixel_owned(entry), progress=pixel_progress(entry), jobs=day_jobs_view(entry),
-                   stuff=entry["stuff"], news=entry.get("news", 0))
+                   stuff=entry["stuff"], news=entry.get("news", 0), shop_nudge=pixel_shop_nudge(entry))
     if whole:
         out.update(members=[game_room_row(s, out["you"]) for s in here], events=[],
                    placed=[room_placed_row(r, p, n * pixel.PLACE_W) for n, each in enumerate(rooms) for r in each["art"]]

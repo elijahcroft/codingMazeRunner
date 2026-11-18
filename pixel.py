@@ -2758,6 +2758,7 @@ SHOP = dict({key: dict(gift, kind="wear") for key, gift in GIFTS.items() if gift
             **{key: dict(item, kind="wall") for key, item in HOME_WALLS.items() if item["price"]},
             **{key: dict(item, kind="floor") for key, item in HOME_FLOORS.items() if item["price"]},
             **{key: dict(item, kind="room") for key, item in HOME_ROOMS.items()})
+SHOP_CHEAPEST = min(item["price"] for item in SHOP.values())     # the first thing a student can afford
 HOME_TOYS = frozenset(item["toy"] for item in FURNITURE.values() if "toy" in item)
 HOME_ART = 5               # drawings a student can hang up in each room
 HOME_ITEMS = 12            # pieces of furniture in each room

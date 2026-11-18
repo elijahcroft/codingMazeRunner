@@ -9,6 +9,7 @@ let furnArmed = null, buyArmed = null, fishing = null, homeSeen = "", peopleSeen
 let weddingAsk = null, weddingSeen = "", birthdayPartySeen = 0, birthdayBannerUntil = 0;
 let houseBusy = false, houseInviteSeen = null;
 let newsShown = false, newsDeferred = false, newsMarkPending = false;     // ✨ the one-time New! card
+let welcomeUntil = 0;     // the first-time welcome banner is up until then
 let muralInk = 0, muralWhoMode = false;     // 🖼️ the colour picked, and "who painted?" instead of painting
 // At home: ✋ moving things (a click picks one up, instead of playing with it), and which room is on screen.
 let moving = false, roomInView = 0;
@@ -260,8 +261,22 @@ function buildRoomButtons() {
   box.scrollTop = keepScroll;     // a poll refreshes the same pane in place, not back to the top
 }
 // ---- Coins and the shop ---------------------------------------------------------------------
+// 🛍️ A gentle nudge for a student with coins who has never bought anything: one quiet
+// line in the coin bar, only in the Hang out, and never under a card or during a round.
+function paintShopNudge() {
+  const el = $("coinNudge");
+  if (!el) return;
+  const cardUp = !$("hangNews").hidden;
+  const welcomeUp = performance.now() < welcomeUntil;
+  const g = roomInfo && roomInfo.game;
+  const round = roomInfo && ((typeof inRound === "function" && inRound()) ||
+    (g && ["hiding", "playing", "dressing", "runway"].includes(g.phase)));
+  el.hidden = !(roomInfo && roomInfo.open && S.hang.shop_nudge && !cardUp && !welcomeUp &&
+                !round && !$("hangView").hidden);
+}
 function paintCoins(data) {
   if (data && data.coins !== undefined) {
+    if (data.shop_nudge !== undefined) S.hang.shop_nudge = !!data.shop_nudge;
     if (coinsSeen !== null && data.coins > coinsSeen) {
       const bar = $("coinBar");
       bar.classList.remove("bump"); void bar.offsetWidth; bar.classList.add("bump");
@@ -295,6 +310,7 @@ function paintCoins(data) {
     $("coinWishName").textContent = `⭐ ${wish.name}: ${Math.min(S.hang.coins, wish.price)} / ${wish.price}`;
     $("coinWishBar").style.width = Math.min(100, S.hang.coins / wish.price * 100) + "%";
   }
+  paintShopNudge();
   showStars();
 }
 let coinsDone = false, shopTab = "furniture";
@@ -355,6 +371,7 @@ async function buy(key) {
   const out = await tap("buy", {key});
   if (!out || !out.ok) { if (out && out.error) tipFor(out.error); buildRoomButtons(); return; }
   Object.assign(S.hang, {coins: out.coins, gifts: out.gifts, stuff: out.stuff});
+  S.hang.shop_nudge = false;     // they have bought something now: the nudge stops for good
   coinsSeen = out.coins;
   PalStage.SFX.play("gift");
   if (S.hang.wish === key) S.hang.wish = null;
@@ -827,6 +844,7 @@ async function sew(slot) {
   const out = await tap("sew", {key, slot});
   if (!out || !out.ok) { tipFor((out && out.error) || "Couldn't reach the Hang out. Please try again."); buildRoomButtons(); return; }
   Object.assign(S.hang, {coins: out.coins, mywear: out.mywear, wear: out.wear});
+  S.hang.shop_nudge = false;     // a bought drawing counts as buying something too
   coinsSeen = out.coins;
   PalStage.SFX.play("gift");
   tipFor(`✏️ You're wearing ${out.item.name}! Everyone can see it.`, 5000);
@@ -1112,6 +1130,7 @@ function roomState(data) {
   for (const e of data.events) roomEvent(e, data.you);
   if (data.mural && roomPane === "mural") muralRefresh();
   paintNewsCard();
+  paintShopNudge();
 }
 // ---- 🎯 Today's jobs: three small things to do, the same for the whole class each day ---------------
 let jobsSeen = null;
@@ -1216,12 +1235,16 @@ function openRoom() {
 // student on this computer; if the browser won't keep it, it stays quiet rather than repeat.
 function welcomeOnce() {
   newsDeferred = false;
+  welcomeUntil = 0;
   const key = "pixelHangHello:" + me;
   try { if (localStorage.getItem(key)) return; localStorage.setItem(key, "1"); newsDeferred = true; } catch (_) { return; }
   roomPane = "games";
   buildRoomButtons();
   $("roomButtons").scrollTop = 0;
   banner(`🎉 Welcome to the Hang out!<small>Click the ground to walk. Today's 🎯 jobs are in Games, on the right.</small>`, 7000, true);
+  welcomeUntil = performance.now() + 7000;
+  paintShopNudge();
+  setTimeout(paintShopNudge, 7100);
 }
 // ✨ The one-time New! card: big rows that jump to the four new things in the Hang out.
 // It is kept on the student's server entry, so it does not come back on another laptop.
@@ -1234,9 +1257,10 @@ function paintNewsCard() {
   newsShown = true;
   el.hidden = false;
   const b = $("hangBanner");
-  if (b && !b.hidden && /Welcome to the Hang out/i.test(b.innerHTML)) b.hidden = true;     // one card at a time
+  if (b && !b.hidden && /Welcome to the Hang out/i.test(b.innerHTML)) { b.hidden = true; welcomeUntil = 0; }     // one card at a time
   const got = $("newsGotIt");
   if (got) got.focus({preventScroll: true});
+  paintShopNudge();
   markNewsSeen();
 }
 function markNewsSeen() {
@@ -1250,6 +1274,7 @@ function markNewsSeen() {
 function closeNews() {
   const el = $("hangNews");
   if (el) el.hidden = true;
+  paintShopNudge();
 }
 function newsGo(where) {
   closeNews();
@@ -1341,6 +1366,15 @@ function palAt(x, y) {
 new ResizeObserver(fitRoomScreen).observe($("roomHost").closest(".hang-main"));
 $("houseStatus").addEventListener("click", joinOpenHouse);
 $("openHouseBar").addEventListener("click", e => { if (e.target.closest("[data-house-close]")) closeOpenHouse(); });
+$("coinNudge").addEventListener("click", () => {
+  roomPane = "shop";
+  shopTab = "wear";            // the cheapest wear first, with "You can buy these now" at the top
+  artArmed = furnArmed = buyArmed = null;
+  moving = false;
+  buildRoomButtons();
+  $("roomButtons").scrollTop = 0;
+  paintShopNudge();
+});
 $("hangNews").addEventListener("click", e => {
   const go = e.target.closest("[data-news-go]");
   if (go) { newsGo(go.dataset.newsGo); return; }

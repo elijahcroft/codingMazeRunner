@@ -425,7 +425,10 @@ later visit.
   then what they have already. Rooms and walls show a little picture of how they'll look.
   A student clicks a thing twice to buy it. Furniture can be bought again and again (two
   beds, three balloons); everything else is bought once. Furniture bought while at home is
-  ready to put out straight away. Shop things never come out of a gift box.
+  ready to put out straight away. Shop things never come out of a gift box. A student who
+  can afford the cheapest thing but has never bought anything gets a small 🛍️ **You can buy
+  something!** line under their coins; one tap opens the 🧢 To wear shelf, and the line stops
+  for good after their first buy.
 - **⭐ Saving up:** clicking something they can't afford yet makes it their wish. The coin
   bar then shows it with a bar (⭐ Piano: 30 / 55), a ⭐ YOU SAVED UP! banner shows when
   the coins are there, and buying it clears the wish. Clicking it again stops saving.
