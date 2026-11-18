@@ -336,6 +336,11 @@ def main():
         tap(a, 1, 0)
         pick_tile(a, "G")
         tap(a, 0, 4)
+        # A level nobody could beat isn't saved: the maker is told what's cut off.
+        save_maker(a, 'My <b> & "cool"', expect_error="can't reach the 🛰 beacon")
+        # Open a path past the rock, and it saves (still to be beaten by its maker).
+        pick_tile(a, ".")
+        tap(a, 0, 1)
         key_noway = save_maker(a, 'My <b> & "cool"')
         check(a.js("return site.name") == "My b cool", "markup is stripped from a level name")
         check(a.js("return !document.body.innerHTML.includes('&lt;b&gt;')"),
@@ -439,7 +444,7 @@ def main():
         check(b.js("return document.getElementById('levelsPip').hidden") is False,
               "the pink Levels count shows unseen class levels")
         check(b.js("return document.getElementById('levelsPip').textContent") == "4",
-              "the count is the four levels Bo has not beaten")
+              "the count is the four levels Bo has not beaten (pip says %r)" % b.js("return document.getElementById('levelsPip').textContent"))
         shot(b, "12_bo_workshop")
         open_tile(b, "workshop", key_moo)
         shot(b, "13_bo_moo")

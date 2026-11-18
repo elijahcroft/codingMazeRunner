@@ -130,9 +130,14 @@ class Kid:
         """The motion check: two screenshots 300 ms apart with calm on."""
         self.quiet()
         time.sleep(settle)
+        # A toast arriving between the two shots is new content, not motion
+        # (calm mode already stops its slide), so the toast corner is hidden.
+        hide = "document.querySelectorAll('.toasts').forEach(t => t.style.visibility = arguments[0])"
+        self.d.js(hide, "hidden")
         a_path = self.shot(label + "-a")
         time.sleep(.30)
         b_path = self.shot(label + "-b")
+        self.d.js(hide, "")
         a = Image.open(a_path).convert("RGB")
         b = Image.open(b_path).convert("RGB")
         diff = ImageChops.difference(a, b)
@@ -323,7 +328,7 @@ def check_planet_views(kid):
         time.sleep(.25)
     kid.d.wait("return !document.getElementById('scoutCode').disabled", 6, "Use as code")
     kid.d.click("#scoutCode")
-    time.sleep(.4)
+    kid.d.wait("return !!site.typing", 3)   # no error here: the check below says what went wrong
     if not kid.d.js("return !!site.typing"):
         REPORT.fail(kid.where, "Use as code did not open the typing coach")
     else:
