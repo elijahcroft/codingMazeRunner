@@ -235,6 +235,11 @@ function nightfall(swap, quick) {
   });
 }
 function stepNight(now) {
+  // Calm mode turned on during the night: finish it at once, without the fade.
+  if (CALM) {
+    if (!night.swapped) { night.swapped = true; night.swap(); }
+    const done = night.done; night = null; done(); return;
+  }
   const u = (now - night.t0) / night.dur;
   if (u >= .5 && !night.swapped) { night.swapped = true; night.swap(); }
   if (u >= 1) { const done = night.done; night = null; done(); }
@@ -878,7 +883,11 @@ $("friends").addEventListener("click", e => { if (e.target.dataset.who) visitFar
 $("visitClose").addEventListener("click", closeDialogs);
 $("helpButton").addEventListener("click", () => { $("calmBox").checked = CALM; $("bigBox").checked = document.body.classList.contains("big"); $("help").hidden = false; });
 $("helpClose").addEventListener("click", closeDialogs);
-$("calmBox").addEventListener("change", e => { CALM = e.target.checked; store("planetCalm", CALM ? "1" : "0"); document.body.classList.toggle("calm", CALM); });
+$("calmBox").addEventListener("change", e => {
+  CALM = e.target.checked; store("planetCalm", CALM ? "1" : "0"); document.body.classList.toggle("calm", CALM);
+  // Anything already in the air (a meteor, a floating +coin, a speech bubble) stops now.
+  if (CALM) { falls = []; floaters = []; bubble = null; wiggles = {}; pops = {}; }
+});
 $("bigBox").addEventListener("change", e => { document.body.classList.toggle("big", e.target.checked); store("planetBig", e.target.checked ? "1" : "0"); updateEditor(); });
 $("sampleClose").addEventListener("click", () => { sampleHidden = farm.job && farm.job.n; renderJob(); });
 $("sampleGive").addEventListener("click", () => { if (farm.job && farm.job.code) replaceAll(farm.job.code); });

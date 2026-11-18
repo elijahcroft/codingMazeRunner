@@ -2765,6 +2765,45 @@ class PageScriptTests(unittest.TestCase):
                     self.assertEqual(out.returncode, 0, f"{name}: {out.stderr[:400]}")
 
 
+class CalmAndBigTextTests(unittest.TestCase):
+    """The two settings the class relies on: calm mode (no motion) and bigger
+    text for the code and telemetry. A unit test can hold the page rules."""
+
+    def read(self, name):
+        with open(os.path.join(HERE, name), encoding="utf-8") as f:
+            return f.read()
+
+    def test_the_predict_class_screen_shares_the_students_calm_setting(self):
+        page = self.read("planet_predict.html")
+        self.assertIn("planetCalm", page)
+        self.assertIn('localStorage.getItem("planetCalm") === "1"', page)
+
+    def test_big_text_reaches_every_code_box_and_printed_telemetry(self):
+        page = self.read("planet.html")
+        for rule in (".big .feed .ev.print", ".big .feed .err",
+                     ".big #siteBrief pre", ".big #shopCode", ".big .shop-paint",
+                     ".big #teamCode", ".big #showCode", ".big .predict-card pre"):
+            self.assertIn(rule, page, rule)
+
+    def test_calm_stops_the_candy_button_bump(self):
+        # .candy-button.bump comes after .calm .candy-button, so it needs its own rule.
+        page = self.read("planet.html")
+        self.assertIn(".calm .candy-button.bump", page)
+
+    def test_turning_calm_on_clears_what_is_already_in_the_air(self):
+        page = self.read("planet.html")
+        self.assertIn('querySelectorAll(".beam-dot, .fly-star")', page)
+        farm = self.read("planet_farm.js")
+        self.assertIn("falls = []; floaters = []; bubble = null;", farm)
+        self.assertIn("if (CALM) {\n    if (!night.swapped)", farm)
+
+    def test_room_effects_freeze_in_calm(self):
+        lounge = self.read("planet_lounge.js")
+        self.assertIn("const p = CALM ? 0 : (now - b.at) / 1800;", lounge)
+        team = self.read("planet_team.js")
+        self.assertIn("if (CALM) return;   // no spreading ring in calm mode", team)
+
+
 class HalloweenClassroomTests(unittest.TestCase):
     """Halloween night in the classroom: the teacher invites students, candy
     fills the candy road, and limited-time things stay with whoever won them."""

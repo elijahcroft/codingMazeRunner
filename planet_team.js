@@ -410,6 +410,7 @@ function teamBubbles(ctx, cell, ts) {
 // A ring that spreads out where a boulder just went into the ground.
 function teamPops(ctx, cell, now) {
   team.pops = team.pops.filter(p => now - p.at < 700);
+  if (CALM) return;   // no spreading ring in calm mode
   for (const p of team.pops) {
     const u = (now - p.at) / 700;
     ctx.strokeStyle = `rgba(255,211,107,${1 - u})`; ctx.lineWidth = Math.max(2, cell * .1);

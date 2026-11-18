@@ -477,8 +477,13 @@ lost.
   take half a minute to watch.
 - **Calm mode** (tick it on the **?** card): no shaking, confetti, flashing
   or bobbing. It's on by itself when the computer asks for reduced motion.
-  Worth pointing out to students who find busy screens hard.
-- **Bigger text** (also on the **?** card) makes the code and telemetry larger.
+  The same choice carries to the Rover Farm and the Predict it screen, and
+  anything already flying (a star, a signal, a meteor, a speech bubble) stops
+  when it is ticked. Worth pointing out to students who find busy screens hard.
+- **Bigger text** (also on the **?** card) makes the code and telemetry larger:
+  the main editor, the Paint Shop, Team Mission code, the lounge show,
+  Predict it code, and the printed lines in the telemetry. The buttons stay
+  where they are.
 - **The editor helps**: commands, sensors and the student's own functions
   light up when they're spelt right (so `eats()` stays plain), faint
   guides show the indentation, and Ctrl+Z undoes anything. A code error shows
