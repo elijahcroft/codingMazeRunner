@@ -6614,6 +6614,35 @@ def room_moment(event):
     return event["kind"] in ROOM_MOMENTS or bool(event.get("moment"))
 
 
+# 📸 Moments worth keeping: besides the class photo, the projector offers a picture when a
+# wedding says "are married!" and when a fashion show reaches its results. The event carries
+# the caption drawn into the PNG, so the projector does not have to guess names or the date.
+PHOTO_SHOW_SECONDS = 120
+PHOTO_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
+def photo_day():
+    """Today, the way it goes in a photo caption: 18 Nov 2026."""
+    now = time.localtime(time.time())
+    shown = time.strftime("%d %b %Y", now)
+    if re.fullmatch(r"\d{1,2} [A-Za-z]{3,} \d{4}", shown):
+        day, month, year = shown.split()
+        return f"{int(day)} {month} {year}"
+    # Tests (and some systems) hand back an ISO date for every format. Read that when we can.
+    iso = time.strftime("%Y-%m-%d", now)
+    try:
+        stamp = time.strptime(iso, "%Y-%m-%d")
+    except (TypeError, ValueError):
+        return shown
+    return f"{stamp.tm_mday} {PHOTO_MONTHS[stamp.tm_mon - 1]} {stamp.tm_year}"
+
+
+def photo_offer(style, caption, **more):
+    """Ask the projector to keep this moment: a save button for two minutes."""
+    room_event("photo", loc=0, style=style, caption=caption, seconds=PHOTO_SHOW_SECONDS, **more)
+
+
 def hang_meter():
     return pixel_class.setdefault("hang", {"points": 0, "level": 0})
 
@@ -6928,8 +6957,12 @@ def fashion_awards(game, seats, now):
         icon, name = FASHION_AWARDS[key]
         awards[seat] = {"key": key, "icon": icon, "name": name}
     game["awards"] = awards
+    was = game["phase"]
     game_finish(f"🌈 What a show! Theme: {game['theme']['words']}. Every walker got a kind ribbon!",
                 reward=True)
+    if was != "results":            # once, at the moment the ribbons show: the projector can keep it
+        photo_offer("fashion", f"👗 Fashion show · Theme: {game['theme']['words']} · {photo_day()}",
+                    x=FASHION_X, theme=game["theme"])
 
 
 def fashion_tick(game, seats, now):
@@ -8974,6 +9007,12 @@ def wedding_finish(w):
     wedding_event("done", host=w["host"], partner=w["partner"], host_name=host_name,
                   partner_name=partner_name, catcher=w.get("catcher"), catcher_name=catcher_name,
                   paid=paid)
+    span = wedding_span()
+    couple = f"{host_name} & {partner_name}" if partner_name else host_name
+    photo_offer("wedding", f"💒 {couple} · {photo_day()}",
+                x=(span[0] + pixel.PLACE_W // 2) if span else 0,
+                host=w["host"], partner=w["partner"],
+                host_name=host_name, partner_name=partner_name)
 
 
 def wedding_tick(now):

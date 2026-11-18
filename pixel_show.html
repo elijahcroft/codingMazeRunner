@@ -20,11 +20,18 @@
   .cam { display: flex; gap: 6px; align-items: center; }
   .cam button, #people button { font: inherit; color: inherit; border: 0; border-radius: 12px; background: #fffdf6; padding: 8px 12px; cursor: pointer; }
   .cam button[aria-pressed="true"], #people button[aria-pressed="true"] { background: #ffd27a; }
+  #savePhoto { padding: 6px 9px; font-size: clamp(11px, 1.3vw, 15px); white-space: nowrap; }   /* the class, wedding and fashion labels all stay on one line */
+  @media (max-width: 980px) {   /* a 1093x530 laptop at 125% zoom: keep the whole button inside the left column */
+    .cam { gap: 4px; }
+    .cam button { padding: 6px 8px; font-size: 15px; }
+    .cam select { width: 96px; min-width: 78px; font-size: 14px; }
+    #savePhoto { padding: 5px 7px; font-size: 11px; }
+  }
   #map { position: relative; height: 66px; display: flex; border-radius: 14px; overflow: hidden; cursor: pointer; background: #fffdf6; }
   #map .place { flex: 1; padding: 3px 8px; font-size: 13px; color: #5f7c75; border-left: 2px solid #e8efe4; }
   #map .view { position: absolute; top: 0; bottom: 0; background: #ffd27a55; border: 2px solid #f5b83d; border-radius: 10px; pointer-events: none; }
   #map .who { position: absolute; bottom: 5px; transform: translateX(-50%); padding: 0 6px; background: #2c5352; color: #fffdf6; border-radius: 8px; font-size: 13px; white-space: nowrap; }
-  .cam select { font: inherit; color: inherit; border: 0; border-radius: 12px; background: #fffdf6; padding: 8px 10px; cursor: pointer; max-width: 220px; }
+  .cam select { font: inherit; color: inherit; border: 0; border-radius: 12px; background: #fffdf6; padding: 8px 10px; cursor: pointer; width: clamp(90px, 16vw, 220px); min-width: 90px; max-width: 220px; }
   .cam select.on { background: #ffd27a; }
   #followTag { position: absolute; right: 14px; top: 12px; padding: 4px 14px; background: #ffd27aee; border-radius: 14px; font-size: clamp(16px, 1.8vw, 26px); font-weight: 800; pointer-events: none; }
   #camWord { font-size: 15px; color: #5f7c75; white-space: nowrap; }
@@ -286,6 +293,9 @@ let momentQueue = [];
 const isMoment = e => !!e.moment || MOMENT_THESE.includes(e.kind);
 function momentPlace(e) {
   if (e.kind === "wedding") return {loc: 0, x: typeof e.x === "number" ? e.x : null};
+  // A wedding or fashion photo looks at the garden or the runway, not at whoever is first outside.
+  if (e.kind === "photo" && (e.style === "wedding" || e.style === "fashion"))
+    return {loc: 0, x: typeof e.x === "number" ? e.x : null};
   if (e.kind === "openhouse") return {loc: e.home, seat: e.host};
   if (e.kind === "shower") {                 // the stars land outside, wherever the first one falls
     const star = (e.stars || [])[0];
@@ -460,10 +470,14 @@ watcher = PalStage.follow(stage, {everySound: true, loc: () => cam.loc, onState(
       banner(`⛄ The class built a snowman! That's ${e.built} today!`, 5000, true);
     }
     else if (e.kind === "photo") {
-      banner(`📸 Class photo! Say cheese! (${e.count})`, 6000, true);
-      $("savePhoto").hidden = false;
-      clearTimeout(photoTimer);
-      photoTimer = setTimeout(() => { $("savePhoto").hidden = true; }, 90000);
+      if (e.style === "wedding")
+        offerPhoto("💾 Save the wedding photo", e.caption, "wedding-photo", (e.seconds || 120) * 1000, true);
+      else if (e.style === "fashion")
+        offerPhoto("💾 Save the fashion photo", e.caption, "fashion-photo", (e.seconds || 120) * 1000, true);
+      else {
+        offerPhoto("💾 Save the photo", "", "class-photo", 90000);
+        banner(`📸 Class photo! Say cheese! (${e.count})`, 6000, true);
+      }
     }
     else if (e.kind === "game" && e.moment) banner(esc(e.message), 5000, e.moment === "goal");
     else if (e.kind === "openhouse") {
@@ -485,15 +499,17 @@ watcher = PalStage.follow(stage, {everySound: true, loc: () => cam.loc, onState(
   }
 }});
 
-// 📸 The class photo as a picture to keep: the world and the pals, with their name tags drawn in.
-let photoTimer = 0;
-$("savePhoto").addEventListener("click", () => {
+// 📸 Pictures to keep: the world and the pals, with their name tags drawn in. One helper
+// makes the class photo, the wedding photo and the fashion photo; the last two add a caption.
+let photoTimer = 0, photoSnapTimer = 0, photoOfferId = 0, photoReady = null, photoCaption = "", photoFile = "class-photo";
+function photoShot(caption) {
   const host = $("host").getBoundingClientRect(), scale = 2;
+  const sceneH = Math.round(host.height * scale), bandH = caption ? 34 * scale : 0;
   const out = document.createElement("canvas");
-  out.width = Math.round(host.width * scale); out.height = Math.round(host.height * scale);
+  out.width = Math.round(host.width * scale); out.height = sceneH + bandH;
   const g = out.getContext("2d");
   g.imageSmoothingEnabled = false;
-  for (const cv of [$("back"), $("stage")]) g.drawImage(cv, 0, 0, out.width, out.height);
+  for (const cv of [$("back"), $("stage")]) g.drawImage(cv, 0, 0, out.width, sceneH);
   g.font = `800 ${14 * scale}px ui-rounded, system-ui, sans-serif`;
   g.textAlign = "center"; g.textBaseline = "middle";
   for (const tag of $("host").querySelectorAll(".tag")) {
@@ -503,11 +519,36 @@ $("savePhoto").addEventListener("click", () => {
     g.fillStyle = "#fffdf6e8"; g.beginPath(); g.roundRect(x - w / 2, y - 11 * scale, w, 22 * scale, 9 * scale); g.fill();
     g.fillStyle = "#2c5352"; g.fillText(tag.textContent, x, y);
   }
+  if (caption) {                 // a keepsake band below the picture: nothing on the stage is covered
+    g.fillStyle = "#fffdf6"; g.fillRect(0, sceneH, out.width, bandH);
+    g.fillStyle = "#e2ece4"; g.fillRect(0, sceneH, out.width, 2 * scale);
+    g.font = `800 ${17 * scale}px ui-rounded, system-ui, sans-serif`;
+    g.fillStyle = "#2c5352"; g.fillText(caption, out.width / 2, sceneH + bandH / 2);
+  }
+  return out;
+}
+function downloadPhoto(out) {
   const a = document.createElement("a");
   a.href = out.toDataURL("image/png");
-  a.download = `class-photo-${new Date().toISOString().slice(0, 10)}.png`;
+  a.download = `${photoFile}-${new Date().toISOString().slice(0, 10)}.png`;
   a.click();
-});
+}
+function offerPhoto(text, caption, file, ms, captureNow = false) {
+  const offer = ++photoOfferId;
+  $("savePhoto").textContent = text;
+  $("savePhoto").hidden = false;
+  photoCaption = caption || "";
+  photoFile = file || "class-photo";
+  photoReady = null;
+  clearTimeout(photoTimer);
+  clearTimeout(photoSnapTimer);
+  photoTimer = setTimeout(() => { $("savePhoto").hidden = true; }, ms);
+  // A wedding or fashion photo keeps the moment itself, so Save still works after Auto moves on.
+  if (captureNow) photoSnapTimer = setTimeout(() => {
+    if (offer === photoOfferId && !$("savePhoto").hidden) photoReady = photoShot(photoCaption);
+  }, 900);
+}
+$("savePhoto").addEventListener("click", () => downloadPhoto(photoReady || photoShot(photoCaption)));
 // The game on now. A Code race shows the job, then the fastest code between rounds, so the class can read it together.
 const GAME_WORD = {hide: "🙈 Hide & seek", tag: "🏃 Tag", race: "🚦 Red light, green light", dance: "💃 Copy the dance", code: "💻 Code race", draw: "🎨 Draw & guess", apples: "🍎 Apple grab", ball: "⚽ Pal ball", fashion: "👗 Fashion show"};
 const DANCE_ICON = {wave: "👋", jump: "🦘", spin: "🌀", cheer: "🎉"};
