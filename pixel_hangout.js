@@ -1004,6 +1004,9 @@ const PalHang = (() => {
   };
   // ❄️ The same spots as TREE_X, SNOWMAN_X and SNOWMAN_DEEP in pixel.py.
   const VILLAGE_TREE_X = 92, SNOWMAN_X = 238, SNOWMAN_DEEP = .2, SNOWMAN_REACH = 46;
+  // 🖼️ The class mural board: high on the left of the Park, above the cottage and
+  // tree tops, so it never covers a bench, the fountain, a chest or a gem.
+  const MURAL = {x: 8, y: 8, w: 80, h: 48, cell: 2};
   // Where ornaments hang on the class tree, as many as TREE_MAX, filled in an order that spreads them out.
   const ORNAMENT_SLOTS = [[52, [-5, 5]], [64, [-10, 0, 10]], [76, [-15, -5, 5, 15]], [88, [-20, -10, 0, 10, 20]],
                           [100, [-20, -12, -4, 4, 12, 20]], [112, [-28, -20, -12, -4, 4, 12, 20, 28]]].flatMap(([y, xs]) => xs.map(dx => [dx, y]));
@@ -1048,6 +1051,12 @@ const PalHang = (() => {
   function chestAt(places, x, deep, chests) {
     const at = placeAt(places, x);
     return (at && (chests || []).find(c => c.place === at.scene && !c.open && Math.abs(x - at.left - c.x) < 28 && Math.abs(deep - c.deep) < .2)) || null;     // 28: a pal stops beside it, not on it
+  }
+  /** Whether a click landed on the class mural board in the Park. */
+  function muralAt(places, x, y) {
+    const at = placeAt(places, x);
+    return !!at && at.scene === "park" && x - at.left >= MURAL.x - 6 && x - at.left <= MURAL.x + MURAL.w + 6
+      && y >= MURAL.y - 6 && y <= MURAL.y + MURAL.h + 12;
   }
   // ---- Homes ---------------------------------------------------------------------------
   // A home is a row of rooms, one screen each, with open doorways between them. Each room
@@ -1917,6 +1926,30 @@ const PalHang = (() => {
     }
     box(g, left - 6, top + side + 3, side + 12, 3, 1, "#a8723f");
   }
+  // 🖼️ The class mural: a big wooden board high on the left of the Park. Every
+  // screen paints the same squares from the room state, so it grows live.
+  function muralWall(g, mural) {
+    const {x, y, w, h, cell} = MURAL, grid = mural && mural.grid, colours = (mural && mural.colours) || [];
+    oval(g, x + w / 2, y + h + 8, w / 2 + 6, 3, "#2f6b5022");
+    line(g, [[x + 6, y + h], [x + 3, y + h + 8]], "#8a5a33", 2.2);
+    line(g, [[x + w - 6, y + h], [x + w - 3, y + h + 8]], "#8a5a33", 2.2);
+    box(g, x - 5, y - 5, w + 10, h + 10, 2.5, "#8a5a33");
+    box(g, x - 3, y - 3, w + 6, h + 6, 1.5, "#6b4426");
+    box(g, x - 1, y - 1, w + 2, h + 2, 0, "#1b1530");
+    box(g, x, y, w, h, 0, "#fffdf6");
+    for (let row = 0; row < h / cell; row++) for (let col = 0; col < w / cell; col++) {
+      const i = row * (w / cell) + col, ink = grid && grid[i];
+      if (ink && ink !== ".") {
+        const at = parseInt(ink, 16);
+        box(g, x + col * cell, y + row * cell, cell, cell, 0, colours[at] || "#fffdf6");
+      } else if ((row + col) % 2) box(g, x + col * cell, y + row * cell, cell, cell, 0, "#f4f0e4");
+    }
+    // A little pot of paint on the ledge, so the board looks like it's being used.
+    box(g, x + w - 16, y + h + 1, 8, 5, 1, "#8fd0c8");
+    box(g, x + w - 15, y + h - 1, 6, 2, 1, "#e8294f");
+    line(g, [[x + w - 2, y + h + 3], [x + w + 14, y + h + 7]], "#8a5a33", 1.2);
+    sign(g, x + w + 40, "🖼️ Class mural", y + h + 4);
+  }
   // 👗 Fashion show: a pink runway down the middle of the Park, with little footlights.
   function runway(g, x, shine = 0) {
     const top = seatFeet(.27), bottom = seatFeet(.99), half = 25;
@@ -2325,6 +2358,7 @@ const PalHang = (() => {
         });
         for (const c of state.chests || []) if (c.place === places[i]) chest(ink, c.x, seatFeet(c.deep), c.open, PalStage.calm ? 0 : Math.abs(Math.sin(now / 600 + c.x)));
         if (places[i] === "village") villageLive(ink, state, now);
+        if (!inside && places[i] === "park") muralWall(ink, state.mural);
         (state.presents || []).forEach((p, n) => {
           if (p.place === places[i] && !p.found) present(ink, p.x, seatFeet(p.deep) + (PalStage.calm ? 0 : Math.sin(now / 400 + n) * .8), n, PalStage.calm ? 0 : Math.abs(Math.sin(now / 650 + n * 3)));
         });
@@ -2411,5 +2445,5 @@ const PalHang = (() => {
     return () => { stopped = true; cancelAnimationFrame(frame); sizer.disconnect(); };
   }
 
-  return {start, seatAt, toyAt, gemAt, chestAt, presentAt, villageAt, coverAt, cutCover, coverHigh, furniturePicture, roomPicture, furnitureAt, lookColour, doorAt, fishAt, PLACES: Object.keys(PLACES)};
+  return {start, seatAt, toyAt, gemAt, chestAt, presentAt, villageAt, coverAt, cutCover, coverHigh, furniturePicture, roomPicture, furnitureAt, lookColour, doorAt, fishAt, muralAt, PLACES: Object.keys(PLACES)};
 })();

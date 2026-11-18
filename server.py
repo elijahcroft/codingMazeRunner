@@ -5657,6 +5657,7 @@ PIXEL_BADGES = {
     "fix": ("🐞", "Bug Squasher", "Do a Fix it: find and fix the bug in Pip's code"),
     "show": ("🎬", "Show Maker", "Make a show of your own on the Free stage, 5 steps or more"),
     "showtime": ("🎤", "Showtime", "Perform your Free stage show in the Hang out"),
+    "mural": ("🖼️", "Mural Maker", "Paint 10 squares on the class mural"),
 }
 
 
@@ -5681,7 +5682,7 @@ def pixel_entry(p):
                        ("gifts", []), ("wear", {}), ("friends", []), ("move", None), ("found", []),
                        ("stuff", []), ("fish", {}), ("things", {}), ("remixed", []), ("guessed", []), ("fixed", []), ("free_code", ""), ("free_runs", 0), ("free_shows", []), ("performed", 0), ("perform_until", 0),
                        ("chests", {}), ("chest_count", 0), ("mywear", []), ("presents", {}), ("present_count", 0), ("snowballs", 0),
-                       ("wedding_day", "")):
+                       ("wedding_day", ""), ("mural_day", ["", 0, False])):
         entry.setdefault(key, value)
     if "coins" not in entry:        # coins came later: pay for the stars and gems already earned
         firsts = sum(1 for key, stars in entry["solved"].items() if key in pixel.LEVEL_BY_KEY and stars[0])
@@ -6106,6 +6107,227 @@ def room_empty():
 pixel_room = dict(room_empty(), open=True, words=False)
 pixel_bigshow = {"n": 0, "show": None}     # 🎬 the last show the teacher put on the projector
 pixel_recap = {"n": 0, "recap": None}      # 📋 the last end-of-lesson recap the teacher put on it
+
+# ---- 🖼️ The class mural: one picture the whole class paints together -------------
+# It lives in the class state, so it survives a restart. Each square keeps the
+# player id that painted it. The grid and who are strings of 40 * 24 characters:
+# the grid is a colour number (0-f) or ".", and who is a slot in `names` or ".".
+# That keeps a full mural about 2 KB in the save file.
+MURAL_W, MURAL_H = 40, 24
+MURAL_CELLS = MURAL_W * MURAL_H
+MURAL_COLOURS = ("#e8294f", "#ff8f3f", "#ffd23f", "#8ee06b", "#2fbf71", "#35d0bd",
+                 "#3ec5ff", "#2f6fe4", "#a05ce8", "#ff5fa2", "#ffffff", "#3b2a20",
+                 "#f3c98b", "#c0c7d6", "#7a4318", "#b7f0ff")
+MURAL_IDEAS = ("A rainbow!", "Our class pets", "Under the sea", "A giant pal",
+               "A garden", "Space adventure", "A sunny day", "Our dream school",
+               "A big party", "Funny faces")
+MURAL_WHO_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+MURAL_REWARD_AT = 10        # paints today for the little daily treat
+MURAL_BATCH_SECONDS = .4    # squares from everyone are sent together, not one event each
+MURAL_PAINT_GAP = 1.0       # at most 3 squares a second for one student
+MURAL_PAINT_MAX = 3
+mural_out = []              # squares waiting for the next batch event
+mural_batch_timer = [None]
+
+
+def mural_idea(day=None):
+    """Today's small drawing idea, the same on every screen."""
+    day = day or pixel_day_name()
+    return MURAL_IDEAS[sum(map(ord, day)) % len(MURAL_IDEAS)]
+
+
+def mural_state():
+    """The class mural, made or repaired if this save came from before murals."""
+    m = pixel_class.get("mural")
+    if not isinstance(m, dict):
+        m = pixel_class["mural"] = {}
+    names = m.get("names")
+    names = [str(pid) for pid in names if isinstance(pid, str)][:len(MURAL_WHO_CHARS)] if isinstance(names, list) else []
+    grid, who = m.get("grid"), m.get("who")
+    if not isinstance(grid, str) or len(grid) != MURAL_CELLS or any(ch not in ".0123456789abcdef" for ch in grid):
+        grid = "." * MURAL_CELLS
+    if not isinstance(who, str) or len(who) != MURAL_CELLS:
+        who = "." * MURAL_CELLS
+    else:
+        who = "".join(ch if ch == "." or (ch in MURAL_WHO_CHARS and MURAL_WHO_CHARS.index(ch) < len(names)) else "." for ch in who)
+    day = pixel_day_name()
+    m.update(grid=grid, who=who, names=names)
+    if m.get("day") != day:
+        m["day"], m["idea"] = day, mural_idea(day)
+    return m
+
+
+def mural_slot(m, pid):
+    """The who character slot for a player, adding them to the small names list."""
+    if pid in m["names"]:
+        return m["names"].index(pid)
+    if len(m["names"]) >= len(MURAL_WHO_CHARS):
+        return None
+    m["names"].append(pid)
+    return len(m["names"]) - 1
+
+
+def mural_counts(m):
+    counts = [0] * len(m["names"])
+    for ch in m["who"]:
+        if ch != ".":
+            at = MURAL_WHO_CHARS.index(ch)
+            if at < len(counts):
+                counts[at] += 1
+    return counts
+
+
+def mural_view(p=None):
+    """The mural for a student screen or the projector. Names are masked by
+    🏷️ Hide names; the teacher gets real names from mural_teacher_view."""
+    m = mural_state()
+    names = [hang_name(players[pid]) if pid in players else "A pal" for pid in m["names"]]
+    counts = mural_counts(m)
+    painted_today, reward_done, mine, me = 0, False, 0, None
+    if p:
+        entry = pixel_entry(p)
+        day = entry.get("mural_day")
+        if isinstance(day, list) and len(day) >= 3 and day[0] == pixel_day_name():
+            painted_today, reward_done = int(day[1]), bool(day[2])
+        if p["id"] in m["names"]:
+            me = m["names"].index(p["id"])
+            mine = counts[me]
+    return {"w": MURAL_W, "h": MURAL_H, "grid": m["grid"], "who": m["who"],
+            "names": names, "colours": list(MURAL_COLOURS), "idea": m["idea"],
+            "painters": [{"name": names[i], "count": counts[i]} for i in range(len(names)) if counts[i]],
+            "total": sum(counts), "mine": mine, "me": me, "painted_today": painted_today,
+            "reward_at": MURAL_REWARD_AT, "reward_done": reward_done}
+
+
+def mural_teacher_view():
+    """The teacher's mural: real names, and who to remove."""
+    m = mural_state()
+    names = [players[pid]["name"] if pid in players else "A pal who left" for pid in m["names"]]
+    counts = mural_counts(m)
+    return {"w": MURAL_W, "h": MURAL_H, "grid": m["grid"], "who": m["who"], "names": names,
+            "colours": list(MURAL_COLOURS), "idea": m["idea"], "total": sum(counts),
+            "painters": [{"id": m["names"][i], "name": names[i], "count": counts[i]}
+                         for i in range(len(names)) if counts[i]]}
+
+
+def mural_schedule():
+    """Send the squares gathered in the last moment as one room event."""
+    if mural_batch_timer[0]:
+        return
+    timer = threading.Timer(MURAL_BATCH_SECONDS, mural_flush)
+    timer.daemon = True
+    mural_batch_timer[0] = timer
+    timer.start()
+
+
+def mural_queue(cells):
+    if cells:
+        mural_out.extend(cells)
+        mural_schedule()
+
+
+def mural_flush():
+    """Called by the batch timer (and by tests). One event carries every square."""
+    with lock:
+        timer = mural_batch_timer[0]
+        mural_batch_timer[0] = None
+        if timer:
+            timer.cancel()
+        cells = list(mural_out)
+        del mural_out[:]
+        if cells:
+            room_event("mural", loc=None, cells=cells)
+
+
+def mural_emit_full():
+    """A clear or remove changes many squares: send the whole picture once.
+    Called while holding the room lock."""
+    timer = mural_batch_timer[0]
+    mural_batch_timer[0] = None
+    if timer:
+        timer.cancel()
+    del mural_out[:]
+    room_event("mural", loc=None, mural=mural_view(None))
+
+
+def room_mural(p, spot, data):
+    """One click on the wall. Paints, erases, or takes back your own last square."""
+    m = mural_state()
+    action = data.get("action")
+    entry = pixel_entry(p)
+    if action == "undo":
+        slot = mural_slot(m, p["id"])
+        at = m["who"].rfind(MURAL_WHO_CHARS[slot]) if slot is not None else -1
+        if at < 0:
+            return {"error": "nothing"}
+        m["grid"] = m["grid"][:at] + "." + m["grid"][at + 1:]
+        m["who"] = m["who"][:at] + "." + m["who"][at + 1:]
+        mural_queue([[at, ".", ""]])
+        pixel_save_soon()
+        counts = mural_counts(m)
+        return {"ok": True, "cell": at, "ink": ".", "mine": counts[slot], "me": slot,
+                "painted_today": mural_view(p)["painted_today"]}
+    if action != "paint":
+        return {"error": "bad"}
+    cell, ink = data.get("cell"), data.get("ink")
+    if type(cell) is not int or not 0 <= cell < MURAL_CELLS or type(ink) is not int or not -1 <= ink < len(MURAL_COLOURS):
+        return {"error": "bad"}
+    now = time.time()
+    times = [t for t in spot.get("mural_times", []) if now - t < MURAL_PAINT_GAP]
+    if len(times) >= MURAL_PAINT_MAX:
+        return {"error": "wait"}
+    times.append(now)
+    spot["mural_times"] = times
+    ch = "." if ink < 0 else format(ink, "x")
+    m["grid"] = m["grid"][:cell] + ch + m["grid"][cell + 1:]
+    by = ""
+    if ink < 0:
+        m["who"] = m["who"][:cell] + "." + m["who"][cell + 1:]
+    else:
+        slot = mural_slot(m, p["id"])
+        by = hang_name(p)
+        m["who"] = m["who"][:cell] + (MURAL_WHO_CHARS[slot] if slot is not None else ".") + m["who"][cell + 1:]
+    mural_queue([[cell, ch, by]])
+    day = entry.get("mural_day")
+    if not isinstance(day, list) or len(day) < 3 or day[0] != pixel_day_name():
+        day = entry["mural_day"] = [pixel_day_name(), 0, False]
+    coins, earned = 0, []
+    if ink >= 0:                 # erasing is not "painting a square" for the treat
+        day[1] = int(day[1]) + 1
+        day_job(p, "mural")
+        if day[1] >= MURAL_REWARD_AT and not day[2]:
+            day[2] = True
+            coins = pixel_pay(p, pixel.COINS_MURAL)
+            pixel_badge(p, "mural", earned)
+            pixel_feed_add(f"🖼️ {hang_name(p)} is painting the class mural!")
+    pixel_save_soon()
+    counts = mural_counts(m)
+    slot = m["names"].index(p["id"]) if p["id"] in m["names"] else None
+    return {"ok": True, "cell": cell, "ink": ch, "by": by, "coins": coins, "badges": earned,
+            "mine": counts[slot] if slot is not None else 0, "me": slot,
+            "painted_today": day[1], "reward_done": bool(day[2])}
+
+
+def mural_clear():
+    m = mural_state()
+    m["grid"], m["who"] = "." * MURAL_CELLS, "." * MURAL_CELLS
+    mural_emit_full()
+
+
+def mural_remove(pid):
+    """Take away one student's squares and nobody else's. Returns how many went."""
+    m = mural_state()
+    if pid not in m["names"]:
+        mural_emit_full()
+        return 0
+    ch = MURAL_WHO_CHARS[m["names"].index(pid)]
+    grid, who, removed = list(m["grid"]), list(m["who"]), 0
+    for i, owner in enumerate(who):
+        if owner == ch:
+            grid[i], who[i], removed = ".", ".", removed + 1
+    m["grid"], m["who"] = "".join(grid), "".join(who)
+    mural_emit_full()
+    return removed
 
 
 def room_compact(pal):
@@ -7287,7 +7509,8 @@ DAY_JOBS = {"five": ("🙌", "High-five 2 friends", 2, "Click a friend's pal."),
             "visit": ("🚪", "Visit a friend's home", 1, "Open 🏠 Home and pick a friend."),
             "star": ("⭐", "Earn a star in a coding mission", 1, ""),
             "party": ("🪩", "Dance at the same time as 2 friends", 1, "Ask 2 friends to press 💃 Dance with you."),
-            "chest": ("🧰", "Code a chest open", 1, "Walk to a 🧰 chest in the world and code it open.")}
+            "chest": ("🧰", "Code a chest open", 1, "Walk to a 🧰 chest in the world and code it open."),
+            "mural": ("🖼️", "Paint 10 class mural squares", 10, "Open 🖼️ Art, then the class mural. One tap = one square.")}
 CODING_JOBS = ("star", "code", "chest")      # every day has one of these, so the Hang out leads back to coding
 DAY_JOBS_EACH = 3
 DAY_JOB_COINS = 5
@@ -7420,6 +7643,7 @@ def room_view(p, after, watch=0):
                    if owner else [room_placed_row(r, p) for r in pixel_class.get("placed", [])],
                    shower=room["shower"]["stars"] if room["shower"] and not loc else None,
                    tree=tree_rows() if winter() and not loc else [])
+        out["mural"] = mural_view(p)
         if p and winter():
             out["ornament"] = next((r["key"] for r in pixel_class.get("tree", []) if r["owner"] == p["id"]), None)
     else:
@@ -8713,6 +8937,8 @@ def room_do(p, data):
         return room_snowball(p, spot)
     elif what == "ornament":
         return room_ornament(p, spot, data)
+    elif what == "mural":
+        return room_mural(p, spot, data)
     elif what == "poke":
         return thing_poke(p, spot, data)
     elif what == "mymove":
@@ -8958,7 +9184,8 @@ def pixel_overview():
                      "chests": [[PLACE_WORDS[place], pixel.chest_job(place, day_order()[0])["job"], n] for place, n in chest_counts().items()
                                 if place in hang_places()],
                      "people": {s["real"]: room_person(s) for s in pixel_room["here"].values()}},
-            "meter": hang_view(), "stars": pixel_class_stars(), "placed": room_placed_counts()}
+            "meter": hang_view(), "stars": pixel_class_stars(), "placed": room_placed_counts(),
+            "mural": mural_teacher_view()}
 
 
 def class_photo():
@@ -8987,6 +9214,14 @@ def game_brief():
 
 def pixel_teacher(data):
     action = data.get("action")
+    if action == "mural_clear":
+        mural_clear()
+        return {"ok": True}
+    if action == "mural_remove":
+        pid = data.get("id")
+        if not isinstance(pid, str):
+            return {"error": "Pick a student first."}
+        return {"ok": True, "removed": mural_remove(pid)}
     if action == "room":
         room_set(data.get("on"))
         return {"ok": True}

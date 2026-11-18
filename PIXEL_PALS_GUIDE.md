@@ -279,6 +279,16 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   there for everyone, up to 5 each. They stay between classes. Clicking one on the Art
   tab takes it back, and deleting the drawing removes it. On `/pixel/teacher` you can
   remove one student's, or all of them.
+- **🖼️ Class mural:** the big bright board high on the left of the Park is one picture the
+  whole class paints together, live. A student opens it from **🖼️ Art → Class mural** or by
+  clicking the board, picks one of 16 colours (or the eraser), and taps a square; one tap
+  paints one square, so nothing needs holding or dragging. **↶ Undo my last** takes back only
+  their own last square, **🔍 Who painted?** says who made a square (hidden names stay hidden),
+  and a small "today's idea" line changes each day. Ten squares in a day earns a little coin
+  treat and a Mural Maker trophy, and the squares show on every screen within a second. On
+  `/pixel/teacher` the Class mural card has **🧽 Clear**, **↶ Remove <student>'s squares** and
+  **💾 Download PNG** (there is no picture page in the class book yet). The mural is kept with
+  the class state, so it survives a server restart.
 - **💎 Gems:** three in each place. Each student finds their own. All of them earns
   Treasure Hunter.
 - **🧰 Code chests:** one treasure chest in each place, opened only with code. A shut chest

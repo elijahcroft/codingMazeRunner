@@ -7,6 +7,7 @@ let roomStage = null, stopRoom = null, stopBack = null, roomInfo = null, roomJoi
 let artArmed = null, moveReadyAt = 0, clapFor = null, clapTimer = 0, bannerTimer = 0, placesSeen = "";
 let furnArmed = null, buyArmed = null, fishing = null, homeSeen = "", peopleSeen = "", coinsSeen = null;
 let weddingAsk = null, weddingSeen = "";
+let muralInk = 0, muralWhoMode = false;     // 🖼️ the colour picked, and "who painted?" instead of painting
 // At home: ✋ moving things (a click picks one up, instead of playing with it), and which room is on screen.
 let moving = false, roomInView = 0;
 const atHome = () => !!(roomInfo && roomInfo.home), myHome = () => atHome() && roomInfo.home.mine;
@@ -199,7 +200,7 @@ function buildRoomButtons() {
   box.classList.remove("games-pane");
   box.classList.toggle("words", roomPane === "say");
   $("hangView").classList.toggle("chesting", roomPane === "chest");
-  box.classList.toggle("me-pane", ["me", "art", "shop", "home"].includes(roomPane));
+  box.classList.toggle("me-pane", ["me", "art", "shop", "home", "mural"].includes(roomPane));
   const big = ([icon, word, what, name]) => {
     const code = tapCode(what, name);
     return `<button data-tap="${what}" data-name="${name}"><span>${icon}</span>${esc(word)}${code ? `<code class="tap-code">${esc(code).replace("(", "(<wbr>")}</code>` : ""}</button>`;
@@ -229,6 +230,8 @@ function buildRoomButtons() {
     buildMePane(box);
   } else if (roomPane === "art") {
     buildArtPane(box);
+  } else if (roomPane === "mural") {
+    buildMuralPane(box);
   } else if (roomPane === "do") {
     box.innerHTML = ROOM_PANES.do.map(big).join("") +
       (S.free_open && S.hang.free_show
@@ -473,7 +476,9 @@ function buildArtPane(box) {
     : !pics.length ? "Draw something first, then come back and put it up!"
     : artArmed ? `👉 Now click the ${where} where you want it!`
     : `Pick a drawing, then click the ${where} to put it there. Click one you put out to take it back. (${out} of ${max} out${out >= max ? ": a new one replaces your oldest" : ""})`;
-  box.innerHTML = `<p class="me-note">${note}</p>` + pics.map(d =>
+  box.innerHTML = `<p class="me-note">${note}</p>` +
+    `<button class="wide" data-pane="mural"><span>🖼️</span>Class mural<small>Paint a square with everyone, live!</small></button>` +
+    pics.map(d =>
     `<button data-art="${esc(d.key)}" aria-pressed="${artArmed === d.key}"><canvas data-artpic="${esc(d.key)}"></canvas>${esc(d.title || "Drawing")}<small>${S.hang.things[d.key] ? "✨ Coded" : ""}</small></button>`).join("") + thingTiles();
   box.querySelectorAll("[data-artpic]").forEach(cv => drawingInto(cv, pics.find(p => p.key === cv.dataset.artpic)));
 }
@@ -483,6 +488,134 @@ function drawingInto(cv, d) {
   cv.width = cv.height = 54;
   cv.style.cssText = "width:54px;height:54px";
   pup.draw(cv.getContext("2d"), 0, PixelRig.pose("idle", 0, pup.rigOf(0)), 27, 50);
+}
+// ---- 🖼️ The class mural ------------------------------------------------------------------
+// The same 40 x 24 grid as the server. One tap paints one square; the server says
+// whether it took, and everyone else sees the batch of new squares within a second.
+const MURAL_WHO = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const muralData = () => roomInfo && roomInfo.mural;
+function muralPainters(m) {
+  const counts = new Map();
+  for (const ch of m.who) {
+    if (ch === ".") continue;
+    const name = m.names[MURAL_WHO.indexOf(ch)];
+    if (name) counts.set(name, (counts.get(name) || 0) + 1);
+  }
+  return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+}
+function paintMuralBoard() {
+  const cv = $("muralBoard"), m = muralData();
+  if (!cv || !m) return;
+  cv.width = m.w; cv.height = m.h;
+  const g = cv.getContext("2d");
+  g.clearRect(0, 0, m.w, m.h);
+  for (let i = 0; i < m.w * m.h; i++) {
+    const x = i % m.w, y = Math.floor(i / m.w), ink = m.grid[i];
+    if (ink && ink !== ".") g.fillStyle = m.colours[parseInt(ink, 16)] || "#fffdf6";
+    else g.fillStyle = (x + y) % 2 ? "#f4f0e4" : "#fffdf6";
+    g.fillRect(x, y, 1, 1);
+  }
+}
+function muralMineWords(m) {
+  const today = m.painted_today || 0, mine = m.mine || 0, at = m.reward_at || 10;
+  if (m.reward_done) return `You painted ${today} square${today === 1 ? "" : "s"} today. 🖼️ Treat earned! You have ${mine} up now.`;
+  const left = Math.max(0, at - today);
+  return `You painted ${today} today${left ? ` · ${left} more for a little treat` : ""}. You have ${mine} square${mine === 1 ? "" : "s"} up now.`;
+}
+function mergeMural(full) {
+  // A clear/remove arrives as the whole picture for everyone. Keep this screen's
+  // own "today" numbers, and work out its squares again from the who string.
+  const m = muralData();
+  if (!m) { if (roomInfo) roomInfo.mural = full; return; }
+  for (const key of ["w", "h", "grid", "who", "names", "colours", "idea", "total"]) if (key in full) m[key] = full[key];
+  if (full.me !== undefined && full.me !== null) {
+    m.me = full.me;
+    if (full.mine !== undefined) m.mine = full.mine;
+  } else if (m.me !== null && m.me !== undefined) {
+    const ch = MURAL_WHO[m.me];
+    m.mine = [...m.who].filter(owner => owner === ch).length;
+  }
+}
+function muralRefresh() {
+  const m = muralData(), mine = $("muralMine"), painters = $("muralPainters");
+  if (!m) return;
+  paintMuralBoard();
+  if (mine) mine.textContent = muralMineWords(m);
+  if (painters) {
+    const list = muralPainters(m);
+    painters.innerHTML = list.length ? "Painted by " + list.map(([name, n]) => `<b>${esc(name)}</b> ${n}`).join(" · ") : "Nobody has painted yet. You can be first!";
+  }
+}
+function applyMuralCell(i, ch, by) {
+  const m = muralData();
+  if (!m || !(i >= 0 && i < m.grid.length)) return;
+  m.grid = m.grid.slice(0, i) + ch + m.grid.slice(i + 1);
+  if (ch === ".") m.who = m.who.slice(0, i) + "." + m.who.slice(i + 1);
+  else if (by) {
+    let slot = m.names.indexOf(by);
+    if (slot < 0 && m.names.length < MURAL_WHO.length) { m.names.push(by); slot = m.names.length - 1; }
+    m.who = m.who.slice(0, i) + (slot >= 0 ? MURAL_WHO[slot] : ".") + m.who.slice(i + 1);
+  }
+}
+function buildMuralPane(box) {
+  const m = muralData();
+  if (!m) { box.innerHTML = `<p class="me-note">The class mural is getting ready. Try again in a moment.</p>`; return; }
+  box.classList.add("me-pane");
+  box.innerHTML = `<p class="me-note mural-idea">🖼️ Today's idea: <b>${esc(m.idea)}</b></p>
+    <div class="mural-wrap"><canvas id="muralBoard" width="${m.w}" height="${m.h}" aria-label="The class mural. Tap a square to paint it."></canvas><i id="muralHover" hidden></i></div>
+    <div class="mural-inks">` +
+    m.colours.map((c, i) => `<button data-mural-ink="${i}" style="background:${c}" aria-pressed="${muralInk === i}" title="Colour ${i + 1}"></button>`).join("") +
+    `<button class="mural-eraser" data-mural-ink="-1" aria-pressed="${muralInk === -1}" title="Eraser">🧽</button></div>
+    <div class="mural-tools">
+      <button data-mural-undo="1"><span>↶</span>Undo my last</button>
+      <button data-mural-who="1" aria-pressed="${muralWhoMode}"><span>🔍</span>${muralWhoMode ? "Painting again" : "Who painted?"}</button>
+    </div>
+    <p class="me-note">Tap a colour, then a square. One tap = one square.</p>
+    <p class="me-note" id="muralMine"></p>
+    <p class="me-note" id="muralPainters"></p>`;
+  muralRefresh();
+  const cv = $("muralBoard"), hover = $("muralHover");
+  const at = e => {
+    const r = cv.getBoundingClientRect();
+    const col = Math.floor((e.clientX - r.left) / r.width * m.w), row = Math.floor((e.clientY - r.top) / r.height * m.h);
+    return col >= 0 && col < m.w && row >= 0 && row < m.h ? {col, row, i: row * m.w + col} : null;
+  };
+  cv.addEventListener("pointermove", e => {
+    const p = at(e);
+    hover.hidden = !p;
+    if (!p) return;
+    hover.style.left = p.col / m.w * 100 + "%"; hover.style.top = p.row / m.h * 100 + "%";
+    hover.style.width = 100 / m.w + "%"; hover.style.height = 100 / m.h + "%";
+  });
+  cv.addEventListener("pointerleave", () => { hover.hidden = true; });
+  cv.addEventListener("click", e => {
+    const p = at(e);
+    if (!p) return;
+    PalStage.SFX.wake();
+    if (muralWhoMode) {
+      const mm = muralData() || m, ch = mm.who[p.i], name = ch && ch !== "." ? mm.names[MURAL_WHO.indexOf(ch)] : "";
+      tipFor(name ? `🖼️ That square is by ${name}.` : "🖼️ Nobody has painted that square yet.", 4000);
+      return;
+    }
+    PalStage.SFX.play("click");
+    post("/pixel/room/do", {id: me, what: "mural", action: "paint", cell: p.i, ink: muralInk}).then(out => {
+      if (!out) return;
+      if (out.error) { tipFor(out.error === "wait" ? "Slow down a little! 3 squares a second." : out.error, 3500); return; }
+      applyMuralCell(out.cell, out.ink, out.by);
+      const m2 = muralData();
+      if (m2) {
+        if (out.me !== undefined && out.me !== null) m2.me = out.me;
+        if (out.mine !== undefined) m2.mine = out.mine;
+        if (out.painted_today !== undefined) m2.painted_today = out.painted_today;
+        if (out.reward_done !== undefined) m2.reward_done = out.reward_done;
+      }
+      muralRefresh();
+      if (out.coins || (out.badges && out.badges.length)) {
+        showRewards({coins: out.coins, badges: out.badges});
+        if (out.coins) tipFor(`🖼️ 10 squares painted! +${out.coins} 🪙 for you.`, 5000);
+      }
+    });
+  });
 }
 // Who you are in the Hang out. Switch and friends only show when there's more than one drawing to be.
 function paintPalStrip() {
@@ -721,6 +854,12 @@ function paintMeter(m) {
   $("meterNext").textContent = m.next ? `Next: ${m.next}` : "Next: a party!";
 }
 function roomEvent(e, you) {
+  if (e.kind === "mural") {                  // a batch of new squares from everyone
+    if (e.mural) mergeMural(e.mural);
+    else if (Array.isArray(e.cells) && roomInfo && roomInfo.mural) for (const cell of e.cells) applyMuralCell(cell[0], cell[1], cell[2] || "");
+    if (roomPane === "mural") muralRefresh();
+    return;
+  }
   if ((e.kind === "place" || e.kind === "unplace") && roomPane === "art") buildRoomButtons();
   if (e.kind === "game" && e.message) {
     // "The seeker is counting!" is said to everyone, but the seeker is the one who
@@ -766,7 +905,9 @@ function roomEvent(e, you) {
   }
 }
 function roomState(data) {
+  const wasMural = roomInfo && roomInfo.mural;
   roomInfo = data;
+  if (!data.mural && wasMural) data.mural = wasMural;     // snapshots carry the picture; small updates keep it
   paintGameState(data);
   let freshStuff = false;       // prizes and new rooms arrive here, not only from a buy
   if (data.stuff) {
@@ -809,6 +950,7 @@ function roomState(data) {
   const places = data.places.join() + "|" + data.people.filter(m => !m.loc).map(m => m.seat + m.name).join();     // places, and who's outside to go to
   if (places !== placesSeen) { placesSeen = places; if (roomPane === "place") buildRoomButtons(); }
   for (const e of data.events) roomEvent(e, data.you);
+  if (data.mural && roomPane === "mural") muralRefresh();
 }
 // ---- 🎯 Today's jobs: three small things to do, the same for the whole class each day ---------------
 let jobsSeen = null;
@@ -971,9 +1113,39 @@ $("roomTabs").addEventListener("click", e => {
   if (b) { roomPane = b.dataset.pane; artArmed = furnArmed = buyArmed = null; moving = false; buildRoomButtons(); $("roomButtons").scrollTop = 0; }
 });
 $("roomButtons").addEventListener("click", e => {
-  const pick = name => { const el = e.target.closest(`[data-${name}]`); return el && !el.disabled ? el.dataset[name] : null; };
+  // dataset keys are camelCase: data-mural-ink is dataset.muralInk
+  const pick = name => { const el = e.target.closest(`[data-${name}]`); return el && !el.disabled ? el.dataset[name.replace(/-(\w)/g, (_, c) => c.toUpperCase())] : null; };
   if (e.target.closest("[data-wedding-start]")) { startWedding(); return; }
   if (pick("perform")) { pressPerform(); return; }
+  if (pick("mural-ink")) {
+    muralInk = +pick("mural-ink");
+    PalStage.SFX.wake(); PalStage.SFX.play("click");
+    $("roomButtons").querySelectorAll("[data-mural-ink]").forEach(b => b.setAttribute("aria-pressed", +b.dataset.muralInk === muralInk));
+    return;
+  }
+  if (pick("mural-who")) {
+    muralWhoMode = !muralWhoMode;
+    PalStage.SFX.play("click");
+    buildRoomButtons();
+    return;
+  }
+  if (pick("mural-undo")) {
+    PalStage.SFX.wake();
+    post("/pixel/room/do", {id: me, what: "mural", action: "undo"}).then(out => {
+      if (!out) return;
+      if (out.error) { tipFor(out.error === "nothing" ? "You haven't painted a square yet." : out.error, 3500); return; }
+      applyMuralCell(out.cell, out.ink, "");
+      const m = muralData();
+      if (m) {
+        if (out.me !== undefined && out.me !== null) m.me = out.me;
+        if (out.mine !== undefined) m.mine = out.mine;
+        if (out.painted_today !== undefined) m.painted_today = out.painted_today;
+      }
+      PalStage.SFX.play("pop");
+      muralRefresh();
+    });
+    return;
+  }
   if (pick("buy")) { buy(pick("buy")); return; }
   if (pick("shoptab")) { shopTab = pick("shoptab"); buyArmed = null; buildRoomButtons(); $("roomButtons").scrollTop = 0; return; }
   if (furnArmed && furnArmed.piece && (pick("paint") || pick("size") || pick("flip"))) {
@@ -1098,6 +1270,13 @@ $("roomCanvas").addEventListener("click", async e => {
   }
   if (fishing && fishing.bitten) { reelIn(); return; }
   fishing = null;
+  if (!atHome() && PalHang.muralAt(roomStage.state.places, x, y)) {     // click the wall itself to open the mural
+    roomPane = "mural"; artArmed = furnArmed = buyArmed = null; moving = false; muralWhoMode = false;
+    PalStage.SFX.wake();
+    buildRoomButtons(); $("roomButtons").scrollTop = 0;
+    tipFor("🖼️ The class mural! Pick a colour, then tap a square.", 5000);
+    return;
+  }
   const depth = Math.round(Math.max(0, Math.min(1, (y - PalStage.GROUND_TOP) / PalStage.GROUND_DEEP)) * 100) / 100;
   if (artArmed) {
     const key = artArmed;

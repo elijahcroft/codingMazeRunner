@@ -997,7 +997,30 @@ const PalStage = (() => {
     }
     const FX_SOUND = {hearts: "ding", stars: "ding", confetti: "yay", petals: "whoosh", bouquet: "whoosh", bells: "bells", march: "march", cake: "tada"};
     /** One thing that happened in the room. `sound` is off for other people's taps. */
+    // 🖼️ The class mural: a snapshot replaces it; a batch event patches just the
+    // squares that changed, so a busy class still sends one small message.
+    const MURAL_WHO = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    function applyMural(e) {
+      if (e.mural) { state.mural = e.mural; return; }
+      const m = state.mural;
+      if (!m || !Array.isArray(e.cells) || !m.grid) return;
+      const grid = m.grid.split(""), who = (m.who || "").split("");
+      for (const cell of e.cells) {
+        const [i, ch, by] = cell;
+        if (!(i >= 0 && i < grid.length)) continue;
+        grid[i] = ch;
+        if (ch === ".") who[i] = ".";
+        else if (by) {
+          let slot = m.names.indexOf(by);
+          if (slot < 0 && m.names.length < MURAL_WHO.length) { m.names.push(by); slot = m.names.length - 1; }
+          who[i] = slot >= 0 ? MURAL_WHO[slot] : ".";
+        }
+      }
+      m.grid = grid.join(""); m.who = who.join("");
+    }
+
     function roomApply(e, sound) {
+      if (e.kind === "mural") { applyMural(e); return; }
       if (!state.room) return;
       const m = state.room.find(x => x.seat === e.seat), now = performance.now();
       if (e.kind === "join") {
@@ -1589,6 +1612,7 @@ const PalStage = (() => {
         stage.state.game = data.game;
         stage.state.cover = data.cover || [];
         stage.state.home = data.home || null;
+        if (data.mural) stage.state.mural = data.mural;     // the full picture comes with a snapshot; later events patch it
         if (data.members) stage.roomStart(data, data.you);
         for (const e of data.events) stage.roomApply(e, everySound || e.seat === data.you);
         const missing = data.game_members && stage.roomSync(data.game_members, data.you);

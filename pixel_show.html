@@ -137,7 +137,7 @@
     <div id="fashionSpot" hidden><canvas id="fashionBig" aria-label="The walker, big"></canvas><div id="fashionName"></div><div id="fashionTheme"></div></div>
     <div id="closed" hidden>The Hang out is closed for now.</div></div>
     <div class="world">
-      <div class="cam"><button id="camLeft" aria-label="Move the camera left">◀ Left</button><button id="camRight" aria-label="Move the camera right">Right ▶</button><button id="camAuto">🎬 Auto</button><select id="camFollow" aria-label="Follow one student with the camera"></select><button id="savePhoto" hidden>💾 Save the photo</button></div>
+      <div class="cam"><button id="camLeft" aria-label="Move the camera left">◀ Left</button><button id="camRight" aria-label="Move the camera right">Right ▶</button><button id="camAuto">🎬 Auto</button><button id="camMural" aria-label="Look at the class mural">🖼️ Mural</button><select id="camFollow" aria-label="Follow one student with the camera"></select><button id="savePhoto" hidden>💾 Save the photo</button></div>
       <div id="map" aria-label="Map of the world. Click to move the camera."></div>
       <span id="camWord"></span>
     </div></section>
@@ -145,7 +145,7 @@
     <div class="card"><p class="label">Join in at</p><div class="address" id="address"></div></div>
     <div class="card" id="raceCard" hidden><p class="label" id="raceLabel">💻 Code race</p><div id="raceJob"></div><pre id="raceCode" hidden></pre><div id="raceWho"></div></div>
     <div class="card"><p class="label">Look at</p><div id="places"></div><p class="label">Who's here (click to follow)</p><div id="people"></div></div>
-    <div class="card" id="jobsCard" hidden><p class="label">🎯 Today's jobs (all 3 open a 🎁)<b id="jobsDone"></b></p><div id="jobs"></div><p class="label" id="chestLine" hidden></p><p class="label" id="snowLine" hidden></p></div>
+    <div class="card" id="jobsCard" hidden><p class="label">🎯 Today's jobs (all 3 open a 🎁)<b id="jobsDone"></b></p><div id="jobs"></div><p class="label" id="chestLine" hidden></p><p class="label" id="snowLine" hidden></p><p class="label" id="muralLine" hidden></p></div>
     <div class="card" style="flex:1;min-height:0;display:flex;flex-direction:column"><p class="label">Just now</p><ul id="feed"></ul></div>
   </aside>
 </div>
@@ -216,6 +216,7 @@ stage.roomHooks({everySound: true});
 const PLACE_W = PalStage.W, PLACE_WORD = {home: "🏠 Home", park: "🌳 Park", wedding: "💒 Wedding", beach: "🏖️ Beach", night: "🌙 Night", snowy: "⛄ Snowy hill", candy: "🍭 Candy land", space: "🚀 Space", sea: "🌊 Under the sea", village: "❄️ Snow Village"};
 const cam = {mode: "auto", seat: null, x: 0, moveOn: 0, loc: 0};
 let people = [], homeName = "", homeRooms = [], watcher = null, game = null;
+let muralChangedAt = 0, muralShowNext = 0, lastMuralKey = "";     // 🖼️ gentle Auto visits, at most every 45 s
 // Which place the screen shows: 0 is outside, any other number is someone's home.
 function lookAt(loc) {
   if (loc === cam.loc) return;
@@ -247,7 +248,14 @@ function keepFollowing() {
 }
 // Auto takes turns with everyone, inside the homes too.
 function autoLook(now) {
-  if (cam.mode !== "auto" || !people.length) return;
+  if (cam.mode !== "auto") return;
+  // 🖼️ The mural changed in the last 20 s: give it one calm look, at most every 45 s.
+  if (now > muralShowNext && muralChangedAt && now - muralChangedAt < 20000 && now >= cam.moveOn) {
+    cam.seat = null; cam.x = 0; cam.moveOn = now + 9000; muralShowNext = now + 45000;
+    lookAt(0);
+    return;
+  }
+  if (!people.length) return;
   if (game && game.phase === "playing" && (game.kind === "tag" || game.kind === "hide") && people.some(m => m.seat === game.it)) {
     cam.seat = game.it;     // a chase is best watched from the chaser
     lookAt(0);
@@ -375,6 +383,10 @@ $("camFollow").addEventListener("change", e => { if (e.target.value) followSeat(
 $("camLeft").addEventListener("click", () => drive((stage.state.camX || 0) - PLACE_W / 2));
 $("camRight").addEventListener("click", () => drive((stage.state.camX || 0) + PLACE_W / 2));
 $("camAuto").addEventListener("click", goAuto);
+$("camMural").addEventListener("click", () => {
+  cam.mode = "free"; cam.seat = null; cam.x = 0;
+  lookAt(0); paintWorld();
+});
 $("map").addEventListener("click", e => {
   const r = $("map").getBoundingClientRect();
   drive((e.clientX - r.left) / r.width * worldWide() - PLACE_W / 2);
@@ -424,6 +436,13 @@ watcher = PalStage.follow(stage, {everySound: true, loc: () => cam.loc, onState(
   if (data.tree) stage.state.tree = data.tree;
   $("snowLine").hidden = !data.snowman;
   if (data.snowman) $("snowLine").textContent = `❄️ Snowman ${data.snowman.balls} of ${data.snowman.need} · ⛄ built today: ${data.snowman.built} · 🎄 on the tree: ${(stage.state.tree || []).length}`;
+  // 🖼️ The class mural: note a change for Auto, and say how big it has got.
+  const mural = stage.state.mural, muralKey = mural ? mural.grid + "|" + mural.who : "";
+  if (!lastMuralKey) lastMuralKey = muralKey;
+  else if (muralKey && muralKey !== lastMuralKey) { lastMuralKey = muralKey; muralChangedAt = performance.now(); }
+  const muralTotal = mural ? [...mural.who].filter(ch => ch !== ".").length : 0;
+  $("muralLine").hidden = !muralTotal;
+  if (muralTotal) $("muralLine").textContent = `🖼️ Class mural: ${muralTotal} square${muralTotal === 1 ? "" : "s"} painted`;
   if ($("jobs").innerHTML !== jobs) $("jobs").innerHTML = jobs;
   for (const e of data.events) {
     noteMoment(e);

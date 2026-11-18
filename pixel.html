@@ -657,6 +657,24 @@
   .room-buttons .paint-row { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
   .room-buttons .paint-row button { min-height: 0; padding: 4px; }
   .room-buttons .paint-row canvas { height: 34px; }
+  /* 🖼️ The class mural: a big board, a bright palette, and one tap per square. */
+  .room-buttons .mural-idea { font-size: 15px; color: #5a4208; }
+  .room-buttons .mural-idea b { color: #c9286f; }
+  .room-buttons .mural-wrap { position: relative; grid-column: 1 / -1; width: 100%; max-width: 420px; justify-self: center; border: 3px solid #1b1530; border-radius: 10px; overflow: hidden; background: #fffdf6; }
+  .room-buttons .mural-wrap canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; cursor: crosshair; }
+  .room-buttons #muralHover { position: absolute; border: 2px solid #1b1530; box-shadow: 0 0 0 2px #fffdf6; pointer-events: none; }
+  .room-buttons .mural-tools { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .room-buttons .mural-tools button { min-height: 36px; grid-auto-flow: column; justify-content: center; gap: 5px; font-size: 13px; }
+  .room-buttons .mural-tools button span { font-size: 18px; }
+  .room-buttons .mural-inks { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 4px; }
+  .room-buttons .mural-inks button { min-height: 0; height: 26px; padding: 0; border: 2px solid #1b1530; border-radius: 7px; box-shadow: none; }
+  .room-buttons .mural-inks button[aria-pressed="true"] { outline: 3px solid #376dba; outline-offset: 1px; }
+  .room-buttons .mural-inks .mural-eraser { background: #fff; font-size: 15px; }
+  @media (max-height: 620px) {     /* 1024x600 and 1093x530: keep the board, colours and tools in view */
+    .room-buttons .mural-wrap { max-width: 220px; }
+    .room-buttons .mural-inks button { height: 22px; }
+    .room-buttons .mural-tools button { min-height: 30px; padding: 3px 2px; }
+  }
   .me-note { grid-column: 1 / -1; margin: 0; font-size: 14px; font-weight: 700; color: #4d6f68; }
   #roomClosed { background: #fffdf6e0; color: #2c5352; }
   .next-step { background: #2d6a68 !important; color: #fffdf6 !important; }

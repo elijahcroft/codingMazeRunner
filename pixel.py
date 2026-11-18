@@ -2514,6 +2514,7 @@ COINS_ROUND = 5            # finishing a round of a game
 COINS_WIN = 5              # and winning it
 COINS_FISH = 1
 COINS_NEW_FISH = 4         # more, the first time for each kind
+COINS_MURAL = 5            # 10 squares on the class mural, once a day
 PLAY_COINS_DAY = 40
 
 # Things for a home. A price of 0 is there from the start, unless it's a "prize" (the

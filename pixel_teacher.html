@@ -51,6 +51,10 @@
     #posterGrid b { font-size: 20px; }
   }
   canvas.pal { width: 40px; height: 40px; margin-right: 8px; vertical-align: middle; image-rendering: pixelated; background: #f6f3fd; border-radius: 4px; }
+  #muralPic { display: block; width: 100%; max-width: 440px; height: auto; image-rendering: pixelated; border: 2px solid var(--ink); border-radius: 10px; background: #fffdf6; }
+  .mural-side { flex: 1; min-width: 220px; display: grid; gap: 7px; align-content: start; }
+  .mural-side select { max-width: 100%; padding: 5px; border: 2px solid var(--ink); border-radius: 8px; font: inherit; }
+  .mural-side p { margin: 0; font-size: 14px; color: var(--soft); }
   .feed { margin: 0; padding: 0; list-style: none; font-size: 14px; }
   .bar { height: 14px; background: #e7defd; border: 2px solid var(--ink); border-radius: 7px; overflow: hidden; }
   .bar i { display: block; height: 100%; background: var(--sun); }
@@ -133,6 +137,26 @@
     <div id="roomPlaced" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px;font-size:14px"></div>
   </div>
 
+  <h2>🖼️ Class mural</h2>
+  <div class="card">
+    <div class="row" style="align-items:flex-start;gap:14px">
+      <canvas id="muralPic" width="400" height="240" aria-label="The class mural"></canvas>
+      <div class="mural-side">
+        <p id="muralIdea"></p>
+        <p id="muralTotal"></p>
+        <div class="row">
+          <button class="btn" id="muralClear">🧽 Clear</button>
+          <button class="btn" id="muralDownload">💾 Download PNG</button>
+        </div>
+        <p>There's no picture page in the class book yet, so download the PNG to keep or print it.</p>
+        <label for="muralWho" style="font-weight:800">Remove one student's squares:</label>
+        <select id="muralWho" aria-label="Pick a student who painted"></select>
+        <div><button class="btn" id="muralRemove">↶ Remove their squares</button></div>
+        <p id="muralNote" aria-live="polite" hidden></p>
+      </div>
+    </div>
+  </div>
+
   <h2>Just now</h2>
   <div class="card"><ul class="feed" id="feed"></ul></div>
 </div>
@@ -211,6 +235,7 @@ async function refresh() {
   if (game) $("roomGame").textContent = `🎮 ${GAME_WORD[game.kind]} is on: ${game.count} playing, ${game.phase === "lobby" ? `starting in about ${game.left}s` : `about ${game.left}s left`}.`;
   $("roomSaid").textContent = room.words && room.said.length ? `Just said: ${room.said.slice(-5).join(" / ")}` : "";
   $("feed").innerHTML = data.feed.slice().reverse().map(f => `<li>${esc(f.text)}</li>`).join("") || `<li style="color:var(--soft)">Nothing yet.</li>`;
+  drawMural(data.mural);
 }
 const GAME_WORD = {hide: "Hide & seek", tag: "Tag", race: "Red light, green light", dance: "Copy the dance", code: "💻 Code race", draw: "🎨 Draw & guess", apples: "🍎 Apple grab", ball: "⚽ Pal ball", fashion: "👗 Fashion show"};
 const PLACE_WORD = {park: "🌳 Park", wedding: "💒 Wedding", beach: "🏖️ Beach", night: "🌙 Night", snowy: "⛄ Snowy hill", candy: "🍭 Candy land", space: "🚀 Space", sea: "🌊 Under the sea", village: "❄️ Snow Village"};
@@ -251,6 +276,62 @@ function paintPal(cv) {
     g.fillRect(i % pic.size, Math.floor(i / pic.size), 1, 1);
   });
 }
+// 🖼️ The class mural: the picture, clear, remove one student, and a PNG to keep.
+let muralPicked = "";
+function muralRemoveWord() {
+  const opt = $("muralWho").selectedOptions[0], name = opt && opt.value ? opt.textContent.replace(/ \(\d+\)$/, "") : "";
+  $("muralRemove").textContent = name ? `↶ Remove ${name}'s squares` : "↶ Remove their squares";
+  $("muralRemove").disabled = !name;
+}
+function drawMural(m) {
+  if (!m) return;
+  const cv = $("muralPic"), scale = 10;
+  cv.width = m.w * scale; cv.height = m.h * scale;
+  const g = cv.getContext("2d");
+  for (let i = 0; i < m.w * m.h; i++) {
+    const x = i % m.w, y = Math.floor(i / m.w), ink = m.grid[i];
+    if (ink && ink !== ".") g.fillStyle = m.colours[parseInt(ink, 16)] || "#fffdf6";
+    else g.fillStyle = (x + y) % 2 ? "#f4f0e4" : "#fffdf6";
+    g.fillRect(x * scale, y * scale, scale, scale);
+  }
+  $("muralIdea").textContent = `🖼️ Today's idea: ${m.idea}`;
+  $("muralTotal").textContent = `${m.total} square${m.total === 1 ? "" : "s"} painted so far.`;
+  if (!m.painters.some(p => p.id === muralPicked)) muralPicked = m.painters.length ? m.painters[0].id : "";
+  $("muralWho").innerHTML = m.painters.length
+    ? m.painters.map(p => `<option value="${esc(p.id)}">${esc(p.name)} (${p.count})</option>`).join("")
+    : `<option value="">Nobody has painted yet</option>`;
+  $("muralWho").value = muralPicked;
+  $("muralWho").disabled = !m.painters.length;
+  muralRemoveWord();
+}
+$("muralWho").addEventListener("change", () => { muralPicked = $("muralWho").value; muralRemoveWord(); });
+$("muralClear").addEventListener("click", async () => {
+  if (!confirm("Clear the whole class mural? Everyone's squares go.")) return;
+  $("muralClear").disabled = true;
+  const out = await call({action: "mural_clear"}).catch(() => null);
+  $("muralClear").disabled = false;
+  $("muralNote").hidden = false;
+  $("muralNote").textContent = !out ? "Couldn't reach the server." : out.error || "The mural is clear. A fresh start!";
+  refresh();
+});
+$("muralRemove").addEventListener("click", async () => {
+  const opt = $("muralWho").selectedOptions[0], pid = $("muralWho").value;
+  if (!pid) return;
+  const name = opt ? opt.textContent.replace(/ \(\d+\)$/, "") : "this student";
+  if (!confirm(`Remove all of ${name}'s squares? Their squares go; everyone else's stay.`)) return;
+  $("muralRemove").disabled = true;
+  const out = await call({action: "mural_remove", id: pid}).catch(() => null);
+  $("muralRemove").disabled = false;
+  $("muralNote").hidden = false;
+  $("muralNote").textContent = !out ? "Couldn't reach the server." : out.error || `Removed ${out.removed} square${out.removed === 1 ? "" : "s"}.`;
+  refresh();
+});
+$("muralDownload").addEventListener("click", () => {
+  const a = document.createElement("a");
+  a.download = "pixel-class-mural.png";
+  a.href = $("muralPic").toDataURL("image/png");
+  a.click();
+});
 $("gate").addEventListener("submit", e => { e.preventDefault(); key = $("key").value.trim(); refresh(); });
 $("openGo").addEventListener("click", async () => { await call({action: "open", level: $("openTo").value}); refresh(); });
 $("party").addEventListener("click", () => call({action: "party"}));
