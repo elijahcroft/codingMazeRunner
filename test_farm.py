@@ -441,6 +441,10 @@ class Routes(unittest.TestCase):
         with server.lock:
             rows = server.farm_class()
         self.assertIn(("Ada", 1, ["for"]), [(r["name"], r["days"], r["ideas"]) for r in rows])
+        ada_row = next(r for r in rows if r["name"] == "Ada")
+        # Counted from 1, as Ada's own job card says it: two jobs done, so job 3.
+        self.assertEqual((ada_row["job"], ada_row["jobs_done"], ada_row["job_days"]), (3, False, 0))
+        self.assertEqual(self.get(f"/planet/farm/state?id={ada}")["job"]["n"], 3)
 
     def test_a_closed_farm_runs_nothing_and_keeps_everything(self):
         cy = self.post("/join", {"name": "Cy"})["id"]

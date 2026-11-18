@@ -637,7 +637,8 @@ async function refresh() {
   $("address").textContent = (data.address || "").replace(/^http:\/\//, "");
   $("spotOff").hidden = !data.spotlight;
   $("raceBoard").textContent = data.race_on_board ? "🏁 Close the race" : "🏁 Race"; $("blanks").checked = data.blanks; $("easy").checked = data.easy; $("coach").checked = data.coach; $("together").checked = data.together; $("sound").checked = data.sound; $("warmup").checked = data.warmup; $("maker").checked = data.maker; $("lounge").checked = data.lounge; $("farm").checked = data.farm;
-  $("farmList").innerHTML = (data.farms || []).map(f => `<span>🌱 <b>${esc(f.name)}</b>: day ${f.days}, field ${esc(f.field)}, best day 🪙 ${f.best}, job ${f.job} of ${f.jobs}, ${f.lines} lines${f.ideas.length ? `, uses ${esc(f.ideas.join(", "))}` : ""}</span>`).join("");
+  const FARM_STUCK_DAYS = 6;
+  $("farmList").innerHTML = (data.farms || []).map(f => `<span>🌱 <b>${esc(f.name)}</b>: day ${f.days}, field ${esc(f.field)}, best day 🪙 ${f.best}, ${f.jobs_done ? "every job done" : `job ${f.job} of ${f.jobs}`}${f.job_days >= FARM_STUCK_DAYS ? ` <b title="Days run without finishing this job. Worth a visit: the job card shows the code to type." style="color:var(--gold, #ffd36b)">🙋 ${f.job_days} days on it</b>` : ""}, ${f.lines} line${f.lines === 1 ? "" : "s"}${f.ideas.length ? `, uses ${esc(f.ideas.join(", "))}` : ""}</span>`).join("");
    $("loungeWatch").hidden = !data.lounge; $("team").checked = data.team; $("teamTools").hidden = !data.team;
   $("teamStatus").textContent = `${plural(data.team_rovers, "rover")} on the map, ${data.team_vault} in the vault`;
   $("teamHelper").textContent = data.team_helper ? "🤖 Send the helper away" : "🤖 Helper rover";

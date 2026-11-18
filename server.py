@@ -4562,7 +4562,10 @@ def farm_class():
             w, h = planet_farm.FIELDS[farm["field_level"]][:2]
             rows.append({"name": q["name"], "days": farm["day"], "field": f"{w}×{h}",
                          "best": farm["best"], "coins": farm["coins"],
-                         "job": min(farm["job"], len(planet_farm.JOBS)), "jobs": len(planet_farm.JOBS),
+                         # Counted from 1, as the student's job card says it.
+                         "job": min(farm["job"] + 1, len(planet_farm.JOBS)), "jobs": len(planet_farm.JOBS),
+                         "jobs_done": farm["job"] >= len(planet_farm.JOBS),
+                         "job_days": farm["job_tries"] if farm["job"] < len(planet_farm.JOBS) else 0,
                          "ideas": farm["ideas"], "lines": planet.code_lines(farm["code"])})
     return sorted(rows, key=lambda row: row["name"].lower())
 
