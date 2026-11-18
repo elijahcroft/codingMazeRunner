@@ -437,6 +437,8 @@ class Routes(unittest.TestCase):
         out = self.post("/planet/farm/run", {"id": bo, "code": ROW})
         self.assertTrue(out["record"])
         self.assertEqual(out["farm"]["record"]["name"], "Bo")
+        # A job done is news on the class screen.
+        self.assertIn("🌱 Ada finished farm job 2 of 15: Drive and pick", [m["text"] for m in server.planet_feed])
         # The teacher's list.
         with server.lock:
             rows = server.farm_class()

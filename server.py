@@ -4529,6 +4529,11 @@ def farm_run(p, data):
     out["record"] = bool(record["coins"]) and farm["best"] > record["coins"]
     if out["record"] and record["name"] != p["name"]:
         feed(f"🏆 {p['name']} set a farm record: 🪙 {farm['best']:,} in one day")
+    # A farm job done is news for the class screen (the first, pressing Run, isn't).
+    if out["jobs"] and farm["job"] > 1:
+        n = len(planet_farm.JOBS)
+        feed(f"🌱 {p['name']} finished every farm job!" if farm["job"] >= n else
+             f"🌱 {p['name']} finished farm job {farm['job']} of {n}: {out['jobs'][-1]['title']}")
     if out["order"] and out["order"].get("crate") and out["order"]["crate"].get("key"):
         feed(f"🎁 {p['name']} found a {out['order']['crate']['name'].lower()} in a farm crate")
     if out["frames"]:
