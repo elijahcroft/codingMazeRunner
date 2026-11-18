@@ -3291,11 +3291,13 @@ function renderVoyage() {
   const next = voyageNext();
   $("voyageButton").hidden = !next;
   if (next && recall(`planetVoyage:${me}`) !== "1" && recall("planetIntroSeen") === "1") {
-    store(`planetVoyage:${me}`, "1");
     // Don't drop this late announcement on top of a sheet the student has
-    // already opened (the garage, the Paint Shop or the levels map).
+    // already opened (the garage, the Paint Shop or the levels map): it waits
+    // for the next time the page draws the voyage, and only counts once shown.
     setTimeout(() => {
       if ([...document.querySelectorAll(".dialog")].some(sheet => !sheet.hidden)) return;
+      if (recall(`planetVoyage:${me}`) === "1") return;
+      store(`planetVoyage:${me}`, "1");
       toast("🚀", "New levels have landed!", "Paint Planet: drive over the dots to paint a picture. Press here to go!", () => openSite(voyageNext()));
     }, 1500);
   }
