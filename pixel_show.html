@@ -47,7 +47,7 @@
   .float.combo { color: #ffd93b; font-size: clamp(30px, 4vw, 54px); }
   @keyframes up { to { transform: translate(-50%, -80px); opacity: 0; } }
   #banner { position: absolute; left: 50%; top: 5%; transform: translateX(-50%); max-width: 90%; padding: 8px 24px; background: #fffdf6f2; border-radius: 20px; font-size: clamp(20px, 2.4vw, 36px); white-space: nowrap; }
-  #banner.big { top: 24%; padding: 18px 44px; text-align: center; font-size: clamp(36px, 5vw, 76px); font-weight: 900; color: #d9477e; }
+  #banner.big { top: 24%; width: max-content; padding: 18px 44px; text-align: center; font-size: clamp(36px, 5vw, 76px); font-weight: 900; color: #d9477e; white-space: normal; text-wrap: balance; }
   #banner small { display: block; font-size: .42em; color: #2c5352; }
   /* 👗 Fashion show: the walker, big, beside the runway. */
   #fashionSpot { position: absolute; right: 2.5%; bottom: 3%; width: clamp(150px, 20vw, 240px); display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none; filter: drop-shadow(0 6px 12px #2c535238); }
@@ -273,10 +273,11 @@ function autoLook(now) {
 const SHOW_THESE = ["mymove", "toy", "five", "found", "go", "rest", "move", "fx"];
 // Class-wide moments that Auto must chase, even when it is looking into a home.
 // A game start or a Pal ball goal says so with event.moment instead of a kind.
-const MOMENT_THESE = ["mymove", "shower", "party", "photo"];
+const MOMENT_THESE = ["mymove", "shower", "party", "photo", "wedding"];
 let momentQueue = [];
 const isMoment = e => !!e.moment || MOMENT_THESE.includes(e.kind);
 function momentPlace(e) {
+  if (e.kind === "wedding") return {loc: 0, x: typeof e.x === "number" ? e.x : null};
   if (e.kind === "shower") {                 // the stars land outside, wherever the first one falls
     const star = (e.stars || [])[0];
     return {loc: 0, x: star ? star.x : null};
@@ -401,6 +402,7 @@ watcher = PalStage.follow(stage, {everySound: true, loc: () => cam.loc, onState(
   people = data.people || [];
   homeName = data.home ? data.home.name : "";
   homeRooms = data.home ? data.home.rooms.map(r => r.name) : [];
+  stage.state.wedding = data.wedding || null;
   if (data.members) playQueuedMoments();       // the new place is here: play the moment it jumped for
   if (cam.loc && !people.some(m => m.loc === cam.loc)) lookAt(0);     // everyone left that home
   $("closed").hidden = data.open;
@@ -445,6 +447,17 @@ watcher = PalStage.follow(stage, {everySound: true, loc: () => cam.loc, onState(
     }
     else if (e.kind === "game" && e.moment) banner(esc(e.message), 5000, e.moment === "goal");
     else if (e.kind === "danceparty") { stage.roomApply({kind: "fx", name: "confetti", x: e.x}, true); banner(`🪩 Dance party! ${e.seats.length} pals dancing together!`, 4000, true); }
+    else if (e.kind === "wedding") {
+      const couple = e.partner_name ? `${e.host_name} and ${e.partner_name}` : e.host_name;
+      if (e.phase === "pick") banner(`💒 ${esc(e.host_name)} is getting married!`, 3500);
+      else if (e.phase === "start") banner(`💒 ${esc(couple)}'s wedding!`, 6000, true);
+      else if (e.phase === "rings") banner("💍 Do you promise? I do!", 3500);
+      else if (e.phase === "bouquet") banner("💐 Catch the flowers!", 3500);
+      else if (e.phase === "catch") banner(`💐 ${esc(e.catcher_name)} caught the flowers!`, 4500, true);
+      else if (e.phase === "done") banner(`💒 ${esc(couple)} are married!`, 7000, true);
+      else if (e.phase === "cancelled") banner("💒 The wedding stopped.", 3000);
+      else if (e.phase === "declined") banner("💍 No wedding this time.", 3000);
+    }
   }
 }});
 

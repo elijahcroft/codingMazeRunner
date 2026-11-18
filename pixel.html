@@ -451,6 +451,21 @@
   #hangBanner.big { top: 24%; padding: 14px 34px; text-align: center; font-size: clamp(26px, 4vw, 52px); font-weight: 900; color: #d9477e; animation: party-in .5s cubic-bezier(.3, 1.6, .5, 1); }
   #hangBanner small { display: block; font-size: .42em; color: #2c5352; font-weight: 800; }
   #hangBanner:not(.big) small { font-size: .75em; }     /* .42em is for the big banners; on a small one it was too tiny to read */
+  /* 💒 The wedding card: who to marry, the one-tap invite, and "not now". */
+  #weddingCard { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); z-index: 26; width: min(94%, 430px); max-height: 82%; overflow: auto;
+                 padding: 10px 12px; border-radius: 18px; background: #fffdf6f7; color: #2c5352; box-shadow: 0 8px 26px #2c535233; text-align: center; }
+  #weddingCard h3 { margin: 0 0 3px; font-size: 22px; line-height: 1.1; color: #d9477e; }
+  #weddingCard p { margin: 2px 0 7px; font-size: 14px; font-weight: 800; line-height: 1.25; }
+  #weddingCard .wedding-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 6px 0 7px; }
+  #weddingCard button { min-height: 42px; padding: 7px 10px; border: 0; border-radius: 13px; background: #eef3e8; color: #27484a;
+                        font: inherit; font-size: 16px; font-weight: 900; line-height: 1.1; cursor: pointer; box-shadow: 0 3px 0 #d3ddc9; }
+  #weddingCard button:hover { background: #e5efdc; }
+  #weddingCard button:active { transform: translateY(2px); box-shadow: 0 1px 0 #d3ddc9; }
+  #weddingCard button.wedding-yes { background: #ffd27a; box-shadow: 0 3px 0 #e0a93f; }
+  #weddingCard button.wedding-yes:hover { background: #ffe4a3; }
+  #weddingCard button.wedding-no { background: #f3eef8; box-shadow: 0 3px 0 #dacfe8; }
+  #weddingCard button[disabled] { opacity: .55; cursor: default; box-shadow: none; }
+  #weddingCard .wedding-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 7px; }
   .float { position: absolute; transform: translate(-50%, 0); font-size: clamp(16px, 2vw, 26px); font-weight: 900; color: #fff; text-shadow: 0 1px 0 #2c5352, 0 0 4px #2c5352; pointer-events: none; animation: float-up 1.4s ease-out forwards; }
   .float.combo { color: #ffd93b; font-size: clamp(24px, 3.2vw, 42px); }
   @keyframes float-up { to { transform: translate(-50%, -64px); opacity: 0; } }
@@ -948,6 +963,7 @@
       <button id="gameStatus" class="game-status"><strong id="gameTitle">Play with friends</strong><span id="gameDetail">💻 Code race, tag, hide &amp; seek, a race or a dance →</span></button>
       <div class="screen-wrap"><div class="screen hang-screen" id="roomHost"><canvas id="hangBack" aria-hidden="true"></canvas><canvas id="roomCanvas" aria-label="Everyone's pals together"></canvas>
         <div id="hangBanner" role="status" hidden></div>
+        <div id="weddingCard" role="dialog" aria-modal="false" aria-label="Wedding" hidden></div>
         <div id="seekerCurtain" hidden><b>You’re the seeker!</b><strong id="seekerCount">20</strong><span>Count while your friends hide…</span></div>
         <div class="life-empty" id="roomClosed" hidden><p>The Hang out is closed for now.</p></div>
       </div></div>

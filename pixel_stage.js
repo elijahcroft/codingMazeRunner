@@ -1043,6 +1043,9 @@ const PalStage = (() => {
         floatUp(e.icon, m.x, roomBase(m) - 74, "combo");
         setMove(m, "cheer", now);
         if (sound) SFX.play("gift");
+      } else if (e.kind === "float" && e.text) {
+        const x = m ? m.x : (e.x || W / 2), y = m ? roomBase(m) - 74 : 80;
+        floatUp(e.text, x, y, e.combo ? "combo" : "");
       } else if (e.kind === "rest" && m) {
         m.tx = e.x; m.ty = e.y; m.fiveWith = 0; m.rest = null; m.restNext = e.name;
         if (m.queue) endMove(m, now);

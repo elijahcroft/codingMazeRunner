@@ -5680,7 +5680,8 @@ def pixel_entry(p):
                        ("badges", []), ("runs", {}), ("misses", {}), ("last_error", ""), ("active", 0),
                        ("gifts", []), ("wear", {}), ("friends", []), ("move", None), ("found", []),
                        ("stuff", []), ("fish", {}), ("things", {}), ("remixed", []), ("guessed", []), ("fixed", []), ("free_code", ""), ("free_runs", 0), ("free_shows", []), ("performed", 0), ("perform_until", 0),
-                       ("chests", {}), ("chest_count", 0), ("mywear", []), ("presents", {}), ("present_count", 0), ("snowballs", 0)):
+                       ("chests", {}), ("chest_count", 0), ("mywear", []), ("presents", {}), ("present_count", 0), ("snowballs", 0),
+                       ("wedding_day", "")):
         entry.setdefault(key, value)
     if "coins" not in entry:        # coins came later: pay for the stars and gems already earned
         firsts = sum(1 for key, stars in entry["solved"].items() if key in pixel.LEVEL_BY_KEY and stars[0])
@@ -6083,7 +6084,7 @@ def pixel_record(p, key, code, out, guess=None, fixing=False):
 ROOM_EVENTS = 500
 # Big class moments the projector must show even while Auto is looking into a
 # home. A game start or a Pal ball goal says so with `moment` instead of a kind.
-ROOM_MOMENTS = {"mymove", "shower", "party", "photo"}
+ROOM_MOMENTS = {"mymove", "shower", "party", "photo", "wedding"}
 ROOM_AWAY = 14             # seconds without a word from a browser before a pal leaves
 SHOWER_FIRST = 75          # seconds after the first pal arrives
 SHOWER_GAP = (150, 210)    # seconds between star showers
@@ -6098,7 +6099,8 @@ room_news = threading.Condition()
 
 
 def room_empty():
-    return {"seq": 0, "seats": 0, "here": {}, "events": [], "shower": None, "next_shower": 0, "game": None, "game_serial": 0}
+    return {"seq": 0, "seats": 0, "here": {}, "events": [], "shower": None, "next_shower": 0, "game": None, "game_serial": 0,
+            "wedding": None, "wedding_serial": 0}
 
 
 pixel_room = dict(room_empty(), open=True, words=False)
@@ -7031,6 +7033,8 @@ def game_action(p, spot, data):
     if action == "create":
         if game:
             return {"error": "There's already a round. Join it or wait for the next one."}
+        if pixel_room.get("wedding"):
+            return {"error": "A wedding is on right now. Wait for it to finish."}
         kind = data.get("kind")
         if kind not in GAME_KINDS:
             return {"error": "Choose a game to play."}
@@ -7237,8 +7241,10 @@ def room_keep_up():
     room, now = pixel_room, time.time()
     for pid in [k for k, s in room["here"].items() if now - s["seen"] > ROOM_AWAY]:
         gone = room["here"].pop(pid)
+        wedding_leave(gone["seat"])
         room_event("leave", loc=gone["loc"], seat=gone["seat"])
     game_tick(now)
+    wedding_tick(now)
     if room["shower"] and now > room["shower"]["ends"]:
         room["shower"] = None
         room["next_shower"] = now + random.uniform(*SHOWER_GAP)
@@ -7259,7 +7265,8 @@ DOING = {"wave": "👋 Waving", "dance": "💃 Dancing", "jump": "🦘 Jumping",
          "perform": "🎤 Doing their show",
          "buy": "🛍️ Shopping", "wish": "🛍️ Shopping", "furnish": "🛋️ Decorating", "unfurnish": "🛋️ Decorating", "style": "🛋️ Decorating", "look": "🎨 Painting the walls",
          "place": "🖼️ Showing a drawing", "find": "💎 Found a gem!", "five": "🙌 High-fiving", "walk": "🚶 Exploring", "go": "🚶 Exploring",
-         "catch": "🌠 Catching stars", "home": "🚪 Moving house to house", "chest": "🧰 Coding a chest open"}
+         "catch": "🌠 Catching stars", "home": "🚪 Moving house to house", "chest": "🧰 Coding a chest open",
+         "wedding": "💒 At a wedding", "wedding_pick": "💒 At a wedding"}
 DOING_FOR = 20             # seconds a tap still counts as what they're doing
 
 # 🎯 Today's jobs: three small things to do in the Hang out, the same for the whole class each day,
@@ -7389,6 +7396,7 @@ def room_view(p, after, watch=0):
     rooms = home_rooms(home_of(pixel_entry(owner))) if owner else []
     out = {"open": room["open"], "words": room["words"], "seq": room["seq"], "you": spot["seat"] if spot else None,
            "meter": hang_view(), "places": ["home"] * len(rooms) if owner else hang_places(), "game": game_view(spot["seat"] if spot else None),
+           "wedding": wedding_view() if not loc else None,
            "cover": [] if loc else GAME_COVER, "home": home_view(owner, p) if owner else None, "world": hang_places(),
            "people": [room_person(s) for s in room["here"].values()], "loc": loc,
            "class_jobs": [DAY_JOBS[k][:2] for k in day_pick(day_order()[1])]}
@@ -8222,6 +8230,322 @@ def dance_party_check(spot):
                 day_job(players.get(seats[seat][0]), "party")
 
 
+# 💒 A wedding in the Wedding garden. One student asks a friend there, the friend says yes
+# with one tap, and a short ceremony plays for everyone in the garden: guests walk to the
+# rows of seats, the couple walks up the aisle to the arch, wedding words come up as
+# speech bubbles, then rings, confetti, bells and a bouquet toss. Only one wedding runs at
+# a time, and the couple and guests are paid a little at most once each day.
+WEDDING_INVITE_SECONDS = 25
+WEDDING_SECONDS = 24
+WEDDING_GUEST_COINS, WEDDING_COUPLE_COINS = 2, 5
+WEDDING_STEPS = ((1.0, "guests"), (3.0, "couple"), (6.2, "vows1"), (9.0, "vows2"),
+                 (11.0, "vows3"), (12.5, "rings"), (14.2, "bells"), (16.0, "confetti"),
+                 (18.0, "bouquet"), (20.0, "catch"), (21.5, "confetti2"))
+
+
+def wedding_span():
+    """The Wedding garden's left edge and width in the long Hang out world."""
+    places = hang_places()
+    if "wedding" not in places:
+        return None
+    left = places.index("wedding") * pixel.PLACE_W
+    return left, left + pixel.PLACE_W
+
+
+def wedding_here(spot):
+    span = wedding_span()
+    return bool(span and not spot["loc"] and span[0] <= spot["x"] < span[1])
+
+
+def wedding_seats(count):
+    """Rows of seats either side of the aisle, nearest the arch first, as [x, depth]."""
+    rows = (.36, .54, .72, .90)
+    left, right = (112, 128, 144), (176, 192, 208)
+    out = []
+    for n in range(min(24, max(0, count))):
+        row, col = divmod(n, 6)
+        out.append([(left if col < 3 else right)[col % 3], rows[min(row, len(rows) - 1)]])
+    return out
+
+
+def wedding_couple_spots():
+    return [[138, .24], [182, .24]]     # inside the arch, far enough apart that their words do not overlap
+
+
+def wedding_name(seat, fallback="A friend"):
+    for spot in pixel_room["here"].values():
+        if spot["seat"] == seat:
+            return spot["name"]
+    return fallback
+
+
+def wedding_spot(seat):
+    return next((s for s in pixel_room["here"].values() if s["seat"] == seat), None)
+
+
+def wedding_event(phase, x=None, **more):
+    span = wedding_span()
+    if x is None:
+        x = span[0] + pixel.PLACE_W // 2 if span else 0
+    room_event("wedding", loc=0, phase=phase, x=x, moment="wedding", **more)
+
+
+def wedding_view():
+    """What a screen needs to draw the chairs and know a wedding is on."""
+    w = pixel_room.get("wedding")
+    if not w:
+        return None
+    return {"id": w["id"], "phase": w["phase"], "host": w.get("host"), "partner": w.get("partner"),
+            "host_name": wedding_name(w.get("host"), w.get("host_name", "")),
+            "partner_name": wedding_name(w.get("partner"), w.get("partner_name", "")),
+            "seats": w.get("seats", []), "couple": w.get("couple", []), "catcher": w.get("catcher"),
+            "catcher_name": wedding_name(w.get("catcher"), w.get("catcher_name", "")) if w.get("catcher") else ""}
+
+
+def wedding_clear(phase, **more):
+    w = pixel_room.get("wedding")
+    if not w:
+        return None
+    names = {"host": w.get("host"), "partner": w.get("partner"),
+             "host_name": wedding_name(w.get("host"), w.get("host_name", "")),
+             "partner_name": wedding_name(w.get("partner"), w.get("partner_name", ""))}
+    pixel_room["wedding"] = None
+    wedding_event(phase, **names, **more)
+    return w
+
+
+def wedding_candidates(host):
+    return [s for s in pixel_room["here"].values()
+            if s["seat"] != host["seat"] and not s["loc"] and wedding_here(s)]
+
+
+def wedding_start(p, spot):
+    room, now = pixel_room, time.time()
+    if room.get("game") and room["game"]["phase"] != "results":
+        return {"error": "A game is on right now. Try the wedding after the game."}
+    if spot["loc"]:
+        return {"error": "Step outside, then go to the Wedding garden."}
+    if not wedding_here(spot):
+        return {"error": "Go to the 💒 Wedding garden first!"}
+    if room.get("wedding"):
+        return {"error": "A wedding is already happening in the garden. Wait for it to finish."}
+    friends = wedding_candidates(spot)
+    if not friends:
+        return {"error": "Ask a friend to come to the Wedding garden!"}
+    room["wedding_serial"] += 1
+    room["wedding"] = {"id": room["wedding_serial"], "phase": "pick", "host": spot["seat"],
+                       "host_name": spot["name"], "partner": None, "partner_name": "", "guests": [],
+                       "at": now, "until": now + WEDDING_INVITE_SECONDS, "step": 0,
+                       "seats": [], "couple": [], "catcher": None, "catcher_name": ""}
+    candidates = [{"seat": s["seat"], "name": s["name"]} for s in sorted(friends, key=lambda s: s["x"])]
+    wedding_event("pick", host=spot["seat"], host_name=spot["name"], candidates=candidates)
+    return {"ok": True, "candidates": candidates, "seconds": WEDDING_INVITE_SECONDS}
+
+
+def wedding_pick(p, spot, data):
+    w, now = pixel_room.get("wedding"), time.time()
+    if not w or w["phase"] != "pick" or spot["seat"] != w["host"]:
+        return {"error": "That wedding has ended. Press 💒 Hold a wedding again."}
+    seat = data.get("seat")
+    if not isinstance(seat, int) or isinstance(seat, bool):
+        return {"error": "Pick a friend from the garden."}
+    target = next((s for s in wedding_candidates(spot) if s["seat"] == seat), None)
+    if not target:
+        return {"error": "That friend is not in the Wedding garden now. Pick another friend."}
+    w.update(phase="invite", partner=seat, partner_name=target["name"], until=now + WEDDING_INVITE_SECONDS)
+    wedding_event("invite", to=seat, host=w["host"], host_name=spot["name"],
+                  partner=seat, partner_name=target["name"])
+    return {"ok": True, "seconds": WEDDING_INVITE_SECONDS}
+
+
+def wedding_cancel(p, spot):
+    w = pixel_room.get("wedding")
+    if not w or spot["seat"] != w.get("host") or w["phase"] not in ("pick", "invite"):
+        return {"error": "That wedding has ended."}
+    wedding_clear("cancelled", reason="host_cancelled")
+    return {"ok": True}
+
+
+def wedding_answer(p, spot, yes):
+    w, now = pixel_room.get("wedding"), time.time()
+    if not w or w["phase"] != "invite" or spot["seat"] != w.get("partner"):
+        return {"error": "That wedding invite has ended."}
+    if yes and not wedding_here(spot):
+        return {"error": "Come back to the 💒 Wedding garden to say yes!"}
+    if not yes:
+        name = spot["name"]
+        wedding_clear("declined", by=spot["seat"], by_name=name, reason="not_now")
+        return {"ok": True}
+    host = wedding_spot(w["host"])
+    if not host or not wedding_here(host):
+        wedding_clear("cancelled", reason="host_left")
+        return {"error": "The wedding stopped. Ask a friend again!"}
+    guests = [s for s in pixel_room["here"].values()
+              if s["seat"] not in (w["host"], spot["seat"]) and not s["loc"] and wedding_here(s)]
+    guests.sort(key=lambda s: s["x"])
+    guests = guests[:24]
+    couple = wedding_couple_spots()
+    catcher = random.choice(guests) if guests else None
+    w.update(phase="ceremony", started=now, step=0, until=now + WEDDING_SECONDS,
+             guests=[s["seat"] for s in guests], seats=wedding_seats(24),
+             couple=couple, catcher=(catcher["seat"] if catcher else None),
+             catcher_name=(catcher["name"] if catcher else ""))
+    wedding_event("start", host=w["host"], partner=spot["seat"], host_name=host["name"],
+                  partner_name=spot["name"], guests=len(guests), seconds=WEDDING_SECONDS,
+                  seats=w["seats"], couple=couple)
+    return {"ok": True, "seconds": WEDDING_SECONDS}
+
+
+def wedding_step(w, key, now):
+    span = wedding_span()
+    if not span:
+        return
+    left = span[0]
+    host, partner = wedding_spot(w["host"]), wedding_spot(w["partner"])
+    arch_x = left + pixel.PLACE_W // 2
+
+    def say(spot, text):
+        if spot and not spot["loc"] and wedding_here(spot):
+            room_event("say", loc=0, seat=spot["seat"], text=text)
+
+    def move(seat, name):
+        spot = wedding_spot(seat)
+        if spot and not spot["loc"] and wedding_here(spot):
+            room_event("move", loc=0, seat=seat, name=name)
+
+    if key == "guests":
+        for n, seat in enumerate(w["guests"]):
+            spot = wedding_spot(seat)
+            if not spot or spot["loc"] or not wedding_here(spot) or n >= len(w["seats"]):
+                continue
+            x, y = w["seats"][n]
+            room_event("walk", loc=0, seat=seat, x=round(left + x), y=y)
+    elif key == "couple":
+        for spot, (x, y) in ((host, w["couple"][0]), (partner, w["couple"][1])):
+            if spot and not spot["loc"] and wedding_here(spot):
+                room_event("walk", loc=0, seat=spot["seat"], x=round(left + x), y=y)
+    elif key == "vows1":
+        say(host, "Do you promise?")
+    elif key == "vows2":
+        say(partner, "I do!")
+    elif key == "vows3":
+        say(host, "I do too!")
+    elif key == "rings":
+        room_event("fx", loc=0, seat=host["seat"] if host else None, name="hearts", x=arch_x)
+        if host: room_event("float", loc=0, seat=host["seat"], text="💍")
+        if host: move(host["seat"], "cheer")
+        if partner: move(partner["seat"], "cheer")
+        wedding_event("rings", host=w["host"], partner=w["partner"],
+                      host_name=wedding_name(w["host"]), partner_name=wedding_name(w["partner"]))
+    elif key == "bells":
+        room_event("fx", loc=0, name="bells", x=arch_x)
+        room_event("fx", loc=0, name="march", x=arch_x)
+        for seat in [w["host"], w["partner"]] + w["guests"]:
+            move(seat, "cheer")
+    elif key == "confetti":
+        room_event("fx", loc=0, name="confetti", x=arch_x)
+    elif key == "bouquet":
+        # The catcher may have wandered off. Pick someone still in the garden.
+        here = [s for s in pixel_room["here"].values()
+                if s["seat"] not in (w["host"], w["partner"]) and not s["loc"] and wedding_here(s)]
+        catcher = wedding_spot(w.get("catcher"))
+        if not catcher or catcher["loc"] or not wedding_here(catcher):
+            catcher = here[0] if here else None
+            w["catcher"], w["catcher_name"] = (catcher["seat"], catcher["name"]) if catcher else (None, "")
+        room_event("fx", loc=0, name="bouquet", x=arch_x)
+        wedding_event("bouquet", host=w["host"], partner=w["partner"],
+                      catcher=w.get("catcher"), catcher_name=w.get("catcher_name", ""))
+    elif key == "catch":
+        catcher = wedding_spot(w.get("catcher"))
+        if catcher and not catcher["loc"] and wedding_here(catcher):
+            room_event("fx", loc=0, seat=catcher["seat"], name="hearts", x=catcher["x"])
+            room_event("say", loc=0, seat=catcher["seat"], text="Catch the flowers!")
+            room_event("float", loc=0, seat=catcher["seat"], text="💐", combo=True)
+            move(catcher["seat"], "cheer")
+            wedding_event("catch", host=w["host"], partner=w["partner"], catcher=catcher["seat"],
+                          catcher_name=catcher["name"], x=round(catcher["x"]))
+    elif key == "confetti2":
+        room_event("fx", loc=0, name="confetti", x=arch_x)
+        for seat in [w["host"], w["partner"]]:
+            move(seat, "cheer")
+
+
+def wedding_finish(w):
+    today = time.strftime("%Y-%m-%d", time.localtime(time.time()))
+    seats = game_seats()
+    roles = {w["host"]: "couple", w["partner"]: "couple"}
+    roles.update({seat: "guest" for seat in w["guests"]})
+    first_reward = False
+    paid = 0
+    for seat, role in roles.items():
+        pair = seats.get(seat)
+        if not pair:
+            continue
+        pid, spot = pair
+        player = players.get(pid)
+        if not player or not spot or spot["loc"] or not wedding_here(spot):
+            continue
+        entry = pixel_entry(player)
+        if entry.get("wedding_day") == today:
+            continue
+        entry["wedding_day"] = today
+        first_reward = True
+        paid += 1
+        pixel_pay(player, WEDDING_COUPLE_COINS if role == "couple" else WEDDING_GUEST_COINS)
+    if first_reward:
+        hang_fill(2)
+    host_name = wedding_name(w["host"], w.get("host_name", "A friend"))
+    partner_name = wedding_name(w["partner"], w.get("partner_name", "A friend"))
+    if host_name == partner_name == "Secret pal":
+        host_name, partner_name = "Two secret pals", ""
+    said = f"{host_name}{' and ' + partner_name if partner_name else ''} had a wedding! 💒"
+    pixel_feed_add(said)
+    pixel_save_soon()
+    catcher_name = wedding_name(w.get("catcher"), w.get("catcher_name", "")) if w.get("catcher") else ""
+    pixel_room["wedding"] = None
+    wedding_event("done", host=w["host"], partner=w["partner"], host_name=host_name,
+                  partner_name=partner_name, catcher=w.get("catcher"), catcher_name=catcher_name,
+                  paid=paid)
+
+
+def wedding_tick(now):
+    w = pixel_room.get("wedding")
+    if not w:
+        return
+    if w["phase"] in ("pick", "invite"):
+        if now <= w["until"]:
+            return
+        if w["phase"] == "invite":
+            wedding_clear("declined", reason="no_answer", by=w.get("partner"),
+                          by_name=wedding_name(w.get("partner"), w.get("partner_name", "")))
+        else:
+            wedding_clear("cancelled", reason="pick_timeout")
+        return
+    if w["phase"] != "ceremony":
+        return
+    host, partner = wedding_spot(w["host"]), wedding_spot(w["partner"])
+    if not host or not partner or host["loc"] or partner["loc"] or not wedding_here(host) or not wedding_here(partner):
+        wedding_clear("cancelled", reason="couple_left")
+        return
+    elapsed = now - w["started"]
+    while w["step"] < len(WEDDING_STEPS) and elapsed >= WEDDING_STEPS[w["step"]][0]:
+        wedding_step(w, WEDDING_STEPS[w["step"]][1], now)
+        w["step"] += 1
+    if elapsed >= WEDDING_SECONDS:
+        wedding_finish(w)
+
+
+def wedding_leave(seat):
+    """A student left the room: stop their wedding rather than leaving everyone waiting."""
+    w = pixel_room.get("wedding")
+    if not w:
+        return
+    if seat == w.get("host"):
+        wedding_clear("cancelled", reason="host_left")
+    elif seat == w.get("partner"):
+        wedding_clear("cancelled", reason="partner_left")
+
+
 def room_free_spot(lo, hi, me=None):
     """Somewhere between lo and hi with room around it, so a class arriving together isn't one heap
     of pals. Spots go left to right, back row and front row in turn; the first one clear of every
@@ -8275,6 +8599,14 @@ def room_do(p, data):
         spot["did"] = [did, spot["seen"]]
     if what == "game":
         return game_action(p, spot, data)
+    if what == "wedding":
+        return wedding_start(p, spot)
+    if what == "wedding_pick":
+        return wedding_pick(p, spot, data)
+    if what in ("wedding_yes", "wedding_no"):
+        return wedding_answer(p, spot, what == "wedding_yes")
+    if what == "wedding_cancel":
+        return wedding_cancel(p, spot)
     game = room.get("game")
     if game and seat in game["joined"]:
         playing = game["phase"] in ("hiding", "playing")
@@ -8289,6 +8621,7 @@ def room_do(p, data):
     if what == "five" and game and game["phase"] in ("hiding", "playing") and data.get("seat") in game["joined"]:
         return {"error": "Your friend is playing a game right now."}
     if what == "leave":
+        wedding_leave(seat)
         room["here"].pop(p["id"])
         room_event("leave", loc=spot["loc"], seat=seat)
         game_tick(time.time())
@@ -8683,6 +9016,8 @@ def pixel_teacher(data):
     if action == "code_race":          # everyone outside in the Hang out is in, and anyone can leave
         if not pixel_room["open"]:
             return {"error": "Open the Hang out first."}
+        if pixel_room.get("wedding"):
+            return {"error": "A wedding is on right now. Wait for it to finish."}
         if pixel_room["game"] and pixel_room["game"]["phase"] != "results":
             return {"error": "A game is on right now. Press ⏹ End this game first."}
         seats = [s["seat"] for s in pixel_room["here"].values() if not s["loc"]]

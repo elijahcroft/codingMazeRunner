@@ -332,6 +332,15 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
 - **🪩 Dance party:** when 3 pals in one place press 💃 Dance within 4 seconds of each other,
   everyone there gets confetti and a banner, and the class party meter goes up by 1 (at most once
   a minute). Nothing on screen says so, so it's a nice one to let the class discover.
+- **💒 Hold a wedding:** in the Wedding garden, a student presses **💒 Hold a wedding** in
+  🎉 Party (it is in 👋 Do too), picks a friend there, and that friend gets a one-tap
+  **Yes! 💍 / Not now**. If they say yes, a short ceremony plays for everyone in the garden:
+  guests walk to rows of seats, the couple walks up the aisle to the arch, the Wedding tap-words
+  appear as speech bubbles, then rings, bells, confetti and a 💐 bouquet toss to one guest. The
+  couple and guests each get a few coins, at most once a day, and the class party meter goes up
+  by 2. The projector shows a banner and 🎬 Auto goes to the garden, the class feed says who
+  married, and only one wedding can run at a time. If the couple leaves or the room closes, the
+  wedding stops cleanly for everyone.
 - **👋 Do, 💬 Say, 🎉 Party, 🏞️ Go to:** moves, words to tap, things to throw, and where
   everyone is. 💬 Say puts the wedding words first in the Wedding garden, and last everywhere
   else.

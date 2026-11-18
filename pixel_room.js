@@ -6,6 +6,7 @@
 let roomStage = null, stopRoom = null, stopBack = null, roomInfo = null, roomJoining = false, roomPane = "do";
 let artArmed = null, moveReadyAt = 0, clapFor = null, clapTimer = 0, bannerTimer = 0, placesSeen = "";
 let furnArmed = null, buyArmed = null, fishing = null, homeSeen = "", peopleSeen = "", coinsSeen = null;
+let weddingAsk = null, weddingSeen = "";
 // At home: ✋ moving things (a click picks one up, instead of playing with it), and which room is on screen.
 let moving = false, roomInView = 0;
 const atHome = () => !!(roomInfo && roomInfo.home), myHome = () => atHome() && roomInfo.home.mine;
@@ -56,7 +57,9 @@ function gameTip(g) {
 }
 // At a 🧰 chest, the tip under the world keeps the puzzle in view, even when a small laptop scrolls the code box.
 const chestTip = () => { const c = roomPane === "chest" && chestNow(); return c && !c.open ? `🧰 ${c.job} ${c.icons}` : ""; };
-const roomTipNow = () => (atHome() ? HOME_TIP : inRound() ? gameTip(currentGame()) : chestTip() || ROOM_TIP);
+const weddingTip = () => inWedding() && !(roomInfo && roomInfo.wedding)
+  ? "💒 Tap 🎉 Party, then Hold a wedding, to marry a friend in the garden!" : "";
+const roomTipNow = () => (atHome() ? HOME_TIP : inRound() ? gameTip(currentGame()) : chestTip() || weddingTip() || ROOM_TIP);
 
 function fitRoomScreen() {
   const host = $("roomHost"), wrap = host.parentElement, main = wrap.parentElement;
@@ -67,6 +70,125 @@ function fitRoomScreen() {
 
 function tap(what, more = {}) {
   return post("/pixel/room/do", Object.assign({id: me, what}, more)).catch(() => null);
+}
+
+// ---- 💒 Weddings: pick a friend, one-tap yes, then watch the ceremony -------------------
+const weddingCouple = e => e.partner_name ? `${e.host_name} and ${e.partner_name}` : e.host_name;
+function inWedding() {
+  const m = myMember(), places = roomStage && roomStage.state && roomStage.state.places;
+  return !!(m && !atHome() && places && places[Math.floor(m.x / PalStage.W)] === "wedding");
+}
+function weddingButtonHtml() {
+  if (!inWedding()) return "";
+  if (roomInfo && roomInfo.wedding)
+    return `<button data-wedding-start="1" disabled><span>💒</span>A wedding is on!<small>Watch the couple</small></button>`;
+  return `<button data-wedding-start="1"><span>💒</span>Hold a wedding<small>Pick a friend from the garden</small></button>`;
+}
+function clearWeddingCard() {
+  weddingAsk = null;
+  const el = $("weddingCard");
+  if (el) { el.hidden = true; el.innerHTML = ""; }
+}
+function paintWeddingCard() {
+  const el = $("weddingCard");
+  if (!el) return;
+  if (!weddingAsk) { el.hidden = true; el.innerHTML = ""; return; }
+  let html = "";
+  if (weddingAsk.mode === "pick") {
+    html = `<h3>💒 Who will you marry?</h3><p>Pick a friend here in the Wedding garden.</p><div class="wedding-list">` +
+      (weddingAsk.candidates || []).map(c => `<button data-wedding="pick" data-seat="${c.seat}" data-name="${esc(c.name)}">💍 ${esc(c.name)}</button>`).join("") +
+      `</div><button class="wedding-no" data-wedding="cancel">Not now</button>`;
+  } else if (weddingAsk.mode === "waiting") {
+    html = `<h3>💍 Waiting for ${esc(weddingAsk.name)}…</h3><p>Your friend has one tap: <b>Yes! 💍</b> or <b>Not now</b>.</p>` +
+      `<button class="wedding-no" data-wedding="cancel">Stop the wedding</button>`;
+  } else if (weddingAsk.mode === "invite") {
+    html = `<h3>💍 ${esc(weddingAsk.from)} asks you!</h3><p>Will you say "I do" at the Wedding garden?</p>` +
+      `<div class="wedding-pair"><button class="wedding-yes" data-wedding="yes">Yes! 💍</button><button class="wedding-no" data-wedding="no">Not now</button></div>`;
+  } else if (weddingAsk.mode === "declined") {
+    html = `<h3>💍 Not this time</h3><p>${esc(weddingAsk.name)} ${weddingAsk.noAnswer ? "did not answer" : 'said "Not now"'}. Ask another friend from the garden!</p>` +
+      `<div class="wedding-pair"><button class="wedding-yes" data-wedding="retry">Ask another friend</button><button class="wedding-no" data-wedding="dismiss">OK</button></div>`;
+  } else if (weddingAsk.mode === "note") {
+    html = `<h3>💒 Wedding</h3><p>${esc(weddingAsk.text)}</p><button class="wedding-no" data-wedding="dismiss">OK</button>`;
+  }
+  el.innerHTML = html;
+  el.hidden = !html;
+}
+async function startWedding() {
+  if (weddingAsk) return;
+  PalStage.SFX.wake();
+  const out = await tap("wedding");
+  if (!out || !out.ok) { tipFor((out && out.error) || "Couldn't start a wedding. Try again.", 6000); return; }
+  PalStage.SFX.play("ding");
+  weddingAsk = {mode: "pick", candidates: out.candidates || []};
+  paintWeddingCard();
+}
+async function pickWeddingPartner(seat, name) {
+  const out = await tap("wedding_pick", {seat: +seat});
+  if (!out || !out.ok) { tipFor((out && out.error) || "Pick another friend.", 6000); return; }
+  PalStage.SFX.play("ding");
+  weddingAsk = {mode: "waiting", name};
+  paintWeddingCard();
+}
+async function answerWedding(yes) {
+  const out = await tap(yes ? "wedding_yes" : "wedding_no");
+  if (!out || !out.ok) {
+    tipFor((out && out.error) || "That invite has ended.", 6000);
+    if (!out || !/garden/i.test(out.error || "")) clearWeddingCard();
+    return;
+  }
+  clearWeddingCard();
+  if (!yes) tipFor("No wedding this time. Maybe another day!", 4000);
+}
+async function cancelWedding() {
+  await tap("wedding_cancel");
+  clearWeddingCard();
+  tipFor("No wedding this time.", 3000);
+}
+function weddingEvent(e, you) {
+  const mine = myMember(), places = roomStage && roomStage.state && roomStage.state.places;
+  const atGarden = !!(mine && !atHome() && places && places[Math.floor(mine.x / PalStage.W)] === "wedding");
+  const forMe = e.to === you || e.host === you || e.partner === you || e.catcher === you;
+  if (e.phase === "pick") {
+    if (atGarden && e.host !== you) banner(`💒 ${esc(e.host_name)} is getting married!`, 3500);
+  } else if (e.phase === "invite") {
+    if (e.to === you) {
+      weddingAsk = {mode: "invite", from: e.host_name};
+      paintWeddingCard();
+      PalStage.SFX.play("ding");
+      if (atGarden) banner("💍 A friend asks you to a wedding!", 3000);
+    } else if (atGarden) {
+      banner(`💍 ${esc(e.host_name)} asked ${esc(e.partner_name)}…`, 3500);
+    }
+  } else if (e.phase === "start") {
+    clearWeddingCard();
+    if (atGarden || forMe) {
+      banner(`💒 ${esc(weddingCouple(e))}'s wedding!<small>Here comes the couple!</small>`, 5000, true, true);
+      PalStage.SFX.play("bells");
+    }
+  } else if (e.phase === "rings") {
+    if (atGarden) banner("💍 Do you promise?<small>I do!</small>", 3200);
+  } else if (e.phase === "bouquet") {
+    if (atGarden) banner("💐 Catch the flowers!", 3000);
+  } else if (e.phase === "catch") {
+    if (atGarden) banner(`💐 ${esc(e.catcher_name)} caught the flowers!`, 4000, true);
+  } else if (e.phase === "done") {
+    clearWeddingCard();
+    if (atGarden || forMe) {
+      banner(`💒 ${esc(weddingCouple(e))} are married!<small>Congratulations!</small>`, 6000, true, true);
+      PalStage.SFX.play("yay");
+    }
+  } else if (e.phase === "declined") {
+    if (e.host === you) {
+      weddingAsk = {mode: "declined", name: e.by_name || e.partner_name || "Your friend", noAnswer: e.reason === "no_answer"};
+      paintWeddingCard();
+      PalStage.SFX.play("nope");
+    } else clearWeddingCard();
+  } else if (e.phase === "cancelled") {
+    if (e.host === you) {
+      weddingAsk = {mode: "note", text: e.reason === "couple_left" ? "The wedding stopped because someone left the garden." : "The wedding stopped. Ask a friend again!"};
+      paintWeddingCard();
+    } else clearWeddingCard();
+  }
 }
 
 // ---- The buttons ----------------------------------------------------------------------
@@ -110,8 +232,9 @@ function buildRoomButtons() {
   } else if (roomPane === "do") {
     box.innerHTML = ROOM_PANES.do.map(big).join("") +
       (S.free_open && S.hang.free_show
-        ? `<button data-perform="1"><span>🎤</span>My show<small>Play your Free stage show for everyone</small></button>` : "");
-  } else box.innerHTML = ROOM_PANES[roomPane].map(big).join("");
+        ? `<button data-perform="1"><span>🎤</span>My show<small>Play your Free stage show for everyone</small></button>` : "") +
+      weddingButtonHtml();
+  } else box.innerHTML = ROOM_PANES[roomPane].map(big).join("") + (roomPane === "party" ? weddingButtonHtml() : "");
   box.scrollTop = keepScroll;     // a poll refreshes the same pane in place, not back to the top
 }
 // ---- Coins and the shop ---------------------------------------------------------------------
@@ -638,6 +761,8 @@ function roomEvent(e, you) {
     if (other && !S.hang.friends.includes(other.name)) S.hang.friends.push(other.name);
     if (other) tipFor(`🙌 New friend: ${other.name}! That's ${S.hang.friends.length}.`);
     if (roomPane === "me") buildRoomButtons();
+  } else if (e.kind === "wedding") {
+    weddingEvent(e, you);
   }
 }
 function roomState(data) {
@@ -661,9 +786,16 @@ function roomState(data) {
   paintJobs(data.jobs);
   if (roomStage) {
     roomStage.state.snowman = data.snowman || null;
+    roomStage.state.wedding = data.wedding || null;
     if (data.tree) roomStage.state.tree = data.tree;
     if ("ornament" in data) myOrnament = data.ornament;
   }
+  const wedding = JSON.stringify(data.wedding || null);
+  if (wedding !== weddingSeen) {
+    weddingSeen = wedding;
+    if (roomPane === "do" || roomPane === "party") buildRoomButtons();
+  }
+  if (!open) clearWeddingCard();
   const home = JSON.stringify(data.home), people = JSON.stringify(data.people);
   if (home !== homeSeen || people !== peopleSeen || freshStuff) {
     if (!data.home !== (homeSeen === "null" || !homeSeen)) { furnArmed = artArmed = null; fishing = null; moving = false; $("roomTip").textContent = roomTipNow(); }
@@ -789,6 +921,7 @@ function welcomeOnce() {
 }
 function closeRoom() {
   if (!stopRoom) return;
+  clearWeddingCard();
   stopRoom();
   stopBack();
   stopRoom = null;
@@ -822,12 +955,24 @@ function palAt(x, y) {
 }
 
 new ResizeObserver(fitRoomScreen).observe($("roomHost").closest(".hang-main"));
+$("weddingCard").addEventListener("click", e => {
+  const b = e.target.closest("[data-wedding]");
+  if (!b) return;
+  const what = b.dataset.wedding;
+  if (what === "pick") pickWeddingPartner(b.dataset.seat, b.dataset.name || "your friend");
+  else if (what === "yes") answerWedding(true);
+  else if (what === "no") answerWedding(false);
+  else if (what === "cancel") cancelWedding();
+  else if (what === "retry") { clearWeddingCard(); startWedding(); }
+  else if (what === "dismiss") clearWeddingCard();
+});
 $("roomTabs").addEventListener("click", e => {
   const b = e.target.closest("[data-pane]");
   if (b) { roomPane = b.dataset.pane; artArmed = furnArmed = buyArmed = null; moving = false; buildRoomButtons(); $("roomButtons").scrollTop = 0; }
 });
 $("roomButtons").addEventListener("click", e => {
   const pick = name => { const el = e.target.closest(`[data-${name}]`); return el && !el.disabled ? el.dataset[name] : null; };
+  if (e.target.closest("[data-wedding-start]")) { startWedding(); return; }
   if (pick("perform")) { pressPerform(); return; }
   if (pick("buy")) { buy(pick("buy")); return; }
   if (pick("shoptab")) { shopTab = pick("shoptab"); buyArmed = null; buildRoomButtons(); $("roomButtons").scrollTop = 0; return; }

@@ -2235,6 +2235,21 @@ const PalHang = (() => {
     oval(g, x, feet + 2, 33, 7, "rgba(255, 244, 196, .62)");
   }
 
+  // 💒 A wedding: rows of little chairs either side of the aisle, drawn behind the pals.
+  function weddingRows(g, wedding, left) {
+    const seats = wedding.seats || [];
+    shape(g, [[left + 153, seatFeet(.96)], [left + 167, seatFeet(.96)], [left + 165, seatFeet(.18)], [left + 155, seatFeet(.18)]], "#fff6fbcc");
+    for (const [x, deep] of seats) {
+      const cx = Math.round(left + x), y = Math.round(seatFeet(deep));
+      oval(g, cx, y + 1, 6, 1.7, "#3f6a6833");
+      box(g, cx - 4.5, y - 8, 9, 8, 1, "#fffdf6");
+      box(g, cx - 4.5, y - 12, 9, 5, 1, "#ffc3d4");
+      box(g, cx - 4.5, y - 5, 9, 2, 0, "#f6d4e0");
+      box(g, cx - 5, y, 1.5, 3, 0, "#e6dccb");
+      box(g, cx + 3.5, y, 1.5, 3, 0, "#e6dccb");
+    }
+  }
+
   // ---- Keeping one canvas painted --------------------------------------------------------
   /** Paints `canvas` until the function it returns is called. `read()` gives the
       stage's state, so it can follow the scene and the pals. */
@@ -2301,6 +2316,7 @@ const PalHang = (() => {
         ink.beginPath(); ink.rect(i * W - cam, 0, W, H); ink.clip();
         ink.translate(i * W - cam, 0);
         if (!PalStage.calm) drift(ink, places[i], now / 1000);
+        if (places[i] === "wedding" && state.wedding && state.wedding.phase === "ceremony") weddingRows(ink, state.wedding, i * W - cam);
         if (places[i] === "sea") seaLife(ink, now / 1000, PalStage.calm);
         if (state.found) GEMS[places[i]].forEach(([x, deep], n) => {
           if (state.found.has(places[i] + n)) return;
