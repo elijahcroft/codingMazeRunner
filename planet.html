@@ -861,6 +861,13 @@
   .intro-note, .calm-pick { display: flex; align-items: center; gap: 8px; margin: 0 0 16px; color: var(--haze); font-size: 14px; }
   .intro-note { display: block; line-height: 1.45; margin-bottom: 12px; }
   #introClose { position: sticky; bottom: 12px; }   /* always on screen, however long the card gets */
+  /* On a 1366x768 or 1280x720 class laptop the intro is a little taller than
+     the screen: squeeze it so the picture and the button both show at once. */
+  @media (max-height: 800px) {
+    .intro-card canvas { height: 110px; }
+    .intro-body { padding: 12px 18px 14px; }
+    .intro-body ol { gap: 4px; font-size: 16px; margin-bottom: 10px; }
+  }
   .word-list { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; margin: 8px 0 14px; font-size: 14.5px; line-height: 1.4; }
   .word-list dt { color: var(--bone); font-weight: 700; }
   .word-list dd { margin: 0; color: var(--haze); }
@@ -3044,11 +3051,14 @@ function toast(icon, title, text, garage, rarity) {
 // ---- Joining ---------------------------------------------------------------------------
 async function join(event) {
   event.preventDefault();
-  const name = $("name").value.trim();
+  const typed = $("name").value.trim();
+  // A name of zero-width spaces or combining marks looks empty on the class
+  // screen (and to the teacher), so ask for one with something to see in it.
+  const name = typed.replace(/[\u0000-\u001f\u007f-\u009f\u00ad\u0300-\u036f\u061c\u180e\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufe00-\ufe0f\ufeff]/g, "");
   if (!name) { $("name").placeholder = "Type your name first"; $("name").classList.add("ask"); $("name").focus(); return; }
   SFX.wake();
   try {
-    const player = await post("/join", {name});
+    const player = await post("/join", {name: typed});
     store("mazeId", player.id);
     if (await enter(player.id)) return;
   } catch (_) {}
@@ -5625,7 +5635,7 @@ function openIntro() {
   const cv = $("introScene"), dpr = window.devicePixelRatio || 1;
   cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr;
   const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const w = cv.clientWidth, h = cv.clientHeight, cell = 32;
+  const w = cv.clientWidth, h = cv.clientHeight, cell = Math.min(32, Math.floor(h / 5));
   // Open ground, not corridors: samples to collect, a beacon, a crystal.
   const map = ["############", "#S...*...#.#", "#..#.....*.#", "#.....#..G.#", "############"];
   ctx.fillStyle = bedPattern(ctx, "landing"); ctx.fillRect(0, 0, w, h);
@@ -5643,7 +5653,10 @@ function openIntro() {
   ctx.restore();
   vignette(ctx, w, h);
   terrainCache.key = null;   // the intro's little map isn't the site's
-  $("introClose").focus();
+  // Focus the button for the keyboard, but don't let the browser scroll the
+  // card to it: that used to hide the top of the card on a short screen.
+  $("introClose").focus({preventScroll: true});
+  $("intro").scrollTop = 0;
 }
 function closeIntro() {
   $("intro").hidden = true; store("planetIntroSeen", "1");
