@@ -5721,7 +5721,8 @@ def pixel_entry(p):
                        ("gifts", []), ("wear", {}), ("friends", []), ("move", None), ("found", []),
                        ("stuff", []), ("fish", {}), ("things", {}), ("remixed", []), ("guessed", []), ("fixed", []), ("free_code", ""), ("free_runs", 0), ("free_shows", []), ("performed", 0), ("perform_until", 0),
                        ("chests", {}), ("chest_count", 0), ("mywear", []), ("presents", {}), ("present_count", 0), ("snowballs", 0),
-                       ("wedding_day", ""), ("mural_day", ["", 0, False]), ("reached", pixel.LEVEL_ORDER[0])):
+                       ("wedding_day", ""), ("mural_day", ["", 0, False]), ("openhouse_cool", 0), ("openhouse_day", ""),
+                       ("reached", pixel.LEVEL_ORDER[0])):
         entry.setdefault(key, value)
     if "coins" not in entry:        # coins came later: pay for the stars and gems already earned
         firsts = sum(1 for key, stars in entry["solved"].items() if key in pixel.LEVEL_BY_KEY and stars[0])
@@ -5823,6 +5824,184 @@ def home_room_at(home, x):
 def home_owner(number):
     return next((q for q in players.values()
                  if any(r.get("id") == number for r in home_rooms(q.get("pixel", {}).get("home", {})))), None)
+
+
+# ---- 🎉 Open house: show the whole Hang out around your home ---------------------------
+def home_things(home):
+    """How many things are out in a home: furniture, and drawings on the walls."""
+    return sum(len(room["items"]) + len(room["art"]) for room in home_rooms(home))
+
+
+def openhouse_at(loc):
+    """The open house in this home, if one is on."""
+    return next((o for o in pixel_room.get("openhouses", []) if o["home"] == loc), None)
+
+
+def openhouse_count(o):
+    """How many friends are in the host's home right now (the host isn't a guest)."""
+    return sum(1 for s in pixel_room["here"].values() if s["loc"] == o["home"] and s["seat"] != o["host"])
+
+
+def openhouse_public(o, seat=None):
+    """What every screen may know about an open house: no player ids."""
+    now = time.time()
+    return {"seat": o["host"], "name": o["host_name"], "count": openhouse_count(o),
+            "until": o["until"], "invite_until": o["invite_until"],
+            "left": max(0, math.ceil(o["until"] - now)), "mine": seat == o["host"]}
+
+
+def openhouse_invite(spot):
+    """The one-tap invite this pal can still take, if any (it fades after a few seconds)."""
+    if not spot:
+        return None
+    now = time.time()
+    for o in pixel_room.get("openhouses", []):
+        if (spot["seat"] in o["invited"] and now < o["invite_until"] and spot["loc"] != o["home"]):
+            return {"seat": o["host"], "name": o["host_name"], "until": o["invite_until"],
+                    "left": max(0, math.ceil(o["invite_until"] - now))}
+    return None
+
+
+def openhouse_finish(o, reason="ended"):
+    """End one open house: clear the door, remember the cool-down, and pay the host
+    a small once-a-day treat if friends came. Safe to call twice."""
+    houses = pixel_room.get("openhouses", [])
+    if o not in houses:
+        return
+    houses.remove(o)
+    now = time.time()
+    host = players.get(o.get("host_id"))
+    if host:
+        entry = pixel_entry(host)
+        entry["openhouse_cool"] = now + OPENHOUSE_COOLDOWN
+        if o.get("ever"):
+            today = time.strftime("%Y-%m-%d", time.localtime(now))
+            if entry.get("openhouse_day") != today:
+                entry["openhouse_day"] = today
+                pixel_pay(host, pixel.COINS_OPENHOUSE)
+        pixel_save_soon()
+    room_event("openhouse", loc=o["home"], phase="end", host=o["host"], host_name=o["host_name"],
+               reason=reason, count=openhouse_count(o))
+
+
+def openhouse_keep_up(now):
+    """End open houses whose time is up, whose host has gone, or whose invite has faded."""
+    for o in list(pixel_room.get("openhouses", [])):
+        host_spot = next((s for s in pixel_room["here"].values() if s["seat"] == o["host"]), None)
+        if not host_spot or host_spot["loc"] != o["home"]:
+            openhouse_finish(o, "left")
+        elif now >= o["until"]:
+            openhouse_finish(o, "time")
+        elif not o.get("invite_done") and now >= o["invite_until"]:
+            o["invite_done"] = True
+            room_event("openhouse", loc=None, phase="invite_end", host=o["host"], host_name=o["host_name"])
+
+
+def openhouse_host_moved(spot):
+    """The host has just changed place: if they left their home, the open house is over."""
+    for o in list(pixel_room.get("openhouses", [])):
+        if o["host"] == spot["seat"] and spot["loc"] != o["home"]:
+            openhouse_finish(o, "left")
+
+
+def openhouse_host_gone(seat):
+    """The host left the Hang out: the open house is over."""
+    for o in list(pixel_room.get("openhouses", [])):
+        if o["host"] == seat:
+            openhouse_finish(o, "left")
+
+
+def room_openhouse_start(p, spot):
+    now = time.time()
+    entry = pixel_entry(p)
+    home = home_of(entry)
+    if spot["loc"] != home["id"]:
+        return {"error": "Go to your own home to open it."}
+    game = pixel_room.get("game")
+    if game and game["phase"] in ("hiding", "playing", "dressing", "runway") and spot["seat"] in game["joined"]:
+        return {"error": "Finish the game first, then open your home."}
+    if home_things(home) < 3:
+        return {"error": "Put 3 things out first!"}
+    if any(o["host_id"] == p["id"] for o in pixel_room.get("openhouses", [])):
+        return {"error": "Your open house is already on."}
+    if len(pixel_room.get("openhouses", [])) >= OPENHOUSE_MAX:
+        return {"error": "Two open houses are on right now. Try again in a few minutes."}
+    cool = entry.get("openhouse_cool", 0)
+    if now < cool:
+        left = max(1, math.ceil(cool - now))
+        wait = f"{math.ceil(left / 60)} min" if left >= 60 else f"{left} second{'s' if left != 1 else ''}"
+        return {"error": f"Your last open house just ended. Try again in {wait}."}
+    invited = [s["seat"] for s in pixel_room["here"].values()
+               if s["seat"] != spot["seat"] and s["loc"] != home["id"]]
+    o = {"host": spot["seat"], "host_id": p["id"], "host_name": hang_name(p), "home": home["id"],
+         "until": now + OPENHOUSE_SECONDS, "invite_until": now + OPENHOUSE_INVITE_SECONDS,
+         "invited": invited, "ever": [], "confetti_at": 0, "invite_done": False}
+    pixel_room.setdefault("openhouses", []).append(o)
+    room_event("openhouse", loc=None, phase="invite", host=o["host"], host_name=o["host_name"],
+               home=o["home"], until=o["until"], invite_until=o["invite_until"], moment="openhouse",
+               count=len(invited))
+    pixel_save_soon()
+    return {"ok": True, "openhouse": openhouse_public(o, spot["seat"])}
+
+
+def room_openhouse_join(p, spot, data):
+    host_seat = data.get("host")
+    game = pixel_room.get("game")
+    if game and game["phase"] in ("hiding", "playing", "dressing", "runway") and spot["seat"] in game["joined"]:
+        return {"error": "You're in a game! Finish it first."}
+    o = next((o for o in pixel_room.get("openhouses", []) if o["host"] == host_seat), None)
+    if not o:
+        return {"error": "That open house has ended."}
+    now = time.time()
+    if now >= o["until"]:
+        openhouse_finish(o, "time")
+        return {"error": "That open house has ended."}
+    if now >= o["invite_until"] or spot["seat"] not in o["invited"]:
+        return {"error": "That invite has ended. Ask a friend to open the door again."}
+    if spot["seat"] == o["host"]:
+        return {"error": "You're already home!"}
+    host_spot = next((s for s in pixel_room["here"].values() if s["seat"] == o["host"]), None)
+    if not host_spot or host_spot["loc"] != o["home"]:
+        openhouse_finish(o, "left")
+        return {"error": "That open house has ended."}
+    if spot["loc"] == o["home"]:
+        return {"ok": True, "count": openhouse_count(o), "home": o["home"]}
+    out = room_home(p, spot, {"seat": o["host"]})       # the same visit path as visiting a friend
+    if not out or out.get("error"):
+        return out or {"error": "Couldn't go in."}
+    if spot["seat"] in o["invited"]:
+        o["invited"].remove(spot["seat"])
+    if spot["seat"] not in o["ever"]:
+        o["ever"].append(spot["seat"])
+    count = openhouse_count(o)
+    confetti = now - o.get("confetti_at", 0) >= OPENHOUSE_CONFETTI_GAP
+    if confetti:
+        o["confetti_at"] = now
+    room_event("move", loc=o["home"], seat=o["host"], name="wave")     # the host waves each friend in
+    room_event("openhouse", loc=o["home"], phase="arrive", host=o["host"], host_name=o["host_name"],
+               seat=spot["seat"], guest_name=hang_name(p), count=count, confetti=confetti, x=spot["x"])
+    if confetti:               # the ordinary confetti effect, in small doses when a group arrives
+        room_event("fx", loc=o["home"], seat=spot["seat"], name="confetti", x=spot["x"])
+    return {"ok": True, "count": count, "home": o["home"]}
+
+
+def room_openhouse_close(p, spot):
+    o = next((o for o in pixel_room.get("openhouses", []) if o["host_id"] == p["id"]), None)
+    if not o:
+        return {"error": "Your open house isn't on."}
+    openhouse_finish(o, "closed")
+    return {"ok": True}
+
+
+def room_openhouse(p, spot, data):
+    action = data.get("action")
+    if action == "start":
+        return room_openhouse_start(p, spot)
+    if action == "join":
+        return room_openhouse_join(p, spot, data)
+    if action == "close":
+        return room_openhouse_close(p, spot)
+    return {"error": "bad"}
 
 
 def pixel_pal(entry):
@@ -6142,12 +6321,19 @@ PERFORM_GAP = 30           # seconds between one student's Free stage shows in t
 FIVE_GAP = 1.2             # seconds between one student's high-fives
 FIVES_FOR_BADGE = 5
 COMBO_FOR_BADGE = 5
+# 🎉 An open house: a child invites the whole Hang out into their home for a couple
+# of minutes. One per child, two in the class at once, then a cool-down.
+OPENHOUSE_SECONDS = 120
+OPENHOUSE_INVITE_SECONDS = 20
+OPENHOUSE_MAX = 2
+OPENHOUSE_COOLDOWN = 300
+OPENHOUSE_CONFETTI_GAP = 6
 room_news = threading.Condition()
 
 
 def room_empty():
     return {"seq": 0, "seats": 0, "here": {}, "events": [], "shower": None, "next_shower": 0, "game": None, "game_serial": 0,
-            "wedding": None, "wedding_serial": 0}
+            "wedding": None, "wedding_serial": 0, "openhouses": []}
 
 
 pixel_room = dict(room_empty(), open=True, words=False)
@@ -7510,9 +7696,11 @@ def room_keep_up():
     for pid in [k for k, s in room["here"].items() if now - s["seen"] > ROOM_AWAY]:
         gone = room["here"].pop(pid)
         wedding_leave(gone["seat"])
+        openhouse_host_gone(gone["seat"])
         room_event("leave", loc=gone["loc"], seat=gone["seat"])
     game_tick(now)
     wedding_tick(now)
+    openhouse_keep_up(now)
     if room["shower"] and now > room["shower"]["ends"]:
         room["shower"] = None
         room["next_shower"] = now + random.uniform(*SHOWER_GAP)
@@ -7669,6 +7857,9 @@ def room_view(p, after, watch=0):
            "cover": [] if loc else GAME_COVER, "home": home_view(owner, p) if owner else None, "world": hang_places(),
            "people": [room_person(s) for s in room["here"].values()], "loc": loc,
            "class_jobs": [DAY_JOBS[k][:2] for k in day_pick(day_order()[1])]}
+    house = openhouse_at(loc) if loc else None
+    out["openhouse"] = openhouse_public(house, spot["seat"] if spot else None) if house else None
+    out["house_invite"] = openhouse_invite(spot)
     if winter() and not loc:
         out["snowman"] = snowman_view()
     if not p:          # the class screen: how many have done all of today's jobs, and opened each chest
@@ -7732,11 +7923,15 @@ def home_view(owner, p):
     rooms, points = home_rooms(home), home_points(entry)
     level = max(home["level"], pixel.home_level(points))     # a level, once reached, is kept
     after = pixel.HOME_LEVELS[level + 1] if level + 1 < len(pixel.HOME_LEVELS) else None
-    return {"name": hang_name(owner), "mine": owner is p,
-            "rooms": [{"kind": room_kind(r), "name": room_name(r), "wall": r["wall"], "floor": r["floor"]} for r in rooms],
-            "items": [dict(i, x=i["x"] + n * pixel.PLACE_W) for n, r in enumerate(rooms) for i in r["items"]],
-            "more": len(home["rooms"]) < len(pixel.HOME_ROOMS), "points": points, "level": level, "next": after and after[1],
-            "hearts": len(home["hearts"]), "hearted": bool(p) and p["id"] in home["hearts"]}
+    out = {"name": hang_name(owner), "mine": owner is p,
+           "rooms": [{"kind": room_kind(r), "name": room_name(r), "wall": r["wall"], "floor": r["floor"]} for r in rooms],
+           "items": [dict(i, x=i["x"] + n * pixel.PLACE_W) for n, r in enumerate(rooms) for i in r["items"]],
+           "more": len(home["rooms"]) < len(pixel.HOME_ROOMS), "points": points, "level": level, "next": after and after[1],
+           "things": home_things(home),
+           "hearts": len(home["hearts"]), "hearted": bool(p) and p["id"] in home["hearts"]}
+    if owner is p:
+        out["house_cool"] = max(0, math.ceil(entry.get("openhouse_cool", 0) - time.time()))
+    return out
 
 
 def room_name(room):
@@ -7774,6 +7969,7 @@ def room_go(spot, loc, x, y):
     spot.update(loc=loc, x=x, y=y, rest=None, fresh=True)
     spot.pop("bite", None)
     room_event("join", loc=loc, member=room_row(spot))
+    openhouse_host_moved(spot)
 
 
 def room_home(p, spot, data):
@@ -8879,6 +9075,8 @@ def room_do(p, data):
         return wedding_answer(p, spot, what == "wedding_yes")
     if what == "wedding_cancel":
         return wedding_cancel(p, spot)
+    if what == "openhouse":
+        return room_openhouse(p, spot, data)
     game = room.get("game")
     if game and seat in game["joined"]:
         playing = game["phase"] in ("hiding", "playing")
@@ -8895,6 +9093,7 @@ def room_do(p, data):
     if what == "leave":
         wedding_leave(seat)
         room["here"].pop(p["id"])
+        openhouse_host_gone(seat)
         room_event("leave", loc=spot["loc"], seat=seat)
         game_tick(time.time())
     elif what == "home":
@@ -9231,6 +9430,7 @@ def pixel_overview():
                      "said": said[-8:], "game": game_brief(), "jobs": [" ".join(DAY_JOBS[k][:2]) for k in day_pick(day_order()[1])],
                      "chests": [[PLACE_WORDS[place], pixel.chest_job(place, day_order()[0])["job"], n] for place, n in chest_counts().items()
                                 if place in hang_places()],
+                     "open_houses": [openhouse_public(o) for o in pixel_room.get("openhouses", [])],
                      "people": {s["real"]: room_person(s) for s in pixel_room["here"].values()}},
             "meter": hang_view(), "stars": pixel_class_stars(), "placed": room_placed_counts(),
             "mural": mural_teacher_view()}

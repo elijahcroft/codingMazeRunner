@@ -2751,6 +2751,7 @@ HOME_LEVELS = (("Tiny hut", 0), ("Cozy cottage", 4), ("Happy house", 9), ("Big h
 ROOM_POINTS = 3
 HEART_POINTS_MAX = 10      # hearts count up to this many points
 COINS_HEART = 2            # the owner's, when a visitor gives their home a heart
+COINS_OPENHOUSE = 3        # the host's, once a day, when friends came to an open house
 # Everything with a price, and which shelf of the shop it's on.
 SHOP = dict({key: dict(gift, kind="wear") for key, gift in GIFTS.items() if gift.get("price")},
             **{key: dict(item, kind="furniture") for key, item in FURNITURE.items() if item["price"]},

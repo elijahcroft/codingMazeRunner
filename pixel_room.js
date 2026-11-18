@@ -5,8 +5,9 @@
 
 let roomStage = null, stopRoom = null, stopBack = null, roomInfo = null, roomJoining = false, roomPane = "do";
 let artArmed = null, moveReadyAt = 0, clapFor = null, clapTimer = 0, bannerTimer = 0, placesSeen = "";
-let furnArmed = null, buyArmed = null, fishing = null, homeSeen = "", peopleSeen = "", coinsSeen = null;
+let furnArmed = null, buyArmed = null, fishing = null, homeSeen = "", peopleSeen = "", coinsSeen = null, houseSeen = "";
 let weddingAsk = null, weddingSeen = "";
+let houseBusy = false, houseInviteSeen = null;
 let muralInk = 0, muralWhoMode = false;     // 🖼️ the colour picked, and "who painted?" instead of painting
 // At home: ✋ moving things (a click picks one up, instead of playing with it), and which room is on screen.
 let moving = false, roomInView = 0;
@@ -64,7 +65,7 @@ const roomTipNow = () => (atHome() ? HOME_TIP : inRound() ? gameTip(currentGame(
 
 function fitRoomScreen() {
   const host = $("roomHost"), wrap = host.parentElement, main = wrap.parentElement;
-  const tall = main.clientHeight - $("meterBar").closest(".hang-meter").offsetHeight - $("roomTip").offsetHeight - $("gameStatus").offsetHeight - 62;     // the gaps and the frame
+  const tall = main.clientHeight - $("meterBar").closest(".hang-meter").offsetHeight - $("roomTip").offsetHeight - $("gameStatus").offsetHeight - $("houseStatus").offsetHeight - 62;     // the gaps and the frame
   const width = Math.min(wrap.clientWidth - 16, tall * 16 / 9);
   host.style.width = Math.max(120, Math.floor(width)) + "px";
 }
@@ -368,6 +369,23 @@ function homeGrew(name) {
   PalStage.SFX.play("fanfare");
 }
 const roomNow = () => Math.min(roomInView, roomInfo.home.rooms.length - 1);
+// 🎉 Open house: the button in your own home, and its little card while it's on.
+function openHouseCard(home) {
+  const on = roomInfo && roomInfo.openhouse;
+  if (on && on.mine) {
+    const friends = on.count, mins = Math.max(1, Math.ceil((on.left || 0) / 60));
+    return `<div class="home-level open-house-card"><b>🎉 Your open house is on!</b>
+      <span>${friends} friend${friends === 1 ? "" : "s"} here · ${mins} min left</span>
+      <button class="wide" data-house-close="1"><span>🚪</span>Close the door</button></div>`;
+  }
+  if (!home || home.things < 3)
+    return `<p class="me-note">🎉 Open house: put 3 things out first! Pick a thing below, then click the floor.</p>`;
+  if (home.house_cool > 0) {
+    const mins = Math.ceil(home.house_cool / 60);
+    return `<p class="me-note">🎉 Open house: try again in ${mins} minute${mins === 1 ? "" : "s"}.</p>`;
+  }
+  return `<button class="wide house-open" data-openhouse="1"><span>🎉</span>Open house<small>Invite everyone in the Hang out · 2 minutes</small></button>`;
+}
 function buildHomePane(box) {
   const {furniture, walls, floors, stuff, levels} = S.hang, home = roomInfo && roomInfo.home;
   const others = ((roomInfo && roomInfo.people) || []).filter(m => m.seat !== roomInfo.you);
@@ -398,7 +416,7 @@ function buildHomePane(box) {
       `<button data-size="${i}" aria-pressed="${(held.size === undefined ? 1 : held.size) === i}"><span>${["🐭", "🙂", "🐘"][i]}</span>${word}</button>`).join("") +
     `<button class="wide" data-flip="1"><span>🔁</span>Flip it round</button>` : "";
   const prizes = Object.entries({...furniture, ...walls, ...floors}).filter(([key, item]) => item.prize && !stuff.includes(key));
-  box.innerHTML = (held ? "" : homeLevelCard(home) +     // a thing in hand: what to do with it comes first
+  box.innerHTML = (held ? "" : openHouseCard(home) + homeLevelCard(home) +     // a thing in hand: what to do with it comes first
     `<p class="me-note">Get points: ⭐ 1 for each thing you put out, ⭐ 2 for a drawing with code. ⭐ 3 for each room, and ⭐ 1 for each ❤️ from a friend.</p>`) +
     `<p class="me-note"><b>${esc(room.name)}</b> · ${note}</p>` +
     `<button class="wide" data-moving="1" aria-pressed="${moving || !!held}"><span>✋</span>${moving || held ? "Done" : "Move or paint my things"}</button>` +
@@ -430,6 +448,70 @@ async function furnish(data) {
   const out = await tap("furnish", data);
   if (out && out.error && out.error.length > 8) tipFor(out.error, 5000);
   homeGrew(out && out.grew);
+}
+// 🎉 Open house: invite the class in, or come in when a friend invites you.
+async function startOpenHouse() {
+  if (houseBusy) return;
+  houseBusy = true;
+  PalStage.SFX.wake();
+  const out = await tap("openhouse", {action: "start"});
+  houseBusy = false;
+  if (!out || !out.ok) { tipFor((out && out.error) || "Couldn't open your home. Try again.", 6000); return; }
+  PalStage.SFX.play("fanfare");
+  banner("🎉 YOUR OPEN HOUSE IS ON! 🎉<small>Everyone in the Hang out is invited. Friends can come in for 2 minutes!</small>", 6000, true);
+  tipFor("🎉 Your open house is on! Friends can come in for 2 minutes.", 6000);
+  buildRoomButtons();
+}
+async function closeOpenHouse() {
+  PalStage.SFX.wake();
+  const out = await tap("openhouse", {action: "close"});
+  if (!out || !out.ok) { tipFor((out && out.error) || "Couldn't close the door. Try again.", 5000); return; }
+  tipFor("🚪 The door is closed. Thanks for coming!", 4000);
+  buildRoomButtons();
+}
+async function joinOpenHouse() {
+  const invite = roomInfo && roomInfo.house_invite;
+  if (!invite) return;
+  PalStage.SFX.wake();
+  const out = await tap("openhouse", {action: "join", host: invite.seat});
+  if (!out || !out.ok) {
+    tipFor((out && out.error) || "That open house has ended.", 5000);
+    paintHouseStatus();
+    return;
+  }
+  roomPane = "home";
+  buildRoomButtons();
+  $("roomButtons").scrollTop = 0;
+  PalStage.SFX.play("yay");
+}
+function paintHouseStatus() {
+  const el = $("houseStatus");
+  if (!el) return;
+  const invite = roomInfo && roomInfo.house_invite;
+  if (invite) {
+    // Count down from the server's "left", not this computer's clock.
+    if (!houseInviteSeen || houseInviteSeen.seat !== invite.seat || houseInviteSeen.serverUntil !== invite.until)
+      houseInviteSeen = {seat: invite.seat, serverUntil: invite.until,
+                         localUntil: Date.now() / 1000 + Math.max(0, invite.left || 0)};
+  } else houseInviteSeen = null;
+  const left = houseInviteSeen ? Math.max(0, Math.ceil(houseInviteSeen.localUntil - Date.now() / 1000)) : 0;
+  const show = !!invite && left > 0 && !$("hangView").hidden;
+  el.hidden = !show;
+  $("hangView").classList.toggle("house-invited", show);
+  if (show) {
+    $("houseTitle").textContent = `🏠 ${invite.name}'s open house!`;
+    $("houseDetail").textContent = `Come in · ${left}s →`;
+  }
+}
+function paintOpenHouseBar(data) {
+  const el = $("openHouseBar");
+  if (!el) return;
+  const house = data && data.openhouse;
+  if (!house || $("hangView").hidden) { el.hidden = true; el.innerHTML = ""; return; }
+  const friends = house.count;
+  el.innerHTML = `<span>🎉 <b>${esc(house.name)}</b>'s open house · ${friends} friend${friends === 1 ? "" : "s"} here</span>` +
+    (house.mine ? `<button type="button" data-house-close="1">🚪 Close the door</button>` : "");
+  el.hidden = false;
 }
 
 // ---- Fishing off the pier -----------------------------------------------------------------------
@@ -901,6 +983,17 @@ function roomEvent(e, you) {
     if (other && !S.hang.friends.includes(other.name)) S.hang.friends.push(other.name);
     if (other) tipFor(`🙌 New friend: ${other.name}! That's ${S.hang.friends.length}.`);
     if (roomPane === "me") buildRoomButtons();
+  } else if (e.kind === "openhouse") {
+    if (e.phase === "invite" && e.host !== you && roomInfo.loc !== e.home) {
+      PalStage.SFX.play("ding");       // the yellow bar above the world is the invite itself
+    } else if (e.phase === "arrive") {
+      // The confetti arrives as an ordinary fx event, so every screen plays it.
+    } else if (e.phase === "end") {
+      if (roomInfo.loc === e.loc) tipFor("🚪 The open house is over. Thanks for coming!", 4500);
+      paintOpenHouseBar(roomInfo);
+    } else if (e.phase === "invite_end") {
+      paintHouseStatus();
+    }
   } else if (e.kind === "wedding") {
     weddingEvent(e, you);
   }
@@ -910,6 +1003,8 @@ function roomState(data) {
   roomInfo = data;
   if (!data.mural && wasMural) data.mural = wasMural;     // snapshots carry the picture; small updates keep it
   paintGameState(data);
+  paintHouseStatus();
+  paintOpenHouseBar(data);
   let freshStuff = false;       // prizes and new rooms arrive here, not only from a buy
   if (data.stuff) {
     const oldStuff = JSON.stringify(S.hang.stuff || []);
@@ -920,6 +1015,7 @@ function roomState(data) {
   }
   const open = data.open;
   $("roomClosed").hidden = open;
+  if (!open) { $("houseStatus").hidden = true; $("openHouseBar").hidden = true; $("hangView").classList.remove("house-invited"); }
   $("roomButtons").style.visibility = open ? "" : "hidden";
   $("myMove").style.visibility = open ? "" : "hidden";
   $("roomType").hidden = !open || !data.words;
@@ -939,9 +1035,12 @@ function roomState(data) {
   }
   if (!open) clearWeddingCard();
   const home = JSON.stringify(data.home), people = JSON.stringify(data.people);
-  if (home !== homeSeen || people !== peopleSeen || freshStuff) {
+  const house = JSON.stringify(data.openhouse ? {
+    seat: data.openhouse.seat, name: data.openhouse.name, count: data.openhouse.count,
+    mine: data.openhouse.mine, until: data.openhouse.until} : null);
+  if (home !== homeSeen || people !== peopleSeen || house !== houseSeen || freshStuff) {
     if (!data.home !== (homeSeen === "null" || !homeSeen)) { furnArmed = artArmed = null; fishing = null; moving = false; $("roomTip").textContent = roomTipNow(); }
-    homeSeen = home; peopleSeen = people;
+    homeSeen = home; peopleSeen = people; houseSeen = house;
     if (["home", "art", "shop"].includes(roomPane)) buildRoomButtons();
   }
   if (open && !data.you && !roomJoining) {
@@ -1098,6 +1197,9 @@ function palAt(x, y) {
 }
 
 new ResizeObserver(fitRoomScreen).observe($("roomHost").closest(".hang-main"));
+$("houseStatus").addEventListener("click", joinOpenHouse);
+$("openHouseBar").addEventListener("click", e => { if (e.target.closest("[data-house-close]")) closeOpenHouse(); });
+setInterval(paintHouseStatus, 250);
 $("weddingCard").addEventListener("click", e => {
   const b = e.target.closest("[data-wedding]");
   if (!b) return;
@@ -1117,6 +1219,8 @@ $("roomButtons").addEventListener("click", e => {
   // dataset keys are camelCase: data-mural-ink is dataset.muralInk
   const pick = name => { const el = e.target.closest(`[data-${name}]`); return el && !el.disabled ? el.dataset[name.replace(/-(\w)/g, (_, c) => c.toUpperCase())] : null; };
   if (e.target.closest("[data-wedding-start]")) { startWedding(); return; }
+  if (pick("openhouse")) { startOpenHouse(); return; }
+  if (pick("house-close")) { closeOpenHouse(); return; }
   if (pick("perform")) { pressPerform(); return; }
   if (pick("mural-ink")) {
     muralInk = +pick("mural-ink");

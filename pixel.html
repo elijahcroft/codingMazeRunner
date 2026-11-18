@@ -451,6 +451,11 @@
   .hang-screen .bubble::after { border: 0; }
   #roomTip { margin: 6px 0 0; flex: none; font-size: 16px; font-weight: 800; text-align: center; color: #27484a; }
   #hangBanner { position: absolute; left: 50%; top: 6%; transform: translateX(-50%); width: max-content; max-width: 90%; padding: 6px 18px; background: #fffdf6f2; border-radius: 18px; font-size: clamp(15px, 1.7vw, 22px); font-weight: 800; text-align: center; text-wrap: balance; pointer-events: none; box-shadow: 0 4px 16px #2c535233; animation: drop-in .3s ease-out; }
+  /* 🎉 An open house: a little banner in the home, with the door for the host. */
+  #openHouseBar { position: absolute; left: 50%; top: 6px; transform: translateX(-50%); z-index: 25; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 10px; max-width: 94%; padding: 4px 12px; border-radius: 999px; background: #fff3c4f2; color: #5a4208; font-size: clamp(13px, 1.4vw, 17px); font-weight: 800; line-height: 1.25; text-align: center; box-shadow: 0 3px 12px #2c535233; }
+  #openHouseBar b { color: #a8642c; }
+  #openHouseBar button { min-height: 0; padding: 3px 10px; border: 0; border-radius: 999px; background: #fffdf6; color: #5a4208; font: inherit; font-size: .92em; font-weight: 900; cursor: pointer; box-shadow: 0 2px 0 #e0c27a; }
+  #openHouseBar button:hover { background: #ffe58a; }
   #hangBanner.big { top: 24%; padding: 14px 34px; text-align: center; font-size: clamp(26px, 4vw, 52px); font-weight: 900; color: #d9477e; animation: party-in .5s cubic-bezier(.3, 1.6, .5, 1); }
   #hangBanner small { display: block; font-size: .42em; color: #2c5352; font-weight: 800; }
   #hangBanner:not(.big) small { font-size: .75em; }     /* .42em is for the big banners; on a small one it was too tiny to read */
@@ -508,6 +513,7 @@
   .goal-bar { display: block; height: 8px; border-radius: 4px; background: #e7dcae; overflow: hidden; }
   .goal-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #ff8fb3, #ffc46b); }
   .home-level { display: grid; gap: 4px; padding: 8px 10px; border-radius: 14px; background: #fff3c4; color: #5a4a10; }
+  .open-house-card { grid-column: 1 / -1; }     /* the Open house card is a full-width card, like the level card */
   .home-level b { font-size: 16px; color: #4a3a10; }
   .home-level small { font-size: 13px; }
   .room-buttons button:disabled { cursor: default; background: #e9f3e2; box-shadow: none; }
@@ -521,7 +527,7 @@
   .jobs h4 small { display: block; font-size: 12px; color: #6a5a20; }
   .jobs.winter { background: #e2e8fb; }     /* ❄️ the Snow Village card */
   .jobs.winter h4 small, .jobs.winter .job { color: #2f3a72; }
-  .job { display: flex; gap: 6px; align-items: baseline; margin: 0; font-size: 14px; font-weight: 800; color: #4a3a10; }
+  .job { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; margin: 0; font-size: 14px; font-weight: 800; color: #4a3a10; }
   .job.done { color: #2d6a3a; }
   .job b { margin-left: auto; }
   .job-how { margin: -2px 0 2px 22px; font-size: 12px; font-weight: 700; color: #7a6a30; }
@@ -546,6 +552,10 @@
   .game-status span { font-size: 14px; }
   .game-status:hover { background: #eef5e8; }
   .game-status:focus-visible, .games-pane button:focus-visible { outline: 3px solid #376dba; outline-offset: 2px; }
+  /* 🎉 An open house invite: the same one-tap style as a game join. */
+  .house-status { background: #fff0b8; border-color: #e0a93f; }
+  .house-status:hover { background: #ffe58a; }
+  #hangView.house-invited #gameStatus { display: none; }     /* one bar at a time, so a small laptop still fits */
   .room-buttons.games-pane { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: max-content; gap: 8px; }     /* auto rows left the race message one line tall when it wrapped */
   .games-pane button small { font-size: 12px; font-weight: 600; line-height: 1.4; }
   .games-pane .me-note { grid-column: 1 / -1; }
@@ -990,7 +1000,9 @@
     <section class="hang-main">
       <div class="hang-meter"><span>🎉 Class party</span><div class="track"><i id="meterBar"></i></div><span id="meterWords"></span><span id="meterNext"></span></div>
       <button id="gameStatus" class="game-status"><strong id="gameTitle">Play with friends</strong><span id="gameDetail">💻 Code race, tag, hide &amp; seek, a race or a dance →</span></button>
+      <button id="houseStatus" class="game-status house-status invite" hidden><strong id="houseTitle">🏠 Open house</strong><span id="houseDetail">Come in →</span></button>
       <div class="screen-wrap"><div class="screen hang-screen" id="roomHost"><canvas id="hangBack" aria-hidden="true"></canvas><canvas id="roomCanvas" aria-label="Everyone's pals together"></canvas>
+        <div id="openHouseBar" role="status" hidden></div>
         <div id="hangBanner" role="status" hidden></div>
         <div id="weddingCard" role="dialog" aria-modal="false" aria-label="Wedding" hidden></div>
         <div id="seekerCurtain" hidden><b>You’re the seeker!</b><strong id="seekerCount">20</strong><span>Count while your friends hide…</span></div>

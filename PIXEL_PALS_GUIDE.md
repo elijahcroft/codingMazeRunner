@@ -436,12 +436,24 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   Each name says where they are and what they're doing (💃 Dancing, 🎣 Fishing,
   🛋️ Decorating...). 🎬 Auto takes turns with everyone, homes included, and the
   screen goes back outside when a home empties.
+- **🎉 Open house:** with 3 things out, a student can press **🎉 Open house** in their
+  own 🏠 Home. Everyone in the Hang out gets a one-tap **"🏠 Ana's open house! Come in"**
+  invite for about 20 seconds (it fades by itself, and there is nothing to say no to).
+  Tapping it walks that pal into the host's home the same way **Visit a friend's home**
+  does. The open house lasts about 2 minutes, or until the host leaves home or presses
+  **Close the door**; friends can give the home their usual ❤️. A little banner in the
+  home says **"🎉 Ana's open house · 3 friends here"**, and friends arriving get light
+  confetti while the host's pal waves. One open house per student, at most two in the
+  class at once, then a 5-minute cool-down for the host. The host gets one small
+  once-a-day treat if friends came. The teacher's Hang out card says
+  **"🏠 Open house at Ana's"**, closing the Hang out clears it, and 🎬 Auto on the
+  projector visits when an open house starts.
 - **🎬 Auto never misses a big moment:** if Auto is looking into a home and a class-wide
   moment happens somewhere else, the camera jumps to it, shows it, then carries on as
   before. That covers a student's ✨ My Move or 🎤 show, a 🌠 star shower, a 🎉 class
-  party, a 📸 class photo, a game starting and a ⚽ goal in Pal ball. If you have picked
-  a place yourself with **Look at** or **📷 Follow**, the camera stays where you put it,
-  and the banner still tells the class what happened.
+  party, a 📸 class photo, a game starting, an open house starting and a ⚽ goal in Pal
+  ball. If you have picked a place yourself with **Look at** or **📷 Follow**, the camera
+  stays where you put it, and the banner still tells the class what happened.
 - **📷 Follow (projector):** the picker next to 🎬 Auto, under the picture, keeps the camera
   on one student wherever they go, into homes and back out, with "📷 Following Mia" in the
   corner. Clicking their name in Who's here does the same. 🎬 Auto, ◀ Left, Right ▶, dragging

@@ -130,6 +130,7 @@
       <label style="display:flex;gap:6px;align-items:center;font-weight:700"><input type="checkbox" id="roomTyping"> Let them type their own words</label>
     </div>
     <p id="roomGame" style="margin:8px 0 0;font-size:14px;font-weight:800" hidden></p>
+    <p id="roomOpenHouse" style="margin:4px 0 0;font-size:14px;font-weight:800" hidden></p>
     <p id="roomJobs" style="margin:8px 0 0;font-size:14px"></p>
     <p id="roomChests" style="margin:4px 0 0;font-size:14px"></p>
     <p id="roomHere" style="margin:8px 0 0;font-size:14px"></p>
@@ -233,6 +234,9 @@ async function refresh() {
   const game = room.game;
   $("roomGame").hidden = $("endGame").hidden = !game;
   if (game) $("roomGame").textContent = `🎮 ${GAME_WORD[game.kind]} is on: ${game.count} playing, ${game.phase === "lobby" ? `starting in about ${game.left}s` : `about ${game.left}s left`}.`;
+  const houses = room.open_houses || [];
+  $("roomOpenHouse").hidden = !houses.length;
+  $("roomOpenHouse").textContent = houses.map(h => `🏠 Open house at ${h.name}'s · ${h.count} friend${h.count === 1 ? "" : "s"} here · ${h.left}s left`).join("   ");
   $("roomSaid").textContent = room.words && room.said.length ? `Just said: ${room.said.slice(-5).join(" / ")}` : "";
   $("feed").innerHTML = data.feed.slice().reverse().map(f => `<li>${esc(f.text)}</li>`).join("") || `<li style="color:var(--soft)">Nothing yet.</li>`;
   drawMural(data.mural);
