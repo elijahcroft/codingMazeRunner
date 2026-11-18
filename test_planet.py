@@ -2202,6 +2202,19 @@ class ClassroomTests(unittest.TestCase):
             self.assertIn(word, self.post("/planet/maker/save", {"id": ada, "name": "X", "rows": rows})["error"])
         self.assertIn("name", self.post("/planet/maker/save", {"id": ada, "name": "<>", "rows": self.DRAWING})["error"])
 
+    def test_a_level_nobody_could_beat_is_not_saved(self):
+        """Two of the class's real levels had samples walled in, so they could never go live."""
+        self.maker_on()
+        ada = self.join("Ada")
+        rows = list(self.DRAWING)
+        rows[-1] = rows[-1][:-2] + "O*"            # a sample in the corner, behind a crater
+        rows[-2] = rows[-2][:-1] + "O"
+        out = self.post("/planet/maker/save", {"id": ada, "name": "bruh", "rows": rows})
+        self.assertIn("can't reach a 🧪 sample", out["error"])
+        self.assertEqual(planet.class_cut_off(["S#*", "##G"]), (1, True))
+        self.assertEqual(planet.class_cut_off(["S.*", "..G"]), (0, False))
+        self.assertIn("key", self.post("/planet/maker/save", {"id": ada, "name": "ok", "rows": self.DRAWING}))
+
     def test_a_level_can_have_an_emoji_name_and_remembers_its_code(self):
         self.maker_on()
         ada = self.join("Ada")

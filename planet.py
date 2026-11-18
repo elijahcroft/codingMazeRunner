@@ -6259,6 +6259,21 @@ def class_map(rows):
     return [wall, *(f"#{r}#" for r in rows), wall], ""
 
 
+def class_cut_off(rows):
+    """What the rover can't reach from the start on a class drawing (no jumping
+    on class levels): (samples it can't reach, True if it can't reach the beacon).
+    A level like that can never be beaten, so it could never be published."""
+    seen, todo = set(), [(r, c) for r, row in enumerate(rows) for c, ch in enumerate(row) if ch == "S"]
+    while todo:
+        r, c = todo.pop()
+        if (r, c) in seen or not (0 <= r < len(rows) and 0 <= c < len(rows[0])) or rows[r][c] in "#O":
+            continue
+        seen.add((r, c))
+        todo += [(r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)]
+    cut = [(r, c) for r, row in enumerate(rows) for c, ch in enumerate(row) if ch in "*G" and (r, c) not in seen]
+    return sum(rows[r][c] == "*" for r, c in cut), any(rows[r][c] == "G" for r, c in cut)
+
+
 def add_class_level(key, name, by, rows):
     """Make (or remake) a class level's site. `rows` is the drawing, already checked."""
     s = site(key, name, f"Made by {by}.", [{"map": class_map(rows)[0]}])

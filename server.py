@@ -3737,6 +3737,12 @@ def maker_save(p, data):
     playable, why = planet.class_map(rows)
     if playable is None:
         return {"error": why}
+    samples, beacon = planet.class_cut_off(rows)
+    if samples or beacon:
+        cut = " and ".join(filter(None, [samples and (f"{samples} 🧪 samples" if samples > 1 else "a 🧪 sample"),
+                                         beacon and "the 🛰 beacon"]))
+        return {"error": f"Your rover can't reach {cut} from the 🚙 start: rock or craters are in the way, "
+                         f"and nobody could beat it. Open a path, then press Test drive again."}
     raw = clean_player_name(data.get("name", ""))
     # Keep emoji (a rocket is a level name to a 9-year-old) but never let a
     # name carry markup of its own.
