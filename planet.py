@@ -1477,9 +1477,16 @@ def explain(world, unlocked=(), code=""):
         elif world.samples:
             near = min(world.samples, key=lambda p: (squares(p), p))
             n = len(world.samples)
-            what += f" with {n} sample{'s' if n != 1 else ''} still out"
-            nxt = f"The closest is at {where(near)}: {far(at, near)}."
-            aim, line = near, f"{n} more sample{'s' if n != 1 else ''}!"
+            if "paint" in world.v:
+                # Paint Planet and the picture zones collect samples too, but a
+                # child sees dots of paint; don't call them samples.
+                what += f" with {n} dot{'s' if n != 1 else ''} still to paint"
+                nxt = f"The closest is at {where(near)}: {far(at, near)}."
+                aim, line = near, f"{n} more dot{'s' if n != 1 else ''} to paint!"
+            else:
+                what += f" with {n} sample{'s' if n != 1 else ''} still out"
+                nxt = f"The closest is at {where(near)}: {far(at, near)}."
+                aim, line = near, f"{n} more sample{'s' if n != 1 else ''}!"
         elif world.flag in world.flags:
             spot = world.flags[world.flag]
             what += f" before flag {world.flag}"
@@ -1683,7 +1690,11 @@ def drive(code, variant, rules, zone):
         for name in [n for n in rover.defs if n not in rover.called][:1]:
             world.say(f"🧩 {name}() was made with def but never used. Add a "
                       f"line  {name}()  to run it.")
-        world.say(f"{ENDED_SHORT[world.mission]}, at {where((world.r, world.c))}")
+        if world.mission == "samples" and "paint" in world.v:
+            ended = "🏁 program ended with dots still to paint"
+        else:
+            ended = ENDED_SHORT[world.mission]
+        world.say(f"{ended}, at {where((world.r, world.c))}")
     out = {"reached": world.end == "goal", "end": "error" if error else world.end,
             "mission": world.mission, "memory_full": full,
             "ticks": world.t, "error": error, "line": line,
@@ -4089,7 +4100,8 @@ def everywhere(s, code, run):
                 missed[end] = missed.get(end, 0) + 1
         why = ", ".join(f"{n} {ENDED_WHY.get(end, end)}" for end, n in missed.items())
         of = s["bonus"].get("of", "plain")
-        did = MISSION_DONE[mission_of(s["variants"][0])]
+        did = "painted every dot" if "paint" in s["variants"][0] \
+            else MISSION_DONE[mission_of(s["variants"][0])]
         run["log"].append(f"tick {run['ticks']}: 🌍 the same code {did} "
                           f"on {reached} of the {len(ends)} {of}s"
                           + (f" ({why})" if why else ""))

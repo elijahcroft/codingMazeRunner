@@ -66,10 +66,12 @@ most). The youngest (practice zones with arrows) see *steps*, not *ticks*, on th
 default). *Make a level* in the Levels screen opens a drawing board: paint rock,
 craters, samples, a beacon and a start, name it, press *Test drive*. A level stays
 private until its maker beats it with code, so every level can be done, and then it
-shows in the Class Workshop for everyone. Four levels each. Changing a level takes it
+shows in the Class Workshop for everyone. Four levels each. Names can be up to 24
+letters, numbers, spaces, punctuation or emoji. Changing a level takes it
 down until it's beaten again. Levels earn no stars, but publishing earns Level Maker and
 three classmates beating one earns Crowd Pleaser. Level names show on the class screen:
-you can remove any level from Settings.
+you can remove any level from Settings. A class level keeps its code on the server, like
+any other level.
 
 **The class hears about a new level.** Levels used to sit at the bottom of the Levels
 screen, and most were played once or never. Now a level going live puts a note on every

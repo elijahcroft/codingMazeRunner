@@ -137,7 +137,8 @@
   .maker-tools { display: flex; gap: 6px; flex-wrap: wrap; padding: 12px 20px 0; }
   .maker-tools button { padding: 7px 12px; border: 0; border-radius: 12px; background: var(--panel); color: var(--bone); font-weight: 650; box-shadow: inset 0 0 0 1px var(--edge); }
   .maker-tools button.on { background: var(--panel-2); box-shadow: inset 0 0 0 2px var(--mint); }
-  .maker-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2px; width: min(calc(100% - 40px), calc((100vh - 270px) * 1.5)); margin: 12px auto; padding: 8px; border-radius: 12px; background: #4b4560; touch-action: none; user-select: none; }
+  /* 370, not 270: the row of the student's own levels sits below the grid. */
+  .maker-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2px; width: min(calc(100% - 40px), calc((100vh - 370px) * 1.5)); margin: 12px auto; padding: 8px; border-radius: 12px; background: #4b4560; touch-action: none; user-select: none; }
   .mk { aspect-ratio: 1; min-width: 0; padding: 0; border: 0; border-radius: 5px; background: #c98a5a; font-size: clamp(14px, 3vw, 24px); line-height: 1; }
   .mk:hover { outline: 2px solid var(--mint); }
   .mk.t-rock { background: #6d6780; }
@@ -146,9 +147,9 @@
   .maker-foot input { width: 220px; padding: 9px 12px; border: 0; border-radius: 10px; background: var(--panel); color: var(--bone); box-shadow: inset 0 0 0 1px var(--edge); }
   .maker-why { color: var(--haze); font-size: 14px; }
   .maker-why.bad { color: #ffd9a0; }
-  .maker-mine { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 20px 16px; }
+  .maker-mine { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 20px 16px; max-height: 140px; overflow-y: auto; }
   .maker-mine:empty { display: none; }
-  .tile .tby { color: var(--haze); font-size: 12px; }
+  .tile .tby { color: var(--haze); font-size: 12px; max-width: 100%; overflow-wrap: anywhere; }
   .zone-jump { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; padding: 8px 20px; border-bottom: 1px solid var(--edge); }
   .jump-zone { position: relative; width: 30px; height: 32px; padding: 0; border: 0; border-radius: 9px; overflow: hidden; background: var(--panel); font-size: 16px; line-height: 1; transition: transform .12s; }
   .jump-zone:hover:not(:disabled) { transform: translateY(-2px); background: var(--panel-2); }
@@ -183,7 +184,7 @@
   .tile { position: relative; display: grid; gap: 2px; justify-items: center; align-content: start; min-height: 84px; padding: 10px 6px 8px; border: 0; border-radius: 16px; background: var(--panel); color: var(--bone); box-shadow: 0 4px 0 #1b1733, inset 0 0 0 1px var(--edge); transition: transform .12s; }
   .tile:hover:not(:disabled) { transform: translateY(-3px); background: var(--panel-2); }
   .tile b { font: 850 22px var(--mono); color: var(--violet); }
-  .tile .tname { font-size: 14.5px; font-weight: 650; line-height: 1.2; text-align: center; }
+  .tile .tname { font-size: 14.5px; font-weight: 650; line-height: 1.2; text-align: center; max-width: 100%; overflow-wrap: anywhere; }
   .tile .tstars { font-size: 17px; letter-spacing: 2px; color: #4d4378; }
   .tile .tstars i { font-style: normal; color: var(--gold); text-shadow: 0 0 8px rgba(255,211,107,.6); }
   .tile.done b { color: var(--mint); }
@@ -2483,7 +2484,7 @@ const DONE = {beacon: ["Beacon reached", t => `🎉 Beacon reached in ${ticks(t)
   treats: ["Trick or treat!", t => `🎃 Every lit house trick-or-treated in ${ticks(t)}`],
   candy: ["Candy collected", t => `🍬 Every candy collected in ${ticks(t)}`]};
 const SHORT = {beacon: t => `🏁 Ended ${plural(t, "tick")} in, away from the beacon`,
-  samples: t => `🏁 Ended ${plural(t, "tick")} in, with samples still out there`,
+  samples: t => site && site.paint ? `🏁 Ended ${plural(t, "tick")} in, with dots still to paint` : `🏁 Ended ${plural(t, "tick")} in, with samples still out there`,
   report: t => `🏁 Ended ${plural(t, "tick")} in without a report(). Found the number? Send it with report()`,
   deliver: t => `🏁 Ended ${plural(t, "tick")} in, before every sample was home`,
   treats: t => `🏁 Ended ${plural(t, "tick")} in, with lit houses still to visit`,
@@ -3329,13 +3330,13 @@ function openMaker(level) {
 }
 function renderMaker() {
   $("makerTools").innerHTML = MAKER_TILES.map(([ch, name, icon]) =>
-    `<button class="${ch === maker.brush ? "on" : ""}" data-tile="${ch}">${icon} ${name}</button>`).join("");
+    `<button class="${ch === maker.brush ? "on" : ""}" data-tile="${ch}" aria-pressed="${ch === maker.brush}">${icon} ${name}</button>`).join("");
   $("makerGrid").innerHTML = maker.grid.map((row, r) => row.map((ch, c) => {
     const [, name, icon] = MAKER_TILES.find(t => t[0] === ch);
     return `<button class="mk${ch === "#" ? " t-rock" : ch === "O" ? " t-hole" : ""}" data-r="${r}" data-c="${c}" aria-label="${name}">${icon}</button>`;
   }).join("")).join("");
   $("makerMine").innerHTML = myLevels().map(s => `<button class="quiet" data-edit="${esc(s.key)}">✏️ ${esc(s.name)}</button>`
-    + `<button class="quiet" data-drop="${esc(s.key)}">${maker.sure === s.key ? "Sure? Delete" : "🗑"}</button>`).join("");
+    + `<button class="quiet" data-drop="${esc(s.key)}" aria-label="Delete ${esc(s.name)}">${maker.sure === s.key ? "Sure? Delete" : "🗑 Delete"}</button>`).join("");
 }
 // There's one start and one beacon: painting another moves it.
 function paintTile(r, c) {
@@ -3372,6 +3373,12 @@ $("makerMine").addEventListener("click", e => {
 for (const name of ["pointerdown", "pointerover"]) $("makerGrid").addEventListener(name, e => {
   const cell = e.target.closest(".mk");
   if (cell && (name === "pointerdown" || e.buttons)) { e.preventDefault(); paintTile(Number(cell.dataset.r), Number(cell.dataset.c)); }
+});
+// A keyboard press on a square is a click: paint it too. (The pointer path
+// above has already painted, so the same square is a no-op.)
+$("makerGrid").addEventListener("click", e => {
+  const cell = e.target.closest(".mk");
+  if (cell) paintTile(Number(cell.dataset.r), Number(cell.dataset.c));
 });
 function routeEdges() {
   const r = $("route");
@@ -5682,6 +5689,9 @@ function closeIntro() {
   $("intro").hidden = true; store("planetIntroSeen", "1");
   $("code").focus();
   welcomeHalloween();
+  // The first state arrived while the intro was open, when both of these
+  // stay quiet. Now the student can hear about Star Voyage and class levels.
+  if (me && state) { renderVoyage(); renderClassLevels(); }
 }
 
 // ---- Wiring ----------------------------------------------------------------------------------

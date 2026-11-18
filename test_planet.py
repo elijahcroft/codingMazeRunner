@@ -2202,6 +2202,20 @@ class ClassroomTests(unittest.TestCase):
             self.assertIn(word, self.post("/planet/maker/save", {"id": ada, "name": "X", "rows": rows})["error"])
         self.assertIn("name", self.post("/planet/maker/save", {"id": ada, "name": "<>", "rows": self.DRAWING})["error"])
 
+    def test_a_level_can_have_an_emoji_name_and_remembers_its_code(self):
+        self.maker_on()
+        ada = self.join("Ada")
+        made = self.post("/planet/maker/save", {"id": ada, "name": "🚀", "rows": self.DRAWING})
+        key = made["key"]
+        self.assertEqual(self.get(f"/planet/site?id={ada}&site={key}")["name"], "🚀")
+        # A drawn level keeps the last program on the server, like any site,
+        # so a student on another laptop gets their code back.
+        self.assertTrue(self.transmit(ada, key, "east(4)\n")["rewards"]["published"])
+        self.assertEqual(self.get(f"/planet/site?id={ada}&site={key}")["code"], "east(4)\n")
+        # Markup in a name is never kept, even with emoji around it.
+        self.assertEqual(self.post("/planet/maker/save", {"id": ada, "key": key, "name": "🚀 <b> & \"x\"", "rows": self.DRAWING}).get("key"), key)
+        self.assertEqual(self.get(f"/planet/site?id={ada}&site={key}")["name"], "🚀 b x")
+
     def test_four_levels_each_and_the_teacher_can_remove_one(self):
         self.maker_on()
         ada = self.join("Ada")
@@ -3301,6 +3315,22 @@ class StarVoyageTests(unittest.TestCase):
         self.assertEqual(planet.goals(s, v), ["🎨 Paint every dot"])
         out = planet.drive(s["reference"], v, set(), 0)
         self.assertIn("painted", out["log"][-1]["text"] if isinstance(out["log"][-1], dict) else str(out["log"][-1]))
+
+    def test_a_paint_miss_says_dots_not_samples(self):
+        """A picture level collects samples in the engine, but a child is
+        painting dots: every miss should read that way."""
+        s = planet.find_site("v1")[2]
+        out = planet.drive("north()\n", s["variants"][0], set(), 0)
+        self.assertIn("6 dots still to paint", out["explain"]["what"])
+        self.assertNotIn("sample", out["explain"]["what"])
+        self.assertEqual(out["explain"]["say"], "6 more dots to paint!")
+        self.assertIn("dots still to paint", out["log"][-1])
+        self.assertNotIn("sample", out["log"][-1])
+        # The 🌍 "works on every mural" line uses the same words.
+        mural = planet.find_site("v13")[2]
+        out = planet.drive(mural["reference"], mural["variants"][0], set(), 0)
+        planet.everywhere(mural, mural["reference"], out)
+        self.assertIn("painted every dot", out["log"][-1])
 
     def test_a_brand_new_student_can_play_it_and_sees_it_open(self):
         pid = self.join()

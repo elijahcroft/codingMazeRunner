@@ -3731,7 +3731,10 @@ def maker_save(p, data):
     playable, why = planet.class_map(rows)
     if playable is None:
         return {"error": why}
-    name = " ".join(re.sub(r"[^\w !?'-]", "", str(data.get("name", ""))).split())[:MAKER_NAME_MAX]
+    raw = clean_player_name(data.get("name", ""))
+    # Keep emoji (a rocket is a level name to a 9-year-old) but never let a
+    # name carry markup of its own.
+    name = " ".join(re.sub(r'[\x00-\x1f\x7f<>"&]', "", raw).split())[:MAKER_NAME_MAX]
     if not name:
         return {"error": "Give your level a name."}
     key = str(data.get("key"))
@@ -3755,12 +3758,16 @@ def maker_delete(key):
     planet.drop_class_level(key)
 
 
-def maker_record(p, key, results):
+def maker_record(p, key, code, results):
     """A run on a class level: published if it's its maker's first win, and
     counted for the maker if not."""
     entry = planet_entry(p)
     level, run = planet_levels[key], results[0]
     entry["active"] = int(time.time())
+    # Like any other level, keep the program on the server so a student on
+    # another laptop gets their code back. Class levels earn no stars.
+    entry["code"][key] = code
+    entry["runs"][key] = entry["runs"].get(key, 0) + 1
     mine = level["by"] == p["id"]
     wins = entry.setdefault("level_wins", {})
     earned, published = [], False
@@ -4076,7 +4083,7 @@ def planet_record(p, key, code, results):
     """Save a run and work out everything it earned: stars, badges, a class
     record, garage unlocks."""
     if key in planet_levels:
-        return maker_record(p, key, results)
+        return maker_record(p, key, code, results)
     entry = planet_entry(p)
     zi, zone, s = planet.find_site(key)
     entry["code"][key] = code
