@@ -664,7 +664,7 @@
   #shopCode, .shop-paint { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 12px 14px; font: 15px/1.6 var(--mono); tab-size: 4; white-space: pre; letter-spacing: 0; }
   #shopCode { resize: none; border: 0; outline: 0; background: transparent; color: transparent; caret-color: var(--mint); overflow: auto; }
   #shopCode::selection { background: rgba(140,242,198,.28); color: transparent; }
-  .shop-paint { overflow: hidden; color: #ece4ff; pointer-events: none; }
+  .shop-paint { z-index: 0; overflow: hidden; color: #ece4ff; pointer-events: none; }
   .shop-paint i { font-style: normal; }
   .shop-paint .err-line { position: absolute; left: 0; right: 0; height: 1.6em; background: rgba(255,111,97,.18); box-shadow: inset 3px 0 0 var(--coral); }
   .swatches { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0 0; }
@@ -3283,7 +3283,12 @@ function renderVoyage() {
   $("voyageButton").hidden = !next;
   if (next && recall(`planetVoyage:${me}`) !== "1" && recall("planetIntroSeen") === "1") {
     store(`planetVoyage:${me}`, "1");
-    setTimeout(() => toast("🚀", "New levels have landed!", "Paint Planet: drive over the dots to paint a picture. Press here to go!", () => openSite(voyageNext())), 1500);
+    // Don't drop this late announcement on top of a sheet the student has
+    // already opened (the garage, the Paint Shop or the levels map).
+    setTimeout(() => {
+      if ([...document.querySelectorAll(".dialog")].some(sheet => !sheet.hidden)) return;
+      toast("🚀", "New levels have landed!", "Paint Planet: drive over the dots to paint a picture. Press here to go!", () => openSite(voyageNext()));
+    }, 1500);
   }
 }
 function playVoyage() {
@@ -3974,6 +3979,11 @@ function markGarageNew() {
 let garageNew = new Set();
 // The rover, as the page talks about it: its own name once it has one.
 function roverName(the = "your rover") { return (state && state.rover_name) || the; }
+// The garage scrolls: a reopened one starts at the top, not where it was left.
+function garageTop() {
+  const card = $("garage").querySelector(".garage-card");
+  if (card) card.scrollTop = 0;
+}
 function openGarage() {
   note("garage");
   clearToasts();
@@ -3987,6 +3997,7 @@ function openGarage() {
   if (fresh) garageTab = fresh[0];
   garagePeek = null;
   $("garage").hidden = false;
+  garageTop();
   renderGarage();
   $("garageClose").focus();
   requestAnimationFrame(garageLoop);
@@ -4090,7 +4101,7 @@ async function pickReward(key) {
     garageNew.add(`${item.slot}:${item.key}`);
     garageTab = item.slot; garagePeek = {slot: item.slot, key: item.key};
   }
-  renderGarage();
+  garageTop(); renderGarage();
 }
 // Under the big preview: what's being tried on, and how to get it.
 function stageTag() {
@@ -4129,7 +4140,13 @@ function thumb(cv, slot, key) {
   const dpr = window.devicePixelRatio || 1, s = 76, now = 1200;
   cv.width = cv.height = s * dpr;
   const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const gear = {...look, [slot]: key}, zone = site ? site.zoneKey : "landing";
+  // A paint card shows the paint alone: the hat the student has on could
+  // cover the whole body and every card would look the same.
+  const gear = slot === "paint"
+    ? {...look, paint: key, topper: "none", wheels: "std", glow: "noglow",
+       trail: "tracks", pet: "nopet", dance: "spin", horn: "beep"}
+    : {...look, [slot]: key};
+  const zone = site ? site.zoneKey : "landing";
   if (slot === "world" || slot === "trail") {
     const cell = s / 3;
     withLook(gear, () => {
@@ -4411,7 +4428,9 @@ function drawShop(now) {
   const grad = g.createRadialGradient(rw / 2, rh / 2, 6, rw / 2, rh / 2, rw * .6);
   grad.addColorStop(0, "#3a3168"); grad.addColorStop(1, "#16122c");
   g.fillStyle = grad; g.fillRect(0, 0, rw, rh);
-  drawRover(g, rw / 2 - 2, rh / 2 + 2, 118, 0, 1, {...look, paint: "mine", art: shop.shown}, now);
+  // The painter is checking their paint, so leave the hat off it.
+  drawRover(g, rw / 2 - 2, rh / 2 + 2, 118, 0, 1,
+            {...look, paint: "mine", art: shop.shown, topper: "none"}, now);
 }
 function shopLoop(now) {
   if ($("paintShop").hidden) return;
@@ -5758,7 +5777,7 @@ $("mastToggle").addEventListener("change", async e => {
 $("garageNext").addEventListener("click", e => {
   if (e.target.closest(".gn-go")) { $("garage").hidden = true; openLevels(); return; }
   const {slot, key} = $("garageNext").dataset;
-  garageTab = slot; garagePeek = {slot, key}; renderGarage();
+  garageTab = slot; garagePeek = {slot, key}; garageTop(); renderGarage();
 });
 $("garagePick").addEventListener("pointerover", e => peek(e.target.closest(".card")));
 $("garagePick").addEventListener("pointerleave", () => peek(null));
@@ -5766,7 +5785,7 @@ $("garage").addEventListener("click", e => {
   const pick = e.target.closest("[data-pick]");
   if (pick) return pickReward(pick.dataset.pick);
   const tab = e.target.closest(".tab"), card = e.target.closest(".card");
-  if (tab) { garageTab = tab.dataset.tab; garagePeek = null; renderGarage(); }
+  if (tab) { garageTab = tab.dataset.tab; garagePeek = null; garageTop(); renderGarage(); }
   if (e.target.closest("#roadDoor")) { if (state.halloween) { $("garage").hidden = true; openCandyRoad(); } return; }
   if (e.target.closest(".shop-door") || card && card.dataset.key === "mine" && card.classList.contains("locked")) return openPaintShop();
   // A locked horn still plays, so it's something to look forward to.
