@@ -16,6 +16,9 @@ CHANGED = {
     "h4": "dance()\ndance()\ncheer()\nhearts()",
     "b1": "for i in range(10):\n    jump()",
     "b2": "for i in range(4):\n    right(1)\n    left(1)\n    jump()\nconfetti()",
+    "d1": 'wear("tiara")\nspin()\nwear("shades")\nspin()\nsay("So fancy!")',
+    "d2": 'wear("party")\nspin()\nwear("shades")\nwave()\nwear("sunhat")\ndance()\nwear("crown")\ncheer()',
+    "d3": 'wear("crown")\nfor i in range(5):\n    spin()\nfeel("happy")',
     "m1": 'spin()\nfor i in range(3):\n    jump()\n    hearts()\nfeel("silly")\ndance()\ncheer()',
     "t1": 'grow()\ngrow()\nshake()\nshrink()\nshrink()\nsay("Ta-da!")',
     "t2": 'look("left")\nwait(1)\nlook("right")\nwait(1)\nlook("up")\nlook("down")\nlook("front")\nsay("Oh, hello!")',
@@ -85,6 +88,11 @@ TRUTH = {
     "h4": lambda st: {"dance": "Dancing", "cheer": "Cheering", "hearts": "Hearts"}[st[-1]["do"]],
     "b1": lambda st: str(_n(st, "jump")),
     "b2": lambda st: "Once" if _n(st, "confetti") == 1 else "?",
+    "d1": lambda st: {"spin": "Spins", "say": 'Says "Fancy!"', "jump": "Jumps"}.get(
+        next((s["do"] for s in st if s["do"] != "wear"), ""), "?"),
+    "d2": lambda st: {"sunhat": "Sun hat", "party": "Party hat"}.get(
+        [s["key"] for s in st if s["do"] == "wear" and s.get("slot") == "hat"][-1], "?"),
+    "d3": lambda st: str(_n(st, "spin")),
     "t1": lambda st: "Small, like at the start" if [s for s in st if s["do"] == "size"][-1]["to"] == 1 else "Big",
     "t2": lambda st: {"left": "Left", "right": "Right", "front": "At us"}[[s for s in st if s["do"] == "look"][-1]["way"]],
     "l1": lambda st: _said(st)[0],

@@ -215,6 +215,15 @@ const PixelRig = (() => {
     for (const p of pieces) for (const n of p.at) rig.part[n] = 1;
     rig.top = Math.min(...pieces.map(p => p.top));
     rig.feet = main.bottom;
+    // Hats sit on the head, not on the tips of ears or horns at the sides. The
+    // middle of the drawing is the head, so find its first solid row there.
+    rig.headTop = rig.top;
+    const midL = Math.floor(size / 4), midR = size - 1 - midL;
+    for (let y = rig.top; y < size; y++) {
+      let found = false;
+      for (let x = midL; x <= midR; x++) if (solid[y * size + x]) { found = true; break; }
+      if (found) { rig.headTop = y; break; }
+    }
     const mark = n => marks ? MARKS[marks[n]] : undefined;
 
     const mask = new Uint8Array(count);

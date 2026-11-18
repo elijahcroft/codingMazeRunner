@@ -148,6 +148,7 @@ USAGE = {
     "hide": "hide()", "appear": "appear()", "pose": 'pose("happy")', "play": "play()",
     "wait": "wait(2)", "hearts": "hearts()", "stars": "stars()", "confetti": "confetti()",
     "rain": "rain()", "snow": "snow()", "sound": 'sound("ding")', "note": 'note("C", 2)',
+    "wear": 'wear("crown")',
     "scene": 'scene("park")', "friend": 'friend("cat")', "friend_say": 'friend_say("Hi!")',
     "friend_jump": "friend_jump()", "bye": "bye()", "eat": "eat()", "nap": "nap()",
     "put": 'put("star", 7)', "take": 'take("star")', "point": "point()", "wave": "wave()", "dance": "dance()",
@@ -189,6 +190,7 @@ class Show:
         self.since_nap = 0
         self.forecast = None
         self.posed = set()           # faces and moves shown with pose(), not frames
+        self.wear = {}               # what the pal is wearing on this stage, by slot
         self.log = []                # (command, arguments) in order, for judging
         self.fired = []              # where in the log each click starts
         self.stars = None            # on the Free stage: the student's stars, which open more places
@@ -356,6 +358,38 @@ class Show:
         if isinstance(beats, bool) or not isinstance(beats, int) or not 1 <= beats <= 8:
             raise BotError('note() takes a length from 1 to 8 beats, like  note("E", 2)')
         self.step("note", name=note, beats=beats)
+
+    def c_wear(self, name, *args):
+        # On stage, dressing up is free and pretend: no need to own the thing, and
+        # it never changes what the pal wears in the Hang out.
+        if len(args) > 2:
+            raise BotError('wear() takes one thing to wear, like  wear("crown").')
+        word = args[0].strip() if len(args) >= 1 and isinstance(args[0], str) else ""
+        if not args or word.lower() == "none":
+            slot = None
+            if len(args) == 2:
+                slot = args[1].strip().lower() if isinstance(args[1], str) else ""
+                if slot not in WEAR_SLOTS:
+                    raise BotError(f'Pick a place to take it off, like  wear("none", "hat"). '
+                                   f'The places are: {word_list(WEAR_SLOTS)}.')
+            if slot:
+                self.wear.pop(slot, None)
+            else:
+                self.wear.clear()
+            self.step("wear", key="none", slot=slot)
+            return
+        if len(args) != 1 or not word:
+            raise BotError('wear() takes one thing to wear, like  wear("crown").')
+        key = WEAR_ALIASES.get(word.lower(), word.lower())
+        gift = GIFTS.get(key)
+        if not gift or gift.get("slot") not in WEAR_SLOTS:
+            close = difflib.get_close_matches(word.lower(), WEAR_KEYS, n=2, cutoff=.6)[:1]
+            picks = list(dict.fromkeys(close + [k for k in ("crown", "tiara", "sunhat", "party", "shades", "goldspark")
+                                                if k in GIFTS]))[:3]
+            shown = word_list(picks[:-1]) + " or " + f'"{picks[-1]}"' if len(picks) > 1 else word_list(picks)
+            raise BotError(f'I don\'t have a "{word}". Try {shown}.')
+        self.wear[gift["slot"]] = key
+        self.step("wear", key=key, slot=gift["slot"])
 
     def c_scene(self, name, *args):
         if len(args) != 1 or args[0] not in SCENES:
@@ -970,6 +1004,8 @@ class Report:
         self.counts = Counter(name for name, _ in show.log)
         self.said = [str(s["text"]) for s in show.steps if s["do"] == "say"]
         self.notes = [(s["name"], s["beats"]) for s in show.steps if s["do"] == "note"]
+        self.wears = [s["key"] for s in show.steps if s["do"] == "wear"]
+        self.worn = dict(show.wear)
         self.walks = [s["by"] for s in show.steps if s["do"] == "walk"]
         self.poses = {s["frame"] for s in show.steps if s["do"] == "pose"} | show.posed
         self.x = show.x
@@ -1130,11 +1166,30 @@ def _actions(r):
     return sum(r.n(name) for name in MOVE_ACTIONS)
 
 
+def _outfits(r):
+    """The real things a show put on, leaving out wear("none")."""
+    return [key for key in r.wears if key != "none"]
+
+
+def _moves_between_wears(r):
+    """How many outfit changes had a move shown off before the next one."""
+    shown, changes = False, 0
+    for name, _ in r.log:
+        if name == "wear":
+            if shown:
+                changes += 1
+            shown = False
+        elif name in MOVE_ACTIONS:
+            shown = True
+    return changes
+
+
 CHAPTERS = [
     {"key": "a", "name": "Opening Night", "icon": "🎭"},
     {"key": "h", "name": "Come Alive", "icon": "✨"},
     {"key": "b", "name": "Again! Again!", "icon": "🔁"},
     {"key": "m", "name": "My Move", "icon": "🌟"},
+    {"key": "d", "name": "Dress Up", "icon": "👗"},
     {"key": "t", "name": "Encore!", "icon": "🎪"},
     {"key": "l", "name": "Count on Me", "icon": "🔢"},
     {"key": "v", "name": "Name Tags", "icon": "🏷️"},
@@ -1154,6 +1209,7 @@ CHAPTERS = [
 # these are the names for a tile that has to stay small on a projector.
 CHAPTER_SHORT = {
     "a": "Opening Night", "h": "Come Alive", "b": "Again!", "m": "My Move",
+    "d": "Dress Up",
     "t": "Encore!", "l": "Count on Me", "v": "Name Tags", "w": "Smart Pal",
     "r": "Surprise!", "k": "Click Me!", "c": "Keep Going", "j": "My List",
     "s": "Keep Score", "n": "Loop in Loop", "u": "Music", "p": "Word Play",
@@ -1305,8 +1361,61 @@ LEVELS = [
                "A loop repeats the lines pushed in under it. Try  for i in range(3):  and push  jump()  in under it.",
                "spin()\nfor i in range(3):\n    jump()\n    hearts()\ndance()\ncheer()"],
      "reference": "spin()\nfor i in range(3):\n    jump()\n    hearts()\ndance()\ncheer()"},
+
+    # 👗 Dress Up: the show can borrow any wearable for free. It never changes the
+    # Hang out's look, so a fashion show is pretend play with code.
+    {"key": "d1", "chapter": 4, "name": "Fancy hat", "adds": ["wear"], "python": [],
+     "pip": 'Time to dress up! wear("crown") puts a crown on your pal for the show. '
+            "It is just pretend, so you do not need to own it.",
+     "job": "Wear something fancy, spin, then say how it looks.",
+     "coach": [
+               ('wear("crown")', 'wear() puts something on your pal. The name of the thing goes inside the " marks.'),
+               ('spin()', 'Your pal spins, so everyone sees the new hat.'),
+               ('say("Fancy!")', 'Last, your pal says something about its new look.'),
+     ],
+     "goals": [("Your pal wears something fancy", lambda r: len(_outfits(r)) >= 1, 'Try  wear("crown")  to put something on.'),
+               ("It spins to show it off", lambda r: r.first("wear", "spin"), "Put  spin()  on the line under  wear(...)  ."),
+               ("Then it says something", lambda r: r.first("wear", "spin", "say"), 'Add  say("Fancy!")  after the spin.')],
+     "hints": ['The thing\'s name goes in the brackets and inside " marks:  wear("crown")',
+               'wear("crown")\nspin()\nsay("Fancy!")'],
+     "reference": 'wear("crown")\nspin()\nsay("Fancy!")'},
+
+    {"key": "d2", "chapter": 4, "name": "Quick change", "adds": [], "python": [],
+     "pip": "A quick change is part of a fashion show! Put on one thing, do a move, then change.",
+     "job": "Show three outfits in a row, with a move between each one.",
+     "coach": [
+               ('wear("party")', 'Outfit one: a party hat.'),
+               ('spin()', 'A spin shows it off.'),
+               ('wear("shades")', 'Outfit two: cool shades. The party hat stays on.'),
+               ('wave()', 'A wave to the crowd.'),
+               ('wear("sunhat")', 'Outfit three: a sun hat. It swaps with the party hat.'),
+               ('dance()', 'A dance to finish the show.'),
+     ],
+     "goals": [("Your pal tries three things on", lambda r: len(_outfits(r)) >= 3, "Add three  wear(...)  lines with different things."),
+               ("It moves between the outfits", lambda r: _moves_between_wears(r) >= 2, "After each  wear(...)  , put a move like  spin()  before the next outfit."),
+               ("It ends with a hat on", lambda r: bool(r.worn.get("hat")), 'Put a hat on last, like  wear("sunhat")  .')],
+     "hints": ["Put a move after each outfit, before the next  wear(...)  .",
+               'wear("party")\nspin()\nwear("shades")\nwave()\nwear("sunhat")\ndance()'],
+     "reference": 'wear("party")\nspin()\nwear("shades")\nwave()\nwear("sunhat")\ndance()'},
+
+    {"key": "d3", "chapter": 4, "name": "Twirl time", "adds": [], "python": ["for"],
+     "pip": "Twirl time! A loop can spin your pal round and round. Finish with a happy pose.",
+     "job": "Wear something, spin in a loop, then strike a happy pose.",
+     "coach": [
+               ('wear("tiara")', 'A tiara for the twirl!'),
+               ('for i in range(3):', 'This loop spins your pal 3 times.'),
+               ('    spin()', 'This line is pushed in, so it twirls once each time round.'),
+               ('feel("happy")', 'This line is NOT pushed in, so it is the last pose. I moved it back for you.'),
+     ],
+     "goals": [("Your pal wears something for the twirl", lambda r: len(_outfits(r)) >= 1, 'Try  wear("tiara")  first.'),
+               ("It spins 3 times or more in a loop", lambda r: r.fors >= 1 and r.n("spin") >= 3, "Put  spin()  inside  for i in range(3):  ."),
+               ("It ends with a happy pose", lambda r: bool(r.log) and r.log[-1][0] == "feel" and r.log[-1][1] == ("happy",),
+                'Add  feel("happy")  at the bottom, not pushed in.')],
+     "hints": ["Push  spin()  in under the for line.", 'wear("tiara")\nfor i in range(3):\n    spin()\nfeel("happy")'],
+     "reference": 'wear("tiara")\nfor i in range(3):\n    spin()\nfeel("happy")'},
+
     # After My Move: more to code for students who have finished it. Easy first, then harder.
-    {"key": "t1", "chapter": 4, "name": "Grow big", "adds": ["grow", "shrink", "shake"], "python": [],
+    {"key": "t1", "chapter": 5, "name": "Grow big", "adds": ["grow", "shrink", "shake"], "python": [],
      "pip": "Encore! The crowd wants more. Your pal can change size: grow() makes it bigger and shrink() makes it small again. shake() gives it the wobbles.",
      "job": "Grow big, shake, then shrink back and say something.",
      "coach": [
@@ -1321,7 +1430,7 @@ LEVELS = [
      "hints": ["grow() makes your pal bigger, and shrink() makes it smaller.", 'grow()\nshake()\nshrink()\nsay("Ta-da!")'],
      "reference": 'grow()\nshake()\nshrink()\nsay("Ta-da!")'},
 
-    {"key": "t2", "chapter": 4, "name": "Who's there?", "adds": ["look"], "python": [],
+    {"key": "t2", "chapter": 5, "name": "Who's there?", "adds": ["look"], "python": [],
      "pip": 'Your pal can move its eyes! look("left") makes them look left. The ways are left, right, up, down and front.',
      "job": "Look left, then right, then look at us and say hello.",
      "coach": [
@@ -1339,7 +1448,7 @@ LEVELS = [
                'look("left")\nwait(1)\nlook("right")\nwait(1)\nlook("front")\nsay("Oh, hello!")'],
      "reference": 'look("left")\nwait(1)\nlook("right")\nwait(1)\nlook("front")\nsay("Oh, hello!")'},
 
-    {"key": "l1", "chapter": 5, "name": "Count with me", "adds": [], "python": ["for"],
+    {"key": "l1", "chapter": 6, "name": "Count with me", "adds": [], "python": ["for"],
      "pip": "A loop has a secret: i is a number that changes each time round. It starts at 0, so i + 1 starts at 1.",
      "job": "Make your pal count out loud from 1 to 5, and jump on every number.",
      "coach": [
@@ -1353,7 +1462,7 @@ LEVELS = [
      "hints": ["Inside the loop, try  say(i + 1)", "for i in range(5):\n    say(i + 1)\n    jump()"],
      "reference": "for i in range(5):\n    say(i + 1)\n    jump()"},
 
-    {"key": "l2", "chapter": 5, "name": "Hello, everyone", "adds": [], "python": ["for", "list"],
+    {"key": "l2", "chapter": 6, "name": "Hello, everyone", "adds": [], "python": ["for", "list"],
      "pip": "Three friends came to see you! A list keeps them together in [ ] brackets, and a loop can visit each one.",
      "job": 'Say hi to three names from a list, like  ["Ana", "Ben", "Cy"]',
      "coach": [
@@ -1368,7 +1477,7 @@ LEVELS = [
                'for name in ["Ana", "Ben", "Cy"]:\n    say("Hi " + name)\n    jump()'],
      "reference": 'for name in ["Ana", "Ben", "Cy"]:\n    say("Hi " + name)\n    jump()'},
 
-    {"key": "v1", "chapter": 6, "name": "Name tag", "adds": [], "python": ["variable"],
+    {"key": "v1", "chapter": 7, "name": "Name tag", "adds": [], "python": ["variable"],
      "pip": "A variable is a name tag for something you want to keep. Give it a name once at the top, then use it anywhere.",
      "job": 'Keep your pal\'s name in a variable, like  name = "Luna"  , and use it in a say.',
      "coach": [
@@ -1382,7 +1491,7 @@ LEVELS = [
      "hints": ['name = "Luna"\nsay("I am " + name)', 'name = "Luna"\nsay("I am " + name)\nsay(name.upper() + " IS HERE")'],
      "reference": 'name = "Luna"\nsay("I am " + name)\nsay(name.upper() + " IS HERE")'},
 
-    {"key": "v2", "chapter": 6, "name": "How many?", "adds": [], "python": ["for", "variable", "fstring"],
+    {"key": "v2", "chapter": 7, "name": "How many?", "adds": [], "python": ["for", "variable", "fstring"],
      "pip": "If a number lives in a variable, you can change the whole show by changing one line. And an f in front of the quotes lets you put it inside words!",
      "job": "Keep a number in a variable, and jump that many times.",
      "coach": [
@@ -1398,7 +1507,7 @@ LEVELS = [
      "hints": ["jumps = 4\nfor i in range(jumps):\n    jump()", 'jumps = 4\nfor i in range(jumps):\n    jump()\ngrow()\nsay(f"{jumps} jumps!")'],
      "reference": 'jumps = 4\nfor i in range(jumps):\n    jump()\ngrow()\nsay(f"{jumps} jumps!")'},
 
-    {"key": "w1", "chapter": 7, "name": "Make a move", "adds": [], "python": ["def"],
+    {"key": "w1", "chapter": 8, "name": "Make a move", "adds": [], "python": ["def"],
      "pip": "You can make your own commands! def teaches your pal a new word, like boogie. The lines pushed in under it are what the word does.",
      "job": "Teach your pal a move with def, then use it twice.",
      "coach": [
@@ -1415,7 +1524,7 @@ LEVELS = [
      "hints": ["Lines pushed in under def don't run until you use the new word.", "def boogie():\n    jump()\n    spin()\n    jump()\nboogie()\nboogie()"],
      "reference": "def boogie():\n    jump()\n    spin()\n    jump()\nboogie()\nboogie()"},
 
-    {"key": "w2", "chapter": 7, "name": "Number three", "adds": [], "python": ["for", "if"],
+    {"key": "w2", "chapter": 8, "name": "Number three", "adds": [], "python": ["for", "if"],
      "pip": "An if asks a question. Inside a loop, it asks every time round. Count to 5, but jump only on 3!",
      "job": "Count to 5 out loud and jump only on 3.",
      "coach": [
@@ -1432,7 +1541,7 @@ LEVELS = [
 
     # Surprise! Each run can be different. The stars are checked on many runs (`seeds`),
     # so they mean the code works every time, and the student watches one more, picked at random.
-    {"key": "r1", "chapter": 8, "name": "Surprise mood", "adds": [], "python": ["random"], "seeds": range(12),
+    {"key": "r1", "chapter": 9, "name": "Surprise mood", "adds": [], "python": ["random"], "seeds": range(12),
      "pip": "Surprise! choice() picks one thing from a list, and you never know which. Press Show time! again and you might get a different one.",
      "job": "Let choice() pick your pal's mood, then say which one it got.",
      "coach": [
@@ -1447,7 +1556,7 @@ LEVELS = [
                'mood = choice(["happy", "silly", "cool"])\nfeel(mood)\nsay("I feel " + mood)'],
      "reference": 'mood = choice(["happy", "silly", "cool"])\nfeel(mood)\nsay("I feel " + mood)'},
 
-    {"key": "r2", "chapter": 8, "name": "Roll the dice", "adds": [], "python": ["random", "if"], "seeds": range(30),
+    {"key": "r2", "chapter": 9, "name": "Roll the dice", "adds": [], "python": ["random", "if"], "seeds": range(30),
      "pip": "randint(1, 6) picks a whole number from 1 to 6, like rolling a dice. Then an if can ask what you rolled!",
      "job": "Roll a dice, say the number, and cheer only on a 6.",
      "coach": [
@@ -1462,7 +1571,7 @@ LEVELS = [
      "hints": ["randint(1, 6) gives 1, 2, 3, 4, 5 or 6.", "roll = randint(1, 6)\nsay(roll)\nif roll == 6:\n    cheer()"],
      "reference": "roll = randint(1, 6)\nsay(roll)\nif roll == 6:\n    cheer()"},
 
-    {"key": "r3", "chapter": 8, "name": "Lucky jumps", "adds": [], "python": ["random", "for", "variable", "fstring"], "seeds": range(12),
+    {"key": "r3", "chapter": 9, "name": "Lucky jumps", "adds": [], "python": ["random", "for", "variable", "fstring"], "seeds": range(12),
      "pip": "A surprise number can go in a loop too! Then nobody knows how many jumps are coming, not even you.",
      "job": "Jump a surprise number of times, from 2 to 5, then say how many.",
      "coach": [
@@ -1480,7 +1589,7 @@ LEVELS = [
 
     # Click Me!: events. Lines under def on_click(): wait for a click. Pip clicks to test the
     # stars (the "rehearse" clicks), and after the show the student can click their pal too.
-    {"key": "k1", "chapter": 9, "name": "Poke me!", "adds": [], "python": ["click"],
+    {"key": "k1", "chapter": 10, "name": "Poke me!", "adds": [], "python": ["click"],
      "rehearse": ("click", "click", "click"),
      "pip": "Your pal can wait for a click! Lines pushed in under  def on_click():  don't run straight away. "
             "They run every time someone clicks your pal. I'll click it 3 times to test it, then you try!",
@@ -1499,7 +1608,7 @@ LEVELS = [
                'def on_click():\n    jump()\n    say("Hee hee!")'],
      "reference": 'def on_click():\n    jump()\n    say("Hee hee!")'},
 
-    {"key": "k2", "chapter": 9, "name": "Count the pokes", "adds": ["clicks"], "python": ["else"],
+    {"key": "k2", "chapter": 10, "name": "Count the pokes", "adds": ["clicks"], "python": ["else"],
      "rehearse": ("click", "click", "click", "click"),
      "pip": "clicks() is how many times your pal has been clicked so far. And here's  else:  . "
             "The lines under  else:  run when the  if  isn't true. I'll click 4 times to test it.",
@@ -1521,7 +1630,7 @@ LEVELS = [
      "reference": 'def on_click():\n    say(clicks())\n    if clicks() == 3:\n        cheer()\n    else:\n        jump()'},
 
     # Keep Going: while loops, which go round as long as their question is yes.
-    {"key": "c1", "chapter": 10, "name": "Walk to the edge", "adds": ["x"], "python": ["while"],
+    {"key": "c1", "chapter": 11, "name": "Walk to the edge", "adds": ["x"], "python": ["while"],
      "pip": "A while loop keeps going round as long as its question is yes. x() is the spot your pal is on. "
             "It starts on spot 2, and the edge of the stage is spot 10.",
      "job": "Walk right until you get to the edge, then say something.",
@@ -1538,7 +1647,7 @@ LEVELS = [
                'while x() < 10:\n    right(1)\nsay("The edge!")'],
      "reference": 'while x() < 10:\n    right(1)\nsay("The edge!")'},
 
-    {"key": "c2", "chapter": 10, "name": "Countdown", "adds": [], "python": [],
+    {"key": "c2", "chapter": 11, "name": "Countdown", "adds": [], "python": [],
      "pip": "A countdown! Each time round, n gets 1 smaller. When n gets to 0, the question  n > 0  is no, "
             "and the loop stops.",
      "job": "Count down from 5 to 1, then cheer.",
@@ -1558,7 +1667,7 @@ LEVELS = [
      "reference": 'n = 5\nwhile n > 0:\n    say(n)\n    n = n - 1\ncheer()'},
 
     # My List: a list kept in a variable, gone through, added to, and looked into by position.
-    {"key": "j1", "chapter": 11, "name": "Snack list", "adds": [], "python": ["list", "len"],
+    {"key": "j1", "chapter": 12, "name": "Snack list", "adds": [], "python": ["list", "len"],
      "pip": "A list can have a name, like any variable. Then a for loop can visit each thing on it, "
             "and len() tells you how many things are on it.",
      "job": "Say yum for every snack on your list, then say how many snacks there are.",
@@ -1578,7 +1687,7 @@ LEVELS = [
                'snacks = ["cake", "apple", "pie"]\nfor snack in snacks:\n    say("Yum, " + snack)\nsay(len(snacks))'],
      "reference": 'snacks = ["cake", "apple", "pie"]\nfor snack in snacks:\n    say("Yum, " + snack)\nsay(len(snacks))'},
 
-    {"key": "j2", "chapter": 11, "name": "Who's coming?", "adds": [], "python": ["append"],
+    {"key": "j2", "chapter": 12, "name": "Who's coming?", "adds": [], "python": ["append"],
      "pip": "A list can grow! .append() adds one more thing to the end of a list. "
             "Start a party list with one friend, then add more.",
      "job": "Start a list with one friend, add 2 more with .append(), say hi to everyone, then wave.",
@@ -1598,7 +1707,7 @@ LEVELS = [
                'guests = ["Ana"]\nguests.append("Ben")\nguests.append("Cy")\nfor guest in guests:\n    say("Hi " + guest)\nwave()'],
      "reference": 'guests = ["Ana"]\nguests.append("Ben")\nguests.append("Cy")\nfor guest in guests:\n    say("Hi " + guest)\nwave()'},
 
-    {"key": "j3", "chapter": 11, "name": "First and last", "adds": [], "python": ["index"],
+    {"key": "j3", "chapter": 12, "name": "First and last", "adds": [], "python": ["index"],
      "pip": "Every thing on a list has a position. The first is [0], not [1]! And [-1] is always the last one, "
             "however long the list is.",
      "job": "Feel the first mood on the list and say it. Then feel the last one and say it.",
@@ -1619,7 +1728,7 @@ LEVELS = [
      "reference": 'moods = ["happy", "sad", "silly"]\nfeel(moods[0])\nsay("First: " + moods[0])\nfeel(moods[-1])\nsay("Last: " + moods[-1])'},
 
     # Keep Score: a number that changes as the show goes, choices with elif, and a def that takes a number.
-    {"key": "s1", "chapter": 12, "name": "Rack up points", "adds": [], "python": ["change"],
+    {"key": "s1", "chapter": 13, "name": "Rack up points", "adds": [], "python": ["change"],
      "pip": "A variable can change while the show runs. points += 2 means: add 2 to points. "
             "(score is already a word your pal knows, so call it points.)",
      "job": "Start at 0 points. Jump 5 times, get 2 points each jump, and say the points. Then cheer.",
@@ -1639,7 +1748,7 @@ LEVELS = [
                'points = 0\nfor i in range(5):\n    jump()\n    points += 2\n    say(points)\ncheer()'],
      "reference": 'points = 0\nfor i in range(5):\n    jump()\n    points += 2\n    say(points)\ncheer()'},
 
-    {"key": "s2", "chapter": 12, "name": "Big, middle, small", "adds": [], "python": ["elif"], "seeds": range(30),
+    {"key": "s2", "chapter": 13, "name": "Big, middle, small", "adds": [], "python": ["elif"], "seeds": range(30),
      "pip": "elif means: else, if. It asks a second question, only when the first answer was no. "
             "So your pal can do 3 different things!",
      "job": "Roll a dice and say it. Cheer on a 6, jump on a 4 or 5, and feel sad on 1, 2 or 3.",
@@ -1663,7 +1772,7 @@ LEVELS = [
                'roll = randint(1, 6)\nsay(roll)\nif roll == 6:\n    cheer()\nelif roll >= 4:\n    jump()\nelse:\n    feel("sad")'],
      "reference": 'roll = randint(1, 6)\nsay(roll)\nif roll == 6:\n    cheer()\nelif roll >= 4:\n    jump()\nelse:\n    feel("sad")'},
 
-    {"key": "s3", "chapter": 12, "name": "Hop how many?", "adds": [], "python": ["param"],
+    {"key": "s3", "chapter": 13, "name": "Hop how many?", "adds": [], "python": ["param"],
      "pip": "A def can take a number! In  def hop(n):  , n is whatever number you put in the ( ). "
             "So hop(2) hops 2 times, and hop(4) hops 4.",
      "job": "Make hop(n) jump n times and say how many. Then use it with 2, and with 4.",
@@ -1685,7 +1794,7 @@ LEVELS = [
      "reference": 'def hop(n):\n    for i in range(n):\n        jump()\n    say(f"{n} hops!")\nhop(2)\nhop(4)'},
 
     # Loop in a Loop: a for loop inside a for loop.
-    {"key": "n1", "chapter": 13, "name": "Clap clap, jump", "adds": [], "python": ["nested"],
+    {"key": "n1", "chapter": 14, "name": "Clap clap, jump", "adds": [], "python": ["nested"],
      "pip": "A loop can go inside another loop! The inside loop runs all the way through. Then the outside loop goes round again.",
      "job": "Wave 2 times, then jump. Do that 3 times, with a loop inside a loop.",
      "coach": [
@@ -1704,7 +1813,7 @@ LEVELS = [
                'for round in range(3):\n    for i in range(2):\n        wave()\n    jump()'],
      "reference": 'for round in range(3):\n    for i in range(2):\n        wave()\n    jump()'},
 
-    {"key": "n2", "chapter": 13, "name": "Times table", "adds": [], "python": ["nested"],
+    {"key": "n2", "chapter": 14, "name": "Times table", "adds": [], "python": ["nested"],
      "pip": "The outside loop picks a row. The inside loop says every fact in that row. That's a times table!",
      "job": "Say the whole 3 by 3 times table. Start at 1 x 1 = 1. Stop at 3 x 3 = 9.",
      "coach": [
@@ -1722,7 +1831,7 @@ LEVELS = [
                'for i in range(1, 4):\n    for j in range(1, 4):\n        say(f"{i} x {j} = {i * j}")'],
      "reference": 'for i in range(1, 4):\n    for j in range(1, 4):\n        say(f"{i} x {j} = {i * j}")'},
 
-    {"key": "n3", "chapter": 13, "name": "Stairs", "adds": [], "python": ["nested"],
+    {"key": "n3", "chapter": 14, "name": "Stairs", "adds": [], "python": ["nested"],
      "pip": "Each stair is a little bigger! The inside loop walks right once for the first stair. It walks twice for the second, and so on.",
      "job": "Climb 3 stairs. Walk 1 step right and jump. Then walk 2 steps and jump. Then walk 3 steps and jump.",
      "coach": [
@@ -1742,7 +1851,7 @@ LEVELS = [
      "reference": 'for step in range(3):\n    for i in range(step + 1):\n        right(1)\n    jump()'},
 
     # Make Music: note() sings one note, a tune in a list, and a beat made with a def.
-    {"key": "u1", "chapter": 14, "name": "First notes", "adds": ["note"], "python": [],
+    {"key": "u1", "chapter": 15, "name": "First notes", "adds": ["note"], "python": [],
      "pip": "Your pal can sing! note() sings one note. Try C, D and E: that is the start of lots of tunes.",
      "job": "Make your pal sing C, then D, then E, then cheer.",
      "coach": [
@@ -1760,7 +1869,7 @@ LEVELS = [
                'note("C")\nnote("D")\nnote("E")\ncheer()'],
      "reference": 'note("C")\nnote("D")\nnote("E")\ncheer()'},
 
-    {"key": "u2", "chapter": 14, "name": "Twinkle", "adds": [], "python": ["for", "list"],
+    {"key": "u2", "chapter": 15, "name": "Twinkle", "adds": [], "python": ["for", "list"],
      "pip": "A tune can be a list of notes! Put the tune in a list. Then a for loop sings each note on it.",
      "job": "Put the start of Twinkle Twinkle in a list. Sing it with a loop, then hold a long G.",
      "coach": [
@@ -1779,7 +1888,7 @@ LEVELS = [
                'tune = ["C", "C", "G", "G", "A", "A"]\nfor n in tune:\n    note(n)\nnote("G", 2)'],
      "reference": 'tune = ["C", "C", "G", "G", "A", "A"]\nfor n in tune:\n    note(n)\nnote("G", 2)'},
 
-    {"key": "u3", "chapter": 14, "name": "Make a beat", "adds": [], "python": ["def"],
+    {"key": "u3", "chapter": 15, "name": "Make a beat", "adds": [], "python": ["def"],
      "pip": "A def can be a little tune! Make a beat once, then use it again and again in a loop.",
      "job": "Make a beat with C, rest and G in a def. Play it 3 times, then hold a long C.",
      "coach": [
@@ -1803,7 +1912,7 @@ LEVELS = [
 
     # Word Play: words kept in variables, repeating with *, len() on a word,
     # and a for loop that visits each letter.
-    {"key": "p1", "chapter": 15, "name": "Big name", "adds": [], "python": ["word"],
+    {"key": "p1", "chapter": 16, "name": "Big name", "adds": [], "python": ["word"],
      "pip": "A word can be kept in a variable. The * sign repeats it! Keep the name. Say it 3 times, then cheer.",
      "job": "Keep a name in a variable. Say it 3 times in one bubble, then cheer.",
      "coach": [
@@ -1820,7 +1929,7 @@ LEVELS = [
                'name = "Luna"\nsay(name * 3)\ncheer()'],
      "reference": 'name = "Luna"\nsay(name * 3)\ncheer()'},
 
-    {"key": "p2", "chapter": 15, "name": "How long?", "adds": [], "python": ["word", "len"],
+    {"key": "p2", "chapter": 16, "name": "How long?", "adds": [], "python": ["word", "len"],
      "pip": "len() counts the letters in a word. Say the number, then jump that many times with a loop.",
      "job": "Say how many letters the word Luna has, then jump that many times.",
      "coach": [
@@ -1839,7 +1948,7 @@ LEVELS = [
                'word = "Luna"\nsay(len(word))\nfor i in range(len(word)):\n    jump()'],
      "reference": 'word = "Luna"\nsay(len(word))\nfor i in range(len(word)):\n    jump()'},
 
-    {"key": "p3", "chapter": 15, "name": "First letter", "adds": [], "python": ["word", "index", "letters"],
+    {"key": "p3", "chapter": 16, "name": "First letter", "adds": [], "python": ["word", "index", "letters"],
      "pip": "word[0] is the first letter. A for loop can visit every letter in a word, one at a time.",
      "job": "Say the first letter of Luna. Then say each letter with a loop, then cheer.",
      "coach": [
@@ -1862,7 +1971,7 @@ LEVELS = [
 
     # Give It Back: a def hands a value back with return, and the value can go
     # inside say( ) or range( ).
-    {"key": "g1", "chapter": 16, "name": "Double it", "adds": [], "python": ["def", "param", "return"],
+    {"key": "g1", "chapter": 17, "name": "Double it", "adds": [], "python": ["def", "param", "return"],
      "pip": "A def can hand an answer back with return. Then say() can use that answer.",
      "job": "Make double() hand back n * 2, then say double(3) and double(5).",
      "coach": [
@@ -1882,7 +1991,7 @@ LEVELS = [
                'def double(n):\n    return n * 2\nsay(double(3))\nsay(double(5))'],
      "reference": 'def double(n):\n    return n * 2\nsay(double(3))\nsay(double(5))'},
 
-    {"key": "g2", "chapter": 16, "name": "How many jumps?", "adds": [], "python": ["def", "param", "return", "len"],
+    {"key": "g2", "chapter": 17, "name": "How many jumps?", "adds": [], "python": ["def", "param", "return", "len"],
      "pip": "A def can count the letters in a word and hand that number back. Then a loop can use it!",
      "job": "Make jumps_for() hand back len(word), then jump once for each letter in Pip.",
      "coach": [
@@ -1902,7 +2011,7 @@ LEVELS = [
                'def jumps_for(word):\n    return len(word)\nfor i in range(jumps_for("Pip")):\n    jump()'],
      "reference": 'def jumps_for(word):\n    return len(word)\nfor i in range(jumps_for("Pip")):\n    jump()'},
 
-    {"key": "g3", "chapter": 16, "name": "Pick a mood", "adds": [], "python": ["def", "return", "if"],
+    {"key": "g3", "chapter": 17, "name": "Pick a mood", "adds": [], "python": ["def", "return", "if"],
      "pip": "An if inside a def can hand back different answers. Give mood_for() 8 points and 2 points to see!",
      "job": "Make mood_for() hand back happy for more than 5 points. Hand back sad for 5 or fewer. Feel both moods.",
      "coach": [
@@ -1949,6 +2058,13 @@ REMIXES = {
            "Add  jump()  pushed in under the for line, next to  right(1)  and  left(1)"),
     "m1": ("Make your pal change its face in its move, like  feel(\"silly\")  .", lambda r: r.n("feel") >= 1 and _actions(r) >= 3,
            'Add a  feel("...")  line anywhere in your move. The faces are happy, sad, surprised, angry, sleepy, silly, cool and calm.'),
+    "d1": ("Add a second thing to wear, and spin again.", lambda r: len(_outfits(r)) >= 2 and r.n("spin") >= 2,
+           'Add another  wear("...")  line, like  wear("tiara")  , and a  spin()  after it.'),
+    "d2": ("Add a fourth outfit, with a move after it.", lambda r: len(_outfits(r)) >= 4 and _moves_between_wears(r) >= 3
+           and bool(r.worn.get("hat")),
+           "Add one more  wear(...)  line and a move after it, before the dance."),
+    "d3": ("Twirl 5 times instead of 3.", lambda r: r.fors >= 1 and r.n("spin") >= 5,
+           "Change only one thing: the number in  range(3)"),
     "t1": ("Grow two times, then shrink two times.", lambda r: r.n("grow") >= 2 and r.n("shrink") >= 2,
            "Add one more  grow()  and one more  shrink()"),
     "t2": ("Make your pal look up, then down.", lambda r: _in_order(r, ("look", ("up",)), ("look", ("down",))),
@@ -2038,6 +2154,9 @@ GUESSES = {
     "h4": ("What comes last?", ["Dancing", "Cheering", "Hearts"], 2),
     "b1": ("There is one jump() inside the loop. How many jumps will you see?", ["1", "5", "2"], 1),
     "b2": ("How many times will confetti fall?", ["Once", "4 times", "8 times"], 0),
+    "d1": ("What does your pal do right after it puts on the crown?", ["Spins", 'Says "Fancy!"', "Jumps"], 0),
+    "d2": ("Which hat is on at the very end?", ["Party hat", "Sun hat", "No hat"], 1),
+    "d3": ("How many times does your pal twirl?", ["1", "3", "6"], 1),
     "t1": ("Will your pal be big or small at the end?", ["Big", "Small, like at the start"], 1),
     "t2": ("Where will the eyes look at the end?", ["Left", "Right", "At us"], 2),
     "l1": ("What number will your pal say first?", ["0", "1", "5"], 1),
@@ -2096,6 +2215,16 @@ FIXES = {
     "b2": ("Pip wanted confetti once, at the end. It falls 4 times!", "for i in range(4):\n    right(1)\n    left(1)\n    confetti()",
            lambda r: r.n("right") >= 4 and r.n("confetti") == 1 and r.log[-1][0] == "confetti",
            "Lines pushed in are inside the loop. Should confetti be inside?"),
+    "d1": ("Pip's pal can't find the crown, so the show stops!", 'wear("croun")\nspin()\nsay("Fancy!")',
+           lambda r: len(_outfits(r)) >= 1 and r.first("wear", "spin", "say"),
+           'Look at line 1. The word inside the brackets is not the crown\'s name.'),
+    "d2": ("Pip's quick change has no move before the sun hat!", 'wear("party")\nspin()\nwear("shades")\nwear("crown")\nwear("sunhat")\ndance()',
+           lambda r: len(_outfits(r)) >= 3 and _moves_between_wears(r) >= 2 and bool(r.worn.get("hat")),
+           "Look at line 4. It should be a move to show off the shades, not another hat."),
+    "d3": ("Pip's twirl only goes round once!", 'wear("tiara")\nfor i in range(1):\n    spin()\nfeel("happy")',
+           lambda r: len(_outfits(r)) >= 1 and r.fors >= 1 and r.n("spin") >= 3
+           and bool(r.log) and r.log[-1][0] == "feel" and r.log[-1][1] == ("happy",),
+           "Look at the number in range( ). It should twirl 3 times."),
     "t1": ("Pip's pal should end up small again, but it stays big!", 'grow()\nshake()\ngrow()\nsay("Ta-da!")',
            lambda r: r.first("grow", "shake", "shrink", "say"), "Which line should make the pal small again?"),
     "t2": ("Pip's pal looks left, and then the show stops!", 'look("left")\nwait(1)\nlook("rigth")\nwait(1)\nlook("front")\nsay("Oh, hello!")',
@@ -2236,6 +2365,9 @@ def free_commands(upto):
 
 LEVEL_ORDER = [lv["key"] for lv in LEVELS]
 LEVEL_BY_KEY = {lv["key"]: lv for lv in LEVELS}
+# 👗 The Dress Up missions went in between My Move and Encore! after some students
+# had already saved progress. The server uses these to keep old saves open.
+DRESS_KEYS = ("d1", "d2", "d3")
 REMIX_COINS = 15           # once per mission, for doing its Your turn
 GUESS_COINS = 5            # for a right first guess on a mission
 FIX_COINS = 15             # once per mission, for fixing Pip's bug
@@ -2438,6 +2570,9 @@ GIFTS = {
     "letterspark": {"name": "Letter sparkles", "slot": "sparkle"},
     "boxhat": {"name": "Gift box hat", "slot": "hat"}, "returnhat": {"name": "Boomerang hat", "slot": "hat"},
     "givespark": {"name": "Give-back sparkles", "slot": "sparkle"},
+    # 👗 Dress Up: three showy things from the new chapter's gift boxes.
+    "showhat": {"name": "Show hat", "slot": "hat"}, "diva": {"name": "Diva shades", "slot": "face"},
+    "glamspark": {"name": "Glam sparkles", "slot": "sparkle"},
     # These unlock by themselves when a goal is reached: [what is counted, how many].
     "gemcrown": {"name": "Gem crown", "slot": "hat", "goal": ["gems", 9]},
     "fishhat": {"name": "Fish hat", "slot": "hat", "goal": ["fish", 5]},
@@ -2480,6 +2615,9 @@ def wear_cut(drawing):
 BOX_GIFTS = tuple(key for key, gift in GIFTS.items() if not gift.get("class") and not gift.get("price") and not gift.get("goal"))
 GOAL_GIFTS = tuple(key for key, gift in GIFTS.items() if gift.get("goal"))
 WEAR_SLOTS = ("hat", "face", "sparkle")
+WEAR_KEYS = tuple(key for key, gift in GIFTS.items() if gift.get("slot") in WEAR_SLOTS)
+# A few friendly words a child might try first. They point at real things to wear.
+WEAR_ALIASES = {"hat": "party", "glasses": "shades", "sparkle": "goldspark", "sparkles": "goldspark"}
 
 # What each full party meter brings, in order. After these it's just a party.
 HANG_REWARDS = [{"kind": "place", "key": "snowy", "name": "Snowy hill"}, {"kind": "gift", "key": "crown", "name": "Golden crown"},
@@ -3022,7 +3160,7 @@ def run_level(lv, code, pal, seed=0, surprise=None):
 # ---- Furniture students draw and code ----------------------------------------------
 # Any drawing put out at home (or in the world) can have a program. Clicking it
 # runs the program's on_click, and everyone in that place sees what it does.
-THING_COMMANDS = ("say", "sound", "note", "jump", "spin", "shake", "grow", "shrink", "hide", "appear",
+THING_COMMANDS = ("say", "sound", "note", "wear", "jump", "spin", "shake", "grow", "shrink", "hide", "appear",
                   "pose", "play", "wait", "hearts", "stars", "confetti", "clicks") + HELPERS
 THING_FRAMES = 4           # frames a placed drawing keeps, for pose() and play()
 THING_STEPS = 30           # the most steps one click can play
@@ -3074,6 +3212,8 @@ def thing_steps(steps, frames, words_allowed, look=None):
     """A click's steps, ready for the Hang out, and how the thing looks after them.
     say() takes any words, so only words from the tap list show unless typing is on."""
     look = dict(look or {"frame": 0, "size": 1, "hidden": False})
+    look.setdefault("frame", 0); look.setdefault("size", 1); look.setdefault("hidden", False)
+    look["wear"] = dict(look.get("wear") or {})
     out = []
     for s in steps:
         do = s["do"]
@@ -3088,6 +3228,15 @@ def thing_steps(steps, frames, words_allowed, look=None):
         elif do == "note":
             step = {"do": "note", "name": s["name"], "beats": s["beats"],
                     "ms": NOTE_MS * s["beats"]}
+        elif do == "wear":
+            if s["key"] == "none":
+                if s.get("slot"):
+                    look["wear"].pop(s["slot"], None)
+                else:
+                    look["wear"] = {}
+            else:
+                look["wear"][s["slot"]] = s["key"]
+            step = {"do": "wear", "key": s["key"], "slot": s.get("slot"), "ms": 450}
         elif do == "size":
             look["size"] = s["to"]
             step = {"do": "size", "to": s["to"], "ms": THING_MS["size"]}

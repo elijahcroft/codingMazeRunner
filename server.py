@@ -5675,14 +5675,53 @@ def pixel_save_soon():
         pixel_write_timer[0].start()
 
 
+def pixel_old_level_order():
+    """The mission order before 👗 Dress Up went in, for reading saves from then."""
+    return [key for key in pixel.LEVEL_ORDER if key not in pixel.DRESS_KEYS]
+
+
+def pixel_migrate_dressup():
+    """Keep every old save's open missions open after Dress Up was inserted.
+
+    The chapter went in between My Move and Encore!, so a student who was on an
+    Encore! mission must not find it behind the three new ones. Each old save's
+    furthest open mission is remembered in `reached`, and the teacher's open
+    index is moved along too. Runs once per state file.
+    """
+    if pixel_class.get("dressup"):
+        return
+    old = pixel_old_level_order()
+    try:
+        old_open = int(pixel_class.get("open", 0))
+    except (TypeError, ValueError):
+        old_open = 0
+    old_open = max(0, min(old_open, len(old) - 1))
+    # The same mission has a new index after the three inserted ones.
+    pixel_class["open"] = pixel.LEVEL_ORDER.index(old[old_open])
+    for q in players.values():
+        entry = q.get("pixel")
+        if not isinstance(entry, dict) or "reached" in entry:
+            continue
+        solved = entry.get("solved") or {}
+        at = len(old) - 1
+        for i, key in enumerate(old):
+            if not (solved.get(key) or [False])[0]:
+                at = i
+                break
+        entry["reached"] = old[max(at, old_open)]
+    pixel_class["dressup"] = 1
+    pixel_save_soon()
+
+
 def pixel_entry(p):
+    pixel_migrate_dressup()
     entry = p.setdefault("pixel", {})
     for key, value in (("drawings", []), ("pal", ""), ("solved", {}), ("code", {}),
                        ("badges", []), ("runs", {}), ("misses", {}), ("last_error", ""), ("active", 0),
                        ("gifts", []), ("wear", {}), ("friends", []), ("move", None), ("found", []),
                        ("stuff", []), ("fish", {}), ("things", {}), ("remixed", []), ("guessed", []), ("fixed", []), ("free_code", ""), ("free_runs", 0), ("free_shows", []), ("performed", 0), ("perform_until", 0),
                        ("chests", {}), ("chest_count", 0), ("mywear", []), ("presents", {}), ("present_count", 0), ("snowballs", 0),
-                       ("wedding_day", ""), ("mural_day", ["", 0, False])):
+                       ("wedding_day", ""), ("mural_day", ["", 0, False]), ("reached", pixel.LEVEL_ORDER[0])):
         entry.setdefault(key, value)
     if "coins" not in entry:        # coins came later: pay for the stars and gems already earned
         firsts = sum(1 for key, stars in entry["solved"].items() if key in pixel.LEVEL_BY_KEY and stars[0])
@@ -5805,12 +5844,19 @@ def pixel_class_stars():
 
 def pixel_frontier(entry):
     """Index of the furthest mission open: the first without its first star,
-    or further if the teacher has opened more."""
+    further if the teacher has opened more, or further still if this save has
+    reached it before (so inserting a chapter never locks a reached mission)."""
     last = len(pixel.LEVEL_ORDER) - 1
+    first = last
     for i, key in enumerate(pixel.LEVEL_ORDER):
         if not (entry["solved"].get(key) or [False])[0]:
-            return max(i, min(pixel_class.get("open", 0), last))
-    return last
+            first = i
+            break
+    reached = entry.get("reached")
+    at = pixel.LEVEL_ORDER.index(reached) if reached in pixel.LEVEL_ORDER else 0
+    frontier = max(first, at, min(pixel_class.get("open", 0), last))
+    entry["reached"] = pixel.LEVEL_ORDER[frontier]
+    return frontier
 
 
 FREE_SHOWS = 6            # shows a student can keep on the Free stage, besides the one they're making

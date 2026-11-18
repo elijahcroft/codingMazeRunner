@@ -5,7 +5,7 @@ import unittest
 
 import pixel
 
-NEW_KEYS = [lv["key"] for lv in pixel.LEVELS if lv["key"][0] in "nupg"]
+NEW_KEYS = [lv["key"] for lv in pixel.LEVELS if lv["key"][0] in "nupgd"]
 # A missing message has to name something a child can do next.
 ACTIONS = ("type", "add", "put", "push", "try", "use", "change", "check",
            "say", "sing", "play", "start", "give", "make", "move", "keep",

@@ -164,6 +164,10 @@ const PalStage = (() => {
     bookhat: {rows: ["..wwwwwww..", ".wkkkwkkkw.", "wwwwwwwwwww", "kwwwwwwwwwk", "kkkkkkkkkkk"], ink: {w: "#fff2dc", k: "#8f1d3a"}},
     boxhat: {rows: ["..p.....p..", ".ppp...ppp.", "..ppppppp..", "..rrrrrrr..", ".rrryyyrrr.", "..rrrrrrr.."], ink: {p: "#ff5fa2", r: "#e8294f", y: "#ffd93b"}},
     returnhat: {rows: ["oo.......oo", "ooo.....ooo", ".ooo...ooo.", "..ooo.ooo..", "...oyyyo...", "....ooo...."], ink: {o: "#ff9a3c", y: "#ffd93b"}},
+    // 👗 Dress Up: showy things from the new chapter's gift boxes.
+    showhat: {rows: ["...y....", "..yry...", ".yyyyy..", "yyryyyy.", "yyyyyyy.", "kkkkkkk."],
+              ink: {y: "#ffd93b", r: "#e8294f", k: "#8a5a00"}},
+    diva: {rows: ["y..y.y..y", "yy.yyy.yy", ".yyyyyyy.", "..yyyyy.."], ink: {y: "#ffd93b"}},
     // unlocked by reaching a goal
     gemcrown: {rows: ["k...k...k", "kb.kpk.gk", "kyykyykyk", "kyyyyyyyk", "kbyryygyk", "kkkkkkkkk"], ink: {k: "#8a5a00", y: "#ffd93b", r: "#e8294f", b: "#7ab8ff", g: "#35d0bd", p: "#ff5fa2"}},
     fishhat: {rows: ["...oooo...o", ".oooooooooo", "owkoooyooo.", ".oooooooooo", "...oooo...o"], ink: {o: "#ff9a3c", w: "#ffffff", k: "#1b1530", y: "#ffd93b"}},
@@ -197,7 +201,8 @@ const PalStage = (() => {
                        loopspark: ["#35d0bd", "#7ab8ff", "#ffffff"],
                        notespark: ["#7a3fe4", "#ff5fa2", "#ffd93b", "#ffffff"],
                        letterspark: ["#ff5fa2", "#7ab8ff", "#ffd93b", "#8ee06b"],
-                       givespark: ["#ff9a3c", "#ffd93b", "#7ab8ff", "#ffffff"]};
+                       givespark: ["#ff9a3c", "#ffd93b", "#7ab8ff", "#ffffff"],
+                       glamspark: ["#ff5fa2", "#ffd93b", "#c5a3ff", "#ffffff"]};
   const FRIEND_INK = {cat: "#ffc266", bunny: "#c5a3ff", kid: "#7ab8ff", bean: "#8ee06b"};
   const FRIEND_ART = {cat: "Cat", bunny: "Bunny", kid: "Kid", bean: "Bean"};
 
@@ -477,6 +482,7 @@ const PalStage = (() => {
       return {scene: "stage", x: spotX(2), spot: 2, y: 0, frame: 0, flip: false, squeeze: 1, tilt: 0,
               size: 1, visible: true, shakeX: 0, napping: false,
               move: null, moveFrom: 0, jump: 0, mood: null, talk: false, aim: null,
+              wear: {}, sparkAt: 0,
               friend: null, crew: [],
               marks: [], props: {}, score: null, weather: null};
     }
@@ -525,7 +531,10 @@ const PalStage = (() => {
         const rig = pup.rigOf(s.frame);
         const pose = livePose(rig, pup.lifeline, t, {move: s.move, moveT: (now - s.moveFrom) / 1000, jump: s.jump,
                                                      mood: s.mood, talk: s.talk, aim: s.aim});
-        pup.draw(g, s.frame, pose, s.x + s.shakeX, FLOOR + 4 - s.y, {flip: s.flip, squeeze: s.squeeze, size: s.size, tilt: s.tilt});
+        const base = FLOOR + 4 - s.y;
+        pup.draw(g, s.frame, pose, s.x + s.shakeX, base, {flip: s.flip, squeeze: s.squeeze, size: s.size, tilt: s.tilt});
+        if (s.wear && Object.keys(s.wear).length) drawWear({pup, frame: s.frame, x: s.x + s.shakeX, flip: s.flip,
+                                                            size: s.size, squeeze: s.squeeze, wear: s.wear, wearArt: {}}, base);
       }
       paintCrowd();
       for (const p of sparks) {
@@ -554,7 +563,7 @@ const PalStage = (() => {
     function placedThing(p) {
       const look = p.look || {};
       return {placed: true, id: p.id, x: p.x, y: p.y, mine: p.mine, coded: !!p.coded, pup: puppet(p.pal, Math.max(1, Math.round(38 / p.pal.size)), p.id + 1),
-              frame: look.frame || 0, size: look.size || 1, hidden: !!look.hidden, queue: null, queueAt: 0, act: null, actFrom: 0, actMs: 0, grew: 1};
+              frame: look.frame || 0, size: look.size || 1, hidden: !!look.hidden, wear: look.wear || {}, queue: null, queueAt: 0, act: null, actFrom: 0, actMs: 0, grew: 1};
     }
     // A thing someone drew and coded plays the steps of one click, one after another.
     const THING_SIZES = [1, 1.35, 1.7];
@@ -562,6 +571,12 @@ const PalStage = (() => {
       th.act = s.do === "note" && s.name === "rest" ? "rest" : s.do; th.actFrom = now; th.actMs = s.ms;
       if (s.do === "say") { bubble("t" + th.id, s.text, Math.min(5200, 1300 + s.text.length * 55)); if (sound) SFX.play("blip"); }
       else if (s.do === "sound") { if (sound) SFX.play(s.name); }
+      else if (s.do === "wear") {
+        if (s.key === "none") { if (s.slot) delete th.wear[s.slot]; else th.wear = {}; }
+        else if (s.slot) th.wear = Object.assign({}, th.wear, {[s.slot]: s.key});
+        pop(th.x, roomBase(th) - 20, ["#ffffff", "#ffd93b", "#ff8fc7"], 8);
+        if (sound) SFX.play(s.key === "none" ? "whoosh" : "ding");
+      }
       else if (s.do === "note") {
         bubble("t" + th.id, "🎵 " + s.name, Math.max(500, s.ms || 400));
         if (sound && s.name !== "rest") SFX.note(s.name, s.beats || 1);
@@ -596,7 +611,9 @@ const PalStage = (() => {
         if (!th.mine && act !== "hide") return;      // the owner still sees a faint one, to click it back
         g.globalAlpha = act === "hide" ? 1 - held * (th.mine ? .75 : 1) : .25;
       } else if (act === "appear") g.globalAlpha = held;
-      th.pup.draw(g, frame, livePose(rig, th.pup.lifeline, t + th.id * 1.7, {}), th.x + shake, roomBase(th) - hop, {squeeze, size});
+      const base = roomBase(th) - hop;
+      th.pup.draw(g, frame, livePose(rig, th.pup.lifeline, t + th.id * 1.7, {}), th.x + shake, base, {squeeze, size});
+      if (th.wear && Object.keys(th.wear).length) drawWear({pup: th.pup, frame, x: th.x + shake, flip: false, size, squeeze, wear: th.wear, wearArt: {}}, base);
       g.globalAlpha = 1;
       if (th.coded && !calm && !th.queue && Math.sin(t * 2 + th.id) > .97) sparks.push({x: th.x - 10 + Math.random() * 20, y: roomBase(th) - 10 - Math.random() * 30, vy: -.3, vx: 0, colour: "#ffd93b", w: 2, h: 2, life: 500});
     }
@@ -776,16 +793,17 @@ const PalStage = (() => {
       if (a.me || b.me || hooks.everySound) SFX.play("five");
     }
     function drawWear(m, base) {
-      const rig = m.pup.rigOf(0);
+      const rig = m.pup.rigOf(m.frame || 0);
       if (rig.empty) return;
       const px = m.pup.scale, zoom = Math.max(1, Math.round(px * m.size / 16)), way = m.flip ? -1 : 1;
+      const squeeze = Math.max(.05, Math.abs(m.squeeze == null ? 1 : m.squeeze));
       const place = (key, cx, y, under) => {
         const own = !WEAR_SPRITES[key] && (m.wearArt || {})[key === m.wear.hat ? "hat" : "face"];
         const img = own ? ownWearSprite(own) : WEAR_SPRITES[key];
         if (!img) return;
         // A drawn one is shrunk to the scale of the shop's things: 16 squares across is as wide as a 16 square pal.
-        const fit = own ? 16 / own.size : 1, w = Math.max(1, Math.round(img.width * zoom * fit)), h = Math.max(1, Math.round(img.height * zoom * fit));
-        g.drawImage(img, Math.round(m.x + way * (cx - rig.axis - .5) * px - w / 2), Math.round(base + (y - rig.feet - 1) * px - (under ? h : h / 2)), w, h);
+        const fit = own ? 16 / own.size : 1, w = Math.max(1, Math.round(img.width * zoom * fit * squeeze)), h = Math.max(1, Math.round(img.height * zoom * fit));
+        g.drawImage(img, Math.round(m.x + way * (cx - rig.axis - .5) * px * squeeze - w / 2), Math.round(base + (y - rig.feet - 1) * px - (under ? h : h / 2)), w, h);
       };
       const eyes = rig.eyes;
       if (m.wear.face && eyes.length) {
@@ -794,7 +812,7 @@ const PalStage = (() => {
         const below = {moustache: [2, 6], clownnose: [1, 10], blush: [1, 9]}[m.wear.face];     // these sit under the eyes
         place(m.wear.face, cx, below ? cy + Math.max(below[0], m.size / below[1]) : cy);
       }
-      if (m.wear.hat) place(m.wear.hat, rig.axis + .5, rig.top + 1, true);
+      if (m.wear.hat) place(m.wear.hat, rig.axis + .5, (rig.headTop == null ? rig.top : rig.headTop) + 1, true);
     }
     // An open book held in front of the tummy, sized to the pal.
     function drawBook(m, rig) {
@@ -1168,6 +1186,16 @@ const PalStage = (() => {
         p.life -= dt;
       }
       sparks = sparks.filter(p => p.life > 0 && p.y < H + 8);
+      const ink = state.wear && SPARKLE_INK[state.wear.sparkle];
+      if (ink && state.visible && !calm) {
+        const now = performance.now();
+        if (now > (state.sparkAt || 0)) {
+          state.sparkAt = now + 120;
+          sparks.push({x: state.x - 16 + Math.random() * 32, y: FLOOR - 10 - Math.random() * 46,
+                       vy: -.25 - Math.random() * .35, vx: 0, colour: ink[Math.floor(Math.random() * ink.length)],
+                       w: 2, h: 2, life: 650});
+        }
+      }
       if (crowd > 0) crowd -= dt;
     }
 
@@ -1436,6 +1464,17 @@ const PalStage = (() => {
         await tween(200, t, u => { state.y = Math.sin(u * Math.PI) * 7; });
         state.y = 0;
         await sleep(ms - 200, t);
+      },
+      async wear(s, t) {
+        // A quick change on the Code stage. It is pretend: it never touches the Hang out.
+        if (s.key === "none") {
+          if (s.slot) delete state.wear[s.slot]; else state.wear = {};
+        } else if (s.slot) {
+          state.wear = Object.assign({}, state.wear, {[s.slot]: s.key});
+        }
+        SFX.play(s.key === "none" ? "whoosh" : "ding");
+        pop(state.x, FLOOR - palW * .9, ["#ffffff", "#ffd93b", "#ff8fc7"], 10);
+        await sleep(450, t);       // a short beat, so every change is seen
       },
       async scene(s, t) {
         await tween(170, t, u => { canvas.style.filter = `brightness(${1 - u * .8})`; });

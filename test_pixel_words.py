@@ -117,7 +117,7 @@ class WordsOverHttp(unittest.TestCase):
         state = self.get(f"/pixel/state?id={me}")
         chapter = next(ch for ch in state["chapters"] if ch["name"] == "Word Play")
         self.assertEqual(len(chapter["levels"]), 3)
-        self.assertEqual(state["max_stars"], 126)
+        self.assertEqual(state["max_stars"], 135)
 
 
 if __name__ == "__main__":

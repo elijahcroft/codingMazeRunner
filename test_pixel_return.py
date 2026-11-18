@@ -23,8 +23,8 @@ class TheChapter(unittest.TestCase):
         self.assertEqual([lv["key"] for lv in pixel.LEVELS[-3:]], ["g1", "g2", "g3"])
         self.assertEqual({lv["chapter"] for lv in pixel.LEVELS[-3:]}, {len(pixel.CHAPTERS) - 1})
 
-    def test_there_are_now_42_missions_and_126_stars(self):
-        self.assertEqual(len(pixel.LEVELS), 42)
+    def test_there_are_now_45_missions_and_135_stars(self):
+        self.assertEqual(len(pixel.LEVELS), 45)
         self.assertEqual(pixel.LEVEL_ORDER[-3:], ["g1", "g2", "g3"])
 
     def test_each_reference_earns_all_three_stars(self):
@@ -162,7 +162,7 @@ class ReturnOverHttp(unittest.TestCase):
         self.assertEqual(state["chapters"][-1]["name"], "Give It Back")
         self.assertEqual(state["chapters"][-1]["icon"], "📦")
         self.assertEqual(len(state["chapters"][-1]["levels"]), 3)
-        self.assertEqual(state["max_stars"], 126)
+        self.assertEqual(state["max_stars"], 135)
 
 
 if __name__ == "__main__":

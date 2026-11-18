@@ -43,7 +43,7 @@ class WhereTheClassIs(unittest.TestCase):
         self.kid("Ben", ["a1"], runs=["a1", "a2"])       # tried the next one too
         self.kid("Fay", runs=["a1"])                     # trying Say hello
         self.kid("Cy", through(1))                       # finished Opening Night
-        self.kid("Dee", through(14))                     # far along: Make Music
+        self.kid("Dee", through(15))                     # far along: Make Music
         self.kid("Eli", pixel.LEVEL_ORDER)               # every mission done
 
         strip = self.strip()

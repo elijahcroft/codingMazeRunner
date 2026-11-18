@@ -38,7 +38,7 @@ it never pulls a student out of a mission halfway. The 🎉 Hang out tab is alwa
 
 ## The missions
 
-42 missions and 126 stars. The first star opens the next mission, and the other two are
+45 missions and 135 stars. The first star opens the next mission, and the other two are
 for going further.
 
 | Chapter | Missions | What it teaches |
@@ -47,6 +47,7 @@ for going further.
 | ✨ Come Alive | Big wave, How do you feel?, Dance floor | `wave()`, `feel()`, `dance()`, `cheer()` |
 | 🔁 Again! Again! | Bounce!, Side step | `for` loops |
 | 🌟 My Move | My Move | Putting it together, their own way |
+| 👗 Dress Up | Fancy hat, Quick change, Twirl time | `wear()`: putting a hat, glasses or sparkles on the pal just for a show |
 | 🎪 Encore! | Grow big, Who's there? | `grow()`, `shrink()`, `shake()`, `look()` |
 | 🔢 Count on Me | Count with me, Hello, everyone | The loop's `i`, and looping over a list |
 | 🏷️ Name Tags | Name tag, How many? | Variables, `.upper()`, f-strings |
@@ -61,7 +62,7 @@ for going further.
 | 🔤 Word Play | Big name, How long?, First letter | Words: repeating with `*`, counting letters with `len()`, and `word[0]` / a loop over each letter |
 | 📦 Give It Back | Double it, How many jumps?, Pick a mood | `return`: a `def` that hands a value back, used inside `say()` and `range()` |
 
-The last thirty-three come after My Move on purpose, so a student who has already made their
+The last thirty-six come after My Move on purpose, so a student who has already made their
 move doesn't have it locked behind new missions. They start easy (one new command each)
 and get harder.
 
@@ -95,6 +96,14 @@ waves. The whole thing happens 3 times. Times table uses the outside loop for th
 the inside loop for each fact. That is 9 facts, from 1 x 1 = 1 to 3 x 3 = 9. Stairs walks
 one more step right each time before it jumps, so it takes 6 steps in all (1 + 2 + 3). The
 guide pushes each line in to the right depth, and Help me says which loop a line belongs in.
+
+**👗 Dress Up ties coding to the Hang out's hats.** `wear("party")` puts something on for
+the show, and the same sprite the Hang out uses is drawn on the head, eyes or sparkles
+around the pal. Fancy hat wears a crown, spins and says how it looks. Quick change tries
+three outfits with a move between each one. Twirl time wears a tiara, spins 3 times in a
+loop, then ends with a happy face. A made-up name gets a kind error that names real
+things, like "crown", "tiara" and "sunhat"; `wear("hat")` and `wear("glasses")` point at
+a party hat and cool shades.
 
 **🎵 Make Music is the chapter of notes.** `note("C")` sings one note, `note("rest")` is a
 short silence, and `note("E", 2)` holds a note for 2 beats. First notes sings C, D and E.
@@ -135,6 +144,9 @@ glows. Pressing it early says to finish typing first.
 - **My Move is different,** because it's meant to be their own: they click 3 or more green
   buttons, with a count of how many they have. **Show me step by step** walks them
   through a version with a sparkle trail and a big finish.
+- **👗 Dress Up is the first chapter after My Move.** `wear("crown")` puts a crown on the
+  pal for this show only. It is free and pretend: the student does not need to own it, and
+  it never changes the look saved in the Hang out. `wear("none")` or `wear()` takes it off.
 - **If the code stops matching the steps,** the guide says so and offers **↩ Go back to
   where it was right** (which removes what doesn't match) or **✋ Keep my code**. Going
   back to a line whose pushed-in spaces were typed over puts the spaces back for them, so
@@ -145,7 +157,7 @@ glows. Pressing it early says to finish typing first.
 The guide's lines live in `coach` on each mission in `pixel.py`, and a test checks they
 always add up to the working answer, which earns all three stars. `test_pixel_coach.py`
 also checks the lines' indentation and the keys the guide names. `test_pixel_wording.py`
-checks the four new chapters' words: short sentences, a next step in every missing message,
+checks the newest chapters' words: short sentences, a next step in every missing message,
 and Fix it hints that point at the line without giving the code away. `tools/e2e_coach.py` is
 the slower end-to-end check: it types every mission in a real headless browser, one key
 at a time, and tries the guide's buttons and mistakes. It is a tool, not a unittest, so
@@ -595,7 +607,7 @@ by day, so they start fresh each lesson. Names follow the projector's rules: a s
 recap closes by itself after 2 minutes.
 
 **📊 Where the class is** sits above Who's where. It has one small tile for each of the
-17 chapters, with its icon, a short name and how many students have their open,
+18 chapters, with its icon, a short name and how many students have their open,
 unfinished mission in that chapter. **🌱 Not started** counts students who haven't run
 a mission yet, and **🏁 All done** counts students who have finished every mission. A
 tile with 0 is faded. Click a tile to highlight those students in Who's where; click it
