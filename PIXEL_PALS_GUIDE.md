@@ -299,7 +299,7 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   and a small "today's idea" line changes each day. Ten squares in a day earns a little coin
   treat and a Mural Maker trophy, and the squares show on every screen within a second. On
   `/pixel/teacher` the Class mural card has **🧽 Clear**, **↶ Remove <student>'s squares** and
-  **💾 Download PNG** (there is no picture page in the class book yet). The mural is kept with
+  **💾 Download PNG**. The mural is kept with
   the class state, so it survives a server restart.
 - **💎 Gems:** three in each place. Each student finds their own. All of them earns
   Treasure Hunter.
