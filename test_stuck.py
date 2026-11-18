@@ -358,6 +358,12 @@ class BeginnerSlipTests(unittest.TestCase):
         zi, zone, s = planet.find_site(key)
         return planet.drive(code, s["variants"][variant], zone["rules"], zi)
 
+    def test_x_is_not_a_variable_even_before_the_sensor_arrives(self):
+        """P58's hint says so, and code with x = 4 would break the day x() arrives."""
+        out = self.drive("p58", "x = 4\neast(x)\n")
+        self.assertEqual(out["end"], "error")
+        self.assertIn("pick another name", out["error"])
+
     def test_a_while_loop_that_never_ran_says_so(self):
         out = self.drive("p39", 'while look("east") == "rock":\n    east()\n')
         self.assertEqual(out["end"], "stopped")

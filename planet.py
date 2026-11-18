@@ -348,6 +348,11 @@ class Rover(Brain):
             raise BotError(f"{name}() is the rover's sensor for where it is, so "
                            f"{name} can't be a variable too. Pick another name, "
                            f"like  n  or  steps")
+        if name in ("x", "y") and type(self) is Rover:
+            # Before x() arrives too, on a level: code that works now would break
+            # the day it does. (The Paint Shop and the farm have their own rules.)
+            raise BotError(f"{name} is saved for one of the rover's own sensors (it comes "
+                           f"later), so pick another name, like  n  or  steps")
         super().assign(name, value, frame)
 
     def run_statement(self, node, frame):
