@@ -240,6 +240,7 @@ JOBS = [
      "code": 'def care():\n    if ripe():\n        harvest()\n    if empty():\n        plant("berry")\n'
              'while look("east") != "fence":\n    care()\n    if look("east") == "rock":\n'
              '        drill("east")\n    east()\ncare()\n',
+     "goal": {"need": PERFECT_PICKS, "what": "picked", "count": "picked", "perfect": True},
      "pay": 60, "done": lambda farm, day: bool(_day(day, "perfect"))},
 ]
 METEOR_JOB = next(i for i, job in enumerate(JOBS) if job["key"] == "meteor")
@@ -593,10 +594,18 @@ def next_order(farm):
 
 
 def skip_order(farm):
-    """A different order, for free: a stuck order shouldn't sit there for ever."""
+    """A different order, for free: a stuck order shouldn't sit there for ever.
+
+    The hash can land on the same crop and count twice in a row, which looks
+    like the 🔄 button did nothing, so keep looking until the order is really
+    different (or give up after a dozen tries)."""
     if farm["order"]:
-        farm["skips"] = farm.get("skips", 0) + 1
-        farm["order"] = next_order(farm)
+        old = (farm["order"]["crop"], farm["order"]["need"])
+        for _ in range(12):
+            farm["skips"] = farm.get("skips", 0) + 1
+            farm["order"] = next_order(farm)
+            if (farm["order"]["crop"], farm["order"]["need"]) != old:
+                return
 
 
 def open_crate(farm):
@@ -683,7 +692,7 @@ def tips(field, error, memory_full, learning=False):
     if field.bumps - field.rocked >= 4 and len(out) < 2:
         out.append(f"The rover bumped the fence {field.bumps - field.rocked} times. The field is {field.w} wide "
                    f"and {field.h} tall.")
-    if not field.frames and not out:
+    if not field.frames and not field.prints and not out:
         out.append("The rover didn't do anything today. Give it a command, like  harvest()")
     return out[:2]
 
@@ -720,9 +729,14 @@ def job_note(farm, day, today):
         have = picked.get(crop, 0) if crop else sum(picked.values())
     need, idea = goal["need"], goal.get("idea")
     line = f"📋 Job: {min(have, need)} of {need} {goal['what']}" + ("" if count == "planted" else " today")
-    if have >= need and idea and idea not in (day or {}).get("ideas", ()):
+    if goal.get("perfect"):
+        wasted = _day(day, "wasted")
+        line += (f". {wasted} tick{'s' if wasted != 1 else ''} wasted." if wasted else ".")
+        line += f" A ✨ Perfect day picks {need} or more and wastes no tick."
+    elif have >= need and idea and idea not in (day or {}).get("ideas", ()):
         line += f" ✓, but the job wants  {idea}  in your code."
-    elif crop and not have and any(cell and cell[0] == crop for row in farm["field"] for cell in row):
+    elif crop and not have and any(cell and cell[0] == crop and cell[1] < CROPS[crop]["days"]
+                                  for row in farm["field"] for cell in row):
         line += f". Your {CROPS[crop]['name'].lower()}s are still growing: run another day."
         return line, None
     else:
@@ -795,7 +809,7 @@ def run_day(farm, code, stars=0, today="2000-01-01"):
                drilled=field.drilled, gems=field.gems, perfect=extra)
     farm["best"] = max(farm["best"], total)
     day = {"picked": field.picked, "ideas": used, "drilled": field.drilled, "perfect": perfect,
-           "moved": sum(1 for f in field.frames if f["do"] == "move")}
+           "wasted": field.wasted(), "moved": sum(1 for f in field.frames if f["do"] == "move")}
     before = farm["job"]
     out["jobs"] = check_jobs(farm, day)
     if farm["job"] == before and farm["job"] < len(JOBS):
@@ -805,14 +819,29 @@ def run_day(farm, code, stars=0, today="2000-01-01"):
         same = code.strip() == (yesterday or "").strip()
         farm["same_days"] = farm.get("same_days", 0) + 1 if same else 0
         line, stuck = job_note(farm, day, today)
-        if line:
+        # When the stuck line is the job line itself (a buy job with the coins),
+        # showing it in both places would just say the same thing twice.
+        if line and not (stuck and farm["same_days"] >= STUCK_SAME and stuck == line):
             out["say"].insert(0, line)
         if stuck and farm["same_days"] >= STUCK_SAME:
             out["stuck"] = stuck
-    else:
+    elif farm["job"] != before:   # a job done starts the count again
         farm["same_days"] = 0
     if before >= len(JOBS):
         out["order"] = check_order(farm, field.picked)
+        # The same code that never grows the order's crop can't fill it: after a
+        # few days, stop 🔁 Auto and say so (a slow crop still growing is fine).
+        order = farm["order"]
+        if order and not out["order"] and not any(cell and cell[0] == order["crop"]
+                                                  for row in farm["field"] for cell in row):
+            same = code.strip() == (yesterday or "").strip()
+            farm["same_days"] = farm.get("same_days", 0) + 1 if same else 0
+            if farm["same_days"] >= STUCK_SAME:
+                crop = CROPS[order["crop"]]
+                out["stuck"] = (f"🔁 Same code, same result: your code grows no {crop['icon']} {crop['name'].lower()}s "
+                                f"for the order. Plant them with  plant(\"{order['crop']}\") , or press 🔄 Different order.")
+        else:
+            farm["same_days"] = 0
     out["shaded"] = grow(farm)
     out["meteors"] = meteors(farm)
     if out["shaded"] and len(out["say"]) < 2:

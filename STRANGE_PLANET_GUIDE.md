@@ -1083,8 +1083,10 @@ student's own farm.
 **Opening it:** turn on **🌱 Rover Farm** under ⚙ Settings on the teacher page. A green
 **🌱 Farm** button comes up at the top of students' screens within about six seconds, and
 takes them to their farm (`/planet/farm`). It stays open after a restart. Turning it off
-closes the farm page for everyone and keeps every farm as it was. On the class screen a
-farm day plays when nothing else is running; switching the farm off stops it straight away.
+closes the farm page for everyone and keeps every farm as it was. Turning it back on reopens the
+page by itself within a few seconds, even if a student opened it while it was closed. On the
+class screen a farm day plays when nothing else is running; switching the farm off stops it
+straight away.
 
 **What a student does:**
 

@@ -82,6 +82,11 @@ class Rules(unittest.TestCase):
         self.assertEqual(b["bonus"], a["income"])
         self.assertEqual(starry["coins"] - plain["coins"], a["income"])
 
+    def test_printing_with_no_moves_is_not_called_doing_nothing(self):
+        out = day(fresh(), 'print("hi")\n')
+        self.assertTrue(out["prints"])
+        self.assertFalse(any("didn't do anything" in line for line in out["say"]))
+
     def test_the_wanted_crop_pays_double_and_gold_pays_five_times(self):
         hot = farm_rules.hot_crop(DAY)
         f = fresh(crops=["berry", hot], field=[[[hot, 9, 0], [hot, 9, 1], ["berry", 1, 0]]])
@@ -271,6 +276,7 @@ class Jobs(unittest.TestCase):
         out = day(f, "harvest()\n")
         self.assertIn("Same code, same result", out["stuck"])
         self.assertIn("Type this", out["stuck"])
+        self.assertTrue(out["say"][0].startswith("📋 Job:"), "the job line was lost when Auto stopped")
         self.assertIsNone(day(f, "wait()\n")["stuck"], "new code starts the count again")
 
     def test_a_shop_job_says_what_to_buy_and_only_stops_auto_with_the_coins(self):
@@ -285,6 +291,17 @@ class Jobs(unittest.TestCase):
         f["coins"] = 100
         out = day(f, "wait()\n")
         self.assertIn("you have the coins", out["stuck"])
+        # The stuck line is the job line itself: it must not be shown twice.
+        self.assertNotIn(out["stuck"], out["say"])
+
+    def test_ripe_carrots_the_code_did_not_reach_are_not_called_still_growing(self):
+        f = farm_rules.new_farm(5)
+        f["job"] = next(i for i, j in enumerate(farm_rules.JOBS) if j["key"] == "if")
+        f["crops"].append("carrot")
+        f["field"] = [[None, ["carrot", 2, 0], None]]
+        out = day(f, "harvest()\n")
+        self.assertIn("0 of 1 carrots picked", out["say"][0])
+        self.assertNotIn("still growing", out["say"][0])
 
     def test_growing_carrots_say_to_run_another_day(self):
         f = farm_rules.new_farm(5)
@@ -293,6 +310,32 @@ class Jobs(unittest.TestCase):
         f["field"] = [[None, None, None]]
         out = day(f, 'for i in range(3):\n    if ripe():\n        harvest()\n    if empty():\n        plant("carrot")\n    east()\n')
         self.assertIn("still growing: run another day", out["say"][0])
+
+    def test_the_last_job_says_how_close_a_perfect_day_came(self):
+        f = farm_rules.new_farm(5)
+        f["job"] = len(farm_rules.JOBS) - 1
+        out = day(f, ROW)
+        self.assertIn("📋 Job: 3 of 3 picked today", out["say"][0])
+        self.assertIn("1 tick wasted", out["say"][0])
+        self.assertIn("Perfect day", out["say"][0])
+        for _ in range(2):
+            out = day(f, ROW)
+        self.assertIn("Same code, same result", out["stuck"])
+
+    def test_an_order_the_code_never_grows_stops_auto(self):
+        f = farm_rules.new_farm(5)
+        f["job"] = len(farm_rules.JOBS)
+        f["crops"].append("carrot")
+        f["order"] = {"crop": "carrot", "need": 6, "have": 0, "pay": 36, "crate": False}
+        berries = 'for i in range(3):\n    harvest()\n    plant("berry")\n    east()\n'
+        outs = [day(f, berries) for _ in range(3)]
+        self.assertIsNone(outs[1]["stuck"])
+        self.assertIn('plant("carrot")', outs[2]["stuck"])
+        self.assertIn("Different order", outs[2]["stuck"])
+        # Carrots in the ground are on their way: no nudge while they grow.
+        carrots = 'for i in range(3):\n    if ripe():\n        harvest()\n    if empty():\n        plant("carrot")\n    east()\n'
+        outs = [day(f, carrots) for _ in range(4)]
+        self.assertFalse(any(o["stuck"] for o in outs))
 
     def test_auto_comes_with_the_job_that_runs_the_same_code_again(self):
         f = farm_rules.new_farm(5)
@@ -326,6 +369,18 @@ class Jobs(unittest.TestCase):
             farm_rules.skip_order(f)
         self.assertGreater(len(seen), 1)
         self.assertEqual(f["orders"], 0)
+
+    def test_a_different_order_really_looks_different(self):
+        """The hash can land on the same order twice; 🔄 must still change it."""
+        for seed in range(1, 20):
+            f = fresh(seed=seed, crops=["berry", "carrot"], field_level=1,
+                      order=None)
+            f["order"] = farm_rules.next_order(f)
+            for _ in range(12):
+                old = (f["order"]["crop"], f["order"]["need"], f["order"]["pay"])
+                farm_rules.skip_order(f)
+                new = (f["order"]["crop"], f["order"]["need"], f["order"]["pay"])
+                self.assertNotEqual(new, old, seed)
 
     def test_crates_turn_to_coins_once_they_are_all_found(self):
         f = fresh(decor=[d["key"] for d in farm_rules.DECOR if d.get("crate")])

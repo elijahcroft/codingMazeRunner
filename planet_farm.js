@@ -124,6 +124,7 @@ function toast(icon, title, text) {
 
 // ---- What the page knows ------------------------------------------------------------
 let farm = null;          // the farm as the server last gave it
+let farmSerial = 0;       // bumped by take(): a buy during a day makes its snapshot newer
 let scene = null;         // what the yard shows: the farm, changed square by square as a day plays
 let visiting = null;      // a classmate's farm, while the Visit window shows one
 const rover = {x: 1, y: 1, px: 1, py: 1, angle: 0};   // on the field, in squares
@@ -141,6 +142,7 @@ const editor = $("code");
 
 function leave() { location.href = "/planet"; }
 function showClosed() {
+  closeDialogs();
   $("app").hidden = true; $("closed").hidden = false; $("auto").checked = false;
 }
 
@@ -256,10 +258,13 @@ function loop(now) {
   falls = falls.filter(f => now < f.t0 + FALL_MS * 1.5);
   const moving = play || night || floaters.length || bubble || falls.length;
   if (!moving && ++lazy % 3) return;
-  if (!$("visit").hidden) { if (visiting) drawYard($("visitYard"), visiting, now, false); return; }
+  if (!$("visit").hidden) {
+    if (visiting) visitView = drawYard($("visitYard"), visiting, now, false);
+    return;
+  }
   yardView = drawYard($("yard"), scene, now, true);
 }
-let yardView = null;
+let yardView = null, visitView = null;
 
 // ---- The code box -------------------------------------------------------------------------
 function codeLines(code) {
@@ -284,6 +289,7 @@ function updateEditor() {
 function showLine(n) {
   activeLine = n || null;
   if (n) {
+    editor.scrollLeft = 0;
     const h = lineHeight(), top = (n - 1) * h;
     if (top < editor.scrollTop || top + h > editor.scrollTop + editor.clientHeight - 16)
       editor.scrollTop = Math.max(0, top - editor.clientHeight / 2);
@@ -293,6 +299,7 @@ function showLine(n) {
 function replaceAll(text) {
   editor.focus(); editor.setSelectionRange(0, editor.value.length);
   if (!document.execCommand("insertText", false, text)) editor.value = text;
+  editor.scrollTop = 0; editor.scrollLeft = 0;
   typed();
 }
 function typed() {
@@ -316,7 +323,8 @@ function codeKey(e) {
   if (e.key === "Enter") {
     const before = t.value.slice(0, at), line = before.slice(before.lastIndexOf("\n") + 1);
     const indent = line.match(/^ */)[0] + (/:\s*$/.test(line) ? "    " : "");
-    e.preventDefault(); document.execCommand("insertText", false, "\n" + indent); return;
+    e.preventDefault(); document.execCommand("insertText", false, "\n" + indent);
+    t.scrollLeft = 0; return;
   }
   if (e.key === "Backspace" && flat) {
     const start = t.value.lastIndexOf("\n", at - 1) + 1, before = t.value.slice(start, at);
@@ -572,6 +580,16 @@ function renderJob() {
   };
   renderSample();
 }
+// A wrapped line looks like two lines to type, so first shrink the text (down to 75%)
+// until the longest line fits; it only wraps if it still doesn't.
+function fitSample() {
+  const pre = $("sampleCode");
+  pre.style.fontSize = ""; pre.classList.add("measure");   // measure with no wrapping
+  const full = parseFloat(getComputedStyle(pre).fontSize);
+  const room = pre.parentElement.clientWidth - 2;
+  for (let size = full; size >= full * .75 && pre.offsetWidth > room; size -= .5) pre.style.fontSize = size + "px";
+  pre.classList.remove("measure");
+}
 function renderSample() {
   const j = farm && farm.job, on = !!(j && j.code && sampleHidden !== j.n);
   $("sample").hidden = !on;
@@ -584,6 +602,7 @@ function renderSample() {
     if (!ok && next < 0) next = i;
     return `<span class="${ok ? "ok" : i === next ? "next" : ""}">${esc(line) || " "}</span>`;
   }).join("");
+  fitSample();
   $("sampleFoot").hidden = !j.give;
   const all = next < 0 && have.slice(want.length).every(line => !line.trim());
   $("runButton").classList.toggle("nudge", all || farm.day === 0);
@@ -613,6 +632,7 @@ function renderTop() {
   $("speedButton").textContent = `${speed}×`;
 }
 function take(view, keepScene) {
+  farmSerial++;
   farm = view;
   coinsGoal = farm.coins;
   if (!keepScene) scene = {...farm, own: true};
@@ -656,13 +676,14 @@ async function runDay() {
   if (!out.counted) {   // the code couldn't be read, so the day never started
     busy = false; stopAuto();
     errorLine = out.line || null; showLine(null);
-    if (errorLine) { const h = lineHeight(); editor.scrollTop = Math.max(0, (errorLine - 3) * h); updateEditor(); }
+    if (errorLine) { const h = lineHeight(); editor.scrollTop = Math.max(0, (errorLine - 3) * h);
+      editor.scrollLeft = 0; updateEditor(); }
     SFX.play("error");
     say("bad", out.memory_full ? "🧠 Too many lines" : "🛠 One thing to fix", [codeSpans(out.error), "Nothing is broken, and the day hasn't started. Fix it and run again."]);
     take(out.farm);
     return;
   }
-  const before = farm;
+  const before = farm, serial = farmSerial;
   coinsGoal = coinsShown = before.coins;
   $("today").textContent = "";
   await playDay(out);
@@ -673,9 +694,11 @@ async function runDay() {
   const landed = [];
   await nightfall(() => {
     const was = scene.field;
-    take(out.farm); Object.assign(rover, {x: 1, y: 1, px: 1, py: 1, angle: 0}); pops = {};
+    // A shop buy during the day has a newer farm than the day's reply.
+    const latest = farmSerial === serial ? out.farm : farm;
+    take(latest); Object.assign(rover, {x: 1, y: 1, px: 1, py: 1, angle: 0}); pops = {};
     // A rock that wasn't there at the end of the day came down in the night.
-    out.farm.field.forEach((row, y) => row.forEach((cell, x) => {
+    latest.field.forEach((row, y) => row.forEach((cell, x) => {
       if (cell && cell[0] === "rock" && !(was[y] && was[y][x] && was[y][x][0] === "rock")) landed.push({x: x + 1, y: y + 1});
     }));
     if (!CALM) landed.forEach((f, i) => {
@@ -694,7 +717,7 @@ async function runDay() {
   if (out.gems) lines.push(`<span class="gold">💎 A space gem was inside a rock!</span>`);
   if (out.golden) lines.push(`<span class="gold">✨ ${out.golden} golden! Each one pays 5 times over.</span>`);
   if (out.best) lines.push(`<span class="gold">🏆 Your best day yet!</span>`);
-  if (out.error) { errorLine = out.line || null; updateEditor(); lines.push(`🛠 ${codeSpans(out.error)}`); }
+  if (out.error) { errorLine = out.line || null; editor.scrollLeft = 0; updateEditor(); lines.push(`🛠 ${codeSpans(out.error)}`); }
   for (const line of out.stuck ? out.say.slice(0, 1) : out.say) lines.push(codeSpans(line));   // stuck: just the job line
   if (out.stuck) {   // the same code keeps missing the job: stop Auto and point at the code to type
     lines.unshift(`<span class="gold">${codeSpans(out.stuck)}</span>`);
@@ -803,7 +826,7 @@ async function buy(kind, key) {
 
 // ---- Visiting a classmate's farm --------------------------------------------------------------
 function openVisit() {
-  visiting = null;
+  visiting = null; visitView = null;
   $("visitYardBox").hidden = true; $("visitSay").textContent = "";
   const rows = farm.class_farms;
   $("friends").innerHTML = rows.length ? rows.map(r => `<button data-who="${esc(r.who)}">${esc(r.name)}</button>`).join("")
@@ -871,16 +894,25 @@ $("yard").addEventListener("click", e => {
   const L = yardView.L, fx = (x - L.ox) / L.cell - 2, fy = (y - L.oy) / L.cell - 2, nf = farm.next_field;
   if (nf && fx >= 0 && fy >= 0 && fx < nf.w && fy < nf.h && (fx >= farm.w || fy >= farm.h)) { renderShop(); $("shop").hidden = false; }
 });
-window.addEventListener("resize", updateEditor);
+// A classmate's yard says hello too (the same speech bubble as your own).
+$("visitYard").addEventListener("click", e => {
+  if (!visitView) return;
+  const box = $("visitYard").getBoundingClientRect(), x = e.clientX - box.left, y = e.clientY - box.top;
+  const hit = visitView.hits.find(h => Math.hypot(h.cx - x, h.cy - y) < h.r);
+  if (hit) wiggles[hit.d.key] = performance.now();
+});
+window.addEventListener("resize", () => { updateEditor(); if (farm) renderSample(); });
 
 // The teacher's messages reach the farm too, and so does closing it.
 let noticeSeen = null;
 setInterval(async () => {
-  if (!farm) return;
   const lately = performance.now() - lastInput < 90000 ? "&busy=1" : "";
   const out = await get(`/planet/ping?id=${encodeURIComponent(me)}${lately}`).catch(() => null);
   if (!out) return;
   if (out.farm === false) { showClosed(); return; }
+  // The teacher turned it back on while this page was showing "the farm is closed".
+  if (out.farm === true && !$("closed").hidden) { location.reload(); return; }
+  if (!farm) return;
   if (out.notice) {
     if (noticeSeen != null && out.notice.n && out.notice.n !== noticeSeen) toast(out.notice.icon, out.notice.title, out.notice.text);
     noticeSeen = out.notice.n;

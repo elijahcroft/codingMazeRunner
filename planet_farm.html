@@ -94,7 +94,9 @@
   .pane-head .lines.over { color: var(--coral); }
   .pane-head button { margin-left: auto; border: 0; background: none; color: var(--haze); padding: 0 4px; font-size: 16px; }
   .sample pre { margin: 0; padding: 8px 0; overflow: auto; font: var(--code-size)/var(--line) var(--mono); }
-  .sample pre span { display: block; padding: 0 10px 0 6px; white-space: pre; color: #cfc6ea; }
+  .sample pre span { display: block; padding: 0 10px 0 calc(6px + 1.2em); text-indent: -1.2em; white-space: pre-wrap; overflow-wrap: anywhere; color: #cfc6ea; }
+  .sample pre.measure { width: max-content; }
+  .sample pre.measure span { white-space: pre; }
   .sample pre span::before { content: "•"; display: inline-block; width: 1.2em; color: var(--dim); }
   .sample pre span.ok { color: var(--leaf); }
   .sample pre span.ok::before { content: "✓"; color: var(--leaf); }
