@@ -5010,8 +5010,10 @@ def predict_open(number):
     return "The question is on every student's screen. Press Reveal when they've voted."
 
 
-def predict_public():
-    """What a student's page gets: no answer until it's revealed."""
+def predict_public(p=None):
+    """What a student's page gets: no answer until it's revealed. A student's
+    own vote comes back too, so a page that reloads still shows their answer;
+    the class screen asks with nobody, so no vote goes to it."""
     room = predict_room
     if room["q"] is None:
         return None
@@ -5019,6 +5021,8 @@ def predict_public():
     out = {"n": room["n"], "code": code.strip(), "options": options, "revealed": room["revealed"]}
     if room["revealed"]:
         out["answer"] = len(planet_predict.play(code)) - 1
+    if p is not None:
+        out["voted"] = room["votes"].get(p["id"])
     return out
 
 
@@ -8601,8 +8605,11 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, body)
             return
         if path == "/planet/predict/view":
+            query = parse_qs(urlsplit(self.path).query)
+            pid = query.get("id", [""])[0]
             with lock:
-                body = json.dumps(dict(predict_view(), student=predict_public())).encode()
+                body = json.dumps(dict(predict_view(),
+                                       student=predict_public(players.get(pid) if pid else None))).encode()
             self._send(200, body)
             return
         if path == "/planet/race/lineup":
@@ -8672,7 +8679,7 @@ class Handler(BaseHTTPRequestHandler):
                     planet_playtime(p, query.get("busy", [""])[0] == "1")
                     body = {"halloween": halloween_on(planet_entry(p)),
                             "challenge": (planet_challenge() or {}).get("tag"),
-                            "notice": planet_notice, "predict": predict_public(),
+                            "notice": planet_notice, "predict": predict_public(p),
                             "picked": planet_spin["n"] if planet_spin["id"] == p["id"] else 0,
                             "levels": maker_news(p),
                             "lounge": planet_lounge["open"], "team": team_room["open"],

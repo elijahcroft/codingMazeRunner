@@ -50,7 +50,23 @@ const look = {};
 async function get(url) { return (await fetch(url)).json(); }
 team.watching = true;
 teamTake = (take => out => {
-  if (out.open === false) { $("teamGoal").textContent = "The Team Mission isn't open yet. Turn it on from the teacher page."; return; }
+  if (out.open === false) {
+    // The room closed while this tab was watching: clear the old map so it
+    // doesn't sit there looking live. The next poll after it reopens asks for
+    // the map and the people again.
+    Object.assign(team, {map: null, view: null, you: null, level: null, seq: null, roster: null});
+    team.rovers.clear();
+    $("teamMap").hidden = true;
+    $("teamLevel").textContent = "";
+    $("teamGoal").textContent = "The Team Mission isn't open yet. Turn it on from the teacher page.";
+    $("teamJob").textContent = "";
+    $("teamClock").textContent = "";
+    $("teamDoors").replaceChildren();
+    $("teamNews").replaceChildren();
+    $("teamWin").hidden = true;
+    return;
+  }
+  $("teamMap").hidden = false;
   take(out);
 })(teamTake);
 openTeam();

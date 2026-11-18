@@ -36,19 +36,21 @@ function predictHear(q) {
     predict.n = null;
     return;
   }
-  if (q.n !== predict.n) Object.assign(predict, {n: q.n, closed: null, choice: null, revealed: false});
+  const fresh = q.n !== predict.n;
+  if (fresh) Object.assign(predict, {n: q.n, closed: null, choice: null, revealed: false});
   if (q.n === predict.closed) return;
-  if ($("predict").hidden) {
-    $("predictCode").textContent = q.code;
-    $("predict").hidden = false;
-  }
+  // A page that reloads gets its own vote back, and a new question changes the
+  // code even when the card is already open.
+  if (q.voted != null && (fresh || predict.choice == null)) predict.choice = q.voted;
+  $("predictCode").textContent = q.code;
+  $("predict").hidden = false;
   if (q.revealed && !predict.revealed) SFX.play(predict.choice === q.answer ? "badge" : "beep");
   predict.revealed = q.revealed;
   predictPaint(q);
   if (!q.revealed) predict.timer = setTimeout(predictLook, PREDICT_POLL_MS);
 }
 async function predictLook() {
-  const out = await fetch("/planet/predict/view").then(r => r.json()).catch(() => null);
+  const out = await fetch(`/planet/predict/view?id=${encodeURIComponent(me)}`).then(r => r.json()).catch(() => null);
   if (out) predictHear(out.student); else predict.timer = setTimeout(predictLook, PREDICT_POLL_MS);
 }
 function predictClose() {

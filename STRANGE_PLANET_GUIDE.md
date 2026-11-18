@@ -112,6 +112,8 @@ crowd. Press **🎬 Reveal**, here or on the class screen if it's the same brows
 it, the right answer lights up and the votes show. There are no names and nothing is earned, so a
 wrong guess costs nothing. Ask "why?" before you reveal. Pick *None* to finish. The twelve
 questions run from `east(3)` to loops inside loops, and each answer comes from running the code.
+Picking another question while the cards are open brings the new code up on every screen, and a
+page that reloads keeps the answer it gave.
 
 **🐛 Bug hunt.** A warm-up, and a challenge with a broken program. ⚙ Settings: pick one. Students
 press the gold chip to open the level, then again to load the broken code (Ctrl+Z brings theirs
@@ -934,6 +936,7 @@ is the class's trophies and best times.
 Turning the switch off keeps the mission as it is until you open it again.
 
 **📺 Watch** opens the live map for you or the class screen. Watching doesn't put a rover on it.
+A Watch tab goes quiet when you close the mission, and comes back when you open it again.
 
 **What's on each student's screen:**
 

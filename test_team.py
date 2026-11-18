@@ -1428,6 +1428,20 @@ class ClassroomSide(unittest.TestCase):
         for name in ("teamMap", "teamWin", "teamLevel", "teamGoal", "teamDoors", "teamNews", "teamSay"):
             self.assertIn(f'id="{name}"', watch)
 
+    def test_the_watch_page_clears_the_old_map_when_the_room_closes(self):
+        with open(os.path.join(HERE, "planet_team_watch.html"), encoding="utf-8") as f:
+            watch = f.read()
+        closed = watch.split("if (out.open === false)", 1)[1].split("return;", 1)[0]
+        self.assertIn("view: null", closed)
+        self.assertIn("team.rovers.clear()", closed)
+        self.assertIn('$("teamMap").hidden = true', closed)
+
+    def test_the_code_message_is_quiet_without_the_students_code_box(self):
+        with open(os.path.join(HERE, "planet_team.js"), encoding="utf-8") as f:
+            script = f.read()
+        body = script.split("function teamCodeSay", 1)[1].split("}", 1)[0]
+        self.assertIn("if (!say) return", body)
+
 
 class LoungeUpdates(unittest.TestCase):
     """What the Team Mission and the fresh room added to the Rover Lounge."""
@@ -1594,6 +1608,22 @@ class PredictIt(unittest.TestCase):
         self.assertEqual(self.vote(ada, 6)["voted"], 6)
         self.admin("planet_predict_reveal")
         self.assertEqual(self.vote(ada, 3)["voted"], 6)
+
+    def test_a_reloaded_page_gets_the_students_own_vote_back(self):
+        ada = self.join("Ada")
+        self.admin("planet_predict", n=3)
+        self.vote(ada, 6)
+        self.assertEqual(self.get(f"/planet/predict/view?id={ada}")["student"]["voted"], 6)
+        self.assertEqual(self.get(f"/planet/ping?id={ada}")["predict"]["voted"], 6)
+        # The class screen is asked about as a watcher, so no vote goes to it.
+        self.assertNotIn("voted", self.get("/planet/predict/view")["student"])
+
+    def test_a_new_question_does_not_keep_the_old_vote(self):
+        ada = self.join("Ada")
+        self.admin("planet_predict", n=3)
+        self.vote(ada, 6)
+        self.admin("planet_predict", n=4)
+        self.assertIsNone(self.get(f"/planet/predict/view?id={ada}")["student"]["voted"])
 
     def test_only_the_answers_on_offer_count(self):
         ada = self.join("Ada")
