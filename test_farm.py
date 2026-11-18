@@ -477,6 +477,12 @@ class Routes(unittest.TestCase):
             with mock.patch.dict(server.planet_class_settings, {"farm": False}):
                 self.assertEqual(self.get("/planet/overview")["farm_days"], [])
 
+    def test_an_invisible_name_joins_as_a_player_name(self):
+        """Some students joined with only zero-width characters: a blank on every screen."""
+        out = self.post("/join", {"name": "\u200c\u200c"})
+        self.assertTrue(out["name"].startswith("Player"), out["name"])
+        self.assertEqual(self.post("/join", {"name": "Zoë 🚀"})["name"], "Zoë 🚀")
+
     def test_the_pages_are_served(self):
         for path in ("/planet/farm", "/planet/farm.js", "/planet/farm/yard.js"):
             self.assertEqual(urlopen(self.base + path).status, 200)

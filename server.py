@@ -94,6 +94,7 @@ import shutil
 import socket
 import threading
 import time
+import unicodedata
 import zlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
@@ -8670,6 +8671,10 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/join":
             with lock:
                 name = str(data.get("name", "")).strip()
+                # A name of only invisible characters (zero-width ones) would be a
+                # blank on every screen: it gets a PlayerN name instead.
+                if not "".join(c for c in name if unicodedata.category(c) not in ("Cf", "Cc", "Zs")):
+                    name = ""
                 p = find_player_by_name(name) or new_player(name)
                 save_state()
                 self._send(200, {"id": p["id"], "name": p["name"], "color": p["color"]})
