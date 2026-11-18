@@ -5856,6 +5856,8 @@ def openhouse_invite(spot):
     if not spot:
         return None
     now = time.time()
+    if any(o["host"] == spot["seat"] for o in pixel_room.get("openhouses", [])):
+        return None             # a host who walked out to a friend's house would close their own
     for o in pixel_room.get("openhouses", []):
         if (spot["seat"] in o["invited"] and now < o["invite_until"] and spot["loc"] != o["home"]):
             return {"seat": o["host"], "name": o["host_name"], "until": o["invite_until"],

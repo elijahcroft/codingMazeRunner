@@ -71,6 +71,16 @@ class OpenHouse(Fun):
         self.assertTrue(server.pixel_room["openhouses"])               # the house is still open
         self.assertIn("invite_end", [e.get("phase") for e in self.recent("openhouse")])
 
+    def test_a_host_does_not_get_another_hosts_invite(self):
+        # Walking out to a friend's open house would quietly close your own.
+        self.ready_home(self.mia)
+        self.assertTrue(self.start(self.mia)["ok"])
+        self.ready_home(self.ben)
+        self.assertTrue(self.start(self.ben)["ok"])
+        self.assertIsNone(self.view(self.mia)["house_invite"])
+        self.assertIsNone(self.view(self.ben)["house_invite"])
+        self.assertIsNotNone(self.view(self.alex)["house_invite"])
+
     def test_tapping_the_invite_lands_in_the_host_home_and_hearts_still_work(self):
         self.ready_home(self.mia)
         home_id = server.home_of(self.entry(self.mia))["id"]
