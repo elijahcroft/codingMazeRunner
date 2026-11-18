@@ -9,3 +9,4 @@ __pycache__/
 .kidshunt-shots/
 tools/shots/
 farm-e2e-shots*/
+.mainhunt-state.json*

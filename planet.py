@@ -1833,15 +1833,18 @@ def stalled(line, world, rover):
             f"every time round, whatever it sees.")
 
 
-def drive(code, variant, rules, zone):
-    """Run one program on one planet. Returns the replay the browser animates."""
+def drive(code, variant, rules, zone, use_memory=True):
+    """Run one program on one planet. Returns the replay the browser animates.
+
+    Scouting by hand passes use_memory=False: the editor's line memory is about
+    how long a program is, not how far a student may drive with the arrows."""
     world = World(variant, rules)
     sensors = {name: None for name, z in SENSOR_ZONE.items() if z <= zone}
     sensors.update({name: None for name in COMMANDS})
     if "spooky" in rules:   # Halloween night, where the witch wants report()s too
         sensors.update(knock=None, candy=None, report=None)
     error = line = rover = None
-    memory = variant.get("memory")
+    memory = variant.get("memory") if use_memory else None
     full = bool(memory) and code_lines(code) > memory
     try:
         if full:

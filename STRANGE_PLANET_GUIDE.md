@@ -86,7 +86,8 @@ the page after this, they get one note for all the levels already made.
 **Two levels where a loop is the only way.** After 1B, **1B1 Short Memory** and **1B2
 Memory Full** give the rover a memory of 4 and 6 lines, shown above the editor. The long
 way doesn't fit: the rover says "My memory is full!", and if the code repeats, the banner
-offers the shortcut. Most students could finish every other level without a loop, and
+offers the shortcut. Scouting with the arrows still works there: the memory is about the
+program, not the hand drive. Most students could finish every other level without a loop, and
 most did. Anyone already past them isn't sent back.
 
 **🧠 What your rover knows.** A chip beside the goals counts the big ideas a student
@@ -727,7 +728,8 @@ Open **📽 Class screen** once and leave it on the board. It looks after itself
   one per level; every other zone is just its icon (press it to go there,
   a gold dot means every level is done). **🗺 Levels** shows everything.
 - The **◀ P6 ▶** arrows beside a level's name step to the level before or
-  after.
+  after. On Uncharted, the last site, there is no after: the ▶ is off rather
+  than stepping into Builder's Yard or Star Voyage.
 - A status pill on the map only appears when there's news: Driving,
   Beacon reached, Code error and so on.
 - An empty code box says what to do: write a command a line (or press one

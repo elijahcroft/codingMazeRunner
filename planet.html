@@ -517,12 +517,14 @@
 
   /* ---- Toasts: badges and unlocks ---------------------------------------------- */
   .toasts { position: fixed; z-index: 40; right: 16px; bottom: 16px; display: grid; gap: 10px; width: min(330px, calc(100vw - 32px)); pointer-events: none; }
-  .toast { display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: center; padding: 10px 14px 10px 10px; border-radius: 16px; background: rgba(44,37,80,.97); box-shadow: 0 16px 40px rgba(0,0,0,.45), inset 0 0 0 1px var(--edge); animation: slidein .45s cubic-bezier(.2,1.4,.4,1); pointer-events: auto; }
+  .toast { display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: center; padding: 10px 14px 10px 10px; border-radius: 16px; background: rgba(44,37,80,.97); box-shadow: 0 16px 40px rgba(0,0,0,.45), inset 0 0 0 1px var(--edge); animation: slidein .45s cubic-bezier(.2,1.4,.4,1); pointer-events: none; }
   .toast.out { animation: slideout .3s forwards; }
   .toast .ico { font-size: 30px; text-align: center; }
   .toast b { display: block; }
   .toast small { color: var(--haze); font-size: 13px; }
-  .toast.act { cursor: pointer; }
+  /* Only the toasts that open something take a click: a toast must never
+     swallow a press on Transmit underneath it. */
+  .toast.act { cursor: pointer; pointer-events: auto; }
   .toast.act:hover { background: rgba(58,49,104,.98); }
   .toast.act small::after { content: "\00a0→"; color: var(--gold); }
   .toast.r-rare, .toast.r-epic, .toast.r-legendary { box-shadow: 0 16px 40px rgba(0,0,0,.45), inset 0 0 0 2px var(--r), 0 0 24px color-mix(in srgb, var(--r) 45%, transparent); }
@@ -3212,6 +3214,9 @@ function renderRoute() {
 // The level before or after this one, if it's open.
 function stepSite(dir) {
   if (!site || !state) return null;
+  // Uncharted is the last of the main route: ▶ must not step into Builder's
+  // Yard or Star Voyage, which are listed after it.
+  if (dir > 0 && site.key === "7") return null;
   const order = allSites(), i = order.findIndex(s => s.key === site.key), s = order[i + dir];
   return i >= 0 && s && s.open ? s.key : null;
 }
@@ -3397,7 +3402,9 @@ function routeEdges() {
 
 // ---- Opening a site -----------------------------------------------------------------------
 // A class with the practice parks: younger, and used to driving a level first.
-function easyClass() { return !!state && state.zones.some(z => z.practice); }
+// Star Voyage's drive-first zones say practice too, but every class has them,
+// so they don't mean easy mode.
+function easyClass() { return !!state && state.zones.some(z => z.practice && !z.voyage); }
 // Is the code from the level before worth trying on this one? Not if it uses a
 // word this level doesn't have: jump() after Jump Park stopped on its first
 // line. And for a younger class, only an idea carries over (a loop, an if, a
@@ -3884,8 +3891,10 @@ async function skipSite() {
   try { data = await post("/planet/skip", {id: me, site: key}); } catch (_) { return; }
   if (data.error) { showBanner("lost", data.error); return; }
   useState(data);
+  const next = nextSite();
+  if (next) await openSite(next);
+  // Say it after opening the next site: opening a site clears the toasts.
   toast("⏭", `${name} can wait`, `Come back to it any time from the route bar at the top: a fresh look often helps.`);
-  await openSite(nextSite());
 }
 async function askHint() {
   const zone = zoneOf(site.key);

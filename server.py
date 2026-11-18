@@ -8867,7 +8867,8 @@ class Handler(BaseHTTPRequestHandler):
                 return
             code = "".join('{}("{}")\n'.format(*m.split(":")) if m in acts else f"{m}()\n"
                            for m in moves[:SCOUT_MAX])
-            self._send(200, {"run": planet.drive(code, variant, zone["rules"], zi),
+            self._send(200, {"run": planet.drive(code, variant, zone["rules"], zi,
+                                                 use_memory=False),
                              "left": SCOUT_MAX - min(len(moves), SCOUT_MAX),
                              "blanks": planet_class_settings["blanks"],
                              "coach": planet_class_settings["coach"]})

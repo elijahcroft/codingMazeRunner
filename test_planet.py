@@ -2056,6 +2056,20 @@ class ClassroomTests(unittest.TestCase):
         state = self.get(f"/planet/state?id={pid}")
         self.assertEqual((state["total_stars"], state["current"]), (0, "1a"))
 
+    def test_scouting_a_short_memory_site_lets_the_student_drive(self):
+        # The 4- and 6-line memory is about the length of a program, not about
+        # how far a student may scout with the arrows.
+        pid = self.join()
+        server.planet_entry(server.players[pid])["unlocked"] = len(planet.SITE_ORDER)
+        out = self.post("/planet/scout", {"id": pid, "site": "1b2",
+                                          "moves": ["east"] * 7})
+        self.assertNotEqual(out["run"]["end"], "error", out["run"]["error"])
+        self.assertEqual(out["run"]["frames"][-1]["c"], 8)
+        # The same seven lines as a program are still too long for its memory.
+        zi, zone, s = planet.find_site("1b2")
+        self.assertIn("memory", planet.drive("east()\n" * 7, s["variants"][0],
+                                             zone["rules"], zi)["error"])
+
     def test_scouting_jumps_and_drills_once_code_can(self):
         pid = self.join()
         server.planet_entry(server.players[pid])["unlocked"] = len(planet.SITE_ORDER)
@@ -2815,6 +2829,39 @@ class CalmAndBigTextTests(unittest.TestCase):
         self.assertIn("const p = CALM ? 0 : (now - b.at) / 1800;", lounge)
         team = self.read("planet_team.js")
         self.assertIn("if (CALM) return;   // no spreading ring in calm mode", team)
+
+
+class MainRoutePageTests(unittest.TestCase):
+    """The page rules a class without easy mode depends on: Star Voyage's
+    drive-first zones are open to everyone, so they must not count as practice
+    parks, and the way on at Skip keeps saying where the level went."""
+
+    def read(self, name):
+        with open(os.path.join(HERE, name), encoding="utf-8") as f:
+            return f.read()
+
+    def test_star_voyage_practice_zones_are_not_easy_mode(self):
+        page = self.read("planet.html")
+        self.assertIn("z.practice && !z.voyage", page)
+        # (A plain `some(z => z.practice)` calls the main route an easy class.)
+        self.assertNotIn("state.zones.some(z => z.practice)", page)
+
+    def test_skip_says_the_level_can_wait_after_opening_the_next_site(self):
+        page = self.read("planet.html")
+        block = page.split("async function skipSite()")[1].split("async function askHint()")[0]
+        self.assertLess(block.index("await openSite(next)"), block.index('toast("⏭"'))
+
+    def test_a_toast_never_swallows_a_press_on_the_button_under_it(self):
+        page = self.read("planet.html")
+        toast = re.search(r"\.toast \{([^}]*)\}", page).group(1)
+        self.assertIn("pointer-events: none", toast)
+        act = re.search(r"\.toast\.act \{([^}]*)\}", page).group(1)
+        self.assertIn("pointer-events: auto", act)
+
+    def test_the_finale_has_no_next_button_after_it(self):
+        page = self.read("planet.html")
+        block = page.split("function stepSite(dir) {")[1].split("\n}")[0]
+        self.assertIn('dir > 0 && site.key === "7"', block)
 
 
 class HalloweenClassroomTests(unittest.TestCase):
