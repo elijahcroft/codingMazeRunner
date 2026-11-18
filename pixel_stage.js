@@ -1093,6 +1093,11 @@ const PalStage = (() => {
         m.claps = e.claps;
         floatUp(calm ? "👏" : ["👏", "👏👏", "🙌"][e.claps % 3], m.x - 22 + Math.random() * 44, roomBase(m) - 56, "clap");
         if (sound || hooks.everySound) SFX.play("clap");
+      } else if (e.kind === "react" && m) {
+        const emoji = ["👏", "😍", "✨"].includes(e.emoji) ? e.emoji : "👏";
+        floatUp(emoji, m.x - 14 + Math.random() * 28, roomBase(m) - 62, "combo");
+        pop(m.x, roomBase(m) - 34, ["#ff8fc7", "#ffd93b", "#ffffff"], 14);
+        if (sound || hooks.everySound) SFX.play(emoji === "👏" ? "clap" : "ding");
       } else if (e.kind === "five" && m) {
         m.tx = e.x; m.ty = e.y; m.fiveWith = e.other; m.rest = m.restNext = null;
         if (m.queue) endMove(m, now);

@@ -419,8 +419,8 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
 - **🎣 Fishing:** the pier at the Beach has a blue ring. The pal walks over and casts,
   and when ❗ A bite! shows, a click anywhere on the picture reels it in. There are 8
   things to catch, kept in the fish book in 🧢 Me.
-- **Games:** any student can start a 💻 Code race, 🎨 Draw & guess, 🍎 Apple grab, ⚽ Pal ball, Tag, Hide & seek, Red
-  light green light, or Copy the dance, and friends choose to join. While a game waits for players, the bar
+- **Games:** any student can start a 💻 Code race, 🎨 Draw & guess, 🍎 Apple grab, ⚽ Pal ball, 👗 Fashion show, Tag,
+  Hide & seek, Red light green light, or Copy the dance, and friends choose to join. While a game waits for players, the bar
   above the world turns yellow for everyone not in it ("👉 Tap here to join!"), and one tap
   joins. In the race, each press of Run or → is one short run, and moving on red sends a pal
   back a bit. In the dance, the moves stay on the screen with the next one lit, for 3 rounds
@@ -432,8 +432,8 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   why they can't be used yet, and a hat that can't be changed does not stay on.
 - **🎯 Today's jobs:** three small things to do, at the top of Games, the same for the whole
   class each day so friends can help each other: high-five 2 friends, catch 3 falling stars,
-  find a gem, catch something at the pier, finish a game with friends, grab 5 apples in
-  🍎 Apple grab, score a goal in ⚽ Pal ball, solve a Code race job, earn a star in a coding
+  find a gem, catch something at the pier, finish a game with friends, walk the runway in
+  👗 Fashion show, grab 5 apples in 🍎 Apple grab, score a goal in ⚽ Pal ball, solve a Code race job, earn a star in a coding
   mission, code a 🧰 chest open, clap for a friend's move, visit a friend's home, or dance at
   the same time as 2 friends (a 🪩 dance party). The apple and ball jobs happen in a game with
   2 or more players, like the game job. A goal counts for every player on the scoring
@@ -503,6 +503,18 @@ a draw shares the win. Each player's pal has a small blue or orange ring under i
 round, and a sign over each goal says whose it is. It pays coins and class-party points,
 with the first-game gift and the ⚽ Ball Player badge, exactly like the other games. In
 🌿 Calm the ball does not spin.
+
+**👗 Fashion show.** A gentle 2 to 25 player game with no winners or losers. The server picks
+a theme ("Something pink", "Royal", "Your own drawing!" and 8 more). Everyone gets about 40
+seconds to dress in their own hats, faces, sparkles and own drawings, tapping the big tiles
+in Games (the same wear that saves in 🧢 Me), then presses **⭐ Ready!**. One pal at a time
+walks the pink runway in the Park, spins and poses, while the others tap 👏 😍 or ✨ and the
+reactions pop over the walker and are counted. Each walk is about 6 seconds (3 seconds in a
+big class, so a round stays under two minutes). At the end every walker gets a kind ribbon
+such as 😍 Most sparkly, 👏 Crowd pleaser, ✨ Best twirl, 🎨 Made it myself or 🌟 Brave first
+walk, and everyone gets the usual small game coins and party points. A late joiner waits for
+the next round, and a walker who leaves is skipped without stopping the show. The projector
+shows the game card, the runway and the walker big.
 
 **❄️ The Snow Village.** From 16 November to 31 December, the world has one more place at its
 far end: a snowy evening village. Students get there by walking, from 🏞️ Go to, or with

@@ -49,6 +49,9 @@ function gameTip(g) {
     : (g.guessed || []).includes(you) ? "You got it! Watch the picture grow." : "What is it? Tap the picture on the right!";
   if (g.kind === "code") return (g.bonus || []).includes(you) ? "Bonus done! Clap for your friends while they finish."
     : (g.solved || []).includes(you) ? "You solved it! Try the 🌟 Bonus on the right, or clap for your friends." : "Build your code on the right, then press ▶ Run my code.";
+  if (g.kind === "fashion") return g.phase === "dressing" ? "Dress up! Tap your things on the right, then Ready!"
+    : g.phase === "runway" ? (g.walker === you ? "🌟 You're on the runway! Strike a pose!" : "Watch the runway! Tap 👏 😍 or ✨ on the right.")
+    : "🌈 Every walker got a kind ribbon!";
   return ROOM_TIP;
 }
 // At a 🧰 chest, the tip under the world keeps the puzzle in view, even when a small laptop scrolls the code box.
@@ -597,6 +600,7 @@ function roomEvent(e, you) {
     // has to count, so their tip comes from the game itself ("You're counting...").
     const g = (roomStage && roomStage.state.game) || currentGame();     // the event's state, not the last poll's
     tipFor(g && g.kind === "hide" && g.phase === "hiding" ? gameTip(g) : e.message);
+    if (g && g.kind === "fashion" && e.moment) banner(esc(e.message), 3500);
   } else if (e.kind === "mymove") {
     banner(e.perform ? `🎤 <b>${esc(e.by)}</b>'s show` : `✨ <b>${esc(e.by)}</b>: ${esc(e.title)}`, e.ms + 700);
     if (e.seat !== you) showClap(e.seat, e.by, e.ms + 700);

@@ -1917,6 +1917,26 @@ const PalHang = (() => {
     }
     box(g, left - 6, top + side + 3, side + 12, 3, 1, "#a8723f");
   }
+  // 👗 Fashion show: a pink runway down the middle of the Park, with little footlights.
+  function runway(g, x, shine = 0) {
+    const top = seatFeet(.27), bottom = seatFeet(.99), half = 25;
+    shape(g, [[x - half - 9, top], [x + half + 9, top], [x + half + 15, bottom], [x - half - 15, bottom]], "#ffe4ee");
+    shape(g, [[x - half, top + 2], [x + half, top + 2], [x + half + 8, bottom], [x - half - 8, bottom]], "#ff8fb3");
+    shape(g, [[x - 5, top + 2], [x + 5, top + 2], [x + 8, bottom], [x - 8, bottom]], "#ffd27a");
+    line(g, [[x - half, top + 2], [x - half - 8, bottom]], "#d9477e", 1.4);
+    line(g, [[x + half, top + 2], [x + half + 8, bottom]], "#d9477e", 1.4);
+    for (let i = 0; i < 6; i++) {
+      const y = top + (bottom - top) * (i + .5) / 6;
+      const w = 7 + i * 2.2;
+      if (i % 2) { twinkle(g, x - w - 26, y, 1.8 + shine * .4, "#fff2b0"); twinkle(g, x + w + 26, y, 1.8 + shine * .4, "#ffd6e6"); }
+      else { box(g, x - w - 26, y, 2.4, 2.4, 0, "#ffd93b"); box(g, x + w + 26, y, 2.4, 2.4, 0, "#ff9fc8"); }
+    }
+    // A little star curtain at the back, so the runway reads as a show.
+    for (let i = 0; i < 9; i++) {
+      const sx = x - 36 + i * 9;
+      twinkle(g, sx, top - 18 + (i % 2) * 3, 1.6 + shine * .3, i % 2 ? "#ff8fb3" : "#ffd93b");
+    }
+  }
   // ❄️ A present to find: a box with a ribbon, a different colour in each place.
   const PRESENT_INK = [["#e8294f", "#ffd93b"], ["#2f6fe4", "#ffffff"], ["#35b55a", "#e8294f"], ["#a05ce8", "#ffd93b"], ["#ff8fc7", "#ffffff"]];
   function present(g, x, y, i, shine = 0) {
@@ -2306,6 +2326,9 @@ const PalHang = (() => {
         const bob = PalStage.calm ? 0 : Math.sin(now / 360 + a.id) * 1.2;
         apple(ink, a.x - cam, seatFeet(a.y) + bob, a.gold, PalStage.calm ? 0 : Math.abs(Math.sin(now / 520 + a.id)));
       }
+      const fashion = !inside && state.game && state.game.kind === "fashion"
+        && (state.game.phase === "dressing" || state.game.phase === "runway");
+      if (fashion) runway(ink, 160 - cam, PalStage.calm ? 0 : Math.abs(Math.sin(now / 650)));
       lo.drawImage(fine, 0, 0, W, H);
       // 3. The hiding places, standing on top of all that.
       for (const c of covers) cutCover(lo, c, cam);

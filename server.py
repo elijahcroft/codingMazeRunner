@@ -5650,6 +5650,7 @@ PIXEL_BADGES = {
     "play_draw": ("🎨", "Picture Guesser", "Finish a game of Draw & guess"),
     "play_apples": ("🍎", "Apple Picker", "Finish a round of Apple grab"),
     "play_ball": ("⚽", "Ball Player", "Finish a round of Pal ball"),
+    "play_fashion": ("👗", "Runway Star", "Finish a round of Fashion show"),
     "angler": ("🎣", "Gone Fishing", "Catch every kind of thing in the sea"),
     "all": ("🏆", "Star of the Show", "Get all the stars in the game"),
     "remix": ("🎨", "Remixer", "Do a Your turn: change a mission's code your own way"),
@@ -6223,14 +6224,14 @@ GAME_HIDE_SECONDS = 20
 GAME_ROUND_SECONDS = 90
 GAME_SPEED = 85
 GAME_WIDTH = 640                 # Park + Wedding garden, available to every class
-GAME_KINDS = ("hide", "tag", "race", "dance", "code", "draw", "apples", "ball")
+GAME_KINDS = ("hide", "tag", "race", "dance", "code", "draw", "apples", "ball", "fashion")
 GAME_TITLES = {"hide": "Hide & seek", "tag": "Tag", "race": "Red light, green light", "dance": "Copy the dance", "code": "a Code race",
-               "draw": "Draw & guess", "apples": "Apple grab", "ball": "Pal ball"}
+               "draw": "Draw & guess", "apples": "Apple grab", "ball": "Pal ball", "fashion": "Fashion show"}
 GAME_RECAP_ICONS = {"hide": "🙈", "tag": "🏃", "race": "🚦", "dance": "💃", "code": "💻",
-                    "draw": "🎨", "apples": "🍎", "ball": "⚽"}
+                    "draw": "🎨", "apples": "🍎", "ball": "⚽", "fashion": "👗"}
 GAME_RECAP_NAMES = {"hide": "Hide & seek", "tag": "Tag", "race": "Red light, green light",
                     "dance": "Copy the dance", "code": "Code race", "draw": "Draw & guess",
-                    "apples": "Apple grab", "ball": "Pal ball"}
+                    "apples": "Apple grab", "ball": "Pal ball", "fashion": "Fashion show"}
 STILL_GAMES = ("code", "draw")   # everyone stands in a row in the Park, and nothing is hidden
 APPLE_SECONDS = 60               # one short round, so the next game can start
 APPLE_COUNT = 5                  # apples on the ground at once
@@ -6250,6 +6251,29 @@ BALL_GOAL_AT = 14                # how far into a goal the ball gets before it c
 BALL_GOAL_TOP, BALL_GOAL_BOTTOM = .28, .92      # the mouth of each goal
 BALL_GOAL_PAUSE = 2              # seconds the ball rests in the goal before the middle again
 BALL_KICK_GAP = .25              # seconds between kicks, so a pal can't push it in one long shove
+FASHION_DRESS_SECONDS = 40       # time to put on a look before the runway starts
+FASHION_REACTIONS = ("👏", "😍", "✨")
+FASHION_REACT_GAP = .4           # seconds between one student's reactions, so a tap-fest can't flood the class
+FASHION_THEMES = (
+    {"key": "pink", "icon": "🌸", "words": "Something pink"},
+    {"key": "beach", "icon": "🏖️", "words": "Ready for the beach"},
+    {"key": "royal", "icon": "👑", "words": "Royal"},
+    {"key": "spooky", "icon": "🎃", "words": "Spooky"},
+    {"key": "snow", "icon": "❄️", "words": "Snow day"},
+    {"key": "party", "icon": "🎉", "words": "Party time"},
+    {"key": "sporty", "icon": "⚽", "words": "Sporty"},
+    {"key": "drawing", "icon": "🎨", "words": "Your own drawing!"},
+    {"key": "stars", "icon": "⭐", "words": "Star of the sky"},
+    {"key": "rainbow", "icon": "🌈", "words": "Rainbow bright"},
+)
+FASHION_AWARDS = {
+    "own": ("🎨", "Made it myself"),
+    "clap": ("👏", "Crowd pleaser"),
+    "sparkly": ("😍", "Most sparkly"),
+    "brave": ("🌟", "Brave first walk"),
+    "colours": ("🌈", "Best colours"),
+    "twirl": ("✨", "Best twirl"),
+}
 RACE_START, RACE_END = 30, 600
 RACE_SECONDS = 90
 RACE_STEP = 34                   # how far one click or key press runs, so stopping is just not pressing
@@ -6363,6 +6387,138 @@ def game_finish(message, reward=False, winners=()):
     room_event("game", message=message)
 
 
+def fashion_walk_seconds(count):
+    """One walk each: a small group gets a longer twirl, a big class gets 3 seconds
+    so the whole round still fits under about two minutes with the 40-second dress-up."""
+    return 6 if count <= 8 else 4 if count <= 14 else 3
+
+
+def fashion_next(game, now):
+    """Puts the next walker at the front of the runway, skipping anyone who has left."""
+    seats = game_seats()
+    while game["walk_queue"]:
+        seat = game["walk_queue"].pop(0)
+        if seat not in game["joined"] or seat not in seats:
+            continue
+        game["walker"] = seat
+        game["walk_no"] += 1
+        game["walk_started"] = now
+        game["walk_until"] = now + game["walk_len"]
+        game["pose_stage"] = 0
+        game["pose_at"] = now + min(1.3, max(.5, game["walk_len"] * .25))
+        game.setdefault("reactions", {}).setdefault(seat, {e: 0 for e in FASHION_REACTIONS})
+        spot = seats[seat][1]
+        spot.update(rest=None)
+        # Up to the back of the runway in a twinkle, then a walk down to the front.
+        spot.update(x=FASHION_X, y=FASHION_BACK)
+        game["motion"][seat] = {"x": FASHION_X, "y": FASHION_BACK, "tx": FASHION_X, "ty": FASHION_FRONT, "at": now}
+        room_event("fx", loc=spot.get("loc", 0), seat=seat, name="stars", x=FASHION_X)
+        game["until"] = now + game["walk_len"] * (1 + len(game["walk_queue"]))
+        room_event("game", message=f"✨ {spot['name']} on the runway! Theme: {game['theme']['words']}",
+                   moment="game", focus=seat)
+        return True
+    game["walker"] = None
+    game["walk_until"] = 0
+    return False
+
+
+FASHION_X, FASHION_BACK, FASHION_FRONT = 160, .3, .86     # the runway down the middle of the Park
+
+
+def fashion_side(i):
+    """Audience seat i: left and right of the runway in turn, three across and five deep."""
+    k, right = i // 2, i % 2
+    col, row = k % 3, k // 3 % 5
+    x = 295 - col * 38 if right else 25 + col * 38
+    return {"x": x, "y": round(.32 + row * .14, 2)}
+
+
+def fashion_runway(game, now):
+    """Dress-up is over: every joined player gets one short walk and a turn in the spotlight."""
+    game.update(phase="runway", ready=[], walk_queue=list(game["joined"]), walker=None, walk_no=0,
+                walk_len=fashion_walk_seconds(len(game["joined"])), walk_until=0, walk_started=0,
+                reactions={s: {e: 0 for e in FASHION_REACTIONS} for s in game["joined"]},
+                awards={}, walked=[], pose_stage=0, pose_at=0)
+    game["until"] = now + game["walk_len"] * len(game["joined"])
+    room_event("game", message=f"🎉 The runway is ready! Theme: {game['theme']['icon']} {game['theme']['words']}",
+               moment="game", focus=game["host"])
+    fashion_next(game, now)
+
+
+def fashion_awards(game, seats, now):
+    """A kind ribbon for every walker. Nobody wins, nobody loses, and ties are fine."""
+    reactions = game.get("reactions", {})
+    joined = [s for s in game["joined"] if s in seats]
+    top_clap = max((reactions.get(s, {}).get("👏", 0) for s in joined), default=0)
+    top_spark = max((reactions.get(s, {}).get("✨", 0) for s in joined), default=0)
+    first = next((s for s in game.get("walked", []) if s in joined), None)
+    awards = {}
+    for seat in joined:
+        wear = seats[seat][1].get("wear", {})
+        mine = any(isinstance(key, str) and key.startswith("my:") for key in wear.values())
+        got = reactions.get(seat, {})
+        if mine:
+            key = "own"
+        elif top_clap and got.get("👏", 0) == top_clap:
+            key = "clap"
+        elif top_spark and got.get("✨", 0) == top_spark:
+            key = "sparkly"
+        elif seat == first:
+            key = "brave"
+        elif sum(1 for key in wear.values() if key) >= 2:
+            key = "colours"
+        else:
+            key = "twirl"
+        icon, name = FASHION_AWARDS[key]
+        awards[seat] = {"key": key, "icon": icon, "name": name}
+    game["awards"] = awards
+    game_finish(f"🌈 What a show! Theme: {game['theme']['words']}. Every walker got a kind ribbon!",
+                reward=True)
+
+
+def fashion_tick(game, seats, now):
+    """Dress-up, then one walk at a time, with reactions and a kind ribbon at the end."""
+    if game["phase"] == "dressing":
+        game["ready"] = [s for s in game.get("ready", []) if s in game["joined"]]
+        if now >= game["until"] or (game["joined"] and all(s in game["ready"] for s in game["joined"])):
+            fashion_runway(game, now)
+        return
+    if game["phase"] != "runway":
+        return
+    walker = game.get("walker")
+    if walker is not None and (walker not in game["joined"] or walker not in seats):
+        game["walker"] = None                  # they closed the tab or left: the show goes on
+        game["pose_stage"] = 0
+        if not fashion_next(game, now):
+            fashion_awards(game, seats, now)
+        return
+    if walker is None:
+        if not fashion_next(game, now):
+            fashion_awards(game, seats, now)
+        return
+    if game.get("pose_stage") == 0 and now >= game.get("pose_at", now):
+        room_event("move", seat=walker, name="spin")
+        game["pose_stage"] = 1
+        game["pose_at"] = now + max(.7, game["walk_len"] * .45)
+    elif game.get("pose_stage") == 1 and now >= game.get("pose_at", now):
+        room_event("move", seat=walker, name="cheer")
+        game["pose_stage"] = 2
+    if now < game["walk_until"]:
+        return
+    pair = seats.get(walker)
+    if pair:                                   # a walk that finished counts for today's fashion job
+        day_job(players.get(pair[0]), "fashion")
+    game.setdefault("walked", []).append(walker)
+    motion = game["motion"].get(walker)
+    if motion:                                 # back to their seat at the side, so the next walker has the runway
+        home = fashion_side(game["joined"].index(walker) if walker in game["joined"] else 0)
+        motion.update(tx=home["x"], ty=home["y"], at=now)
+    game["walker"] = None
+    game["pose_stage"] = 0
+    if not fashion_next(game, now):
+        fashion_awards(game, seats, now)
+
+
 def game_begin(now):
     game, seats, kind = pixel_room["game"], game_seats(), pixel_room["game"]["kind"]
     game["it"] = random.choice(game["joined"]) if kind in ("hide", "tag") else None
@@ -6387,6 +6543,8 @@ def game_begin(now):
             slot = sum(1 for s in game["joined"][:i] if teams[s] == team)
             x, y = ball_spot(team, slot)
             spot.update(x=x, y=y)
+        if kind == "fashion":       # the audience sits on both sides of the runway in the Park
+            spot.update(**fashion_side(i))
         game["motion"][seat] = {"x": spot["x"], "y": spot["y"], "tx": spot["x"], "ty": spot["y"], "at": now}
     if kind == "race":
         game.update(light="green", light_until=now + random.uniform(*RACE_GREEN), done=[])
@@ -6412,6 +6570,14 @@ def game_begin(now):
         game.update(team_score={"blue": 0, "orange": 0}, goal_until=0, kick_at=0,
                     ball={"x": GAME_WIDTH / 2, "y": .55, "vx": 0, "vy": 0}, ball_at=now)
         room_event("game", message="⚽ Pal ball! Blue kicks right, Orange kicks left. Walk into the ball to kick it!", moment="game", focus=game["host"])
+    elif kind == "fashion":
+        theme = random.choice(FASHION_THEMES)
+        game.update(phase="dressing", theme=theme, ready=[], until=now + FASHION_DRESS_SECONDS,
+                    walk_len=fashion_walk_seconds(len(game["joined"])), walk_queue=[], walker=None,
+                    walk_no=0, reactions={}, awards={}, walked=[], pose_stage=0, pose_at=0,
+                    walk_until=0, walk_started=0)
+        room_event("game", message=f"👗 Fashion show! Theme: {theme['icon']} {theme['words']}. Tap your things, then Ready!",
+                   moment="game", focus=game["host"])
     else:
         room_event("game", message="🙈 Hide! The seeker is counting..." if kind == "hide" else "Tag! Run!", moment="game", focus=game["host"])
 
@@ -6792,7 +6958,7 @@ def game_tick(now):
             else:
                 game_begin(now)
         return
-    if len(game["joined"]) < 2 or (game["kind"] in ("hide", "tag") and game["it"] not in game["joined"]):
+    if (len(game["joined"]) < 2 and game["kind"] != "fashion") or (game["kind"] in ("hide", "tag") and game["it"] not in game["joined"]):
         game_finish("A player left. Let's start a fresh round!")
         return
     for seat, motion in game["motion"].items():
@@ -6822,6 +6988,9 @@ def game_tick(now):
         return
     if game["kind"] == "ball":
         ball_tick(game, seats, now)
+        return
+    if game["kind"] == "fashion":
+        fashion_tick(game, seats, now)
         return
     if game["phase"] == "hiding":
         if now >= game["until"]:
@@ -6893,6 +7062,32 @@ def game_action(p, spot, data):
         if len(game["joined"]) < 2:
             return {"error": "Wait for at least one friend to join."}
         game_begin(now)
+    elif action == "ready" and game["kind"] == "fashion" and game["phase"] == "dressing":
+        if seat not in game["ready"]:
+            game["ready"].append(seat)
+            room_event("game", message=f"⭐ {spot['name']} is ready!")
+        if all(s in game["ready"] for s in game["joined"]):
+            fashion_runway(game, now)
+            return {"ok": True, "message": "🎉 Everyone is ready! The runway is starting!"}
+        return {"ok": True, "message": "⭐ You're ready! Wait for your friends."}
+    elif action == "ready" and game["kind"] == "fashion" and game["phase"] == "runway":
+        return {"error": "The runway is on! Watch your friends."}
+    elif action == "react" and game["kind"] == "fashion" and game["phase"] == "runway":
+        emoji = data.get("emoji")
+        if emoji not in FASHION_REACTIONS:
+            return {"error": "bad"}
+        walker = game.get("walker")
+        if walker is None:
+            return {"error": "Wait for the next walker!"}
+        if seat == walker:
+            return {"error": "You're on the runway! Strike a pose!"}
+        at = game.setdefault("react_at", {})
+        if now - at.get(seat, 0) < FASHION_REACT_GAP:
+            return {"ok": True}
+        at[seat] = now
+        game["reactions"].setdefault(walker, {e: 0 for e in FASHION_REACTIONS})[emoji] += 1
+        room_event("react", seat=walker, emoji=emoji)
+        return {"ok": True}
     elif action == "step" and game["kind"] == "dance" and game["phase"] == "playing" and data.get("name") in pixel.DANCE_MOVES:
         at = game["progress"].get(seat, 0)
         if now < game["show_until"]:
@@ -6952,6 +7147,8 @@ def game_walk(spot, data):
         return {"error": "Stay in your place! Code your pal instead."}
     if game["kind"] == "draw":
         return {"error": "Stay here! Draw or guess on the right."}
+    if game["kind"] == "fashion":
+        return {"error": "Stay for the fashion show! Pick your look on the right."}
     if game["kind"] == "race" and seat in game["done"]:
         return {"error": "You made it! Cheer for your friends."}
     x, y = data.get("x"), data.get("y")
@@ -6999,6 +7196,11 @@ def game_view(you):
         out.update(ball={"x": round(ball.get("x", GAME_WIDTH / 2), 1), "y": round(ball.get("y", .55), 2)},
                    teams={s: t for s, t in game.get("teams", {}).items() if s in game["joined"]},
                    team_scores=game.get("team_score", {"blue": 0, "orange": 0}), goal_until=game.get("goal_until", 0))
+    if game["kind"] == "fashion":
+        out.update(theme=game.get("theme"), walker=game.get("walker"), walk_no=game.get("walk_no", 0),
+                   walked=game.get("walked", []), reactions=game.get("reactions", {}),
+                   awards=game.get("awards", {}), dress_ready=game.get("ready", []),
+                   dress=game["phase"] == "dressing")
     return out
 
 
@@ -7014,7 +7216,9 @@ def sync_row(spot, you):
 
 def game_room_row(spot, you):
     row, game = room_row(spot), pixel_room.get("game")
-    if not game or game["phase"] not in ("hiding", "playing") or spot["seat"] not in game["joined"]:
+    active = game and (game["phase"] in ("hiding", "playing")
+                       or (game["kind"] == "fashion" and game["phase"] in ("dressing", "runway")))
+    if not active or spot["seat"] not in game["joined"]:
         return row
     seat = spot["seat"]
     hidden = game["kind"] == "hide" and seat != you and seat != game["it"] and seat not in game["found"] and (game["phase"] == "hiding" or seat in game["hidden"])
@@ -7068,6 +7272,7 @@ DAY_JOBS = {"five": ("🙌", "High-five 2 friends", 2, "Click a friend's pal."),
             "gem": ("💎", "Find a gem", 1, "Walk near a sparkly 💎 in the world."),
             "fish": ("🎣", "Catch something at the pier", 1, "Click the blue ring at the Beach."),
             "game": ("🎮", "Finish a game with friends", 1, "Start or join one below."),
+            "fashion": ("👗", "Walk the runway in Fashion show", 1, "Start or join 👗 Fashion show with a friend, then tap Ready!"),
             "apples": ("🍎", "Grab 5 apples in Apple grab", 5, "Start or join 🍎 Apple grab with a friend. Walk onto apples to grab them."),
             "ball": ("⚽", "Score a goal in Pal ball", 1, "Start or join ⚽ Pal ball with a friend. Kick the ball into your team's goal."),
             "code": ("💻", "Solve a Code race job", 1, "Start a 💻 Code race below with a friend."),
@@ -7155,6 +7360,7 @@ def room_person(spot):
     game, did = pixel_room.get("game"), spot.get("did")
     if game and spot["seat"] in game.get("joined", []):
         doing = ("🎨 Drawing" if game.get("drawer") == spot["seat"] else "🤔 Guessing") if game["kind"] == "draw" \
+            else ("👗 On the runway" if game.get("walker") == spot["seat"] else "👗 Getting ready" if game["phase"] == "dressing" else "👗 Cheering") if game["kind"] == "fashion" \
             else "🎮 In a game" if game["kind"] != "code" else "⭐ Solved it" if spot["seat"] in game.get("solved", []) else "💻 Coding"
     elif spot.get("bite"):
         doing = "🎣 Fishing"
@@ -7217,7 +7423,10 @@ def room_view(p, after, watch=0):
     if room.get("game"):
         out["game_members"] = [sync_row(s, out["you"]) for s in here]
         active = set(room["game"]["joined"]) if room["game"]["kind"] not in STILL_GAMES else set()     # nothing is hidden in a Code race
-        out["events"] = [e for e in out["events"] if e.get("seat") not in active and e.get("other") not in active or e["kind"] in ("leave", "move")]
+        # At the fashion show, clothes and reactions happen to players who are still in
+        # the round, so those events must reach every screen too.
+        keep = ("leave", "move") + (("wear", "react", "say", "clap", "feel", "fx") if room["game"]["kind"] == "fashion" else ())
+        out["events"] = [e for e in out["events"] if e.get("seat") not in active and e.get("other") not in active or e["kind"] in keep]
     elif not whole:
         out["game_members"] = [sync_row(s, out["you"]) for s in here]
     return out
@@ -8061,11 +8270,16 @@ def room_do(p, data):
     if what == "game":
         return game_action(p, spot, data)
     game = room.get("game")
-    if game and game["phase"] in ("hiding", "playing") and seat in game["joined"]:
-        if what == "walk":
-            return game_walk(spot, data)
-        if what != "leave" and not (game["kind"] in STILL_GAMES and what in ("clap", "say")):     # players can cheer each other on
-            return {"error": "You're in a game! Play it, or press Leave game in Games to do this."}
+    if game and seat in game["joined"]:
+        playing = game["phase"] in ("hiding", "playing")
+        dressing = game["kind"] == "fashion" and game["phase"] in ("dressing", "runway")
+        if playing or dressing:
+            if what == "walk":
+                return game_walk(spot, data)
+            # At the fashion show, trying things on is part of the game.
+            allowed = dressing and what in ("wear", "say", "move", "feel", "fx", "clap", "hidename")
+            if what != "leave" and not allowed and not (game["kind"] in STILL_GAMES and what in ("clap", "say")):     # players can cheer each other on
+                return {"error": "You're in a game! Play it, or press Leave game in Games to do this."}
     if what == "five" and game and game["phase"] in ("hiding", "playing") and data.get("seat") in game["joined"]:
         return {"error": "Your friend is playing a game right now."}
     if what == "leave":

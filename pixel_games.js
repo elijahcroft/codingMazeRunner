@@ -4,12 +4,85 @@ let gamePendingCover = null, gameBusy = false, gamePaintKey = "", gameRewardSeen
 let gameClock = {server: 0, local: 0};
 const gameNow = () => gameClock.server + (performance.now() - gameClock.local) / 1000;
 const currentGame = () => roomInfo && roomInfo.game;
-const inRound = () => { const g = currentGame(); return g && g.joined.includes(roomInfo.you) && ["hiding", "playing"].includes(g.phase); };
-const GAME_NAMES = {hide: "Hide & seek", tag: "Tag", race: "Red light, green light", dance: "Copy the dance", code: "💻 Code race", draw: "🎨 Draw & guess", apples: "🍎 Apple grab", ball: "⚽ Pal ball"};
+const inRound = () => { const g = currentGame(); return g && g.joined.includes(roomInfo.you) && ["hiding", "playing", "dressing", "runway"].includes(g.phase); };
+const GAME_NAMES = {hide: "Hide & seek", tag: "Tag", race: "Red light, green light", dance: "Copy the dance", code: "💻 Code race", draw: "🎨 Draw & guess", apples: "🍎 Apple grab", ball: "⚽ Pal ball", fashion: "👗 Fashion show"};
 const gameName = g => GAME_NAMES[g.kind];
 const DANCE_ICONS = {wave: ["👋", "Wave"], jump: ["🦘", "Jump"], spin: ["🌀", "Spin"], cheer: ["🎉", "Cheer"]};
 let danceReady = false;
 const gamePerson = seat => ((roomStage?.state.room || []).find(m => m.seat === seat) || {}).name || "A friend";
+const FASHION_EMOJIS = ["👏", "😍", "✨"];
+
+// ---- 👗 Fashion show: put on a look, then cheer each walker -------------------------------
+function fashionTile(key, slot, name, own) {
+  const on = (S.hang.wear || {})[slot] === key;
+  return `<button class="fashion-tile" data-wear="${esc(key)}" data-slot="${slot}" aria-pressed="${on}">` +
+    (own ? `<canvas data-ownpic="${esc(key)}" aria-hidden="true"></canvas>` : `<canvas data-pic="${esc(key)}" aria-hidden="true"></canvas>`) +
+    `${esc(name)}<small>${on ? "✔ On" : SLOT_NAMES[slot]}</small></button>`;
+}
+function fashionTilesHtml() {
+  const gifts = (S.hang.gifts || []).filter(key => S.hang.catalog[key] && S.hang.catalog[key].slot);
+  const own = S.hang.mywear || [];
+  let html = `<div class="fashion-tiles">`;
+  for (const slot of ["hat", "face", "sparkle"]) {
+    const items = gifts.filter(key => S.hang.catalog[key].slot === slot);
+    const mine = own.filter(w => w.slot === slot);
+    if (!items.length && !mine.length) continue;
+    html += `<h4>${SLOT_NAMES[slot]}</h4>` +
+      items.map(key => fashionTile(key, slot, S.hang.catalog[key].name, false)).join("") +
+      mine.map(w => fashionTile(w.key, slot, w.name || "My drawing", true)).join("");
+  }
+  html += `</div>`;
+  if (!gifts.length && !own.length) {
+    html += `<p class="me-note">Your first 🎁 gift box has something to wear. You can also wear your own drawing in 🧢 Me.</p>`;
+  }
+  return html;
+}
+function fashionAwardsHtml(g) {
+  const rows = (g.joined || []).map(seat => {
+    const award = (g.awards || {})[seat];
+    return award ? `<p class="fashion-award">${award.icon} <b>${esc(gamePerson(seat))}</b>: ${esc(award.name)}${seat === roomInfo.you ? " (you)" : ""}</p>` : "";
+  }).join("");
+  return rows ? `<div class="fashion-awards"><h4>🌈 Kind ribbons</h4>${rows}</div>` : "";
+}
+function fashionPane(g, you) {
+  const theme = g.theme ? `${g.theme.icon} Theme: ${esc(g.theme.words)}` : "Theme: a surprise!";
+  let body = `<h4>👗 Fashion show</h4><p class="fashion-theme">${theme}</p>`;
+  if (g.phase === "dressing") {
+    const ready = (g.dress_ready || []).includes(you);
+    body += `<p class="me-note">Dress up! Tap a hat, glasses or sparkle to put it on. ${ready ? "You're ready!" : `${(g.dress_ready || []).length} of ${g.joined.length} ready.`}</p>`;
+    body += fashionTilesHtml();
+    body += ready
+      ? `<button class="wide fashion-ready" data-game="ready" disabled><span>⭐</span>You're ready!</button>`
+      : `<button class="wide fashion-ready" data-game="ready"><span>⭐</span>Ready!</button>`;
+    return body;
+  }
+  if (g.phase === "runway") {
+    const walker = g.walker, counts = (g.reactions || {})[walker] || {};
+    if (!walker) return body + `<p class="me-note">Next walker is coming...</p>`;
+    body += `<p class="me-note">${walker === you ? "🌟 You're on the runway! Strike a pose!" : `👀 ${esc(gamePerson(walker))} is walking the runway!`}</p>`;
+    if (walker !== you) {
+      body += `<div class="fashion-reacts">` + [["👏", "Clap"], ["😍", "Love it"], ["✨", "Sparkle"]].map(([emoji, word]) =>
+        `<button data-react="${emoji}" aria-label="${word}"><span>${emoji}</span>${word}</button>`).join("") + `</div>`;
+    }
+    body += `<p class="me-note">${FASHION_EMOJIS.map(e => `${e} ${counts[e] || 0}`).join(" · ")}${walker === you ? "" : " · tap to cheer!"}</p>`;
+    body += `<p class="me-note">Walk ${g.walk_no} of ${g.joined.length} · ${esc(g.theme.words)}</p>`;
+    return body;
+  }
+  return body;
+}
+function paintFashionTiles(box) {
+  paintPanePictures(box);
+  box.querySelectorAll("[data-ownpic]").forEach(cv => {
+    const own = (S.hang.mywear || []).find(w => w.key === cv.dataset.ownpic), img = own && PalStage.wearPicture("", own.art);
+    if (!img) { cv.width = cv.height = 1; return; }
+    const zoom = Math.max(1, Math.floor(40 / Math.max(img.width, img.height)));
+    cv.width = img.width * zoom;
+    cv.height = img.height * zoom;
+    const g = cv.getContext("2d");
+    g.imageSmoothingEnabled = false;
+    g.drawImage(img, 0, 0, cv.width, cv.height);
+  });
+}
 
 async function gameDo(action, extra = {}) {
   if (gameBusy) return;
@@ -34,6 +107,7 @@ function buildGamePane(box) {
       <button data-game="create" data-kind="dance"><b>Copy the dance</b><small>Tap the moves in order · 3 rounds</small></button>
       <button data-game="create" data-kind="apples"><b>🍎 Apple grab</b><small>Walk onto apples · most apples in 60 seconds wins</small></button>
       <button data-game="create" data-kind="ball"><b>⚽ Pal ball</b><small>Two teams · walk into the ball to kick it into your goal</small></button>
+      <button data-game="create" data-kind="fashion"><b>👗 Fashion show</b><small>Pick a theme · dress up · walk the runway and cheer</small></button>
       <p class="me-note">Finish a game for 🪙 coins and class-party points. Winners get extra coins. Your first game of each kind gives a 🎁 gift, and so does every third one after that.</p>`;
     return;
   }
@@ -46,7 +120,10 @@ function buildGamePane(box) {
   } else if (g.phase === "results") {
     body += `<p class="me-note">${esc(g.message)}</p>`;
     if (g.reward) body += `<p class="me-note">${g.reward.won ? "🏆 You won! " : ""}${g.reward.coins ? `+${g.reward.coins} 🪙 coins! ` : ""}+${g.reward.points} class-party points!${g.reward.gift ? " Your gift: " + esc(S.hang.catalog[g.reward.gift].name) + ". Find it in Me." : ""}</p>`;
+    if (g.kind === "fashion") body += fashionAwardsHtml(g);
     body += `<p class="me-note">Another game can start in a moment.</p>`;
+  } else if (!joined && g.kind === "fashion") {
+    body += `<p class="me-note">A fashion show is on! You can join the next round.</p>`;
   } else if (!joined && g.kind === "code") {
     body += `<p class="me-note">Your friends are coding! Join in now: everyone gets the same job.</p><button class="wide race-run" data-game="join">💻 Join the Code race</button>`;
   } else if (!joined && g.kind === "draw") {
@@ -57,6 +134,8 @@ function buildGamePane(box) {
     body = racePane(g, you);
   } else if (g.kind === "draw") {
     body = drawPane(g, you);
+  } else if (g.kind === "fashion") {
+    body = fashionPane(g, you);
   } else if (g.kind === "race") {
     const done = g.done.includes(you);
     body += `<p class="me-note">${done ? "🏁 You made it! Cheer for your friends." : g.light === "red" ? "🔴 <b>RED LIGHT!</b> Don't move!" : "🟢 <b>GREEN LIGHT!</b> Run to the flag!"}</p>`;
@@ -97,6 +176,7 @@ function buildGamePane(box) {
   const typing = document.activeElement?.id === "raceCode" && [$("raceCode").selectionStart, $("raceCode").selectionEnd];
   box.innerHTML = body;
   if (typing && $("raceCode")) { $("raceCode").focus(); $("raceCode").setSelectionRange(...typing); }
+  if (g.kind === "fashion") paintFashionTiles(box);
   paintDrawBoard();
 }
 function paintGameState(data) {
@@ -107,7 +187,8 @@ function paintGameState(data) {
                               g?.light, g?.done, g?.seq, g?.step, g?.round,
                               g?.solved, g?.bonus, g?.pause, g?.reveal, g?.score, g?.job?.job,
                               g?.drawer, g?.guessed, g?.word, g?.choices, g?.apples, g?.scores,
-                              g?.teams, g?.team_scores]);
+                              g?.teams, g?.team_scores, g?.theme, g?.walker, g?.walk_no, g?.dress_ready,
+                              g?.reactions, g?.awards]);
   if (key !== gamePaintKey) {
     gamePaintKey = key;
     if (roomPane === "games") buildRoomButtons();
@@ -119,7 +200,7 @@ function paintGameState(data) {
   $("hangView").classList.toggle("playing", !!inRound());
   if (roomStage) roomStage.state.camera = racing ? () => 0 : null;
   // A round's controls are in Games (the job, the moves, the hiding places), so a player is taken there once when it starts.
-  if (g && g.joined.includes(data.you) && ["hiding", "playing"].includes(g.phase) && raceShown !== g.id) {
+  if (g && g.joined.includes(data.you) && ["hiding", "playing", "dressing", "runway"].includes(g.phase) && raceShown !== g.id) {
     raceShown = g.id;
     if (roomPane !== "games") { roomPane = "games"; artArmed = furnArmed = buyArmed = null; buildRoomButtons(); }
   }
@@ -140,7 +221,7 @@ function paintGameClock() {
   if (!g) {
     $("gameStatus").classList.remove("invite");
     title.textContent = "Play with friends";
-    detail.textContent = jobsWord() + "💻 Code race, ⚽ pal ball, 🍎 apple grab and 5 more games →";
+    detail.textContent = jobsWord() + "💻 Code race, ⚽ pal ball, 🍎 apple grab, 👗 fashion show and 5 more games →";
     return;
   }
   const seconds = Math.max(0, Math.ceil(g.until - gameNow()));
@@ -156,6 +237,8 @@ function paintGameClock() {
     : g.kind === "ball" ? `${seconds}s left · 🔵 ${(g.team_scores || {}).blue || 0} — ${(g.team_scores || {}).orange || 0} 🟠`
     : g.kind === "code" ? (g.pause ? `Next job in ${seconds}s` : `${g.job.icons} · Job ${g.round + 1} of ${g.rounds} · ${seconds}s · ${g.solved.length} of ${g.joined.length} solved`)
     : g.kind === "draw" ? (g.pause ? `Next picture in ${seconds}s` : `${g.drawer === roomInfo.you ? "You're drawing!" : gamePerson(g.drawer) + " is drawing"} · Picture ${g.round + 1} of ${g.turns} · ${seconds}s · ${g.guessed.length} guessed`)
+    : g.kind === "fashion" ? (g.phase === "dressing" ? `${seconds}s to dress up · ${(g.dress_ready || []).length} of ${g.joined.length} ready · tap your things`
+      : `Walk ${g.walk_no} of ${g.joined.length} · ${seconds}s left · ${g.walker === roomInfo.you ? "You're on the runway!" : g.walker ? gamePerson(g.walker) + " is walking" : "Next walker is coming"}`)
     : g.phase === "hiding" ? `${seconds}s to hide · ${g.it === roomInfo.you ? "You're counting!" : gamePerson(g.it) + " is counting"}`
     : `${seconds}s left · ${gamePerson(g.it)} ${g.kind === "tag" ? "is IT" : "is seeking"}${g.kind === "hide" ? " · " + g.found.length + "/" + (g.joined.length - 1) + " found" : g.grace > gameNow() ? " · Head start!" : ""}`;
   $("seekerCount").textContent = seconds;
@@ -194,9 +277,11 @@ $("gameStatus").addEventListener("click", () => {
 });
 $("roomButtons").addEventListener("click", e => {
   const action = e.target.closest("[data-game]"), cover = e.target.closest("[data-cover]");
+  const react = e.target.closest("[data-react]");
   const step = e.target.closest("[data-step]"), run = e.target.closest("[data-run]"), mine = myMember();
   if (step && !step.disabled) { PalStage.SFX.wake(); gameBusy = false; gameDo("step", {name: step.dataset.step}); }
   else if (run && !run.disabled && mine) walkTo(mine.x + 30, mine.y);
+  else if (react) { PalStage.SFX.wake(); gameDo("react", {emoji: react.dataset.react}); }
   else if (action) gameDo(action.dataset.game, {kind: action.dataset.kind});
   else if (cover) chooseGameCover(cover.dataset.cover);
   else if (e.target.closest("[data-put]")) raceAdd(e.target.closest("[data-put]").dataset.put);

@@ -49,6 +49,12 @@
   #banner { position: absolute; left: 50%; top: 5%; transform: translateX(-50%); max-width: 90%; padding: 8px 24px; background: #fffdf6f2; border-radius: 20px; font-size: clamp(20px, 2.4vw, 36px); white-space: nowrap; }
   #banner.big { top: 24%; padding: 18px 44px; text-align: center; font-size: clamp(36px, 5vw, 76px); font-weight: 900; color: #d9477e; }
   #banner small { display: block; font-size: .42em; color: #2c5352; }
+  /* 👗 Fashion show: the walker, big, beside the runway. */
+  #fashionSpot { position: absolute; right: 2.5%; bottom: 3%; width: clamp(150px, 20vw, 240px); display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none; filter: drop-shadow(0 6px 12px #2c535238); }
+  #fashionSpot[hidden] { display: none; }
+  #fashionBig { width: 100%; height: auto; image-rendering: pixelated; }
+  #fashionName { padding: 4px 12px; background: #fffdf6ee; border-radius: 12px; font-size: clamp(14px, 1.5vw, 22px); color: #2c5352; white-space: nowrap; }
+  #fashionTheme { padding: 2px 10px; background: #ffe0ecee; border-radius: 10px; font-size: clamp(11px, 1.1vw, 16px); color: #6b1f45; white-space: nowrap; }
   #closed { position: absolute; inset: 0; display: grid; place-items: center; background: #fffdf6e0; font-size: 34px; }
   .side { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
   .card { background: #fffdf6; border-radius: 18px; padding: 12px 14px; }
@@ -127,7 +133,9 @@
 <div class="page">
   <div class="meter-row"><span>🎉 Class party</span><div class="track"><i id="bar"></i></div><span id="words"></span><span id="next"></span></div>
   <section class="room"><div class="screen" id="host"><canvas id="back" aria-hidden="true"></canvas><canvas id="stage" aria-label="Everyone's pals, hanging out"></canvas>
-    <div id="placeTag" hidden></div><div id="followTag" hidden></div><div id="banner" hidden></div><div id="closed" hidden>The Hang out is closed for now.</div></div>
+    <div id="placeTag" hidden></div><div id="followTag" hidden></div><div id="banner" hidden></div>
+    <div id="fashionSpot" hidden><canvas id="fashionBig" aria-label="The walker, big"></canvas><div id="fashionName"></div><div id="fashionTheme"></div></div>
+    <div id="closed" hidden>The Hang out is closed for now.</div></div>
     <div class="world">
       <div class="cam"><button id="camLeft" aria-label="Move the camera left">◀ Left</button><button id="camRight" aria-label="Move the camera right">Right ▶</button><button id="camAuto">🎬 Auto</button><select id="camFollow" aria-label="Follow one student with the camera"></select><button id="savePhoto" hidden>💾 Save the photo</button></div>
       <div id="map" aria-label="Map of the world. Click to move the camera."></div>
@@ -248,6 +256,12 @@ function autoLook(now) {
   if (game && game.phase === "playing" && game.kind === "draw" && people.some(m => m.seat === game.drawer)) {
     cam.seat = game.drawer;     // 🎨 the easel is in the Park, next to whoever is drawing
     lookAt(0);
+    return;
+  }
+  if (game && game.kind === "fashion" && (game.phase === "dressing" || game.phase === "runway")) {
+    lookAt(0);                  // 👗 the runway is in the Park: keep the walker in view
+    const walker = people.find(m => m.seat === game.walker);
+    if (walker) cam.seat = walker.seat;
     return;
   }
   if (now < cam.moveOn) return;
@@ -458,12 +472,62 @@ $("savePhoto").addEventListener("click", () => {
   a.click();
 });
 // The game on now. A Code race shows the job, then the fastest code between rounds, so the class can read it together.
-const GAME_WORD = {hide: "🙈 Hide & seek", tag: "🏃 Tag", race: "🚦 Red light, green light", dance: "💃 Copy the dance", code: "💻 Code race", draw: "🎨 Draw & guess", apples: "🍎 Apple grab", ball: "⚽ Pal ball"};
+const GAME_WORD = {hide: "🙈 Hide & seek", tag: "🏃 Tag", race: "🚦 Red light, green light", dance: "💃 Copy the dance", code: "💻 Code race", draw: "🎨 Draw & guess", apples: "🍎 Apple grab", ball: "⚽ Pal ball", fashion: "👗 Fashion show"};
 const DANCE_ICON = {wave: "👋", jump: "🦘", spin: "🌀", cheer: "🎉"};
+// 👗 The walker, big, beside the runway: a puppet that walks in, twirls and poses.
+let fashionPup = null, fashionPupKey = "", fashionSeat = null, fashionStart = 0, fashionRaf = 0;
+function paintFashionSpot(g) {
+  const spot = $("fashionSpot"), live = g && g.kind === "fashion" && g.phase === "runway" && g.walker != null;
+  spot.hidden = !live;
+  if (!live) { fashionSeat = null; fashionPup = null; fashionPupKey = ""; return; }
+  const m = crew().find(x => x.seat === g.walker), pal = m && m.pal;
+  if (!pal || !pal.frames || !pal.frames.length) { spot.hidden = true; return; }
+  if (fashionSeat !== g.walker) { fashionSeat = g.walker; fashionStart = performance.now(); }
+  const key = g.walker + ":" + pal.frames[0].length + ":" + pal.palette.join(",") + ":" + (pal.marks || "");
+  if (fashionPupKey !== key) {
+    fashionPup = PalStage.puppet(pal, Math.max(2, Math.floor(88 / pal.size)), 7);
+    fashionPupKey = key;
+  }
+  $("fashionName").textContent = m.name || "A friend";
+  $("fashionTheme").textContent = `Theme: ${g.theme ? g.theme.words : ""}`;
+  if (!fashionRaf) fashionRaf = requestAnimationFrame(fashionPaint);
+}
+function fashionPaint(now) {
+  fashionRaf = 0;
+  if (!fashionPup || $("fashionSpot").hidden) return;
+  const cv = $("fashionBig"), g = cv.getContext("2d");
+  if (cv.dataset.ready !== "1") { cv.width = 150; cv.height = 170; cv.dataset.ready = "1"; }
+  const t = (now - fashionStart) / 1000;
+  const move = t < 1.1 ? "walk" : t < 2.7 ? "spin" : "cheer";
+  const rig = fashionPup.rigOf(0);
+  const pose = PalStage.livePose(rig, fashionPup.lifeline, t, {move, moveT: t, jump: 0, mood: null, talk: false});
+  g.clearRect(0, 0, cv.width, cv.height);
+  g.imageSmoothingEnabled = false;
+  fashionPup.draw(g, 0, pose, cv.width / 2, cv.height - 10);
+  fashionRaf = requestAnimationFrame(fashionPaint);
+}
 function paintGame(g) {
   $("raceCard").hidden = !g;
+  paintFashionSpot(g);
   if (!g) return;
   const name = seat => (people.find(m => m.seat === seat) || {}).name || "A friend";
+  if (g.kind === "fashion") {
+    const left = Math.max(0, Math.ceil(g.until - g.now)), ready = (g.dress_ready || []).length;
+    $("raceLabel").textContent = GAME_WORD[g.kind] + (g.phase === "lobby" || g.phase === "results" ? "" : ` · ${left}s left`);
+    $("raceJob").textContent = g.phase === "lobby" ? `Starting soon! ${g.joined.length} joined. Join in Games.`
+      : g.phase === "results" ? g.message
+      : g.phase === "dressing" ? `Theme: ${g.theme ? g.theme.icon + " " + g.theme.words : ""} · ${ready} of ${g.joined.length} ready`
+      : `Theme: ${g.theme ? g.theme.icon + " " + g.theme.words : ""} · ${name(g.walker)} is walking!`;
+    $("raceCode").hidden = true;
+    const counts = (g.reactions || {})[g.walker] || {};
+    $("raceWho").textContent = g.phase === "runway"
+      ? `Walk ${g.walk_no} of ${g.joined.length} · 👏 ${counts["👏"] || 0} 😍 ${counts["😍"] || 0} ✨ ${counts["✨"] || 0}`
+      : g.phase === "results" ? g.joined.map(seat => {
+        const award = (g.awards || {})[seat];
+        return award ? `${award.icon} ${name(seat)}` : "";
+      }).filter(Boolean).join(" · ") : "";
+    return;
+  }
   if (g.kind !== "code") {
     const left = Math.max(0, Math.ceil(g.until - g.now)), names = seats => seats.map(name).join(", ") || "nobody yet";
     $("raceLabel").textContent = GAME_WORD[g.kind] + (g.phase === "lobby" || g.phase === "results" ? "" : ` · ${left}s left`);
