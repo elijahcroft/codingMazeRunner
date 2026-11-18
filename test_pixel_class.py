@@ -302,7 +302,10 @@ class TeacherAndGames(unittest.TestCase):
             self.kid(f"Kid{i:02}")
         server.room_do(self.kids[2], {"what": "home"})                     # Alex is at home: left alone
         alex_loc = server.pixel_room["here"][self.kids[2]["id"]]["loc"]
-        self.assertEqual(server.pixel_teacher({"action": "photo"}), {"ok": True})
+        answer = server.pixel_teacher({"action": "photo"})
+        self.assertTrue(answer["ok"], answer)
+        self.assertEqual(answer["inside"], 1)                # Alex is inside a home
+        self.assertIn("1 friend was inside a home", answer["message"])
         out = self.spots()
         self.assertEqual(len(out), 24)
         self.assertTrue(all(0 < s["x"] < pixel.PLACE_W for s in out))

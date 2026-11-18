@@ -340,7 +340,14 @@ $("muralDownload").addEventListener("click", () => {
 $("gate").addEventListener("submit", e => { e.preventDefault(); key = $("key").value.trim(); refresh(); });
 $("openGo").addEventListener("click", async () => { await call({action: "open", level: $("openTo").value}); refresh(); });
 $("party").addEventListener("click", () => call({action: "party"}));
-$("shower").addEventListener("click", () => call({action: "shower"}));
+$("shower").addEventListener("click", async () => {
+  const out = await call({action: "shower"}).catch(() => null);
+  if (out && !out.error && out.message) {
+    const note = $("roomBirthday");
+    note.hidden = false;
+    note.textContent = "🌠 " + out.message;
+  }
+});
 $("codeRace").addEventListener("click", async () => {
   const out = await call({action: "code_race"}).catch(() => null);
   $("codeRace").textContent = !out ? "💻 Couldn't reach the server" : out.error ? "💻 " + out.error : `💻 Code race starting for ${out.count}!`;
@@ -350,7 +357,12 @@ $("codeRace").addEventListener("click", async () => {
 $("endGame").addEventListener("click", async () => { await call({action: "end_game"}); refresh(); });
 $("photo").addEventListener("click", async () => {
   const out = await call({action: "photo"}).catch(() => null);
-  $("photo").textContent = !out ? "📸 Couldn't reach the server" : out.error ? "📸 " + out.error : "📸 Say cheese! Look at the projector";
+  if (!out) $("photo").textContent = "📸 Couldn't reach the server";
+  else if (out.error) $("photo").textContent = "📸 " + out.error;
+  else {
+    const extra = out.inside && out.message ? " " + out.message.replace(/^📸\s*/, "") : "";
+    $("photo").textContent = "📸 Say cheese! Look at the projector" + extra;
+  }
   setTimeout(() => { $("photo").textContent = "📸 Class photo"; }, 4000);
 });
 let roomIsOpen = false;
@@ -379,7 +391,10 @@ $("rows").addEventListener("click", async e => {
   const out = await call({action: "birthday", name: b.dataset.birthday}).catch(() => null);
   if (!out) note.textContent = "🎂 Couldn't reach the server. Try again.";
   else if (out.error) { note.textContent = "🎂 " + out.error; b.disabled = false; }
-  else note.textContent = `🎂 Happy birthday, ${out.name}! The class is walking to the Park to sing.`;
+  else {
+    const hello = `🎂 Happy birthday, ${out.name}! The class is walking to the Park to sing.`;
+    note.textContent = out.message ? `${hello} ${out.message}` : hello;
+  }
   refresh();
 });
 // 🎬 Big screen: play one student's Free stage show full size on the projector.

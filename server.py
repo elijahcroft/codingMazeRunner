@@ -6335,7 +6335,8 @@ room_news = threading.Condition()
 
 
 def room_empty():
-    return {"seq": 0, "seats": 0, "here": {}, "events": [], "shower": None, "next_shower": 0, "game": None, "game_serial": 0,
+    return {"seq": 0, "seats": 0, "here": {}, "events": [], "shower": None, "next_shower": 0,
+            "shower_after_birthday": False, "game": None, "game_serial": 0,
             "wedding": None, "wedding_serial": 0, "birthday": None, "birthday_serial": 0, "openhouses": []}
 
 
@@ -7745,7 +7746,7 @@ def room_keep_up():
         room["shower"] = None
         room["next_shower"] = now + random.uniform(*SHOWER_GAP)
         room_event("shower_end", loc=0)
-    elif room["open"] and room["here"] and not room["shower"] and now >= room["next_shower"]:
+    elif room["open"] and room["here"] and not room["shower"] and not room.get("birthday") and now >= room["next_shower"]:
         room_start_shower()
 
 
@@ -9199,6 +9200,14 @@ def birthday_step(b, key, now):
         birthday_event("hooray", seat=b["seat"], name=name)
 
 
+def start_waited_shower():
+    """Start a star shower the teacher asked for during a birthday, now the party is over."""
+    if not pixel_room.pop("shower_after_birthday", False):
+        return
+    if pixel_room["open"] and not pixel_room["shower"]:
+        room_start_shower()
+
+
 def birthday_finish(b):
     today = pixel_day_name()
     seats, paid = game_seats(), 0
@@ -9225,6 +9234,7 @@ def birthday_finish(b):
     birthday_restore(b)
     pixel_room["birthday"] = None
     birthday_event("done", id=b["id"], seat=b["seat"], name=name, paid=paid)
+    start_waited_shower()
     pixel_save_soon()
 
 
@@ -9236,6 +9246,7 @@ def birthday_clear(phase, reason="", **more):
     birthday_restore(b)
     pixel_room["birthday"] = None
     birthday_event(phase, id=b["id"], seat=b["seat"], name=name, reason=reason, **more)
+    start_waited_shower()
     return b
 
 
@@ -9276,6 +9287,16 @@ def birthday_crowns_today():
             room_event("crown", loc=spot["loc"], seat=spot["seat"], on=False)
 
 
+def birthday_openhouse_words(names):
+    """Say which open houses the birthday ended, in plain words for the teacher."""
+    if len(names) == 1:
+        who, houses = f"{names[0]}'s", "open house ended"
+    else:
+        who = ", ".join(f"{name}'s" for name in names[:-1]) + f" and {names[-1]}'s"
+        houses = "open houses ended"
+    return f"🎂 Started. ({who} {houses} so everyone could come.)"
+
+
 def birthday_teacher(data):
     """The teacher's 🎂 Birthday! button, from a student's row on the teacher page."""
     room = pixel_room
@@ -9296,7 +9317,11 @@ def birthday_teacher(data):
         return {"error": "A wedding is on right now. Wait for it to finish."}
     if room.get("game") and room["game"]["phase"] != "results":
         return {"error": "A game is on right now. Press ⏹ End this game first."}
-    return birthday_start(spot, kid)
+    houses = [o["host_name"] for o in room.get("openhouses", [])]
+    out = birthday_start(spot, kid)
+    if houses:
+        out.update(openhouse_ended=len(houses), message=birthday_openhouse_words(houses))
+    return out
 
 
 def room_free_spot(lo, hi, me=None):
@@ -9781,6 +9806,10 @@ def pixel_teacher(data):
         return {"ok": True}
     if action == "shower":
         if pixel_room["open"] and not pixel_room["shower"]:
+            if pixel_room.get("birthday"):
+                pixel_room["shower_after_birthday"] = True
+                return {"ok": True, "waiting": True,
+                        "message": "The star shower starts right after the song."}
             room_start_shower()
         return {"ok": True}
     if action == "code_race":          # everyone outside in the Hang out is in, and anyone can leave
@@ -9811,7 +9840,12 @@ def pixel_teacher(data):
             return {"error": "A birthday party is on right now. Take the photo after the song."}
         if pixel_room["game"] and pixel_room["game"]["phase"] != "results":
             return {"error": "A game is on right now. Press ⏹ End this game first."}
+        inside = sum(1 for s in pixel_room["here"].values() if s["loc"])
         class_photo()
+        if inside:
+            friends = "friend was" if inside == 1 else "friends were"
+            return {"ok": True, "inside": inside,
+                    "message": f"📸 Done! {inside} {friends} inside a home, so they're not in this one."}
         return {"ok": True}
     if action == "big_show":           # 🎬 one student's Free stage show, full size on the projector
         return pixel_big_show(data)

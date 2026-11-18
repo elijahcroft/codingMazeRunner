@@ -987,7 +987,8 @@ function roomEvent(e, you) {
     banner(`🪩 Dance party! 🪩<small>${e.seats.length} pals dancing together · +1 for the class party</small>`, 4000, true);
     PalStage.SFX.play("yay");
   } else if (e.kind === "shower") {
-    banner("🌠 Star shower! Run and catch them!", 3500);
+    // A birthday keeps the big banner, so a shower that follows it still gets its own small line.
+    banner("🌠 Star shower! Run and catch them!", 3500, false, performance.now() < birthdayBannerUntil);
   } else if (e.kind === "tree") {
     roomStage.state.tree = e.tree;
     if (roomPane === "tree") buildRoomButtons();
