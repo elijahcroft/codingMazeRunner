@@ -2776,6 +2776,11 @@ planet_feed = []    # the class's recent moments, newest last, for the projector
 planet_runs = []
 RUNS_KEPT = 30
 RUN_PATH_MAX = 400   # frames of a route kept for the replay
+# The latest farm days, newest last: the projector plays one when nothing else
+# is on. Kept in memory only, and sent only while fresh.
+farm_days = []
+FARM_DAYS_KEPT = 4
+FARM_DAY_FRESH = 60   # seconds a farm day stays worth showing
 # What the teacher can put on every student's screen, by name. A page shows a
 # new one once, on its next ping.
 TEACHER_NOTICES = {"eyes": ("👀", "Eyes on your teacher, please!", "Stop typing and look up."),
@@ -4507,6 +4512,17 @@ def farm_run(p, data):
         feed(f"🏆 {p['name']} set a farm record: 🪙 {farm['best']:,} in one day")
     if out["order"] and out["order"].get("crate") and out["order"]["crate"].get("key"):
         feed(f"🎁 {p['name']} found a {out['order']['crate']['name'].lower()} in a farm crate")
+    if out["frames"]:
+        yard = planet_farm.yard(farm)
+        farm_days.append({
+            "n": (farm_days[-1]["n"] + 1) if farm_days else 1, "at": now, "id": p["id"], "name": p["name"],
+            "look": dict(entry["look"]), "code": farm["code"][:TRY_CODE_MAX], "day": farm["day"],
+            "w": yard["w"], "h": yard["h"], "start": out["start"], "decor": yard["decor"],
+            "icons": {key: c["icon"] for key, c in planet_farm.CROPS.items()},
+            "days": {key: c["days"] for key, c in planet_farm.CROPS.items()},
+            "frames": out["frames"], "prints": out["prints"], "end": out["end"],
+            "coins": out["income"] + out["bonus"] + out["perfect"]})
+        del farm_days[:-FARM_DAYS_KEPT]
     out["farm"] = farm_state(p)
     return out
 
@@ -5211,6 +5227,8 @@ def planet_class():
                           + planet.BUILD_ZONES + planet.HALLOWEEN_ZONES + planet.VOYAGE_ZONES},
             "halloween_sites": len(planet.HALLOWEEN_ORDER),
             "runs": planet_runs[-10:],
+            "farm_days": [d for d in farm_days if time.time() - d["at"] < FARM_DAY_FRESH]
+            if planet_class_settings["farm"] else [],
             "class": {"stars": class_stars(), "goals": CLASS_GOALS, "unlocks": CLASS_UNLOCKS,
                       "max": 3 * len(planet.SITE_ORDER) * max(1, len(rows))},
             "feed": planet_feed[-12:]}
@@ -8429,6 +8447,7 @@ PAGES = {
     "/planet/predict.js": ("planet_predict.js", "text/javascript; charset=utf-8"),
     "/planet/farm": ("planet_farm.html", "text/html; charset=utf-8"),
     "/planet/farm.js": ("planet_farm.js", "text/javascript; charset=utf-8"),
+    "/planet/farm/yard.js": ("planet_farm_yard.js", "text/javascript; charset=utf-8"),
     "/cake": ("cake.html", "text/html; charset=utf-8"),
     "/cake/teacher": ("cake_teacher.html", "text/html; charset=utf-8"),
     "/cake/show": ("cake_show.html", "text/html; charset=utf-8"),

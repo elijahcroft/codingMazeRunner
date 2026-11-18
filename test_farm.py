@@ -411,8 +411,26 @@ class Routes(unittest.TestCase):
             self.assertIn("picked", self.post("/planet/farm/run", {"id": di, "code": "harvest()"}))
             self.assertEqual(self.post("/planet/farm/run", {"id": di, "code": "harvest()"}), {"wait": True})
 
+    def test_the_class_screen_gets_fresh_farm_days(self):
+        ed = self.post("/join", {"name": "Ed"})["id"]
+        with mock.patch.object(server, "farm_days", []):
+            self.post("/planet/farm/run", {"id": ed, "code": ROW})
+            days = self.get("/planet/overview")["farm_days"]
+            self.assertEqual([d["name"] for d in days], ["Ed"])
+            self.assertEqual(days[0]["coins"], 3)
+            self.assertEqual(days[0]["code"], ROW)
+            self.assertTrue(days[0]["frames"])
+            # A day that never moved (code that can't be read) isn't shown.
+            self.post("/planet/farm/run", {"id": ed, "code": "harvest("})
+            self.assertEqual(len(self.get("/planet/overview")["farm_days"]), 1)
+            # Stale days, and a closed farm, show nothing.
+            with mock.patch.object(server, "FARM_DAY_FRESH", 0):
+                self.assertEqual(self.get("/planet/overview")["farm_days"], [])
+            with mock.patch.dict(server.planet_class_settings, {"farm": False}):
+                self.assertEqual(self.get("/planet/overview")["farm_days"], [])
+
     def test_the_pages_are_served(self):
-        for path in ("/planet/farm", "/planet/farm.js"):
+        for path in ("/planet/farm", "/planet/farm.js", "/planet/farm/yard.js"):
             self.assertEqual(urlopen(self.base + path).status, 200)
 
 
