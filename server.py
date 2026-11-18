@@ -7701,7 +7701,9 @@ def room_view(p, after, watch=0):
     # other child's browser (including the class projector). No stale trails leak.
     if room.get("game"):
         out["game_members"] = [sync_row(s, out["you"]) for s in here]
-        active = set(room["game"]["joined"]) if room["game"]["kind"] not in STILL_GAMES else set()     # nothing is hidden in a Code race
+        active = (set(room["game"]["joined"])
+                  if room["game"]["phase"] in ("hiding", "playing") and room["game"]["kind"] not in STILL_GAMES
+                  else set())     # nothing is hidden in a Code race, and a finished round hides nothing
         # At the fashion show, clothes and reactions happen to players who are still in
         # the round, so those events must reach every screen too.
         keep = ("leave", "move") + (("wear", "react", "say", "clap", "feel", "fx") if room["game"]["kind"] == "fashion" else ())

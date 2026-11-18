@@ -50,10 +50,11 @@ function fashionPane(g, you) {
   if (g.phase === "dressing") {
     const ready = (g.dress_ready || []).includes(you);
     body += `<p class="me-note">Dress up! Tap a hat, glasses or sparkle to put it on. ${ready ? "You're ready!" : `${(g.dress_ready || []).length} of ${g.joined.length} ready.`}</p>`;
-    body += fashionTilesHtml();
+    // Ready goes above the tiles: a student with lots of hats would never scroll down to it.
     body += ready
       ? `<button class="wide fashion-ready" data-game="ready" disabled><span>⭐</span>You're ready!</button>`
       : `<button class="wide fashion-ready" data-game="ready"><span>⭐</span>Ready!</button>`;
+    body += fashionTilesHtml();
     return body;
   }
   if (g.phase === "runway") {
