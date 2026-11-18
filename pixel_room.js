@@ -8,6 +8,7 @@ let artArmed = null, moveReadyAt = 0, clapFor = null, clapTimer = 0, bannerTimer
 let furnArmed = null, buyArmed = null, fishing = null, homeSeen = "", peopleSeen = "", coinsSeen = null, houseSeen = "";
 let weddingAsk = null, weddingSeen = "", birthdayPartySeen = 0, birthdayBannerUntil = 0;
 let houseBusy = false, houseInviteSeen = null;
+let newsShown = false, newsDeferred = false, newsMarkPending = false;     // ✨ the one-time New! card
 let muralInk = 0, muralWhoMode = false;     // 🖼️ the colour picked, and "who painted?" instead of painting
 // At home: ✋ moving things (a click picks one up, instead of playing with it), and which room is on screen.
 let moving = false, roomInView = 0;
@@ -1042,7 +1043,7 @@ function roomState(data) {
   }
   const open = data.open;
   $("roomClosed").hidden = open;
-  if (!open) { $("houseStatus").hidden = true; $("openHouseBar").hidden = true; $("hangView").classList.remove("house-invited"); }
+  if (!open) { $("houseStatus").hidden = true; $("openHouseBar").hidden = true; $("hangView").classList.remove("house-invited"); closeNews(); }
   $("roomButtons").style.visibility = open ? "" : "hidden";
   $("myMove").style.visibility = open ? "" : "hidden";
   $("roomType").hidden = !open || !data.words;
@@ -1085,6 +1086,7 @@ function roomState(data) {
   if (places !== placesSeen) { placesSeen = places; if (roomPane === "place") buildRoomButtons(); }
   for (const e of data.events) roomEvent(e, data.you);
   if (data.mural && roomPane === "mural") muralRefresh();
+  paintNewsCard();
 }
 // ---- 🎯 Today's jobs: three small things to do, the same for the whole class each day ---------------
 let jobsSeen = null;
@@ -1188,15 +1190,96 @@ function openRoom() {
 // A student's first time in the Hang out says where to start, once. It's kept for each
 // student on this computer; if the browser won't keep it, it stays quiet rather than repeat.
 function welcomeOnce() {
+  newsDeferred = false;
   const key = "pixelHangHello:" + me;
-  try { if (localStorage.getItem(key)) return; localStorage.setItem(key, "1"); } catch (_) { return; }
+  try { if (localStorage.getItem(key)) return; localStorage.setItem(key, "1"); newsDeferred = true; } catch (_) { return; }
   roomPane = "games";
   buildRoomButtons();
   $("roomButtons").scrollTop = 0;
   banner(`🎉 Welcome to the Hang out!<small>Click the ground to walk. Today's 🎯 jobs are in Games, on the right.</small>`, 7000, true);
 }
+// ✨ The one-time New! card: big rows that jump to the four new things in the Hang out.
+// It is kept on the student's server entry, so it does not come back on another laptop.
+// A brand-new student sees the old welcome first; the card waits for a later visit.
+function paintNewsCard() {
+  const el = $("hangNews");
+  if (!el || !roomInfo || newsShown || newsDeferred) return;
+  if (!roomInfo.open || roomInfo.you === null || roomInfo.you === undefined) return;
+  if (roomInfo.news) return;                 // 1 means this student has already seen it
+  newsShown = true;
+  el.hidden = false;
+  const b = $("hangBanner");
+  if (b && !b.hidden && /Welcome to the Hang out/i.test(b.innerHTML)) b.hidden = true;     // one card at a time
+  const got = $("newsGotIt");
+  if (got) got.focus({preventScroll: true});
+  markNewsSeen();
+}
+function markNewsSeen() {
+  if (newsMarkPending) return;
+  newsMarkPending = true;
+  post("/pixel/news", {id: me}).then(out => {
+    newsMarkPending = false;
+    if (out && out.ok && roomInfo) roomInfo.news = 1;
+  }).catch(() => { newsMarkPending = false; });
+}
+function closeNews() {
+  const el = $("hangNews");
+  if (el) el.hidden = true;
+}
+function newsGo(where) {
+  closeNews();
+  PalStage.SFX.wake();
+  PalStage.SFX.play("click");
+  artArmed = furnArmed = buyArmed = null;
+  moving = false;
+  if (where === "fashion") {
+    roomPane = "games";
+    buildRoomButtons();
+    $("roomButtons").scrollTop = 0;
+    const card = $("roomButtons").querySelector('[data-game="create"][data-kind="fashion"]');
+    if (card) card.scrollIntoView({block: "center"});
+    tipFor("👗 Fashion show: tap the big card to start!", 6000);
+  } else if (where === "wedding") {
+    roomPane = "do";
+    buildRoomButtons();
+    if (inWedding()) {
+      roomPane = "party";
+      buildRoomButtons();
+      $("roomButtons").scrollTop = 0;
+      tipFor("💒 Tap Hold a wedding, then pick a friend!", 7000);
+      return;
+    }
+    tap("go", {name: "wedding"}).then(out => {
+      if (out && out.error) { tipFor(out.error, 4500); return; }
+      tipFor("💒 Going to the Wedding garden...", 3500);
+      const until = performance.now() + 7000;
+      const timer = setInterval(() => {
+        if (!stopRoom || performance.now() > until) { clearInterval(timer); return; }
+        if (!inWedding()) return;
+        clearInterval(timer);
+        roomPane = "party";             // now the Hold a wedding button is here
+        buildRoomButtons();
+        $("roomButtons").scrollTop = 0;
+        tipFor("💒 Tap Hold a wedding, then pick a friend!", 7000);
+      }, 150);
+    });
+  } else if (where === "mural") {
+    roomPane = "mural";
+    buildRoomButtons();
+    $("roomButtons").scrollTop = 0;
+    tipFor("🖼️ Pick a colour, then tap a square!", 6000);
+  } else if (where === "home") {
+    if (atHome() && myHome()) {
+      roomPane = "home";
+      buildRoomButtons();
+      $("roomButtons").scrollTop = 0;
+    } else goHome("mine");
+    tipFor("🏠 This is your home! Pick a thing to put out.", 6000);
+  }
+}
 function closeRoom() {
   if (!stopRoom) return;
+  closeNews();
   clearWeddingCard();
   stopRoom();
   stopBack();
@@ -1233,6 +1316,11 @@ function palAt(x, y) {
 new ResizeObserver(fitRoomScreen).observe($("roomHost").closest(".hang-main"));
 $("houseStatus").addEventListener("click", joinOpenHouse);
 $("openHouseBar").addEventListener("click", e => { if (e.target.closest("[data-house-close]")) closeOpenHouse(); });
+$("hangNews").addEventListener("click", e => {
+  const go = e.target.closest("[data-news-go]");
+  if (go) { newsGo(go.dataset.newsGo); return; }
+  if (e.target.closest("#newsGotIt")) { closeNews(); PalStage.SFX.play("click"); }
+});
 setInterval(paintHouseStatus, 250);
 $("weddingCard").addEventListener("click", e => {
   const b = e.target.closest("[data-wedding]");

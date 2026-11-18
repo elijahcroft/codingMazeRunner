@@ -474,6 +474,33 @@
   #weddingCard button.wedding-no { background: #f3eef8; box-shadow: 0 3px 0 #dacfe8; }
   #weddingCard button[disabled] { opacity: .55; cursor: default; box-shadow: none; }
   #weddingCard .wedding-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 7px; }
+  /* ✨ New in the Hang out: a one-time card, big rows that jump to each new thing. */
+  #hangNews { position: fixed; inset: 0; z-index: 45; display: grid; place-items: center; padding: 10px; background: #1b153055; }
+  #hangNews[hidden] { display: none; }
+  .news-card { width: min(94vw, 620px); max-height: calc(100vh - 20px); overflow: auto; padding: clamp(10px, 2vh, 18px) clamp(12px, 2vw, 22px); border-radius: 24px; background: #fffdf6; color: #2c5352; box-shadow: 0 12px 40px #1b153055; }
+  .news-card h2 { margin: 0 0 2px; text-align: center; font-size: clamp(22px, 3.6vh, 32px); font-weight: 900; color: #d9477e; }
+  .news-sub { margin: 0 0 8px; text-align: center; font-size: clamp(12px, 1.8vh, 15px); font-weight: 800; color: #4d6f68; }
+  .news-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: clamp(6px, 1.2vh, 10px) 10px; border-radius: 16px; background: #f3f5ea; box-shadow: 0 2px 0 #dbe2cf; }
+  .news-row + .news-row { margin-top: 6px; }
+  .news-row .news-emoji { font-size: clamp(24px, 4vh, 34px); line-height: 1; }
+  .news-row b { font-size: clamp(14px, 2.1vh, 18px); font-weight: 900; line-height: 1.2; }
+  .news-row button, .news-got { min-height: 38px; padding: 6px 12px; border: 0; border-radius: 12px; background: #ffd27a; color: #4a3a10; font: inherit; font-size: clamp(13px, 1.8vh, 16px); font-weight: 900; white-space: nowrap; cursor: pointer; box-shadow: 0 3px 0 #e0a93f; }
+  .news-row button:hover, .news-got:hover { background: #ffe4a3; }
+  .news-row button:active, .news-got:active { transform: translateY(2px); box-shadow: 0 1px 0 #e0a93f; }
+  .news-got { display: block; margin: 10px auto 0; min-width: 140px; background: #bfe7dc; box-shadow: 0 3px 0 #a3bcc4; }
+  .news-got:hover { background: #d6f2e9; }
+  @media (max-height: 620px) {     /* 1024x600 and 1093x530: keep all four rows in view */
+    #hangNews { padding: 6px; }
+    .news-card { padding: 8px 12px; }
+    .news-card h2 { font-size: 22px; }
+    .news-sub { display: none; }
+    .news-row { padding: 5px 8px; }
+    .news-row + .news-row { margin-top: 4px; }
+    .news-row .news-emoji { font-size: 24px; }
+    .news-row b { font-size: 14px; }
+    .news-row button { min-height: 32px; padding: 4px 10px; font-size: 13px; }
+    .news-got { min-height: 34px; margin-top: 6px; padding: 4px 14px; font-size: 14px; }
+  }
   .float { position: absolute; transform: translate(-50%, 0); font-size: clamp(16px, 2vw, 26px); font-weight: 900; color: #fff; text-shadow: 0 1px 0 #2c5352, 0 0 4px #2c5352; pointer-events: none; animation: float-up 1.4s ease-out forwards; }
   .float.combo { color: #ffd93b; font-size: clamp(24px, 3.2vw, 42px); }
   @keyframes float-up { to { transform: translate(-50%, -64px); opacity: 0; } }
@@ -1033,6 +1060,17 @@
         <button class="btn main">Say</button>
       </form>
     </section>
+    <div id="hangNews" role="dialog" aria-modal="true" aria-labelledby="hangNewsTitle" hidden>
+      <div class="news-card">
+        <h2 id="hangNewsTitle">✨ New in the Hang out!</h2>
+        <p class="news-sub">Four fun things to try. Pick one!</p>
+        <div class="news-row"><span class="news-emoji" aria-hidden="true">👗</span><b>Fashion show: dress up and walk!</b><button data-news-go="fashion">Show me</button></div>
+        <div class="news-row"><span class="news-emoji" aria-hidden="true">💒</span><b>Wedding garden: go say I do!</b><button data-news-go="wedding">Show me</button></div>
+        <div class="news-row"><span class="news-emoji" aria-hidden="true">🖼️</span><b>Class mural: paint one square!</b><button data-news-go="mural">Show me</button></div>
+        <div class="news-row"><span class="news-emoji" aria-hidden="true">🏠</span><b>Open house: invite the class in!</b><button data-news-go="home">Show me</button></div>
+        <button class="news-got" id="newsGotIt">Got it!</button>
+      </div>
+    </div>
   </div>
 </div>
 

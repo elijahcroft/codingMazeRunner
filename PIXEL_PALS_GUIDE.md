@@ -274,6 +274,13 @@ actions or more adds a big finish. Running the mission again updates the move.
 Everyone's pal is in one soft little world, and what one child taps, everyone sees.
 No code is needed once they're in. The first time a student comes in, a 🎉 Welcome banner
 says to click the ground to walk and that today's 🎯 jobs are in Games, and Games opens.
+**✨ New in the Hang out!** is a one-time card for the features that live inside panes:
+👗 Fashion show (Games), 💒 Hold a wedding (Wedding garden → Party), 🖼️ Class mural
+(Art → Class mural) and 🏠 Open house (your own Home). Each row has a **Show me** button
+that opens that place or pane; **Got it!** closes the card. It is kept on the student's
+record, so it does not return on another laptop or after a restart, and it never shows on
+the projector. A brand-new student sees the usual welcome first and gets the card on a
+later visit.
 
 - **One long world:** the places sit side by side, and the camera follows your pal. Walk
   to the edge of the screen to reach the next place. A full party meter makes the world

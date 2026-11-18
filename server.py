@@ -5723,7 +5723,7 @@ def pixel_entry(p):
                        ("chests", {}), ("chest_count", 0), ("mywear", []), ("presents", {}), ("present_count", 0), ("snowballs", 0),
                        ("wedding_day", ""), ("birthday_day", ""), ("birthday_crown_day", ""),
                        ("mural_day", ["", 0, False]), ("openhouse_cool", 0), ("openhouse_day", ""),
-                       ("reached", pixel.LEVEL_ORDER[0])):
+                       ("news", 0), ("reached", pixel.LEVEL_ORDER[0])):
         entry.setdefault(key, value)
     if "coins" not in entry:        # coins came later: pay for the stars and gems already earned
         firsts = sum(1 for key, stars in entry["solved"].items() if key in pixel.LEVEL_BY_KEY and stars[0])
@@ -6159,7 +6159,7 @@ def pixel_state(p):
     entry = pixel_entry(p)
     pixel_day_touch(p)
     frontier = pixel_frontier(entry)
-    return {"you": {"name": p["name"]},
+    return {"you": {"name": p["name"]}, "news": entry.get("news", 0),
             "drawings": list(entry["drawings"]), "pal": pixel_pal(entry)["key"], "pip": pixel.PIP,
             "max_drawings": pixel.MAX_DRAWINGS, "max_frames": pixel.MAX_FRAMES,
             "poses": pixel.POSE_NAMES,
@@ -7911,7 +7911,7 @@ def room_view(p, after, watch=0):
         entry = pixel_entry(p)
         out.update(coins=entry["coins"], play_left=pixel.PLAY_COINS_DAY - pixel_play_today(entry),
                    owned=pixel_owned(entry), progress=pixel_progress(entry), jobs=day_jobs_view(entry),
-                   stuff=entry["stuff"])
+                   stuff=entry["stuff"], news=entry.get("news", 0))
     if whole:
         out.update(members=[game_room_row(s, out["you"]) for s in here], events=[],
                    placed=[room_placed_row(r, p, n * pixel.PLACE_W) for n, each in enumerate(rooms) for r in each["art"]]
@@ -9891,6 +9891,11 @@ def pixel_post(path, data):
         if not p:
             return {"error": "join"}
         entry = pixel_entry(p)
+        if path == "/pixel/news":          # ✨ the one-time "New!" card is seen: never show it again
+            if not entry.get("news"):
+                entry["news"] = 1
+                save_state()
+            return {"ok": True}
         if path == "/pixel/save":
             pixel_day_touch(p)
             was = {d["key"] for d in entry["drawings"]}
