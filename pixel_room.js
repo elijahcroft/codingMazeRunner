@@ -52,14 +52,14 @@ function gameTip(g) {
   if (g.kind === "code") return (g.bonus || []).includes(you) ? "Bonus done! Clap for your friends while they finish."
     : (g.solved || []).includes(you) ? "You solved it! Try the 🌟 Bonus on the right, or clap for your friends." : "Build your code on the right, then press ▶ Run my code.";
   if (g.kind === "fashion") return g.phase === "dressing" ? "Dress up! Tap your things on the right, then Ready!"
-    : g.phase === "runway" ? (g.walker === you ? "🌟 You're on the runway! Strike a pose!" : "Watch the runway! Tap 👏 😍 or ✨ on the right.")
+    : g.phase === "runway" ? (g.walker === you ? "🌟 You're on the runway! Show everyone your look!" : "Watch the runway! Tap 👏 😍 or ✨ on the right.")
     : "🌈 Every walker got a kind ribbon!";
   return ROOM_TIP;
 }
 // At a 🧰 chest, the tip under the world keeps the puzzle in view, even when a small laptop scrolls the code box.
 const chestTip = () => { const c = roomPane === "chest" && chestNow(); return c && !c.open ? `🧰 ${c.job} ${c.icons}` : ""; };
 const weddingTip = () => inWedding() && !(roomInfo && roomInfo.wedding)
-  ? "💒 Tap 🎉 Party, then Hold a wedding, to marry a friend in the garden!" : "";
+  ? "💒 Tap 🎉 Party, then Hold a wedding. Pick a friend in the garden!" : "";
 const roomTipNow = () => (atHome() ? HOME_TIP : inRound() ? gameTip(currentGame()) : chestTip() || weddingTip() || ROOM_TIP);
 
 function fitRoomScreen() {
@@ -103,7 +103,7 @@ function paintWeddingCard() {
     html = `<h3>💍 Waiting for ${esc(weddingAsk.name)}…</h3><p>Your friend has one tap: <b>Yes! 💍</b> or <b>Not now</b>.</p>` +
       `<button class="wedding-no" data-wedding="cancel">Stop the wedding</button>`;
   } else if (weddingAsk.mode === "invite") {
-    html = `<h3>💍 ${esc(weddingAsk.from)} asks you!</h3><p>Will you say "I do" at the Wedding garden?</p>` +
+    html = `<h3>💍 ${esc(weddingAsk.from)} asks you!</h3><p>Will you say yes at the Wedding garden?</p>` +
       `<div class="wedding-pair"><button class="wedding-yes" data-wedding="yes">Yes! 💍</button><button class="wedding-no" data-wedding="no">Not now</button></div>`;
   } else if (weddingAsk.mode === "declined") {
     html = `<h3>💍 Not this time</h3><p>${esc(weddingAsk.name)} ${weddingAsk.noAnswer ? "did not answer" : 'said "Not now"'}. Ask another friend from the garden!</p>` +
@@ -305,7 +305,7 @@ function buildShopPane(box) {
     (shopTab === "furniture" ? `<p class="me-note">Buy things more than once! At home, ✋ pick one up to paint it.</p>` : "") +
     (now.length ? `<h4>🪙 You can buy these now</h4>` + now.map(tile).join("") : "") +
     (later.length ? `<h4>💰 Save up: click one to ⭐ wish for it</h4>` + later.map(tile).join("") : "") +
-    (shopTab === "wear" ? `<button class="wide" data-pane="me"><span>✏️</span>Wear your own drawing: 🪙 ${S.hang.my_wear_price}<small>Make it in 🧢 Me</small></button>` : "") +
+    (shopTab === "wear" ? `<button class="wide" data-pane="me"><span>✏️</span>Wear my drawing<small>🪙 ${S.hang.my_wear_price} · Make it in 🧢 Me</small></button>` : "") +
     (done.length ? `<h4>✔ Yours already</h4>` + done.map(tile).join("") : "");
   paintPanePictures(box);
 }
@@ -390,7 +390,7 @@ function buildHomePane(box) {
   const held = furnArmed && furnArmed.piece && home.items.find(i => i.id === furnArmed.piece);
   const note = held ? `✋ You picked up the ${armed.name}! Click the floor to put it down, or change it here.`
     : armed ? `👉 Click the floor to put it there: ${armed.name}!`
-    : moving ? "✋ Click one of your things in the picture to pick it up." : "Pick one of 🛋️ Your things below, then click the floor to put it there.";
+    : moving ? "✋ Click one of your things in the picture to pick it up." : "Pick one of 🛋️ Your things below. Then click the floor to put it there.";
   // A thing that's picked up can be painted, flipped and sized. It's free.
   const style = held ? `<h4>🎨 Paint it</h4><div class="paint-row">` + Array.from({length: S.hang.paints}, (_, i) =>
       `<button data-paint="${i}" aria-pressed="${(held.paint || 0) === i}" title="${i ? "Paint it" : "How it came"}"><canvas data-furnpic="${held.key}" data-paint="${i}"></canvas></button>`).join("") + `</div>` +
@@ -399,9 +399,9 @@ function buildHomePane(box) {
     `<button class="wide" data-flip="1"><span>🔁</span>Flip it round</button>` : "";
   const prizes = Object.entries({...furniture, ...walls, ...floors}).filter(([key, item]) => item.prize && !stuff.includes(key));
   box.innerHTML = (held ? "" : homeLevelCard(home) +     // a thing in hand: what to do with it comes first
-    `<p class="me-note">Get points: ⭐ 1 for each thing you put out, ⭐ 2 for a drawing with code, ⭐ 3 for each room you build, ⭐ 1 for each ❤️ from a friend.</p>`) +
+    `<p class="me-note">Get points: ⭐ 1 for each thing you put out, ⭐ 2 for a drawing with code. ⭐ 3 for each room, and ⭐ 1 for each ❤️ from a friend.</p>`) +
     `<p class="me-note"><b>${esc(room.name)}</b> · ${note}</p>` +
-    `<button class="wide" data-moving="1" aria-pressed="${moving || !!held}"><span>✋</span>${moving || held ? "Done" : "Move, paint or resize my things"}</button>` +
+    `<button class="wide" data-moving="1" aria-pressed="${moving || !!held}"><span>✋</span>${moving || held ? "Done" : "Move or paint my things"}</button>` +
     style + (held ? `<button class="wide" data-away="${furnArmed.piece}"><span>📦</span>Put it away</button>` : "") +
     `<h4>🛋️ Your things</h4>` + Object.keys(furniture).filter(have).map(key =>
       `<button data-furn="${key}" aria-pressed="${!!furnArmed && !furnArmed.piece && furnArmed.key === key}"><canvas data-furnpic="${key}"></canvas>${esc(furniture[key].name)}<small>${outOf(key)} of ${copies(key)} out</small></button>`).join("") +
@@ -477,7 +477,7 @@ function buildArtPane(box) {
     : artArmed ? `👉 Now click the ${where} where you want it!`
     : `Pick a drawing, then click the ${where} to put it there. Click one you put out to take it back. (${out} of ${max} out${out >= max ? ": a new one replaces your oldest" : ""})`;
   box.innerHTML = `<p class="me-note">${note}</p>` +
-    `<button class="wide" data-pane="mural"><span>🖼️</span>Class mural<small>Paint a square with everyone, live!</small></button>` +
+    `<button class="wide" data-pane="mural"><span>🖼️</span>Class mural<small>Paint one square with the whole class!</small></button>` +
     pics.map(d =>
     `<button data-art="${esc(d.key)}" aria-pressed="${artArmed === d.key}"><canvas data-artpic="${esc(d.key)}"></canvas>${esc(d.title || "Drawing")}<small>${S.hang.things[d.key] ? "✨ Coded" : ""}</small></button>`).join("") + thingTiles();
   box.querySelectorAll("[data-artpic]").forEach(cv => drawingInto(cv, pics.find(p => p.key === cv.dataset.artpic)));
@@ -518,9 +518,10 @@ function paintMuralBoard() {
 }
 function muralMineWords(m) {
   const today = m.painted_today || 0, mine = m.mine || 0, at = m.reward_at || 10;
-  if (m.reward_done) return `You painted ${today} square${today === 1 ? "" : "s"} today. 🖼️ Treat earned! You have ${mine} up now.`;
+  const squares = n => `square${n === 1 ? "" : "s"}`;
+  if (m.reward_done) return `You painted ${today} ${squares(today)} today. 🖼️ You earned a little treat! You have ${mine} ${squares(mine)} on the mural now.`;
   const left = Math.max(0, at - today);
-  return `You painted ${today} today${left ? ` · ${left} more for a little treat` : ""}. You have ${mine} square${mine === 1 ? "" : "s"} up now.`;
+  return `You painted ${today} ${squares(today)} today. ${left ? `Paint ${left} more for a little treat. ` : ""}You have ${mine} ${squares(mine)} on the mural now.`;
 }
 function mergeMural(full) {
   // A clear/remove arrives as the whole picture for everyone. Keep this screen's
@@ -543,7 +544,7 @@ function muralRefresh() {
   if (mine) mine.textContent = muralMineWords(m);
   if (painters) {
     const list = muralPainters(m);
-    painters.innerHTML = list.length ? "Painted by " + list.map(([name, n]) => `<b>${esc(name)}</b> ${n}`).join(" · ") : "Nobody has painted yet. You can be first!";
+    painters.innerHTML = list.length ? "Painted by " + list.map(([name, n]) => `<b>${esc(name)}</b> ${n} square${n === 1 ? "" : "s"}`).join(" · ") : "Nobody has painted yet. You can be first!";
   }
 }
 function applyMuralCell(i, ch, by) {
@@ -567,10 +568,10 @@ function buildMuralPane(box) {
     m.colours.map((c, i) => `<button data-mural-ink="${i}" style="background:${c}" aria-pressed="${muralInk === i}" title="Colour ${i + 1}"></button>`).join("") +
     `<button class="mural-eraser" data-mural-ink="-1" aria-pressed="${muralInk === -1}" title="Eraser">🧽</button></div>
     <div class="mural-tools">
-      <button data-mural-undo="1"><span>↶</span>Undo my last</button>
-      <button data-mural-who="1" aria-pressed="${muralWhoMode}"><span>🔍</span>${muralWhoMode ? "Painting again" : "Who painted?"}</button>
+      <button data-mural-undo="1"><span>↶</span>Undo last</button>
+      <button data-mural-who="1" aria-pressed="${muralWhoMode}"><span>🔍</span>${muralWhoMode ? "Paint again" : "Who painted?"}</button>
     </div>
-    <p class="me-note">Tap a colour, then a square. One tap = one square.</p>
+    <p class="me-note">Tap a colour, then tap a square. One tap paints one square.</p>
     <p class="me-note" id="muralMine"></p>
     <p class="me-note" id="muralPainters"></p>`;
   muralRefresh();
@@ -600,7 +601,7 @@ function buildMuralPane(box) {
     PalStage.SFX.play("click");
     post("/pixel/room/do", {id: me, what: "mural", action: "paint", cell: p.i, ink: muralInk}).then(out => {
       if (!out) return;
-      if (out.error) { tipFor(out.error === "wait" ? "Slow down a little! 3 squares a second." : out.error, 3500); return; }
+      if (out.error) { tipFor(out.error === "wait" ? "Slow down a little! Wait a moment, then paint again." : out.error, 3500); return; }
       applyMuralCell(out.cell, out.ink, out.by);
       const m2 = muralData();
       if (m2) {
@@ -612,7 +613,7 @@ function buildMuralPane(box) {
       muralRefresh();
       if (out.coins || (out.badges && out.badges.length)) {
         showRewards({coins: out.coins, badges: out.badges});
-        if (out.coins) tipFor(`🖼️ 10 squares painted! +${out.coins} 🪙 for you.`, 5000);
+        if (out.coins) tipFor(`🖼️ You painted 10 squares today! +${out.coins} 🪙 for you.`, 5000);
       }
     });
   });

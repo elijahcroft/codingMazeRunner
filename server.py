@@ -6533,12 +6533,12 @@ FASHION_THEMES = (
     {"key": "party", "icon": "🎉", "words": "Party time"},
     {"key": "sporty", "icon": "⚽", "words": "Sporty"},
     {"key": "drawing", "icon": "🎨", "words": "Your own drawing!"},
-    {"key": "stars", "icon": "⭐", "words": "Star of the sky"},
-    {"key": "rainbow", "icon": "🌈", "words": "Rainbow bright"},
+    {"key": "stars", "icon": "⭐", "words": "Starry sky"},
+    {"key": "rainbow", "icon": "🌈", "words": "Rainbow colours"},
 )
 FASHION_AWARDS = {
     "own": ("🎨", "Made it myself"),
-    "clap": ("👏", "Crowd pleaser"),
+    "clap": ("👏", "Most claps"),
     "sparkly": ("😍", "Most sparkly"),
     "brave": ("🌟", "Brave first walk"),
     "colours": ("🌈", "Best colours"),
@@ -7343,7 +7343,7 @@ def game_action(p, spot, data):
             return {"ok": True, "message": "🎉 Everyone is ready! The runway is starting!"}
         return {"ok": True, "message": "⭐ You're ready! Wait for your friends."}
     elif action == "ready" and game["kind"] == "fashion" and game["phase"] == "runway":
-        return {"error": "The runway is on! Watch your friends."}
+        return {"error": "The runway has started! Watch your friends."}
     elif action == "react" and game["kind"] == "fashion" and game["phase"] == "runway":
         emoji = data.get("emoji")
         if emoji not in FASHION_REACTIONS:
@@ -7352,7 +7352,7 @@ def game_action(p, spot, data):
         if walker is None:
             return {"error": "Wait for the next walker!"}
         if seat == walker:
-            return {"error": "You're on the runway! Strike a pose!"}
+            return {"error": "You're on the runway! Show everyone your look!"}
         at = game.setdefault("react_at", {})
         if now - at.get(seat, 0) < FASHION_REACT_GAP:
             return {"ok": True}
@@ -7547,7 +7547,7 @@ DAY_JOBS = {"five": ("🙌", "High-five 2 friends", 2, "Click a friend's pal."),
             "gem": ("💎", "Find a gem", 1, "Walk near a sparkly 💎 in the world."),
             "fish": ("🎣", "Catch something at the pier", 1, "Click the blue ring at the Beach."),
             "game": ("🎮", "Finish a game with friends", 1, "Start or join one below."),
-            "fashion": ("👗", "Walk the runway in Fashion show", 1, "Start or join 👗 Fashion show with a friend, then tap Ready!"),
+            "fashion": ("👗", "Walk the runway in Fashion show", 1, "Start or join 👗 Fashion show with a friend. Then tap Ready!"),
             "apples": ("🍎", "Grab 5 apples in Apple grab", 5, "Start or join 🍎 Apple grab with a friend. Walk onto apples to grab them."),
             "ball": ("⚽", "Score a goal in Pal ball", 1, "Start or join ⚽ Pal ball with a friend. Kick the ball into your team's goal."),
             "code": ("💻", "Solve a Code race job", 1, "Start a 💻 Code race below with a friend."),
@@ -7556,7 +7556,7 @@ DAY_JOBS = {"five": ("🙌", "High-five 2 friends", 2, "Click a friend's pal."),
             "star": ("⭐", "Earn a star in a coding mission", 1, ""),
             "party": ("🪩", "Dance at the same time as 2 friends", 1, "Ask 2 friends to press 💃 Dance with you."),
             "chest": ("🧰", "Code a chest open", 1, "Walk to a 🧰 chest in the world and code it open."),
-            "mural": ("🖼️", "Paint 10 class mural squares", 10, "Open 🖼️ Art, then the class mural. One tap = one square.")}
+            "mural": ("🖼️", "Paint 10 class mural squares", 10, "Open 🖼️ Art, then tap 🖼️ Class mural. Tap a square to paint it.")}
 CODING_JOBS = ("star", "code", "chest")      # every day has one of these, so the Hang out leads back to coding
 DAY_JOBS_EACH = 3
 DAY_JOB_COINS = 5

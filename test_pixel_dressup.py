@@ -65,7 +65,7 @@ class TheWearCommand(unittest.TestCase):
 
     def test_a_made_up_name_gets_a_kind_error_with_real_ones(self):
         out = pixel.perform('wear("crwn")')
-        self.assertEqual(out["error"], 'Line 1: I don\'t have a "crwn". Try "crown", "tiara" or "sunhat".')
+        self.assertEqual(out["error"], 'Line 1: I don\'t know a "crwn". Try "crown", "tiara" or "sunhat".')
 
     def test_it_is_free_and_does_not_change_the_hang_out_look(self):
         p = {"id": "wear-kid", "name": "Mia"}

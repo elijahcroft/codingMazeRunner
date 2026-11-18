@@ -387,7 +387,7 @@ class Show:
             picks = list(dict.fromkeys(close + [k for k in ("crown", "tiara", "sunhat", "party", "shades", "goldspark")
                                                 if k in GIFTS]))[:3]
             shown = word_list(picks[:-1]) + " or " + f'"{picks[-1]}"' if len(picks) > 1 else word_list(picks)
-            raise BotError(f'I don\'t have a "{word}". Try {shown}.')
+            raise BotError(f'I don\'t know a "{word}". Try {shown}.')
         self.wear[gift["slot"]] = key
         self.step("wear", key=key, slot=gift["slot"])
 
@@ -1366,10 +1366,10 @@ LEVELS = [
     # Hang out's look, so a fashion show is pretend play with code.
     {"key": "d1", "chapter": 4, "name": "Fancy hat", "adds": ["wear"], "python": [],
      "pip": 'Time to dress up! wear("crown") puts a crown on your pal for the show. '
-            "It is just pretend, so you do not need to own it.",
+            "It is pretend, so you do not need to own it.",
      "job": "Wear something fancy, spin, then say how it looks.",
      "coach": [
-               ('wear("crown")', 'wear() puts something on your pal. The name of the thing goes inside the " marks.'),
+               ('wear("crown")', 'wear() puts something on your pal. The name goes in the " marks.'),
                ('spin()', 'Your pal spins, so everyone sees the new hat.'),
                ('say("Fancy!")', 'Last, your pal says something about its new look.'),
      ],
@@ -1381,8 +1381,8 @@ LEVELS = [
      "reference": 'wear("crown")\nspin()\nsay("Fancy!")'},
 
     {"key": "d2", "chapter": 4, "name": "Quick change", "adds": [], "python": [],
-     "pip": "A quick change is part of a fashion show! Put on one thing, do a move, then change.",
-     "job": "Show three outfits in a row, with a move between each one.",
+     "pip": "A quick change means changing outfits fast! Put on one thing, do a move, then change.",
+     "job": "Show three outfits in a row. Do a move between each one.",
      "coach": [
                ('wear("party")', 'Outfit one: a party hat.'),
                ('spin()', 'A spin shows it off.'),
@@ -1392,20 +1392,20 @@ LEVELS = [
                ('dance()', 'A dance to finish the show.'),
      ],
      "goals": [("Your pal tries three things on", lambda r: len(_outfits(r)) >= 3, "Add three  wear(...)  lines with different things."),
-               ("It moves between the outfits", lambda r: _moves_between_wears(r) >= 2, "After each  wear(...)  , put a move like  spin()  before the next outfit."),
+               ("It moves between the outfits", lambda r: _moves_between_wears(r) >= 2, "Add a move like  spin()  before the next outfit."),
                ("It ends with a hat on", lambda r: bool(r.worn.get("hat")), 'Put a hat on last, like  wear("sunhat")  .')],
-     "hints": ["Put a move after each outfit, before the next  wear(...)  .",
+     "hints": ["Put a move before each new outfit.",
                'wear("party")\nspin()\nwear("shades")\nwave()\nwear("sunhat")\ndance()'],
      "reference": 'wear("party")\nspin()\nwear("shades")\nwave()\nwear("sunhat")\ndance()'},
 
     {"key": "d3", "chapter": 4, "name": "Twirl time", "adds": [], "python": ["for"],
-     "pip": "Twirl time! A loop can spin your pal round and round. Finish with a happy pose.",
-     "job": "Wear something, spin in a loop, then strike a happy pose.",
+     "pip": "Twirl time! A loop can spin your pal more than once. Finish with a happy pose.",
+     "job": "Wear something, spin in a loop, then look happy.",
      "coach": [
                ('wear("tiara")', 'A tiara for the twirl!'),
                ('for i in range(3):', 'This loop spins your pal 3 times.'),
                ('    spin()', 'This line is pushed in, so it twirls once each time round.'),
-               ('feel("happy")', 'This line is NOT pushed in, so it is the last pose. I moved it back for you.'),
+               ('feel("happy")', 'This line is NOT pushed in, so it comes last. I put it back for you.'),
      ],
      "goals": [("Your pal wears something for the twirl", lambda r: len(_outfits(r)) >= 1, 'Try  wear("tiara")  first.'),
                ("It spins 3 times or more in a loop", lambda r: r.fors >= 1 and r.n("spin") >= 3, "Put  spin()  inside  for i in range(3):  ."),
@@ -2060,9 +2060,9 @@ REMIXES = {
            'Add a  feel("...")  line anywhere in your move. The faces are happy, sad, surprised, angry, sleepy, silly, cool and calm.'),
     "d1": ("Add a second thing to wear, and spin again.", lambda r: len(_outfits(r)) >= 2 and r.n("spin") >= 2,
            'Add another  wear("...")  line, like  wear("tiara")  , and a  spin()  after it.'),
-    "d2": ("Add a fourth outfit, with a move after it.", lambda r: len(_outfits(r)) >= 4 and _moves_between_wears(r) >= 3
+    "d2": ("Add a fourth outfit at the end, then a move.", lambda r: len(_outfits(r)) >= 4 and _moves_between_wears(r) >= 3
            and bool(r.worn.get("hat")),
-           "Add one more  wear(...)  line and a move after it, before the dance."),
+           "Add a new  wear(...)  line after the dance, then add a move."),
     "d3": ("Twirl 5 times instead of 3.", lambda r: r.fors >= 1 and r.n("spin") >= 5,
            "Change only one thing: the number in  range(3)"),
     "t1": ("Grow two times, then shrink two times.", lambda r: r.n("grow") >= 2 and r.n("shrink") >= 2,
@@ -2220,7 +2220,7 @@ FIXES = {
            'Look at line 1. The word inside the brackets is not the crown\'s name.'),
     "d2": ("Pip's quick change has no move before the sun hat!", 'wear("party")\nspin()\nwear("shades")\nwear("crown")\nwear("sunhat")\ndance()',
            lambda r: len(_outfits(r)) >= 3 and _moves_between_wears(r) >= 2 and bool(r.worn.get("hat")),
-           "Look at line 4. It should be a move to show off the shades, not another hat."),
+           "Look at line 4. It should be a move, not another hat."),
     "d3": ("Pip's twirl only goes round once!", 'wear("tiara")\nfor i in range(1):\n    spin()\nfeel("happy")',
            lambda r: len(_outfits(r)) >= 1 and r.fors >= 1 and r.n("spin") >= 3
            and bool(r.log) and r.log[-1][0] == "feel" and r.log[-1][1] == ("happy",),

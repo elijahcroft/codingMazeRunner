@@ -60,7 +60,7 @@ function fashionPane(g, you) {
   if (g.phase === "runway") {
     const walker = g.walker, counts = (g.reactions || {})[walker] || {};
     if (!walker) return body + `<p class="me-note">Next walker is coming...</p>`;
-    body += `<p class="me-note">${walker === you ? "🌟 You're on the runway! Strike a pose!" : `👀 ${esc(gamePerson(walker))} is walking the runway!`}</p>`;
+    body += `<p class="me-note">${walker === you ? "🌟 You're on the runway! Show everyone your look!" : `👀 ${esc(gamePerson(walker))} is walking the runway!`}</p>`;
     if (walker !== you) {
       body += `<div class="fashion-reacts">` + [["👏", "Clap"], ["😍", "Love it"], ["✨", "Sparkle"]].map(([emoji, word]) =>
         `<button data-react="${emoji}" aria-label="${word}"><span>${emoji}</span>${word}</button>`).join("") + `</div>`;

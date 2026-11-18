@@ -416,7 +416,7 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   Each kind of room looks different and comes with its own walls and floor. In a room a
   student picks a thing and clicks the floor to put it there (up to 12 things a room),
   changes that room's walls and floor, and hangs up to 5 drawings in each room with
-  🖼️ Art. **✋ Move, paint or resize my things** picks a thing up to put it somewhere else
+  🖼️ Art. **✋ Move or paint my things** picks a thing up to put it somewhere else
   or away, and while it's picked up it can be 🎨 painted one of 8 colours, made small,
   normal or big, and 🔁 flipped round, for free. Otherwise clicking a thing plays with it
   (balloons pop, the piano plays, the bed says Zzz, the puppy says Woof, the bath blows

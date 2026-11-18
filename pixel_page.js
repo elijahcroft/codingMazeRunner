@@ -33,7 +33,7 @@ const WORDS = {
   scene: "Changes the place: stage, wedding, park, beach, night, snowy, candy, space or castle.",
   sound: "Plays a sound: ding, boing, pop, tada, meow, drum, whoosh or yay.",
   note: "Sings a note: C, D, E, F, G, A, B, the high C2, or rest. A second number is how many beats.",
-  wear: "Puts something on your pal for this show, like a crown. wear(\"none\") takes it off. It is just pretend.",
+  wear: "Puts something on your pal for this show, like a crown. wear(\"none\") takes it off. It is pretend.",
   rain: "Rain falls.", snow: "Snow falls.",
   friend: "Brings a friend on stage: cat, bunny, kid or bean.", friend_say: "Your friend says something.",
   friend_jump: "Your friend jumps.", bye: "Your friend goes off stage.",
