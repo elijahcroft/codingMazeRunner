@@ -5225,6 +5225,8 @@ def planet_class():
                      "stars_now": shown_stars(here, entry["stars"].get(here, [False] * 3)),
                      "at": frontier,   # sites behind them, unlocked ones included
                      "site_name": s["name"], "zone": zone["name"],
+                     # The zone of the level they're on now (a practice park in easy mode).
+                     "here_zone": (planet.find_site(here) or (0, zone))[1]["name"],
                      "solved": len(entry["solved"]),
                      "stars": star_count(entry),
                      "badges": len(entry["badges"]),

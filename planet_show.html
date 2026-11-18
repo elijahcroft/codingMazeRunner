@@ -747,18 +747,29 @@ setInterval(showClock, 1000);
 // ---- The expedition map ------------------------------------------------------------------
 // Every stop on the journey, with the rovers that have got that far. Rovers,
 // not names or counts of stars: it shows the crew spread out, not who's last.
-const ZONE_ICONS = {landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐"};
+const ZONE_ICONS = {practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", lookout: "👀", forks: "🔀", tricks: "🎓", numbers: "🔢", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐"};
 let lastRoad = "";
 function renderTrek(data) {
   const here = data.students.filter(s => s.here), day = data.day;
   $("trekNote").textContent = day.wins ? `${plural(day.wins, "mission")} done today` : "Where the crew has got to";
-  const sig = JSON.stringify([innerWidth, innerHeight, data.zones, here.map(s => [s.zone, s.look])]);
+  // A student in a practice park camps there, not at the main route's first zone.
+  const campOf = s => s.practice ? s.here_zone : s.zone;
+  const sig = JSON.stringify([innerWidth, innerHeight, data.zones, here.map(s => [campOf(s), s.look])]);
   if (sig === lastRoad) return;
   lastRoad = sig;
-  const road = $("road"), perRow = 6, tent = road.clientHeight > 560 ? 46 : road.clientHeight > 380 ? 34 : 28;
+  // The practice parks come first while anyone is in one, then the main route up to the
+  // furthest zone anyone has reached, so the road stays three rows long.
+  let names = data.zones;
+  if (here.some(s => s.practice)) {
+    const used = new Set(here.map(campOf)), last = Math.max(0, ...data.zones.map((n, i) => used.has(n) ? i : 0));
+    names = data.practice_zones.concat(data.zones.slice(0, Math.max(last + 1, 18 - data.practice_zones.length)));
+    if (names.length > 18) names = names.filter((n, i) => i < 18 - 1 || used.has(n));
+  }
+  const road = $("road"), perRow = 6, rows = Math.ceil(names.length / perRow);
+  const tent = road.clientHeight / rows > 186 ? 46 : road.clientHeight / rows > 126 ? 34 : 28;
   road.style.setProperty("--tent", tent + "px");
-  const fit = Math.max(1, Math.floor((road.clientHeight / 3 - 66) / (tent + 2))) * Math.floor((road.clientWidth / perRow - 4) / (tent + 2));
-  const stops = data.zones.map(name => ({name, key: data.zone_keys[name], crew: here.filter(s => s.zone === name)}));
+  const fit = Math.max(1, Math.floor((road.clientHeight / rows - 66) / (tent + 2))) * Math.floor((road.clientWidth / perRow - 4) / (tent + 2));
+  const stops = names.map(name => ({name, key: data.zone_keys[name], crew: here.filter(s => campOf(s) === name)}));
   // Back and forth across the screen, like a road.
   road.innerHTML = '<svg aria-hidden="true"><path id="trail"/></svg>' + stops.map((z, i) => {
     const row = Math.floor(i / perRow), col = row % 2 ? perRow - 1 - i % perRow : i % perRow;
