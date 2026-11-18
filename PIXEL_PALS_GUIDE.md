@@ -4,6 +4,22 @@ Students draw a character, code it with real Python, then hang out together. It 
 made for students who find "get the robot to the exit" pointless: the goal is to make
 your own character do something fun, and show the class.
 
+## New this week (Nov 18)
+
+Each student sees a one-time **✨ New in the Hang out!** card with Show me buttons for the first four.
+
+| What | Where students find it | Your part |
+|---|---|---|
+| 👗 Fashion show | 🎯 Games → Fashion show | Nothing; ⏹ End this game works as for other games |
+| 💒 Hold a wedding | Go to the Wedding garden → 🎉 Party → Hold a wedding | Nothing; a 📸 Class photo waits until it's over |
+| 🖼️ Class mural | 🖼️ Art → Class mural (the board on the Park wall) | Teacher page mural card: 🧽 Clear, remove one student's squares, 💾 Download PNG |
+| 🏠 Open house | Their own home → 🏠 Home → 🎉 Open house (3 things out first) | Nothing; Close the Hang out ends it |
+| 👗 Dress Up chapter | 💻 Code, right after My Move: `wear("crown")` | Shows as its own tile in 📊 Where the class is |
+| 🎂 Birthday party | (teacher only) | Teacher page → 🎂 Birthday! for a student who is in the Hang out |
+| 📸 Wedding / fashion photos | (projector) | 💾 Save the photo appears on the projector for 2 minutes |
+| 🏠 More rooms and furniture | 🛍️ Shop tabs, ⭐ wish; at home, ✋ Move or paint my things | Nothing |
+| ✚ Mirror 4 ways, ✨ sparkle pen, new stamps | 🎨 Draw | Nothing |
+
 ## The pages
 
 | Page | Who it's for |
