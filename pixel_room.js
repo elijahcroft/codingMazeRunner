@@ -1112,7 +1112,11 @@ function roomState(data) {
     $("hangBanner").hidden = true; $("hangBanner").innerHTML = "";
   }
   restoreWeddingAsk(data);
-  const home = JSON.stringify(data.home), people = JSON.stringify(data.people);
+  // Only who is here (not where they are walking) decides whether a panel's list of
+  // friends changed. The old JSON of every pal was different on every poll while the
+  // class walked about, so the home/shop/art panel was rebuilt from scratch each time.
+  const home = JSON.stringify(data.home);
+  const people = (data.people || []).map(m => `${m.seat}:${m.name}`).join("|");
   const house = JSON.stringify(data.openhouse ? {
     seat: data.openhouse.seat, name: data.openhouse.name, count: data.openhouse.count,
     mine: data.openhouse.mine, until: data.openhouse.until} : null);

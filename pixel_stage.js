@@ -967,12 +967,21 @@ const PalStage = (() => {
         m.tag = document.createElement("div");
         m.tag.className = "tag" + (m.me ? " me" : "");
         m.tag.textContent = m.name;
+        m.tagText = m.name;
         host.appendChild(m.tag);
       }
-      const team = m.team === "blue" ? "🔵 " : m.team === "orange" ? "🟠 " : "";
-      m.tag.textContent = m.tucked && m.me ? "You · Hidden" : m.hid && m.me ? "You · Name hidden" : team + m.name + (m.role ? " · " + m.role : "");
       const x = m.x - state.camX;
-      m.tag.style.display = x < -30 || x > W + 30 || (m.hid && !m.me) ? "none" : "";
+      // A tag off the picture needs no work at all; it is picked up again when it
+      // slides back in. Writing the same words every frame makes the page lay the
+      // whole room out again 60 times a second, so only write when they change.
+      if (x < -30 || x > W + 30 || (m.hid && !m.me)) {
+        if (m.tag.style.display !== "none") m.tag.style.display = "none";
+        return;
+      }
+      if (m.tag.style.display === "none") m.tag.style.display = "";
+      const team = m.team === "blue" ? "🔵 " : m.team === "orange" ? "🟠 " : "";
+      const words = m.tucked && m.me ? "You · Hidden" : m.hid && m.me ? "You · Name hidden" : team + m.name + (m.role ? " · " + m.role : "");
+      if (m.tagText !== words) { m.tag.textContent = words; m.tagText = words; }
       m.tag.style.left = x / W * 100 + "%";
       m.tag.style.top = (roomBase(m) + 2) / H * 100 + "%";
     }

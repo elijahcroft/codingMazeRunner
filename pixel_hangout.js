@@ -2324,6 +2324,24 @@ const PalHang = (() => {
     const sizer = new ResizeObserver(([e]) => { boxW = e.contentRect.width; boxH = e.contentRect.height; });
     sizer.observe(canvas);
     const homeArt = {};
+    // 🖼️ The class mural changes a square at a time, but it is a big board: paint it
+    // once into its own picture and put that down each frame. The picture is only
+    // made again when the squares or colours really change.
+    const muralArt = {cv: null, grid: null, colours: null, pad: 18};
+    function muralSprite(mural) {
+      const grid = mural && mural.grid, colours = (mural && mural.colours) || [];
+      if (muralArt.cv && muralArt.grid === grid && muralArt.colours === colours) return muralArt;
+      const pad = muralArt.pad;
+      const cv = document.createElement("canvas");
+      cv.width = Math.ceil((MURAL.w + pad * 2) * FINE);
+      cv.height = Math.ceil((MURAL.h + pad * 2) * FINE);
+      const c = cv.getContext("2d");
+      c.scale(FINE, FINE);
+      c.translate(-(MURAL.x - pad), -(MURAL.y - pad));
+      muralWall(c, mural);
+      muralArt.cv = cv; muralArt.grid = grid; muralArt.colours = colours;
+      return muralArt;
+    }
     function artFor(scene, home, n) {
       if (scene === "home") {     // each room is painted again only when something in it changes
         home = home || {};
@@ -2385,7 +2403,11 @@ const PalHang = (() => {
         });
         for (const c of state.chests || []) if (c.place === places[i]) chest(ink, c.x, seatFeet(c.deep), c.open, PalStage.calm ? 0 : Math.abs(Math.sin(now / 600 + c.x)));
         if (places[i] === "village") villageLive(ink, state, now);
-        if (!inside && places[i] === "park") muralWall(ink, state.mural);
+        if (!inside && places[i] === "park") {
+          const art = muralSprite(state.mural);
+          ink.drawImage(art.cv, MURAL.x - art.pad, MURAL.y - art.pad,
+                        art.cv.width / FINE, art.cv.height / FINE);
+        }
         (state.presents || []).forEach((p, n) => {
           if (p.place === places[i] && !p.found) present(ink, p.x, seatFeet(p.deep) + (PalStage.calm ? 0 : Math.sin(now / 400 + n) * .8), n, PalStage.calm ? 0 : Math.abs(Math.sin(now / 650 + n * 3)));
         });
