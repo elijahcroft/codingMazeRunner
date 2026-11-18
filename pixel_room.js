@@ -33,7 +33,7 @@ const PLACE_NAMES = {park: ["🌳", "Park"], wedding: ["💒", "Wedding"], beach
                      snowy: ["⛄", "Snowy hill"], candy: ["🍭", "Candy land"], space: ["🚀", "Space"], sea: ["🌊", "Under the sea"],
                      village: ["❄️", "Snow Village"]};
 const SLOT_NAMES = {hat: "Hats", face: "Faces", sparkle: "Sparkles"};
-const ROOM_TIP = "Walk to the edge to explore! Gold ring: sit. Pink ring: play. Blue ring: fish. Find 💎 gems and 🧰 chests!";
+const ROOM_TIP = "👆 Click the ground to walk. Stand on a ring to sit, play or fish. Find 💎 gems and 🧰 chests!";
 const HOME_TIP = "Click the floor to walk. Walk through a doorway to the next room! Click a thing to play with it. The brown door goes outside.";
 // While you're in a round, the tip under the world says what to do in that game.
 function gameTip(g) {

@@ -223,7 +223,7 @@ function paintGameClock() {
   if (!g) {
     $("gameStatus").classList.remove("invite");
     title.textContent = "Play with friends";
-    detail.textContent = jobsWord() + "💻 Code race, ⚽ pal ball, 🍎 apple grab, 👗 fashion show and 5 more games →";
+    detail.textContent = jobsWord() + "👉 Tap here to pick a game →";
     return;
   }
   const seconds = Math.max(0, Math.ceil(g.until - gameNow()));

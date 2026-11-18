@@ -156,7 +156,7 @@ function paintSteps(name) {
   delete go.dataset.mission;
   if (next) { go.textContent = next[0]; if (next[1]) go.dataset.view = next[1]; else go.dataset.mission = next[2]; }
   $("hangNote").hidden = name !== "stage" || !S.hang.needs;
-  $("hangNote").textContent = `🔒 ${missionsWord(S.hang.needs)} to the Hang out`;
+  $("hangNote").textContent = `🔒 Hang out in ${S.hang.needs} mission${S.hang.needs === 1 ? "" : "s"}`;
 }
 function flashToast(words) {
   $("toast").textContent = words;
