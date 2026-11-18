@@ -9803,6 +9803,8 @@ def pixel_teacher(data):
     if action == "photo":              # 📸 everyone outside lines up in the Park, in rows, for a picture
         if not pixel_room["open"]:
             return {"error": "Open the Hang out first."}
+        if pixel_room.get("wedding"):
+            return {"error": "A wedding is on right now. Take the photo after it finishes."}
         if pixel_room.get("birthday"):
             return {"error": "A birthday party is on right now. Take the photo after the song."}
         if pixel_room["game"] and pixel_room["game"]["phase"] != "results":

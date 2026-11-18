@@ -89,6 +89,7 @@ def setup_state(base, tag, report):
     ids = {}
     for name in names:
         ids[name] = post(base, "/join", {"name": name})["id"]
+        post(base, "/pixel/news", {"id": ids[name]})     # the one-time ✨ New card is for real kids; it would cover the world
     post(base, "/pixel/teacher", {"key": server.ADMIN_KEY, "action": "room", "on": False})
     post(base, "/pixel/teacher", {"key": server.ADMIN_KEY, "action": "open", "level": pixel.LEVEL_ORDER[-1]})
     post(base, "/pixel/teacher", {"key": server.ADMIN_KEY, "action": "end_game"})

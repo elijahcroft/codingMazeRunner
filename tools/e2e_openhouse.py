@@ -213,6 +213,7 @@ def setup():
     ids = {}
     for name in names:
         ids[name] = post("/join", {"name": name})["id"]
+        post("/pixel/news", {"id": ids[name]})     # the one-time ✨ New card is for real kids; it would cover the world
         post("/pixel/save", {"id": ids[name], "drawing": PAL})
     post("/pixel/teacher", {"key": server.ADMIN_KEY, "action": "open", "level": pixel.LEVEL_ORDER[-1]})
     post("/pixel/teacher", {"key": server.ADMIN_KEY, "action": "placed_clear"})

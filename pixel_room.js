@@ -147,6 +147,23 @@ async function cancelWedding() {
   clearWeddingCard();
   tipFor("No wedding this time.", 3000);
 }
+function restoreWeddingAsk(data) {
+  // A reload throws away the little card, but the server still has the moment.
+  // Put the one-tap answer (or the host's waiting/pick card) back.
+  if (weddingAsk || !data.wedding) return;
+  const w = data.wedding, you = data.you;
+  if (w.phase === "invite" && w.partner === you) {
+    weddingAsk = {mode: "invite", from: w.host_name};
+    paintWeddingCard();
+  } else if (w.phase === "invite" && w.host === you) {
+    weddingAsk = {mode: "waiting", name: w.partner_name};
+    paintWeddingCard();
+  } else if (w.phase === "pick" && w.host === you) {
+    const friends = (data.people || []).filter(m => m.seat !== you && !m.loc && m.where === "wedding")
+      .map(m => ({seat: m.seat, name: m.name}));
+    if (friends.length) { weddingAsk = {mode: "pick", candidates: friends}; paintWeddingCard(); }
+  }
+}
 function weddingEvent(e, you) {
   const mine = myMember(), places = roomStage && roomStage.state && roomStage.state.places;
   const atGarden = !!(mine && !atHome() && places && places[Math.floor(mine.x / PalStage.W)] === "wedding");
@@ -960,9 +977,11 @@ function roomEvent(e, you) {
     banner(`🎉 CLASS PARTY! 🎉${e.reward ? `<small>New for everyone: ${esc(e.reward.name)}</small>` : ""}`, 6000, true);
     if (e.reward && e.reward.kind === "gift" && !S.hang.gifts.includes(e.reward.key)) S.hang.gifts.push(e.reward.key);
     if (roomPane === "me") buildRoomButtons();
-  } else if (e.kind === "photo") {             // the teacher's class photo: everyone lined up in the Park
-    banner(`📸 Class photo! Say cheese!<small>Look at the big screen</small>`, 5000, true, true);
-    PalStage.SFX.play("ding");
+  } else if (e.kind === "photo") {             // a class photo, or a wedding/fashion keepsake for the projector
+    if (!e.style) {
+      banner(`📸 Class photo! Say cheese!<small>Look at the big screen</small>`, 5000, true, true);
+      PalStage.SFX.play("ding");
+    }
   } else if (e.kind === "danceparty") {        // 3 pals danced at once
     roomStage.roomApply({kind: "fx", name: "confetti", x: e.x}, false);
     banner(`🪩 Dance party! 🪩<small>${e.seats.length} pals dancing together · +1 for the class party</small>`, 4000, true);
@@ -1068,7 +1087,12 @@ function roomState(data) {
     birthdayBannerUntil = Math.max(birthdayBannerUntil, performance.now() + 6000);
     banner(`🎂 Happy birthday, ${esc(birthday.name || "a friend")}!<small>Look at the Park — there is cake!</small>`, 7000, true, true);
   }
-  if (!open) { clearWeddingCard(); birthdayPartySeen = 0; birthdayBannerUntil = 0; }
+  if (!open) {
+    clearWeddingCard(); birthdayPartySeen = 0; birthdayBannerUntil = 0;
+    clearTimeout(bannerTimer);
+    $("hangBanner").hidden = true; $("hangBanner").innerHTML = "";
+  }
+  restoreWeddingAsk(data);
   const home = JSON.stringify(data.home), people = JSON.stringify(data.people);
   const house = JSON.stringify(data.openhouse ? {
     seat: data.openhouse.seat, name: data.openhouse.name, count: data.openhouse.count,
@@ -1588,7 +1612,14 @@ $("roomType").addEventListener("submit", e => {
   tap("say", {text});
 });
 addEventListener("pagehide", () => {
-  if (stopRoom) navigator.sendBeacon("/pixel/room/do", new Blob([JSON.stringify({id: me, what: "leave"})], {type: "application/json"}));
+  if (!stopRoom) return;
+  // A reload looks like a closed tab here. During a class moment, let the server's
+  // 14-second quiet timeout decide: reloading must not cancel a wedding, a birthday
+  // or an open house, and must not drop a player out of a game.
+  const busy = roomInfo && (roomInfo.wedding || roomInfo.birthday || roomInfo.openhouse ||
+    roomInfo.house_invite || (roomInfo.game && roomInfo.game.phase !== "results"));
+  if (busy) return;
+  navigator.sendBeacon("/pixel/room/do", new Blob([JSON.stringify({id: me, what: "leave"})], {type: "application/json"}));
 });
 
 // ---- Things you drew, with code -------------------------------------------------------------
