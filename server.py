@@ -4909,7 +4909,8 @@ def team_keep_up():
 
 def team_row(q, spot):
     entry = planet_entry(q)
-    return {"seat": spot["seat"], "tag": q["name"][:10], "look": entry["look"]}
+    name = q["name"]   # a cut name says it was cut
+    return {"seat": spot["seat"], "tag": name if len(name) <= 10 else name[:9] + "…", "look": entry["look"]}
 
 
 def team_view(p, query):
