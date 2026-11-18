@@ -469,6 +469,7 @@ function idleFor(s) { const t = since(s.active); return s.active && t >= IDLE &&
 function typing(s) { return since(s.typed) < 120; }
 let helpAfter = 8;
 // One word for how a student is doing, and how loudly to say it.
+const FARM_STUCK_DAYS = 6;   // farm days on one job before a student is worth a visit
 function statusOf(s) {
   const away = since(Math.max(s.active || 0, s.typed || 0)) > LESSON;
   if (since(s.active) < 25) return {cls: "ran", text: "🚀 just ran", rank: 5};
@@ -594,8 +595,11 @@ function renderStats(data) {
     + tile("amber", "💤", idle, "no run for 3+ min")
     + (unstarted ? tile("amber", "⏳", unstarted, "haven't pressed Transmit") : "");
   const needs = S.filter(x => x.st.help || (x.st.cls === "new" && !x.st.away)).sort((a, b) => a.st.rank - b.st.rank || b.s.misses - a.s.misses);
-  $("help").hidden = !needs.length;
-  $("help").innerHTML = `<b>🙋 Worth a visit:</b>` + needs.slice(0, 10).map(({s, st}) => `<button class="who${st.very ? " very" : ""}" data-id="${esc(s.id)}">${esc(s.name)}<small>${esc(siteTag(s.now.site))} ${esc(s.now.site_name)} · ${esc(st.text.replace(/^\S+ /, ""))}</small></button>`).join("");
+  // Farming this lesson and stuck on one farm job: the job card has the code, but they may not read it.
+  const farmNeeds = (data.farms || []).filter(f => f.recent && !f.jobs_done && f.job_days >= FARM_STUCK_DAYS && !needs.some(x => x.s.id === f.id));
+  $("help").hidden = !needs.length && !farmNeeds.length;
+  $("help").innerHTML = `<b>🙋 Worth a visit:</b>` + needs.slice(0, 10).map(({s, st}) => `<button class="who${st.very ? " very" : ""}" data-id="${esc(s.id)}">${esc(s.name)}<small>${esc(siteTag(s.now.site))} ${esc(s.now.site_name)} · ${esc(st.text.replace(/^\S+ /, ""))}</small></button>`).join("")
+    + farmNeeds.slice(0, 5).map(f => `<button class="who" data-id="${esc(f.id)}">${esc(f.name)}<small>🌱 Farm job ${f.job} · ${f.job_days} days on it</small></button>`).join("");
 }
 $("help").addEventListener("click", e => {
   const b = e.target.closest(".who");
@@ -637,7 +641,6 @@ async function refresh() {
   $("address").textContent = (data.address || "").replace(/^http:\/\//, "");
   $("spotOff").hidden = !data.spotlight;
   $("raceBoard").textContent = data.race_on_board ? "🏁 Close the race" : "🏁 Race"; $("blanks").checked = data.blanks; $("easy").checked = data.easy; $("coach").checked = data.coach; $("together").checked = data.together; $("sound").checked = data.sound; $("warmup").checked = data.warmup; $("maker").checked = data.maker; $("lounge").checked = data.lounge; $("farm").checked = data.farm;
-  const FARM_STUCK_DAYS = 6;
   $("farmList").innerHTML = (data.farms || []).map(f => `<span>🌱 <b>${esc(f.name)}</b>: day ${f.days}, field ${esc(f.field)}, best day 🪙 ${f.best}, ${f.jobs_done ? "every job done" : `job ${f.job} of ${f.jobs}`}${f.job_days >= FARM_STUCK_DAYS ? ` <b title="Days run without finishing this job. Worth a visit: the job card shows the code to type." style="color:var(--gold, #ffd36b)">🙋 ${f.job_days} days on it</b>` : ""}, ${f.lines} line${f.lines === 1 ? "" : "s"}${f.ideas.length ? `, uses ${esc(f.ideas.join(", "))}` : ""}</span>`).join("");
    $("loungeWatch").hidden = !data.lounge; $("team").checked = data.team; $("teamTools").hidden = !data.team;
   $("teamStatus").textContent = `${plural(data.team_rovers, "rover")} on the map, ${data.team_vault} in the vault`;

@@ -4602,7 +4602,9 @@ def farm_class():
         farm = (q.get("planet") or {}).get("farm")
         if farm and farm["day"]:
             w, h = planet_farm.FIELDS[farm["field_level"]][:2]
-            rows.append({"name": q["name"], "days": farm["day"], "field": f"{w}×{h}",
+            rows.append({"id": q["id"], "name": q["name"], "days": farm["day"], "field": f"{w}×{h}",
+                         # Farming in this lesson, for Mission Control's "Worth a visit".
+                         "recent": time.time() - (farm.get("last") or 0) < 20 * 60,
                          "best": farm["best"], "coins": farm["coins"],
                          # Counted from 1, as the student's job card says it.
                          "job": min(farm["job"] + 1, len(planet_farm.JOBS)), "jobs": len(planet_farm.JOBS),
