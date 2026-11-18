@@ -1514,6 +1514,9 @@ def load_state():
         # replaces it with the student's real character count.
         chars = p.get("chars", {})
         p["chars"] = {k: chars.get(k, LEGACY_CHARS) for k in p["best"]}
+        # Old saves can hold a name that was only zero-width marks: it showed
+        # blank on the projector and the teacher's cards.
+        p["name"] = clean_player_name(p.get("name", ""))[:20] or f"Player {pid[1:]}"
         players[pid] = p
     next_player_num[0] = data.get("next", len(players))
     # The Light Cycles round number and last replay arrived after some saves.
@@ -1528,6 +1531,21 @@ def load_state():
         planet.add_class_level(level["key"], level["name"], level["by_name"], level["rows"])
 
 
+def clean_player_name(name):
+    """A name the class can actually see: zero-width and direction marks out,
+    spaces tidied. An emoji name keeps its emoji (joiners included), and comes
+    out unchanged."""
+    invisible = dict.fromkeys(map(ord, "\u00ad\u180e\u200b\u2060\ufeff"
+                                        "\u202a\u202b\u202c\u202d\u202e"
+                                        "\u2061\u2062\u2063\u2064"))
+    text = " ".join(str(name).translate(invisible).split())
+    # Only joiners or combining marks left: that still looks blank on a card.
+    if not any(unicodedata.category(ch) not in ("Cc", "Cf", "Mn", "Me", "Zs", "Zl", "Zp")
+               for ch in text):
+        return ""
+    return text
+
+
 def new_player(name):
     pid = f"p{next_player_num[0]}"
     next_player_num[0] += 1
@@ -1535,7 +1553,7 @@ def new_player(name):
     sr, sc = find_start(WORLDS[DEFAULT_WORLD]["mazes"][0])
     players[pid] = {
         "id": pid,
-        "name": name[:20] or f"Player{pid}",
+        "name": name[:20] or f"Player {pid[1:]}",
         "color": color,
         "world": DEFAULT_WORLD,
         "maze": 0,
@@ -5115,10 +5133,15 @@ def planet_today():
         today = q.get("planet", {}).get("events", {}).get(day)
         if not today:
             continue
+        now = (q["planet"].get("now") or {}).get("site")
         rows.append({"name": q["name"], "minutes": today.get("secs", 0) // 60, "runs": today.get("runs", 0),
                      "wins": today.get("wins", 0), "new_levels": today.get("new_levels", 0),
                      "stars": today.get("stars", 0),
-                     "on": planet.SITE_ORDER[planet_frontier(q)]})
+                     # A younger class works in the practice parks: name the
+                     # park site, not the main route's frontier. Otherwise the
+                     # frontier is the next level they're on.
+                     "on": now if now in planet.PRACTICE_ORDER
+                           else planet.SITE_ORDER[planet_frontier(q)]})
     best = planet_class_settings["team_best"]
     return {"day": day, "students": sorted(rows, key=lambda row: (-row["minutes"], row["name"].lower())),
             "team_best": [{"name": level["name"], "secs": best[str(i)]}
@@ -5131,6 +5154,10 @@ def planet_report():
     what the game told students most often when they missed."""
     entries = [(q, planet_entry(q)) for q in players.values() if q.get("planet")]
     frontier = {q["id"]: planet.SITE_ORDER[planet_frontier(q)] for q, e in entries}
+    # Where they last were, for "still on it or moved on". A practice site in
+    # easy mode is not the main route's frontier.
+    current = {q["id"]: (e.get("now") or {}).get("site") or frontier[q["id"]]
+               for q, e in entries}
     zones, sites = [], []
     # (A younger class does most of its coding on the practice sites.)
     practice = planet.PRACTICE_ZONES if planet_class_settings["easy"] else []
@@ -5160,7 +5187,7 @@ def planet_report():
                 "runs_median": runs[len(runs) // 2], "runs_most": runs[-1],
                 # Tried and not cleared: still on it, or moved on (unlocked
                 # by the teacher, or skipped).
-                "not_cleared": [[q["name"], e["runs"][key], frontier[q["id"]] == key]
+                "not_cleared": [[q["name"], e["runs"][key], current[q["id"]] == key]
                                 for q, e in tried if key not in e["solved"]],
                 "skipped": [q["name"] for q, e in tried
                             if key in e.get("skipped", []) and key not in e["solved"]],
@@ -8673,11 +8700,7 @@ class Handler(BaseHTTPRequestHandler):
         data = self._body()
         if self.path == "/join":
             with lock:
-                name = str(data.get("name", "")).strip()
-                # A name of only invisible characters (zero-width ones) would be a
-                # blank on every screen: it gets a PlayerN name instead.
-                if not "".join(c for c in name if unicodedata.category(c) not in ("Cf", "Cc", "Zs")):
-                    name = ""
+                name = clean_player_name(data.get("name", ""))[:20]
                 p = find_player_by_name(name) or new_player(name)
                 save_state()
                 self._send(200, {"id": p["id"], "name": p["name"], "color": p["color"]})

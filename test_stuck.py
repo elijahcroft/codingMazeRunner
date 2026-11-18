@@ -224,6 +224,17 @@ class TogetherClassroomTests(unittest.TestCase):
         self.assertLess(server.EASY_TOGETHER_AFTER, server.EASY_SKIP_AFTER)
         self.assertLess(server.TOGETHER_AFTER, server.SKIP_AFTER)
 
+    def test_the_report_and_today_name_the_practice_site_they_are_on(self):
+        # A younger class works in the practice parks, not on the main route:
+        # "elsewhere now" and "now on 1A" sent the teacher the wrong way.
+        server.planet_class_settings["easy"] = True
+        pid = self.join()
+        self.run_code(pid, "p1", "north()\n")
+        report = self.get("/planet/report")
+        row = next(r for r in report["sites"] if r["key"] == "p1")
+        self.assertEqual(row["not_cleared"], [["Ada", 1, True]])
+        self.assertEqual(self.get("/planet/today")["students"][0]["on"], "p1")
+
     def build(self, pid, key):
         if key in planet.SITE_ORDER:   # (as if they'd got this far)
             entry = server.planet_entry(server.players[pid])

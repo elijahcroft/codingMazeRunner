@@ -408,8 +408,15 @@ const rover = {x: 1, y: 1, px: 1, py: 1, angle: 0}, FALL_MS = 700, pops = {}, wi
 let floaters = [], bubble = null, night = null;
 const coinText = n => Math.round(n).toLocaleString("en-US");
 const FARM_WAYS = {east: 0, south: Math.PI / 2, west: Math.PI, north: -Math.PI / 2};
-function takeFarmDays(days) {
+function takeFarmDays(days, farmOn) {
   days = days || [];
+  // The farm switch is off: no farm day starts, and one playing now stops
+  // (a queued day is dropped instead of waiting to surprise the class).
+  if (!farmOn) {
+    farmShow.pending = null;
+    if (farmShow.on) stopFarm();
+    return;
+  }
   const newest = days[days.length - 1];
   if (farmShow.lastN == null) { farmShow.lastN = newest ? newest.n : 0; farmShow.pending = newest || null; return; }
   if (newest && newest.n > farmShow.lastN) { farmShow.lastN = newest.n; farmShow.pending = newest; }
@@ -810,7 +817,7 @@ async function refresh() {
   followRoom(data);
   renderTrek(data);
   takeRuns(data.runs);
-  takeFarmDays(data.farm_days);
+  takeFarmDays(data.farm_days, data.farm);
   if ($("room").hidden && !stage.queue.length && !farmShow.on && (!stage.run || stage.run.live) && $("trek").hidden) followCoder();
 }
 refresh();

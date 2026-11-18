@@ -1405,6 +1405,27 @@ class ClassroomTests(unittest.TestCase):
         with urlopen(self.base + "/planet/render.js") as response:
             self.assertIn(b"function drawRover", response.read())
 
+    def test_a_name_the_class_can_see(self):
+        # Zero-width and direction marks must not make a blank name on the
+        # projector, the crew cards or the "Just now" ticker.
+        out = self.post("/join", {"name": "\u200b\u200d\ufeff\ufe0f"})
+        self.assertTrue(out["name"].strip())
+        self.assertFalse(any(ch in out["name"] for ch in "\u200b\u200d\ufeff\ufe0f"))
+        # A second invisible name is a second student, not the same blank one.
+        other = self.post("/join", {"name": "\u2060"})
+        self.assertNotEqual(other["id"], out["id"])
+        self.assertNotEqual(other["name"], out["name"])
+        # An emoji name keeps its emoji (and its joiners).
+        self.assertEqual(self.post("/join", {"name": "🌮 Rocket"})["name"], "🌮 Rocket")
+        self.assertEqual(self.post("/join", {"name": "👨‍👩‍👧‍👦"})["name"], "👨‍👩‍👧‍👦")
+        # A name too long for a card is shortened once, so the same student
+        # typing the whole thing again gets their own rover back.
+        long_name = "Maximilian Alexander Fitzgerald-Longbottom"
+        first = self.post("/join", {"name": long_name})
+        again = self.post("/join", {"name": long_name})
+        self.assertEqual(first["id"], again["id"])
+        self.assertEqual(first["name"], again["name"])
+
     def test_the_typing_help_comes_off_as_a_student_gets_further(self):
         pid = self.join()
         entry = server.planet_entry(server.players[pid])

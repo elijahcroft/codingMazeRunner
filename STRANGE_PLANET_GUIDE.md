@@ -138,7 +138,8 @@ included. It's a fixed list.
 crew adds up the class. It counts while the page is open and they've pressed something in the
 last 90 seconds, so a laptop left open stops counting. It only counts from now on. **📋 Today's class**, near the bottom of your page, lists everyone
 who played today with their minutes, runs, wins, new levels and where they are now, and under
-that the class's Team Mission best times.
+that the class's Team Mission best times. In easy mode "now on" names the practice level
+they're really on, not the main route's 1A.
 
 **Rovers have names.** The first win asks; the box is under the rover in the garage.
 The name shows on the student's own screen, in the win card and when you click the
@@ -557,7 +558,8 @@ board while they work.
       turns. North is up."** The Landing Site (3 short sites) is where they
       learn compass driving and `look()`, so nobody skips it.
 - [ ] Ask them to join with their **full name**: two students who type the
-      same name share one rover and one set of stars.
+      same name share one rover and one set of stars. A name made only of
+      invisible marks shows as **Player 5**, never as a blank card.
 - [ ] Put **`http://localhost:8000/planet/show`** on the projector.
 - [ ] Open **`http://localhost:8000/planet/teacher`** (Mission Control) on
       your laptop. At the top, every **Transmit** replays big: the student's
@@ -565,7 +567,8 @@ board while they work.
       it ended (🎉 mission complete, 💥 fell in, 🐞 code error…) with what the
       game told them. Several runs at once queue up; **Recent runs** replays
       any of them, and so does **▶ Replay** on a student's card. Only you see
-      misses: the projector cheers completed missions only.
+      misses: the projector cheers completed missions only. A long program
+      scrolls inside its box, so the replay and the numbers below stay put.
 - [ ] Under the replay: the numbers (active now, need help, idle), a
       **🙋 Worth a visit** strip (misses in a row: 8+, or 3+ in easy mode, and
       students who haven't pressed Transmit), and **Where everyone is**, zone
@@ -1080,7 +1083,8 @@ student's own farm.
 **Opening it:** turn on **🌱 Rover Farm** under ⚙ Settings on the teacher page. A green
 **🌱 Farm** button comes up at the top of students' screens within about six seconds, and
 takes them to their farm (`/planet/farm`). It stays open after a restart. Turning it off
-closes the farm page for everyone and keeps every farm as it was.
+closes the farm page for everyone and keeps every farm as it was. On the class screen a
+farm day plays when nothing else is running; switching the farm off stops it straight away.
 
 **What a student does:**
 
