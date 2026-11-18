@@ -61,6 +61,7 @@
   /* ---- The app --------------------------------------------------------------- */
   .app { height: 100vh; min-height: 500px; min-width: 980px; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
   @media (max-width: 1440px) { .brand { display: none; } .bar { gap: 5px; padding: 8px 9px; } .bar .btn { padding: 6px 7px; font-size: 15px; } .tabs button { padding: 4px 5px; font-size: 15px; } #title { padding: 6px 7px; font-size: 15px; } #saved { display: none; } }
+  @media (max-width: 1180px) { .bar .w { display: none; } }     /* 1024 wide: Undo, Redo and Sound keep only their icons so the bar fits */
   .view { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; }
   .bar { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--paper); border-bottom: 2px solid var(--ink); }
   .tabs { display: flex; gap: 4px; padding: 3px; background: var(--plum-soft); border: 2px solid var(--ink); border-radius: 10px; }
@@ -729,8 +730,8 @@
       <button data-view="hang" id="tabHang">🎉 Hang out</button>
     </nav>
     <span class="draw-only title-box"><input id="title" maxlength="24" placeholder="Name your drawing" aria-label="Name your drawing" autocomplete="off"></span>
-    <button class="btn draw-only" id="undo">↶ Undo</button>
-    <button class="btn draw-only" id="redo">↷ Redo</button>
+    <button class="btn draw-only" id="undo" title="Undo">↶<span class="w"> Undo</span></button>
+    <button class="btn draw-only" id="redo" title="Redo">↷<span class="w"> Redo</span></button>
     <span class="gap"></span>
     <span id="saved" class="draw-only" role="status"></span>
     <button class="btn draw-only" id="openShelf">My drawings</button>
@@ -742,7 +743,7 @@
     <button class="btn main next-step" id="goNext" hidden></button>
     <button class="btn" id="calm" aria-pressed="false" title="Less movement and fewer flying bits">🌿 Calm</button>
     <button class="btn" id="tags" aria-pressed="false" title="Hide the names over the pals">🏷️ Hide names</button>
-    <button class="btn" id="mute" aria-label="Sound on or off" title="Turn the sound on or off">🔊 Sound</button>
+    <button class="btn" id="mute" aria-label="Sound on or off" title="Turn the sound on or off">🔊<span class="w"> Sound</span></button>
   </header>
 
   <div id="drawView" class="view">

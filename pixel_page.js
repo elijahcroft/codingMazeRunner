@@ -71,7 +71,7 @@ function pageEnter(data) {
   stage.slow($("slow").getAttribute("aria-pressed") === "true");
   stage.setPal(currentPal());
   stage.fresh();
-  $("mute").textContent = StageSFX.muted ? "🔇 Muted" : "🔊 Sound";
+  $("mute").innerHTML = StageSFX.muted ? "🔇<span class=\"w\"> Muted</span>" : "🔊<span class=\"w\"> Sound</span>";
   paintCalm();
   paintTags();
   showStars();
@@ -1079,7 +1079,7 @@ $("openBook").addEventListener("click", () => { $("bookSheet").hidden = false; }
 $("closeBook").addEventListener("click", closeSheets);
 $("openMissions").addEventListener("click", async () => { await refreshState(); openMissions(); });
 $("closeMissions").addEventListener("click", closeSheets);
-$("mute").addEventListener("click", () => { $("mute").textContent = StageSFX.toggle() ? "🔇 Muted" : "🔊 Sound"; });
+$("mute").addEventListener("click", () => { $("mute").innerHTML = StageSFX.toggle() ? "🔇<span class=\"w\"> Muted</span>" : "🔊<span class=\"w\"> Sound</span>"; });
 $("calm").addEventListener("click", () => { PalStage.calm = !PalStage.calm; paintCalm(); });
 $("tags").addEventListener("click", () => {
   hideTags = !hideTags;
