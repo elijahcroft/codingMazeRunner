@@ -353,12 +353,16 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   game 5 and 5 more for winning. Coins from playing stop at 40 a day for each student,
   and the coin bar then says missions still pay. Students who already had stars and
   gems were paid for them.
-- **🛍️ Shop:** 17 things to wear, 8 rooms to build, 32 things for a home, and 13 walls
-  and floors, from 15 to 180 coins, and a **✨ Fancy** shelf on top with 7 dear things to
-  save up for (Sun hat, Sparkly mask, Princess hat, Music and Butterfly sparkles, Diamond
-  tiara, and the Royal crown at 200). A student clicks a thing twice to buy it. Furniture
-  can be bought again and again (two beds, three balloons); everything else is bought
-  once. Shop things never come out of a gift box.
+- **🛍️ Shop:** four tabs: 🛋️ Furniture (48 things), 🔨 Rooms (16), 🎨 Walls & floors (18)
+  and 🧢 To wear (23, the ✨ Fancy ones marked, up to the Royal crown at 200). Each tab
+  lists what the student can buy now first, cheapest first, then the things to save up for,
+  then what they have already. Rooms and walls show a little picture of how they'll look.
+  A student clicks a thing twice to buy it. Furniture can be bought again and again (two
+  beds, three balloons); everything else is bought once. Furniture bought while at home is
+  ready to put out straight away. Shop things never come out of a gift box.
+- **⭐ Saving up:** clicking something they can't afford yet makes it their wish. The coin
+  bar then shows it with a bar (⭐ Piano: 30 / 55), a ⭐ YOU SAVED UP! banner shows when
+  the coins are there, and buying it clears the wish. Clicking it again stops saving.
 - **✏️ Wear your own drawing:** in 🧢 Me, a student picks one of their drawings and puts it
   **On my head** or **On my face**, for 40 coins. Everyone sees it on their pal. It's a copy,
   cut down to what's drawn, so changing or deleting the drawing later doesn't change it. Up
@@ -374,18 +378,24 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   three closest goals sit at the top of Me with a bar, and a big 🔓 UNLOCKED! banner
   shows in the Hang out when one is reached.
 - **🏠 Home:** every student has a home that starts as one living room. Rooms bought in
-  the Shop (Bedroom, Kitchen, Playroom, Garden, Attic, Game room, Pool room, Secret
-  room) join on in a row with open doorways, so the pal just walks from room to room.
+  the Shop (Bedroom, Bathroom, Kitchen, Playroom, Art studio, Garden, Music room, Attic,
+  Library, Pet room, Game room, Treehouse, Pool room, Space room, Secret room and Candy
+  room, 50 to 200 coins) join on in a row with open doorways, so the pal just walks from
+  room to room.
   Each kind of room looks different and comes with its own walls and floor. In a room a
   student picks a thing and clicks the floor to put it there (up to 12 things a room),
   changes that room's walls and floor, and hangs up to 5 drawings in each room with
-  🖼️ Art. **✋ Move my things** picks a thing up to put it somewhere else or away;
-  otherwise clicking a thing plays with it (balloons pop, the piano plays, the bed
-  says Zzz...). A rug and a pot plant are free.
-- **🏡 Home levels:** a home grows from Tiny hut to Dream castle (7 levels) on points:
+  🖼️ Art. **✋ Move, paint or resize my things** picks a thing up to put it somewhere else
+  or away, and while it's picked up it can be 🎨 painted one of 8 colours, made small,
+  normal or big, and 🔁 flipped round, for free. Otherwise clicking a thing plays with it
+  (balloons pop, the piano plays, the bed says Zzz, the puppy says Woof, the bath blows
+  bubbles...). A rug and a pot plant are free.
+- **🏡 Home levels:** a home grows from Tiny hut to Royal kingdom (9 levels) on points:
   1 for each thing out, 2 for a drawing with code, 3 for each room built, and 1 for each
   ❤️ from a visitor (up to 10). Each level wins a prize that can't be bought (Gold
-  trophy, Rainbow floor, Rainbow, Golden throne, Gold floor, Unicorn), and the class feed
+  trophy, Rainbow floor, Rainbow, Golden throne, Gold floor, Unicorn, then Crystal ball and
+  Star walls at Sky palace (55 points), Baby dragon and Diamond floor at Royal kingdom
+  (75)), and the class feed
   says so. A level is kept once reached. A visitor can give each home one ❤️, which pays
   its owner 2 coins.
 - **Visiting:** friends visit from the Home tab, and the brown door in the living room

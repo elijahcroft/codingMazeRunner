@@ -1055,9 +1055,16 @@ const PalHang = (() => {
   // Everything is painted behind the pals.
   const WALLS = {w_cream: ["#fdf1d8", "#f5e3bf"], w_pink: ["#ffdce8", "#f9c6d8"], w_blue: ["#d3e9f8", "#b9d8f0"], w_night: ["#2f3a72", "#252f62"],
                  w_mint: ["#d8f3e6", "#c4ead8"], w_sky: ["#a9dcf2", "#a9dcf2"], w_sea: ["#7fc8e8", "#6cbbe0"], w_candy: ["#fff4f8", "#ffb3cc"],
-                 w_attic: ["#c99a6b", "#bb8c5e"], w_castle: ["#b9b4c8", "#a7a1b9"]};
+                 w_attic: ["#c99a6b", "#bb8c5e"], w_castle: ["#b9b4c8", "#a7a1b9"], w_green: ["#d4ecc9", "#c3e2b6"], w_dots: ["#fff0f6", "#ffc9dc"],
+                 w_hearts: ["#ffe3ec", "#ff8fb3"], w_bubble: ["#dff2fa", "#bfe3f3"], w_splat: ["#fffdf6", "#f1ecdf"], w_music: ["#efe6ff", "#e2d4fb"],
+                 w_paws: ["#fff2dc", "#e9cfa6"], w_leaf: ["#9fd189", "#7fbd6a"], w_space: ["#151b45", "#0f1436"], w_sweets: ["#ffeef6", "#ffd6e6"],
+                 w_star: ["#5b3fa0", "#4e3590"]};
   const FLOORS = {f_wood: "#d9a86c", f_check: "#fffdf6", f_grass: "#a4d48d", f_cloud: "#dcecf8", f_carpet: "#b9a4e8", f_tile: "#bfe6f2",
-                  f_sand: "#f1dca5", f_rainbow: "#ff9fb5", f_gold: "#f5cf5a"};
+                  f_sand: "#f1dca5", f_rainbow: "#ff9fb5", f_gold: "#f5cf5a", f_red: "#d84a55", f_ice: "#d6f0fb", f_stage: "#9a6a42",
+                  f_moon: "#cfcfdc", f_candy: "#ffc9dc", f_diamond: "#c7ecf7"};
+  const paw = (g, x, y, c) => { oval(g, x, y, 3, 2.5, c); [[-3.2, -3.6], [-1.1, -5.2], [1.3, -5.2], [3.4, -3.6]].forEach(([dx, dy]) => oval(g, x + dx, y + dy, 1.1, 1.4, c)); };
+  const note = (g, x, y, c) => { oval(g, x, y, 3, 2.2, c); line(g, [[x + 2.6, y], [x + 2.6, y - 11], [x + 7, y - 8]], c, 1.4); };
+  const lolly = (g, x, y, r, c) => { line(g, [[x, y], [x, y + r * 2.6]], "#fffdf6", 1.6); oval(g, x, y, r, r, c); oval(g, x, y, r * .62, r * .62, "#ffffff88"); oval(g, x, y, r * .3, r * .3, c); };
   const FLOOR_TOP = 112, FISH_X = 140;
   const FURNITURE_ART = {
     rug(g, x, y) { oval(g, x, y, 30, 9, "#ff9fb5"); oval(g, x, y, 24, 6.6, "#ffd9e3"); oval(g, x, y, 14, 3.6, "#ff9fb5"); },
@@ -1288,6 +1295,134 @@ const PalHang = (() => {
       line(g, [[x - 3, y - 27], [x, y - 24], [x - 2, y - 21], [x + 1, y - 18]], "#fff6c8", 1);
       line(g, [[x - 15, y - 3], [x + 14, y]], "#8a5f3c", 1.6); line(g, [[x - 13, y], [x + 15, y - 4]], "#7a5434", 1.4);
     },
+    globe(g, x, y) {
+      oval(g, x, y - 1, 9, 2, "#2c535222"); box(g, x - 7, y - 4, 14, 4, 1, "#a9744a"); line(g, [[x, y - 4], [x, y - 10]], "#a9744a", 2);
+      oval(g, x, y - 22, 12, 12, "#5aa8e8"); shape(g, [[x - 8, y - 28], [x - 1, y - 31], [x + 1, y - 24], [x - 5, y - 18]], "#62b083");
+      shape(g, [[x + 3, y - 20], [x + 9, y - 25], [x + 10, y - 15], [x + 5, y - 13]], "#62b083"); oval(g, x - 4, y - 28, 2.4, 1.4, "#ffffff99");
+      g.strokeStyle = "#ffd27a"; g.lineWidth = 1.4; g.beginPath(); g.arc(x, y - 22, 14.5, Math.PI * .6, Math.PI * 1.6); g.stroke();
+    },
+    snowglobe(g, x, y) {
+      box(g, x - 11, y - 7, 22, 7, 2, "#a9744a"); box(g, x - 9, y - 9, 18, 3, 1, "#8a5f3c");
+      oval(g, x, y - 20, 11, 11, "#d6ecfa"); oval(g, x, y - 14, 4.4, 4, "#ffffff"); oval(g, x, y - 20, 3.2, 3, "#ffffff"); oval(g, x + 2, y - 20.4, .8, .8, "#ffa95c");
+      [[-6, -26], [5, -27], [-3, -30], [7, -21], [-7, -18]].forEach(([dx, dy]) => oval(g, x + dx, y + dy, .9, .9, "#ffffff"));
+      oval(g, x - 5, y - 25, 2.6, 1.6, "#ffffffaa");
+    },
+    partycake(g, x, y) {
+      oval(g, x, y, 16, 2.4, "#2c535222"); box(g, x - 15, y - 4, 30, 4, 1, "#c9c9e8");
+      box(g, x - 13, y - 15, 26, 11, 2, "#ff8fa8"); box(g, x - 9, y - 24, 18, 9, 2, "#fffdf6"); box(g, x - 5, y - 31, 10, 7, 2, "#8fd0c8");
+      [-9, -3, 3, 9].forEach(dx => oval(g, x + dx, y - 15, 2.4, 1.8, "#fffdf6"));
+      [-3, 0, 3].forEach(dx => { box(g, x + dx - .6, y - 37, 1.2, 6, 0, "#ffd27a"); oval(g, x + dx, y - 38, 1.2, 1.8, "#ffa95c"); });
+    },
+    gumball(g, x, y) {
+      box(g, x - 9, y - 14, 18, 14, 2, "#e8553f"); box(g, x - 3, y - 10, 6, 5, 1, "#c9c9e8");
+      oval(g, x, y - 26, 12, 12, "#e6f6fbcc");
+      [[-5, -30, "#ff8fa8"], [4, -32, "#ffd27a"], [0, -25, "#7ab8ff"], [-6, -22, "#62b083"], [6, -23, "#b9a4e8"], [1, -35, "#ff5f7a"], [-2, -19, "#ffa95c"]].forEach(([dx, dy, c]) => oval(g, x + dx, y + dy, 2.6, 2.6, c));
+      oval(g, x - 5, y - 32, 2.4, 1.6, "#ffffffbb"); box(g, x - 3, y - 41, 6, 4, 1, "#e8553f");
+    },
+    mirror(g, x, y) {
+      oval(g, x, y, 11, 2, "#2c535222"); [-7, 7].forEach(dx => line(g, [[x + dx, y], [x + dx * .6, y - 12]], "#d9a93a", 2));
+      oval(g, x, y - 34, 12, 20, "#ffd93b"); oval(g, x, y - 34, 9.5, 17.5, "#bfe6f2");
+      line(g, [[x - 5, y - 44], [x - 1, y - 49]], "#ffffff", 1.6); line(g, [[x - 5, y - 38], [x + 1, y - 46]], "#ffffffaa", 1.2);
+      twinkle(g, x + 10, y - 50, 3, "#fff6c8"); oval(g, x, y - 55, 3, 3, "#ff8fc7");
+    },
+    easel(g, x, y) {
+      line(g, [[x - 12, y], [x - 2, y - 46]], "#a9744a", 2); line(g, [[x + 12, y], [x + 2, y - 46]], "#a9744a", 2); line(g, [[x, y - 40], [x + 3, y]], "#8a5f3c", 1.6);
+      box(g, x - 16, y - 46, 32, 28, 1, "#fffdf6"); box(g, x - 16, y - 19, 32, 3, 1, "#8a5f3c");
+      oval(g, x + 7, y - 39, 4, 4, "#ffd93b"); shape(g, [[x - 14, y - 22], [x - 6, y - 34], [x + 1, y - 26], [x + 6, y - 31], [x + 14, y - 22]], "#62b083");
+      heart(g, x - 7, y - 40, .75, "#ff5f7a");
+      [[-14, "#ff5f7a"], [-9, "#7ab8ff"], [-4, "#ffd93b"]].forEach(([dx, c]) => box(g, x + dx + 20, y - 5, 4, 5, 1, c));
+    },
+    bathtub(g, x, y) {
+      oval(g, x, y, 26, 2.6, "#2c535222"); [-18, 18].forEach(dx => box(g, x + dx - 2, y - 5, 4, 5, 1, "#ffd27a"));
+      box(g, x - 25, y - 20, 50, 16, 7, "#fffdf6"); box(g, x - 23, y - 21, 46, 4, 2, "#8ed6e0");
+      [[-16, -23, 5], [-8, -26, 6], [1, -24, 5], [9, -27, 6], [17, -23, 4.4], [-3, -30, 4], [5, -32, 3.4]].forEach(([dx, dy, r]) => { oval(g, x + dx, y + dy, r, r * .9, "#ffffff"); oval(g, x + dx - r * .3, y + dy - r * .3, r * .3, r * .25, "#d6f4f8"); });
+      line(g, [[x + 22, y - 18], [x + 22, y - 32], [x + 16, y - 32]], "#c9c9e8", 2); oval(g, x + 4, y - 37, 3.4, 2.6, "#ffd93b"); oval(g, x + 7, y - 40, 2.2, 2.2, "#ffd93b");
+    },
+    saturn(g, x, y) {
+      glow(g, x, y - 36, 24, "#ffd27a77");
+      oval(g, x, y, 8, 2, "#8a6a4a"); line(g, [[x, y], [x, y - 26]], "#8a6a4a", 1.8);
+      oval(g, x, y - 36, 10, 10, "#ffb35c"); line(g, [[x - 8, y - 39], [x + 8, y - 39]], "#ffd27a", 1.6); line(g, [[x - 9, y - 33], [x + 9, y - 33]], "#e8903a", 1.4);
+      g.strokeStyle = "#c5a3ff"; g.lineWidth = 2.2; g.beginPath(); g.ellipse(x, y - 36, 18, 4.4, -.25, 0, Math.PI * 2); g.stroke();
+      oval(g, x, y - 36, 10, 4, "#ffb35c"); line(g, [[x - 9, y - 35], [x + 9, y - 37]], "#ffd27a", 1.2);
+    },
+    guitar(g, x, y) {
+      [-6, 6].forEach(dx => line(g, [[x, y - 14], [x + dx, y]], "#8a8a9a", 1.2));
+      g.save(); g.translate(x, y - 22); g.rotate(-.18);
+      box(g, -2, -40, 4, 28, 1, "#8a5f3c"); box(g, -3.4, -46, 6.8, 7, 2, "#6d4a2c");
+      [-44, -42, -40].forEach(dy => { oval(g, -4.6, dy, 1, 1, "#ffd27a"); oval(g, 4.6, dy, 1, 1, "#ffd27a"); });
+      oval(g, 0, 8, 12, 11, "#ff5f7a"); oval(g, 0, -6, 9, 8.4, "#ff5f7a"); oval(g, 0, 0, 3.6, 3.6, "#27324f");
+      box(g, -5, 9, 10, 2.4, 1, "#27324f"); line(g, [[0, -38], [0, 10]], "#fff6c8", .6);
+      g.restore();
+    },
+    hammock(g, x, y) {
+      [-26, 26].forEach(dx => { box(g, x + dx - 2, y - 48, 4, 48, 1, "#8a5f3c"); oval(g, x + dx, y - 50, 7, 7, "#62b083"); oval(g, x + dx - 3, y - 54, 5, 5, "#569f70"); });
+      shape(g, [[x - 24, y - 38], [x - 10, y - 18], [x, y - 15], [x + 10, y - 18], [x + 24, y - 38], [x + 12, y - 25], [x, y - 22], [x - 12, y - 25]], "#ffa95c");
+      [-14, -4, 6, 16].forEach(dx => line(g, [[x + dx, y - 22 - Math.abs(dx) * .5], [x + dx, y - 17 - Math.abs(dx) * .5]], "#ffe39a", 1.4));
+      oval(g, x - 8, y - 25, 4.4, 2.6, "#fffdf6");
+    },
+    bunny(g, x, y) {
+      oval(g, x, y, 10, 2, "#2c535222");
+      oval(g, x - 3, y - 26, 2.6, 8, "#fffdf6"); oval(g, x + 3, y - 27, 2.6, 8, "#fffdf6"); oval(g, x - 3, y - 26, 1.2, 5.4, "#ffc9e3"); oval(g, x + 3, y - 27, 1.2, 5.4, "#ffc9e3");
+      oval(g, x, y - 7, 9, 7.5, "#fffdf6"); oval(g, x, y - 16, 6.4, 5.6, "#fffdf6"); oval(g, x - 9, y - 5, 3, 3, "#ffffff");
+      oval(g, x - 2.4, y - 17, .9, .9, "#27324f"); oval(g, x + 2.4, y - 17, .9, .9, "#27324f"); oval(g, x, y - 14.6, 1.1, .8, "#ff8fa8");
+      oval(g, x - 4, y - 1.4, 2.6, 1.6, "#ffe3ec"); oval(g, x + 4, y - 1.4, 2.6, 1.6, "#ffe3ec");
+    },
+    icecream(g, x, y) {
+      oval(g, x, y, 24, 2.6, "#2c535222"); [-14, 14].forEach(dx => { oval(g, x + dx, y - 4, 4.4, 4.4, "#27324f"); oval(g, x + dx, y - 4, 1.6, 1.6, "#c9c9e8"); });
+      box(g, x - 20, y - 26, 40, 20, 3, "#fffdf6"); box(g, x - 20, y - 14, 40, 3, 0, "#ff8fa8"); box(g, x - 20, y - 26, 40, 4, 2, "#8fd0c8");
+      line(g, [[x + 16, y - 26], [x + 16, y - 52]], "#c9c9e8", 1.4); shape(g, [[x - 4, y - 50], [x + 16, y - 60], [x + 36, y - 50]], "#ff8fa8");
+      [[-12, "#ffd9e3"], [-4, "#c8f0d8"], [4, "#fff0b0"]].forEach(([dx, c]) => { shape(g, [[x + dx - 3, y - 30], [x + dx + 3, y - 30], [x + dx, y - 22]], "#e8a070"); oval(g, x + dx, y - 31.5, 3.4, 3, c); });
+    },
+    puppy(g, x, y) {
+      oval(g, x, y, 13, 2.2, "#2c535222");
+      oval(g, x + 9, y - 10, 2.4, 6, "#c98f52"); oval(g, x, y - 8, 10, 8, "#d9a86c"); oval(g, x - 1, y - 6, 5.4, 5, "#f5dfbe");
+      [-5, 3].forEach(dx => oval(g, x + dx, y - 1.4, 3.2, 2, "#d9a86c"));
+      oval(g, x - 3, y - 20, 8, 7, "#d9a86c"); oval(g, x - 10, y - 18, 3.2, 6.4, "#8a5f3c"); oval(g, x + 4, y - 18, 3.2, 6.4, "#8a5f3c");
+      oval(g, x - 3, y - 16.4, 4.4, 3.2, "#f5dfbe"); oval(g, x - 3, y - 18, 1.6, 1.2, "#27324f");
+      oval(g, x - 6, y - 22, 1, 1, "#27324f"); oval(g, x, y - 22, 1, 1, "#27324f"); box(g, x - 8, y - 13.4, 10, 2, 1, "#ff5f7a"); oval(g, x - 3, y - 11.4, 1.4, 1.4, "#ffd93b");
+    },
+    kitty(g, x, y) {
+      oval(g, x, y, 12, 2.2, "#2c535222");
+      line(g, [[x + 8, y - 3], [x + 15, y - 8], [x + 13, y - 18]], "#ffa95c", 3);
+      oval(g, x, y - 8, 9, 8, "#ffa95c"); oval(g, x, y - 5, 4.4, 4.6, "#fff0dc");
+      shape(g, [[x - 7, y - 23], [x - 6, y - 31], [x - 1, y - 25]], "#ffa95c"); shape(g, [[x + 7, y - 23], [x + 6, y - 31], [x + 1, y - 25]], "#ffa95c");
+      oval(g, x, y - 20, 7.6, 6.6, "#ffa95c"); [-4, 0, 4].forEach(dx => line(g, [[x + dx - 1, y - 26], [x + dx, y - 23]], "#e8833a", 1));
+      oval(g, x - 3, y - 20.6, 1.2, 1.6, "#3f8f63"); oval(g, x + 3, y - 20.6, 1.2, 1.6, "#3f8f63"); oval(g, x, y - 17.6, 1, .7, "#ff8fa8");
+      line(g, [[x - 2, y - 17], [x - 9, y - 18]], "#fffdf6", .5); line(g, [[x + 2, y - 17], [x + 9, y - 18]], "#fffdf6", .5);
+    },
+    canopy(g, x, y) {
+      oval(g, x, y, 28, 3, "#2c535222");
+      [-26, 24].forEach(dx => box(g, x + dx, y - 62, 3, 62, 1, "#fffdf6"));
+      shape(g, [[x - 30, y - 60], [x + 30, y - 60], [x + 24, y - 68], [x - 24, y - 68]], "#ff8fc7"); [-20, -6, 8, 22].forEach(dx => oval(g, x + dx - 3, y - 59, 7, 3, "#ffc9e3"));
+      shape(g, [[x - 26, y - 58], [x - 16, y - 58], [x - 22, y - 16]], "#ffc9e3aa"); shape(g, [[x + 26, y - 58], [x + 16, y - 58], [x + 22, y - 16]], "#ffc9e3aa");
+      box(g, x - 24, y - 12, 49, 12, 2, "#fffdf6"); box(g, x - 23, y - 19, 47, 9, 3, "#ffffff"); box(g, x - 21, y - 22, 13, 6, 3, "#ffd9e3");
+      box(g, x - 6, y - 20, 30, 11, 3, "#ff8fc7"); heart(g, x + 9, y - 16, .65, "#ffffff");
+      shape(g, [[x - 4, y - 72], [x, y - 77], [x + 4, y - 72]], "#ffd93b");
+    },
+    rocketship(g, x, y) {
+      oval(g, x, y, 12, 2.2, "#2c535222");
+      shape(g, [[x - 8, y - 14], [x - 15, y], [x - 6, y - 3]], "#ff5f7a"); shape(g, [[x + 8, y - 14], [x + 15, y], [x + 6, y - 3]], "#ff5f7a");
+      box(g, x - 8, y - 46, 16, 44, 7, "#f1f1fb"); shape(g, [[x - 8, y - 40], [x, y - 58], [x + 8, y - 40]], "#ff5f7a");
+      oval(g, x, y - 32, 4.6, 4.6, "#7ab8ff"); oval(g, x, y - 32, 3, 3, "#bfe6f2"); box(g, x - 8, y - 16, 16, 3, 0, "#7ab8ff");
+      shape(g, [[x - 4, y - 2], [x + 4, y - 2], [x, y + 6]], "#ffa95c");
+    },
+    crystalball(g, x, y) {
+      glow(g, x, y - 20, 28, "#c5a3ff66");
+      shape(g, [[x - 11, y], [x + 11, y], [x + 7, y - 9], [x - 7, y - 9]], "#ffd93b"); box(g, x - 8, y - 11, 16, 3, 1, "#f5b83d");
+      oval(g, x, y - 22, 12, 12, "#b9a4e8cc"); oval(g, x + 2, y - 20, 6, 4, "#ff8fc7aa"); oval(g, x - 4, y - 26, 3.6, 2.4, "#ffffffcc");
+      twinkle(g, x + 4, y - 26, 2.4, "#fff6c8"); twinkle(g, x - 2, y - 16, 1.8, "#ffffff");
+    },
+    babydragon(g, x, y) {
+      oval(g, x, y, 15, 2.4, "#2c535222");
+      line(g, [[x - 8, y - 6], [x - 18, y - 4], [x - 20, y - 10]], "#62b083", 3.4); shape(g, [[x - 20, y - 10], [x - 24, y - 15], [x - 17, y - 13]], "#ffd93b");
+      shape(g, [[x - 4, y - 20], [x - 18, y - 34], [x - 14, y - 22], [x - 20, y - 22], [x - 6, y - 14]], "#b9a4e8");
+      oval(g, x, y - 10, 10, 9, "#62b083"); oval(g, x + 1, y - 8, 5, 6, "#d6f0b0");
+      [-5, 4].forEach(dx => oval(g, x + dx, y - 1.4, 3.2, 2, "#3f8f63"));
+      oval(g, x + 6, y - 23, 7.4, 6.6, "#62b083"); oval(g, x + 12, y - 21, 3.6, 3, "#62b083"); oval(g, x + 14, y - 21.6, .6, .6, "#27324f");
+      oval(g, x + 7, y - 25, 1.8, 2.2, "#ffffff"); oval(g, x + 7.6, y - 25, 1, 1.4, "#27324f");
+      [[2, -29], [6, -30.6], [10, -29]].forEach(([dx, dy]) => shape(g, [[x + dx - 1.6, y + dy + 1], [x + dx, y + dy - 3], [x + dx + 1.6, y + dy + 1]], "#ffd93b"));
+      oval(g, x + 3, y - 20, 1.4, 1, "#ff8fa8");
+    },
   };
   function homeWall(g, wall) {
     const [colour, stripe] = WALLS[wall] || WALLS.w_cream;
@@ -1304,6 +1439,32 @@ const PalHang = (() => {
       for (let r = 0; r * 12 < FLOOR_TOP; r++) for (let c = -1; c < 11; c++) box(g, c * 32 + r % 2 * 16 + 1, r * 12 + 1, 30, 10, 2, (r * 3 + c) % 4 ? stripe : "#c6c1d4");
     } else if (wall === "w_attic") {
       for (let x = 0; x < W; x += 20) { box(g, x, 0, 19, FLOOR_TOP, 0, x % 40 ? colour : stripe); oval(g, x + 10, 20, .9, .9, "#7a5434"); oval(g, x + 10, 90, .9, .9, "#7a5434"); }
+    } else if (wall === "w_dots") {
+      for (let r = 0; r * 16 < FLOOR_TOP; r++) for (let c = 0; c < 21; c++) oval(g, c * 16 + r % 2 * 8 + 4, r * 16 + 8, 3, 3, stripe);
+    } else if (wall === "w_hearts") {
+      for (let r = 0; r * 22 < FLOOR_TOP; r++) for (let c = 0; c < 12; c++) heart(g, c * 28 + r % 2 * 14 + 8, r * 22 + 8, 1, r % 2 ? stripe : "#ffb3cc");
+    } else if (wall === "w_bubble") {
+      box(g, 0, FLOOR_TOP - 34, W, 34, 0, "#fffdf6"); for (let x = 0; x < W; x += 12) line(g, [[x, FLOOR_TOP - 34], [x, FLOOR_TOP]], "#d6ecf4", .8);
+      line(g, [[0, FLOOR_TOP - 22], [W, FLOOR_TOP - 22]], "#d6ecf4", .8); line(g, [[0, FLOOR_TOP - 10], [W, FLOOR_TOP - 10]], "#d6ecf4", .8);
+      for (let i = 0; i < 22; i++) { const r = 2 + i % 4 * 1.6; g.strokeStyle = "#ffffffcc"; g.lineWidth = 1; g.beginPath(); g.arc(starX(i), starY(i, 70) + 4, r, 0, 7); g.stroke(); oval(g, starX(i) - r * .35, starY(i, 70) + 4 - r * .35, r * .25, r * .2, "#ffffff"); }
+    } else if (wall === "w_splat") {
+      for (let i = 0; i < 16; i++) { const c = ["#ff8fa8", "#ffd27a", "#8fd0c8", "#b9a4e8", "#7ab8ff"][i % 5], sx = starX(i), sy = starY(i, 100) + 4;
+        oval(g, sx, sy, 5 + i % 3 * 2, 4 + i % 2 * 2, c + "aa"); oval(g, sx + 7, sy - 4, 1.6, 1.6, c + "aa"); oval(g, sx - 6, sy + 5, 1.2, 1.2, c + "aa"); }
+    } else if (wall === "w_music") {
+      for (let x = 16; x < W; x += 32) box(g, x, 0, 16, FLOOR_TOP, 0, stripe);
+      for (let i = 0; i < 12; i++) note(g, starX(i), starY(i, 90) + 16, ["#b9a4e8", "#ff8fb3", "#7ab8ff"][i % 3]);
+    } else if (wall === "w_paws") {
+      for (let i = 0; i < 18; i++) paw(g, starX(i), starY(i, 96) + 10, stripe);
+    } else if (wall === "w_leaf") {
+      for (let i = 0; i < 46; i++) oval(g, starX(i), starY(i, 104) + 4, 7 + i % 3 * 2, 4 + i % 2 * 2, ["#86c46f", "#6fb05a", "#a8d98f"][i % 3]);
+    } else if (wall === "w_space") {
+      for (let i = 0; i < 40; i++) oval(g, starX(i), starY(i, 106), .6 + i % 3 * .4, .6 + i % 3 * .4, i % 7 ? "#fff4cf" : "#c5a3ff");
+      glow(g, 70, 40, 30, "#c5a3ff33"); glow(g, 250, 70, 26, "#7ab8ff33");
+    } else if (wall === "w_sweets") {
+      for (let x = 10; x < W; x += 40) { line(g, [[x, 0], [x + 12, FLOOR_TOP]], "#ffb3cc", 5); line(g, [[x + 6, 0], [x + 18, FLOOR_TOP]], "#ffffff", 2); }
+    } else if (wall === "w_star") {
+      for (let x = 16; x < W; x += 32) box(g, x, 0, 16, FLOOR_TOP, 0, stripe);
+      for (let i = 0; i < 16; i++) twinkle(g, starX(i), starY(i, 100) + 6, 2.6 + i % 3, "#ffd93b");
     } else {
       for (let x = 16; x < W; x += 32) box(g, x, 0, 16, FLOOR_TOP, 0, stripe);
       if (wall === "w_night") for (let i = 0; i < 30; i++) oval(g, starX(i), starY(i, 100), .7 + i % 3 * .3, .7 + i % 3 * .3, "#fff4cf");
@@ -1321,6 +1482,12 @@ const PalHang = (() => {
     else if (floor === "f_sand") { for (let i = 0; i < 60; i++) oval(g, starX(i), FLOOR_TOP + 4 + starY(i, 62), .8, .8, i % 2 ? "#e2c27e" : "#fff4d4"); }
     else if (floor === "f_rainbow") { ["#ff9fb5", "#ffc59a", "#ffe9a0", "#b6e3a8", "#a9d4f5", "#cdbcf2"].forEach((c, i) => box(g, 0, FLOOR_TOP + i * 12, W, 12, 0, c)); }
     else if (floor === "f_gold") { plank("#d9a93a"); for (let i = 0; i < 16; i++) twinkle(g, starX(i), FLOOR_TOP + 6 + starY(i, 58), 1.6, "#fff6c8"); }
+    else if (floor === "f_red") { [6, H - FLOOR_TOP - 8].forEach(dy => line(g, [[0, FLOOR_TOP + dy], [W, FLOOR_TOP + dy]], "#ffd27a", 1.6)); for (let i = 0; i < 20; i++) oval(g, starX(i), FLOOR_TOP + 14 + starY(i, 40), 1, 1, "#e8707a"); }
+    else if (floor === "f_ice") { for (let i = 0; i < 14; i++) line(g, [[starX(i), FLOOR_TOP + 6 + starY(i, 56)], [starX(i) + 14, FLOOR_TOP + 2 + starY(i, 56)]], "#ffffff", 1.4); for (let i = 0; i < 8; i++) twinkle(g, starX(i + 20), FLOOR_TOP + 6 + starY(i + 20, 58), 1.6, "#ffffff"); }
+    else if (floor === "f_stage") { plank("#7a5434"); glow(g, 90, FLOOR_TOP + 30, 40, "#fff6c855"); glow(g, 230, FLOOR_TOP + 34, 40, "#ffc9e355"); }
+    else if (floor === "f_moon") { for (let i = 0; i < 14; i++) { const r = 2 + i % 4 * 1.6; oval(g, starX(i), FLOOR_TOP + 8 + starY(i, 54), r * 1.6, r * .7, "#b2b2c6"); oval(g, starX(i), FLOOR_TOP + 7.4 + starY(i, 54), r * 1.2, r * .45, "#bdbdcf"); } }
+    else if (floor === "f_candy") { for (let i = 0; i < 70; i++) box(g, starX(i), FLOOR_TOP + 4 + starY(i, 62), 3, 1.2, .5, ["#ffffff", "#8fd0c8", "#ffd27a", "#b9a4e8", "#ff5f7a"][i % 5]); }
+    else if (floor === "f_diamond") { for (let r = 0; r < 5; r++) for (let c = 0; c < 17; c++) shape(g, [[c * 20 + r % 2 * 10, FLOOR_TOP + 6 + r * 14], [c * 20 + r % 2 * 10 + 6, FLOOR_TOP + r * 14], [c * 20 + r % 2 * 10 + 12, FLOOR_TOP + 6 + r * 14], [c * 20 + r % 2 * 10 + 6, FLOOR_TOP + 12 + r * 14]], (r + c) % 3 ? "#e3f6fb" : "#ffffff"); for (let i = 0; i < 10; i++) twinkle(g, starX(i), FLOOR_TOP + 6 + starY(i, 58), 1.8, "#ffffff"); }
     else plank("#c2915a");
     box(g, 0, FLOOR_TOP - 4, W, 5, 0, "#fffdf6");
   }
@@ -1405,6 +1572,75 @@ const PalHang = (() => {
       [[146, 108, 8, 22, "#b9a4e8"], [160, 108, 10, 30, "#c5a3ff"], [174, 108, 8, 20, "#8fd0c8"]].forEach(([x, y, w, h, c]) => shape(g, [[x - w / 2, y], [x - w / 2, y - h + 6], [x, y - h], [x + w / 2, y - h + 6], [x + w / 2, y]], c));
       [[120, 106], [126, 104], [200, 106], [194, 103], [206, 104]].forEach(([x, y]) => oval(g, x, y, 3, 2, "#ffe14a"));
     },
+    r_bath(g, room) {
+      homeWindow(g, room.wall);
+      oval(g, 110, 46, 16, 20, "#ffd27a"); oval(g, 110, 46, 13, 17, "#bfe6f2"); line(g, [[104, 38], [110, 32]], "#ffffff", 1.6);
+      box(g, 96, 70, 28, 4, 1, "#fffdf6"); oval(g, 102, 67, 3, 3, "#ff8fc7"); box(g, 114, 62, 4, 8, 1, "#8fd0c8");
+      line(g, [[140, 44], [176, 44]], "#c9c9e8", 2); box(g, 144, 44, 12, 22, 2, "#ff8fa8"); box(g, 159, 44, 12, 18, 2, "#8fd0c8"); line(g, [[144, 60], [156, 60]], "#ffffff", 1.2);
+      [[52, 30, 6], [70, 20, 4], [276, 18, 5], [290, 34, 3.4]].forEach(([x, y, r]) => { g.strokeStyle = "#ffffff"; g.lineWidth = 1.2; g.beginPath(); g.arc(x, y, r, 0, 7); g.stroke(); });
+    },
+    r_art(g, room) {
+      homeWindow(g, room.wall);
+      line(g, [[30, 18], [180, 24]], "#8a5f3c", .8);
+      [[44, "#ff8fa8"], [80, "#7ab8ff"], [116, "#ffd27a"], [152, "#8fd0c8"]].forEach(([x, c], i) => {
+        const y = 19 + (x - 30) * .04; box(g, x - 11, y - 1, 22, 26, 1, "#c9b48c"); box(g, x - 10, y, 20, 24, 1, "#fffdf6"); box(g, x - 2, y - 2, 4, 4, 1, "#ff5f7a");
+        if (i % 2) oval(g, x, y + 11, 6, 6, c); else shape(g, [[x - 7, y + 20], [x, y + 6], [x + 7, y + 20]], c);
+        oval(g, x - 5, y + 5, 2, 2, "#ffd93b"); });
+      box(g, 60, 62, 70, 40, 2, "#d9a86c"); box(g, 64, 66, 62, 32, 1, "#fffdf6");
+      shape(g, [[66, 96], [80, 74], [94, 88], [106, 70], [124, 96]], "#62b083"); oval(g, 112, 74, 4, 4, "#ffd93b"); heart(g, 76, 74, .9, "#ff8fa8");
+      [[150, "#ff5f7a"], [160, "#ffd93b"], [170, "#7ab8ff"]].forEach(([x, c]) => { box(g, x - 4, 100, 8, 10, 2, "#fffdf6"); box(g, x - 4, 100, 8, 3, 1, c); });
+    },
+    r_music(g) {
+      [[60, "#ffd27a"], [160, "#ff8fc7"], [260, "#8fd0c8"]].forEach(([x, c]) => { shape(g, [[x - 6, 0], [x + 6, 0], [x + 30, FLOOR_TOP], [x - 30, FLOOR_TOP]], c + "22"); box(g, x - 7, 0, 14, 6, 2, "#27324f"); oval(g, x, 6, 5, 2, c); });
+      [[34, 54], [286, 54]].forEach(([x, y]) => { box(g, x - 14, y - 20, 28, 54, 2, "#27324f"); oval(g, x, y - 6, 8, 8, "#4a5578"); oval(g, x, y - 6, 3.4, 3.4, "#27324f"); oval(g, x, y + 18, 11, 11, "#4a5578"); oval(g, x, y + 18, 4.6, 4.6, "#27324f"); });
+      box(g, 120, 28, 80, 30, 4, "#ff5f7a"); box(g, 124, 32, 72, 22, 3, "#ffe39a");
+      ["#ff5f7a", "#7ab8ff", "#62b083", "#b9a4e8"].forEach((c, i) => note(g, 136 + i * 16, 48 - i % 2 * 4, c));
+      line(g, [[0, 74], [W, 74]], "#ffd27a", 1.6); for (let x = 6; x < W; x += 12) oval(g, x, 74, 2.2, 2.2, ["#ff5f7a", "#ffd93b", "#8fd0c8", "#c5a3ff"][x / 12 % 4 | 0]);
+    },
+    r_library(g) {
+      [[24, 120], [200, 296]].forEach(([a, b]) => {
+        box(g, a, 8, b - a, FLOOR_TOP - 8, 2, "#8a5f3c");
+        for (let row = 0; row < 4; row++) {
+          box(g, a + 3, 11 + row * 25, b - a - 6, 22, 1, "#5a3a22");
+          for (let x = a + 5, i = row; x < b - 7; i++) { const w = 4 + (i * 7) % 4, h = 14 + (i * 5) % 7;
+            box(g, x, 33 + row * 25 - h, w, h, .5, ["#e8553f", "#7ab8ff", "#ffd27a", "#62b083", "#b9a4e8", "#ff8fa8", "#fffdf6"][i % 7]); x += w + .8; }
+        }
+      });
+      box(g, 132, 26, 56, 40, 2, "#fffdf6"); box(g, 136, 30, 48, 32, 1, "#a9dcec"); cloud(g, 160, 48, .5); line(g, [[160, 30], [160, 62]], "#fffdf6", 2);
+      line(g, [[160, 70], [160, 84]], "#ffd27a", 1.2); glow(g, 160, 92, 18, "#fff2a066"); shape(g, [[150, 92], [170, 92], [165, 84], [155, 84]], "#62b083");
+    },
+    r_pets(g, room) {
+      homeWindow(g, room.wall);
+      [[64, 30, "#ff8fa8"], [120, 24, "#7ab8ff"]].forEach(([x, y, c]) => { box(g, x - 16, y, 32, 28, 2, c); box(g, x - 13, y + 3, 26, 22, 1, "#fffdf6"); paw(g, x, y + 18, c); });
+      box(g, 60, 72, 30, 3, 1, "#a9744a"); [66, 74, 82].forEach(x => { line(g, [[x, 75], [x, 82]], "#8a8a9a", 1); oval(g, x, 84, 2, 2, "#8a8a9a"); });
+      shape(g, [[150, 60], [152, 54], [158, 57], [168, 57], [174, 54], [176, 60], [174, 66], [168, 63], [158, 63], [152, 66]], "#fffdf6");
+      [[30, FLOOR_TOP + 12, "#ff8fa8"], [290, FLOOR_TOP + 10, "#7ab8ff"]].forEach(([x, y, c]) => { oval(g, x, y, 10, 3.4, c); oval(g, x, y - 1, 7, 2, "#a9744a"); });
+    },
+    r_tree(g) {
+      box(g, 140, 0, 40, FLOOR_TOP, 4, "#8a5f3c"); for (let y = 8; y < FLOOR_TOP; y += 16) line(g, [[146, y], [152, y + 6]], "#6d4a2c", 1.2);
+      oval(g, 160, 50, 10, 12, "#5a3a22"); oval(g, 162, 52, 6, 8, "#3a2614"); oval(g, 158, 46, 2.2, 2.2, "#ffd93b"); oval(g, 163, 46, 2.2, 2.2, "#ffd93b");     // an owl's hole
+      line(g, [[180, 30], [250, 16]], "#8a5f3c", 5); line(g, [[140, 40], [70, 24]], "#8a5f3c", 5);
+      box(g, 222, 34, 56, 44, 22, "#7a5434"); box(g, 226, 38, 48, 36, 18, "#a9dcec"); cloud(g, 250, 58, .5); line(g, [[250, 38], [250, 74]], "#7a5434", 2);
+      [[56, 64], [62, 64]].forEach(([x]) => line(g, [[x, 10], [x, FLOOR_TOP]], "#c9a26b", 1.6)); for (let y = 20; y < FLOOR_TOP; y += 12) line(g, [[56, y], [62, y]], "#c9a26b", 1.6);
+      [[100, 18], [270, 10]].forEach(([x, y]) => { oval(g, x, y, 4, 3, "#ff8fa8"); oval(g, x + 3, y - 2, 2.4, 2.2, "#ff8fa8"); shape(g, [[x + 5, y - 2], [x + 8, y - 1], [x + 5, y]], "#ffa95c"); });
+    },
+    r_space(g) {
+      oval(g, 160, 50, 34, 34, "#c9c9e8"); oval(g, 160, 50, 29, 29, "#0b0f2c");
+      oval(g, 160, 54, 16, 16, "#5aa8e8"); shape(g, [[150, 46], [158, 42], [160, 50], [152, 58]], "#62b083"); shape(g, [[164, 56], [172, 50], [174, 60], [166, 66]], "#62b083");
+      [[136, 34], [184, 30], [180, 74], [140, 70]].forEach(([x, y]) => oval(g, x, y, 1, 1, "#fff4cf"));
+      [0, 1, 2, 3, 4, 5, 6, 7].forEach(i => oval(g, 160 + Math.cos(i * .785) * 31.5, 50 + Math.sin(i * .785) * 31.5, 1.6, 1.6, "#8a8aa8"));
+      oval(g, 60, 34, 14, 14, "#ffb35c"); g.strokeStyle = "#c5a3ff"; g.lineWidth = 2; g.beginPath(); g.ellipse(60, 34, 24, 5, -.3, 0, 7); g.stroke(); oval(g, 60, 34, 14, 5, "#ffb35c");
+      oval(g, 270, 26, 9, 9, "#fff4cf"); oval(g, 274, 23, 8, 8, "#151b45");
+      line(g, [[230, 80], [262, 68]], "#ffffff88", 1.4); twinkle(g, 264, 67, 3, "#ffffff");
+      box(g, 90, 66, 24, 34, 2, "#fffdf6"); box(g, 93, 69, 18, 28, 1, "#27324f"); shape(g, [[102, 72], [106, 80], [106, 90], [98, 90], [98, 80]], "#ff5f7a"); oval(g, 102, 83, 2, 2, "#7ab8ff");
+    },
+    r_candy(g) {
+      [[50, 34, 13, "#ff8fa8"], [270, 30, 15, "#8fd0c8"], [110, 22, 9, "#ffd27a"], [214, 24, 10, "#b9a4e8"]].forEach(([x, y, r, c]) => lolly(g, x, y, r, c));
+      [[150, "#ff5f7a"], [174, "#62b083"]].forEach(([x, c]) => { line(g, [[x, 96], [x, 46], [x + 8, 38], [x + 16, 46]], "#fffdf6", 5); line(g, [[x, 92], [x, 84]], c, 5); line(g, [[x, 74], [x, 66]], c, 5); line(g, [[x, 56], [x, 48]], c, 5); });
+      for (let x = 8; x < W; x += 22) { oval(g, x, FLOOR_TOP - 6, 7, 6, ["#ff8fa8", "#ffd27a", "#8fd0c8", "#b9a4e8"][x / 22 % 4 | 0]); oval(g, x - 2, FLOOR_TOP - 9, 2, 1.4, "#ffffffaa"); }
+      box(g, 226, 56, 30, 36, 3, "#8a5f3c"); for (let r = 0; r < 3; r++) for (let c = 0; c < 2; c++) box(g, 229 + c * 13.5, 59 + r * 11, 11, 9, 2, "#a0703f");
+      box(g, 226, 78, 30, 14, 2, "#ffd9e3"); twinkle(g, 241, 85, 3, "#ffd93b");
+    },
   };
   // Half of an open doorway at the left (way 1) or right (way -1) edge of a room. The two
   // halves meet at the join, so a pal walks straight through.
@@ -1413,6 +1649,19 @@ const PalHang = (() => {
     box(g, left, 36, 20, FLOOR_TOP - 34, 0, "#fffdf6");
     box(g, way > 0 ? x : x - 16, 40, 16, FLOOR_TOP - 38, 0, "#1b153033");
     box(g, way > 0 ? x : x - 16, FLOOR_TOP - 2, 16, 3, 0, "#c2915a");
+  }
+  // A piece's colour (pixel.py FURN_PAINTS: 0 is how it came) and size (FURN_SIZES).
+  const PAINTS = ["none", "hue-rotate(60deg)", "hue-rotate(120deg)", "hue-rotate(180deg)", "hue-rotate(240deg)", "hue-rotate(300deg)",
+                  "sepia(1) saturate(3) brightness(1.05)", "grayscale(1) brightness(1.12)"];
+  const SIZES = [1, 1.4, 1.9];
+  const sizeOf = item => SIZES[item.size === undefined ? 1 : item.size] || 1.4;
+  function drawPiece(g, item, x, y) {
+    if (!FURNITURE_ART[item.key]) return;
+    const s = sizeOf(item);
+    g.save(); g.translate(x, y); g.scale(item.flip ? -s : s, s);
+    if (item.paint) g.filter = PAINTS[item.paint] || "none";
+    FURNITURE_ART[item.key](g, 0, 0);
+    g.restore();
   }
   /** The things standing in room `n` of a home, each with its x from that room's left. */
   const roomItems = (home, n) => (home.items || []).filter(item => Math.floor(item.x / W) === n).map(item => Object.assign({}, item, {x: item.x - n * W}));
@@ -1427,24 +1676,29 @@ const PalHang = (() => {
     }
     if (n > 0) doorway(g, 0, 1);
     if (n < rooms.length - 1) doorway(g, W, -1);
-    for (const item of roomItems(home, n).sort((a, b) => a.y - b.y)) {
-      if (!FURNITURE_ART[item.key]) continue;
-      g.save(); g.translate(item.x, seatFeet(item.y)); g.scale(1.4, 1.4);     // sized to sit beside a pal
-      FURNITURE_ART[item.key](g, 0, 0);
-      g.restore();
-    }
+    for (const item of roomItems(home, n).sort((a, b) => a.y - b.y)) drawPiece(g, item, item.x, seatFeet(item.y));     // normal size sits beside a pal
   }
   /** The piece of furniture at a spot in a home, frontmost first. */
   function furnitureAt(home, x, y) {
     return ((home && home.items) || []).filter(item => FURNITURE_ART[item.key]).sort((a, b) => b.y - a.y).find(item => {
-      const pic = furniturePicture(item.key), wide = pic.width * 1.4 / 2 + 4, tall = pic.height * 1.4;
+      const pic = furniturePicture(item.key), s = sizeOf(item), wide = pic.width * s / 2 + 4, tall = pic.height * s;
       return Math.abs(x - item.x) < wide && y > seatFeet(item.y) - tall && y < seatFeet(item.y) + 9;
     }) || null;
   }
   const pictures = {};
   /** A little picture of a piece of furniture, for a button. */
-  function furniturePicture(key) {
-    return pictures[key] || (pictures[key] = trimmed(crisp(72, 100, ink => FURNITURE_ART[key](ink, 36, 96))));
+  function furniturePicture(key, paint = 0) {
+    const name = key + ":" + paint;
+    return pictures[name] || (pictures[name] = trimmed(crisp(72, 100, ink => drawPiece(ink, {key, paint, size: 0}, 36, 96))));
+  }
+  /** A room as it looks when it's built, for the shop: its kind's own things, or just a wall and a floor. */
+  function roomPicture(kind, wall, floor) {
+    const name = [kind, wall, floor].join(":");
+    return pictures[name] || (pictures[name] = crisp(W, FLOOR_TOP + 26, ink => {
+      homeWall(ink, wall);
+      homeFloor(ink, floor);
+      if (ROOM_ART[kind]) ROOM_ART[kind](ink, {wall, floor});
+    }));
   }
   // Just the part of a picture that has something in it.
   function trimmed(cv) {
@@ -2118,5 +2372,5 @@ const PalHang = (() => {
     return () => { stopped = true; cancelAnimationFrame(frame); sizer.disconnect(); };
   }
 
-  return {start, seatAt, toyAt, gemAt, chestAt, presentAt, villageAt, coverAt, cutCover, coverHigh, furniturePicture, furnitureAt, lookColour, doorAt, fishAt, PLACES: Object.keys(PLACES)};
+  return {start, seatAt, toyAt, gemAt, chestAt, presentAt, villageAt, coverAt, cutCover, coverHigh, furniturePicture, roomPicture, furnitureAt, lookColour, doorAt, fishAt, PLACES: Object.keys(PLACES)};
 })();

@@ -133,10 +133,55 @@ class Homes(Fun):
         self.assertTrue(self.do(self.mia, "toy", name="notes", x=500, y=.5)["ok"])     # in the second room
         self.assertEqual(server.pixel_room["events"][-1]["kind"], "toy")
         self.advance(2)
-        self.assertIn("error", self.do(self.mia, "toy", name="rocket", x=100, y=.5))     # a toy from outside
+        self.assertIn("error", self.do(self.mia, "toy", name="coconut", x=100, y=.5))     # a toy from outside
         self.do(self.mia, "home", out=True)
         self.advance(2)
         self.assertIn("error", self.do(self.mia, "toy", name="notes", x=100, y=.5))
+
+    def test_a_piece_can_be_painted_flipped_and_sized(self):
+        self.do(self.mia, "home")
+        self.do(self.mia, "furnish", key="rug", x=60, y=.5)
+        piece = self.items(self.mia)[0]["id"]
+        self.assertTrue(self.do(self.mia, "style", piece=piece, paint=3, flip=True)["ok"])
+        self.assertTrue(self.do(self.mia, "style", piece=piece, size=2)["ok"])     # the rest stays as it was
+        item = self.items(self.mia)[0]
+        self.assertEqual((item["paint"], item["flip"], item["size"]), (3, True, 2))
+        self.do(self.mia, "furnish", piece=piece, x=200, y=.3)     # moving keeps the look
+        self.assertEqual(self.items(self.mia)[0]["paint"], 3)
+        self.assertTrue(self.do(self.mia, "style", piece=piece, paint=0, flip=False, size=1)["ok"])
+        self.assertNotIn("paint", self.items(self.mia)[0])     # back how it came, with nothing kept
+        for bad in ({"paint": pixel.FURN_PAINTS}, {"paint": 1.0}, {"size": True}, {"flip": 1}, {"paint": -1}):
+            self.assertIn("error", self.do(self.mia, "style", piece=piece, **bad), bad)
+        self.assertIn("error", self.do(self.mia, "style", piece=999, paint=1))
+        self.do(self.mia, "home", seat=self.spot(self.ben)["seat"])     # not in someone else's home
+        self.assertIn("error", self.do(self.mia, "style", piece=piece, paint=1))
+
+    def test_a_wish_is_kept_until_it_is_bought(self):
+        self.assertTrue(self.do(self.mia, "wish", key="piano")["ok"])
+        self.assertEqual(server.pixel_state(self.mia)["hang"]["wish"], "piano")
+        self.assertIn("error", self.do(self.mia, "wish", key="nothing"))
+        self.buy(self.mia, "piano")
+        self.assertIsNone(self.entry(self.mia)["wish"])
+        self.buy(self.mia, "r_bed")
+        self.assertIn("error", self.do(self.mia, "wish", key="r_bed"))     # built already
+        self.assertTrue(self.do(self.mia, "wish", key="piano")["ok"])     # furniture can be bought again
+        self.assertTrue(self.do(self.mia, "wish", key=None)["ok"])
+
+    def test_every_room_can_be_built_and_the_home_reaches_the_top(self):
+        for key in pixel.HOME_ROOMS:
+            self.assertTrue(self.build(self.mia, key)["ok"], key)
+        self.do(self.mia, "home")
+        view = self.view(self.mia)["home"]
+        self.assertEqual(len(view["rooms"]), len(pixel.HOME_ROOMS) + 1)
+        self.assertFalse(view["more"])
+        self.assertEqual([r["wall"] for r in view["rooms"][1:]], [r["wall"] for r in pixel.HOME_ROOMS.values()])
+        entry = self.entry(self.mia)
+        for i, key in enumerate(k for k in pixel.FURNITURE if pixel.FURNITURE[k]["price"]):
+            entry["stuff"].append(key)
+            self.assertTrue(self.do(self.mia, "furnish", key=key, x=40 + (i // 12) * pixel.PLACE_W + i % 12 * 20, y=.5)["ok"], key)
+        self.assertEqual(self.entry(self.mia)["home"]["level"], len(pixel.HOME_LEVELS) - 1)
+        for key in pixel.home_prizes(len(pixel.HOME_LEVELS) - 1):
+            self.assertIn(key, entry["stuff"])
 
     def test_every_thing_and_room_is_drawn_and_every_toy_works(self):
         for room in pixel.HOME_ROOMS.values():

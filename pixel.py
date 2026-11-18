@@ -2538,40 +2538,77 @@ FURNITURE = {
     "fountain": {"name": "Fountain", "price": 60, "toy": "splash"}, "slide": {"name": "Slide", "price": 65, "toy": "wheee"},
     "arcade": {"name": "Arcade game", "price": 70, "toy": "arcade"}, "rocketbed": {"name": "Rocket bed", "price": 75, "toy": "zzz"},
     "robot": {"name": "Robot buddy", "price": 80, "toy": "beep"}, "dragonegg": {"name": "Dragon egg", "price": 100, "toy": "magic"},
+    "globe": {"name": "Globe", "price": 30, "toy": "spin"}, "snowglobe": {"name": "Snow globe", "price": 30, "toy": "snow"},
+    "partycake": {"name": "Party cake", "price": 30, "toy": "cake"}, "gumball": {"name": "Gumball machine", "price": 35, "toy": "candy"},
+    "mirror": {"name": "Magic mirror", "price": 35, "toy": "dressup"}, "easel": {"name": "Easel", "price": 40, "toy": "paint"},
+    "bathtub": {"name": "Bubble bath", "price": 40, "toy": "bubbles"}, "saturn": {"name": "Planet lamp", "price": 40, "toy": "glow"},
+    "guitar": {"name": "Guitar", "price": 45, "toy": "notes"}, "hammock": {"name": "Hammock", "price": 45, "toy": "zzz"},
+    "bunny": {"name": "Bunny", "price": 50, "toy": "bounce"}, "icecream": {"name": "Ice cream cart", "price": 55, "toy": "snack"},
+    "puppy": {"name": "Puppy", "price": 60, "toy": "woof"}, "kitty": {"name": "Kitty", "price": 60, "toy": "meow"},
+    "canopy": {"name": "Princess bed", "price": 65, "toy": "zzz"}, "rocketship": {"name": "Toy rocket", "price": 70, "toy": "rocket"},
     "trophy": {"name": "Gold trophy", "price": 0, "prize": 1, "toy": "cheer"},
     "rainbowarch": {"name": "Rainbow", "price": 0, "prize": 3, "toy": "stars"},
     "throne": {"name": "Golden throne", "price": 0, "prize": 4, "toy": "cheer"},
     "unicornpal": {"name": "Unicorn", "price": 0, "prize": 6, "toy": "magic"},
+    "crystalball": {"name": "Crystal ball", "price": 0, "prize": 7, "toy": "magic"},
+    "babydragon": {"name": "Baby dragon", "price": 0, "prize": 8, "toy": "sparks"},
 }
+# A piece that's out can be painted another colour (0 is how it came), flipped, and made
+# small, normal or big. It's free: it's still the same piece.
+FURN_PAINTS = 8
+FURN_SIZES = 3
 # A "room" wall or floor comes with that room and can't be bought on its own.
 HOME_WALLS = {"w_cream": {"name": "Cream walls", "price": 0}, "w_pink": {"name": "Pink walls", "price": 30},
               "w_blue": {"name": "Blue walls", "price": 30}, "w_mint": {"name": "Mint walls", "price": 30},
               "w_sky": {"name": "Sky walls", "price": 35}, "w_sea": {"name": "Sea walls", "price": 35},
               "w_candy": {"name": "Candy stripes", "price": 40}, "w_night": {"name": "Starry walls", "price": 40},
               "w_attic": {"name": "Wood walls", "price": 0, "room": "r_attic"},
-              "w_castle": {"name": "Castle walls", "price": 0, "room": "r_secret"}}
+              "w_castle": {"name": "Castle walls", "price": 0, "room": "r_secret"},
+              "w_green": {"name": "Green walls", "price": 30}, "w_dots": {"name": "Polka dots", "price": 35},
+              "w_hearts": {"name": "Heart walls", "price": 40},
+              "w_bubble": {"name": "Bubble walls", "price": 0, "room": "r_bath"},
+              "w_splat": {"name": "Paint splats", "price": 0, "room": "r_art"},
+              "w_music": {"name": "Music walls", "price": 0, "room": "r_music"},
+              "w_paws": {"name": "Paw prints", "price": 0, "room": "r_pets"},
+              "w_leaf": {"name": "Leafy walls", "price": 0, "room": "r_tree"},
+              "w_space": {"name": "Space walls", "price": 0, "room": "r_space"},
+              "w_sweets": {"name": "Lollipop walls", "price": 0, "room": "r_candy"},
+              "w_star": {"name": "Star walls", "price": 0, "prize": 7}}
 HOME_FLOORS = {"f_wood": {"name": "Wood floor", "price": 0}, "f_check": {"name": "Checked floor", "price": 30},
                "f_grass": {"name": "Grass floor", "price": 30}, "f_carpet": {"name": "Purple carpet", "price": 30},
                "f_tile": {"name": "Blue tiles", "price": 30}, "f_sand": {"name": "Sand floor", "price": 35},
                "f_cloud": {"name": "Cloud floor", "price": 40}, "f_rainbow": {"name": "Rainbow floor", "price": 0, "prize": 2},
-               "f_gold": {"name": "Gold floor", "price": 0, "prize": 5}}
+               "f_gold": {"name": "Gold floor", "price": 0, "prize": 5},
+               "f_red": {"name": "Red carpet", "price": 35}, "f_ice": {"name": "Ice floor", "price": 40},
+               "f_stage": {"name": "Stage floor", "price": 0, "room": "r_music"},
+               "f_moon": {"name": "Moon floor", "price": 0, "room": "r_space"},
+               "f_candy": {"name": "Candy floor", "price": 0, "room": "r_candy"},
+               "f_diamond": {"name": "Diamond floor", "price": 0, "prize": 8}}
 # More rooms, bought in the shop. They join on in a row in the order they're bought, and
 # a pal walks from one to the next through an open doorway. Each kind comes with its own
 # walls and floor (the owner gets those to use anywhere) and something built in.
 HOME_ROOMS = {"r_bed": {"name": "Bedroom", "icon": "🛏️", "price": 50, "wall": "w_blue", "floor": "f_carpet"},
+              "r_bath": {"name": "Bathroom", "icon": "🛁", "price": 55, "wall": "w_bubble", "floor": "f_tile"},
               "r_kitchen": {"name": "Kitchen", "icon": "🍳", "price": 60, "wall": "w_mint", "floor": "f_check"},
               "r_play": {"name": "Playroom", "icon": "🧸", "price": 70, "wall": "w_candy", "floor": "f_carpet"},
+              "r_art": {"name": "Art studio", "icon": "🎨", "price": 75, "wall": "w_splat", "floor": "f_check"},
               "r_garden": {"name": "Garden", "icon": "🌻", "price": 80, "wall": "w_sky", "floor": "f_grass"},
+              "r_music": {"name": "Music room", "icon": "🎸", "price": 85, "wall": "w_music", "floor": "f_stage"},
               "r_attic": {"name": "Attic", "icon": "🕯️", "price": 90, "wall": "w_attic", "floor": "f_wood"},
+              "r_library": {"name": "Library", "icon": "📚", "price": 95, "wall": "w_green", "floor": "f_red"},
+              "r_pets": {"name": "Pet room", "icon": "🐾", "price": 100, "wall": "w_paws", "floor": "f_grass"},
               "r_games": {"name": "Game room", "icon": "🕹️", "price": 110, "wall": "w_night", "floor": "f_carpet"},
+              "r_tree": {"name": "Treehouse", "icon": "🌳", "price": 120, "wall": "w_leaf", "floor": "f_wood"},
               "r_pool": {"name": "Pool room", "icon": "🏊", "price": 140, "wall": "w_sea", "floor": "f_tile"},
-              "r_secret": {"name": "Secret room", "icon": "🗝️", "price": 180, "wall": "w_castle", "floor": "f_sand"}}
+              "r_space": {"name": "Space room", "icon": "🚀", "price": 160, "wall": "w_space", "floor": "f_moon"},
+              "r_secret": {"name": "Secret room", "icon": "🗝️", "price": 180, "wall": "w_castle", "floor": "f_sand"},
+              "r_candy": {"name": "Candy room", "icon": "🍭", "price": 200, "wall": "w_sweets", "floor": "f_candy"}}
 HOME_FIRST = "Living room"
 # A home grows up as it fills: a point for each thing out (two for a drawing with code),
 # ROOM_POINTS for each room built, and one for each heart from a visitor. Each level
 # after the first wins a prize that can't be bought.
 HOME_LEVELS = (("Tiny hut", 0), ("Cozy cottage", 4), ("Happy house", 9), ("Big house", 15),
-               ("Super house", 22), ("Mansion", 30), ("Dream castle", 40))
+               ("Super house", 22), ("Mansion", 30), ("Dream castle", 40), ("Sky palace", 55), ("Royal kingdom", 75))
 ROOM_POINTS = 3
 HEART_POINTS_MAX = 10      # hearts count up to this many points
 COINS_HEART = 2            # the owner's, when a visitor gives their home a heart

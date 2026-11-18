@@ -5959,7 +5959,8 @@ def pixel_state(p):
                      "things": entry["things"], "thing_usage": {c: "pose(2)" if c == "pose" else pixel.USAGE[c] for c in pixel.THING_COMMANDS if c in pixel.USAGE},
                      "thing_start": pixel.THING_START,
                      "mywear": entry["mywear"], "my_wear_price": pixel.MY_WEAR_PRICE, "my_wear_max": pixel.MY_WEAR_MAX,
-                     "fancy": pixel.FANCY_PRICE, "winter": winter_view(entry)}}
+                     "fancy": pixel.FANCY_PRICE, "winter": winter_view(entry), "wish": entry.get("wish"),
+                     "paints": pixel.FURN_PAINTS, "sizes": pixel.FURN_SIZES}}
 
 
 def pixel_level(entry, key):
@@ -7052,7 +7053,7 @@ def room_set(on):
 DOING = {"wave": "👋 Waving", "dance": "💃 Dancing", "jump": "🦘 Jumping", "cheer": "🎉 Cheering", "spin": "🌀 Spinning", "nap": "😴 Napping",
          "say": "💬 Talking", "fx": "✨ Making a party", "toy": "🎈 Playing", "fish": "🎣 Fishing", "mymove": "🌟 Doing their My Move",
          "perform": "🎤 Doing their show",
-         "buy": "🛍️ Shopping", "furnish": "🛋️ Decorating", "unfurnish": "🛋️ Decorating", "look": "🎨 Painting the walls",
+         "buy": "🛍️ Shopping", "wish": "🛍️ Shopping", "furnish": "🛋️ Decorating", "unfurnish": "🛋️ Decorating", "style": "🛋️ Decorating", "look": "🎨 Painting the walls",
          "place": "🖼️ Showing a drawing", "find": "💎 Found a gem!", "five": "🙌 High-fiving", "walk": "🚶 Exploring", "go": "🚶 Exploring",
          "catch": "🌠 Catching stars", "home": "🚪 Moving house to house", "chest": "🧰 Coding a chest open"}
 DOING_FOR = 20             # seconds a tap still counts as what they're doing
@@ -7320,6 +7321,16 @@ def room_furnish(p, spot, data):
     elif what == "unfurnish":
         for room in rooms:
             room["items"] = [i for i in room["items"] if i["id"] != piece]
+    elif what == "style":       # paint it, flip it, make it bigger or smaller
+        item = next((i for r in rooms for i in r["items"] if i["id"] == piece), None)
+        paint, size, flip = data.get("paint", item and item.get("paint", 0)), data.get("size", item and item.get("size", 1)), data.get("flip", item and item.get("flip", False))
+        if not item or type(paint) is not int or type(size) is not int or type(flip) is not bool or paint not in range(pixel.FURN_PAINTS) or size not in range(pixel.FURN_SIZES):
+            return {"error": "bad"}
+        for key, value, plain in (("paint", paint, 0), ("size", size, 1), ("flip", flip, False)):
+            if value == plain:
+                item.pop(key, None)
+            else:
+                item[key] = value
     else:
         x, y = room_number(data.get("x"), 16, pixel.PLACE_W * len(rooms) - 16), room_number(data.get("y"), 0, 1)
         if x is None or y is None:
@@ -7362,6 +7373,8 @@ def room_buy(p, key):
         return {"error": f"You need {item['price'] - entry['coins']} more coins. A coding mission pays the most!"}
     entry["coins"] -= item["price"]
     entry["gifts" if item["kind"] == "wear" else "stuff"].append(key)
+    if entry.get("wish") == key:
+        entry["wish"] = None
     grew = None
     if item["kind"] == "room":
         home = home_of(entry)       # builds it now, so it has its number and its own look
@@ -7371,6 +7384,17 @@ def room_buy(p, key):
     pixel_save_soon()
     out = {"ok": True, "coins": entry["coins"], "gifts": pixel_owned(entry), "stuff": entry["stuff"]}
     return dict(out, grew=grew) if grew else out
+
+
+def room_wish(p, key):
+    """The one thing in the shop a student is saving up for, or None to stop. The coin
+    bar shows how close they are."""
+    entry, item = pixel_entry(p), pixel.SHOP.get(key)
+    if key is not None and (not item or key in entry["gifts"] or item["kind"] != "furniture" and key in entry["stuff"]):
+        return {"error": "bad"}
+    entry["wish"] = key
+    pixel_save_soon()
+    return {"ok": True, "wish": key}
 
 
 def room_fish(p, spot, data):
@@ -8050,10 +8074,12 @@ def room_do(p, data):
         game_tick(time.time())
     elif what == "home":
         return room_home(p, spot, data)
-    elif what in ("furnish", "unfurnish", "look"):
+    elif what in ("furnish", "unfurnish", "look", "style"):
         return room_furnish(p, spot, data)
     elif what == "buy":
         return room_buy(p, data.get("key"))
+    elif what == "wish":
+        return room_wish(p, data.get("key"))
     elif what == "heart":
         return room_heart(p, spot)
     elif what == "fish":

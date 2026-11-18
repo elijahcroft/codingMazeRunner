@@ -474,6 +474,10 @@
   #coinBar b { font-size: 22px; font-weight: 900; }
   #coinBar small { margin-left: auto; font-size: 12px; font-weight: 700; text-align: right; color: #7a6a40; }
   #coinBar.bump b { display: inline-block; animation: coin-bump .5s ease-out; }
+  #coinBar { flex-wrap: wrap; }
+  #coinWish { flex-basis: 100%; display: grid; gap: 2px; }     /* ⭐ what they're saving up for */
+  #coinWish small { margin: 0; text-align: left; color: #5a4208; }
+  #coinWish[hidden] { display: none; }
   @keyframes coin-bump { 40% { transform: scale(1.5); color: #d9477e; } }
   body.calm #coinBar.bump b { animation: none; }
   .room-buttons button small { font-size: 12px; font-weight: 700; color: #6a5a20; }
@@ -613,6 +617,14 @@
   .room-buttons h4 { grid-column: 1 / -1; margin: 7px 0 0; font-size: 15px; color: #27484a; }
   .room-buttons h4:first-child { margin-top: 0; }
   .room-buttons canvas { image-rendering: pixelated; max-width: 100%; height: 30px; width: auto; }
+  .room-buttons.me-pane { grid-auto-rows: max-content; }     /* like the games pane: auto rows cut off a two-line name's price */
+  .room-buttons canvas.roompic { height: 40px; width: auto; max-width: 100%; object-fit: cover; border-radius: 8px; box-shadow: 0 0 0 2px #2c535222; }
+  .room-buttons .shop-tabs { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; position: sticky; top: 0; z-index: 1; padding-bottom: 3px; background: #fffdf6; }
+  .room-buttons .shop-tabs button { min-height: 0; padding: 5px 2px; font-size: 12px; }
+  .room-buttons .shop-tabs button span { font-size: 18px; }
+  .room-buttons .paint-row { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+  .room-buttons .paint-row button { min-height: 0; padding: 4px; }
+  .room-buttons .paint-row canvas { height: 34px; }
   .me-note { grid-column: 1 / -1; margin: 0; font-size: 14px; font-weight: 700; color: #4d6f68; }
   #roomClosed { background: #fffdf6e0; color: #2c5352; }
   .next-step { background: #2d6a68 !important; color: #fffdf6 !important; }
@@ -925,7 +937,7 @@
       <p id="roomTip">Walk to the edge to explore! Gold ring: sit. Pink ring: play. Blue ring: fish. Find the 💎 gems!</p>
     </section>
     <section class="hang-side">
-      <div id="coinBar">🪙 <b id="coinCount">0</b> coins<small id="coinNote"></small></div>
+      <div id="coinBar">🪙 <b id="coinCount">0</b> coins<small id="coinNote"></small><span id="coinWish" hidden><small id="coinWishName"></small><i class="goal-bar"><i id="coinWishBar"></i></i></span></div>
       <button id="nextMission" hidden></button>
       <button id="myMove"></button>
       <button id="clapGo" hidden></button>

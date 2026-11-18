@@ -118,6 +118,11 @@ function paintCoins(data) {
       bar.classList.remove("bump"); void bar.offsetWidth; bar.classList.add("bump");
     }
     if (data.coins !== coinsSeen && roomPane === "shop") { S.hang.coins = data.coins; buildRoomButtons(); }
+    const wish = S.hang.wish && S.hang.shop[S.hang.wish];
+    if (wish && coinsSeen !== null && coinsSeen < wish.price && data.coins >= wish.price) {
+      banner(`⭐ YOU SAVED UP! ⭐<small>You have enough for the ${esc(wish.name)}! Buy it in 🛍️ Shop.</small>`, 6000, true);
+      PalStage.SFX.play("fanfare");
+    }
     coinsSeen = S.hang.coins = data.coins;
     if (data.progress) S.hang.progress = data.progress;
     const fresh = (data.owned || []).filter(key => !S.hang.gifts.includes(key));
@@ -130,41 +135,70 @@ function paintCoins(data) {
       }
     }
     if (fresh.length && roomPane === "me") buildRoomButtons();
-    $("coinNote").textContent = data.play_left <= 0 ? "All of today's play coins! Missions still pay." : "";
+    coinsDone = data.play_left <= 0;
   }
   $("coinCount").textContent = S.hang.coins;
+  // What they're ⭐ saving up for, and how close they are.
+  const wish = S.hang.wish && S.hang.shop[S.hang.wish];
+  $("coinNote").textContent = coinsDone ? "All of today's play coins! Missions still pay." : "";
+  $("coinWish").hidden = !wish;
+  if (wish) {
+    $("coinWishName").textContent = `⭐ ${wish.name}: ${Math.min(S.hang.coins, wish.price)} / ${wish.price}`;
+    $("coinWishBar").style.width = Math.min(100, S.hang.coins / wish.price * 100) + "%";
+  }
   showStars();
 }
+let coinsDone = false, shopTab = "furniture";
+const SHOP_TABS = [["furniture", "🛋️", "Furniture"], ["room", "🔨", "Rooms"], ["look", "🎨", "Walls & floors"], ["wear", "🧢", "To wear"]];
 function buildShopPane(box) {
-  const {shop, coins, gifts, stuff} = S.hang;
+  const {shop, coins, gifts, stuff, wish} = S.hang;
   const picture = (key, item) => item.kind === "wear" ? `<canvas data-pic="${key}"></canvas>`
-    : item.kind === "furniture" ? `<canvas data-furnpic="${key}"></canvas>` : item.kind === "room" ? `<span>${item.icon}</span>`
-    : `<i class="swatch" style="background:${PalHang.lookColour(key)}"></i>`;
-  const fancy = item => item.kind === "wear" && item.price >= S.hang.fancy;
-  const shelf = (title, kinds, dear = false, note = "") => `<h4>${title}</h4>${note}` + Object.entries(shop).filter(([, item]) => kinds.includes(item.kind) && fancy(item) === dear).map(([key, item]) => {
-    // Furniture can be bought again and again. Everything else is bought once.
-    const many = item.kind === "furniture", have = stuff.filter(k => k === key).length, mine = !many && (gifts.includes(key) || stuff.includes(key));
-    const word = mine ? (item.kind === "room" ? "✔ Built" : "✔ Yours") : buyArmed === key ? "Click again to buy!" : `🪙 ${item.price}${have ? ` · you have ${have}` : ""}`;
-    return `<button data-buy="${key}" ${mine ? "disabled" : ""} class="${!mine && coins < item.price ? "dear" : ""}" aria-pressed="${buyArmed === key}">${picture(key, item)}${esc(item.name)}<small>${word}</small></button>`;
-  }).join("");
-  box.innerHTML = `<p class="me-note">You have 🪙 <b>${coins}</b>. Coding missions pay the most coins! Playing pays a few each day.</p>` +
-    shelf("✨ Fancy: save up for these!", ["wear"], true) + shelf("🧢 To wear", ["wear"]) +
-    `<button class="wide" data-pane="me"><span>✏️</span>Wear your own drawing: 🪙 ${S.hang.my_wear_price}<small>Make it in 🧢 Me</small></button>` +
-    shelf("🔨 Build a room onto your home", ["room"]) +
-    shelf("🛋️ For your home", ["furniture"], false, `<p class="me-note">You can buy these more than once!</p>`) + shelf("🎨 Walls and floors", ["wall", "floor"]);
+    : item.kind === "furniture" ? `<canvas data-furnpic="${key}"></canvas>`
+    : `<canvas class="roompic" data-roompic="${key}"></canvas>`;
+  const kinds = {furniture: ["furniture"], room: ["room"], look: ["wall", "floor"], wear: ["wear"]}[shopTab];
+  // Furniture can be bought again and again. Everything else is bought once.
+  const mine = (key, item) => item.kind !== "furniture" && (gifts.includes(key) || stuff.includes(key));
+  const all = Object.entries(shop).filter(([, item]) => kinds.includes(item.kind)).sort(([, a], [, b]) => a.price - b.price);
+  const tile = ([key, item]) => {
+    const have = stuff.filter(k => k === key).length, own = mine(key, item), dear = !own && coins < item.price;
+    const word = own ? (item.kind === "room" ? "✔ Built" : "✔ Yours") : buyArmed === key ? "Click again to buy!"
+      : wish === key ? `⭐ ${item.price - coins} more` : `🪙 ${item.price}${have ? ` · you have ${have}` : ""}`;
+    const fancy = item.kind === "wear" && item.price >= S.hang.fancy ? "✨ " : "", star = wish === key ? "⭐ " : "";
+    return `<button data-buy="${key}" ${own ? "disabled" : ""} class="${dear ? "dear" : ""}${item.kind === "room" ? " room-tile" : ""}" aria-pressed="${buyArmed === key || wish === key}">` +
+      `${picture(key, item)}${star}${fancy}${item.icon && item.kind === "room" ? item.icon + " " : ""}${esc(item.name)}<small>${word}</small></button>`;
+  };
+  const now = all.filter(([key, item]) => !mine(key, item) && coins >= item.price), later = all.filter(([key, item]) => !mine(key, item) && coins < item.price);
+  const done = all.filter(([key, item]) => mine(key, item));
+  box.innerHTML = `<div class="shop-tabs">` + SHOP_TABS.map(([tab, icon, word]) =>
+      `<button data-shoptab="${tab}" aria-pressed="${shopTab === tab}"><span>${icon}</span>${word}</button>`).join("") + `</div>` +
+    (shopTab === "furniture" ? `<p class="me-note">Buy things more than once! At home, ✋ pick one up to paint it.</p>` : "") +
+    (now.length ? `<h4>🪙 You can buy these now</h4>` + now.map(tile).join("") : "") +
+    (later.length ? `<h4>💰 Save up: click one to ⭐ wish for it</h4>` + later.map(tile).join("") : "") +
+    (shopTab === "wear" ? `<button class="wide" data-pane="me"><span>✏️</span>Wear your own drawing: 🪙 ${S.hang.my_wear_price}<small>Make it in 🧢 Me</small></button>` : "") +
+    (done.length ? `<h4>✔ Yours already</h4>` + done.map(tile).join("") : "");
   paintPanePictures(box);
 }
 function paintPanePictures(box) {
+  const copy = (cv, img) => { cv.width = img.width; cv.height = img.height; cv.getContext("2d").drawImage(img, 0, 0); };
   box.querySelectorAll("[data-pic]").forEach(cv => wearInto(cv, cv.dataset.pic, 3));
-  box.querySelectorAll("[data-furnpic]").forEach(cv => {
-    const img = PalHang.furniturePicture(cv.dataset.furnpic);
-    cv.width = img.width; cv.height = img.height;
-    cv.getContext("2d").drawImage(img, 0, 0);
+  box.querySelectorAll("[data-furnpic]").forEach(cv => copy(cv, PalHang.furniturePicture(cv.dataset.furnpic, +(cv.dataset.paint || 0))));
+  box.querySelectorAll("[data-roompic]").forEach(cv => {     // a room as it'll look, or a wall or floor in a plain room
+    const key = cv.dataset.roompic, room = S.hang.rooms[key];
+    copy(cv, room ? PalHang.roomPicture(key, room.wall, room.floor)
+      : PalHang.roomPicture("", key in S.hang.walls ? key : "w_cream", key in S.hang.floors ? key : "f_wood"));
   });
+}
+async function wishFor(key) {
+  const out = await tap("wish", {key});
+  if (!out || !out.ok) return;
+  S.hang.wish = out.wish;
+  if (key) { PalStage.SFX.play("ding"); tipFor(`⭐ Saving up for the ${S.hang.shop[key].name}! You need ${S.hang.shop[key].price - S.hang.coins} more coins. A coding mission pays the most!`, 5000); }
+  paintCoins();
+  buildRoomButtons();
 }
 async function buy(key) {
   const item = S.hang.shop[key];
-  if (S.hang.coins < item.price) { tipFor(`You need ${item.price - S.hang.coins} more coins for that. A coding mission pays the most!`); return; }
+  if (S.hang.coins < item.price) { wishFor(S.hang.wish === key ? null : key); return; }
   if (buyArmed !== key) { buyArmed = key; buildRoomButtons(); return; }
   buyArmed = null;
   const out = await tap("buy", {key});
@@ -172,8 +206,12 @@ async function buy(key) {
   Object.assign(S.hang, {coins: out.coins, gifts: out.gifts, stuff: out.stuff});
   coinsSeen = out.coins;
   PalStage.SFX.play("gift");
-  tipFor(item.kind === "room" ? `You built a ${item.name.toLowerCase()}! Go to 🏠 Home and walk through the doorway to see it.`
+  if (S.hang.wish === key) S.hang.wish = null;
+  const here = myHome() && item.kind === "furniture";
+  tipFor(item.kind === "room" ? `You built a ${item.name.toLowerCase()}! ${myHome() ? "It's at the end of your home: walk through the doorways!" : "Go to 🏠 Home and walk through the doorways to see it."}`
+    : here ? `🛍️ Got it: ${item.name}! 👉 Now click the floor to put it there.`
     : `🛍️ Got it: ${item.name}! ${item.kind === "wear" ? "Put it on in 🧢 Me." : "Put it out in 🏠 Home."}`, 5000);
+  if (here) { roomPane = "home"; furnArmed = {key}; moving = false; }     // straight to putting it out
   homeGrew(out.grew);
   paintCoins();
   buildRoomButtons();
@@ -216,14 +254,22 @@ function buildHomePane(box) {
   const have = key => homeFree(kindOf(key)) || stuff.includes(key);
   const copies = key => stuff.filter(k => k === key).length || 1, outOf = key => home.items.filter(i => i.key === key).length;
   const n = roomNow(), room = home.rooms[n], armed = furnArmed && furniture[furnArmed.key];
-  const note = armed ? `👉 Click the floor to put it there: ${armed.name}!`
+  const held = furnArmed && furnArmed.piece && home.items.find(i => i.id === furnArmed.piece);
+  const note = held ? `✋ You picked up the ${armed.name}! Click the floor to put it down, or change it here.`
+    : armed ? `👉 Click the floor to put it there: ${armed.name}!`
     : moving ? "✋ Click one of your things in the picture to pick it up." : "Pick a thing, then click the floor to put it there.";
+  // A thing that's picked up can be painted, flipped and sized. It's free.
+  const style = held ? `<h4>🎨 Paint it</h4><div class="paint-row">` + Array.from({length: S.hang.paints}, (_, i) =>
+      `<button data-paint="${i}" aria-pressed="${(held.paint || 0) === i}" title="${i ? "Paint it" : "How it came"}"><canvas data-furnpic="${held.key}" data-paint="${i}"></canvas></button>`).join("") + `</div>` +
+    `<h4>📏 Make it</h4>` + ["Small", "Normal", "Big"].map((word, i) =>
+      `<button data-size="${i}" aria-pressed="${(held.size === undefined ? 1 : held.size) === i}"><span>${["🐭", "🙂", "🐘"][i]}</span>${word}</button>`).join("") +
+    `<button class="wide" data-flip="1"><span>🔁</span>Flip it round</button>` : "";
   const prizes = Object.entries({...furniture, ...walls, ...floors}).filter(([key, item]) => item.prize && !stuff.includes(key));
-  box.innerHTML = homeLevelCard(home) +
-    `<p class="me-note">Get points: ⭐ 1 for each thing you put out, ⭐ 2 for a drawing with code, ⭐ 3 for each room you build, ⭐ 1 for each ❤️ from a friend.</p>` +
+  box.innerHTML = (held ? "" : homeLevelCard(home) +     // a thing in hand: what to do with it comes first
+    `<p class="me-note">Get points: ⭐ 1 for each thing you put out, ⭐ 2 for a drawing with code, ⭐ 3 for each room you build, ⭐ 1 for each ❤️ from a friend.</p>`) +
     `<p class="me-note"><b>${esc(room.name)}</b> · ${note}</p>` +
-    `<button class="wide" data-moving="1" aria-pressed="${moving}"><span>✋</span>${moving ? "Done moving" : "Move my things"}</button>` +
-    (furnArmed && furnArmed.piece ? `<button class="wide" data-away="${furnArmed.piece}"><span>📦</span>Put it away</button>` : "") +
+    `<button class="wide" data-moving="1" aria-pressed="${moving || !!held}"><span>✋</span>${moving || held ? "Done" : "Move, paint or resize my things"}</button>` +
+    style + (held ? `<button class="wide" data-away="${furnArmed.piece}"><span>📦</span>Put it away</button>` : "") +
     `<h4>🛋️ Your things</h4>` + Object.keys(furniture).filter(have).map(key =>
       `<button data-furn="${key}" aria-pressed="${!!furnArmed && !furnArmed.piece && furnArmed.key === key}"><canvas data-furnpic="${key}"></canvas>${esc(furniture[key].name)}<small>${outOf(key)} of ${copies(key)} out</small></button>`).join("") +
     `<p class="me-note">Want more? You can buy things more than once in the 🛍️ Shop.</p>` + rooms +
@@ -766,11 +812,22 @@ $("roomButtons").addEventListener("click", e => {
   const pick = name => { const el = e.target.closest(`[data-${name}]`); return el && !el.disabled ? el.dataset[name] : null; };
   if (pick("perform")) { pressPerform(); return; }
   if (pick("buy")) { buy(pick("buy")); return; }
+  if (pick("shoptab")) { shopTab = pick("shoptab"); buyArmed = null; buildRoomButtons(); $("roomButtons").scrollTop = 0; return; }
+  if (furnArmed && furnArmed.piece && (pick("paint") || pick("size") || pick("flip"))) {
+    const held = roomInfo.home.items.find(i => i.id === furnArmed.piece);
+    if (!held) return;
+    const change = pick("paint") ? {paint: +pick("paint")} : pick("size") ? {size: +pick("size")} : {flip: !held.flip};
+    Object.assign(held, change);     // shows at once; the server's copy follows
+    PalStage.SFX.play(pick("flip") ? "whoosh" : "pop");
+    tap("style", Object.assign({piece: furnArmed.piece}, change)).then(out => { if (out && out.error && out.error.length > 8) tipFor(out.error); });
+    buildRoomButtons();
+    return;
+  }
   if (pick("home")) { goHome(pick("home")); return; }
   if (pick("friend")) { PalStage.SFX.wake(); tap("go", {seat: +pick("friend")}).then(out => { if (out && out.error) tipFor(out.error); }); return; }
   if (pick("goroom")) { walkTo(+pick("goroom") * PalStage.W + PalStage.W / 2, .5); return; }
   if (pick("furn")) { furnArmed = furnArmed && !furnArmed.piece && furnArmed.key === pick("furn") ? null : {key: pick("furn")}; moving = false; buildRoomButtons(); return; }
-  if (pick("moving")) { moving = !moving; furnArmed = null; buildRoomButtons(); return; }
+  if (pick("moving")) { moving = !moving && !(furnArmed && furnArmed.piece); furnArmed = null; buildRoomButtons(); return; }
   if (pick("away")) { tap("unfurnish", {piece: +pick("away")}); furnArmed = null; buildRoomButtons(); return; }
   if (pick("look")) { PalStage.SFX.wake(); tap("look", {key: pick("look"), room: roomNow()}); return; }
   if (pick("prize")) {
@@ -896,6 +953,7 @@ $("roomCanvas").addEventListener("click", async e => {
       PalStage.SFX.play("click");
       tipFor(`Got it: ${S.hang.furniture[thing.key].name}! Click the floor to put it down. For another room, press that room in 🚪 Your rooms first.`, 6000);
       buildRoomButtons();
+      $("roomButtons").scrollTop = 0;     // 🎨 paint, size and flip are at the top
       return;
     }
   }

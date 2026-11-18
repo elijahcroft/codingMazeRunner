@@ -976,6 +976,9 @@ const PalStage = (() => {
       notes: {ink: ["#27324f", "#b9a4e8", "#ffd27a"], sound: "bells", word: "La la la!", move: "dance"}, party: {ink: ["#ff8fa8", "#8fd0c8", "#ffd27a", "#c5a3ff"], sound: "party", word: "Party time!", fall: true, move: "dance"},
       arcade: {ink: ["#ff5f7a", "#ffd93b", "#8fd0c8"], sound: "blip", word: "High score!"}, beep: {ink: ["#7fc8dc", "#c9c9e8"], sound: "blip", word: "Beep boop!", jump: true},
       cheer: {ink: ["#ffd93b", "#ffe14a", "#ffffff"], sound: "fanfare", word: "I'm a star!"}, magic: {ink: ["#ff8fc7", "#c5a3ff", "#7ab8ff", "#ffffff"], sound: "tada", word: "Magic!", fall: true},
+      paint: {ink: ["#ff5f7a", "#ffd93b", "#7ab8ff", "#62b083"], sound: "pop", word: "Splat! Art!"},
+      woof: {ink: ["#ff8fc7", "#ffc9e3"], sound: "blip", word: "Woof woof!", jump: true}, meow: {ink: ["#ff8fc7", "#ffffff"], sound: "meow", word: "Meow!"},
+      spin: {ink: ["#7ab8ff", "#62b083", "#ffffff"], sound: "whoosh", word: "Round and round!", move: "spin"},
     };
     // A toy goes off for everyone, once the pal has walked over to it.
     function playToy(m, name, now) {
@@ -984,6 +987,7 @@ const PalStage = (() => {
                                            vx: (Math.random() - .5) * .5, vy: -.8 - Math.random() * 1.2,
                                            g: -.004, img: PROPS.bubble, life: 1500 + Math.random() * 900}), 24);
       else if (fx.fall) burst(i => ({x: m.x - 34 + Math.random() * 68, y: base - 90 - Math.random() * 30, vx: 0, vy: 1 + Math.random(), g: .04, colour: fx.ink[i % fx.ink.length], w: 3, h: 3, life: 1500}), 30);
+      else if (fx.rise) burst(i => ({x: m.x - 30 + Math.random() * 60, y: base - 8 - Math.random() * 20, vx: (Math.random() - .5) * .3, vy: -.5 - Math.random() * .6, colour: fx.ink[i % fx.ink.length], w: 4, h: 4, life: 1900}), 24);
       else pop(m.x, base - 28, fx.ink, 30);
       if (name === "rocket") sparks.push({x: m.x - 12, y: base - 60, vy: -2.6, img: PROPS.rocket, life: 2400});
       floatUp(fx.word, m.x, base - 74);
