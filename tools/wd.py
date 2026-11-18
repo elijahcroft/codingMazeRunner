@@ -136,7 +136,7 @@ class Driver:
                 pass
             time.sleep(poll)
         if what:
-            raise WebDriverError(f"timed out waiting for {what}\n{json.dumps(self.state(), indent=2)[:4000]}")
+            raise WebDriverError(f"timed out waiting for {what} on {self.js('return location.href')}")
         return False
 
     def logs(self):

@@ -580,6 +580,7 @@
   .preset .clear { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border: 0; border-radius: 50%; padding: 0; background: var(--panel-2); color: var(--haze); font-size: 11px; line-height: 20px; display: none; }
   .preset.full:hover .clear, .preset.full:focus-within .clear { display: block; }
   .preset .clear:hover { background: var(--coral); color: #fff; }
+  @media (hover: none) { .preset .clear { display: block; } }   /* a touch screen has no hover to show it */
   .set-tag { display: block; margin-top: 8px; padding: 6px 10px; border-radius: 10px; background: var(--panel); font-size: 12.5px; }
   .set-tag.full { background: rgba(255,211,107,.16); color: var(--gold); font-weight: 650; }
   .garage-card h2 { margin: 0; font-size: 24px; font-weight: 850; letter-spacing: -.02em; }
