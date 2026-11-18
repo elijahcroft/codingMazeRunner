@@ -1069,6 +1069,7 @@ def section_tools(driver, report, data):
     pick_tool(driver, "pencil")
     before_zoom = driver.state()["zoom"]
     driver.click("#zoomIn")
+    time.sleep(.5)          # let the zoom settle, as a child's next click would
     zoomed = driver.state()
     report.check("Zoom + makes the squares bigger", zoomed["zoom"] == before_zoom + 1 and zoomed["cell"] > zoomed["zoom"] and True,
                  f"zoom={zoomed['zoom']} cell={zoomed['cell']}")
