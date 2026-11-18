@@ -876,6 +876,8 @@ def shop_me_art_home(a, b, c, p, report):
     # C starts with 55 coins: the 100 coin Sun hat is too dear, the 40 coin Rainbow hat is not.
     coins_before = c.js("return S.hang.coins")
     pane(c, "shop")
+    click_js(c, '[data-shoptab="wear"]')
+    time.sleep(.3)
     click_room(c, '[data-buy="sunhat"]')
     click_room(c, '[data-buy="sunhat"]')
     time.sleep(.5)
@@ -964,6 +966,8 @@ def shop_me_art_home(a, b, c, p, report):
     time.sleep(1)
     # A room can be bought, and its doorway walked through.
     pane(a, "shop")
+    click_js(a, '[data-shoptab="room"]')
+    time.sleep(.3)
     click_room(a, '[data-buy="r_bed"]')
     click_room(a, '[data-buy="r_bed"]')
     time.sleep(1)
