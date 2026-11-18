@@ -1361,6 +1361,28 @@ def call_example(code, name):
     return f"{name}()", False
 
 
+def drive_number(code):
+    """(name, line, value, changes later) when the code's drives take a number
+    kept in a variable, set at the top with a typed-in number, like  size = 4
+    then  east(size)."""
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return None
+    used = {a.id for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+            and n.func.id in COMPASS for a in ast.walk(ast.Module(body=[ast.Expr(x) for x in n.args], type_ignores=[]))
+            if isinstance(a, ast.Name)}
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) \
+                and node.targets[0].id in used and isinstance(node.value, ast.Constant) \
+                and isinstance(node.value.value, int):
+            name = node.targets[0].id
+            sets = sum(1 for n in ast.walk(tree) if isinstance(n, ast.AugAssign) and getattr(n.target, "id", None) == name
+                       or isinstance(n, ast.Assign) and any(getattr(t, "id", None) == name for t in n.targets))
+            return name, node.lineno, node.value.value, sets > 1
+    return None
+
+
 def loop_never_ran(world, code):
     """A stopped run where a while loop's check was already False at the start.
     A child who writes  while look("east") == "rock":  has the loop backwards,
@@ -1652,7 +1674,15 @@ def explain(world, unlocked=(), code=""):
     once = end == "stopped" and world.mission != "report" and nxt and called_once(code)
     # On the very first levels, say the exact line to add. Not when a loop, an
     # if or a def is the idea, and never into rock or a crater.
-    if end == "stopped" and aim and nxt and "x" not in unlocked \
+    held = end == "stopped" and aim and nxt and not never and not branch and not once \
+        and drive_number(code)
+    if held:   # the drives use a number kept in a variable: that's what to change
+        name, line, value, grows = held
+        nxt += (f" Your drives use  {name} , set to {value} on line {line}. "
+                + (f"Try a different start number there, or change how {name} grows or shrinks, "
+                   if grows else "Try a different number there ")
+                + "before adding new lines.")
+    elif end == "stopped" and aim and nxt and "x" not in unlocked \
             and not never and not branch and not once:
         step = first_line_to(at, aim, world)
         if step:

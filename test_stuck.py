@@ -358,6 +358,14 @@ class BeginnerSlipTests(unittest.TestCase):
         zi, zone, s = planet.find_site(key)
         return planet.drive(code, s["variants"][variant], zone["rules"], zi)
 
+    def test_a_miss_with_a_number_in_a_variable_points_at_the_variable(self):
+        """Number Lab: the lesson is changing the number, not adding hand drives."""
+        out = self.drive("p59", planet.answer_for("p58", 0))
+        self.assertIn("Your drives use  size , set to 4 on line 1. Try a different number there", out["explain"]["next"])
+        self.assertNotIn("Add a new line", out["explain"]["next"])
+        out = self.drive("p61", planet.answer_for("p60", 0))
+        self.assertIn("change how n grows or shrinks", out["explain"]["next"])
+
     def test_x_is_not_a_variable_even_before_the_sensor_arrives(self):
         """P58's hint says so, and code with x = 4 would break the day x() arrives."""
         out = self.drive("p58", "x = 4\neast(x)\n")
