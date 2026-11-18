@@ -73,7 +73,7 @@ function tap(what, more = {}) {
 function buildRoomButtons() {
   if (bannerHeld && !chestBusy()) { const held = bannerHeld; bannerHeld = null; setTimeout(() => banner(...held), 600); }
   document.querySelectorAll("[data-pane]").forEach(b => b.setAttribute("aria-pressed", b.dataset.pane === roomPane));
-  const box = $("roomButtons");
+  const box = $("roomButtons"), keepScroll = box.scrollTop;
   box.classList.remove("games-pane");
   box.classList.toggle("words", roomPane === "say");
   $("hangView").classList.toggle("chesting", roomPane === "chest");
@@ -112,6 +112,7 @@ function buildRoomButtons() {
       (S.free_open && S.hang.free_show
         ? `<button data-perform="1"><span>🎤</span>My show<small>Play your Free stage show for everyone</small></button>` : "");
   } else box.innerHTML = ROOM_PANES[roomPane].map(big).join("");
+  box.scrollTop = keepScroll;     // a poll refreshes the same pane in place, not back to the top
 }
 // ---- Coins and the shop ---------------------------------------------------------------------
 function paintCoins(data) {
@@ -164,8 +165,9 @@ function buildShopPane(box) {
   const all = Object.entries(shop).filter(([, item]) => kinds.includes(item.kind)).sort(([, a], [, b]) => a.price - b.price);
   const tile = ([key, item]) => {
     const have = stuff.filter(k => k === key).length, own = mine(key, item), dear = !own && coins < item.price;
+    const short = item.price - coins;
     const word = own ? (item.kind === "room" ? "✔ Built" : "✔ Yours") : buyArmed === key ? "Click again to buy!"
-      : wish === key ? `⭐ ${item.price - coins} more` : `🪙 ${item.price}${have ? ` · you have ${have}` : ""}`;
+      : wish === key && short > 0 ? `⭐ ${short} more` : `🪙 ${item.price}${have ? ` · you have ${have}` : ""}`;
     const fancy = item.kind === "wear" && item.price >= S.hang.fancy ? "✨ " : "", star = wish === key ? "⭐ " : "";
     return `<button data-buy="${key}" ${own ? "disabled" : ""} class="${dear ? "dear" : ""}${item.kind === "room" ? " room-tile" : ""}" aria-pressed="${buyArmed === key || wish === key}">` +
       `${picture(key, item)}${star}${fancy}${item.icon && item.kind === "room" ? item.icon + " " : ""}${esc(item.name)}<small>${word}</small></button>`;
@@ -194,6 +196,7 @@ function paintPanePictures(box) {
 async function wishFor(key) {
   const out = await tap("wish", {key});
   if (!out || !out.ok) return;
+  buyArmed = null;        // a wish isn't the first click of a purchase
   S.hang.wish = out.wish;
   if (key) { PalStage.SFX.play("ding"); tipFor(`⭐ Saving up for the ${S.hang.shop[key].name}! You need ${S.hang.shop[key].price - S.hang.coins} more coins. A coding mission pays the most!`, 5000); }
   paintCoins();
@@ -218,6 +221,7 @@ async function buy(key) {
   homeGrew(out.grew);
   paintCoins();
   buildRoomButtons();
+  if (here) $("roomButtons").scrollTop = 0;     // straight to the top, to put the new thing out
 }
 
 // ---- A home of your own -----------------------------------------------------------------------
@@ -243,7 +247,7 @@ function buildHomePane(box) {
   const others = ((roomInfo && roomInfo.people) || []).filter(m => m.seat !== roomInfo.you);
   const rooms = home ? `<h4>🚪 ${home.mine ? "Your rooms" : "Rooms"}</h4>` + home.rooms.map((r, i) =>
     `<button data-goroom="${i}" aria-pressed="${i === roomNow()}"><span>${(S.hang.rooms[r.kind] || {icon: "🛋️"}).icon}</span>${esc(r.name)}</button>`).join("") +
-    (home.mine && home.more ? `<button data-pane="shop"><span>🔨</span>Build a room<small>in the 🛍️ Shop</small></button>` : "") : "";
+    (home.mine && home.more ? `<button data-pane="shop" data-roomshop="1"><span>🔨</span>Build a room<small>in the 🛍️ Shop</small></button>` : "") : "";
   const visit = others.length ? `<h4>🚪 Visit a friend's home</h4>` + others.map(m => `<button data-home="${m.seat}"><span>🏡</span>${esc(m.name)}</button>`).join("") : "";
   if (!home || !home.mine) {
     const heart = home ? `<button class="wide" data-heart="1" ${home.hearted ? "disabled" : ""}><span>❤️</span>${home.hearted ? "You gave this home a heart" : "Give this home a heart"}</button>` : "";
@@ -260,7 +264,7 @@ function buildHomePane(box) {
   const held = furnArmed && furnArmed.piece && home.items.find(i => i.id === furnArmed.piece);
   const note = held ? `✋ You picked up the ${armed.name}! Click the floor to put it down, or change it here.`
     : armed ? `👉 Click the floor to put it there: ${armed.name}!`
-    : moving ? "✋ Click one of your things in the picture to pick it up." : "Pick a thing, then click the floor to put it there.";
+    : moving ? "✋ Click one of your things in the picture to pick it up." : "Pick one of 🛋️ Your things below, then click the floor to put it there.";
   // A thing that's picked up can be painted, flipped and sized. It's free.
   const style = held ? `<h4>🎨 Paint it</h4><div class="paint-row">` + Array.from({length: S.hang.paints}, (_, i) =>
       `<button data-paint="${i}" aria-pressed="${(held.paint || 0) === i}" title="${i ? "Paint it" : "How it came"}"><canvas data-furnpic="${held.key}" data-paint="${i}"></canvas></button>`).join("") + `</div>` +
@@ -293,7 +297,7 @@ async function goHome(where) {
   PalStage.SFX.wake();
   const out = await tap("home", where === "out" ? {out: true} : where === "mine" ? {} : {seat: +where});
   if (out && out.error) tipFor(out.error);
-  else if (out && out.ok && where !== "out") { roomPane = "home"; buildRoomButtons(); homeGrew(out.grew); }
+  else if (out && out.ok && where !== "out") { roomPane = "home"; buildRoomButtons(); $("roomButtons").scrollTop = 0; homeGrew(out.grew); }
 }
 async function furnish(data) {
   PalStage.SFX.play("pop");
@@ -639,6 +643,14 @@ function roomEvent(e, you) {
 function roomState(data) {
   roomInfo = data;
   paintGameState(data);
+  let freshStuff = false;       // prizes and new rooms arrive here, not only from a buy
+  if (data.stuff) {
+    const oldStuff = JSON.stringify(S.hang.stuff || []);
+    if (oldStuff !== JSON.stringify(data.stuff)) {
+      S.hang.stuff = data.stuff;
+      freshStuff = true;
+    }
+  }
   const open = data.open;
   $("roomClosed").hidden = open;
   $("roomButtons").style.visibility = open ? "" : "hidden";
@@ -653,10 +665,10 @@ function roomState(data) {
     if ("ornament" in data) myOrnament = data.ornament;
   }
   const home = JSON.stringify(data.home), people = JSON.stringify(data.people);
-  if (home !== homeSeen || people !== peopleSeen) {
+  if (home !== homeSeen || people !== peopleSeen || freshStuff) {
     if (!data.home !== (homeSeen === "null" || !homeSeen)) { furnArmed = artArmed = null; fishing = null; moving = false; $("roomTip").textContent = roomTipNow(); }
     homeSeen = home; peopleSeen = people;
-    if (["home", "art"].includes(roomPane)) buildRoomButtons();
+    if (["home", "art", "shop"].includes(roomPane)) buildRoomButtons();
   }
   if (open && !data.you && !roomJoining) {
     roomJoining = true;
@@ -757,6 +769,7 @@ function openRoom() {
   roomStage.state.found = new Set(S.hang.found);
   stopBack = PalHang.start($("hangBack"), () => roomStage.state);
   buildRoomButtons();
+  $("roomButtons").scrollTop = 0;
   paintMoveButton();
   paintNextMission();
   paintPalStrip();
@@ -771,6 +784,7 @@ function welcomeOnce() {
   try { if (localStorage.getItem(key)) return; localStorage.setItem(key, "1"); } catch (_) { return; }
   roomPane = "games";
   buildRoomButtons();
+  $("roomButtons").scrollTop = 0;
   banner(`🎉 Welcome to the Hang out!<small>Click the ground to walk. Today's 🎯 jobs are in Games, on the right.</small>`, 7000, true);
 }
 function closeRoom() {
@@ -810,7 +824,7 @@ function palAt(x, y) {
 new ResizeObserver(fitRoomScreen).observe($("roomHost").closest(".hang-main"));
 $("roomTabs").addEventListener("click", e => {
   const b = e.target.closest("[data-pane]");
-  if (b) { roomPane = b.dataset.pane; artArmed = furnArmed = buyArmed = null; moving = false; buildRoomButtons(); }
+  if (b) { roomPane = b.dataset.pane; artArmed = furnArmed = buyArmed = null; moving = false; buildRoomButtons(); $("roomButtons").scrollTop = 0; }
 });
 $("roomButtons").addEventListener("click", e => {
   const pick = name => { const el = e.target.closest(`[data-${name}]`); return el && !el.disabled ? el.dataset[name] : null; };
@@ -848,7 +862,11 @@ $("roomButtons").addEventListener("click", e => {
     return;
   }
   if (pick("code")) { openThing(pick("code")); return; }
-  if (pick("pane")) { roomPane = pick("pane"); artArmed = furnArmed = buyArmed = null; moving = false; buildRoomButtons(); return; }
+  if (pick("pane")) {
+    if (e.target.closest("[data-roomshop]")) shopTab = "room";
+    roomPane = pick("pane"); artArmed = furnArmed = buyArmed = null; moving = false; buildRoomButtons();
+    $("roomButtons").scrollTop = 0; return;
+  }
   if (pick("drawthing")) { drawFurniture(); return; }
   if (e.target.closest("[data-hidename]")) { hideMyName(); return; }
   if (pick("sew")) { sewPick = pick("sew") === "start" ? "pick" : null; buildRoomButtons(); return; }

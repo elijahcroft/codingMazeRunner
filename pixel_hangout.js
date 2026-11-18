@@ -1670,13 +1670,13 @@ const PalHang = (() => {
     homeWall(g, room.wall);
     homeFloor(g, room.floor);
     (ROOM_ART[room.kind] || ROOM_ART.living)(g, room);
-    if (n === 0) {     // the door back outside
-      box(g, 12, 40, 40, 70, 3, "#8a5f3c"); box(g, 16, 44, 32, 66, 2, "#c08a56");
-      box(g, 20, 49, 24, 22, 2, "#d6a473"); box(g, 20, 76, 24, 28, 2, "#d6a473"); oval(g, 43, 80, 2, 2, "#ffd93b");
-    }
     if (n > 0) doorway(g, 0, 1);
     if (n < rooms.length - 1) doorway(g, W, -1);
     for (const item of roomItems(home, n).sort((a, b) => a.y - b.y)) drawPiece(g, item, item.x, seatFeet(item.y));     // normal size sits beside a pal
+    if (n === 0) {     // the door back outside, on top, so a thing by it can never hide it
+      box(g, 12, 40, 40, 70, 3, "#8a5f3c"); box(g, 16, 44, 32, 66, 2, "#c08a56");
+      box(g, 20, 49, 24, 22, 2, "#d6a473"); box(g, 20, 76, 24, 28, 2, "#d6a473"); oval(g, 43, 80, 2, 2, "#ffd93b");
+    }
   }
   /** The piece of furniture at a spot in a home, frontmost first. */
   function furnitureAt(home, x, y) {

@@ -2621,6 +2621,7 @@ SHOP = dict({key: dict(gift, kind="wear") for key, gift in GIFTS.items() if gift
 HOME_TOYS = frozenset(item["toy"] for item in FURNITURE.values() if "toy" in item)
 HOME_ART = 5               # drawings a student can hang up in each room
 HOME_ITEMS = 12            # pieces of furniture in each room
+HOME_FRONT = 80            # first room: its outside door is on the left, so things keep to the right of it
 
 
 def home_free(item):

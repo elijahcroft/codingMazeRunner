@@ -7404,7 +7404,8 @@ def room_view(p, after, watch=0):
     if p:
         entry = pixel_entry(p)
         out.update(coins=entry["coins"], play_left=pixel.PLAY_COINS_DAY - pixel_play_today(entry),
-                   owned=pixel_owned(entry), progress=pixel_progress(entry), jobs=day_jobs_view(entry))
+                   owned=pixel_owned(entry), progress=pixel_progress(entry), jobs=day_jobs_view(entry),
+                   stuff=entry["stuff"])
     if whole:
         out.update(members=[game_room_row(s, out["you"]) for s in here], events=[],
                    placed=[room_placed_row(r, p, n * pixel.PLACE_W) for n, each in enumerate(rooms) for r in each["art"]]
@@ -7449,7 +7450,7 @@ def home_view(owner, p):
     entry = pixel_entry(owner)
     home = home_of(entry)
     rooms, points = home_rooms(home), home_points(entry)
-    level = pixel.home_level(points)
+    level = max(home["level"], pixel.home_level(points))     # a level, once reached, is kept
     after = pixel.HOME_LEVELS[level + 1] if level + 1 < len(pixel.HOME_LEVELS) else None
     return {"name": hang_name(owner), "mine": owner is p,
             "rooms": [{"kind": room_kind(r), "name": room_name(r), "wall": r["wall"], "floor": r["floor"]} for r in rooms],
@@ -7546,6 +7547,8 @@ def room_furnish(p, spot, data):
             return {"error": "bad"}
         n = home_room_at(home, x)
         x = max(16, min(pixel.PLACE_W - 16, x - n * pixel.PLACE_W))      # a thing stays inside one room
+        if n == 0:
+            x = max(pixel.HOME_FRONT, x)                                # and clear of the way outside
         if piece is not None:
             item = next((i for r in rooms for i in r["items"] if i["id"] == piece), None)
             if not item:
@@ -8104,8 +8107,11 @@ def room_place(p, spot, data):
         if len(room["art"]) >= pixel.HOME_ART:
             home_unplace(p, lambda r: r["id"] == room["art"][0]["id"])
         every = [r["id"] for each in home_rooms(home) for r in each["art"]]       # numbered across the whole home
+        x = max(8, min(pixel.PLACE_W - 8, x - left))
+        if n == 0:
+            x = max(pixel.HOME_FRONT, x)                                # a drawing keeps clear of the door too
         row = {"id": 1 + max(every, default=0), "owner": p["id"], "key": drawing["key"], "by": p["name"],
-               "x": round(max(8, min(pixel.PLACE_W - 8, x - left))), "y": round(y, 2), "pal": thing_compact(drawing)}
+               "x": round(x), "y": round(y, 2), "pal": thing_compact(drawing)}
         room["art"].append(row)
         room_event("place", seat=spot["seat"], item=room_placed_row(row, left=left))
         home_grow(p)

@@ -201,6 +201,43 @@ class Homes(Fun):
         for kind in list(pixel.HOME_ROOMS) + ["living"]:
             self.assertRegex(hang, rf"\n    {kind}\(g")
 
+    def test_a_home_shows_the_level_it_has_earned_and_keeps_it(self):
+        self.do(self.mia, "home")
+        self.assertEqual(self.view(self.mia)["home"]["level"], 0)
+        self.entry(self.mia)["stuff"] += ["lamp", "teddy"]
+        for key, x in (("rug", 60), ("plant", 90), ("lamp", 120), ("teddy", 150)):
+            self.do(self.mia, "furnish", key=key, x=x, y=.5)
+        self.assertEqual(self.view(self.mia)["home"]["level"], 1)
+        piece = next(i["id"] for i in self.items(self.mia) if i["key"] == "teddy")
+        self.do(self.mia, "unfurnish", piece=piece)
+        home = self.view(self.mia)["home"]
+        self.assertEqual((home["level"], home["points"], home["next"]), (1, 3, 9))
+
+    def test_a_level_prize_is_on_the_next_look_without_a_reload(self):
+        self.do(self.mia, "home")
+        self.assertNotIn("trophy", self.view(self.mia)["stuff"])
+        for key, x in (("rug", 60), ("plant", 90), ("lamp", 120), ("teddy", 150)):
+            self.entry(self.mia)["stuff"] += [key] if key in ("lamp", "teddy") else []
+            self.do(self.mia, "furnish", key=key, x=x, y=.5)
+        look = self.view(self.mia)
+        self.assertEqual(look["home"]["level"], 1)
+        self.assertIn("trophy", look["stuff"])
+        self.assertIn("trophy", self.entry(self.mia)["stuff"])
+
+    def test_things_and_drawings_keep_clear_of_the_front_door(self):
+        self.do(self.mia, "home")
+        self.assertTrue(self.do(self.mia, "furnish", key="rug", x=20, y=.5)["ok"])
+        self.assertGreaterEqual(self.items(self.mia)[0]["x"], pixel.HOME_FRONT)
+        self.build(self.mia, "r_bed")
+        self.assertTrue(self.do(self.mia, "furnish", key="plant", x=pixel.PLACE_W + 20, y=.5)["ok"])
+        plant = next(i for i in self.items(self.mia) if i["key"] == "plant")
+        self.assertEqual(plant["x"], pixel.PLACE_W + 20)          # a back room has no outside door
+        self.entry(self.mia)["drawings"].append(dict(pixel.PIP, key="d1", title="Cat"))
+        self.do(self.mia, "place", key="d1", x=20, y=.5)
+        drawings = self.view(self.mia)["placed"]
+        self.assertEqual(len(drawings), 1)
+        self.assertGreaterEqual(drawings[0]["x"], pixel.HOME_FRONT)
+
 
 if __name__ == "__main__":
     unittest.main()
