@@ -120,6 +120,12 @@ const PixelArt = (() => {
     "Bow tie": ["xx...xx", "xxxkxxx", "xx...xx"],
     "Bouquet": [".pyp.", "pyrpy", ".prp.", "..g..", "..g.."],
     "Ring": [".yy.", "y..y", "y..y", ".yy."],
+    "Bunny ears": ["..k...k..", ".kpk.kpk.", ".kpk.kpk.", ".kpxkpxk.", ".kpxkpxk.", ".kxxxxxk.", "..kkkkk.."],
+    "Cat ears": ["..k...k..", ".kxk.kxk.", ".kpxkxpk.", ".kxxxxxk.", ".kkkkkkk."],
+    "Unicorn horn": ["...k...", "..kyk..", "..kwk..", ".kyyyk.", ".kwwwk.", "kyyyyyk", "kkkkkkk"],
+    "Wings": ["kk.......kk", "kxk.....kxk", "kxxk...kxxk", "kxxxk.kxxxk", ".kxxk.kxxk.", "..kk...kk.."],
+    "Flower crown": [".x.x.x.x.", "xyxyxyxyx", "xxxxxxxxx", ".x.x.x.x.", "..ggggg.."],
+    "Cupcake": ["...r...", "..xxx..", ".xxxxx.", "xxyxyxx", ".kkkkk.", ".kyyyk.", "..kkk.."],
   };
   const STAMP_INK = {k: "#1b1530", w: "#ffffff", p: "#ff8fc7", r: "#e8294f", y: "#ffd93b", b: "#2f6fe4", g: "#2fa84f"};
 
@@ -266,6 +272,32 @@ const PixelArt = (() => {
     return "#" + [a, e, f].map(v => Math.round((v + m) * 255).toString(16).padStart(2, "0")).join("");
   }
 
+  // Mirror one square. `sideways` is today's left/right mirror; `fourways`
+  // also reflects it up/down. The studio uses this one helper everywhere, so
+  // pen, eraser, shade, fill, shapes and stamps all mirror the same way.
+  function mirrorPoints(x, y, size, sideways, fourways) {
+    const out = [[x, y]], across = size - 1 - x, down = size - 1 - y;
+    const wide = sideways || fourways;
+    if (wide && across !== x) out.push([across, y]);
+    if (fourways) {
+      if (down !== y) out.push([x, down]);
+      if (wide && across !== x && down !== y) out.push([across, down]);
+    }
+    return out;
+  }
+
+  // Sparkle chooses a square's look from where it is, never from what was
+  // drawn before, so a drag and a click-by-click stroke match. 4/48 squares
+  // are white and another 12/48 are a light tint: 1 in 12 and 1 in 4.
+  function sparklePart(x, y, size) {
+    let h = Math.imul(x + 1, 0x9e3779b1) ^ Math.imul(y + 1, 0x85ebca6b) ^ Math.imul(size + 1, 0xc2b2ae35);
+    h = Math.imul(h ^ (h >>> 16), 0x7feb352d);
+    h = Math.imul(h ^ (h >>> 15), 0x846ca68b);
+    h = (h ^ (h >>> 16)) >>> 0;
+    const r = h % 48;
+    return r < 4 ? "white" : r < 16 ? "light" : "base";
+  }
+
   // ---- GIF: an animated picture needs its own file format, and browsers can
   // only read this one, not write it. ---------------------------------------
   function lzw(pixels, minSize) {
@@ -333,7 +365,8 @@ const PixelArt = (() => {
   }
 
   return {PALETTE, STARTERS, STAMPS, STAMP_INK, INK, blank, encode, decode, fromRows,
-          line, box, circle, flood, floodTarget, flip, shift, turn, outline, shade, gif};
+          line, box, circle, flood, floodTarget, flip, shift, turn, outline, shade,
+          mirrorPoints, sparklePart, gif};
 })();
 
 if (typeof module !== "undefined") module.exports = PixelArt;

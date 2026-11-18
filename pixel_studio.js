@@ -65,7 +65,7 @@ let limits = {max_drawings: 12, max_frames: 12};
 let cur = 0;              // which frame is open
 let tool = "pencil", toolBefore = "pencil";
 let brush = 1, colour = A.INK;
-let solid = false, mirror = false, showGrid = true, onion = false;
+let solid = false, mirror = false, mirrorFour = false, showGrid = true, onion = false;
 let shadeWay = -1, stampKey = "Heart", penStyle = "plain";
 let zoom = 1, fit = 16, panAt = {x: 0, y: 0};
 let easy = recall("pixelEasyPen") === "1";
@@ -269,8 +269,7 @@ function covered(points, width) {
     for (let dy = 0; dy < width; dy++) for (let dx = 0; dx < width; dx++) {
       const x = px + dx - before, y = py + dy - before;
       if (x < 0 || y < 0 || x >= size || y >= size) continue;
-      out.add(y * size + x);
-      if (mirror) out.add(y * size + size - 1 - x);
+      for (const [mx, my] of A.mirrorPoints(x, y, size, mirror, mirrorFour)) out.add(my * size + mx);
     }
   }
   return out;
@@ -308,6 +307,15 @@ function startStroke(sq, held) {
   repaint();
   showTip();
 }
+function sparkleInk(at, base) {
+  const size = art.size, part = A.sparklePart(at % size, Math.floor(at / size), size);
+  if (part === "white") {
+    const white = art.palette.indexOf("#ffffff");
+    return white >= 0 ? white : colourFor("#ffffff", -1);
+  }
+  if (part === "light") return colourFor(A.shade(art.palette[base], 1), base);
+  return base;
+}
 function layDown(x, y) {
   const f = frame(), {path, under, shaded} = stroke, squares = covered([[x, y]], brush);
   if (tool === "eraser") { put(squares, -1); return; }
@@ -324,10 +332,17 @@ function layDown(x, y) {
   // on between strokes: one colour every two squares, whether dragging or clicking.
   const ink = penStyle === "rainbow" ? RAINBOW[Math.floor(rainbowStep++ / 2) % RAINBOW.length] : colour;
   for (const at of squares) {
-    if (penStyle === "checks" && (at % art.size + Math.floor(at / art.size)) % 2) continue;
+    if (penStyle === "checks") {
+      // Check the square before it was mirrored, so both halves of the
+      // checkerboard keep the same gaps when Mirror is on.
+      const size = art.size, cx = at % size, cy = Math.floor(at / size);
+      const px = mirror ? Math.min(cx, size - 1 - cx) : cx;
+      const py = mirrorFour ? Math.min(cy, size - 1 - cy) : cy;
+      if ((px + py) % 2) continue;
+    }
     if (kept(at)) continue;
     if (!under.has(at)) under.set(at, f[at]);
-    f[at] = ink;
+    f[at] = penStyle === "sparkle" ? sparkleInk(at, colour) : ink;
   }
   if (brush !== 1 || penStyle !== "plain") return;
   // A clean line never turns a corner on a square of its own: when a line steps
@@ -394,20 +409,22 @@ function pourAt(sq) {
     // Only the squares that want this number: every unfinished square starts
     // white and they are all joined, so a normal flood would paint the page.
     // It still fills the rest of the region when the clicked square is done.
-    const spots = A.floodTarget(target, size, sq.x, sq.y, colour);
-    if (mirror) spots.push(...A.floodTarget(target, size, size - 1 - sq.x, sq.y, colour));
-    put(spots.map(([x, y]) => y * size + x), colour);
+    const spots = new Set();
+    for (const [sx, sy] of A.mirrorPoints(sq.x, sq.y, size, mirror, mirrorFour)) {
+      for (const [x, y] of A.floodTarget(target, size, sx, sy, colour)) spots.add(y * size + x);
+    }
+    put([...spots], colour);
     PalStage.SFX.play("pop");
     done(before);
     return;
   }
-  if (f[at] === colour) return;
-  const spots = A.flood(f, size, sq.x, sq.y);
-  put(spots.map(([x, y]) => y * size + x), colour);
-  const across = size - 1 - sq.x;
-  if (mirror && f[sq.y * size + across] !== colour) {
-    put(A.flood(f, size, across, sq.y).map(([x, y]) => y * size + x), colour);
+  const spots = new Set();
+  for (const [sx, sy] of A.mirrorPoints(sq.x, sq.y, size, mirror, mirrorFour)) {
+    if (f[sy * size + sx] === colour) continue;
+    for (const [x, y] of A.flood(f, size, sx, sy)) spots.add(y * size + x);
   }
+  if (!spots.size) return;
+  put([...spots], colour);
   PalStage.SFX.play("pop");
   done(before);
 }
@@ -450,8 +467,7 @@ function stampSquares(sq) {
     if (ch === ".") return;
     const x = left + dx, y = top + dy;
     if (x < 0 || y < 0 || x >= size || y >= size) return;
-    out.push([y * size + x, ch]);
-    if (mirror) out.push([y * size + size - 1 - x, ch]);
+    for (const [mx, my] of A.mirrorPoints(x, y, size, mirror, mirrorFour)) out.push([my * size + mx, ch]);
   }));
   return out;
 }
@@ -680,6 +696,7 @@ function paintBoard() {
   if (mirror) {
     g.fillStyle = "#ff5fa2";
     g.fillRect(whole / 2 - 1, 0, 2, whole);
+    if (mirrorFour) g.fillRect(0, whole / 2 - 1, whole, 2);
   }
   if (sel) ants(g, sel.x, sel.y, sel.w, sel.h);
   // The square the pen is over: its colour, with a ring so it shows on anything.
@@ -891,7 +908,9 @@ function refreshOptions() {
   $("shades").innerHTML = near.map((hex, i) =>
     `<button data-tone="${hex}" style="background:${hex}" aria-pressed="${i === 2}" aria-label="${["Much darker", "Darker", "This colour", "Lighter", "Much lighter"][i]}"></button>`).join("");
   $("easy").setAttribute("aria-pressed", easy);
+  $("mirrorOff").setAttribute("aria-pressed", !mirror);
   $("mirror").setAttribute("aria-pressed", mirror);
+  $("mirror4").setAttribute("aria-pressed", mirrorFour);
   $("grid").setAttribute("aria-pressed", showGrid);
   $("showLast").textContent = `Ghost: ${onion ? "On" : "Off"}`;
 }
@@ -1124,6 +1143,7 @@ function newKey() {
   return Array.from(crypto.getRandomValues(new Uint8Array(6)), n => (n % 36).toString(36)).join("");
 }
 function startDrawing(size, pixels, title = "", guide = "") {
+  nextStep = "";                  // a new page starts with a plain tip, not the last pal's
   openDrawing({key: newKey(), title, size, speed: 6, palette: A.PALETTE.slice(),
                frames: [A.encode(pixels || A.blank(size))], names: [""], guide});
   changed();
@@ -1322,9 +1342,22 @@ function flipSwitch(id, turn) {
 }
 flipSwitch("solid", () => { solid = !solid; });
 flipSwitch("easy", () => { settle(); easy = !easy; store("pixelEasyPen", easy ? "1" : "0"); });
-flipSwitch("mirror", () => { mirror = !mirror; });
 flipSwitch("grid", () => { showGrid = !showGrid; });
 flipSwitch("showLast", () => { onion = !onion; });
+
+// Off, ↔ (left/right), ✚ (left/right and up/down). `mirror` still means the
+// old left/right mirror; `mirrorFour` adds the other two reflections.
+function setMirror(mode) {
+  settle();
+  mirror = mode !== "off";
+  mirrorFour = mode === "four";
+  refreshOptions();
+  showTip();
+  repaint();
+}
+$("mirrorOff").addEventListener("click", () => setMirror("off"));
+$("mirror").addEventListener("click", () => setMirror(mirror ? "off" : "lr"));
+$("mirror4").addEventListener("click", () => setMirror(mirrorFour ? "lr" : "four"));
 
 $("undo").addEventListener("click", undo);
 $("redo").addEventListener("click", redo);

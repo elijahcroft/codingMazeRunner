@@ -96,6 +96,9 @@
   .sizes button[aria-pressed="true"] { background: var(--sun); }
   .sizes button:disabled { opacity: .35; }
   .sizes .checks { display: block; width: 16px; height: 16px; background: repeating-conic-gradient(var(--ink) 0 25%, transparent 0 50%) 0 0 / 8px 8px; }
+  #optMirror { min-height: 24px; }
+  #mirrors button { width: 28px; height: 24px; font-size: 14px; font-weight: 900; line-height: 1; }
+  #mirrors .mirror-off { font-size: 11px; }
   .switch { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 8px; padding: 2px 0; border: 0; background: none; font-weight: 800; font-size: 15px; text-align: left; }
   .switch::after { content: "Off"; flex: none; width: 42px; padding: 1px 0; text-align: center; font-size: 12px; border: 2px solid var(--ink); border-radius: 6px; background: var(--paper); }
   .switch[aria-pressed="true"]::after { content: "On"; background: var(--mint); }
@@ -105,11 +108,11 @@
   .stage { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 8px; min-height: 0; min-width: 0; }
   #tip { margin: 0; padding: 6px 12px; background: var(--paper); border: 2px solid var(--ink); border-radius: 8px; font-size: 16px; height: 37px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .board-row { display: flex; gap: 8px; min-height: 0; min-width: 0; }
-  .stamp-bar { flex: none; display: grid; grid-template-columns: 36px 36px 36px; grid-auto-rows: 36px; gap: 3px; align-content: start; }
-  .stamp-bar button { width: 36px; height: 36px; display: grid; place-items: center; padding: 0; border: 2px solid var(--ink); border-radius: 6px; background: var(--paper); }
+  .stamp-bar { flex: none; display: grid; grid-template-columns: 33px 33px 33px; grid-auto-rows: 33px; gap: 3px; align-content: start; }
+  .stamp-bar button { width: 33px; height: 33px; display: grid; place-items: center; padding: 0; border: 2px solid var(--ink); border-radius: 6px; background: var(--paper); }
   .stamp-bar button:hover { background: var(--plum-soft); }
   .stamp-bar button[aria-pressed="true"] { background: var(--sun); }
-  .stamp-bar canvas { width: 26px; height: 26px; image-rendering: pixelated; }
+  .stamp-bar canvas { width: 24px; height: 24px; image-rendering: pixelated; }
   .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin: 2px 0 4px; }
   .pair.three { grid-template-columns: 1fr 1fr 1fr; }
   .pair button { padding: 3px 0; font-size: 14px; font-weight: 800; border: 2px solid var(--ink); border-radius: 6px; background: var(--paper); }
@@ -810,6 +813,7 @@
             <button data-pen="plain" aria-label="Plain pen" title="Plain"><i style="width:14px;height:14px"></i></button>
             <button data-pen="rainbow" aria-label="Rainbow pen" title="Rainbow">🌈</button>
             <button data-pen="checks" aria-label="Checker pen" title="Checks"><b class="checks"></b></button>
+            <button data-pen="sparkle" aria-label="Sparkle pen" title="Sparkle">✨</button>
           </div>
         </div>
         <button class="switch" id="solid" aria-pressed="false" hidden>Filled in</button>
@@ -824,7 +828,14 @@
           <button id="selDelete">Delete</button>
         </div>
         <button class="switch" id="easy" aria-pressed="false" title="Click once to start drawing and click again to stop, with nothing to hold down">Easy pen</button>
-        <button class="switch" id="mirror" aria-pressed="false" title="Whatever you draw on one side appears on the other side too">Mirror</button>
+        <div class="row" id="optMirror">
+          <span class="label" style="margin:0">Mirror</span>
+          <div class="sizes" id="mirrors">
+            <button id="mirrorOff" class="mirror-off" data-mirror="off" aria-pressed="true" aria-label="Mirror off" title="No mirror">Off</button>
+            <button id="mirror" data-mirror="lr" aria-pressed="false" aria-label="Mirror left and right" title="Whatever you draw on one side appears on the other side too">↔</button>
+            <button id="mirror4" data-mirror="four" aria-pressed="false" aria-label="Mirror four ways" title="Draw on one side and it appears on all four sides">✚</button>
+          </div>
+        </div>
         <button class="switch" id="grid" aria-pressed="true">Grid lines</button>
       </div>
     </div>
