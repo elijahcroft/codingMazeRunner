@@ -363,6 +363,18 @@ says to click the ground to walk and that today's 🎯 jobs are in Games, and Ga
   by 2. The projector shows a banner and 🎬 Auto goes to the garden, the class feed says who
   married, and only one wedding can run at a time. If the couple leaves or the room closes, the
   wedding stops cleanly for everyone.
+- **🎂 Birthday! (teacher):** on `/pixel/teacher`, every student who is in the open Hang out
+  gets a **🎂 Birthday!** button in their row. Press it and the whole Hang out comes to the
+  Park: the birthday child stands by the cake table and everyone else walks into a half
+  circle around them. A big **"🎂 Happy birthday, Ana!"** banner appears on every student
+  screen and on the projector, and the class sings the real Happy Birthday tune with the
+  game's own notes. Candles, confetti and floating balloons follow, everyone cheers, and
+  after about 20 seconds everyone walks back to where they were. The birthday child wears a
+  candle crown for the rest of the day (a look, not a shop gift), and everyone gets a small
+  once-a-day birthday gift; pressing the button again the same day replays the party but
+  pays nobody twice. Hidden names show **Secret pal** on screens, the projector and in the
+  feed. If a game or wedding is on, the teacher page asks you to end it or wait first;
+  closing the Hang out or the birthday child leaving ends the party cleanly.
 - **👋 Do, 💬 Say, 🎉 Party, 🏞️ Go to:** moves, words to tap, things to throw, and where
   everyone is. 💬 Say puts the wedding words first in the Wedding garden, and last everywhere
   else.

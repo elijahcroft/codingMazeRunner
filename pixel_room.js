@@ -6,7 +6,7 @@
 let roomStage = null, stopRoom = null, stopBack = null, roomInfo = null, roomJoining = false, roomPane = "do";
 let artArmed = null, moveReadyAt = 0, clapFor = null, clapTimer = 0, bannerTimer = 0, placesSeen = "";
 let furnArmed = null, buyArmed = null, fishing = null, homeSeen = "", peopleSeen = "", coinsSeen = null, houseSeen = "";
-let weddingAsk = null, weddingSeen = "";
+let weddingAsk = null, weddingSeen = "", birthdayPartySeen = 0, birthdayBannerUntil = 0;
 let houseBusy = false, houseInviteSeen = null;
 let muralInk = 0, muralWhoMode = false;     // 🖼️ the colour picked, and "who painted?" instead of painting
 // At home: ✋ moving things (a click picks one up, instead of playing with it), and which room is on screen.
@@ -916,6 +916,8 @@ async function pressPerform() {
 let bannerHeld = null;
 const chestBusy = () => roomPane === "chest" && chestNow() && !chestNow().open;
 function banner(html, ms, big = false, now = false) {
+  // 🎂 A teacher-started birthday keeps the big banner on every screen for its 20 seconds.
+  if (!now && performance.now() < birthdayBannerUntil && !/Happy birthday|birthday party/i.test(html)) return;
   if (!now && chestBusy()) { if (big) bannerHeld = [html, ms, big]; return; }
   const el = $("hangBanner");
   el.innerHTML = html;
@@ -996,10 +998,35 @@ function roomEvent(e, you) {
     }
   } else if (e.kind === "wedding") {
     weddingEvent(e, you);
+  } else if (e.kind === "birthday") {
+    birthdayEvent(e);
+  }
+}
+// 🎂 The teacher starts this, so every screen gets the big banner and the tune.
+function birthdayEvent(e) {
+  if (e.phase === "start" && e.id && e.id === birthdayPartySeen) return;   // the state banner already said it
+  if (e.id) birthdayPartySeen = e.id;
+  const name = e.name || "a friend";
+  if (e.phase === "start") {
+    birthdayBannerUntil = performance.now() + 22000;
+    banner(`🎂 Happy birthday, ${esc(name)}!<small>The whole class is coming to the Park</small>`, 7000, true, true);
+    PalStage.SFX.play("tada");
+  } else if (e.phase === "song") {
+    birthdayBannerUntil = Math.max(birthdayBannerUntil, performance.now() + 6500);
+    banner(`🎂 Happy birthday, ${esc(name)}!<small>🎵 The class is singing</small>`, 6500, true, true);
+    PalStage.SFX.play("birthday");
+  } else if (e.phase === "done") {
+    birthdayBannerUntil = performance.now() + 6500;
+    banner(`🎂 Happy birthday, ${esc(name)}!<small>What a party! 🎉</small>`, 6500, true, true);
+    PalStage.SFX.play("yay");
+  } else if (e.phase === "cancelled") {
+    birthdayBannerUntil = 0;
+    banner("🎂 The birthday party stopped.", 3500);
   }
 }
 function roomState(data) {
   const wasMural = roomInfo && roomInfo.mural;
+  const wasBirthday = roomInfo && roomInfo.birthday;
   roomInfo = data;
   if (!data.mural && wasMural) data.mural = wasMural;     // snapshots carry the picture; small updates keep it
   paintGameState(data);
@@ -1025,6 +1052,7 @@ function roomState(data) {
   if (roomStage) {
     roomStage.state.snowman = data.snowman || null;
     roomStage.state.wedding = data.wedding || null;
+    roomStage.state.birthday = data.birthday || null;
     if (data.tree) roomStage.state.tree = data.tree;
     if ("ornament" in data) myOrnament = data.ornament;
   }
@@ -1033,7 +1061,13 @@ function roomState(data) {
     weddingSeen = wedding;
     if (roomPane === "do" || roomPane === "party") buildRoomButtons();
   }
-  if (!open) clearWeddingCard();
+  const birthday = data.birthday || null;
+  if (birthday && (!wasBirthday || wasBirthday.id !== birthday.id || birthdayPartySeen !== birthday.id)) {
+    birthdayPartySeen = birthday.id;
+    birthdayBannerUntil = Math.max(birthdayBannerUntil, performance.now() + 6000);
+    banner(`🎂 Happy birthday, ${esc(birthday.name || "a friend")}!<small>Look at the Park — there is cake!</small>`, 7000, true, true);
+  }
+  if (!open) { clearWeddingCard(); birthdayPartySeen = 0; birthdayBannerUntil = 0; }
   const home = JSON.stringify(data.home), people = JSON.stringify(data.people);
   const house = JSON.stringify(data.openhouse ? {
     seat: data.openhouse.seat, name: data.openhouse.name, count: data.openhouse.count,

@@ -134,6 +134,7 @@
     <p id="roomJobs" style="margin:8px 0 0;font-size:14px"></p>
     <p id="roomChests" style="margin:4px 0 0;font-size:14px"></p>
     <p id="roomHere" style="margin:8px 0 0;font-size:14px"></p>
+    <p id="roomBirthday" style="margin:4px 0 0;font-size:14px;font-weight:800" aria-live="polite" hidden></p>
     <p id="roomSaid" style="margin:4px 0 0;font-size:14px;color:var(--soft)"></p>
     <div id="roomPlaced" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px;font-size:14px"></div>
   </div>
@@ -204,7 +205,7 @@ async function refresh() {
       <td>${s.misses >= 3 ? `<b style="color:var(--warn)">${s.misses} misses</b>` : s.runs_here}</td>
       <td>${s.stars}</td><td>${s.turns}${s.fixes ? ` · 🐞 ${s.fixes}` : ""}</td><td>${s.drawings}</td>
       <td>${s.free_show ? `<button class="btn" data-big-show="${esc(s.name)}">🎬 Big screen</button>` : ""}</td>
-      <td>${s.badges}</td><td>${s.hang ? hangCell(data.room.people[s.name], s.move) + (s.jobs ? `<br><small title="Today's jobs done">🎯 ${s.jobs} of 3</small>` : "") + (s.chests ? ` <small title="Chests coded open today">🧰 ${s.chests}</small>` : "") : ""}${s.let_in ? ` <button class="btn" data-let-in="${esc(s.name)}" data-on="">Lock again</button>`
+      <td>${s.badges}</td><td>${s.hang ? hangCell(data.room.people[s.name], s.move) + (s.jobs ? `<br><small title="Today's jobs done">🎯 ${s.jobs} of 3</small>` : "") + (s.chests ? ` <small title="Chests coded open today">🧰 ${s.chests}</small>` : "") : ""}${data.room.open && (data.room.people || {})[s.name] ? ` <button class="btn" data-birthday="${esc(s.name)}">🎂 Birthday!</button>` : ""}${s.let_in ? ` <button class="btn" data-let-in="${esc(s.name)}" data-on="">Lock again</button>`
         : s.hang ? "" : `<button class="btn" data-let-in="${esc(s.name)}" data-on="1">🔓 Let in</button>`}</td>
       <td class="err">${esc(s.last_error)}</td>
     </tr>`).join("");
@@ -365,6 +366,20 @@ $("rows").addEventListener("click", async e => {
   if (!b) return;
   b.disabled = true;
   await call({action: "let_in", name: b.dataset.letIn, on: !!b.dataset.on});
+  refresh();
+});
+// 🎂 Birthday! only shows for a student who is in the open Hang out.
+$("rows").addEventListener("click", async e => {
+  const b = e.target.closest("[data-birthday]");
+  if (!b) return;
+  b.disabled = true;
+  const note = $("roomBirthday");
+  note.hidden = false;
+  note.textContent = `🎂 Starting ${b.dataset.birthday}'s birthday party…`;
+  const out = await call({action: "birthday", name: b.dataset.birthday}).catch(() => null);
+  if (!out) note.textContent = "🎂 Couldn't reach the server. Try again.";
+  else if (out.error) { note.textContent = "🎂 " + out.error; b.disabled = false; }
+  else note.textContent = `🎂 Happy birthday, ${out.name}! The class is walking to the Park to sing.`;
   refresh();
 });
 // 🎬 Big screen: play one student's Free stage show full size on the projector.

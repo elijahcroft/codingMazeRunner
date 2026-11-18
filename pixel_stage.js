@@ -72,6 +72,22 @@ const PalStage = (() => {
       gift: () => notes([523, 659, 784, 1047, 1319, 1568], .07, .18, "triangle"),
       party: () => { notes([523, 523, 523, 659, 784, 659, 784, 1047, 1047, 1319], .13, .16); [0, 4, 8].forEach(i => tone(131, i * .13, .2, "sine", .08)); },
       fanfare: () => notes([392, 523, 659, 784, 659, 784, 1047], .1, .2, "triangle"),
+      // Happy Birthday, in C. "To you" goes UP to the high C and D, "dear Ana" leaps to the
+      // high G, and the last line is up there too, so it needs the octave above NOTE_FREQ.
+      birthday: () => {
+        const N = NOTE_FREQ, D5 = 587, E5 = 659, F5 = 698, G5 = 784;
+        const tune = [[N.G, .75], [N.G, .25], [N.A, 1], [N.G, 1], [N.C2, 1], [N.B, 2],
+                      [N.G, .75], [N.G, .25], [N.A, 1], [N.G, 1], [D5, 1], [N.C2, 2],
+                      [N.G, .75], [N.G, .25], [G5, 1], [E5, 1], [N.C2, 1], [N.B, 1], [N.A, 2],
+                      [F5, .75], [F5, .25], [E5, 1], [N.C2, 1], [D5, 1], [N.C2, 2]];
+        let at = 0;
+        for (const [freq, beats] of tune) {
+          const length = Math.max(.16, beats * .17);
+          tone(freq, at, length, "triangle", .055);
+          tone(freq * 2, at, length * .5, "sine", .016);
+          at += beats * .2;
+        }
+      },
     };
     return {
       wake,
@@ -635,7 +651,7 @@ const PalStage = (() => {
     function makeMember(m, you) {
       return {seat: m.seat, name: m.name, x: m.x, y: m.y, tx: m.x, ty: m.y, flip: false, mood: m.mood, move: null, moveFrom: 0, until: 0,
               talkUntil: 0, me: m.seat === you, rest: m.rest || null, restNext: null, wear: m.wear || {}, wearArt: m.wear_art || {}, size: m.pal.size, queue: null, spotUntil: 0, trail: false, sparked: 0,
-              pal: m.pal, pup: memberPuppet(m.pal, m.seat), concealed: !!m.concealed, tucked: !!m.tucked, playing: !!m.playing, role: m.role || "", prop: !!m.prop, hid: !!m.hid, team: m.team || ""};
+              crown: !!m.crown, pal: m.pal, pup: memberPuppet(m.pal, m.seat), concealed: !!m.concealed, tucked: !!m.tucked, playing: !!m.playing, role: m.role || "", prop: !!m.prop, hid: !!m.hid, team: m.team || ""};
     }
     function roomStart(data, you) {
       roomStop();
@@ -814,6 +830,15 @@ const PalStage = (() => {
       }
       if (m.wear.hat) place(m.wear.hat, rig.axis + .5, (rig.headTop == null ? rig.top : rig.headTop) + 1, true);
     }
+    // 🎂 The birthday crown sits above any hat, so it shows even after a fashion show.
+    function drawBirthdayHat(m, base) {
+      const rig = m.pup.rigOf(m.frame || 0);
+      if (rig.empty) return;
+      const px = m.pup.scale, zoom = Math.max(1, Math.round(px * m.size / 16));
+      const w = Math.max(1, Math.round(BIRTHDAY_HAT.width * zoom)), h = Math.max(1, Math.round(BIRTHDAY_HAT.height * zoom));
+      const top = base + ((rig.headTop == null ? rig.top : rig.headTop) - rig.feet - 1) * px - h;
+      g.drawImage(BIRTHDAY_HAT, Math.round(m.x - w / 2), Math.round(top), w, h);
+    }
     // An open book held in front of the tummy, sized to the pal.
     function drawBook(m, rig) {
       const tall = (rig.feet - rig.top + 1) * m.pup.scale, half = Math.max(5, Math.round(tall * .24)), high = Math.round(half * 1.2);
@@ -926,6 +951,7 @@ const PalStage = (() => {
         }
         m.pup.draw(g, frame, pose, m.x, roomBase(m) - hop, {flip: m.flip, squeeze});
         if (Math.abs(squeeze) > .4) drawWear(m, roomBase(m) - hop);
+        if (m.crown) drawBirthdayHat(m, roomBase(m) - hop);
         if (m.rest === "read" && !m.move && !rig.empty) drawBook(m, rig);
         if (host) placeTag(m);
       }
@@ -1100,7 +1126,8 @@ const PalStage = (() => {
       } else if (e.kind === "say" && m) {
         say(m, e.text, now, sound);
       } else if (e.kind === "fx") {
-        roomFx(e.name, e.x || W / 2);
+        // 🎂 In Calm, a birthday party keeps its cake and banner but skips the flying confetti.
+        if (!(e.birthday && calm && (e.name === "confetti" || e.name === "petals"))) roomFx(e.name, e.x || W / 2);
         if (sound) SFX.play(FX_SOUND[e.name]);
       } else if (e.kind === "pal" && m) {
         m.size = e.pal.size;
@@ -1117,6 +1144,9 @@ const PalStage = (() => {
       } else if (e.kind === "name" && m) {
         m.name = e.name; m.hid = !!e.hid;
         if (m.tag && !m.me) m.tag.style.display = m.hid ? "none" : "";
+      } else if (e.kind === "crown" && m) {
+        m.crown = !!e.on;
+        if (sound) SFX.play(e.on ? "tada" : "pop");
       } else if (e.kind === "wear" && m) {
         m.wear = e.wear;
         m.wearArt = e.wear_art || {};
@@ -1605,6 +1635,10 @@ const PalStage = (() => {
   const ZED = rowsSprite(["kkkkk", "...k.", "..k..", ".k...", "kkkkk"], {k: "#1b1530"});
   const WEAR_SPRITES = {};
   for (const [key, {rows, ink}] of Object.entries(WEAR_ART)) WEAR_SPRITES[key] = rowsSprite(rows, ink);
+  // 🎂 A birthday crown with three little candles. It is only drawn on the birthday
+  // child for the rest of the day; it is not a gift or a shop thing.
+  const BIRTHDAY_HAT = rowsSprite(["r...r...r", "w...w...w", "k..kyk..k", "ky.kyk.yk", "kyykyykyk", "kyyyyyyyk", "kkkkkkkkk"],
+                                  {r: "#e8294f", w: "#fffdf6", k: "#8a5a00", y: "#ffd93b"});
   // Sparkles get a little star in their own colours.
   for (const [key, ink] of Object.entries(SPARKLE_INK)) {
     const dots = {};

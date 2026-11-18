@@ -5721,7 +5721,8 @@ def pixel_entry(p):
                        ("gifts", []), ("wear", {}), ("friends", []), ("move", None), ("found", []),
                        ("stuff", []), ("fish", {}), ("things", {}), ("remixed", []), ("guessed", []), ("fixed", []), ("free_code", ""), ("free_runs", 0), ("free_shows", []), ("performed", 0), ("perform_until", 0),
                        ("chests", {}), ("chest_count", 0), ("mywear", []), ("presents", {}), ("present_count", 0), ("snowballs", 0),
-                       ("wedding_day", ""), ("mural_day", ["", 0, False]), ("openhouse_cool", 0), ("openhouse_day", ""),
+                       ("wedding_day", ""), ("birthday_day", ""), ("birthday_crown_day", ""),
+                       ("mural_day", ["", 0, False]), ("openhouse_cool", 0), ("openhouse_day", ""),
                        ("reached", pixel.LEVEL_ORDER[0])):
         entry.setdefault(key, value)
     if "coins" not in entry:        # coins came later: pay for the stars and gems already earned
@@ -6310,7 +6311,7 @@ def pixel_record(p, key, code, out, guess=None, fixing=False):
 ROOM_EVENTS = 500
 # Big class moments the projector must show even while Auto is looking into a
 # home. A game start or a Pal ball goal says so with `moment` instead of a kind.
-ROOM_MOMENTS = {"mymove", "shower", "party", "photo", "wedding"}
+ROOM_MOMENTS = {"mymove", "shower", "party", "photo", "wedding", "birthday"}
 ROOM_AWAY = 14             # seconds without a word from a browser before a pal leaves
 SHOWER_FIRST = 75          # seconds after the first pal arrives
 SHOWER_GAP = (150, 210)    # seconds between star showers
@@ -6333,7 +6334,7 @@ room_news = threading.Condition()
 
 def room_empty():
     return {"seq": 0, "seats": 0, "here": {}, "events": [], "shower": None, "next_shower": 0, "game": None, "game_serial": 0,
-            "wedding": None, "wedding_serial": 0, "openhouses": []}
+            "wedding": None, "wedding_serial": 0, "birthday": None, "birthday_serial": 0, "openhouses": []}
 
 
 pixel_room = dict(room_empty(), open=True, words=False)
@@ -6582,7 +6583,7 @@ def hang_name(p):
 
 def room_row(spot):
     return ({k: spot[k] for k in ("seat", "name", "x", "y", "mood", "rest", "pal", "buddies", "wear", "prop")}
-            | {"hid": bool(spot.get("hid")), "wear_art": spot.get("wear_art", {})})
+            | {"hid": bool(spot.get("hid")), "wear_art": spot.get("wear_art", {}), "crown": bool(spot.get("crown"))})
 
 
 def wear_art(entry):
@@ -7522,6 +7523,8 @@ def game_action(p, spot, data):
             return {"error": "There's already a round. Join it or wait for the next one."}
         if pixel_room.get("wedding"):
             return {"error": "A wedding is on right now. Wait for it to finish."}
+        if pixel_room.get("birthday"):
+            return {"error": "A birthday party is on right now. Play after the song!"}
         kind = data.get("kind")
         if kind not in GAME_KINDS:
             return {"error": "Choose a game to play."}
@@ -7733,6 +7736,8 @@ def room_keep_up():
         room_event("leave", loc=gone["loc"], seat=gone["seat"])
     game_tick(now)
     wedding_tick(now)
+    birthday_tick(now)
+    birthday_crowns_today()
     openhouse_keep_up(now)
     if room["shower"] and now > room["shower"]["ends"]:
         room["shower"] = None
@@ -7755,7 +7760,7 @@ DOING = {"wave": "👋 Waving", "dance": "💃 Dancing", "jump": "🦘 Jumping",
          "buy": "🛍️ Shopping", "wish": "🛍️ Shopping", "furnish": "🛋️ Decorating", "unfurnish": "🛋️ Decorating", "style": "🛋️ Decorating", "look": "🎨 Painting the walls",
          "place": "🖼️ Showing a drawing", "find": "💎 Found a gem!", "five": "🙌 High-fiving", "walk": "🚶 Exploring", "go": "🚶 Exploring",
          "catch": "🌠 Catching stars", "home": "🚪 Moving house to house", "chest": "🧰 Coding a chest open",
-         "wedding": "💒 At a wedding", "wedding_pick": "💒 At a wedding"}
+         "wedding": "💒 At a wedding", "wedding_pick": "💒 At a wedding", "birthday": "🎂 At a birthday party"}
 DOING_FOR = 20             # seconds a tap still counts as what they're doing
 
 # 🎯 Today's jobs: three small things to do in the Hang out, the same for the whole class each day,
@@ -7886,7 +7891,7 @@ def room_view(p, after, watch=0):
     rooms = home_rooms(home_of(pixel_entry(owner))) if owner else []
     out = {"open": room["open"], "words": room["words"], "seq": room["seq"], "you": spot["seat"] if spot else None,
            "meter": hang_view(), "places": ["home"] * len(rooms) if owner else hang_places(), "game": game_view(spot["seat"] if spot else None),
-           "wedding": wedding_view() if not loc else None,
+           "wedding": wedding_view() if not loc else None, "birthday": birthday_view(),
            "cover": [] if loc else GAME_COVER, "home": home_view(owner, p) if owner else None, "world": hang_places(),
            "people": [room_person(s) for s in room["here"].values()], "loc": loc,
            "class_jobs": [DAY_JOBS[k][:2] for k in day_pick(day_order()[1])]}
@@ -8824,6 +8829,8 @@ def wedding_start(p, spot):
     room, now = pixel_room, time.time()
     if room.get("game") and room["game"]["phase"] != "results":
         return {"error": "A game is on right now. Try the wedding after the game."}
+    if room.get("birthday"):
+        return {"error": "A birthday party is on right now. Try the wedding after the song."}
     if spot["loc"]:
         return {"error": "Step outside, then go to the Wedding garden."}
     if not wedding_here(spot):
@@ -9053,6 +9060,243 @@ def wedding_leave(seat):
         wedding_clear("cancelled", reason="partner_left")
 
 
+# 🎂 A birthday party the teacher starts for one student. Everyone in the Hang out
+# comes to the Park, stands in a half circle round the birthday pal by the cake,
+# the class sings the real Happy Birthday tune, and then everyone cheers. About 20
+# seconds. The birthday child keeps a party crown for the rest of the day and the
+# class gets a small once-a-day treat. Nothing is saved in the room itself, so a
+# restart or closing the Hang out simply ends the party.
+BIRTHDAY_SECONDS = 20
+BIRTHDAY_STEPS = ((2.2, "candles"), (3.0, "song"), (8.8, "cheer"), (12.0, "balloons"), (17.2, "hooray"))
+BIRTHDAY_COINS, BIRTHDAY_FRIEND_COINS = 10, 2
+BIRTHDAY_X, BIRTHDAY_Y = 196, .55             # the birthday pal, in front of the cake table
+
+
+def birthday_span():
+    places = hang_places()
+    return places.index("park") * pixel.PLACE_W if "park" in places else 0
+
+
+def birthday_spot(seat):
+    return next((s for s in pixel_room["here"].values() if s["seat"] == seat), None)
+
+
+def birthday_name(seat, fallback="A friend"):
+    spot = birthday_spot(seat)
+    return spot["name"] if spot else fallback
+
+
+def birthday_spots(count):
+    """Spots in a half circle in front of the birthday pal, in rows that spread out.
+    They are relative to the Park's left edge, like the wedding seats."""
+    out, made = [], 0
+    for row, cap in enumerate((8, 10, 12, 14)):
+        if made >= count:
+            break
+        n = min(cap, count - made)
+        rx, ry = 46 + row * 36, .26 + row * .10
+        mid = (n - 1) / 2
+        for j in range(n):
+            t = (j - mid) / max(1, mid)
+            angle = math.radians(90 - 60 * t)       # 30° to 150°: the front half of a circle
+            x = BIRTHDAY_X + math.cos(angle) * rx
+            y = BIRTHDAY_Y + math.sin(angle) * ry
+            out.append([round(max(24, min(pixel.PLACE_W - 24, x))), round(min(.98, y), 2)])
+        made += n
+    return out
+
+
+def birthday_view():
+    b = pixel_room.get("birthday")
+    if not b:
+        return None
+    return {"id": b["id"], "seat": b["seat"], "name": birthday_name(b["seat"], b.get("name", "A friend")),
+            "phase": b["phase"], "x": b.get("x", birthday_span() + BIRTHDAY_X), "y": b.get("y", BIRTHDAY_Y),
+            "seconds": max(0, round(b["started"] + BIRTHDAY_SECONDS - time.time()))}
+
+
+def birthday_event(phase, **more):
+    b = pixel_room.get("birthday")
+    more.setdefault("id", b.get("id", 0) if b else 0)
+    room_event("birthday", loc=None, moment="birthday", phase=phase,
+               x=birthday_span() + BIRTHDAY_X, y=BIRTHDAY_Y, **more)
+
+
+def birthday_start(spot, kid):
+    """Bring everyone in the Hang out to the Park and start the party."""
+    room, now, left = pixel_room, time.time(), birthday_span()
+    party = list(room["here"].values())
+    before = [{"seat": s["seat"], "loc": s["loc"], "x": s["x"], "y": s["y"]} for s in party]
+    room["birthday_serial"] += 1
+    b = {"id": room["birthday_serial"], "phase": "party", "seat": spot["seat"], "name": spot["name"],
+         "started": now, "until": now + BIRTHDAY_SECONDS, "step": 0,
+         "before": before, "people": [s["seat"] for s in party],
+         "x": left + BIRTHDAY_X, "y": BIRTHDAY_Y, "reason": ""}
+    room["birthday"] = b
+    # Friends in a home come out too, so the whole class is really in the Park.
+    for s in party:
+        if s["loc"]:
+            room_go(s, 0, s.get("outside", 160), .5)
+    friends = [s for s in party if s["seat"] != spot["seat"]]
+    spots = birthday_spots(len(friends))
+    for s in party:
+        if s["seat"] == spot["seat"]:
+            x, y = left + BIRTHDAY_X, BIRTHDAY_Y
+        elif spots:
+            x, y = spots.pop(0)
+            x += left
+        else:
+            x, y = left + BIRTHDAY_X, BIRTHDAY_Y + .8
+        s.update(x=round(x), y=y, rest=None, did=[DOING["birthday"], now])
+        s.pop("bite", None)
+        room_event("walk", loc=0, seat=s["seat"], x=s["x"], y=s["y"])
+    # A birthday crown for the rest of the day, not a shop gift.
+    entry = pixel_entry(kid)
+    entry["birthday_crown_day"] = pixel_day_name()
+    spot["crown"] = True
+    b["name"] = spot["name"]
+    room_event("crown", loc=0, seat=spot["seat"], on=True)
+    birthday_event("start", seat=spot["seat"], name=spot["name"], count=len(party))
+    return {"ok": True, "name": kid["name"], "seconds": BIRTHDAY_SECONDS, "count": len(party)}
+
+
+def birthday_restore(b):
+    """Walk everyone back to where they were before the party."""
+    for row in b.get("before", []):
+        spot = birthday_spot(row["seat"])
+        if not spot or spot["loc"] != 0:
+            continue
+        if row["loc"]:
+            room_go(spot, row["loc"], row["x"], row["y"])
+        else:
+            spot.update(x=row["x"], y=row["y"], rest=None)
+            room_event("walk", loc=0, seat=spot["seat"], x=row["x"], y=row["y"])
+
+
+def birthday_step(b, key, now):
+    left = birthday_span()
+    x = left + BIRTHDAY_X
+    here = [s for s in pixel_room["here"].values() if s["seat"] in b["people"] and not s["loc"]]
+    name = birthday_name(b["seat"], b.get("name", "A friend"))
+    if key == "candles":
+        room_event("fx", loc=0, name="cake", x=x, birthday=True)
+        birthday_event("candles", seat=b["seat"], name=name)
+    elif key == "song":
+        birthday_event("song", seat=b["seat"], name=name, seconds=6)
+    elif key == "cheer":
+        for s in here:
+            room_event("move", loc=0, seat=s["seat"], name="cheer")
+        room_event("fx", loc=0, name="confetti", x=x, birthday=True)
+        birthday_event("cheer", seat=b["seat"], name=name)
+    elif key == "balloons":
+        birthday_event("balloons", seat=b["seat"], name=name)
+    elif key == "hooray":
+        for s in here:
+            room_event("move", loc=0, seat=s["seat"], name="cheer")
+        room_event("fx", loc=0, name="confetti", x=x, birthday=True)
+        birthday_event("hooray", seat=b["seat"], name=name)
+
+
+def birthday_finish(b):
+    today = pixel_day_name()
+    seats, paid = game_seats(), 0
+    for seat in b.get("people", []):
+        pair = seats.get(seat)
+        if not pair:
+            continue
+        pid, spot = pair
+        if not spot or spot["loc"]:
+            continue
+        player = players.get(pid)
+        if not player:
+            continue
+        entry = pixel_entry(player)
+        if entry.get("birthday_day") == today:
+            continue
+        entry["birthday_day"] = today
+        pixel_pay(player, BIRTHDAY_COINS if seat == b["seat"] else BIRTHDAY_FRIEND_COINS, play=False)
+        paid += 1
+    name = birthday_name(b["seat"], b.get("name", "A friend"))
+    if paid:
+        hang_fill(2)
+    pixel_feed_add(f"🎂 The class sang Happy Birthday to {name}!")
+    birthday_restore(b)
+    pixel_room["birthday"] = None
+    birthday_event("done", id=b["id"], seat=b["seat"], name=name, paid=paid)
+    pixel_save_soon()
+
+
+def birthday_clear(phase, reason="", **more):
+    b = pixel_room.get("birthday")
+    if not b:
+        return None
+    name = birthday_name(b["seat"], b.get("name", "A friend"))
+    birthday_restore(b)
+    pixel_room["birthday"] = None
+    birthday_event(phase, id=b["id"], seat=b["seat"], name=name, reason=reason, **more)
+    return b
+
+
+def birthday_tick(now):
+    b = pixel_room.get("birthday")
+    if not b:
+        return
+    spot = birthday_spot(b["seat"])
+    if not spot or spot["loc"]:
+        birthday_clear("cancelled", reason="birthday_left")
+        return
+    elapsed = now - b["started"]
+    while b["step"] < len(BIRTHDAY_STEPS) and elapsed >= BIRTHDAY_STEPS[b["step"]][0]:
+        birthday_step(b, BIRTHDAY_STEPS[b["step"]][1], now)
+        b["step"] += 1
+    if elapsed >= BIRTHDAY_SECONDS:
+        birthday_finish(b)
+
+
+def birthday_leave(seat):
+    """The birthday child left: stop the party instead of leaving everyone waiting."""
+    b = pixel_room.get("birthday")
+    if b and seat == b["seat"]:
+        birthday_clear("cancelled", reason="birthday_left")
+
+
+def birthday_crowns_today():
+    """A crown is for one day only. Clear it if the clock has rolled past midnight."""
+    if not any(s.get("crown") for s in pixel_room["here"].values()):
+        return
+    today = pixel_day_name()
+    for pid, spot in list(pixel_room["here"].items()):
+        if not spot.get("crown"):
+            continue
+        player = players.get(pid)
+        if not player or pixel_entry(player).get("birthday_crown_day") != today:
+            spot["crown"] = False
+            room_event("crown", loc=spot["loc"], seat=spot["seat"], on=False)
+
+
+def birthday_teacher(data):
+    """The teacher's 🎂 Birthday! button, from a student's row on the teacher page."""
+    room = pixel_room
+    if not room["open"]:
+        return {"error": "Open the Hang out first."}
+    name = data.get("name")
+    if not isinstance(name, str) or not name:
+        return {"error": "Pick a student first."}
+    kid = next((q for q in players.values() if q.get("pixel") and q["name"] == name), None)
+    if not kid:
+        return {"error": "No student with that name."}
+    spot = next((s for s in room["here"].values() if s["real"] == name), None)
+    if not spot:
+        return {"error": f"{name} isn't in the Hang out now. Ask them to join first."}
+    if room.get("birthday"):
+        return {"error": "A birthday party is already on. Wait for it to finish."}
+    if room.get("wedding"):
+        return {"error": "A wedding is on right now. Wait for it to finish."}
+    if room.get("game") and room["game"]["phase"] != "results":
+        return {"error": "A game is on right now. Press ⏹ End this game first."}
+    return birthday_start(spot, kid)
+
+
 def room_free_spot(lo, hi, me=None):
     """Somewhere between lo and hi with room around it, so a class arriving together isn't one heap
     of pals. Spots go left to right, back row and front row in turn; the first one clear of every
@@ -9093,7 +9337,8 @@ def room_do(p, data):
             spot = room["here"][p["id"]] = {
                 "seat": room["seats"], "name": hang_name(p), "real": p["name"], "x": x, "y": y,
                 "mood": None, "rest": None, "seen": time.time(), "pal": room_compact(pixel_pal(entry)), "buddies": room_buddies(entry), "wear": dict(entry["wear"]),
-                "wear_art": wear_art(entry), "loc": 0, "prop": False, "hid": bool(entry.get("hide_name"))}
+                "wear_art": wear_art(entry), "loc": 0, "prop": False, "hid": bool(entry.get("hide_name")),
+                "crown": bool(entry.get("birthday_crown_day") == pixel_day_name())}
             room_event("join", loc=0, member=room_row(spot))
         return {"ok": True, "you": spot["seat"]}
     if not spot:
@@ -9131,6 +9376,7 @@ def room_do(p, data):
         return {"error": "Your friend is playing a game right now."}
     if what == "leave":
         wedding_leave(seat)
+        birthday_leave(seat)
         room["here"].pop(p["id"])
         openhouse_host_gone(seat)
         room_event("leave", loc=spot["loc"], seat=seat)
@@ -9466,7 +9712,7 @@ def pixel_overview():
             "strip": pixel_class_strip(rows),
             "open": pixel_class.get("open", 0), "feed": pixel_feed[-12:],
             "room": {"open": pixel_room["open"], "words": pixel_room["words"], "here": [s["real"] for s in pixel_room["here"].values()],
-                     "said": said[-8:], "game": game_brief(), "jobs": [" ".join(DAY_JOBS[k][:2]) for k in day_pick(day_order()[1])],
+                     "said": said[-8:], "game": game_brief(), "birthday": birthday_view(), "jobs": [" ".join(DAY_JOBS[k][:2]) for k in day_pick(day_order()[1])],
                      "chests": [[PLACE_WORDS[place], pixel.chest_job(place, day_order()[0])["job"], n] for place, n in chest_counts().items()
                                 if place in hang_places()],
                      "open_houses": [openhouse_public(o) for o in pixel_room.get("openhouses", [])],
@@ -9540,6 +9786,8 @@ def pixel_teacher(data):
             return {"error": "Open the Hang out first."}
         if pixel_room.get("wedding"):
             return {"error": "A wedding is on right now. Wait for it to finish."}
+        if pixel_room.get("birthday"):
+            return {"error": "A birthday party is on right now. Start the race after the song."}
         if pixel_room["game"] and pixel_room["game"]["phase"] != "results":
             return {"error": "A game is on right now. Press ⏹ End this game first."}
         seats = [s["seat"] for s in pixel_room["here"].values() if not s["loc"]]
@@ -9550,9 +9798,13 @@ def pixel_teacher(data):
                               "joined": seats, "until": time.time() + GAME_JOIN_SECONDS, "rewards": {}}
         room_event("game", message=f"💻 Code race for everyone! It starts in {GAME_JOIN_SECONDS} seconds.", moment="game", focus=seats[0])
         return {"ok": True, "count": len(seats)}
+    if action == "birthday":           # 🎂 the teacher starts one student's birthday party
+        return birthday_teacher(data)
     if action == "photo":              # 📸 everyone outside lines up in the Park, in rows, for a picture
         if not pixel_room["open"]:
             return {"error": "Open the Hang out first."}
+        if pixel_room.get("birthday"):
+            return {"error": "A birthday party is on right now. Take the photo after the song."}
         if pixel_room["game"] and pixel_room["game"]["phase"] != "results":
             return {"error": "A game is on right now. Press ⏹ End this game first."}
         class_photo()

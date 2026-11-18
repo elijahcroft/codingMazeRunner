@@ -263,6 +263,33 @@ const PalHang = (() => {
     box(g, x - 6, y - 29, 12, 1.6, .8, "#ffd6e3");
     heart(g, x, y - 32, .8, "#ff6f95");
   }
+  // 🎂 The birthday cake table in the Park, with three candles and party balloons.
+  // It only appears while a birthday party is on, so the Park stays its usual self.
+  function partyBalloon(g, x, y, colour, tieX, tieY) {
+    line(g, [[x, y + 5], [tieX, tieY]], "#fffdf6", .7);
+    oval(g, x, y, 5.2, 6.4, colour);
+    shape(g, [[x - 1.6, y + 7.8], [x + 1.6, y + 7.8], [x, y + 5.8]], colour);
+    oval(g, x - 1.6, y - 2.1, 1.3, 2, "#ffffffaa");
+  }
+  function birthdayTable(g, x, y, t, calm) {
+    oval(g, x, y + 1, 22, 3, "#2f6b5026");
+    [-15, 15].forEach(dx => line(g, [[x + dx, y], [x + dx, y - 7]], "#8a6a4a", 2));
+    box(g, x - 18, y - 13, 36, 13, 2, "#fffdf6");
+    box(g, x - 18, y - 5, 36, 3, 1, "#f1e6dc");
+    for (let i = 0; i < 6; i++) oval(g, x - 14 + i * 5.6, y - 12, 2.5, 2.1, "#ffd6e3");
+    box(g, x - 10, y - 22, 20, 9, 1, "#ffc9dc");
+    box(g, x - 10, y - 22, 20, 2, 1, "#fff6fb");
+    [-7, 0, 7].forEach(dx => {
+      box(g, x + dx - 1, y - 28, 2, 6, .5, "#fff6fb");
+      const flame = calm ? 0 : Math.sin(t * 4 + dx) * .7;
+      oval(g, x + dx, y - 30 + flame, 1.5, 2.2, "#ffb03a");
+      oval(g, x + dx, y - 30.4 + flame, .7, 1, "#fff3a0");
+    });
+    [[-30, -66, "#ff8fa8"], [-16, -80, "#ffd27a"], [18, -72, "#8fd0c8"], [34, -84, "#b9a4e8"]].forEach(([dx, dy, colour], i) => {
+      const bob = calm ? 0 : Math.sin(t * 1.6 + i) * 2;
+      partyBalloon(g, x + dx, y + dy + bob, colour, x + dx * .55, y - 26);
+    });
+  }
   function telescope(g, x, y) {
     oval(g, x, y + 1, 12, 2.4, "#23474a");
     line(g, [[x, y - 14], [x - 7, y]], "#c7b4f0", 1.6); line(g, [[x, y - 14], [x + 7, y]], "#c7b4f0", 1.6);
@@ -1948,7 +1975,6 @@ const PalHang = (() => {
     box(g, x + w - 16, y + h + 1, 8, 5, 1, "#8fd0c8");
     box(g, x + w - 15, y + h - 1, 6, 2, 1, "#e8294f");
     line(g, [[x + w - 2, y + h + 3], [x + w + 14, y + h + 7]], "#8a5a33", 1.2);
-    sign(g, x + w + 40, "🖼️ Class mural", y + h + 4);
   }
   // 👗 Fashion show: a pink runway down the middle of the Park, with little footlights.
   function runway(g, x, shine = 0) {
@@ -2349,6 +2375,7 @@ const PalHang = (() => {
         ink.beginPath(); ink.rect(i * W - cam, 0, W, H); ink.clip();
         ink.translate(i * W - cam, 0);
         if (!PalStage.calm) drift(ink, places[i], now / 1000);
+        if (!inside && state.birthday && places[i] === "park") birthdayTable(ink, 174, seatFeet(.38), now / 1000, PalStage.calm);
         if (places[i] === "wedding" && state.wedding && state.wedding.phase === "ceremony") weddingRows(ink, state.wedding, i * W - cam);
         if (places[i] === "sea") seaLife(ink, now / 1000, PalStage.calm);
         if (state.found) GEMS[places[i]].forEach(([x, deep], n) => {
@@ -2412,6 +2439,8 @@ const PalHang = (() => {
       if (locked) sign(g, places.length * W - cam - 52, "🔒 Fill the party meter!");
       const v = places.indexOf("village");
       const onScreen = x => x > 30 && x < W - 30;          // a sign only over something you can see
+      const park = places.indexOf("park"), mx = park * W - cam + MURAL.x + MURAL.w + 40;
+      if (park >= 0 && !inside && onScreen(mx)) sign(g, mx, "🖼️ Class mural", MURAL.y + MURAL.h + 4);     // on the sharp front layer
       if (v >= 0 && !inside) {
         const man = state.snowman || {balls: 0, need: 30}, sx = v * W - cam + SNOWMAN_X, tx = v * W - cam + VILLAGE_TREE_X;
         if (onScreen(sx)) sign(g, sx, `⛄ ${man.balls} of ${man.need}: click to roll!`, 90, 6);

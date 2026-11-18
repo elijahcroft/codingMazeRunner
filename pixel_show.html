@@ -288,10 +288,11 @@ function autoLook(now) {
 const SHOW_THESE = ["mymove", "toy", "five", "found", "go", "rest", "move", "fx"];
 // Class-wide moments that Auto must chase, even when it is looking into a home.
 // A game start or a Pal ball goal says so with event.moment instead of a kind.
-const MOMENT_THESE = ["mymove", "shower", "party", "photo", "wedding"];
+const MOMENT_THESE = ["mymove", "shower", "party", "photo", "wedding", "birthday"];
 let momentQueue = [];
 const isMoment = e => !!e.moment || MOMENT_THESE.includes(e.kind);
 function momentPlace(e) {
+  if (e.kind === "birthday") return {loc: 0, x: typeof e.x === "number" ? e.x : null};
   if (e.kind === "wedding") return {loc: 0, x: typeof e.x === "number" ? e.x : null};
   // A wedding or fashion photo looks at the garden or the runway, not at whoever is first outside.
   if (e.kind === "photo" && (e.style === "wedding" || e.style === "fashion"))
@@ -426,6 +427,7 @@ watcher = PalStage.follow(stage, {everySound: true, loc: () => cam.loc, onState(
   homeName = data.home ? data.home.name : "";
   homeRooms = data.home ? data.home.rooms.map(r => r.name) : [];
   stage.state.wedding = data.wedding || null;
+  stage.state.birthday = data.birthday || null;
   if (data.members) playQueuedMoments();       // the new place is here: play the moment it jumped for
   if (cam.loc && !people.some(m => m.loc === cam.loc)) lookAt(0);     // everyone left that home
   $("closed").hidden = data.open;
@@ -485,6 +487,13 @@ watcher = PalStage.follow(stage, {everySound: true, loc: () => cam.loc, onState(
       else if (e.phase === "end") banner("🚪 The open house is over.", 3500);
     }
     else if (e.kind === "danceparty") { stage.roomApply({kind: "fx", name: "confetti", x: e.x}, true); banner(`🪩 Dance party! ${e.seats.length} pals dancing together!`, 4000, true); }
+    else if (e.kind === "birthday") {
+      const who = e.name || "a friend";
+      if (e.phase === "start") banner(`🎂 Happy birthday, ${esc(who)}!`, 7000, true);
+      else if (e.phase === "song") { banner(`🎂 Happy birthday, ${esc(who)}! 🎵`, 6500, true); PalStage.SFX.play("birthday"); }
+      else if (e.phase === "done") banner(`🎂 Happy birthday, ${esc(who)}! What a party!`, 6500, true);
+      else if (e.phase === "cancelled") banner("🎂 The birthday party stopped.", 3500);
+    }
     else if (e.kind === "wedding") {
       const couple = e.partner_name ? `${e.host_name} and ${e.partner_name}` : e.host_name;
       if (e.phase === "pick") banner(`💒 ${esc(e.host_name)} is getting married!`, 3500);
