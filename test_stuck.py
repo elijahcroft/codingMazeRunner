@@ -366,6 +366,18 @@ class BeginnerSlipTests(unittest.TestCase):
         out = self.drive("p61", planet.answer_for("p60", 0))
         self.assertIn("change how n grows or shrinks", out["explain"]["next"])
 
+    def test_the_number_hint_keeps_the_bubble_words(self):
+        """The hint names the variable, but the bubble still says how close it came."""
+        out = self.drive("p59", planet.answer_for("p58", 0))
+        self.assertEqual(out["explain"]["say"], "2 more samples!")
+
+    def test_a_line_to_add_stops_before_a_rock_further_along(self):
+        # The rover starts left of a crater: a long east() would drive into it.
+        zi, zone, s = planet.find_site("p45")
+        world = planet.World(s["variants"][0], {})
+        step = planet.first_line_to((world.r, world.c), world.goal, world)
+        self.assertEqual(step, "east()")
+
     def test_x_is_not_a_variable_even_before_the_sensor_arrives(self):
         """P58's hint says so, and code with x = 4 would break the day x() arrives."""
         out = self.drive("p58", "x = 4\neast(x)\n")
@@ -419,6 +431,8 @@ class BeginnerSlipTests(unittest.TestCase):
         self.assertNotIn("west(1)", out["error"])
         # A number typed in is still answered with the other way to drive.
         self.assertIn("use  west(2)", self.drive("p39", "east(-2)\n")["error"])
+        # A sum of typed numbers is still a number, not a variable to check.
+        self.assertIn("use  west(3)", self.drive("p39", "east(2 - 5)\n")["error"])
 
     def test_look_on_its_own_is_not_a_yes_or_no_check(self):
         out = self.drive("p39", 'if look("east"):\n    east()\n')

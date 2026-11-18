@@ -1111,8 +1111,8 @@ straight away.
   ran `harvest()` on Auto for 40 days and never left job 2.
 - After each day the result says how close the day came to the job ("📋 Job: 1 of 2
   berries picked today", or what to buy and how many coins are still needed). If the same
-  code misses the job three days running, Auto stops, the **✍️ Type this** panel opens and
-  glows, and the result says the job needs new code.
+  code misses the job three days running, Auto stops and the result says what to change. When
+  the job needs new code, the **✍️ Type this** panel opens and glows.
 - Spends coins in the **🛒 Shop**. The button shows how many things they can afford.
 
 **Nothing fails and nothing is lost.** Picking a plant too early does nothing but waste a

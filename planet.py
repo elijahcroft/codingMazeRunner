@@ -442,7 +442,7 @@ class Rover(Brain):
             if args and literal(node.args[0]):
                 world.typed = True   # a number typed in, not measured
             back = {"north": "south", "south": "north", "east": "west", "west": "east"}.get(name)
-            if n < 0 and back and not literal(node.args[0]):
+            if n < 0 and back and not fixed(node.args[0]):
                 said = ast.unparse(node.args[0]).replace("'", '"')
                 raise BotError(f"{name}({said}) asked to drive {n} squares, which is "
                                f"less than 0. Check what {said} is when the rover gets "
@@ -1211,8 +1211,16 @@ def first_line_to(frm, to, world=None):
         ways.append((("south" if tr > r else "north"), abs(tr - r),
                      1 if tr > r else -1, 0))
     for way, n, dr, dc in ways:
-        if world is None or world.at(r + dr, c + dc) not in SOLID + "O":
-            return f"{way}({n})" if n > 1 else f"{way}()"
+        if world is not None:
+            # Stop at the first square that would block the drive, so the line
+            # to add never sends the rover into rock or a crater.
+            step = 1
+            while step <= n and world.at(r + dr * step, c + dc * step) not in SOLID + "O":
+                step += 1
+            n = step - 1
+            if not n:
+                continue
+        return f"{way}({n})" if n > 1 else f"{way}()"
     return ""
 
 
@@ -1677,8 +1685,8 @@ def explain(world, unlocked=(), code=""):
     held = end == "stopped" and aim and nxt and not never and not branch and not once \
         and drive_number(code)
     if held:   # the drives use a number kept in a variable: that's what to change
-        name, line, value, grows = held
-        nxt += (f" Your drives use  {name} , set to {value} on line {line}. "
+        name, set_line, value, grows = held
+        nxt += (f" Your drives use  {name} , set to {value} on line {set_line}. "
                 + (f"Try a different start number there, or change how {name} grows or shrinks, "
                    if grows else "Try a different number there ")
                 + "before adding new lines.")

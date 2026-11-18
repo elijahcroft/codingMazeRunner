@@ -318,6 +318,48 @@ class LeagueTests(unittest.TestCase):
                 server.players.update(original)
 
 
+class OldNameTests(unittest.TestCase):
+    def test_an_old_invisible_name_is_renamed_on_the_levels_it_made(self):
+        """A blank old name is cleaned in load_state, and the level it made follows."""
+        import json, os, tempfile
+        rows = ["S...........", "............", "............", "............",
+                "............", "............", "............", "...........G"]
+        saved = {"players": {"p1": {**fake_player("\u200b\u200d"), "id": "p1"}}, "next": 2,
+                 "planet_levels": {"m1": {"key": "m1", "name": "A level", "by": "p1",
+                                           "by_name": "\u200b", "plays": 0, "wins": 0,
+                                           "best": None, "rows": rows, "live": True}}}
+        original, original_file = dict(server.players), server.STATE_FILE
+        original_next = server.next_player_num[0]
+        original_levels = dict(server.planet_levels)
+        original_class = dict(server.planet.CLASS_LEVELS)
+        original_sites = list(server.planet.WORKSHOP["sites"])
+        original_round = dict(server.cycles_round)
+        with tempfile.TemporaryDirectory() as folder:
+            server.STATE_FILE = os.path.join(folder, "scores.json")
+            with open(server.STATE_FILE, "w") as f:
+                json.dump(saved, f)
+            try:
+                server.players.clear()
+                server.planet_levels.clear()
+                server.load_state()
+                name = server.players["p1"]["name"]
+                self.assertEqual(name, "Player 1")
+                self.assertEqual(server.planet_levels["m1"]["by_name"], name)
+                self.assertIn(name, server.planet.find_site("m1")[2]["brief"])
+            finally:
+                server.STATE_FILE = original_file
+                server.next_player_num[0] = original_next
+                server.players.clear()
+                server.players.update(original)
+                server.planet_levels.clear()
+                server.planet_levels.update(original_levels)
+                server.planet.CLASS_LEVELS.clear()
+                server.planet.CLASS_LEVELS.update(original_class)
+                server.planet.WORKSHOP["sites"] = original_sites
+                server.cycles_round.clear()
+                server.cycles_round.update(original_round)
+
+
 class QuestTests(unittest.TestCase):
     def quest_player(self, mission=0):
         player = fake_player("Quest Tester")

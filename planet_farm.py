@@ -203,7 +203,7 @@ JOBS = [
             "So ask first:  if ripe():  picks only when it's ready, and  if empty():  "
             "plants only where there's room. Pick a carrot with code like this:",
      "code": 'for i in range(3):\n    if ripe():\n        harvest()\n    if empty():\n        plant("carrot")\n    east()\n',
-     "goal": {"need": 1, "what": "carrots picked", "idea": "if", "crop": "carrot"},
+     "goal": {"need": 1, "what": "carrot picked", "idea": "if", "crop": "carrot"},
      "pay": 20, "done": lambda farm, day: (day or {}).get("picked", {}).get("carrot", 0) >= 1
      and "if" in (day or {}).get("ideas", ())},
     {"key": "memory", "title": "More memory",
@@ -231,7 +231,7 @@ JOBS = [
             "and some have a 💎 inside. Drill the rock:",
      "code": 'while look("east") != "fence":\n    if look("east") == "rock":\n        drill("east")\n'
              '    harvest()\n    plant("berry")\n    east()\nharvest()\nplant("berry")\n',
-     "goal": {"need": 1, "what": "rocks drilled", "count": "drilled"},
+     "goal": {"need": 1, "what": "rock drilled", "count": "drilled"},
      "pay": 40, "done": lambda farm, day: _day(day, "drilled") >= 1},
     {"key": "perfect", "title": "A perfect day",
      "say": "A tick that does nothing is wasted: a bump, picking too early, planting where "
@@ -631,6 +631,7 @@ def check_jobs(farm, day=None):
             break
         farm["job"] += 1
         farm["job_tries"] = 0
+        farm["same_days"] = 0   # a new job gets its own tries before Auto stops
         farm["coins"] += job["pay"]
         farm["earned"] += job["pay"]
         done.append({"title": job["title"], "pay": job["pay"]})

@@ -1527,6 +1527,12 @@ def load_state():
     pixel_class.update(data.get("pixel_class") or {})
     planet_class_settings.update(data.get("planet_class") or {})
     planet_levels.update(data.get("planet_levels") or {})
+    # A level's author was saved when it was made: an old blank name is now a
+    # Player name, so the level says the same name as the player's cards.
+    for level in planet_levels.values():
+        q = players.get(level.get("by"))
+        if q:
+            level["by_name"] = q["name"]
     for level in planet_levels.values():
         planet.add_class_level(level["key"], level["name"], level["by_name"], level["rows"])
 
@@ -5173,8 +5179,8 @@ def planet_report():
     frontier = {q["id"]: planet.SITE_ORDER[planet_frontier(q)] for q, e in entries}
     # Where they last were, for "still on it or moved on". A practice site in
     # easy mode is not the main route's frontier.
-    current = {q["id"]: (e.get("now") or {}).get("site") or frontier[q["id"]]
-               for q, e in entries}
+    current = {q["id"]: now if (now := (e.get("now") or {}).get("site")) in planet.PRACTICE_ORDER
+               else frontier[q["id"]] for q, e in entries}
     zones, sites = [], []
     # (A younger class does most of its coding on the practice sites.)
     practice = planet.PRACTICE_ZONES if planet_class_settings["easy"] else []

@@ -294,13 +294,26 @@ class Jobs(unittest.TestCase):
         # The stuck line is the job line itself: it must not be shown twice.
         self.assertNotIn(out["stuck"], out["say"])
 
+    def test_buying_a_job_that_finishes_starts_the_next_job_count_again(self):
+        """A new job must get its own try before Auto is stopped for the same code."""
+        f = farm_rules.new_farm(5)
+        f["job"] = next(i for i, j in enumerate(farm_rules.JOBS) if j["key"] == "field")
+        f["coins"] = 0
+        for _ in range(3):
+            day(f, "wait()\n")
+        self.assertGreaterEqual(f["same_days"], farm_rules.STUCK_SAME)
+        f["coins"] = 100
+        self.assertTrue(farm_rules.buy(f, "upgrade", "field", DAY)["jobs"])
+        self.assertEqual(f["same_days"], 0, "the job counter carried on to the next job")
+        self.assertIsNone(day(f, "wait()\n")["stuck"])
+
     def test_ripe_carrots_the_code_did_not_reach_are_not_called_still_growing(self):
         f = farm_rules.new_farm(5)
         f["job"] = next(i for i, j in enumerate(farm_rules.JOBS) if j["key"] == "if")
         f["crops"].append("carrot")
         f["field"] = [[None, ["carrot", 2, 0], None]]
         out = day(f, "harvest()\n")
-        self.assertIn("0 of 1 carrots picked", out["say"][0])
+        self.assertIn("0 of 1 carrot picked", out["say"][0])
         self.assertNotIn("still growing", out["say"][0])
 
     def test_growing_carrots_say_to_run_another_day(self):
