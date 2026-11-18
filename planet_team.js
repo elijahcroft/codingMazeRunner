@@ -410,6 +410,7 @@ function teamBubbles(ctx, cell, ts) {
 // A ring that spreads out where a boulder just went into the ground.
 function teamPops(ctx, cell, now) {
   team.pops = team.pops.filter(p => now - p.at < 700);
+  if (CALM) return;   // no spreading ring in calm mode
   for (const p of team.pops) {
     const u = (now - p.at) / 700;
     ctx.strokeStyle = `rgba(255,211,107,${1 - u})`; ctx.lineWidth = Math.max(2, cell * .1);
@@ -709,6 +710,7 @@ function teamTake(out) {
       teamSound("fanfare");
     }
     if (team.auto) teamCodeSay("New level! Your program stopped, so check your code still fits this map.");
+    else teamCodeSay("");
     Object.assign(team, {map: out.map, bg: null, boulders: [], path: [], auto: null, bubbles: [], heard: 0, confetti: [], links: teamLinks(out.map),
                          paint: out.paint || null});
     team.rovers.clear();
@@ -836,6 +838,7 @@ function teamKeyUp(e) {
 
 function teamCodeSay(text, bad) {
   const say = $("teamCodeSay");
+  if (!say) return;          // the class-screen watcher has no code box
   say.textContent = text;
   say.classList.toggle("bad", !!bad);
 }
@@ -921,6 +924,7 @@ function closeTeam(byTeacher) {
 }
 function teamEscape() {
   if ($("team").hidden) return false;
+  if (!$("teamCoder").hidden) { teamCoder(false); return true; }
   closeTeam();
   return true;
 }

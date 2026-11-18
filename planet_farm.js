@@ -124,6 +124,7 @@ function toast(icon, title, text) {
 
 // ---- What the page knows ------------------------------------------------------------
 let farm = null;          // the farm as the server last gave it
+let farmSerial = 0;       // bumped by take(): a buy during a day makes its snapshot newer
 let scene = null;         // what the yard shows: the farm, changed square by square as a day plays
 let visiting = null;      // a classmate's farm, while the Visit window shows one
 const rover = {x: 1, y: 1, px: 1, py: 1, angle: 0};   // on the field, in squares
@@ -141,190 +142,8 @@ const editor = $("code");
 
 function leave() { location.href = "/planet"; }
 function showClosed() {
+  closeDialogs();
   $("app").hidden = true; $("closed").hidden = false; $("auto").checked = false;
-}
-
-// ---- The yard, drawn from above -------------------------------------------------------
-const EMOJI = '"Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", system-ui, sans-serif';
-function fit(cv) {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2), w = cv.clientWidth, h = cv.clientHeight;
-  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
-  const ctx = cv.getContext("2d");
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  return ctx;
-}
-// The yard is the field with two squares of grass all round it, so it zooms
-// out by itself as the field grows.
-function layoutOf(cv, view) {
-  const W = cv.clientWidth, H = cv.clientHeight, cols = view.w + 4, rows = view.h + 4;
-  const cell = Math.min(W / cols, H / rows, 112);
-  return {W, H, cols, rows, cell, ox: (W - cols * cell) / 2, oy: (H - rows * cell) / 2};
-}
-const sx = (L, x) => L.ox + (x + 1.5) * L.cell;   // the middle of field square x (1 is the first)
-const sy = (L, y) => L.oy + (y + 1.5) * L.cell;
-// Where the yard's things stand: grass squares in a fixed scatter, clear of
-// the field and of where the next field will reach.
-function decorSpots(view) {
-  const tiles = [];
-  for (let j = 0; j < view.h + 4; j++) for (let i = 0; i < view.w + 4; i++) {
-    if (i >= 2 && i <= view.w + 2 && j >= 2 && j <= view.h + 2) continue;
-    tiles.push([i, j, hash(i, j, 77)]);
-  }
-  return tiles.sort((a, b) => a[2] - b[2]);
-}
-function emoji(ctx, text, x, y, size) {
-  ctx.font = `${Math.max(8, size)}px ${EMOJI}`;
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillStyle = "#fff";
-  ctx.fillText(text, x, y + size * .04);
-}
-function drawYard(cv, view, now, mine) {
-  const ctx = fit(cv), L = layoutOf(cv, view), c = L.cell, t = CALM ? 0 : now;
-  // Grass, with tufts and a few tiny flowers that stay put.
-  ctx.fillStyle = "#24493f"; ctx.fillRect(0, 0, L.W, L.H);
-  const i0 = Math.floor(-L.ox / c), j0 = Math.floor(-L.oy / c);
-  for (let j = j0; j * c + L.oy < L.H; j++) for (let i = i0; i * c + L.ox < L.W; i++) {
-    const x = L.ox + i * c, y = L.oy + j * c;
-    for (let k = 0; k < 3; k++) {
-      const tx = x + hash(i, j, k) * c, ty = y + hash(j, i, k + 9) * c;
-      ctx.strokeStyle = k ? "#2f6152" : "#3a7563"; ctx.lineWidth = Math.max(1.5, c * .03); ctx.lineCap = "round";
-      ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx + c * .04, ty - c * .09); ctx.moveTo(tx + c * .07, ty); ctx.lineTo(tx + c * .09, ty - c * .07); ctx.stroke();
-    }
-    if (hash(i, j, 31) < .16) {
-      ctx.fillStyle = hash(i, j, 32) < .5 ? "#b9a3ff" : "#ffd36b";
-      ctx.beginPath(); ctx.arc(x + hash(i, j, 33) * c, y + hash(i, j, 34) * c, Math.max(1.5, c * .035), 0, 7); ctx.fill();
-    }
-  }
-  const fx = L.ox + 2 * c, fy = L.oy + 2 * c;
-  // Where the next field will reach, for the farm's owner.
-  if (mine && view.next_field) {
-    const nf = view.next_field;
-    ctx.save();
-    ctx.setLineDash([c * .16, c * .12]); ctx.strokeStyle = "rgba(242,234,219,.4)"; ctx.lineWidth = Math.max(2, c * .035);
-    roundRect(ctx, fx - c * .06, fy - c * .06, nf.w * c + c * .12, nf.h * c + c * .12, c * .14); ctx.stroke();
-    ctx.restore();
-    const label = `🔒 🌾 ${coinText(nf.cost)}`;
-    ctx.font = `700 ${Math.max(11, c * .2)}px system-ui, ${EMOJI}`;
-    const lw = ctx.measureText(label).width + c * .24, lx = fx + nf.w * c - lw - c * .08, ly = fy + nf.h * c - c * .36;
-    ctx.fillStyle = "rgba(27,23,51,.78)"; roundRect(ctx, lx, ly, lw, c * .3, c * .15); ctx.fill();
-    ctx.fillStyle = view.coins >= nf.cost ? "#ffd36b" : "#cfc6ea"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(label, lx + lw / 2, ly + c * .16);
-  }
-  // The field: soil with furrows, and a fence round it.
-  ctx.fillStyle = "rgba(10,20,16,.35)"; roundRect(ctx, fx - c * .1, fy - c * .04, view.w * c + c * .2, view.h * c + c * .2, c * .16); ctx.fill();
-  for (let y = 1; y <= view.h; y++) for (let x = 1; x <= view.w; x++) {
-    const px = fx + (x - 1) * c, py = fy + (y - 1) * c;
-    ctx.fillStyle = (x + y) % 2 ? "#6c4b36" : "#644531"; ctx.fillRect(px, py, c + .5, c + .5);
-    ctx.strokeStyle = "rgba(40,24,14,.38)"; ctx.lineWidth = Math.max(1, c * .03);
-    ctx.beginPath();
-    for (let k = 1; k <= 3; k++) { ctx.moveTo(px + c * .1, py + c * k / 4); ctx.lineTo(px + c * .9, py + c * k / 4); }
-    ctx.stroke();
-  }
-  ctx.strokeStyle = "#e3d3b0"; ctx.lineWidth = Math.max(2, c * .055); ctx.lineJoin = "round";
-  roundRect(ctx, fx - c * .08, fy - c * .08, view.w * c + c * .16, view.h * c + c * .16, c * .12); ctx.stroke();
-  ctx.fillStyle = "#f4e8cb";
-  for (let x = 0; x <= view.w; x++) for (const y of [0, view.h]) { ctx.beginPath(); ctx.arc(fx + x * c, fy + y * c + (y ? c * .08 : -c * .08), c * .055, 0, 7); ctx.fill(); }
-  for (let y = 1; y < view.h; y++) for (const x of [0, view.w]) { ctx.beginPath(); ctx.arc(fx + x * c + (x ? c * .08 : -c * .08), fy + y * c, c * .055, 0, 7); ctx.fill(); }
-  // What's growing.
-  for (let y = 1; y <= view.h; y++) for (let x = 1; x <= view.w; x++) {
-    const cell = view.field[y - 1] && view.field[y - 1][x - 1];
-    if (!cell) continue;
-    if (cell[0] === "rock") {
-      // A meteor still falling hasn't made its rock yet.
-      if (mine && falls.some(f => f.x === x && f.y === y && now < f.t0 + FALL_MS)) continue;
-      const cx = sx(L, x), cy = sy(L, y);
-      ctx.fillStyle = "rgba(20,10,6,.45)"; ctx.beginPath(); ctx.ellipse(cx, cy + c * .14, c * .4, c * .22, 0, 0, 7); ctx.fill();
-      emoji(ctx, "🪨", cx, cy, c * .66);
-      continue;
-    }
-    const [crop, age, gold] = cell, days = view.days[crop] || 1, ripe = age >= days;
-    const cx = sx(L, x), cy = sy(L, y), born = pops[`${x},${y}`];
-    const grow = born && !CALM ? Math.min(1, (now - born) / 260) : 1;
-    if (gold) {
-      const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, c * .5);
-      glow.addColorStop(0, `rgba(255,211,107,${ripe ? .6 : .32})`); glow.addColorStop(1, "rgba(255,211,107,0)");
-      ctx.fillStyle = glow; ctx.fillRect(cx - c * .5, cy - c * .5, c, c);
-    }
-    if (ripe) {
-      const bob = Math.sin(t / 420 + x * 1.7 + y) * c * .025;
-      ctx.fillStyle = "rgba(10,4,16,.28)"; ctx.beginPath(); ctx.ellipse(cx, cy + c * .3, c * .22, c * .07, 0, 0, 7); ctx.fill();
-      emoji(ctx, view.icons[crop] || "🌱", cx, cy + bob, c * .58 * grow);
-    } else {
-      emoji(ctx, "🌱", cx, cy + c * .06, c * (.26 + .26 * age / days) * grow);
-      // How many nights until it's ripe.
-      const left = days - age;
-      ctx.fillStyle = "rgba(27,23,51,.72)"; ctx.beginPath(); ctx.arc(cx + c * .3, cy - c * .3, c * .13, 0, 7); ctx.fill();
-      ctx.fillStyle = "#f2eadb"; ctx.font = `700 ${Math.max(9, c * .17)}px system-ui`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(String(left), cx + c * .3, cy - c * .29);
-    }
-    if (gold) emoji(ctx, "✨", cx + c * .26, cy - (ripe ? c * .26 : -c * .22) + Math.sin(t / 300 + x) * c * .03, c * .26);
-  }
-  // The yard's things, back to front.
-  const spots = decorSpots(view), things = [];
-  view.decor.forEach((d, i) => { if (spots[i]) things.push({d, i: spots[i][0], j: spots[i][1]}); });
-  things.sort((a, b) => a.j - b.j);
-  const hits = [];
-  for (const {d, i, j} of things) {
-    const size = c * (d.big ? 1.15 : .74), cx = Math.max(size * .55, Math.min(L.W - size * .55, L.ox + (i + .5) * c));
-    const cy = Math.max(size * .6, Math.min(L.H - size * .6, L.oy + (j + .5) * c));
-    const w = wiggles[d.key], u = w && !CALM ? (now - w) / 600 : 1;
-    const hop = u < 1 ? -Math.abs(Math.sin(u * Math.PI * 2)) * c * .16 * (1 - u) : 0;
-    ctx.fillStyle = "rgba(10,4,16,.26)"; ctx.beginPath(); ctx.ellipse(cx, cy + size * .42, size * .36, size * .1, 0, 0, 7); ctx.fill();
-    emoji(ctx, d.icon, cx, cy + hop, size);
-    hits.push({d, cx, cy, r: size * .55});
-    if (w && now - w < 1800) speech(ctx, d.say, cx, cy - size * .62, c, L.W);
-  }
-  // The rover.
-  const r = mine ? rover : {px: 1, py: 1, angle: 0};
-  const rx = sx(L, r.px), ry = sy(L, r.py), gear = view.look || {};
-  drawRover(ctx, rx, ry, c * 1.02, r.angle, 1, gear, now);
-  if (gear.pet && PETS[gear.pet]) drawPet(ctx, rx + c * .46, ry - c * .5, c * 1.15, gear.pet, now);
-  // What's under the rover would be hidden by it, so it shows in the corner.
-  const ux = Math.round(r.px), uy = Math.round(r.py), under = view.field[uy - 1] && view.field[uy - 1][ux - 1];
-  if (under && Math.abs(r.px - ux) + Math.abs(r.py - uy) < .05) {
-    const ripe = under[1] >= (view.days[under[0]] || 1), bx = sx(L, ux) + c * .3, by = sy(L, uy) + c * .3;
-    ctx.fillStyle = "rgba(27,23,51,.82)"; ctx.beginPath(); ctx.arc(bx, by, c * .19, 0, 7); ctx.fill();
-    if (under[2]) { ctx.strokeStyle = "#ffd36b"; ctx.lineWidth = Math.max(1.5, c * .03); ctx.stroke(); }
-    emoji(ctx, ripe ? view.icons[under[0]] || "🌱" : "🌱", bx, by, c * (ripe ? .26 : .2));
-  }
-  if (mine) {
-    for (const f of floaters) {
-      const u = Math.min(1, (now - f.t0) / f.life), rise = CALM ? .5 : .5 + u * .45;
-      ctx.globalAlpha = u < .7 ? 1 : 1 - (u - .7) / .3;
-      ctx.font = `800 ${Math.max(12, c * (f.big ? .34 : .22))}px system-ui, ${EMOJI}`;
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.lineWidth = Math.max(3, c * .05); ctx.strokeStyle = "rgba(20,12,36,.85)"; ctx.lineJoin = "round";
-      ctx.strokeText(f.text, sx(L, f.x), sy(L, f.y) - c * rise);
-      ctx.fillStyle = f.color; ctx.fillText(f.text, sx(L, f.x), sy(L, f.y) - c * rise);
-      ctx.globalAlpha = 1;
-    }
-    if (bubble && now < bubble.until) speech(ctx, bubble.text, rx, ry - c * .62, c, L.W);
-    if (night) {
-      const u = Math.min(1, (now - night.t0) / night.dur), a = Math.sin(u * Math.PI);
-      ctx.fillStyle = `rgba(12,9,38,${a * .62})`; ctx.fillRect(0, 0, L.W, L.H);
-      ctx.globalAlpha = a; emoji(ctx, u < .5 ? "🌙" : "☀️", L.W / 2, L.H * .14, Math.min(L.W, L.H) * .12); ctx.globalAlpha = 1;
-    }
-    for (const f of falls) {
-      const u = (now - f.t0) / FALL_MS, tx = sx(L, f.x), ty = sy(L, f.y);
-      if (u < 0) continue;
-      if (u < 1) {   // from high up and to the east, down onto its square
-        const e = u * u;
-        emoji(ctx, "☄️", tx + (1 - e) * c * 3, ty - (1 - e) * c * 4, c * .9);
-      } else if (u < 1.5) {
-        ctx.globalAlpha = 1 - (u - 1) * 2; emoji(ctx, "💥", tx, ty, c * (.8 + (u - 1) * .8)); ctx.globalAlpha = 1;
-      }
-    }
-  }
-  return {L, hits};
-}
-function speech(ctx, text, x, y, c, W) {
-  text = String(text); if (text.length > 30) text = text.slice(0, 29) + "…";
-  ctx.font = `700 ${Math.max(12, c * .2)}px system-ui, ${EMOJI}`;
-  const w = ctx.measureText(text).width + 18, h = Math.max(22, c * .34);
-  const left = Math.max(4, Math.min(W - w - 4, x - w / 2));
-  ctx.fillStyle = "#f2eadb"; roundRect(ctx, left, y - h, w, h, h / 2.4); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(x - 6, y - 1); ctx.lineTo(x + 6, y - 1); ctx.lineTo(x, y + 7); ctx.fill();
-  ctx.fillStyle = "#231d3f"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text, left + w / 2, y - h / 2 + 1);
 }
 
 // ---- Playing a day back -----------------------------------------------------------------
@@ -416,6 +235,11 @@ function nightfall(swap, quick) {
   });
 }
 function stepNight(now) {
+  // Calm mode turned on during the night: finish it at once, without the fade.
+  if (CALM) {
+    if (!night.swapped) { night.swapped = true; night.swap(); }
+    const done = night.done; night = null; done(); return;
+  }
   const u = (now - night.t0) / night.dur;
   if (u >= .5 && !night.swapped) { night.swapped = true; night.swap(); }
   if (u >= 1) { const done = night.done; night = null; done(); }
@@ -439,10 +263,13 @@ function loop(now) {
   falls = falls.filter(f => now < f.t0 + FALL_MS * 1.5);
   const moving = play || night || floaters.length || bubble || falls.length;
   if (!moving && ++lazy % 3) return;
-  if (!$("visit").hidden) { if (visiting) drawYard($("visitYard"), visiting, now, false); return; }
+  if (!$("visit").hidden) {
+    if (visiting) visitView = drawYard($("visitYard"), visiting, now, false);
+    return;
+  }
   yardView = drawYard($("yard"), scene, now, true);
 }
-let yardView = null;
+let yardView = null, visitView = null;
 
 // ---- The code box -------------------------------------------------------------------------
 function codeLines(code) {
@@ -467,6 +294,7 @@ function updateEditor() {
 function showLine(n) {
   activeLine = n || null;
   if (n) {
+    editor.scrollLeft = 0;
     const h = lineHeight(), top = (n - 1) * h;
     if (top < editor.scrollTop || top + h > editor.scrollTop + editor.clientHeight - 16)
       editor.scrollTop = Math.max(0, top - editor.clientHeight / 2);
@@ -476,6 +304,7 @@ function showLine(n) {
 function replaceAll(text) {
   editor.focus(); editor.setSelectionRange(0, editor.value.length);
   if (!document.execCommand("insertText", false, text)) editor.value = text;
+  editor.scrollTop = 0; editor.scrollLeft = 0;
   typed();
 }
 function typed() {
@@ -486,6 +315,7 @@ function typed() {
 // Typing: Tab pushes a line in, Enter keeps the push (and adds one after a
 // colon), brackets and quotes close themselves, and Ctrl+Enter runs the day.
 function codeKey(e) {
+  if (ac && !$("ac").hidden && acKey(e)) return;
   const t = editor, at = t.selectionStart, flat = at === t.selectionEnd;
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); pressRun(); return; }
   if (e.key === "Tab") {
@@ -498,7 +328,8 @@ function codeKey(e) {
   if (e.key === "Enter") {
     const before = t.value.slice(0, at), line = before.slice(before.lastIndexOf("\n") + 1);
     const indent = line.match(/^ */)[0] + (/:\s*$/.test(line) ? "    " : "");
-    e.preventDefault(); document.execCommand("insertText", false, "\n" + indent); return;
+    e.preventDefault(); document.execCommand("insertText", false, "\n" + indent);
+    t.scrollLeft = 0; return;
   }
   if (e.key === "Backspace" && flat) {
     const start = t.value.lastIndexOf("\n", at - 1) + 1, before = t.value.slice(start, at);
@@ -515,6 +346,166 @@ function codeKey(e) {
     e.preventDefault(); document.execCommand("insertText", false, e.key === "(" ? "()" : '""');
     t.setSelectionRange(at + 1, at + 1);
   }
+}
+
+// ---- Suggestions while typing ------------------------------------------------------------------
+// Start a word and the box under the cursor offers the farm words this
+// student has met (the same ones as the chips), Python's words, and their own
+// defs and variables. Inside plant(" it offers their seeds, inside look(" and
+// drill(" the four ways, and after look(...) == " what look() can say.
+// Up and down choose, Enter or Tab use one, Escape closes it.
+const SAYS = ["ripe", "growing", "empty", "rock", "fence"];
+const WAY_HELP = {north: "↑ north", south: "↓ south", east: "→ east", west: "← west"};
+// Python words that come with a farm word: [word, help, the farm word they come with]
+const PY_EXTRA = [
+  ["range", "range(3)  counts 0, 1, 2. Use it like  for i in range(3):", "for"],
+  ["in", "for i in range(3):", "for"],
+  ["else", "else:  does the lines under it when the  if  wasn't true.", "if"],
+  ["elif", "elif empty():  asks again when the  if  wasn't true.", "if"],
+  ["not", "not  turns True into False. Like  if not empty():", "if"],
+  ["and", "Both must be true. Like  if ripe() and x() > 2:", "if"],
+  ["or", "One is enough. Like  if ripe() or empty():", "if"],
+  ["print", "print(\"hi\")  makes your rover say it.", "for"],
+];
+// Typed alone on a line, these come with their shape.
+const SHAPES = {for: ["for i in range(", "):"], while: ["while ", ":"], if: ["if ", ":"], elif: ["elif ", ":"], else: ["else:", ""], def: ["def ", "():"]};
+const QUOTED = ["plant", "look", "drill"];
+let ac = null;   // the open list: {ctx, items, i}
+
+function wordName(w) { return w[0].replace(/\(.*$/, ""); }
+function knownWords() {
+  const at = farm && farm.job ? farm.job.n - 1 : 99, met = WORDS.filter(w => w[2] <= at), list = [], seen = new Set();
+  const add = (name, kind, help) => { if (!seen.has(name)) { seen.add(name); list.push({name, kind, help}); } };
+  const v = editor.value;
+  for (const m of v.matchAll(/^\s*def\s+([A-Za-z_]\w*)\s*\(/gm)) add(m[1], "own", `Your own command, made with def. ${m[1]}()  runs it.`);
+  // One-letter names (like the i in a for loop) would hide if and in.
+  for (const m of v.matchAll(/^\s*([A-Za-z_]\w+)\s*[-+*/]?=(?!=)/gm)) add(m[1], "var", "Your variable.");
+  for (const m of v.matchAll(/\bfor\s+([A-Za-z_]\w+)\s+in\b/g)) add(m[1], "var", "Your loop's counter.");
+  for (const w of met) add(wordName(w), w[3], w[1]);
+  const names = new Set(met.map(wordName));
+  for (const [name, help, with_] of PY_EXTRA) if (names.has(with_)) add(name, "shape", help);
+  return list;
+}
+// Is the cursor in a note or in words in quotes? (Quotes we fill are handled first.)
+function inWords(before) {
+  let q = "";
+  for (const ch of before) {
+    if (q) { if (ch === q) q = ""; }
+    else if (ch === '"' || ch === "'") q = ch;
+    else if (ch === "#") return true;
+  }
+  return !!q;
+}
+function completionContext() {
+  const v = editor.value, at = editor.selectionStart;
+  if (at !== editor.selectionEnd || /\w/.test(v[at] || "")) return null;
+  const lineStart = v.lastIndexOf("\n", at - 1) + 1, before = v.slice(lineStart, at);
+  const call = /\b(plant|look|drill)\(\s*(["'])([a-z]*)$/i.exec(before);
+  if (call) return {mode: call[1] === "plant" ? "seed" : "way", from: at - call[3].length, word: call[3], quote: call[2]};
+  const said = /\b(look\([^)]*\)|crop\(\))\s*[!=]=\s*(["'])([a-z]*)$/i.exec(before);
+  if (said) return {mode: said[1].startsWith("crop") ? "seed" : "says", from: at - said[3].length, word: said[3], quote: said[2], said: true};
+  if (inWords(before) || /\bdef\s+\w*$/.test(before)) return null;
+  const w = /(^|[^\w.])([A-Za-z_]\w*)$/.exec(before);
+  if (!w) return null;
+  return {mode: "name", from: at - w[2].length, word: w[2], lineStart, before};
+}
+function complete(open) {
+  if (!farm) return closeComplete();
+  const ctx = completionContext();
+  if (!ctx) return closeComplete();
+  let items;
+  if (ctx.mode === "seed") {
+    items = farm.crops.map(c => ({name: c, kind: "text", help: `${(farm.shop && (farm.shop.crops.find(g => g.key === c) || {}).icon) || "🌱"} Your ${c} seeds.`}));
+    if (ctx.said) items.push({name: "none", kind: "text", help: "crop() says \"none\" when nothing is planted there."});
+  } else if (ctx.mode === "way") items = Object.keys(WAY_HELP).map(n => ({name: n, kind: "text", help: WAY_HELP[n]}));
+  else if (ctx.mode === "says") items = SAYS.map(n => ({name: n, kind: "text", help: `look() says "${n}"`}));
+  else {
+    // Names open only as a word is typed, and never once it's a whole word,
+    // so Enter after it is still a new line.
+    if (!open && !ac) return closeComplete();
+    items = knownWords();
+    if (items.some(c => c.name === ctx.word)) return closeComplete();
+  }
+  const w = ctx.word.toLowerCase();
+  const shown = items.filter(c => c.name.toLowerCase().startsWith(w));
+  if (!shown.length || (ctx.mode !== "name" && shown.length === 1 && shown[0].name === ctx.word)) return closeComplete();
+  const keep = ac && ac.items[ac.i] && shown.findIndex(c => c.name === ac.items[ac.i].name);
+  ac = {ctx, items: shown, i: keep > 0 ? keep : 0};
+  drawComplete();
+}
+const KIND_WORD = {do: "command", ask: "question", shape: "python", text: "", own: "yours", var: "variable"};
+function drawComplete() {
+  const box = $("ac");
+  box.innerHTML = `<div class="ac-list" role="listbox">` + ac.items.map((c, i) =>
+    `<div class="ac-item${i === ac.i ? " on" : ""}" role="option" data-i="${i}"${i === ac.i ? ' aria-selected="true"' : ""}>` +
+    `<span class="ac-name ${c.kind}">${esc(c.name)}</span><small>${KIND_WORD[c.kind] || ""}</small></div>`).join("") + `</div>` +
+    `<div class="ac-help">${codeSpans(ac.items[ac.i].help || "")}<span>Enter or Tab to use it</span></div>`;
+  box.hidden = false;
+  placeBox(box, ac.ctx.from);
+  const on = box.querySelector(".on");
+  if (on) on.scrollIntoView({block: "nearest"});
+}
+function closeComplete() { ac = null; $("ac").hidden = true; }
+function charWidth() {
+  const cs = getComputedStyle(editor), font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  if (charWidth.font !== font) {
+    const c = document.createElement("canvas").getContext("2d");
+    c.font = font; charWidth.font = font; charWidth.w = c.measureText("0000000000").width / 10;
+  }
+  return charWidth.w;
+}
+// Under the cursor's line, or over it near the bottom of the box.
+function placeBox(box, index) {
+  const v = editor.value, row = v.slice(0, index).split("\n").length - 1, col = index - v.lastIndexOf("\n", index - 1) - 1;
+  const lh = lineHeight(), wrap = editor.parentElement.getBoundingClientRect(), h = box.offsetHeight, w = box.offsetWidth;
+  const x = editor.offsetLeft + 8 + col * charWidth() - editor.scrollLeft, y = 8 + row * lh - editor.scrollTop;
+  const under = y + lh + h + 4 <= wrap.height || y - h - 4 < 0;
+  box.style.top = (under ? y + lh + 2 : y - h - 2) + "px";
+  box.style.left = Math.max(0, Math.min(wrap.width - w - 4, x - 4)) + "px";
+}
+// Up, down, Enter, Tab and Escape steer the list while it's open.
+function acKey(e) {
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    ac.i = (ac.i + (e.key === "ArrowDown" ? 1 : -1) + ac.items.length) % ac.items.length;
+    drawComplete(); return true;
+  }
+  if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault(); acceptComplete(ac.items[ac.i]); return true;
+  }
+  if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeComplete(); return true; }
+  return false;
+}
+function acceptComplete(item) {
+  const ctx = ac.ctx, at = editor.selectionStart, v = editor.value;
+  closeComplete();
+  const put = (from, text, caret) => {
+    editor.setSelectionRange(from, at);
+    if (!document.execCommand("insertText", false, text)) editor.setRangeText(text, from, at, "end");
+    editor.setSelectionRange(from + caret, from + caret);
+  };
+  if (ctx.mode !== "name") {
+    // The word, then past the closing quote (and bracket) it sits in.
+    put(ctx.from, item.name, item.name.length);
+    let p = ctx.from + item.name.length;
+    if (editor.value[p] === ctx.quote) p++;
+    if (!ctx.said && editor.value[p] === ")") p++;
+    editor.setSelectionRange(p, p);
+    typed();
+    return;
+  }
+  const name = item.name, lineEnd = (v.indexOf("\n", at) + 1 || v.length + 1) - 1;
+  const alone = !ctx.before.slice(0, ctx.before.length - ctx.word.length).trim() && !v.slice(at, lineEnd).trim();
+  let text = name, caret = name.length;
+  if (SHAPES[name] && alone) { const [a, b] = SHAPES[name]; text = a + b; caret = a.length; }
+  else if (QUOTED.includes(name) && v[at] !== "(") { text = name + '("")'; caret = name.length + 2; }
+  else if (["do", "ask", "own"].includes(item.kind) && v[at] !== "(") text = name + "()", caret = text.length;
+  else if (name === "range" && v[at] !== "(") text = "range()", caret = 6;
+  else if (name === "print" && v[at] !== "(") text = 'print("")', caret = 7;
+  else if (["in", "not", "and", "or", "for", "while", "if", "elif", "def"].includes(name) && v[at] !== " ") text = name + " ", caret = text.length;
+  put(ctx.from, text, caret);
+  typed();
+  complete(false);
 }
 
 // ---- The words under the code box -------------------------------------------------------------
@@ -584,12 +575,25 @@ function renderJob() {
   }
   $("job").innerHTML = html;
   $("job").hidden = !html;
+  // 🔁 Auto comes with the job that runs the same code again: before it, every job needs new code.
+  $("autoLabel").hidden = !!(j && !j.auto);
+  if ($("autoLabel").hidden && $("auto").checked) stopAuto();
   if ($("sampleShow")) $("sampleShow").onclick = () => { sampleHidden = null; renderJob(); };
   if ($("orderSkip")) $("orderSkip").onclick = async () => {
     const out = await post("/planet/farm/buy", {id: me, kind: "order"}).catch(() => null);
     if (out && out.farm) take(out.farm);
   };
   renderSample();
+}
+// A wrapped line looks like two lines to type, so first shrink the text (down to 75%)
+// until the longest line fits; it only wraps if it still doesn't.
+function fitSample() {
+  const pre = $("sampleCode");
+  pre.style.fontSize = ""; pre.classList.add("measure");   // measure with no wrapping
+  const full = parseFloat(getComputedStyle(pre).fontSize);
+  const room = pre.parentElement.clientWidth - 2;
+  for (let size = full; size >= full * .75 && pre.offsetWidth > room; size -= .5) pre.style.fontSize = size + "px";
+  pre.classList.remove("measure");
 }
 function renderSample() {
   const j = farm && farm.job, on = !!(j && j.code && sampleHidden !== j.n);
@@ -603,6 +607,7 @@ function renderSample() {
     if (!ok && next < 0) next = i;
     return `<span class="${ok ? "ok" : i === next ? "next" : ""}">${esc(line) || " "}</span>`;
   }).join("");
+  fitSample();
   $("sampleFoot").hidden = !j.give;
   const all = next < 0 && have.slice(want.length).every(line => !line.trim());
   $("runButton").classList.toggle("nudge", all || farm.day === 0);
@@ -632,6 +637,7 @@ function renderTop() {
   $("speedButton").textContent = `${speed}×`;
 }
 function take(view, keepScene) {
+  farmSerial++;
   farm = view;
   coinsGoal = farm.coins;
   if (!keepScene) scene = {...farm, own: true};
@@ -675,13 +681,14 @@ async function runDay() {
   if (!out.counted) {   // the code couldn't be read, so the day never started
     busy = false; stopAuto();
     errorLine = out.line || null; showLine(null);
-    if (errorLine) { const h = lineHeight(); editor.scrollTop = Math.max(0, (errorLine - 3) * h); updateEditor(); }
+    if (errorLine) { const h = lineHeight(); editor.scrollTop = Math.max(0, (errorLine - 3) * h);
+      editor.scrollLeft = 0; updateEditor(); }
     SFX.play("error");
     say("bad", out.memory_full ? "🧠 Too many lines" : "🛠 One thing to fix", [codeSpans(out.error), "Nothing is broken, and the day hasn't started. Fix it and run again."]);
     take(out.farm);
     return;
   }
-  const before = farm;
+  const before = farm, serial = farmSerial;
   coinsGoal = coinsShown = before.coins;
   $("today").textContent = "";
   await playDay(out);
@@ -692,9 +699,11 @@ async function runDay() {
   const landed = [];
   await nightfall(() => {
     const was = scene.field;
-    take(out.farm); Object.assign(rover, {x: 1, y: 1, px: 1, py: 1, angle: 0}); pops = {};
+    // A shop buy during the day has a newer farm than the day's reply.
+    const latest = farmSerial === serial ? out.farm : farm;
+    take(latest); Object.assign(rover, {x: 1, y: 1, px: 1, py: 1, angle: 0}); pops = {};
     // A rock that wasn't there at the end of the day came down in the night.
-    out.farm.field.forEach((row, y) => row.forEach((cell, x) => {
+    latest.field.forEach((row, y) => row.forEach((cell, x) => {
       if (cell && cell[0] === "rock" && !(was[y] && was[y][x] && was[y][x][0] === "rock")) landed.push({x: x + 1, y: y + 1});
     }));
     if (!CALM) landed.forEach((f, i) => {
@@ -713,8 +722,13 @@ async function runDay() {
   if (out.gems) lines.push(`<span class="gold">💎 A space gem was inside a rock!</span>`);
   if (out.golden) lines.push(`<span class="gold">✨ ${out.golden} golden! Each one pays 5 times over.</span>`);
   if (out.best) lines.push(`<span class="gold">🏆 Your best day yet!</span>`);
-  if (out.error) { errorLine = out.line || null; updateEditor(); lines.push(`🛠 ${codeSpans(out.error)}`); }
-  for (const line of out.say) lines.push(codeSpans(line));
+  if (out.error) { errorLine = out.line || null; editor.scrollLeft = 0; updateEditor(); lines.push(`🛠 ${codeSpans(out.error)}`); }
+  for (const line of out.stuck ? out.say.slice(0, 1) : out.say) lines.push(codeSpans(line));   // stuck: just the job line
+  if (out.stuck) {   // the same code keeps missing the job: stop Auto and point at the code to type
+    lines.unshift(`<span class="gold">${codeSpans(out.stuck)}</span>`);
+    stopAuto(); sampleHidden = null; renderJob();
+    const pane = $("sample"); pane.classList.remove("nudge"); void pane.offsetWidth; pane.classList.add("nudge");
+  }
   const total = out.income + out.bonus + out.perfect;
   const extras = [out.bonus && `⭐ ${coinText(out.bonus)} star bonus`, out.perfect && `✨ ${coinText(out.perfect)} perfect`].filter(Boolean);
   const head = total ? `☀️ Day ${before.day + 1}: <span class="gold">🪙 +${coinText(total)}</span>` +
@@ -817,7 +831,7 @@ async function buy(kind, key) {
 
 // ---- Visiting a classmate's farm --------------------------------------------------------------
 function openVisit() {
-  visiting = null;
+  visiting = null; visitView = null;
   $("visitYardBox").hidden = true; $("visitSay").textContent = "";
   const rows = farm.class_farms;
   $("friends").innerHTML = rows.length ? rows.map(r => `<button data-who="${esc(r.who)}">${esc(r.name)}</button>`).join("")
@@ -839,8 +853,16 @@ function closeDialogs() {
   visiting = null;
 }
 editor.addEventListener("keydown", codeKey);
-editor.addEventListener("input", typed);
-editor.addEventListener("scroll", updateEditor);
+editor.addEventListener("input", e => { typed(); complete(e.inputType === "insertText"); });
+editor.addEventListener("scroll", () => { updateEditor(); closeComplete(); });
+editor.addEventListener("blur", closeComplete);
+editor.addEventListener("click", () => complete(false));
+editor.addEventListener("keyup", e => { if (/^(Arrow(Left|Right)|Home|End)$/.test(e.key)) complete(false); });
+$("ac").addEventListener("mousedown", e => {
+  e.preventDefault();
+  const item = e.target.closest(".ac-item");
+  if (item && ac) acceptComplete(ac.items[Number(item.dataset.i)]);
+});
 $("runButton").addEventListener("click", pressRun);
 $("auto").addEventListener("change", e => {
   $("autoLabel").classList.toggle("on", e.target.checked);
@@ -861,7 +883,11 @@ $("friends").addEventListener("click", e => { if (e.target.dataset.who) visitFar
 $("visitClose").addEventListener("click", closeDialogs);
 $("helpButton").addEventListener("click", () => { $("calmBox").checked = CALM; $("bigBox").checked = document.body.classList.contains("big"); $("help").hidden = false; });
 $("helpClose").addEventListener("click", closeDialogs);
-$("calmBox").addEventListener("change", e => { CALM = e.target.checked; store("planetCalm", CALM ? "1" : "0"); document.body.classList.toggle("calm", CALM); });
+$("calmBox").addEventListener("change", e => {
+  CALM = e.target.checked; store("planetCalm", CALM ? "1" : "0"); document.body.classList.toggle("calm", CALM);
+  // Anything already in the air (a meteor, a floating +coin, a speech bubble) stops now.
+  if (CALM) { falls = []; floaters = []; bubble = null; wiggles = {}; pops = {}; }
+});
 $("bigBox").addEventListener("change", e => { document.body.classList.toggle("big", e.target.checked); store("planetBig", e.target.checked ? "1" : "0"); updateEditor(); });
 $("sampleClose").addEventListener("click", () => { sampleHidden = farm.job && farm.job.n; renderJob(); });
 $("sampleGive").addEventListener("click", () => { if (farm.job && farm.job.code) replaceAll(farm.job.code); });
@@ -877,16 +903,25 @@ $("yard").addEventListener("click", e => {
   const L = yardView.L, fx = (x - L.ox) / L.cell - 2, fy = (y - L.oy) / L.cell - 2, nf = farm.next_field;
   if (nf && fx >= 0 && fy >= 0 && fx < nf.w && fy < nf.h && (fx >= farm.w || fy >= farm.h)) { renderShop(); $("shop").hidden = false; }
 });
-window.addEventListener("resize", updateEditor);
+// A classmate's yard says hello too (the same speech bubble as your own).
+$("visitYard").addEventListener("click", e => {
+  if (!visitView) return;
+  const box = $("visitYard").getBoundingClientRect(), x = e.clientX - box.left, y = e.clientY - box.top;
+  const hit = visitView.hits.find(h => Math.hypot(h.cx - x, h.cy - y) < h.r);
+  if (hit) wiggles[hit.d.key] = performance.now();
+});
+window.addEventListener("resize", () => { updateEditor(); if (farm) renderSample(); });
 
 // The teacher's messages reach the farm too, and so does closing it.
 let noticeSeen = null;
 setInterval(async () => {
-  if (!farm) return;
   const lately = performance.now() - lastInput < 90000 ? "&busy=1" : "";
   const out = await get(`/planet/ping?id=${encodeURIComponent(me)}${lately}`).catch(() => null);
   if (!out) return;
   if (out.farm === false) { showClosed(); return; }
+  // The teacher turned it back on while this page was showing "the farm is closed".
+  if (out.farm === true && !$("closed").hidden) { location.reload(); return; }
+  if (!farm) return;
   if (out.notice) {
     if (noticeSeen != null && out.notice.n && out.notice.n !== noticeSeen) toast(out.notice.icon, out.notice.title, out.notice.text);
     noticeSeen = out.notice.n;

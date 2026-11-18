@@ -1405,6 +1405,27 @@ class ClassroomTests(unittest.TestCase):
         with urlopen(self.base + "/planet/render.js") as response:
             self.assertIn(b"function drawRover", response.read())
 
+    def test_a_name_the_class_can_see(self):
+        # Zero-width and direction marks must not make a blank name on the
+        # projector, the crew cards or the "Just now" ticker.
+        out = self.post("/join", {"name": "\u200b\u200d\ufeff\ufe0f"})
+        self.assertTrue(out["name"].strip())
+        self.assertFalse(any(ch in out["name"] for ch in "\u200b\u200d\ufeff\ufe0f"))
+        # A second invisible name is a second student, not the same blank one.
+        other = self.post("/join", {"name": "\u2060"})
+        self.assertNotEqual(other["id"], out["id"])
+        self.assertNotEqual(other["name"], out["name"])
+        # An emoji name keeps its emoji (and its joiners).
+        self.assertEqual(self.post("/join", {"name": "🌮 Rocket"})["name"], "🌮 Rocket")
+        self.assertEqual(self.post("/join", {"name": "👨‍👩‍👧‍👦"})["name"], "👨‍👩‍👧‍👦")
+        # A name too long for a card is shortened once, so the same student
+        # typing the whole thing again gets their own rover back.
+        long_name = "Maximilian Alexander Fitzgerald-Longbottom"
+        first = self.post("/join", {"name": long_name})
+        again = self.post("/join", {"name": long_name})
+        self.assertEqual(first["id"], again["id"])
+        self.assertEqual(first["name"], again["name"])
+
     def test_the_typing_help_comes_off_as_a_student_gets_further(self):
         pid = self.join()
         entry = server.planet_entry(server.players[pid])
@@ -2035,6 +2056,20 @@ class ClassroomTests(unittest.TestCase):
         state = self.get(f"/planet/state?id={pid}")
         self.assertEqual((state["total_stars"], state["current"]), (0, "1a"))
 
+    def test_scouting_a_short_memory_site_lets_the_student_drive(self):
+        # The 4- and 6-line memory is about the length of a program, not about
+        # how far a student may scout with the arrows.
+        pid = self.join()
+        server.planet_entry(server.players[pid])["unlocked"] = len(planet.SITE_ORDER)
+        out = self.post("/planet/scout", {"id": pid, "site": "1b2",
+                                          "moves": ["east"] * 7})
+        self.assertNotEqual(out["run"]["end"], "error", out["run"]["error"])
+        self.assertEqual(out["run"]["frames"][-1]["c"], 8)
+        # The same seven lines as a program are still too long for its memory.
+        zi, zone, s = planet.find_site("1b2")
+        self.assertIn("memory", planet.drive("east()\n" * 7, s["variants"][0],
+                                             zone["rules"], zi)["error"])
+
     def test_scouting_jumps_and_drills_once_code_can(self):
         pid = self.join()
         server.planet_entry(server.players[pid])["unlocked"] = len(planet.SITE_ORDER)
@@ -2180,6 +2215,33 @@ class ClassroomTests(unittest.TestCase):
                            (["SG" + "@" * 10] + ["." * 12] * 7, "properly"), (["S" + "*" * 11, "**"] + ["." * 12] * 6, "properly")):
             self.assertIn(word, self.post("/planet/maker/save", {"id": ada, "name": "X", "rows": rows})["error"])
         self.assertIn("name", self.post("/planet/maker/save", {"id": ada, "name": "<>", "rows": self.DRAWING})["error"])
+
+    def test_a_level_nobody_could_beat_is_not_saved(self):
+        """Two of the class's real levels had samples walled in, so they could never go live."""
+        self.maker_on()
+        ada = self.join("Ada")
+        rows = list(self.DRAWING)
+        rows[-1] = rows[-1][:-2] + "O*"            # a sample in the corner, behind a crater
+        rows[-2] = rows[-2][:-1] + "O"
+        out = self.post("/planet/maker/save", {"id": ada, "name": "bruh", "rows": rows})
+        self.assertIn("can't reach a 🧪 sample", out["error"])
+        self.assertEqual(planet.class_cut_off(["S#*", "##G"]), (1, True))
+        self.assertEqual(planet.class_cut_off(["S.*", "..G"]), (0, False))
+        self.assertIn("key", self.post("/planet/maker/save", {"id": ada, "name": "ok", "rows": self.DRAWING}))
+
+    def test_a_level_can_have_an_emoji_name_and_remembers_its_code(self):
+        self.maker_on()
+        ada = self.join("Ada")
+        made = self.post("/planet/maker/save", {"id": ada, "name": "🚀", "rows": self.DRAWING})
+        key = made["key"]
+        self.assertEqual(self.get(f"/planet/site?id={ada}&site={key}")["name"], "🚀")
+        # A drawn level keeps the last program on the server, like any site,
+        # so a student on another laptop gets their code back.
+        self.assertTrue(self.transmit(ada, key, "east(4)\n")["rewards"]["published"])
+        self.assertEqual(self.get(f"/planet/site?id={ada}&site={key}")["code"], "east(4)\n")
+        # Markup in a name is never kept, even with emoji around it.
+        self.assertEqual(self.post("/planet/maker/save", {"id": ada, "key": key, "name": "🚀 <b> & \"x\"", "rows": self.DRAWING}).get("key"), key)
+        self.assertEqual(self.get(f"/planet/site?id={ada}&site={key}")["name"], "🚀 b x")
 
     def test_four_levels_each_and_the_teacher_can_remove_one(self):
         self.maker_on()
@@ -2728,6 +2790,78 @@ class PageScriptTests(unittest.TestCase):
                         f.write(part)
                     out = subprocess.run([node, "--check", path], capture_output=True, text=True)
                     self.assertEqual(out.returncode, 0, f"{name}: {out.stderr[:400]}")
+
+
+class CalmAndBigTextTests(unittest.TestCase):
+    """The two settings the class relies on: calm mode (no motion) and bigger
+    text for the code and telemetry. A unit test can hold the page rules."""
+
+    def read(self, name):
+        with open(os.path.join(HERE, name), encoding="utf-8") as f:
+            return f.read()
+
+    def test_the_predict_class_screen_shares_the_students_calm_setting(self):
+        page = self.read("planet_predict.html")
+        self.assertIn("planetCalm", page)
+        self.assertIn('localStorage.getItem("planetCalm") === "1"', page)
+
+    def test_big_text_reaches_every_code_box_and_printed_telemetry(self):
+        page = self.read("planet.html")
+        for rule in (".big .feed .ev.print", ".big .feed .err",
+                     ".big #siteBrief pre", ".big #shopCode", ".big .shop-paint",
+                     ".big #teamCode", ".big #showCode", ".big .predict-card pre"):
+            self.assertIn(rule, page, rule)
+
+    def test_calm_stops_the_candy_button_bump(self):
+        # .candy-button.bump comes after .calm .candy-button, so it needs its own rule.
+        page = self.read("planet.html")
+        self.assertIn(".calm .candy-button.bump", page)
+
+    def test_turning_calm_on_clears_what_is_already_in_the_air(self):
+        page = self.read("planet.html")
+        self.assertIn('querySelectorAll(".beam-dot, .fly-star")', page)
+        farm = self.read("planet_farm.js")
+        self.assertIn("falls = []; floaters = []; bubble = null;", farm)
+        self.assertIn("if (CALM) {\n    if (!night.swapped)", farm)
+
+    def test_room_effects_freeze_in_calm(self):
+        lounge = self.read("planet_lounge.js")
+        self.assertIn("const p = CALM ? 0 : (now - b.at) / 1800;", lounge)
+        team = self.read("planet_team.js")
+        self.assertIn("if (CALM) return;   // no spreading ring in calm mode", team)
+
+
+class MainRoutePageTests(unittest.TestCase):
+    """The page rules a class without easy mode depends on: Star Voyage's
+    drive-first zones are open to everyone, so they must not count as practice
+    parks, and the way on at Skip keeps saying where the level went."""
+
+    def read(self, name):
+        with open(os.path.join(HERE, name), encoding="utf-8") as f:
+            return f.read()
+
+    def test_star_voyage_practice_zones_are_not_easy_mode(self):
+        page = self.read("planet.html")
+        self.assertIn("z.practice && !z.voyage", page)
+        # (A plain `some(z => z.practice)` calls the main route an easy class.)
+        self.assertNotIn("state.zones.some(z => z.practice)", page)
+
+    def test_skip_says_the_level_can_wait_after_opening_the_next_site(self):
+        page = self.read("planet.html")
+        block = page.split("async function skipSite()")[1].split("async function askHint()")[0]
+        self.assertLess(block.index("await openSite(next)"), block.index('toast("⏭"'))
+
+    def test_a_toast_never_swallows_a_press_on_the_button_under_it(self):
+        page = self.read("planet.html")
+        toast = re.search(r"\.toast \{([^}]*)\}", page).group(1)
+        self.assertIn("pointer-events: none", toast)
+        act = re.search(r"\.toast\.act \{([^}]*)\}", page).group(1)
+        self.assertIn("pointer-events: auto", act)
+
+    def test_the_finale_has_no_next_button_after_it(self):
+        page = self.read("planet.html")
+        block = page.split("function stepSite(dir) {")[1].split("\n}")[0]
+        self.assertIn('dir > 0 && site.key === "7"', block)
 
 
 class HalloweenClassroomTests(unittest.TestCase):
@@ -3280,6 +3414,22 @@ class StarVoyageTests(unittest.TestCase):
         self.assertEqual(planet.goals(s, v), ["🎨 Paint every dot"])
         out = planet.drive(s["reference"], v, set(), 0)
         self.assertIn("painted", out["log"][-1]["text"] if isinstance(out["log"][-1], dict) else str(out["log"][-1]))
+
+    def test_a_paint_miss_says_dots_not_samples(self):
+        """A picture level collects samples in the engine, but a child is
+        painting dots: every miss should read that way."""
+        s = planet.find_site("v1")[2]
+        out = planet.drive("north()\n", s["variants"][0], set(), 0)
+        self.assertIn("6 dots still to paint", out["explain"]["what"])
+        self.assertNotIn("sample", out["explain"]["what"])
+        self.assertEqual(out["explain"]["say"], "6 more dots to paint!")
+        self.assertIn("dots still to paint", out["log"][-1])
+        self.assertNotIn("sample", out["log"][-1])
+        # The 🌍 "works on every mural" line uses the same words.
+        mural = planet.find_site("v13")[2]
+        out = planet.drive(mural["reference"], mural["variants"][0], set(), 0)
+        planet.everywhere(mural, mural["reference"], out)
+        self.assertIn("painted every dot", out["log"][-1])
 
     def test_a_brand_new_student_can_play_it_and_sees_it_open(self):
         pid = self.join()

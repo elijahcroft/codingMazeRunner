@@ -348,6 +348,11 @@ class Rover(Brain):
             raise BotError(f"{name}() is the rover's sensor for where it is, so "
                            f"{name} can't be a variable too. Pick another name, "
                            f"like  n  or  steps")
+        if name in ("x", "y") and type(self) is Rover:
+            # Before x() arrives too, on a level: code that works now would break
+            # the day it does. (The Paint Shop and the farm have their own rules.)
+            raise BotError(f"{name} is saved for one of the rover's own sensors (it comes "
+                           f"later), so pick another name, like  n  or  steps")
         super().assign(name, value, frame)
 
     def run_statement(self, node, frame):
@@ -387,6 +392,14 @@ class Rover(Brain):
             if frame.module:
                 raise BotError("That line doesn't do anything on its own. "
                                "Commands need brackets, like  east()")
+        if isinstance(node, (ast.If, ast.While)):
+            check = node.test
+            if isinstance(check, ast.UnaryOp) and isinstance(check.op, ast.Not):
+                check = check.operand
+            if isinstance(check, ast.Call) and isinstance(check.func, ast.Name) \
+                    and check.func.id == "look":
+                raise BotError('look() gives back a word, not True or False. Compare '
+                               'it with a word:  if look("east") == "rock":')
         super().run_statement(node, frame)
 
     def call_user(self, fn, args):
@@ -429,6 +442,11 @@ class Rover(Brain):
             if args and literal(node.args[0]):
                 world.typed = True   # a number typed in, not measured
             back = {"north": "south", "south": "north", "east": "west", "west": "east"}.get(name)
+            if n < 0 and back and not fixed(node.args[0]):
+                said = ast.unparse(node.args[0]).replace("'", '"')
+                raise BotError(f"{name}({said}) asked to drive {n} squares, which is "
+                               f"less than 0. Check what {said} is when the rover gets "
+                               f"to this line: it should never be below 0.")
             if n < 0 and back:
                 raise BotError(f"{name}() only drives {name}. To go the other way, "
                                f"use  {back}({-n})")
@@ -1180,12 +1198,30 @@ def where(p):
     return f"x {p[1]}, y {p[0]}"
 
 
-def first_line_to(frm, to):
-    """The one line that starts the rover towards `to`, like  east(2)."""
+def first_line_to(frm, to, world=None):
+    """The one line that starts the rover towards `to`, like  east(2).
+    Never sends it into rock or a crater: on a map that bends, the straight
+    compass way can be the wrong way."""
     (r, c), (tr, tc) = frm, to
-    way, n = (("east" if tc > c else "west"), abs(tc - c)) if tc != c else \
-        (("south" if tr > r else "north"), abs(tr - r))
-    return f"{way}({n})" if n > 1 else f"{way}()"
+    ways = []
+    if tc != c:
+        ways.append((("east" if tc > c else "west"), abs(tc - c),
+                     0, 1 if tc > c else -1))
+    if tr != r:
+        ways.append((("south" if tr > r else "north"), abs(tr - r),
+                     1 if tr > r else -1, 0))
+    for way, n, dr, dc in ways:
+        if world is not None:
+            # Stop at the first square that would block the drive, so the line
+            # to add never sends the rover into rock or a crater.
+            step = 1
+            while step <= n and world.at(r + dr * step, c + dc * step) not in SOLID + "O":
+                step += 1
+            n = step - 1
+            if not n:
+                continue
+        return f"{way}({n})" if n > 1 else f"{way}()"
+    return ""
 
 
 # Why the rover fell, by how it got onto the square.
@@ -1314,6 +1350,116 @@ def called_once(code):
         if isinstance(d, ast.FunctionDef) and drives and calls.count(d.name) == 1 \
                 and d.name in top:
             return d.name
+    return None
+
+
+def call_example(code, name):
+    """How to call a def the student made:  step()  or  stair(1).
+    Returns (call, takes_a_number)."""
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return f"{name}()", False
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == name:
+            args = node.args.args
+            if not args:
+                return f"{name}()", False
+            return f"{name}({', '.join(str(i + 1) for i in range(len(args)))})", True
+    return f"{name}()", False
+
+
+def drive_number(code):
+    """(name, line, value, changes later) when the code's drives take a number
+    kept in a variable, set at the top with a typed-in number, like  size = 4
+    then  east(size)."""
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return None
+    used = {a.id for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+            and n.func.id in COMPASS for a in ast.walk(ast.Module(body=[ast.Expr(x) for x in n.args], type_ignores=[]))
+            if isinstance(a, ast.Name)}
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) \
+                and node.targets[0].id in used and isinstance(node.value, ast.Constant) \
+                and isinstance(node.value.value, int):
+            name = node.targets[0].id
+            sets = sum(1 for n in ast.walk(tree) if isinstance(n, ast.AugAssign) and getattr(n.target, "id", None) == name
+                       or isinstance(n, ast.Assign) and any(getattr(t, "id", None) == name for t in n.targets))
+            return name, node.lineno, node.value.value, sets > 1
+    return None
+
+
+def loop_never_ran(world, code):
+    """A stopped run where a while loop's check was already False at the start.
+    A child who writes  while look("east") == "rock":  has the loop backwards,
+    and "add a line east(8)" would only teach the hand route. Returns
+    {"what": ..., "next": ...} or None."""
+    if world.t:
+        return None
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return None
+    loops = [n for n in tree.body if isinstance(n, ast.While)]
+    if not loops:
+        return None
+    node = loops[0]
+    check = (ast.get_source_segment(code, node.test) or "the check").strip()
+    ways = [a.args[0].value for a in ast.walk(node.test) if isinstance(a, ast.Call)
+            and isinstance(a.func, ast.Name) and a.func.id == "look" and a.args
+            and isinstance(a.args[0], ast.Constant) and a.args[0].value in COMPASS]
+    if ways:
+        saw = f'look("{ways[0]}") says "{world.look(ways[0])}"'
+        nxt = ("A while loop only runs while its check is True, so check which "
+               "way it looks and whether it should be  ==  or  != .")
+        if isinstance(node.test, ast.Compare) and any(isinstance(op, ast.Eq)
+                                                      for op in node.test.ops):
+            nxt = ('== means "is the same as". A while loop only runs while its '
+                   "check is True, so check which way it looks and whether == "
+                   "should be !=.")
+    elif any(isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+             and n.func.id == "at_beacon" for n in ast.walk(node.test)):
+        saw = "the rover wasn't on the beacon yet"
+        nxt = ("To keep going until the rover is on the beacon, write  "
+               "while not at_beacon():")
+    else:
+        saw = "its check was False at the start"
+        nxt = "A while loop only runs while its check is True. Check what it waits for."
+    return {"what": f"Your while loop never ran: {saw}, so  {check}  was False at the start",
+            "next": nxt}
+
+
+def if_never_ran(world, code):
+    """A stopped run where an if had no else, so when its check was False
+    nothing happened. Returns {"what": ..., "next": ...} or None."""
+    if world.t:
+        return None
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return None
+    if any(isinstance(n, ast.While) for n in ast.walk(tree)):
+        return None      # the while loop's own message is the right one
+    for node in [n for n in tree.body if isinstance(n, ast.If) and not n.orelse]:
+        check = (ast.get_source_segment(code, node.test) or "the check").strip()
+        ways = [a.args[0].value for a in ast.walk(node.test) if isinstance(a, ast.Call)
+                and isinstance(a.func, ast.Name) and a.func.id == "look" and a.args
+                and isinstance(a.args[0], ast.Constant) and a.args[0].value in COMPASS]
+        drives = {c.func.id for c in ast.walk(node)
+                  if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)
+                  and c.func.id in COMMANDS}
+        # It is the if/else lesson only when the check looks one way and the
+        # body drives another: an if that drives the way it looked is not this.
+        if not ways or not drives - {ways[0]}:
+            continue
+        saw = f'look("{ways[0]}") says "{world.look(ways[0])}"'
+        return {"what": f"Your if didn't run: {saw}, so  {check}  was False",
+                "next": ("An if only runs the lines pushed in under it when its "
+                         "check is True. Add an else: line below the if at the "
+                         "start of the line, then push the other drive in under "
+                         "the else.")}
     return None
 
 
@@ -1477,9 +1623,16 @@ def explain(world, unlocked=(), code=""):
         elif world.samples:
             near = min(world.samples, key=lambda p: (squares(p), p))
             n = len(world.samples)
-            what += f" with {n} sample{'s' if n != 1 else ''} still out"
-            nxt = f"The closest is at {where(near)}: {far(at, near)}."
-            aim, line = near, f"{n} more sample{'s' if n != 1 else ''}!"
+            if "paint" in world.v:
+                # Paint Planet and the picture zones collect samples too, but a
+                # child sees dots of paint; don't call them samples.
+                what += f" with {n} dot{'s' if n != 1 else ''} still to paint"
+                nxt = f"The closest is at {where(near)}: {far(at, near)}."
+                aim, line = near, f"{n} more dot{'s' if n != 1 else ''} to paint!"
+            else:
+                what += f" with {n} sample{'s' if n != 1 else ''} still out"
+                nxt = f"The closest is at {where(near)}: {far(at, near)}."
+                aim, line = near, f"{n} more sample{'s' if n != 1 else ''}!"
         elif world.flag in world.flags:
             spot = world.flags[world.flag]
             what += f" before flag {world.flag}"
@@ -1517,13 +1670,41 @@ def explain(world, unlocked=(), code=""):
                 nxt += (" On ice one move slides until rock stops it, so work "
                         "back from the beacon: find a rock that would stop a "
                         "slide right next to it.")
-    # On the very first levels, say the exact line to add.
-    if end == "stopped" and aim and nxt and "x" not in unlocked:
-        nxt += f" Add a new line at the bottom of your code, like  {first_line_to(at, aim)}"
+    # A while loop that never ran is not a hand-route problem: say why.
+    never = end == "stopped" and loop_never_ran(world, code)
+    if never:
+        what += ". " + never["what"]
+        nxt = (nxt + " " + never["next"]).strip()
+    branch = end == "stopped" and not never and if_never_ran(world, code)
+    if branch:
+        what += ". " + branch["what"]
+        nxt = (nxt + " " + branch["next"]).strip()
     once = end == "stopped" and world.mission != "report" and nxt and called_once(code)
+    # On the very first levels, say the exact line to add. Not when a loop, an
+    # if or a def is the idea, and never into rock or a crater.
+    held = end == "stopped" and aim and nxt and not never and not branch and not once \
+        and drive_number(code)
+    if held:   # the drives use a number kept in a variable: that's what to change
+        name, set_line, value, grows = held
+        nxt += (f" Your drives use  {name} , set to {value} on line {set_line}. "
+                + (f"Try a different start number there, or change how {name} grows or shrinks, "
+                   if grows else "Try a different number there ")
+                + "before adding new lines.")
+    elif end == "stopped" and aim and nxt and "x" not in unlocked \
+            and not never and not branch and not once:
+        step = first_line_to(at, aim, world)
+        if step:
+            nxt += f" Add a new line at the bottom of your code, like  {step}"
+        else:
+            nxt += " The straight way is blocked, so go round it and drive on."
     if once:
-        nxt = (f"{once}() ran once. To do its moves again, call it again, or put "
-               f"{once}() inside a for loop. {nxt}")
+        call, takes = call_example(code, once)
+        if takes:
+            nxt = (f"{call} ran once. To do its moves again, call it again with a "
+                   f"number, or put {call} inside a for loop. {nxt}")
+        else:
+            nxt = (f"{once}() ran once. To do its moves again, call it again, or put "
+                   f"{once}() inside a for loop. {nxt}")
     if not what:
         return None
     extra = []
@@ -1652,15 +1833,18 @@ def stalled(line, world, rover):
             f"every time round, whatever it sees.")
 
 
-def drive(code, variant, rules, zone):
-    """Run one program on one planet. Returns the replay the browser animates."""
+def drive(code, variant, rules, zone, use_memory=True):
+    """Run one program on one planet. Returns the replay the browser animates.
+
+    Scouting by hand passes use_memory=False: the editor's line memory is about
+    how long a program is, not how far a student may drive with the arrows."""
     world = World(variant, rules)
     sensors = {name: None for name, z in SENSOR_ZONE.items() if z <= zone}
     sensors.update({name: None for name in COMMANDS})
     if "spooky" in rules:   # Halloween night, where the witch wants report()s too
         sensors.update(knock=None, candy=None, report=None)
     error = line = rover = None
-    memory = variant.get("memory")
+    memory = variant.get("memory") if use_memory else None
     full = bool(memory) and code_lines(code) > memory
     try:
         if full:
@@ -1681,9 +1865,14 @@ def drive(code, variant, rules, zone):
     if error is None and world.end is None:
         world.end = "stopped"
         for name in [n for n in rover.defs if n not in rover.called][:1]:
+            call, _ = call_example(str(code), name)
             world.say(f"🧩 {name}() was made with def but never used. Add a "
-                      f"line  {name}()  to run it.")
-        world.say(f"{ENDED_SHORT[world.mission]}, at {where((world.r, world.c))}")
+                      f"line  {call}  to run it.")
+        if world.mission == "samples" and "paint" in world.v:
+            ended = "🏁 program ended with dots still to paint"
+        else:
+            ended = ENDED_SHORT[world.mission]
+        world.say(f"{ended}, at {where((world.r, world.c))}")
     out = {"reached": world.end == "goal", "end": "error" if error else world.end,
             "mission": world.mission, "memory_full": full,
             "ticks": world.t, "error": error, "line": line,
@@ -4089,7 +4278,8 @@ def everywhere(s, code, run):
                 missed[end] = missed.get(end, 0) + 1
         why = ", ".join(f"{n} {ENDED_WHY.get(end, end)}" for end, n in missed.items())
         of = s["bonus"].get("of", "plain")
-        did = MISSION_DONE[mission_of(s["variants"][0])]
+        did = "painted every dot" if "paint" in s["variants"][0] \
+            else MISSION_DONE[mission_of(s["variants"][0])]
         run["log"].append(f"tick {run['ticks']}: 🌍 the same code {did} "
                           f"on {reached} of the {len(ends)} {of}s"
                           + (f" ({why})" if why else ""))
@@ -6070,6 +6260,21 @@ def class_map(rows):
         return None, f"{MAKER_SAMPLES} 🧪 samples at most."
     wall = "#" * (MAKER_COLS + 2)
     return [wall, *(f"#{r}#" for r in rows), wall], ""
+
+
+def class_cut_off(rows):
+    """What the rover can't reach from the start on a class drawing (no jumping
+    on class levels): (samples it can't reach, True if it can't reach the beacon).
+    A level like that can never be beaten, so it could never be published."""
+    seen, todo = set(), [(r, c) for r, row in enumerate(rows) for c, ch in enumerate(row) if ch == "S"]
+    while todo:
+        r, c = todo.pop()
+        if (r, c) in seen or not (0 <= r < len(rows) and 0 <= c < len(rows[0])) or rows[r][c] in "#O":
+            continue
+        seen.add((r, c))
+        todo += [(r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)]
+    cut = [(r, c) for r, row in enumerate(rows) for c, ch in enumerate(row) if ch in "*G" and (r, c) not in seen]
+    return sum(rows[r][c] == "*" for r, c in cut), any(rows[r][c] == "G" for r, c in cut)
 
 
 def add_class_level(key, name, by, rows):

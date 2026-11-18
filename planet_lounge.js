@@ -193,7 +193,7 @@ function drawBubbles(ctx, r, x, y, cell, now) {
   r.bubbles = r.bubbles.filter(b => now - b.at < 1800);
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   for (const b of r.bubbles) {
-    const p = (now - b.at) / 1800;
+    const p = CALM ? 0 : (now - b.at) / 1800;
     ctx.globalAlpha = 1 - p * p;
     ctx.font = `${cell * .55}px system-ui, "Noto Color Emoji", sans-serif`;
     ctx.fillText(b.text, x, y - cell * (.75 + p * .9));

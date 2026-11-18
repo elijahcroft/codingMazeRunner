@@ -95,6 +95,7 @@
   .code pre i { font-style: normal; }
   .code pre .kw { color: #ff9ad5; } .code pre .fn { color: var(--mint); } .code pre .str { color: #ffcf8a; } .code pre .num { color: var(--violet); } .code pre .com { color: var(--dim); }
   .code pre.empty { color: var(--dim); }
+  .code pre span.now { background: rgba(140,242,198,.16); border-radius: 6px; box-shadow: inset 3px 0 0 var(--mint); }
   .code pre.empty span::before { content: none; }
   .splash { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; }
   .splash h3 { margin: 0 0 10px; font-size: clamp(30px, 3vw, 56px); font-weight: 850; letter-spacing: -.03em; }
@@ -254,6 +255,7 @@
       <div class="view">
         <div class="screen" id="screen">
           <canvas id="map"></canvas>
+          <canvas id="farmYard" hidden></canvas>
           <span class="tick" id="tick" hidden></span>
           <div class="stamp" id="stamp"></div>
           <div class="splash" id="splash"><div><h3>🛰 Ready for launch</h3><p>Go to <b id="splashAddress">…</b> and type your name.<br>Every run plays here, big.</p></div></div>
@@ -279,6 +281,7 @@
 <script>const CALM = true;   // pets and glows stay still; the replay still drives</script>
 <script src="/planet/render.js"></script>
 <script src="/planet/replay.js"></script>
+<script src="/planet/farm/yard.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -395,6 +398,102 @@ function takeRuns(runs) {
   // Four students running at once: the newest few, not a long backlog.
   stage.queue = stage.queue.slice(-4);
 }
+// ---- 🌱 Farm days -------------------------------------------------------------------------
+// When no level run is playing or waiting, a farm day someone just ran plays
+// here: their yard, their rover driving it, and their code. A level run always
+// takes the stage back straight away.
+const farmShow = {on: false, day: null, lastN: null, pending: null, i: 0, t0: 0, step: 200, from: null, field: null, until: 0};
+// What planet_farm_yard.js reads while it draws a farm as "mine".
+const rover = {x: 1, y: 1, px: 1, py: 1, angle: 0}, FALL_MS = 700, pops = {}, wiggles = {}, falls = [];
+let floaters = [], bubble = null, night = null;
+const coinText = n => Math.round(n).toLocaleString("en-US");
+const FARM_WAYS = {east: 0, south: Math.PI / 2, west: Math.PI, north: -Math.PI / 2};
+function takeFarmDays(days, farmOn) {
+  days = days || [];
+  // The farm switch is off: no farm day starts, and one playing now stops
+  // (a queued day is dropped instead of waiting to surprise the class).
+  if (!farmOn) {
+    farmShow.pending = null;
+    if (farmShow.on) stopFarm();
+    return;
+  }
+  const newest = days[days.length - 1];
+  if (farmShow.lastN == null) { farmShow.lastN = newest ? newest.n : 0; farmShow.pending = newest || null; return; }
+  if (newest && newest.n > farmShow.lastN) { farmShow.lastN = newest.n; farmShow.pending = newest; }
+  // Gone stale (nobody has farmed for a while): give the stage back.
+  if (farmShow.on && !days.length && !farmShow.pending && performance.now() > farmShow.until) stopFarm();
+}
+function startFarm(day) {
+  farmShow.pending = null;
+  Object.assign(farmShow, {on: true, day, i: 0, begun: false, t0: performance.now(), from: {x: 1, y: 1}, field: JSON.parse(JSON.stringify(day.start)),
+                           step: Math.max(90, Math.min(320, 6000 / Math.max(day.frames.length, 1))), until: Infinity});
+  Object.assign(rover, {x: 1, y: 1, px: 1, py: 1, angle: 0});
+  floaters = []; bubble = null;
+  $("farmYard").hidden = false; $("map").hidden = true; $("trek").hidden = true;
+  const s = students.find(x => x.id === day.id);
+  introduce(day.id, day.name, s && s.showoff, day.look, `<b>🌱</b>Rover Farm · day ${day.day}`);
+  setLabel("", "🌱 Farming now");
+  $("stage").classList.remove("win", "miss");
+  $("stamp").className = "stamp"; $("stamp").innerHTML = "";
+  $("result").innerHTML = "";
+  $("tick").hidden = true;
+  showCode(day.code, null);
+  $("file").textContent = "farm.py";
+}
+function stopFarm() {
+  if (!farmShow.on) return;
+  farmShow.on = false; farmShow.day = null;
+  $("farmYard").hidden = true; $("map").hidden = false;
+  $("stamp").className = "stamp"; $("stamp").innerHTML = "";
+  idleFrom = performance.now() - IDLE_MS;   // straight back to the usual show
+}
+function farmLine(n) {
+  [...$("code").children].forEach((el, i) => el.classList.toggle("now", i + 1 === n));
+}
+function stepFarm(now) {
+  const f = farmShow, frames = f.day.frames;
+  while (f.i < frames.length) {
+    const fr = frames[f.i], u = (now - f.t0) / f.step;
+    if (u < 1) {
+      if (!f.begun) {
+        f.begun = true; f.from = {x: rover.x, y: rover.y}; farmLine(fr.line);
+        if (fr.do === "move") rover.angle = fr.x > rover.x ? 0 : fr.x < rover.x ? Math.PI : fr.y > rover.y ? Math.PI / 2 : -Math.PI / 2;
+        if (fr.way && FARM_WAYS[fr.way] != null) rover.angle = FARM_WAYS[fr.way];
+      }
+      if (fr.do === "move") { const e = ease(u); rover.px = f.from.x + (fr.x - f.from.x) * e; rover.py = f.from.y + (fr.y - f.from.y) * e; }
+      return;
+    }
+    Object.assign(rover, {x: fr.x, y: fr.y, px: fr.x, py: fr.y});
+    const row = f.field[fr.y - 1], pop = (text, color, big, at) =>
+      floaters.push({x: at ? at[0] : fr.x, y: at ? at[1] : fr.y, text, color, big, t0: now, life: big ? 1100 : 800});
+    if (fr.do === "pick") { row[fr.x - 1] = null; pop(`+${fr.pay}`, "#ffd36b", fr.gold); }
+    else if (fr.do === "drill") { f.field[fr.at[1] - 1][fr.at[0] - 1] = null; pop(`${fr.gem ? "💎" : "💥"} +${fr.pay}`, "#ffd36b", true, fr.at); }
+    else if (fr.do === "plant") row[fr.x - 1] = [fr.crop, 0, fr.gold ? 1 : 0];
+    else if (fr.do === "dig") row[fr.x - 1] = null;
+    f.i++; f.begun = false;
+    f.t0 = now - f.t0 > f.step * 3 ? now : f.t0 + f.step;
+    const said = f.day.prints.filter(p => p.t === f.i).pop();
+    if (said) bubble = {text: said.text, until: now + 1400};
+  }
+  if (f.until !== Infinity) return;
+  // The day is done: what it earned, kindly, and a short hold before the next.
+  farmLine(0);
+  const good = f.day.end !== "error" && f.day.coins > 0;
+  $("stamp").innerHTML = good ? `🪙 +${coinText(f.day.coins)} coins!` : f.day.end === "error" ? `Not yet!<small>The code stopped · try again!</small>` : `Day ${f.day.day} done 🌙`;
+  $("stamp").className = `stamp ${good || f.day.end !== "error" ? "win" : "miss"}`;
+  requestAnimationFrame(() => $("stamp").classList.add("show"));
+  setLabel("done", `${f.day.name}'s farm day`);
+  f.until = now + 2600;
+}
+function drawFarm(now) {
+  const d = farmShow.day;
+  if (now < farmShow.until || farmShow.until === Infinity) stepFarm(now);
+  else if ($("stamp").classList.contains("show")) $("stamp").classList.remove("show");
+  floaters = floaters.filter(x => now - x.t0 < x.life);
+  if (bubble && now > bubble.until) bubble = null;
+  drawYard($("farmYard"), {w: d.w, h: d.h, field: farmShow.field, decor: d.decor, icons: d.icons, days: d.days, look: d.look}, now, true);
+}
+
 // A pause in the runs: the expedition map, then a good run from earlier, by turns.
 const IDLE_MS = 40000, SLIDE_MS = 15000;
 let idleFrom = performance.now(), nextSlide = 0, slideTurn = 0, latestRuns = [];
@@ -412,9 +511,12 @@ function attract(now) {
 function frame(now) {
   const run = stage.run;
   const free = !run || run.live || run.replay || !$("trek").hidden || (stage.done && now > stage.until);
-  if (stage.queue.length && free && !covered()) { $("trek").hidden = true; playRun(stage.queue.shift()); }
-  else if (!covered()) attract(now);
-  if (stage.run) {
+  const farmFree = !farmShow.on || now > farmShow.until;
+  if (stage.queue.length && free && !covered()) { stopFarm(); $("trek").hidden = true; playRun(stage.queue.shift()); }
+  else if (farmShow.pending && free && farmFree && !covered() && $("room").hidden) startFarm(farmShow.pending);
+  else if (!covered() && !farmShow.on) attract(now);
+  if (farmShow.on) drawFarm(now);
+  else if (stage.run) {
     stage.draw(now);
     if (!stage.run.live) $("tick").textContent = stage.tick;
   }
@@ -645,18 +747,29 @@ setInterval(showClock, 1000);
 // ---- The expedition map ------------------------------------------------------------------
 // Every stop on the journey, with the rovers that have got that far. Rovers,
 // not names or counts of stars: it shows the crew spread out, not who's last.
-const ZONE_ICONS = {landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐"};
+const ZONE_ICONS = {practice: "🛝", garden: "🌻", rink: "⛸", pads: "🔮", bounce: "🐸", lookout: "👀", forks: "🔀", tricks: "🎓", numbers: "🔢", landing: "🪂", ice: "🧊", wind: "💨", crumble: "🪨", solar: "☀️", portals: "🌀", signal: "🧭", hops: "🦘", belts: "🛤", drill: "⛏", gates: "🔑", relay: "🚩", push: "🪨", laser: "🔦", cargo: "📦", tour: "🗺", uncharted: "🪐"};
 let lastRoad = "";
 function renderTrek(data) {
   const here = data.students.filter(s => s.here), day = data.day;
   $("trekNote").textContent = day.wins ? `${plural(day.wins, "mission")} done today` : "Where the crew has got to";
-  const sig = JSON.stringify([innerWidth, innerHeight, data.zones, here.map(s => [s.zone, s.look])]);
+  // A student in a practice park camps there, not at the main route's first zone.
+  const campOf = s => s.practice ? s.here_zone : s.zone;
+  const sig = JSON.stringify([innerWidth, innerHeight, data.zones, here.map(s => [campOf(s), s.look])]);
   if (sig === lastRoad) return;
   lastRoad = sig;
-  const road = $("road"), perRow = 6, tent = road.clientHeight > 560 ? 46 : road.clientHeight > 380 ? 34 : 28;
+  // The practice parks come first while anyone is in one, then the main route up to the
+  // furthest zone anyone has reached, so the road stays three rows long.
+  let names = data.zones;
+  if (here.some(s => s.practice)) {
+    const used = new Set(here.map(campOf)), last = Math.max(0, ...data.zones.map((n, i) => used.has(n) ? i : 0));
+    names = data.practice_zones.concat(data.zones.slice(0, Math.max(last + 1, 18 - data.practice_zones.length)));
+    if (names.length > 18) names = names.filter((n, i) => i < 18 - 1 || used.has(n));
+  }
+  const road = $("road"), perRow = 6, rows = Math.ceil(names.length / perRow);
+  const tent = road.clientHeight / rows > 186 ? 46 : road.clientHeight / rows > 126 ? 34 : 28;
   road.style.setProperty("--tent", tent + "px");
-  const fit = Math.max(1, Math.floor((road.clientHeight / 3 - 66) / (tent + 2))) * Math.floor((road.clientWidth / perRow - 4) / (tent + 2));
-  const stops = data.zones.map(name => ({name, key: data.zone_keys[name], crew: here.filter(s => s.zone === name)}));
+  const fit = Math.max(1, Math.floor((road.clientHeight / rows - 66) / (tent + 2))) * Math.floor((road.clientWidth / perRow - 4) / (tent + 2));
+  const stops = names.map(name => ({name, key: data.zone_keys[name], crew: here.filter(s => campOf(s) === name)}));
   // Back and forth across the screen, like a road.
   road.innerHTML = '<svg aria-hidden="true"><path id="trail"/></svg>' + stops.map((z, i) => {
     const row = Math.floor(i / perRow), col = row % 2 ? perRow - 1 - i % perRow : i % perRow;
@@ -715,7 +828,8 @@ async function refresh() {
   followRoom(data);
   renderTrek(data);
   takeRuns(data.runs);
-  if ($("room").hidden && !stage.queue.length && (!stage.run || stage.run.live) && $("trek").hidden) followCoder();
+  takeFarmDays(data.farm_days, data.farm);
+  if ($("room").hidden && !stage.queue.length && !farmShow.on && (!stage.run || stage.run.live) && $("trek").hidden) followCoder();
 }
 refresh();
 setInterval(refresh, 1500);

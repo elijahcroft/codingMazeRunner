@@ -137,7 +137,8 @@
   .maker-tools { display: flex; gap: 6px; flex-wrap: wrap; padding: 12px 20px 0; }
   .maker-tools button { padding: 7px 12px; border: 0; border-radius: 12px; background: var(--panel); color: var(--bone); font-weight: 650; box-shadow: inset 0 0 0 1px var(--edge); }
   .maker-tools button.on { background: var(--panel-2); box-shadow: inset 0 0 0 2px var(--mint); }
-  .maker-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2px; width: min(calc(100% - 40px), calc((100vh - 270px) * 1.5)); margin: 12px auto; padding: 8px; border-radius: 12px; background: #4b4560; touch-action: none; user-select: none; }
+  /* 370, not 270: the row of the student's own levels sits below the grid. */
+  .maker-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2px; width: min(calc(100% - 40px), calc((100vh - 370px) * 1.5)); margin: 12px auto; padding: 8px; border-radius: 12px; background: #4b4560; touch-action: none; user-select: none; }
   .mk { aspect-ratio: 1; min-width: 0; padding: 0; border: 0; border-radius: 5px; background: #c98a5a; font-size: clamp(14px, 3vw, 24px); line-height: 1; }
   .mk:hover { outline: 2px solid var(--mint); }
   .mk.t-rock { background: #6d6780; }
@@ -146,9 +147,9 @@
   .maker-foot input { width: 220px; padding: 9px 12px; border: 0; border-radius: 10px; background: var(--panel); color: var(--bone); box-shadow: inset 0 0 0 1px var(--edge); }
   .maker-why { color: var(--haze); font-size: 14px; }
   .maker-why.bad { color: #ffd9a0; }
-  .maker-mine { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 20px 16px; }
+  .maker-mine { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 20px 16px; max-height: 140px; overflow-y: auto; }
   .maker-mine:empty { display: none; }
-  .tile .tby { color: var(--haze); font-size: 12px; }
+  .tile .tby { color: var(--haze); font-size: 12px; max-width: 100%; overflow-wrap: anywhere; }
   .zone-jump { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; padding: 8px 20px; border-bottom: 1px solid var(--edge); }
   .jump-zone { position: relative; width: 30px; height: 32px; padding: 0; border: 0; border-radius: 9px; overflow: hidden; background: var(--panel); font-size: 16px; line-height: 1; transition: transform .12s; }
   .jump-zone:hover:not(:disabled) { transform: translateY(-2px); background: var(--panel-2); }
@@ -183,7 +184,7 @@
   .tile { position: relative; display: grid; gap: 2px; justify-items: center; align-content: start; min-height: 84px; padding: 10px 6px 8px; border: 0; border-radius: 16px; background: var(--panel); color: var(--bone); box-shadow: 0 4px 0 #1b1733, inset 0 0 0 1px var(--edge); transition: transform .12s; }
   .tile:hover:not(:disabled) { transform: translateY(-3px); background: var(--panel-2); }
   .tile b { font: 850 22px var(--mono); color: var(--violet); }
-  .tile .tname { font-size: 14.5px; font-weight: 650; line-height: 1.2; text-align: center; }
+  .tile .tname { font-size: 14.5px; font-weight: 650; line-height: 1.2; text-align: center; max-width: 100%; overflow-wrap: anywhere; }
   .tile .tstars { font-size: 17px; letter-spacing: 2px; color: #4d4378; }
   .tile .tstars i { font-style: normal; color: var(--gold); text-shadow: 0 0 8px rgba(255,211,107,.6); }
   .tile.done b { color: var(--mint); }
@@ -516,12 +517,14 @@
 
   /* ---- Toasts: badges and unlocks ---------------------------------------------- */
   .toasts { position: fixed; z-index: 40; right: 16px; bottom: 16px; display: grid; gap: 10px; width: min(330px, calc(100vw - 32px)); pointer-events: none; }
-  .toast { display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: center; padding: 10px 14px 10px 10px; border-radius: 16px; background: rgba(44,37,80,.97); box-shadow: 0 16px 40px rgba(0,0,0,.45), inset 0 0 0 1px var(--edge); animation: slidein .45s cubic-bezier(.2,1.4,.4,1); pointer-events: auto; }
+  .toast { display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: center; padding: 10px 14px 10px 10px; border-radius: 16px; background: rgba(44,37,80,.97); box-shadow: 0 16px 40px rgba(0,0,0,.45), inset 0 0 0 1px var(--edge); animation: slidein .45s cubic-bezier(.2,1.4,.4,1); pointer-events: none; }
   .toast.out { animation: slideout .3s forwards; }
   .toast .ico { font-size: 30px; text-align: center; }
   .toast b { display: block; }
   .toast small { color: var(--haze); font-size: 13px; }
-  .toast.act { cursor: pointer; }
+  /* Only the toasts that open something take a click: a toast must never
+     swallow a press on Transmit underneath it. */
+  .toast.act { cursor: pointer; pointer-events: auto; }
   .toast.act:hover { background: rgba(58,49,104,.98); }
   .toast.act small::after { content: "\00a0→"; color: var(--gold); }
   .toast.r-rare, .toast.r-epic, .toast.r-legendary { box-shadow: 0 16px 40px rgba(0,0,0,.45), inset 0 0 0 2px var(--r), 0 0 24px color-mix(in srgb, var(--r) 45%, transparent); }
@@ -580,6 +583,7 @@
   .preset .clear { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border: 0; border-radius: 50%; padding: 0; background: var(--panel-2); color: var(--haze); font-size: 11px; line-height: 20px; display: none; }
   .preset.full:hover .clear, .preset.full:focus-within .clear { display: block; }
   .preset .clear:hover { background: var(--coral); color: #fff; }
+  @media (hover: none) { .preset.full .clear { display: block; } }   /* a touch screen has no hover to show it */
   .set-tag { display: block; margin-top: 8px; padding: 6px 10px; border-radius: 10px; background: var(--panel); font-size: 12.5px; }
   .set-tag.full { background: rgba(255,211,107,.16); color: var(--gold); font-weight: 650; }
   .garage-card h2 { margin: 0; font-size: 24px; font-weight: 850; letter-spacing: -.02em; }
@@ -664,7 +668,7 @@
   #shopCode, .shop-paint { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 12px 14px; font: 15px/1.6 var(--mono); tab-size: 4; white-space: pre; letter-spacing: 0; }
   #shopCode { resize: none; border: 0; outline: 0; background: transparent; color: transparent; caret-color: var(--mint); overflow: auto; }
   #shopCode::selection { background: rgba(140,242,198,.28); color: transparent; }
-  .shop-paint { overflow: hidden; color: #ece4ff; pointer-events: none; }
+  .shop-paint { z-index: 0; overflow: hidden; color: #ece4ff; pointer-events: none; }
   .shop-paint i { font-style: normal; }
   .shop-paint .err-line { position: absolute; left: 0; right: 0; height: 1.6em; background: rgba(255,111,97,.18); box-shadow: inset 3px 0 0 var(--coral); }
   .swatches { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0 0; }
@@ -861,6 +865,13 @@
   .intro-note, .calm-pick { display: flex; align-items: center; gap: 8px; margin: 0 0 16px; color: var(--haze); font-size: 14px; }
   .intro-note { display: block; line-height: 1.45; margin-bottom: 12px; }
   #introClose { position: sticky; bottom: 12px; }   /* always on screen, however long the card gets */
+  /* On a 1366x768 or 1280x720 class laptop the intro is a little taller than
+     the screen: squeeze it so the picture and the button both show at once. */
+  @media (max-height: 800px) {
+    .intro-card canvas { height: 110px; }
+    .intro-body { padding: 12px 18px 14px; }
+    .intro-body ol { gap: 4px; font-size: 16px; margin-bottom: 10px; }
+  }
   .word-list { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; margin: 8px 0 14px; font-size: 14.5px; line-height: 1.4; }
   .word-list dt { color: var(--bone); font-weight: 700; }
   .word-list dd { margin: 0; color: var(--haze); }
@@ -869,9 +880,15 @@
   .calm-pick { cursor: pointer; }
   .big { --code-size: 19px; }
   .big .feed { font-size: 16px; }
+  .big .feed .ev.print, .big .feed .err { font-size: 16px; }
   .big .chip { font-size: 16.5px; }
-  .big #siteBrief, .big .banner p { font-size: 17px; }
-  .big #siteBrief pre { font-size: 15px; }
+  .big #siteBrief, .big .banner p { font-size: 18px; }
+  .big #siteBrief pre { font-size: 17px; }
+  /* Every place a student writes or reads code grows with the same setting. */
+  .big #shopCode, .big .shop-paint { font-size: 19px; }
+  .big #teamCode { font-size: 17px; }
+  .big #showCode { font-size: 19px; }
+  .big .predict-card pre { font-size: 19px; }
   .calm-pick input { width: 18px; height: 18px; accent-color: var(--mint); }
 
   /* ---- Halloween night: pumpkin orange and ghost green on the dusk violet ---- */
@@ -887,6 +904,7 @@
   .farm-button:hover { filter: brightness(1.08); }
   .calm .lounge-button, .calm .team-button, .calm .voyage-button, .calm .farm-button { animation: none; }
   .candy-button.bump { animation: bump .5s; }
+  .calm .candy-button.bump { animation: none; }
   .gauge.spooky small { color: var(--pumpkin-2); }
   .chip.spooky { color: var(--pumpkin-2); box-shadow: inset 0 0 0 1px rgba(255,138,31,.5); }
   .chip.new.spooky::after { background: var(--pumpkin); }
@@ -2475,7 +2493,7 @@ const DONE = {beacon: ["Beacon reached", t => `🎉 Beacon reached in ${ticks(t)
   treats: ["Trick or treat!", t => `🎃 Every lit house trick-or-treated in ${ticks(t)}`],
   candy: ["Candy collected", t => `🍬 Every candy collected in ${ticks(t)}`]};
 const SHORT = {beacon: t => `🏁 Ended ${plural(t, "tick")} in, away from the beacon`,
-  samples: t => `🏁 Ended ${plural(t, "tick")} in, with samples still out there`,
+  samples: t => site && site.paint ? `🏁 Ended ${plural(t, "tick")} in, with dots still to paint` : `🏁 Ended ${plural(t, "tick")} in, with samples still out there`,
   report: t => `🏁 Ended ${plural(t, "tick")} in without a report(). Found the number? Send it with report()`,
   deliver: t => `🏁 Ended ${plural(t, "tick")} in, before every sample was home`,
   treats: t => `🏁 Ended ${plural(t, "tick")} in, with lit houses still to visit`,
@@ -3044,11 +3062,14 @@ function toast(icon, title, text, garage, rarity) {
 // ---- Joining ---------------------------------------------------------------------------
 async function join(event) {
   event.preventDefault();
-  const name = $("name").value.trim();
+  const typed = $("name").value.trim();
+  // A name of zero-width spaces or combining marks looks empty on the class
+  // screen (and to the teacher), so ask for one with something to see in it.
+  const name = typed.replace(/[\u0000-\u001f\u007f-\u009f\u00ad\u0300-\u036f\u061c\u180e\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufe00-\ufe0f\ufeff]/g, "");
   if (!name) { $("name").placeholder = "Type your name first"; $("name").classList.add("ask"); $("name").focus(); return; }
   SFX.wake();
   try {
-    const player = await post("/join", {name});
+    const player = await post("/join", {name: typed});
     store("mazeId", player.id);
     if (await enter(player.id)) return;
   } catch (_) {}
@@ -3193,6 +3214,9 @@ function renderRoute() {
 // The level before or after this one, if it's open.
 function stepSite(dir) {
   if (!site || !state) return null;
+  // Uncharted is the last of the main route: ▶ must not step into Builder's
+  // Yard or Star Voyage, which are listed after it.
+  if (dir > 0 && site.key === "7") return null;
   const order = allSites(), i = order.findIndex(s => s.key === site.key), s = order[i + dir];
   return i >= 0 && s && s.open ? s.key : null;
 }
@@ -3272,8 +3296,15 @@ function renderVoyage() {
   const next = voyageNext();
   $("voyageButton").hidden = !next;
   if (next && recall(`planetVoyage:${me}`) !== "1" && recall("planetIntroSeen") === "1") {
-    store(`planetVoyage:${me}`, "1");
-    setTimeout(() => toast("🚀", "New levels have landed!", "Paint Planet: drive over the dots to paint a picture. Press here to go!", () => openSite(voyageNext())), 1500);
+    // Don't drop this late announcement on top of a sheet the student has
+    // already opened (the garage, the Paint Shop or the levels map): it waits
+    // for the next time the page draws the voyage, and only counts once shown.
+    setTimeout(() => {
+      if ([...document.querySelectorAll(".dialog")].some(sheet => !sheet.hidden)) return;
+      if (recall(`planetVoyage:${me}`) === "1") return;
+      store(`planetVoyage:${me}`, "1");
+      toast("🚀", "New levels have landed!", "Paint Planet: drive over the dots to paint a picture. Press here to go!", () => openSite(voyageNext()));
+    }, 1500);
   }
 }
 function playVoyage() {
@@ -3313,13 +3344,13 @@ function openMaker(level) {
 }
 function renderMaker() {
   $("makerTools").innerHTML = MAKER_TILES.map(([ch, name, icon]) =>
-    `<button class="${ch === maker.brush ? "on" : ""}" data-tile="${ch}">${icon} ${name}</button>`).join("");
+    `<button class="${ch === maker.brush ? "on" : ""}" data-tile="${ch}" aria-pressed="${ch === maker.brush}">${icon} ${name}</button>`).join("");
   $("makerGrid").innerHTML = maker.grid.map((row, r) => row.map((ch, c) => {
     const [, name, icon] = MAKER_TILES.find(t => t[0] === ch);
     return `<button class="mk${ch === "#" ? " t-rock" : ch === "O" ? " t-hole" : ""}" data-r="${r}" data-c="${c}" aria-label="${name}">${icon}</button>`;
   }).join("")).join("");
   $("makerMine").innerHTML = myLevels().map(s => `<button class="quiet" data-edit="${esc(s.key)}">✏️ ${esc(s.name)}</button>`
-    + `<button class="quiet" data-drop="${esc(s.key)}">${maker.sure === s.key ? "Sure? Delete" : "🗑"}</button>`).join("");
+    + `<button class="quiet" data-drop="${esc(s.key)}" aria-label="Delete ${esc(s.name)}">${maker.sure === s.key ? "Sure? Delete" : "🗑 Delete"}</button>`).join("");
 }
 // There's one start and one beacon: painting another moves it.
 function paintTile(r, c) {
@@ -3357,6 +3388,12 @@ for (const name of ["pointerdown", "pointerover"]) $("makerGrid").addEventListen
   const cell = e.target.closest(".mk");
   if (cell && (name === "pointerdown" || e.buttons)) { e.preventDefault(); paintTile(Number(cell.dataset.r), Number(cell.dataset.c)); }
 });
+// A keyboard press on a square is a click: paint it too. (The pointer path
+// above has already painted, so the same square is a no-op.)
+$("makerGrid").addEventListener("click", e => {
+  const cell = e.target.closest(".mk");
+  if (cell) paintTile(Number(cell.dataset.r), Number(cell.dataset.c));
+});
 function routeEdges() {
   const r = $("route");
   r.classList.toggle("more-l", r.scrollLeft > 2);
@@ -3365,7 +3402,9 @@ function routeEdges() {
 
 // ---- Opening a site -----------------------------------------------------------------------
 // A class with the practice parks: younger, and used to driving a level first.
-function easyClass() { return !!state && state.zones.some(z => z.practice); }
+// Star Voyage's drive-first zones say practice too, but every class has them,
+// so they don't mean easy mode.
+function easyClass() { return !!state && state.zones.some(z => z.practice && !z.voyage); }
 // Is the code from the level before worth trying on this one? Not if it uses a
 // word this level doesn't have: jump() after Jump Park stopped on its first
 // line. And for a younger class, only an idea carries over (a loop, an if, a
@@ -3852,8 +3891,10 @@ async function skipSite() {
   try { data = await post("/planet/skip", {id: me, site: key}); } catch (_) { return; }
   if (data.error) { showBanner("lost", data.error); return; }
   useState(data);
+  const next = nextSite();
+  if (next) await openSite(next);
+  // Say it after opening the next site: opening a site clears the toasts.
   toast("⏭", `${name} can wait`, `Come back to it any time from the route bar at the top: a fresh look often helps.`);
-  await openSite(nextSite());
 }
 async function askHint() {
   const zone = zoneOf(site.key);
@@ -3964,6 +4005,11 @@ function markGarageNew() {
 let garageNew = new Set();
 // The rover, as the page talks about it: its own name once it has one.
 function roverName(the = "your rover") { return (state && state.rover_name) || the; }
+// The garage scrolls: a reopened one starts at the top, not where it was left.
+function garageTop() {
+  const card = $("garage").querySelector(".garage-card");
+  if (card) card.scrollTop = 0;
+}
 function openGarage() {
   note("garage");
   clearToasts();
@@ -3977,6 +4023,7 @@ function openGarage() {
   if (fresh) garageTab = fresh[0];
   garagePeek = null;
   $("garage").hidden = false;
+  garageTop();
   renderGarage();
   $("garageClose").focus();
   requestAnimationFrame(garageLoop);
@@ -4080,7 +4127,7 @@ async function pickReward(key) {
     garageNew.add(`${item.slot}:${item.key}`);
     garageTab = item.slot; garagePeek = {slot: item.slot, key: item.key};
   }
-  renderGarage();
+  garageTop(); renderGarage();
 }
 // Under the big preview: what's being tried on, and how to get it.
 function stageTag() {
@@ -4119,7 +4166,13 @@ function thumb(cv, slot, key) {
   const dpr = window.devicePixelRatio || 1, s = 76, now = 1200;
   cv.width = cv.height = s * dpr;
   const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const gear = {...look, [slot]: key}, zone = site ? site.zoneKey : "landing";
+  // A paint card shows the paint alone: the hat the student has on could
+  // cover the whole body and every card would look the same.
+  const gear = slot === "paint"
+    ? {...look, paint: key, topper: "none", wheels: "std", glow: "noglow",
+       trail: "tracks", pet: "nopet", dance: "spin", horn: "beep"}
+    : {...look, [slot]: key};
+  const zone = site ? site.zoneKey : "landing";
   if (slot === "world" || slot === "trail") {
     const cell = s / 3;
     withLook(gear, () => {
@@ -4401,7 +4454,9 @@ function drawShop(now) {
   const grad = g.createRadialGradient(rw / 2, rh / 2, 6, rw / 2, rh / 2, rw * .6);
   grad.addColorStop(0, "#3a3168"); grad.addColorStop(1, "#16122c");
   g.fillStyle = grad; g.fillRect(0, 0, rw, rh);
-  drawRover(g, rw / 2 - 2, rh / 2 + 2, 118, 0, 1, {...look, paint: "mine", art: shop.shown}, now);
+  // The painter is checking their paint, so leave the hat off it.
+  drawRover(g, rw / 2 - 2, rh / 2 + 2, 118, 0, 1,
+            {...look, paint: "mine", art: shop.shown, topper: "none"}, now);
 }
 function shopLoop(now) {
   if ($("paintShop").hidden) return;
@@ -5625,7 +5680,7 @@ function openIntro() {
   const cv = $("introScene"), dpr = window.devicePixelRatio || 1;
   cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr;
   const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const w = cv.clientWidth, h = cv.clientHeight, cell = 32;
+  const w = cv.clientWidth, h = cv.clientHeight, cell = Math.min(32, Math.floor(h / 5));
   // Open ground, not corridors: samples to collect, a beacon, a crystal.
   const map = ["############", "#S...*...#.#", "#..#.....*.#", "#.....#..G.#", "############"];
   ctx.fillStyle = bedPattern(ctx, "landing"); ctx.fillRect(0, 0, w, h);
@@ -5643,12 +5698,18 @@ function openIntro() {
   ctx.restore();
   vignette(ctx, w, h);
   terrainCache.key = null;   // the intro's little map isn't the site's
-  $("introClose").focus();
+  // Focus the button for the keyboard, but don't let the browser scroll the
+  // card to it: that used to hide the top of the card on a short screen.
+  $("introClose").focus({preventScroll: true});
+  $("intro").scrollTop = 0;
 }
 function closeIntro() {
   $("intro").hidden = true; store("planetIntroSeen", "1");
   $("code").focus();
   welcomeHalloween();
+  // The first state arrived while the intro was open, when both of these
+  // stay quiet. Now the student can hear about Star Voyage and class levels.
+  if (me && state) { renderVoyage(); renderClassLevels(); }
 }
 
 // ---- Wiring ----------------------------------------------------------------------------------
@@ -5674,6 +5735,9 @@ $("calmPick").addEventListener("change", e => {
   CALM = e.target.checked; store("planetCalm", CALM ? "1" : "0");
   document.body.classList.toggle("calm", CALM);
   particles = []; confetti = [];
+  // A star or signal already in the air stops where it is, not halfway.
+  for (const el of document.querySelectorAll(".beam-dot, .fly-star")) el.remove();
+  if (scene) { scene.pops = []; scene.cheer = 0; }
 });
 $("muteButton").addEventListener("click", () => { $("muteButton").textContent = SFX.toggle() ? "🔇" : "🔊"; });
 $("starsButton").addEventListener("click", openGarage);
@@ -5745,7 +5809,7 @@ $("mastToggle").addEventListener("change", async e => {
 $("garageNext").addEventListener("click", e => {
   if (e.target.closest(".gn-go")) { $("garage").hidden = true; openLevels(); return; }
   const {slot, key} = $("garageNext").dataset;
-  garageTab = slot; garagePeek = {slot, key}; renderGarage();
+  garageTab = slot; garagePeek = {slot, key}; garageTop(); renderGarage();
 });
 $("garagePick").addEventListener("pointerover", e => peek(e.target.closest(".card")));
 $("garagePick").addEventListener("pointerleave", () => peek(null));
@@ -5753,7 +5817,7 @@ $("garage").addEventListener("click", e => {
   const pick = e.target.closest("[data-pick]");
   if (pick) return pickReward(pick.dataset.pick);
   const tab = e.target.closest(".tab"), card = e.target.closest(".card");
-  if (tab) { garageTab = tab.dataset.tab; garagePeek = null; renderGarage(); }
+  if (tab) { garageTab = tab.dataset.tab; garagePeek = null; garageTop(); renderGarage(); }
   if (e.target.closest("#roadDoor")) { if (state.halloween) { $("garage").hidden = true; openCandyRoad(); } return; }
   if (e.target.closest(".shop-door") || card && card.dataset.key === "mine" && card.classList.contains("locked")) return openPaintShop();
   // A locked horn still plays, so it's something to look forward to.

@@ -121,11 +121,16 @@ TITLES = [(0, "🌱 Sprout"), (60, "🧑‍🌾 Farm Hand"), (400, "🚜 Farmer"
           (15000, "🏆 Tycoon"), (100000, "👑 Farm Legend")]
 
 IDLE_DAYS = 25       # days 🔁 Auto runs with nobody touching the page
+STUCK_SAME = 2       # days in a row the same code can miss a job before Auto stops and says so
+AUTO_FROM = 3        # the job (counting from 0) that brings 🔁 Auto: before it, every job needs new code
 CRATE_EVERY = 3      # every third order brings a crate
 
 # ---- Jobs: the first ones teach, one idea each ------------------------------------
 # "code" is shown on the card, to type. "done" is checked after every day and
-# every buy, against the farm and that day (None after a buy).
+# every buy, against the farm and that day (None after a buy). "goal" is how the
+# day's result says how close it came: "need" of "what" ("count" is picked,
+# planted or drilled; "crop" counts one crop only; "idea" must be in the code).
+# "buy" names the shop thing a shop job wants.
 
 def _picked(day):
     return sum((day or {}).get("picked", {}).values())
@@ -154,54 +159,63 @@ JOBS = [
      "code": "east()\nharvest()\neast()\nharvest()\n",
      # Or there's nothing left to pick: a student who picked them all on the
      # first day goes straight on to planting.
+     "goal": {"need": 2, "what": "berries picked"},
      "pay": 4, "done": lambda farm, day: _picked(day) >= 2 or _nothing_ripe(farm)
      or (_picked(day) >= 1 and (day or {}).get("moved", 0) >= 1)},
     {"key": "plant", "title": "Plant for tomorrow",
      "say": "The field is empty now. A whole farm day is: pick, plant, drive. "
             "Type this, and the berries will be ripe tomorrow:",
      "code": 'harvest()\nplant("berry")\neast()\nharvest()\nplant("berry")\neast()\nharvest()\nplant("berry")\n',
+     "goal": {"need": 3, "what": "squares planted", "count": "planted"},
      "pay": 5, "done": lambda farm, day: day is not None and _planted(farm) >= 3},
     {"key": "again", "title": "They grew!",
      "say": "Run the same code again. That's the trick of a program: write it once, "
             "use it every day. Pick 3 berries in one day.",
+     "goal": {"need": 3, "what": "berries picked"},
+     "stuck": 'Your code has to pick all 3 berries. On each square:  harvest()  then  plant("berry")  '
+              'then  east() . The code from the last job does it.',
      "pay": 5, "done": lambda farm, day: _picked(day) >= 3},
     {"key": "field", "title": "A bigger field",
      "say": "You have coins! Open the 🛒 Shop and buy 🌾 Bigger field. "
             "(🔁 Auto runs your code day after day while you watch.)",
-     "pay": 5, "done": lambda farm, day: farm["field_level"] >= 1},
+     "buy": ("upgrade", "field"), "pay": 5, "done": lambda farm, day: farm["field_level"] >= 1},
     {"key": "loop", "title": "Teach your rover a loop",
      "say": "Your rover only remembers 10 lines, and the field keeps growing. "
             "A loop says it once and repeats it. Change your code to this:",
      "code": 'for i in range(3):\n    harvest()\n    plant("berry")\n    east()\n',
+     "goal": {"need": 3, "what": "picked", "idea": "for"},
      "pay": 10, "done": lambda farm, day: _picked(day) >= 3 and "for" in (day or {}).get("ideas", ())},
     {"key": "battery", "title": "More battery",
      "say": "Two rows need more battery than you have. Open the 🛒 Shop and buy 🔋 Bigger battery.",
-     "pay": 5, "done": lambda farm, day: farm["battery_level"] >= 1},
+     "buy": ("upgrade", "battery"), "pay": 5, "done": lambda farm, day: farm["battery_level"] >= 1},
     {"key": "rows", "title": "Farm both rows",
      "say": "Go along the top row, drive south, and come back along the bottom row. "
             "The new squares are empty, so plant today and pick tomorrow. Pick 6 in one day:",
      "code": 'for i in range(3):\n    harvest()\n    plant("berry")\n    east()\nsouth()\n'
              'for i in range(3):\n    harvest()\n    plant("berry")\n    west()\n',
+     "goal": {"need": 6, "what": "picked"},
      "pay": 15, "done": lambda farm, day: _picked(day) >= 6},
     {"key": "carrot", "title": "A new crop",
      "say": "Open the 🛒 Shop and buy 🥕 Moon carrots. Each one pays 3 coins.",
-     "pay": 10, "done": lambda farm, day: "carrot" in farm["crops"]},
+     "buy": ("crop", "carrot"), "pay": 10, "done": lambda farm, day: "carrot" in farm["crops"]},
     {"key": "if", "title": "Only pick what's ripe",
      "say": "Carrots take 2 days. Picking one too early gets nothing and wastes battery. "
             "So ask first:  if ripe():  picks only when it's ready, and  if empty():  "
             "plants only where there's room. Pick a carrot with code like this:",
      "code": 'for i in range(3):\n    if ripe():\n        harvest()\n    if empty():\n        plant("carrot")\n    east()\n',
+     "goal": {"need": 1, "what": "carrot picked", "idea": "if", "crop": "carrot"},
      "pay": 20, "done": lambda farm, day: (day or {}).get("picked", {}).get("carrot", 0) >= 1
      and "if" in (day or {}).get("ideas", ())},
     {"key": "memory", "title": "More memory",
      "say": "The next trick takes 12 lines, and your rover remembers 10. "
             "Open the 🛒 Shop and buy 🧠 More memory.",
-     "pay": 5, "done": lambda farm, day: farm["memory_level"] >= 1},
+     "buy": ("upgrade", "memory"), "pay": 5, "done": lambda farm, day: farm["memory_level"] >= 1},
     {"key": "def", "title": "Teach your rover a trick",
      "say": "def gives a name to some lines, so you can use them again and again. "
             "This makes a trick called care, and uses it on every square:",
      "code": 'def care():\n    if ripe():\n        harvest()\n    if empty():\n        plant("carrot")\n'
              'for i in range(3):\n    care()\n    east()\nsouth()\nfor i in range(3):\n    care()\n    west()\n',
+     "goal": {"need": 3, "what": "picked", "idea": "def"},
      "pay": 30, "done": lambda farm, day: _picked(day) >= 3 and "def" in (day or {}).get("ideas", ())},
     {"key": "while", "title": "A loop that looks",
      "say": "Your field will get wider. A while loop looks instead of counting, so it works "
@@ -209,6 +223,7 @@ JOBS = [
             "square. Pick 2 or more on a day that uses while:",
      "code": 'while look("east") != "fence":\n    harvest()\n    plant("berry")\n    east()\n'
              'harvest()\nplant("berry")\n',
+     "goal": {"need": 2, "what": "picked", "idea": "while"},
      "pay": 40, "done": lambda farm, day: _picked(day) >= 2 and "while" in (day or {}).get("ideas", ())},
     {"key": "meteor", "title": "A meteor!",
      "say": "A meteor crashed into your field! 🪨 Your rover can't drive through rock, so a loop "
@@ -216,6 +231,7 @@ JOBS = [
             "and some have a 💎 inside. Drill the rock:",
      "code": 'while look("east") != "fence":\n    if look("east") == "rock":\n        drill("east")\n'
              '    harvest()\n    plant("berry")\n    east()\nharvest()\nplant("berry")\n',
+     "goal": {"need": 1, "what": "rock drilled", "count": "drilled"},
      "pay": 40, "done": lambda farm, day: _day(day, "drilled") >= 1},
     {"key": "perfect", "title": "A perfect day",
      "say": "A tick that does nothing is wasted: a bump, picking too early, planting where "
@@ -224,6 +240,7 @@ JOBS = [
      "code": 'def care():\n    if ripe():\n        harvest()\n    if empty():\n        plant("berry")\n'
              'while look("east") != "fence":\n    care()\n    if look("east") == "rock":\n'
              '        drill("east")\n    east()\ncare()\n',
+     "goal": {"need": PERFECT_PICKS, "what": "picked", "count": "picked", "perfect": True},
      "pay": 60, "done": lambda farm, day: bool(_day(day, "perfect"))},
 ]
 METEOR_JOB = next(i for i, job in enumerate(JOBS) if job["key"] == "meteor")
@@ -577,10 +594,18 @@ def next_order(farm):
 
 
 def skip_order(farm):
-    """A different order, for free: a stuck order shouldn't sit there for ever."""
+    """A different order, for free: a stuck order shouldn't sit there for ever.
+
+    The hash can land on the same crop and count twice in a row, which looks
+    like the 🔄 button did nothing, so keep looking until the order is really
+    different (or give up after a dozen tries)."""
     if farm["order"]:
-        farm["skips"] = farm.get("skips", 0) + 1
-        farm["order"] = next_order(farm)
+        old = (farm["order"]["crop"], farm["order"]["need"])
+        for _ in range(12):
+            farm["skips"] = farm.get("skips", 0) + 1
+            farm["order"] = next_order(farm)
+            if (farm["order"]["crop"], farm["order"]["need"]) != old:
+                return
 
 
 def open_crate(farm):
@@ -606,6 +631,7 @@ def check_jobs(farm, day=None):
             break
         farm["job"] += 1
         farm["job_tries"] = 0
+        farm["same_days"] = 0   # a new job gets its own tries before Auto stops
         farm["coins"] += job["pay"]
         farm["earned"] += job["pay"]
         done.append({"title": job["title"], "pay": job["pay"]})
@@ -667,14 +693,64 @@ def tips(field, error, memory_full, learning=False):
     if field.bumps - field.rocked >= 4 and len(out) < 2:
         out.append(f"The rover bumped the fence {field.bumps - field.rocked} times. The field is {field.w} wide "
                    f"and {field.h} tall.")
-    if not field.frames and not out:
+    if not field.frames and not field.prints and not out:
         out.append("The rover didn't do anything today. Give it a command, like  harvest()")
     return out[:2]
+
+
+def _job_thing(kind, key):
+    thing = UPGRADES[key] if kind == "upgrade" else CROPS[key]
+    return f"{thing['icon']} {thing['name']}"
+
+
+def job_note(farm, day, today):
+    """How close today came to the job still to do, in one line, and what to
+    say when the same code keeps missing it (None when it can't help)."""
+    job = JOBS[farm["job"]]
+    if job.get("buy"):
+        kind, key = job["buy"]
+        cost, _ = price(kind, key, farm, today)
+        if cost is None:
+            return None, None
+        if farm["coins"] >= cost:
+            line = f"📋 Job: you have the coins! Open the 🛒 Shop and buy {_job_thing(kind, key)}."
+            return line, line
+        return (f"📋 Job: buy {_job_thing(kind, key)} in the 🛒 Shop. "
+                f"It costs 🪙 {cost}, so you need {cost - farm['coins']} more."), None
+    goal = job.get("goal")
+    if not goal:
+        return None, None
+    count, crop = goal.get("count", "picked"), goal.get("crop")
+    if count == "planted":
+        have = _planted(farm)
+    elif count == "drilled":
+        have = _day(day, "drilled")
+    else:
+        picked = (day or {}).get("picked", {})
+        have = picked.get(crop, 0) if crop else sum(picked.values())
+    need, idea = goal["need"], goal.get("idea")
+    line = f"📋 Job: {min(have, need)} of {need} {goal['what']}" + ("" if count == "planted" else " today")
+    if goal.get("perfect"):
+        wasted = _day(day, "wasted")
+        line += (f". {wasted} tick{'s' if wasted != 1 else ''} wasted." if wasted else ".")
+        line += f" A ✨ Perfect day picks {need} or more and wastes no tick."
+    elif have >= need and idea and idea not in (day or {}).get("ideas", ()):
+        line += f" ✓, but the job wants  {idea}  in your code."
+    elif crop and not have and any(cell and cell[0] == crop and cell[1] < CROPS[crop]["days"]
+                                  for row in farm["field"] for cell in row):
+        line += f". Your {CROPS[crop]['name'].lower()}s are still growing: run another day."
+        return line, None
+    else:
+        line += "."
+    stuck = job.get("stuck") or ("Change your code to the lines in ✍️ Type this, or press "
+                                 "✍️ Put this in my code." if job.get("code") else None)
+    return line, stuck and f"🔁 Same code, same result: this job needs new code. {stuck}"
 
 
 def run_day(farm, code, stars=0, today="2000-01-01"):
     """Run a program as one farm day, and bank what it earns. Changes farm."""
     code = str(code)[:MAX_CODE + 1]
+    yesterday = farm["code"]
     lesson_rock(farm)
     hot = hot_crop(today)
     field = Field(farm, hot)
@@ -706,7 +782,7 @@ def run_day(farm, code, stars=0, today="2000-01-01"):
            "ticks": field.t, "battery": BATTERIES[farm["battery_level"]][0],
            "income": 0, "bonus": 0, "picked": {}, "golden": 0, "hot": hot,
            "say": tips(field, error, full, farm["job"] < 2 and not _nothing_ripe(farm)),
-           "jobs": [], "order": None, "counted": False,
+           "jobs": [], "order": None, "counted": False, "stuck": None,
            "ideas": used, "best": False, "shaded": 0, "meteors": [],
            "drilled": 0, "gems": 0, "perfect": 0, "wasted": field.wasted()}
     farm["code"] = code[:MAX_CODE]
@@ -734,13 +810,39 @@ def run_day(farm, code, stars=0, today="2000-01-01"):
                drilled=field.drilled, gems=field.gems, perfect=extra)
     farm["best"] = max(farm["best"], total)
     day = {"picked": field.picked, "ideas": used, "drilled": field.drilled, "perfect": perfect,
-           "moved": sum(1 for f in field.frames if f["do"] == "move")}
+           "wasted": field.wasted(), "moved": sum(1 for f in field.frames if f["do"] == "move")}
     before = farm["job"]
     out["jobs"] = check_jobs(farm, day)
     if farm["job"] == before and farm["job"] < len(JOBS):
         farm["job_tries"] += 1
+        # The same code day after day can't finish a job that needs new code:
+        # say how close it came, and after a few days stop 🔁 Auto and say so.
+        same = code.strip() == (yesterday or "").strip()
+        farm["same_days"] = farm.get("same_days", 0) + 1 if same else 0
+        line, stuck = job_note(farm, day, today)
+        # When the stuck line is the job line itself (a buy job with the coins),
+        # showing it in both places would just say the same thing twice.
+        if line and not (stuck and farm["same_days"] >= STUCK_SAME and stuck == line):
+            out["say"].insert(0, line)
+        if stuck and farm["same_days"] >= STUCK_SAME:
+            out["stuck"] = stuck
+    elif farm["job"] != before:   # a job done starts the count again
+        farm["same_days"] = 0
     if before >= len(JOBS):
         out["order"] = check_order(farm, field.picked)
+        # The same code that never grows the order's crop can't fill it: after a
+        # few days, stop 🔁 Auto and say so (a slow crop still growing is fine).
+        order = farm["order"]
+        if order and not out["order"] and not any(cell and cell[0] == order["crop"]
+                                                  for row in farm["field"] for cell in row):
+            same = code.strip() == (yesterday or "").strip()
+            farm["same_days"] = farm.get("same_days", 0) + 1 if same else 0
+            if farm["same_days"] >= STUCK_SAME:
+                crop = CROPS[order["crop"]]
+                out["stuck"] = (f"🔁 Same code, same result: your code grows no {crop['icon']} {crop['name'].lower()}s "
+                                f"for the order. Plant them with  plant(\"{order['crop']}\") , or press 🔄 Different order.")
+        else:
+            farm["same_days"] = 0
     out["shaded"] = grow(farm)
     out["meteors"] = meteors(farm)
     if out["shaded"] and len(out["say"]) < 2:
@@ -846,7 +948,7 @@ def view(farm, stars=0, today="2000-01-01"):
                icons={key: c["icon"] for key, c in CROPS.items()},
                days={key: c["days"] for key, c in CROPS.items()})
     out["job"] = job and {"n": farm["job"] + 1, "of": len(JOBS), "title": job["title"], "say": job["say"],
-                          "code": job.get("code"), "pay": job["pay"],
+                          "code": job.get("code"), "pay": job["pay"], "auto": farm["job"] >= AUTO_FROM,
                           "give": bool(job.get("code")) and farm["job_tries"] >= 2}
     out["order"] = order and dict(order, icon=CROPS[order["crop"]]["icon"],
                                   name=CROPS[order["crop"]]["name"])

@@ -96,6 +96,7 @@ import threading
 import time
 import gzip
 import hashlib
+import unicodedata
 import zlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
@@ -1515,6 +1516,9 @@ def load_state():
         # replaces it with the student's real character count.
         chars = p.get("chars", {})
         p["chars"] = {k: chars.get(k, LEGACY_CHARS) for k in p["best"]}
+        # Old saves can hold a name that was only zero-width marks: it showed
+        # blank on the projector and the teacher's cards.
+        p["name"] = clean_player_name(p.get("name", ""))[:20] or f"Player {pid[1:]}"
         players[pid] = p
     next_player_num[0] = data.get("next", len(players))
     # The Light Cycles round number and last replay arrived after some saves.
@@ -1525,8 +1529,29 @@ def load_state():
     pixel_class.update(data.get("pixel_class") or {})
     planet_class_settings.update(data.get("planet_class") or {})
     planet_levels.update(data.get("planet_levels") or {})
+    # A level's author was saved when it was made: an old blank name is now a
+    # Player name, so the level says the same name as the player's cards.
+    for level in planet_levels.values():
+        q = players.get(level.get("by"))
+        if q:
+            level["by_name"] = q["name"]
     for level in planet_levels.values():
         planet.add_class_level(level["key"], level["name"], level["by_name"], level["rows"])
+
+
+def clean_player_name(name):
+    """A name the class can actually see: zero-width and direction marks out,
+    spaces tidied. An emoji name keeps its emoji (joiners included), and comes
+    out unchanged."""
+    invisible = dict.fromkeys(map(ord, "\u00ad\u180e\u200b\u2060\ufeff"
+                                        "\u202a\u202b\u202c\u202d\u202e"
+                                        "\u2061\u2062\u2063\u2064"))
+    text = " ".join(str(name).translate(invisible).split())
+    # Only joiners or combining marks left: that still looks blank on a card.
+    if not any(unicodedata.category(ch) not in ("Cc", "Cf", "Mn", "Me", "Zs", "Zl", "Zp")
+               for ch in text):
+        return ""
+    return text
 
 
 def new_player(name):
@@ -1536,7 +1561,7 @@ def new_player(name):
     sr, sc = find_start(WORLDS[DEFAULT_WORLD]["mazes"][0])
     players[pid] = {
         "id": pid,
-        "name": name[:20] or f"Player{pid}",
+        "name": name[:20] or f"Player {pid[1:]}",
         "color": color,
         "world": DEFAULT_WORLD,
         "maze": 0,
@@ -2778,6 +2803,11 @@ planet_feed = []    # the class's recent moments, newest last, for the projector
 planet_runs = []
 RUNS_KEPT = 30
 RUN_PATH_MAX = 400   # frames of a route kept for the replay
+# The latest farm days, newest last: the projector plays one when nothing else
+# is on. Kept in memory only, and sent only while fresh.
+farm_days = []
+FARM_DAYS_KEPT = 4
+FARM_DAY_FRESH = 60   # seconds a farm day stays worth showing
 # What the teacher can put on every student's screen, by name. A page shows a
 # new one once, on its next ping.
 TEACHER_NOTICES = {"eyes": ("👀", "Eyes on your teacher, please!", "Stop typing and look up."),
@@ -3709,7 +3739,16 @@ def maker_save(p, data):
     playable, why = planet.class_map(rows)
     if playable is None:
         return {"error": why}
-    name = " ".join(re.sub(r"[^\w !?'-]", "", str(data.get("name", ""))).split())[:MAKER_NAME_MAX]
+    samples, beacon = planet.class_cut_off(rows)
+    if samples or beacon:
+        cut = " and ".join(filter(None, [samples and (f"{samples} 🧪 samples" if samples > 1 else "a 🧪 sample"),
+                                         beacon and "the 🛰 beacon"]))
+        return {"error": f"Your rover can't reach {cut} from the 🚙 start: rock or craters are in the way, "
+                         f"and nobody could beat it. Open a path, then press Test drive again."}
+    raw = clean_player_name(data.get("name", ""))
+    # Keep emoji (a rocket is a level name to a 9-year-old) but never let a
+    # name carry markup of its own.
+    name = " ".join(re.sub(r'[\x00-\x1f\x7f<>"&]', "", raw).split())[:MAKER_NAME_MAX]
     if not name:
         return {"error": "Give your level a name."}
     key = str(data.get("key"))
@@ -3733,12 +3772,16 @@ def maker_delete(key):
     planet.drop_class_level(key)
 
 
-def maker_record(p, key, results):
+def maker_record(p, key, code, results):
     """A run on a class level: published if it's its maker's first win, and
     counted for the maker if not."""
     entry = planet_entry(p)
     level, run = planet_levels[key], results[0]
     entry["active"] = int(time.time())
+    # Like any other level, keep the program on the server so a student on
+    # another laptop gets their code back. Class levels earn no stars.
+    entry["code"][key] = code
+    entry["runs"][key] = entry["runs"].get(key, 0) + 1
     mine = level["by"] == p["id"]
     wins = entry.setdefault("level_wins", {})
     earned, published = [], False
@@ -4054,7 +4097,7 @@ def planet_record(p, key, code, results):
     """Save a run and work out everything it earned: stars, badges, a class
     record, garage unlocks."""
     if key in planet_levels:
-        return maker_record(p, key, results)
+        return maker_record(p, key, code, results)
     entry = planet_entry(p)
     zi, zone, s = planet.find_site(key)
     entry["code"][key] = code
@@ -4507,8 +4550,24 @@ def farm_run(p, data):
     out["record"] = bool(record["coins"]) and farm["best"] > record["coins"]
     if out["record"] and record["name"] != p["name"]:
         feed(f"🏆 {p['name']} set a farm record: 🪙 {farm['best']:,} in one day")
+    # A farm job done is news for the class screen (the first, pressing Run, isn't).
+    if out["jobs"] and farm["job"] > 1:
+        n = len(planet_farm.JOBS)
+        feed(f"🌱 {p['name']} finished every farm job!" if farm["job"] >= n else
+             f"🌱 {p['name']} finished farm job {farm['job']} of {n}: {out['jobs'][-1]['title']}")
     if out["order"] and out["order"].get("crate") and out["order"]["crate"].get("key"):
         feed(f"🎁 {p['name']} found a {out['order']['crate']['name'].lower()} in a farm crate")
+    if out["frames"]:
+        yard = planet_farm.yard(farm)
+        farm_days.append({
+            "n": (farm_days[-1]["n"] + 1) if farm_days else 1, "at": now, "id": p["id"], "name": p["name"],
+            "look": dict(entry["look"]), "code": farm["code"][:TRY_CODE_MAX], "day": farm["day"],
+            "w": yard["w"], "h": yard["h"], "start": out["start"], "decor": yard["decor"],
+            "icons": {key: c["icon"] for key, c in planet_farm.CROPS.items()},
+            "days": {key: c["days"] for key, c in planet_farm.CROPS.items()},
+            "frames": out["frames"], "prints": out["prints"], "end": out["end"],
+            "coins": out["income"] + out["bonus"] + out["perfect"]})
+        del farm_days[:-FARM_DAYS_KEPT]
     out["farm"] = farm_state(p)
     return out
 
@@ -4545,9 +4604,14 @@ def farm_class():
         farm = (q.get("planet") or {}).get("farm")
         if farm and farm["day"]:
             w, h = planet_farm.FIELDS[farm["field_level"]][:2]
-            rows.append({"name": q["name"], "days": farm["day"], "field": f"{w}×{h}",
+            rows.append({"id": q["id"], "name": q["name"], "days": farm["day"], "field": f"{w}×{h}",
+                         # Farming in this lesson, for Mission Control's "Worth a visit".
+                         "recent": time.time() - (farm.get("last") or 0) < 20 * 60,
                          "best": farm["best"], "coins": farm["coins"],
-                         "job": min(farm["job"], len(planet_farm.JOBS)), "jobs": len(planet_farm.JOBS),
+                         # Counted from 1, as the student's job card says it.
+                         "job": min(farm["job"] + 1, len(planet_farm.JOBS)), "jobs": len(planet_farm.JOBS),
+                         "jobs_done": farm["job"] >= len(planet_farm.JOBS),
+                         "job_days": farm["job_tries"] if farm["job"] < len(planet_farm.JOBS) else 0,
                          "ideas": farm["ideas"], "lines": planet.code_lines(farm["code"])})
     return sorted(rows, key=lambda row: row["name"].lower())
 
@@ -4868,7 +4932,8 @@ def team_keep_up():
 
 def team_row(q, spot):
     entry = planet_entry(q)
-    return {"seat": spot["seat"], "tag": q["name"][:10], "look": entry["look"]}
+    name = q["name"]   # a cut name says it was cut
+    return {"seat": spot["seat"], "tag": name if len(name) <= 10 else name[:9] + "…", "look": entry["look"]}
 
 
 def team_view(p, query):
@@ -4969,8 +5034,10 @@ def predict_open(number):
     return "The question is on every student's screen. Press Reveal when they've voted."
 
 
-def predict_public():
-    """What a student's page gets: no answer until it's revealed."""
+def predict_public(p=None):
+    """What a student's page gets: no answer until it's revealed. A student's
+    own vote comes back too, so a page that reloads still shows their answer;
+    the class screen asks with nobody, so no vote goes to it."""
     room = predict_room
     if room["q"] is None:
         return None
@@ -4978,6 +5045,8 @@ def predict_public():
     out = {"n": room["n"], "code": code.strip(), "options": options, "revealed": room["revealed"]}
     if room["revealed"]:
         out["answer"] = len(planet_predict.play(code)) - 1
+    if p is not None:
+        out["voted"] = room["votes"].get(p["id"])
     return out
 
 
@@ -5097,10 +5166,15 @@ def planet_today():
         today = q.get("planet", {}).get("events", {}).get(day)
         if not today:
             continue
+        now = (q["planet"].get("now") or {}).get("site")
         rows.append({"name": q["name"], "minutes": today.get("secs", 0) // 60, "runs": today.get("runs", 0),
                      "wins": today.get("wins", 0), "new_levels": today.get("new_levels", 0),
                      "stars": today.get("stars", 0),
-                     "on": planet.SITE_ORDER[planet_frontier(q)]})
+                     # A younger class works in the practice parks: name the
+                     # park site, not the main route's frontier. Otherwise the
+                     # frontier is the next level they're on.
+                     "on": now if now in planet.PRACTICE_ORDER
+                           else planet.SITE_ORDER[planet_frontier(q)]})
     best = planet_class_settings["team_best"]
     return {"day": day, "students": sorted(rows, key=lambda row: (-row["minutes"], row["name"].lower())),
             "team_best": [{"name": level["name"], "secs": best[str(i)]}
@@ -5113,6 +5187,10 @@ def planet_report():
     what the game told students most often when they missed."""
     entries = [(q, planet_entry(q)) for q in players.values() if q.get("planet")]
     frontier = {q["id"]: planet.SITE_ORDER[planet_frontier(q)] for q, e in entries}
+    # Where they last were, for "still on it or moved on". A practice site in
+    # easy mode is not the main route's frontier.
+    current = {q["id"]: now if (now := (e.get("now") or {}).get("site")) in planet.PRACTICE_ORDER
+               else frontier[q["id"]] for q, e in entries}
     zones, sites = [], []
     # (A younger class does most of its coding on the practice sites.)
     practice = planet.PRACTICE_ZONES if planet_class_settings["easy"] else []
@@ -5142,7 +5220,7 @@ def planet_report():
                 "runs_median": runs[len(runs) // 2], "runs_most": runs[-1],
                 # Tried and not cleared: still on it, or moved on (unlocked
                 # by the teacher, or skipped).
-                "not_cleared": [[q["name"], e["runs"][key], frontier[q["id"]] == key]
+                "not_cleared": [[q["name"], e["runs"][key], current[q["id"]] == key]
                                 for q, e in tried if key not in e["solved"]],
                 "skipped": [q["name"] for q, e in tried
                             if key in e.get("skipped", []) and key not in e["solved"]],
@@ -5180,6 +5258,8 @@ def planet_class():
                      "stars_now": shown_stars(here, entry["stars"].get(here, [False] * 3)),
                      "at": frontier,   # sites behind them, unlocked ones included
                      "site_name": s["name"], "zone": zone["name"],
+                     # The zone of the level they're on now (a practice park in easy mode).
+                     "here_zone": (planet.find_site(here) or (0, zone))[1]["name"],
                      "solved": len(entry["solved"]),
                      "stars": star_count(entry),
                      "badges": len(entry["badges"]),
@@ -5213,6 +5293,8 @@ def planet_class():
                           + planet.BUILD_ZONES + planet.HALLOWEEN_ZONES + planet.VOYAGE_ZONES},
             "halloween_sites": len(planet.HALLOWEEN_ORDER),
             "runs": planet_runs[-10:],
+            "farm_days": [d for d in farm_days if time.time() - d["at"] < FARM_DAY_FRESH]
+            if planet_class_settings["farm"] else [],
             "class": {"stars": class_stars(), "goals": CLASS_GOALS, "unlocks": CLASS_UNLOCKS,
                       "max": 3 * len(planet.SITE_ORDER) * max(1, len(rows))},
             "feed": planet_feed[-12:]}
@@ -10449,6 +10531,7 @@ PAGES = {
     "/planet/predict.js": ("planet_predict.js", "text/javascript; charset=utf-8"),
     "/planet/farm": ("planet_farm.html", "text/html; charset=utf-8"),
     "/planet/farm.js": ("planet_farm.js", "text/javascript; charset=utf-8"),
+    "/planet/farm/yard.js": ("planet_farm_yard.js", "text/javascript; charset=utf-8"),
     "/cake": ("cake.html", "text/html; charset=utf-8"),
     "/cake/teacher": ("cake_teacher.html", "text/html; charset=utf-8"),
     "/cake/show": ("cake_show.html", "text/html; charset=utf-8"),
@@ -10584,8 +10667,11 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, body)
             return
         if path == "/planet/predict/view":
+            query = parse_qs(urlsplit(self.path).query)
+            pid = query.get("id", [""])[0]
             with lock:
-                body = json.dumps(dict(predict_view(), student=predict_public())).encode()
+                body = json.dumps(dict(predict_view(),
+                                       student=predict_public(players.get(pid) if pid else None))).encode()
             self._send(200, body)
             return
         if path == "/planet/race/lineup":
@@ -10655,7 +10741,7 @@ class Handler(BaseHTTPRequestHandler):
                     planet_playtime(p, query.get("busy", [""])[0] == "1")
                     body = {"halloween": halloween_on(planet_entry(p)),
                             "challenge": (planet_challenge() or {}).get("tag"),
-                            "notice": planet_notice, "predict": predict_public(),
+                            "notice": planet_notice, "predict": predict_public(p),
                             "picked": planet_spin["n"] if planet_spin["id"] == p["id"] else 0,
                             "levels": maker_news(p),
                             "lounge": planet_lounge["open"], "team": team_room["open"],
@@ -10690,7 +10776,7 @@ class Handler(BaseHTTPRequestHandler):
         data = self._body()
         if self.path == "/join":
             with lock:
-                name = str(data.get("name", "")).strip()
+                name = clean_player_name(data.get("name", ""))[:20]
                 p = find_player_by_name(name) or new_player(name)
                 save_state()
                 self._send(200, {"id": p["id"], "name": p["name"], "color": p["color"]})
@@ -10821,7 +10907,8 @@ class Handler(BaseHTTPRequestHandler):
                 return
             code = "".join('{}("{}")\n'.format(*m.split(":")) if m in acts else f"{m}()\n"
                            for m in moves[:SCOUT_MAX])
-            self._send(200, {"run": planet.drive(code, variant, zone["rules"], zi),
+            self._send(200, {"run": planet.drive(code, variant, zone["rules"], zi,
+                                                 use_memory=False),
                              "left": SCOUT_MAX - min(len(moves), SCOUT_MAX),
                              "blanks": planet_class_settings["blanks"],
                              "coach": planet_class_settings["coach"]})

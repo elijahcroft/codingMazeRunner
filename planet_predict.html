@@ -40,7 +40,8 @@
 <script src="/planet/render.js"></script>
 <script>
 const $ = id => document.getElementById(id);
-const CALM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const CALM = matchMedia("(prefers-reduced-motion: reduce)").matches ||
+  (() => { try { return localStorage.getItem("planetCalm") === "1"; } catch (_) { return false; } })();
 const STEP_MS = CALM ? 120 : 420;
 const show = {data: null, n: null, drove: 0};
 

@@ -66,10 +66,12 @@ most). The youngest (practice zones with arrows) see *steps*, not *ticks*, on th
 default). *Make a level* in the Levels screen opens a drawing board: paint rock,
 craters, samples, a beacon and a start, name it, press *Test drive*. A level stays
 private until its maker beats it with code, so every level can be done, and then it
-shows in the Class Workshop for everyone. Four levels each. Changing a level takes it
+shows in the Class Workshop for everyone. Four levels each. Names can be up to 24
+letters, numbers, spaces, punctuation or emoji. Changing a level takes it
 down until it's beaten again. Levels earn no stars, but publishing earns Level Maker and
 three classmates beating one earns Crowd Pleaser. Level names show on the class screen:
-you can remove any level from Settings.
+you can remove any level from Settings. A class level keeps its code on the server, like
+any other level.
 
 **The class hears about a new level.** Levels used to sit at the bottom of the Levels
 screen, and most were played once or never. Now a level going live puts a note on every
@@ -84,7 +86,8 @@ the page after this, they get one note for all the levels already made.
 **Two levels where a loop is the only way.** After 1B, **1B1 Short Memory** and **1B2
 Memory Full** give the rover a memory of 4 and 6 lines, shown above the editor. The long
 way doesn't fit: the rover says "My memory is full!", and if the code repeats, the banner
-offers the shortcut. Most students could finish every other level without a loop, and
+offers the shortcut. Scouting with the arrows still works there: the memory is about the
+program, not the hand drive. Most students could finish every other level without a loop, and
 most did. Anyone already past them isn't sent back.
 
 **🧠 What your rover knows.** A chip beside the goals counts the big ideas a student
@@ -112,6 +115,8 @@ crowd. Press **🎬 Reveal**, here or on the class screen if it's the same brows
 it, the right answer lights up and the votes show. There are no names and nothing is earned, so a
 wrong guess costs nothing. Ask "why?" before you reveal. Pick *None* to finish. The twelve
 questions run from `east(3)` to loops inside loops, and each answer comes from running the code.
+Picking another question while the cards are open brings the new code up on every screen, and a
+page that reloads keeps the answer it gave.
 
 **🐛 Bug hunt.** A warm-up, and a challenge with a broken program. ⚙ Settings: pick one. Students
 press the gold chip to open the level, then again to load the broken code (Ctrl+Z brings theirs
@@ -138,7 +143,8 @@ included. It's a fixed list.
 crew adds up the class. It counts while the page is open and they've pressed something in the
 last 90 seconds, so a laptop left open stops counting. It only counts from now on. **📋 Today's class**, near the bottom of your page, lists everyone
 who played today with their minutes, runs, wins, new levels and where they are now, and under
-that the class's Team Mission best times.
+that the class's Team Mission best times. In easy mode "now on" names the practice level
+they're really on, not the main route's 1A.
 
 **Rovers have names.** The first win asks; the box is under the rover in the garage.
 The name shows on the student's own screen, in the win card and when you click the
@@ -472,8 +478,13 @@ lost.
   take half a minute to watch.
 - **Calm mode** (tick it on the **?** card): no shaking, confetti, flashing
   or bobbing. It's on by itself when the computer asks for reduced motion.
-  Worth pointing out to students who find busy screens hard.
-- **Bigger text** (also on the **?** card) makes the code and telemetry larger.
+  The same choice carries to the Rover Farm and the Predict it screen, and
+  anything already flying (a star, a signal, a meteor, a speech bubble) stops
+  when it is ticked. Worth pointing out to students who find busy screens hard.
+- **Bigger text** (also on the **?** card) makes the code and telemetry larger:
+  the main editor, the Paint Shop, Team Mission code, the lounge show,
+  Predict it code, and the printed lines in the telemetry. The buttons stay
+  where they are.
 - **The editor helps**: commands, sensors and the student's own functions
   light up when they're spelt right (so `eats()` stays plain), faint
   guides show the indentation, and Ctrl+Z undoes anything. A code error shows
@@ -557,7 +568,8 @@ board while they work.
       turns. North is up."** The Landing Site (3 short sites) is where they
       learn compass driving and `look()`, so nobody skips it.
 - [ ] Ask them to join with their **full name**: two students who type the
-      same name share one rover and one set of stars.
+      same name share one rover and one set of stars. A name made only of
+      invisible marks shows as **Player 5**, never as a blank card.
 - [ ] Put **`http://localhost:8000/planet/show`** on the projector.
 - [ ] Open **`http://localhost:8000/planet/teacher`** (Mission Control) on
       your laptop. At the top, every **Transmit** replays big: the student's
@@ -565,7 +577,8 @@ board while they work.
       it ended (🎉 mission complete, 💥 fell in, 🐞 code error…) with what the
       game told them. Several runs at once queue up; **Recent runs** replays
       any of them, and so does **▶ Replay** on a student's card. Only you see
-      misses: the projector cheers completed missions only.
+      misses: the projector cheers completed missions only. A long program
+      scrolls inside its box, so the replay and the numbers below stay put.
 - [ ] Under the replay: the numbers (active now, need help, idle), a
       **🙋 Worth a visit** strip (misses in a row: 8+, or 3+ in easy mode, and
       students who haven't pressed Transmit), and **Where everyone is**, zone
@@ -715,7 +728,8 @@ Open **📽 Class screen** once and leave it on the board. It looks after itself
   one per level; every other zone is just its icon (press it to go there,
   a gold dot means every level is done). **🗺 Levels** shows everything.
 - The **◀ P6 ▶** arrows beside a level's name step to the level before or
-  after.
+  after. On Uncharted, the last site, there is no after: the ▶ is off rather
+  than stepping into Builder's Yard or Star Voyage.
 - A status pill on the map only appears when there's news: Driving,
   Beacon reached, Code error and so on.
 - An empty code box says what to do: write a command a line (or press one
@@ -931,6 +945,7 @@ is the class's trophies and best times.
 Turning the switch off keeps the mission as it is until you open it again.
 
 **📺 Watch** opens the live map for you or the class screen. Watching doesn't put a rover on it.
+A Watch tab goes quiet when you close the mission, and comes back when you open it again.
 
 **What's on each student's screen:**
 
@@ -1080,7 +1095,10 @@ student's own farm.
 **Opening it:** turn on **🌱 Rover Farm** under ⚙ Settings on the teacher page. A green
 **🌱 Farm** button comes up at the top of students' screens within about six seconds, and
 takes them to their farm (`/planet/farm`). It stays open after a restart. Turning it off
-closes the farm page for everyone and keeps every farm as it was.
+closes the farm page for everyone and keeps every farm as it was. Turning it back on reopens the
+page by itself within a few seconds, even if a student opened it while it was closed. On the
+class screen a farm day plays when nothing else is running; switching the farm off stops it
+straight away.
 
 **What a student does:**
 
@@ -1090,7 +1108,13 @@ closes the farm page for everyone and keeps every farm as it was.
   picked. Night falls, everything grows, and it's the next day.
 - Presses **🔁 Auto** to have the same program run day after day while they watch. They can
   change the code while it runs. Auto stops by itself after 25 days if nobody touches
-  the page, so a laptop left alone doesn't farm all lesson.
+  the page, so a laptop left alone doesn't farm all lesson. Auto only shows from job 4
+  ("They grew!"): the first three jobs each need new code, and in November some students
+  ran `harvest()` on Auto for 40 days and never left job 2.
+- After each day the result says how close the day came to the job ("📋 Job: 1 of 2
+  berries picked today", or what to buy and how many coins are still needed). If the same
+  code misses the job three days running, Auto stops and the result says what to change. When
+  the job needs new code, the **✍️ Type this** panel opens and glows.
 - Spends coins in the **🛒 Shop**. The button shows how many things they can afford.
 
 **Nothing fails and nothing is lost.** Picking a plant too early does nothing but waste a

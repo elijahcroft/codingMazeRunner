@@ -224,6 +224,17 @@ class TogetherClassroomTests(unittest.TestCase):
         self.assertLess(server.EASY_TOGETHER_AFTER, server.EASY_SKIP_AFTER)
         self.assertLess(server.TOGETHER_AFTER, server.SKIP_AFTER)
 
+    def test_the_report_and_today_name_the_practice_site_they_are_on(self):
+        # A younger class works in the practice parks, not on the main route:
+        # "elsewhere now" and "now on 1A" sent the teacher the wrong way.
+        server.planet_class_settings["easy"] = True
+        pid = self.join()
+        self.run_code(pid, "p1", "north()\n")
+        report = self.get("/planet/report")
+        row = next(r for r in report["sites"] if r["key"] == "p1")
+        self.assertEqual(row["not_cleared"], [["Ada", 1, True]])
+        self.assertEqual(self.get("/planet/today")["students"][0]["on"], "p1")
+
     def build(self, pid, key):
         if key in planet.SITE_ORDER:   # (as if they'd got this far)
             entry = server.planet_entry(server.players[pid])
@@ -337,6 +348,97 @@ class TogetherClassroomTests(unittest.TestCase):
             out = self.run_code(pid, "2c", built["code"])
             self.assertTrue(out["runs"][0]["reached"], name)
             self.assertEqual(out["rewards"]["stars"], [True, False, False])
+
+
+class BeginnerSlipTests(unittest.TestCase):
+    """P39-P63: the words after a miss have to name the real slip. A child who
+    got the idea and made one small mistake must not be sent off the lesson."""
+
+    def drive(self, key, code, variant=0):
+        zi, zone, s = planet.find_site(key)
+        return planet.drive(code, s["variants"][variant], zone["rules"], zi)
+
+    def test_a_miss_with_a_number_in_a_variable_points_at_the_variable(self):
+        """Number Lab: the lesson is changing the number, not adding hand drives."""
+        out = self.drive("p59", planet.answer_for("p58", 0))
+        self.assertIn("Your drives use  size , set to 4 on line 1. Try a different number there", out["explain"]["next"])
+        self.assertNotIn("Add a new line", out["explain"]["next"])
+        out = self.drive("p61", planet.answer_for("p60", 0))
+        self.assertIn("change how n grows or shrinks", out["explain"]["next"])
+
+    def test_the_number_hint_keeps_the_bubble_words(self):
+        """The hint names the variable, but the bubble still says how close it came."""
+        out = self.drive("p59", planet.answer_for("p58", 0))
+        self.assertEqual(out["explain"]["say"], "2 more samples!")
+
+    def test_a_line_to_add_stops_before_a_rock_further_along(self):
+        # The rover starts left of a crater: a long east() would drive into it.
+        zi, zone, s = planet.find_site("p45")
+        world = planet.World(s["variants"][0], {})
+        step = planet.first_line_to((world.r, world.c), world.goal, world)
+        self.assertEqual(step, "east()")
+
+    def test_x_is_not_a_variable_even_before_the_sensor_arrives(self):
+        """P58's hint says so, and code with x = 4 would break the day x() arrives."""
+        out = self.drive("p58", "x = 4\neast(x)\n")
+        self.assertEqual(out["end"], "error")
+        self.assertIn("pick another name", out["error"])
+
+    def test_a_while_loop_that_never_ran_says_so(self):
+        out = self.drive("p39", 'while look("east") == "rock":\n    east()\n')
+        self.assertEqual(out["end"], "stopped")
+        self.assertIn("while loop never ran", out["explain"]["what"])
+        self.assertIn('look("east") == "rock"', out["explain"]["what"])
+        self.assertIn("== should be !=", out["explain"]["next"])
+        self.assertNotIn("Add a new line", out["explain"]["next"])
+        out = self.drive("p43", "while at_beacon():\n    east()\n")
+        self.assertIn("at_beacon()", out["explain"]["what"])
+        self.assertIn("while not at_beacon()", out["explain"]["next"])
+
+    def test_an_if_with_no_else_says_what_the_else_is_for(self):
+        out = self.drive("p47", 'if look("north") == "rock":\n    south(2)\n')
+        self.assertEqual(out["end"], "stopped")
+        self.assertIn("if didn't run", out["explain"]["what"])
+        self.assertIn("Add an else:", out["explain"]["next"])
+        self.assertNotIn("Add a new line", out["explain"]["next"])
+
+    def test_a_blocked_straight_line_does_not_send_the_rover_into_it(self):
+        # The loop stops at the crater; the beacon is 2 east, past it.
+        out = self.drive("p45", 'while look("east") != "crater":\n    east()\n')
+        self.assertEqual(out["end"], "stopped")
+        self.assertIn("straight way is blocked", out["explain"]["next"])
+        self.assertNotIn("east(2)", out["explain"]["next"])
+
+    def test_a_def_with_a_number_is_called_with_a_number(self):
+        out = self.drive("p56", "def stair(n):\n    east(n)\n    south()\n")
+        self.assertTrue(any("Add a line  stair(1)" in line for line in out["log"]), out["log"])
+        out = self.drive("p56", "def stair(n):\n    east(n)\n    south()\n\nstair(1)\n")
+        self.assertIn("stair(1) ran once", out["explain"]["next"])
+        self.assertNotIn("stair() ran once", out["explain"]["next"])
+        out = self.drive("p57", "def lap(n):\n    east(n)\n    south()\n    west(n)\n    south()\n")
+        self.assertTrue(any("Add a line  lap(1)" in line for line in out["log"]), out["log"])
+
+    def test_a_def_called_once_is_not_told_to_add_a_hand_move(self):
+        out = self.drive("p54", "def step():\n    east()\n    south()\n\nstep()\n")
+        self.assertIn("step() ran once", out["explain"]["next"])
+        self.assertNotIn("Add a new line", out["explain"]["next"])
+
+    def test_a_number_that_goes_negative_says_the_number_is_the_problem(self):
+        out = self.drive("p61", "n = 5\nfor i in range(5):\n    east(n)\n    south()\n"
+                              "    n = n - 2\n")
+        self.assertEqual(out["end"], "error")
+        self.assertIn("asked to drive -1 squares", out["error"])
+        self.assertNotIn("west(1)", out["error"])
+        # A number typed in is still answered with the other way to drive.
+        self.assertIn("use  west(2)", self.drive("p39", "east(-2)\n")["error"])
+        # A sum of typed numbers is still a number, not a variable to check.
+        self.assertIn("use  west(3)", self.drive("p39", "east(2 - 5)\n")["error"])
+
+    def test_look_on_its_own_is_not_a_yes_or_no_check(self):
+        out = self.drive("p39", 'if look("east"):\n    east()\n')
+        self.assertEqual(out["end"], "error")
+        self.assertIn("not True or False", out["error"])
+        self.assertIn('if look("east") == "rock"', out["error"])
 
 
 class PageTests(unittest.TestCase):

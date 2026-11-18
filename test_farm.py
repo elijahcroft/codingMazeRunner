@@ -82,6 +82,11 @@ class Rules(unittest.TestCase):
         self.assertEqual(b["bonus"], a["income"])
         self.assertEqual(starry["coins"] - plain["coins"], a["income"])
 
+    def test_printing_with_no_moves_is_not_called_doing_nothing(self):
+        out = day(fresh(), 'print("hi")\n')
+        self.assertTrue(out["prints"])
+        self.assertFalse(any("didn't do anything" in line for line in out["say"]))
+
     def test_the_wanted_crop_pays_double_and_gold_pays_five_times(self):
         hot = farm_rules.hot_crop(DAY)
         f = fresh(crops=["berry", hot], field=[[[hot, 9, 0], [hot, 9, 1], ["berry", 1, 0]]])
@@ -253,6 +258,105 @@ class Jobs(unittest.TestCase):
         day(f, "wait()\n"); day(f, "wait()\n")
         self.assertTrue(farm_rules.view(f, 0, DAY)["job"]["give"])
 
+    def test_a_day_says_how_close_it_came_to_the_job(self):
+        f = farm_rules.new_farm(5)
+        day(f, "harvest()\n")
+        out = day(f, "wait()\n")
+        self.assertEqual(out["say"][0], "📋 Job: 0 of 2 berries picked today.")
+        f["job"] = next(i for i, j in enumerate(farm_rules.JOBS) if j["key"] == "loop")
+        f["field"] = [[["berry", 1, 0] for _ in range(3)]]
+        out = day(f, 'harvest()\nplant("berry")\neast()\nharvest()\nplant("berry")\neast()\nharvest()\nplant("berry")\n')
+        self.assertIn("✓, but the job wants  for  in your code.", out["say"][0])
+
+    def test_the_same_code_missing_a_job_stops_auto_and_says_what_to_do(self):
+        """conrad ran harvest() on 🔁 Auto for 40 days on the second job."""
+        f = farm_rules.new_farm(5)
+        day(f, "harvest()\n")
+        self.assertIsNone(day(f, "harvest()\n")["stuck"])
+        out = day(f, "harvest()\n")
+        self.assertIn("Same code, same result", out["stuck"])
+        self.assertIn("Type this", out["stuck"])
+        self.assertTrue(out["say"][0].startswith("📋 Job:"), "the job line was lost when Auto stopped")
+        self.assertIsNone(day(f, "wait()\n")["stuck"], "new code starts the count again")
+
+    def test_a_shop_job_says_what_to_buy_and_only_stops_auto_with_the_coins(self):
+        f = farm_rules.new_farm(5)
+        f["job"] = next(i for i, j in enumerate(farm_rules.JOBS) if j["key"] == "field")
+        f["coins"] = 0
+        for _ in range(3):
+            out = day(f, "wait()\n")
+        self.assertIn("🌾 Bigger field", out["say"][0])
+        self.assertIn("you need 15 more", out["say"][0])
+        self.assertIsNone(out["stuck"])
+        f["coins"] = 100
+        out = day(f, "wait()\n")
+        self.assertIn("you have the coins", out["stuck"])
+        # The stuck line is the job line itself: it must not be shown twice.
+        self.assertNotIn(out["stuck"], out["say"])
+
+    def test_buying_a_job_that_finishes_starts_the_next_job_count_again(self):
+        """A new job must get its own try before Auto is stopped for the same code."""
+        f = farm_rules.new_farm(5)
+        f["job"] = next(i for i, j in enumerate(farm_rules.JOBS) if j["key"] == "field")
+        f["coins"] = 0
+        for _ in range(3):
+            day(f, "wait()\n")
+        self.assertGreaterEqual(f["same_days"], farm_rules.STUCK_SAME)
+        f["coins"] = 100
+        self.assertTrue(farm_rules.buy(f, "upgrade", "field", DAY)["jobs"])
+        self.assertEqual(f["same_days"], 0, "the job counter carried on to the next job")
+        self.assertIsNone(day(f, "wait()\n")["stuck"])
+
+    def test_ripe_carrots_the_code_did_not_reach_are_not_called_still_growing(self):
+        f = farm_rules.new_farm(5)
+        f["job"] = next(i for i, j in enumerate(farm_rules.JOBS) if j["key"] == "if")
+        f["crops"].append("carrot")
+        f["field"] = [[None, ["carrot", 2, 0], None]]
+        out = day(f, "harvest()\n")
+        self.assertIn("0 of 1 carrot picked", out["say"][0])
+        self.assertNotIn("still growing", out["say"][0])
+
+    def test_growing_carrots_say_to_run_another_day(self):
+        f = farm_rules.new_farm(5)
+        f["job"] = next(i for i, j in enumerate(farm_rules.JOBS) if j["key"] == "if")
+        f["crops"].append("carrot")
+        f["field"] = [[None, None, None]]
+        out = day(f, 'for i in range(3):\n    if ripe():\n        harvest()\n    if empty():\n        plant("carrot")\n    east()\n')
+        self.assertIn("still growing: run another day", out["say"][0])
+
+    def test_the_last_job_says_how_close_a_perfect_day_came(self):
+        f = farm_rules.new_farm(5)
+        f["job"] = len(farm_rules.JOBS) - 1
+        out = day(f, ROW)
+        self.assertIn("📋 Job: 3 of 3 picked today", out["say"][0])
+        self.assertIn("1 tick wasted", out["say"][0])
+        self.assertIn("Perfect day", out["say"][0])
+        for _ in range(2):
+            out = day(f, ROW)
+        self.assertIn("Same code, same result", out["stuck"])
+
+    def test_an_order_the_code_never_grows_stops_auto(self):
+        f = farm_rules.new_farm(5)
+        f["job"] = len(farm_rules.JOBS)
+        f["crops"].append("carrot")
+        f["order"] = {"crop": "carrot", "need": 6, "have": 0, "pay": 36, "crate": False}
+        berries = 'for i in range(3):\n    harvest()\n    plant("berry")\n    east()\n'
+        outs = [day(f, berries) for _ in range(3)]
+        self.assertIsNone(outs[1]["stuck"])
+        self.assertIn('plant("carrot")', outs[2]["stuck"])
+        self.assertIn("Different order", outs[2]["stuck"])
+        # Carrots in the ground are on their way: no nudge while they grow.
+        carrots = 'for i in range(3):\n    if ripe():\n        harvest()\n    if empty():\n        plant("carrot")\n    east()\n'
+        outs = [day(f, carrots) for _ in range(4)]
+        self.assertFalse(any(o["stuck"] for o in outs))
+
+    def test_auto_comes_with_the_job_that_runs_the_same_code_again(self):
+        f = farm_rules.new_farm(5)
+        self.assertFalse(farm_rules.view(f, 0, DAY)["job"]["auto"])
+        f["job"] = farm_rules.AUTO_FROM
+        self.assertEqual(farm_rules.JOBS[f["job"]]["key"], "again")
+        self.assertTrue(farm_rules.view(f, 0, DAY)["job"]["auto"])
+
     def test_orders_fill_pay_and_bring_a_crate_every_third(self):
         f = fresh()
         f["order"] = farm_rules.next_order(f)
@@ -278,6 +382,18 @@ class Jobs(unittest.TestCase):
             farm_rules.skip_order(f)
         self.assertGreater(len(seen), 1)
         self.assertEqual(f["orders"], 0)
+
+    def test_a_different_order_really_looks_different(self):
+        """The hash can land on the same order twice; 🔄 must still change it."""
+        for seed in range(1, 20):
+            f = fresh(seed=seed, crops=["berry", "carrot"], field_level=1,
+                      order=None)
+            f["order"] = farm_rules.next_order(f)
+            for _ in range(12):
+                old = (f["order"]["crop"], f["order"]["need"], f["order"]["pay"])
+                farm_rules.skip_order(f)
+                new = (f["order"]["crop"], f["order"]["need"], f["order"]["pay"])
+                self.assertNotEqual(new, old, seed)
 
     def test_crates_turn_to_coins_once_they_are_all_found(self):
         f = fresh(decor=[d["key"] for d in farm_rules.DECOR if d.get("crate")])
@@ -389,10 +505,16 @@ class Routes(unittest.TestCase):
         out = self.post("/planet/farm/run", {"id": bo, "code": ROW})
         self.assertTrue(out["record"])
         self.assertEqual(out["farm"]["record"]["name"], "Bo")
+        # A job done is news on the class screen.
+        self.assertIn("🌱 Ada finished farm job 2 of 15: Drive and pick", [m["text"] for m in server.planet_feed])
         # The teacher's list.
         with server.lock:
             rows = server.farm_class()
         self.assertIn(("Ada", 1, ["for"]), [(r["name"], r["days"], r["ideas"]) for r in rows])
+        ada_row = next(r for r in rows if r["name"] == "Ada")
+        # Counted from 1, as Ada's own job card says it: two jobs done, so job 3.
+        self.assertEqual((ada_row["job"], ada_row["jobs_done"], ada_row["job_days"]), (3, False, 0))
+        self.assertEqual(self.get(f"/planet/farm/state?id={ada}")["job"]["n"], 3)
 
     def test_a_closed_farm_runs_nothing_and_keeps_everything(self):
         cy = self.post("/join", {"name": "Cy"})["id"]
@@ -411,8 +533,32 @@ class Routes(unittest.TestCase):
             self.assertIn("picked", self.post("/planet/farm/run", {"id": di, "code": "harvest()"}))
             self.assertEqual(self.post("/planet/farm/run", {"id": di, "code": "harvest()"}), {"wait": True})
 
+    def test_the_class_screen_gets_fresh_farm_days(self):
+        ed = self.post("/join", {"name": "Ed"})["id"]
+        with mock.patch.object(server, "farm_days", []):
+            self.post("/planet/farm/run", {"id": ed, "code": ROW})
+            days = self.get("/planet/overview")["farm_days"]
+            self.assertEqual([d["name"] for d in days], ["Ed"])
+            self.assertEqual(days[0]["coins"], 3)
+            self.assertEqual(days[0]["code"], ROW)
+            self.assertTrue(days[0]["frames"])
+            # A day that never moved (code that can't be read) isn't shown.
+            self.post("/planet/farm/run", {"id": ed, "code": "harvest("})
+            self.assertEqual(len(self.get("/planet/overview")["farm_days"]), 1)
+            # Stale days, and a closed farm, show nothing.
+            with mock.patch.object(server, "FARM_DAY_FRESH", 0):
+                self.assertEqual(self.get("/planet/overview")["farm_days"], [])
+            with mock.patch.dict(server.planet_class_settings, {"farm": False}):
+                self.assertEqual(self.get("/planet/overview")["farm_days"], [])
+
+    def test_an_invisible_name_joins_as_a_player_name(self):
+        """Some students joined with only zero-width characters: a blank on every screen."""
+        out = self.post("/join", {"name": "\u200c\u200c"})
+        self.assertTrue(out["name"].startswith("Player"), out["name"])
+        self.assertEqual(self.post("/join", {"name": "Zoë 🚀"})["name"], "Zoë 🚀")
+
     def test_the_pages_are_served(self):
-        for path in ("/planet/farm", "/planet/farm.js"):
+        for path in ("/planet/farm", "/planet/farm.js", "/planet/farm/yard.js"):
             self.assertEqual(urlopen(self.base + path).status, 200)
 
 

@@ -4,3 +4,9 @@ scores.json.*
 
 __pycache__/
 .playwright-mcp/
+
+# Screenshots and logs the tools/e2e_planet_*.py bug-hunt scripts leave behind.
+.kidshunt-shots/
+tools/shots/
+farm-e2e-shots*/
+.mainhunt-state.json*
