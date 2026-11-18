@@ -562,6 +562,9 @@ function renderJob() {
   }
   $("job").innerHTML = html;
   $("job").hidden = !html;
+  // 🔁 Auto comes with the job that runs the same code again: before it, every job needs new code.
+  $("autoLabel").hidden = !!(j && !j.auto);
+  if ($("autoLabel").hidden && $("auto").checked) stopAuto();
   if ($("sampleShow")) $("sampleShow").onclick = () => { sampleHidden = null; renderJob(); };
   if ($("orderSkip")) $("orderSkip").onclick = async () => {
     const out = await post("/planet/farm/buy", {id: me, kind: "order"}).catch(() => null);
@@ -692,7 +695,12 @@ async function runDay() {
   if (out.golden) lines.push(`<span class="gold">✨ ${out.golden} golden! Each one pays 5 times over.</span>`);
   if (out.best) lines.push(`<span class="gold">🏆 Your best day yet!</span>`);
   if (out.error) { errorLine = out.line || null; updateEditor(); lines.push(`🛠 ${codeSpans(out.error)}`); }
-  for (const line of out.say) lines.push(codeSpans(line));
+  for (const line of out.stuck ? out.say.slice(0, 1) : out.say) lines.push(codeSpans(line));   // stuck: just the job line
+  if (out.stuck) {   // the same code keeps missing the job: stop Auto and point at the code to type
+    lines.unshift(`<span class="gold">${codeSpans(out.stuck)}</span>`);
+    stopAuto(); sampleHidden = null; renderJob();
+    const pane = $("sample"); pane.classList.remove("nudge"); void pane.offsetWidth; pane.classList.add("nudge");
+  }
   const total = out.income + out.bonus + out.perfect;
   const extras = [out.bonus && `⭐ ${coinText(out.bonus)} star bonus`, out.perfect && `✨ ${coinText(out.perfect)} perfect`].filter(Boolean);
   const head = total ? `☀️ Day ${before.day + 1}: <span class="gold">🪙 +${coinText(total)}</span>` +

@@ -253,6 +253,54 @@ class Jobs(unittest.TestCase):
         day(f, "wait()\n"); day(f, "wait()\n")
         self.assertTrue(farm_rules.view(f, 0, DAY)["job"]["give"])
 
+    def test_a_day_says_how_close_it_came_to_the_job(self):
+        f = farm_rules.new_farm(5)
+        day(f, "harvest()\n")
+        out = day(f, "wait()\n")
+        self.assertEqual(out["say"][0], "📋 Job: 0 of 2 berries picked today.")
+        f["job"] = next(i for i, j in enumerate(farm_rules.JOBS) if j["key"] == "loop")
+        f["field"] = [[["berry", 1, 0] for _ in range(3)]]
+        out = day(f, 'harvest()\nplant("berry")\neast()\nharvest()\nplant("berry")\neast()\nharvest()\nplant("berry")\n')
+        self.assertIn("✓, but the job wants  for  in your code.", out["say"][0])
+
+    def test_the_same_code_missing_a_job_stops_auto_and_says_what_to_do(self):
+        """conrad ran harvest() on 🔁 Auto for 40 days on the second job."""
+        f = farm_rules.new_farm(5)
+        day(f, "harvest()\n")
+        self.assertIsNone(day(f, "harvest()\n")["stuck"])
+        out = day(f, "harvest()\n")
+        self.assertIn("Same code, same result", out["stuck"])
+        self.assertIn("Type this", out["stuck"])
+        self.assertIsNone(day(f, "wait()\n")["stuck"], "new code starts the count again")
+
+    def test_a_shop_job_says_what_to_buy_and_only_stops_auto_with_the_coins(self):
+        f = farm_rules.new_farm(5)
+        f["job"] = next(i for i, j in enumerate(farm_rules.JOBS) if j["key"] == "field")
+        f["coins"] = 0
+        for _ in range(3):
+            out = day(f, "wait()\n")
+        self.assertIn("🌾 Bigger field", out["say"][0])
+        self.assertIn("you need 15 more", out["say"][0])
+        self.assertIsNone(out["stuck"])
+        f["coins"] = 100
+        out = day(f, "wait()\n")
+        self.assertIn("you have the coins", out["stuck"])
+
+    def test_growing_carrots_say_to_run_another_day(self):
+        f = farm_rules.new_farm(5)
+        f["job"] = next(i for i, j in enumerate(farm_rules.JOBS) if j["key"] == "if")
+        f["crops"].append("carrot")
+        f["field"] = [[None, None, None]]
+        out = day(f, 'for i in range(3):\n    if ripe():\n        harvest()\n    if empty():\n        plant("carrot")\n    east()\n')
+        self.assertIn("still growing: run another day", out["say"][0])
+
+    def test_auto_comes_with_the_job_that_runs_the_same_code_again(self):
+        f = farm_rules.new_farm(5)
+        self.assertFalse(farm_rules.view(f, 0, DAY)["job"]["auto"])
+        f["job"] = farm_rules.AUTO_FROM
+        self.assertEqual(farm_rules.JOBS[f["job"]]["key"], "again")
+        self.assertTrue(farm_rules.view(f, 0, DAY)["job"]["auto"])
+
     def test_orders_fill_pay_and_bring_a_crate_every_third(self):
         f = fresh()
         f["order"] = farm_rules.next_order(f)

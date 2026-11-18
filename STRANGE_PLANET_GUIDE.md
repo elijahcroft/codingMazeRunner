@@ -1090,7 +1090,13 @@ closes the farm page for everyone and keeps every farm as it was.
   picked. Night falls, everything grows, and it's the next day.
 - Presses **🔁 Auto** to have the same program run day after day while they watch. They can
   change the code while it runs. Auto stops by itself after 25 days if nobody touches
-  the page, so a laptop left alone doesn't farm all lesson.
+  the page, so a laptop left alone doesn't farm all lesson. Auto only shows from job 4
+  ("They grew!"): the first three jobs each need new code, and in November some students
+  ran `harvest()` on Auto for 40 days and never left job 2.
+- After each day the result says how close the day came to the job ("📋 Job: 1 of 2
+  berries picked today", or what to buy and how many coins are still needed). If the same
+  code misses the job three days running, Auto stops, the **✍️ Type this** panel opens and
+  glows, and the result says the job needs new code.
 - Spends coins in the **🛒 Shop**. The button shows how many things they can afford.
 
 **Nothing fails and nothing is lost.** Picking a plant too early does nothing but waste a
